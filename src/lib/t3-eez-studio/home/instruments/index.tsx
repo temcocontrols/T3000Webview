@@ -15,6 +15,8 @@ import classNames from "classnames";
 import { ToolbarHeader } from "eez-studio-ui/header-with-body";
 import { ButtonAction } from "eez-studio-ui/action";
 import { Icon } from "eez-studio-ui/icon";
+import { Loader } from "eez-studio-ui/loader";
+import { SearchInput } from "eez-studio-ui/search-input";
 
 import { instruments, InstrumentObject, instrumentStore } from "instrument/instrument-object";
 import { showAddInstrumentDialog } from "instrument/add-instrument-dialog";
@@ -36,8 +38,7 @@ import {
     showDeletedInstrumentsDialog
 } from "home/instruments/deleted-instruments-dialog";
 import { ConnectionParameters } from "instrument/connection/interface";
-import { Loader } from "eez-studio-ui/loader";
-import { SearchInput } from "eez-studio-ui/search-input";
+
 import { showExportDialog } from "./export-dialog";
 import { showImportDialog } from "./import-dialog";
 

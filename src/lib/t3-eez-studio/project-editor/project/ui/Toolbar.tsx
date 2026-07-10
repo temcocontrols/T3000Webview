@@ -8,7 +8,8 @@ import {
     runInAction
 } from "mobx";
 import { observer } from "mobx-react";
-import { ButtonAction, IconAction } from "eez-studio-ui/action";
+import { ButtonAction, IconAction, ButtonGroup } from "./fluent-toolbar";
+import { makeStyles, tokens } from "@fluentui/react-components";
 import { BuildConfiguration } from "project-editor/project/project";
 import { ProjectContext } from "project-editor/project/context";
 import { PageTabState } from "project-editor/features/page/PageEditor";
@@ -34,7 +35,7 @@ import {
     model as scrapbookModel
 } from "project-editor/store/scrapbook";
 import { closest } from "eez-studio-shared/dom";
-import { Icon } from "eez-studio-ui/icon";
+import { Icon } from "./fluent-toolbar";
 import { dockerBuildState } from "project-editor/lvgl/docker-build/docker-build-state";
 import { transformToDeviceJson } from "project-editor/build/firmware-export";
 import { writeTextFile } from "project-editor/build/build";
@@ -129,7 +130,16 @@ export const Toolbar = observer(
             }
 
             return (
-                <nav className="navbar justify-content-between EezStudio_ProjectEditor_ToolbarNav">
+                <div className="EezStudio_ProjectEditor_ToolbarNav" style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: `2px ${tokens.spacingHorizontalS}`,
+                    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                    backgroundColor: tokens.colorNeutralBackground1,
+                    minHeight: "34px",
+                    gap: tokens.spacingHorizontalXS,
+                }}>
                     {showEditorButtons ? <EditorButtons /> : <div />}
 
                     {showRunEditSwitchControls ? (
@@ -138,10 +148,10 @@ export const Toolbar = observer(
                         <div />
                     )}
 
-                    <div className="EezStudio_ProjectEditor_ToolbarNav_FlowRuntimeControls">
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                         {globalVariablesStatuses}
                     </div>
-                </nav>
+                </div>
             );
         }
     }
@@ -262,19 +272,19 @@ const EditorButtons = observer(
             return (
                 <div className="EezStudio_ProjectEditor_ToolbarNav_EditorButtons">
                     {!this.context.runtime && (
-                        <div className="btn-group" role="group">
+                        <ButtonGroup>
                             <IconAction
                                 title="Save"
                                 icon="material:save"
                                 onClick={() => this.context.save()}
                                 enabled={this.context.isModified}
                             />
-                        </div>
+                        </ButtonGroup>
                     )}
 
                     {!this.context.runtime && (
                         <>
-                            <div className="btn-group" role="group">
+                            <ButtonGroup>
                                 <IconAction
                                     title={
                                         this.context.undoManager.canUndo
@@ -299,9 +309,9 @@ const EditorButtons = observer(
                                     }
                                     enabled={this.context.undoManager.canRedo}
                                 />
-                            </div>
+                            </ButtonGroup>
 
-                            <div className="btn-group" role="group">
+                            <ButtonGroup>
                                 {false && (
                                     <IconAction
                                         title="Cut"
@@ -325,8 +335,8 @@ const EditorButtons = observer(
                                     onClick={this.context.paste}
                                     enabled={this.context.canPaste}
                                 />
-                            </div>
-                            <div className="btn-group" role="group">
+                            </ButtonGroup>
+                            <ButtonGroup>
                                 <IconAction
                                     title="Scrapbook"
                                     icon={PROJECT_EDITOR_SCRAPBOOK}
@@ -334,13 +344,13 @@ const EditorButtons = observer(
                                     onClick={() => showScrapbookManager()}
                                     selected={scrapbookModel.isVisible}
                                 />
-                            </div>
+                            </ButtonGroup>
                         </>
                     )}
 
                     {!this.context.runtime &&
                         this.isBuildConfigurationSelectorVisible && (
-                            <div className="btn-group">
+                            <div style={{ display: "flex" }}>
                                 <select
                                     title="Configuration"
                                     id="btn-toolbar-configuration"
@@ -359,7 +369,7 @@ const EditorButtons = observer(
                         )}
 
                     {!this.context.runtime && (
-                        <div className="btn-group" role="group">
+                        <ButtonGroup>
                             {!this.context.projectTypeTraits.isDashboard && (
                                 <IconAction
                                     title="Check"
@@ -379,12 +389,12 @@ const EditorButtons = observer(
                                     enabled={this.context.project._fullyLoaded}
                                 />
                             )}
-                        </div>
+                        </ButtonGroup>
                     )}
 
                     {this.context.projectTypeTraits.isResource &&
                         this.context.project.micropython && (
-                            <div className="btn-group" role="group">
+                            <ButtonGroup>
                                 <IconAction
                                     title="Run MicroPython Script"
                                     icon={RUN_ICON}
@@ -394,14 +404,14 @@ const EditorButtons = observer(
                                     }
                                     enabled={this.context.project._fullyLoaded}
                                 />
-                            </div>
+                            </ButtonGroup>
                         )}
 
                     {this.context.projectTypeTraits.hasFlowSupport && (
                         <>
                             {this.pageTabState && (
                                 <>
-                                    <div className="btn-group" role="group">
+                                    <ButtonGroup>
                                         <IconAction
                                             title="Show front face"
                                             icon="material:flip_to_front"
@@ -424,10 +434,10 @@ const EditorButtons = observer(
                                                 !this.pageTabState.frontFace
                                             }
                                         />
-                                    </div>
+                                    </ButtonGroup>
 
                                     {!this.flowTabState?.flowState && (
-                                        <div className="btn-group" role="group">
+                                        <ButtonGroup>
                                             <IconAction
                                                 title="Show timeline"
                                                 icon={
@@ -442,7 +452,7 @@ const EditorButtons = observer(
                                                 }
                                                 selected={this.isShowTimeline}
                                             />
-                                        </div>
+                                        </ButtonGroup>
                                     )}
                                 </>
                             )}
@@ -450,7 +460,7 @@ const EditorButtons = observer(
                             {(this.flowTabState ||
                                 (this.pageTabState &&
                                     !this.pageTabState.frontFace)) && (
-                                <div className="btn-group" role="group">
+                                <ButtonGroup>
                                     <IconAction
                                         title="Show component descriptions"
                                         icon="material:comment"
@@ -466,20 +476,20 @@ const EditorButtons = observer(
                                                 .showComponentDescriptions
                                         }
                                     />
-                                </div>
+                                </ButtonGroup>
                             )}
                         </>
                     )}
 
                     {!this.context.runtime &&
                         this.context.project.texts?.languages.length > 0 && (
-                            <div className="btn-group" role="group">
+                            <ButtonGroup>
                                 <SelectLanguage />
-                            </div>
+                            </ButtonGroup>
                         )}
 
                     {this.featureItems && (
-                        <div className="btn-group" role="group">
+                        <ButtonGroup>
                             {this.featureItems.map(featureItem => {
                                 const title = objectToString(featureItem);
 
@@ -516,7 +526,7 @@ const EditorButtons = observer(
                                     />
                                 );
                             })}
-                        </div>
+                        </ButtonGroup>
                     )}
 
                     {this.pageTabState && (
@@ -816,7 +826,7 @@ const PageZoomButton = observer(
             );
 
             return (
-                <div className="btn-group" role="group">
+                <div style={{ display: "flex" }}>
                     <button
                         ref={this.buttonRef}
                         className="btn btn-primary dropdown-toggle EezStudio_PageZoomButton"

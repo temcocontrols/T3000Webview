@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 import { clipboard, ipcRenderer } from "electron";
 import { Menu, MenuItem } from "@electron/remote";
-import React from "react";
+import React, { useEffect } from "react";
 import {
     computed,
     action,
@@ -13,57 +13,251 @@ import {
 } from "mobx";
 import { observer } from "mobx-react";
 
-import { ButtonAction, IconAction } from "eez-studio-ui/action";
+// ── Fluent UI v9 ─────────────────────────────────────────────────────
+import {
+    Button,
+    Input,
+    Text,
+    Badge,
+    Spinner,
+    Divider,
+    makeStyles,
+    tokens,
+    mergeClasses,
+} from "@fluentui/react-components";
+import {
+    FolderOpenRegular,
+    SearchRegular,
+    ArrowSortDownRegular,
+    ArrowSortUpRegular,
+    ArrowDownloadRegular,
+    ArrowSyncRegular,
+    PlugDisconnectedRegular,
+    DismissRegular,
+    HistoryRegular,
+    PlayRegular,
+} from "@fluentui/react-icons";
 
 import { stringCompare } from "eez-studio-shared/string";
-
-import { IListNode, List, ListContainer, ListItem } from "eez-studio-ui/list";
 import { settingsController } from "home/settings";
 import type { IMruItem } from "main/settings";
-import { SearchInput } from "eez-studio-ui/search-input";
 import { getProjectIcon } from "home/helper";
 import { ProjectStore, loadProject } from "project-editor/store";
 import { ProjectEditorTab, tabs } from "home/tabs-store";
 import { initProjectEditor } from "project-editor/project-editor-bootstrap";
-import { HOME_TAB_OPEN_ICON } from "project-editor/ui-components/icons";
-import "./open-projects-v2.css";
 
 ////////////////////////////////////////////////////////////////////////////////
+// Styles (Fluent tokens)
+////////////////////////////////////////////////////////////////////////////////
 
-const SORT_ALPHA_ICON = (
-    <svg
-        viewBox="0 0 24 24"
-        strokeWidth="2"
-        stroke="currentColor"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-    >
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-        <path d="M15 10v-5c0 -1.38 .62 -2 2 -2s2 .62 2 2v5m0 -3h-4"></path>
-        <path d="M19 21h-4l4 -7h-4"></path>
-        <path d="M4 15l3 3l3 -3"></path>
-        <path d="M7 6v12"></path>
-    </svg>
-);
-
-const SORT_RECENT_ICON = (
-    <svg
-        viewBox="0 0 24 24"
-        strokeWidth="2"
-        stroke="currentColor"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-    >
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-        <line x1="4" y1="6" x2="13" y2="6"></line>
-        <line x1="4" y1="12" x2="11" y2="12"></line>
-        <line x1="4" y1="18" x2="11" y2="18"></line>
-        <polyline points="15 15 18 18 21 15"></polyline>
-        <line x1="18" y1="6" x2="18" y2="18"></line>
-    </svg>
-);
+const useStyles = makeStyles({
+    root: {
+        display: "flex",
+        gap: tokens.spacingHorizontalXL,
+        height: "100%",
+        padding: tokens.spacingHorizontalL,
+    },
+    leftColumn: {
+        flex: 1,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
+        paddingRight: tokens.spacingHorizontalXL,
+    },
+    rightColumn: {
+        flex: 1,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+    },
+    columnHeader: {
+        marginBottom: tokens.spacingVerticalL,
+    },
+    columnTitle: {
+        marginBottom: tokens.spacingVerticalXXS,
+    },
+    columnDesc: {
+        color: tokens.colorNeutralForeground3,
+    },
+    // ── Search + Sort bar ──
+    toolbar: {
+        display: "flex",
+        gap: tokens.spacingHorizontalS,
+        alignItems: "center",
+        marginBottom: tokens.spacingVerticalM,
+    },
+    searchInput: {
+        flex: 1,
+    },
+    // ── Project list ──
+    projectList: {
+        flex: 1,
+        overflowY: "auto",
+        marginBottom: tokens.spacingVerticalM,
+    },
+    projectItem: {
+        display: "flex",
+        gap: tokens.spacingHorizontalM,
+        alignItems: "center",
+        padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
+        borderRadius: tokens.borderRadiusMedium,
+        cursor: "pointer",
+        transition: "background-color 0.15s",
+        "&:hover": {
+            backgroundColor: tokens.colorNeutralBackground1Hover,
+        },
+    },
+    projectItemSelected: {
+        backgroundColor: tokens.colorNeutralBackground1Selected,
+        "&:hover": {
+            backgroundColor: tokens.colorNeutralBackground1Selected,
+        },
+    },
+    projectIcon: {
+        width: "48px",
+        height: "48px",
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: tokens.borderRadiusMedium,
+        backgroundColor: tokens.colorNeutralBackground2,
+        overflow: "hidden",
+        "& img": {
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+        },
+    },
+    projectMeta: {
+        flex: 1,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+    },
+    projectName: {
+        display: "flex",
+        gap: tokens.spacingHorizontalXS,
+        alignItems: "baseline",
+    },
+    projectFolder: {
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+    },
+    // ── Footer ──
+    footer: {
+        padding: `${tokens.spacingVerticalM} 0`,
+        display: "flex",
+        flexDirection: "column",
+        gap: tokens.spacingVerticalS,
+    },
+    footerButton: {
+        width: "100%",
+    },
+    projectInfo: {
+        padding: tokens.spacingVerticalM,
+        borderRadius: tokens.borderRadiusMedium,
+        backgroundColor: tokens.colorNeutralBackground2,
+        display: "flex",
+        flexDirection: "column",
+        gap: tokens.spacingVerticalXXS,
+    },
+    // ── Device panel ──
+    devicePanel: {
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+    },
+    devicePanelHeader: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: tokens.spacingVerticalS,
+    },
+    deviceCount: {
+        color: tokens.colorNeutralForeground3,
+    },
+    noDevices: {
+        color: tokens.colorNeutralForeground3,
+        fontStyle: "italic",
+        padding: tokens.spacingVerticalL,
+    },
+    deviceList: {
+        flex: 1,
+        overflowY: "auto",
+        marginBottom: tokens.spacingVerticalM,
+    },
+    deviceItem: {
+        display: "flex",
+        alignItems: "center",
+        gap: tokens.spacingHorizontalS,
+        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+        borderRadius: tokens.borderRadiusMedium,
+        border: `1px solid ${tokens.colorNeutralStroke1}`,
+        marginBottom: tokens.spacingVerticalS,
+        cursor: "pointer",
+        transition: "border-color 0.15s, background-color 0.15s",
+        "&:hover": {
+            borderColor: tokens.colorBrandStroke1,
+        },
+    },
+    deviceItemSelected: {
+        borderColor: tokens.colorBrandStroke1,
+        backgroundColor: tokens.colorBrandBackground,
+    },
+    deviceName: {
+        fontWeight: "600",
+    },
+    deviceInfo: {
+        color: tokens.colorNeutralForeground3,
+    },
+    importBtn: {
+        marginTop: "auto",
+        width: "100%",
+    },
+    // ── Import drawer ──
+    importDrawer: {
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        border: `1px solid ${tokens.colorNeutralStroke1}`,
+        borderRadius: tokens.borderRadiusMedium,
+        overflow: "hidden",
+    },
+    drawerHeader: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    },
+    drawerLog: {
+        flex: 1,
+        overflowY: "auto",
+        padding: tokens.spacingHorizontalM,
+        fontFamily: "monospace",
+        fontSize: "12px",
+        lineHeight: "1.6",
+    },
+    logLine: {
+        whiteSpace: "pre-wrap",
+    },
+    // ── History ──
+    historySection: {
+        marginTop: tokens.spacingVerticalL,
+    },
+    historyItem: {
+        cursor: "pointer",
+        padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+        borderRadius: tokens.borderRadiusSmall,
+        "&:hover": {
+            backgroundColor: tokens.colorNeutralBackground1Hover,
+        },
+    },
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -122,11 +316,8 @@ class OpenProjectsStore {
 
             if (mruItem) {
                 const isProject = mruItem.filePath.endsWith(".eez-project");
-
                 let extension = isProject ? ".eez-project" : ".eez-dashboard";
-
                 const baseName = path.basename(mruItem.filePath, extension);
-
                 const dirName = path.dirname(mruItem.filePath);
 
                 runInAction(() => {
@@ -142,7 +333,6 @@ class OpenProjectsStore {
                         mruItem.filePath,
                         "utf8"
                     );
-
                     await initProjectEditor(tabs, ProjectEditorTab);
                     const projectStore = ProjectStore.create({
                         type: "read-only"
@@ -200,7 +390,6 @@ class OpenProjectsStore {
 
     toggleSort = () => {
         this.sortAlphabetically = !this.sortAlphabetically;
-
         localStorage.setItem(
             "homeTabProjectsSort",
             this.sortAlphabetically ? "alphabetically" : "most-recent"
@@ -237,7 +426,6 @@ class OpenProjectsStore {
             settingsController.removeItemFromMRU(
                 openProjectsStore.selectedMruItem
             );
-
             openProjectsStore.selectedMruItem = undefined;
         }
     };
@@ -318,40 +506,32 @@ class DeviceImportStore {
             this.appendLog(`📋 Importing from ${device.panel_name}`);
             this.appendLog(`   IP: ${device.panel_ipaddress}  SN: ${device.panel_serial_number}`);
 
-            // Step 0 — Create project skeleton (design Step 3)
+            // Step 0 — Create project skeleton
             const projectDir = `project/${device.panel_name}`;
             const stagingDir = `${projectDir}/device-import`;
             this.appendLog("⏳ Step 0 — Creating project folder...");
             await fetch(`/api/files/mkdir?path=${encodeURIComponent(stagingDir)}`, { method: "POST" });
             this.appendLog("✅ Step 0 — Project folder ready");
 
-            // Step 1 — Connect (design Step 3 continued)
-            this.appendLog("✅ Step 1 — Connected to device");
+            // Step 1 — Connect via REST (primary) or BACnet (fallback)
+            const { DeviceRestClient } = await import("project-editor/build/device-rest-client");
+            const client = new DeviceRestClient();
+            const conn = await client.connect(
+                device.panel_ipaddress,
+                device.panel_id,
+                device.panel_serial_number
+            );
+            this.appendLog(`✅ Step 1 — Connected via ${conn.mode.toUpperCase()}`);
+            if (conn.error) {
+                throw new Error(conn.error);
+            }
 
-            // Step 2 — Fetch screens one-by-one (design Step 4)
-            // Each screen saved to device-import/ immediately — safe if connection drops.
-            // Re-import rebuilds from cache, no re-fetch needed.
-            // TODO: Needs C++ READ_FIRMWARE (action=19) in HandleWebViewMsg()
-            //       and Rust POST /api/devices/:id/read-firmware calling call_handle_webview_msg(19, &mut buffer)
-            //       See docs/t3000/t3-eez-studio/device-interface-deployment-via-bacnet-design.md
+            // Step 2 — Fetch all screens in one call
             this.appendLog("⏳ Step 2 — Fetching screens...");
+            const result = await client.loadAllScreens();
             const stagingScreens: { name: string; json: any }[] = [];
-            let screenIndex = 0;
-            while (true) {
-                const resp = await fetch(
-                    `/api/devices/${device.panel_id}/read-firmware`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ screenIndex }),
-                    }
-                );
-                if (resp.status === 404) break; // no more screens
-                if (!resp.ok) throw new Error(`Failed to fetch screen ${screenIndex}`);
-                const result = await resp.json();
-                const screen = result.screen;
-                if (!screen) break;
-                // Save to staging immediately — safe if connection drops later
+
+            for (const screen of result.screens) {
                 const screenPath = `${stagingDir}/${screen.name}.json`;
                 await fetch(
                     `/api/files/write?path=${encodeURIComponent(screenPath)}`,
@@ -360,11 +540,10 @@ class DeviceImportStore {
                 stagingScreens.push(screen);
                 const kb = Math.round(JSON.stringify(screen.json).length / 1024);
                 this.appendLog(`   ${screen.name} — ${kb}KB ✓`);
-                screenIndex++;
             }
             this.appendLog(`✅ Step 2 — Fetched ${stagingScreens.length} screens`);
 
-            // Step 3 — Build .eez-project (design Step 5)
+            // Step 3 — Build .eez-project
             this.appendLog("⏳ Step 3 — Building project...");
             const { firmwareToProject } = await import(
                 "project-editor/build/firmware-loader"
@@ -374,7 +553,7 @@ class DeviceImportStore {
                 serial_number: device.panel_serial_number,
             });
 
-            // Step 4 — Save to disk (design Step 5 continued)
+            // Step 4 — Save to disk
             const projectPath = `project/${device.panel_name}/${device.panel_name}.eez-project`;
             const jsonStr = JSON.stringify(project, null, 2);
             const saveResp = await fetch(
@@ -389,16 +568,14 @@ class DeviceImportStore {
                 const paths: string[] = JSON.parse(
                     localStorage.getItem("importedProjectPaths") || "[]"
                 );
-                const fullPath = `${projectPath}`;
-                if (!paths.includes(fullPath)) {
-                    paths.push(fullPath);
+                if (!paths.includes(projectPath)) {
+                    paths.push(projectPath);
                     localStorage.setItem("importedProjectPaths", JSON.stringify(paths));
                 }
             } catch {}
 
-            // Step 5 — Open in editor (design Step 6)
+            // Step 5 — Open in editor
             this.appendLog("⏳ Step 5 — Opening editor...");
-            // Add to MRU
             settingsController.addItemToMRU(projectPath, { projectType: "LVGL", hasFlowSupport: true });
 
             const readResp = await fetch(
@@ -440,322 +617,358 @@ class DeviceImportStore {
 const deviceImportStore = new DeviceImportStore();
 
 ////////////////////////////////////////////////////////////////////////////////
+// Components
+////////////////////////////////////////////////////////////////////////////////
 
-export const Projects = observer(
-    class Projects extends React.Component {
-        constructor(props: any) {
-            super(props);
-            deviceImportStore.fetchDevices();
-        }
+// ── Project List Item ─────────────────────────────────────────────────
 
-        onContextMenu = (node: IListNode<IMruItem>) => {
-            runInAction(() => (openProjectsStore.selectedMruItem = node.data));
+const ProjectListItem: React.FC<{
+    mruItem: IMruItem;
+    isSelected: boolean;
+    onClick: () => void;
+    onDoubleClick: () => void;
+    onContextMenu: (e: React.MouseEvent) => void;
+}> = observer(({ mruItem, isSelected, onClick, onDoubleClick, onContextMenu }) => {
+    const styles = useStyles();
 
-            const menu = new Menu();
+    const isProject = mruItem.filePath.endsWith(".eez-project");
+    const extension = isProject ? ".eez-project" : ".eez-dashboard";
+    const baseName = path.basename(mruItem.filePath, extension);
 
-            menu.append(
-                new MenuItem({
-                    label: "Edit Project",
-                    click: openProjectsStore.editProject
-                })
-            );
+    const importedPaths: string[] = JSON.parse(
+        localStorage.getItem("importedProjectPaths") || "[]"
+    );
+    const isImported = importedPaths.includes(mruItem.filePath);
 
-            if (node.data.hasFlowSupport) {
-                menu.append(
-                    new MenuItem({
-                        label: "Run Project",
-                        click: openProjectsStore.runProject
-                    })
-                );
-            }
-
-            menu.append(
-                new MenuItem({
-                    label: "Copy Project Path",
-                    click: openProjectsStore.copyProjectPath
-                })
-            );
-
-            menu.append(
-                new MenuItem({
-                    label: "Remove From List",
-                    click: openProjectsStore.removeFromList
-                })
-            );
-
-            menu.popup();
-        };
-
-        render() {
-            return (
-                <div className="EezStudio_HomeTab_Projects_V2">
-                    {/* ── Left Column: Recent Projects ── */}
-                    <div className="v2-left-column">
-                        <div className="v2-column-header">
-                            <h3>📂 Recent Projects</h3>
-                            <p className="v2-column-desc">
-                                Open, edit, or run existing projects from disk.
-                            </p>
-                        </div>
-
-                        <div className="EezStudio_HomeTab_Projects_Header">
-                            <div style={{ width: 28, height: 28 }}></div>
-                            <SearchInput
-                                searchText={openProjectsStore.searchText}
-                                onClear={action(() => {
-                                    openProjectsStore.searchText = "";
-                                })}
-                                onChange={openProjectsStore.onSearchChange}
-                                onKeyDown={openProjectsStore.onSearchChange}
-                            />
-                            <IconAction
-                                icon={
-                                    openProjectsStore.sortAlphabetically
-                                        ? SORT_ALPHA_ICON
-                                        : SORT_RECENT_ICON
-                                }
-                                title={
-                                    openProjectsStore.sortAlphabetically
-                                        ? "Sort alphabetically"
-                                        : "Show most recent first"
-                                }
-                                onClick={openProjectsStore.toggleSort}
-                            />
-                        </div>
-                        <div className="EezStudio_HomeTab_Projects_Body">
-                            <div className="EezStudio_HomeTab_Projects_Space"></div>
-                            <div className="EezStudio_HomeTab_Projects_Actions">
-                                <ButtonAction
-                                    className="btn-primary"
-                                    text={"Open Project"}
-                                    title="Open a local EEZ Studio Project"
-                                    icon={HOME_TAB_OPEN_ICON}
-                                    onClick={() => {
-                                        ipcRenderer.send("open-project");
-                                    }}
-                                />
-                            </div>
-                            <ListContainer tabIndex={0}>
-                                <List
-                                    nodes={openProjectsStore.allMruItems}
-                                    renderNode={(node: IListNode<IMruItem>) => {
-                                        let mruItem = node.data;
-
-                                        const isProject =
-                                            mruItem.filePath.endsWith(
-                                                ".eez-project"
-                                            );
-
-                                        let extension = isProject
-                                            ? ".eez-project"
-                                            : ".eez-dashboard";
-
-                                        const baseName = path.basename(
-                                            mruItem.filePath,
-                                            extension
-                                        );
-
-                                        const importedPaths: string[] = JSON.parse(
-                                            localStorage.getItem("importedProjectPaths") || "[]"
-                                        );
-                                        const isImported = importedPaths.includes(mruItem.filePath);
-
-                                        return (
-                                            <ListItem
-                                                leftIcon={getProjectIcon(
-                                                    mruItem.filePath,
-                                                    mruItem.projectType,
-                                                    48,
-                                                    mruItem.hasFlowSupport
-                                                )}
-                                                leftIconSize={48}
-                                                label={
-                                                    <div
-                                                        className="EezStudio_HomeTab_ProjectItem"
-                                                        title={mruItem.filePath}
-                                                    >
-                                                        <div className="project-name">
-                                                            <span className="fw-bolder">
-                                                                {baseName}
-                                                            </span>
-                                                            <span>{extension}</span>
-                                                        </div>
-                                                        <div className="project-folder">
-                                                            {path.dirname(
-                                                                mruItem.filePath
-                                                            )}
-                                                        </div>
-                                                        {isImported && (
-                                                            <div className="v2-import-badge">
-                                                                🔌 Imported from device
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                }
-                                            />
-                                        );
-                                    }}
-                                    selectNode={(node: IListNode<IMruItem>) => {
-                                        runInAction(
-                                            () =>
-                                                (openProjectsStore.selectedMruItem =
-                                                    node.data)
-                                        );
-                                    }}
-                                    onContextMenu={this.onContextMenu}
-                                    onDoubleClick={openProjectsStore.editProject}
-                                ></List>
-                            </ListContainer>
-                            <ProjectInfo />
-                        </div>
-                    </div>
-
-                    {/* ── Right Column: Load from Device ── */}
-                    <div className="v2-right-column">
-                        <div className="v2-column-header">
-                            <h3>🔌 Load from Device</h3>
-                            <p className="v2-column-desc">
-                                Import screens from a T3000 hardware controller.
-                            </p>
-                        </div>
-
-                        {deviceImportStore.showDrawer ? (
-                            <DeviceImportDrawer />
-                        ) : (
-                            <DeviceListPanel />
-                        )}
-
-                        {/* ── Import History ── */}
-                        {deviceImportStore.history.length > 0 && (
-                            <div className="v2-import-history">
-                                <hr />
-                                <h4>📋 History</h4>
-                                {deviceImportStore.history.map((entry, i) => (
-                                    <div
-                                        key={i}
-                                        className="v2-history-item"
-                                        onClick={() => {
-                                            runInAction(() => {
-                                                deviceImportStore.importLog = entry.log;
-                                                deviceImportStore.showDrawer = true;
-                                            });
-                                        }}
-                                        style={{ cursor: "pointer" }}
-                                    >
-                                        {entry.deviceName} · {entry.screenCount} screens ·{" "}
-                                        {new Date(entry.timestamp).toLocaleDateString()}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+    return (
+        <div
+            className={mergeClasses(
+                styles.projectItem,
+                isSelected && styles.projectItemSelected
+            )}
+            onClick={onClick}
+            onDoubleClick={onDoubleClick}
+            onContextMenu={onContextMenu}
+        >
+            <div className={styles.projectIcon}>
+                {getProjectIcon(
+                    mruItem.filePath,
+                    mruItem.projectType,
+                    48,
+                    mruItem.hasFlowSupport
+                )}
+            </div>
+            <div className={styles.projectMeta}>
+                <div className={styles.projectName}>
+                    <Text weight="semibold">{baseName}</Text>
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                        {extension}
+                    </Text>
                 </div>
-            );
+                <Text size={200} className={styles.projectFolder} style={{ color: tokens.colorNeutralForeground3 }}>
+                    {path.dirname(mruItem.filePath)}
+                </Text>
+                {isImported && (
+                    <Badge
+                        appearance="tint"
+                        icon={<PlugDisconnectedRegular />}
+                        size="small"
+                    >
+                        Imported
+                    </Badge>
+                )}
+            </div>
+        </div>
+    );
+});
+
+// ── Left Column: Recent Projects ──────────────────────────────────────
+
+const RecentProjectsColumn: React.FC = observer(() => {
+    const styles = useStyles();
+
+    const onContextMenu = (node: { data: IMruItem }) => {
+        runInAction(() => (openProjectsStore.selectedMruItem = node.data));
+
+        const menu = new Menu();
+        menu.append(new MenuItem({
+            label: "Edit Project",
+            click: openProjectsStore.editProject
+        }));
+        if (node.data.hasFlowSupport) {
+            menu.append(new MenuItem({
+                label: "Run Project",
+                click: openProjectsStore.runProject
+            }));
         }
-    }
-);
+        menu.append(new MenuItem({
+            label: "Copy Project Path",
+            click: openProjectsStore.copyProjectPath
+        }));
+        menu.append(new MenuItem({
+            label: "Remove From List",
+            click: openProjectsStore.removeFromList
+        }));
+        menu.popup();
+    };
+
+    return (
+        <div className={styles.leftColumn}>
+            <div className={styles.columnHeader}>
+                <Text size={500} weight="semibold" className={styles.columnTitle}>
+                    Recent Projects
+                </Text>
+                <Text size={200} className={styles.columnDesc}>
+                    Open, edit, or run existing projects from disk.
+                </Text>
+            </div>
+
+            {/* Search + Sort */}
+            <div className={styles.toolbar}>
+                <Input
+                    className={styles.searchInput}
+                    contentBefore={<SearchRegular />}
+                    placeholder="Search projects..."
+                    value={openProjectsStore.searchText}
+                    onChange={(e) => {
+                        runInAction(() => {
+                            openProjectsStore.searchText = e.target.value;
+                        });
+                    }}
+                />
+                <Button
+                    appearance="transparent"
+                    icon={openProjectsStore.sortAlphabetically ? <ArrowSortDownRegular /> : <ArrowSortUpRegular />}
+                    title={openProjectsStore.sortAlphabetically
+                        ? "Sort alphabetically"
+                        : "Show most recent first"}
+                    onClick={openProjectsStore.toggleSort}
+                />
+            </div>
+
+            {/* Project list */}
+            <div className={styles.projectList}>
+                {openProjectsStore.allMruItems.map(node => (
+                    <ProjectListItem
+                        key={node.id}
+                        mruItem={node.data}
+                        isSelected={node.selected}
+                        onClick={() =>
+                            runInAction(() => {
+                                openProjectsStore.selectedMruItem = node.data;
+                            })
+                        }
+                        onDoubleClick={openProjectsStore.editProject}
+                        onContextMenu={() => onContextMenu(node)}
+                    />
+                ))}
+                {openProjectsStore.allMruItems.length === 0 && (
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3, padding: tokens.spacingVerticalL }}>
+                        {openProjectsStore.searchText
+                            ? "No matching projects."
+                            : "No recent projects."}
+                    </Text>
+                )}
+            </div>
+
+            {/* Footer */}
+            <div className={styles.footer}>
+                <Button
+                    appearance="primary"
+                    icon={<FolderOpenRegular />}
+                    className={styles.footerButton}
+                    onClick={() => ipcRenderer.send("open-project")}
+                >
+                    Open Project
+                </Button>
+                {openProjectsStore.selectedProjectInfo && (
+                    <div className={styles.projectInfo}>
+                        <Text weight="semibold">
+                            {openProjectsStore.selectedProjectInfo.baseName}
+                        </Text>
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                            {openProjectsStore.selectedProjectInfo.dirName}
+                        </Text>
+                        {openProjectsStore.selectedProjectInfo.hasFlowSupport && (
+                            <Button
+                                appearance="primary"
+                                icon={<PlayRegular />}
+                                size="small"
+                                onClick={openProjectsStore.runProject}
+                            >
+                                Run Project
+                            </Button>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+});
 
 // ── Device List Panel ─────────────────────────────────────────────────
 
-const DeviceListPanel = observer(() => (
-    <div className="v2-device-panel">
-        {deviceImportStore.devices.length === 0 ? (
-            <p className="v2-no-devices">No devices found. Check backend connection.</p>
-        ) : (
-            <div className="v2-device-list">
-                {deviceImportStore.devices.map(d => (
-                    <label
-                        key={d.panel_id}
-                        className={`v2-device-item ${
-                            deviceImportStore.selectedDeviceId === d.panel_id
-                                ? "selected"
-                                : ""
-                        }`}
-                    >
-                        <input
-                            type="radio"
-                            name="device"
-                            value={d.panel_id}
-                            checked={deviceImportStore.selectedDeviceId === d.panel_id}
-                            onChange={() =>
+const DeviceListPanel: React.FC = observer(() => {
+    const styles = useStyles();
+
+    return (
+        <div className={styles.devicePanel}>
+            <div className={styles.devicePanelHeader}>
+                <Text size={200} className={styles.deviceCount}>
+                    {deviceImportStore.devices.length > 0
+                        ? `${deviceImportStore.devices.length} device${deviceImportStore.devices.length !== 1 ? "s" : ""} found`
+                        : ""}
+                </Text>
+                <Button
+                    appearance="transparent"
+                    icon={<ArrowSyncRegular />}
+                    title="Refresh device list"
+                    onClick={() => deviceImportStore.fetchDevices()}
+                />
+            </div>
+
+            {deviceImportStore.devices.length === 0 ? (
+                <Text size={200} className={styles.noDevices}>
+                    No devices found. Check backend connection.
+                </Text>
+            ) : (
+                <div className={styles.deviceList}>
+                    {deviceImportStore.devices.map(d => (
+                        <div
+                            key={d.panel_id}
+                            className={mergeClasses(
+                                styles.deviceItem,
+                                deviceImportStore.selectedDeviceId === d.panel_id && styles.deviceItemSelected
+                            )}
+                            onClick={() =>
                                 runInAction(() => {
                                     deviceImportStore.selectedDeviceId = d.panel_id;
                                 })
                             }
-                        />
-                        <span className="v2-device-name">{d.panel_name}</span>
-                        <span className="v2-device-info">
-                            {d.panel_ipaddress} &middot; SN: {d.panel_serial_number}
-                        </span>
-                    </label>
-                ))}
-            </div>
-        )}
-        <button
-            className="btn btn-primary v2-import-btn"
-            disabled={!deviceImportStore.selectedDeviceId || deviceImportStore.importing}
-            onClick={() => deviceImportStore.startImport()}
-        >
-            {deviceImportStore.importing ? "Importing..." : "Import from Device"}
-        </button>
-    </div>
-));
+                        >
+                            <input
+                                type="radio"
+                                name="device"
+                                value={d.panel_id}
+                                checked={deviceImportStore.selectedDeviceId === d.panel_id}
+                                onChange={() =>
+                                    runInAction(() => {
+                                        deviceImportStore.selectedDeviceId = d.panel_id;
+                                    })
+                                }
+                                style={{ accentColor: tokens.colorBrandStroke1 }}
+                            />
+                            <div>
+                                <Text className={styles.deviceName}>{d.panel_name}</Text>
+                                <br />
+                                <Text size={200} className={styles.deviceInfo}>
+                                    {d.panel_ipaddress} · SN: {d.panel_serial_number}
+                                </Text>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <Button
+                appearance="primary"
+                icon={deviceImportStore.importing ? <Spinner size="tiny" /> : <ArrowDownloadRegular />}
+                className={styles.importBtn}
+                disabled={!deviceImportStore.selectedDeviceId || deviceImportStore.importing}
+                onClick={() => deviceImportStore.startImport()}
+            >
+                {deviceImportStore.importing ? "Importing..." : "Import from Device"}
+            </Button>
+        </div>
+    );
+});
 
 // ── Import Drawer ─────────────────────────────────────────────────────
 
-const DeviceImportDrawer = observer(() => (
-    <div className="v2-import-drawer">
-        <div className="v2-drawer-header">
-            <h4>📋 Import Log</h4>
-            <button
-                className="v2-drawer-close"
-                onClick={() =>
-                    runInAction(() => {
-                        deviceImportStore.showDrawer = false;
-                    })
-                }
-            >
-                ✕
-            </button>
-        </div>
-        <div className="v2-drawer-log">
-            {deviceImportStore.importLog.map((line, i) => (
-                <div key={i} className="v2-log-line">
-                    {line}
-                </div>
-            ))}
-        </div>
-    </div>
-));
+const DeviceImportDrawer: React.FC = observer(() => {
+    const styles = useStyles();
 
-// ── Project Info (unchanged from original) ───────────────────────────
-
-export const ProjectInfo = observer(
-    class ProjectInfo extends React.Component {
-        render() {
-            let info = openProjectsStore.selectedProjectInfo;
-            if (!info) {
-                return null;
-            }
-
-            return (
-                <div className="EezStudio_HomeTab_Project_Info">
-                    <div>
-                        <span className="fw-bolder">{info.baseName}</span>
+    return (
+        <div className={styles.importDrawer}>
+            <div className={styles.drawerHeader}>
+                <Text weight="semibold">Import Log</Text>
+                <Button
+                    appearance="transparent"
+                    icon={<DismissRegular />}
+                    onClick={() =>
+                        runInAction(() => {
+                            deviceImportStore.showDrawer = false;
+                        })
+                    }
+                />
+            </div>
+            <div className={styles.drawerLog}>
+                {deviceImportStore.importLog.map((line, i) => (
+                    <div key={i} className={styles.logLine}>
+                        {line}
                     </div>
-                    <div>{info.dirName}</div>
-                    {info.hasFlowSupport && (
-                        <div>
-                            <button
-                                className="btn btn-success"
-                                onClick={openProjectsStore.runProject}
-                            >
-                                Run Project
-                            </button>
-                        </div>
-                    )}
+                ))}
+            </div>
+        </div>
+    );
+});
+
+// ── Main Page ─────────────────────────────────────────────────────────
+
+export const Projects: React.FC = observer(() => {
+    const styles = useStyles();
+
+    useEffect(() => {
+        deviceImportStore.fetchDevices();
+    }, []);
+
+    return (
+        <div className={styles.root}>
+            <RecentProjectsColumn />
+            <div className={styles.rightColumn}>
+                <div className={styles.columnHeader}>
+                    <Text size={500} weight="semibold" className={styles.columnTitle}>
+                        Load from Device
+                    </Text>
+                    <Text size={200} className={styles.columnDesc}>
+                        Import screens from a T3000 hardware controller.
+                    </Text>
                 </div>
-            );
-        }
-    }
-);
+
+                {deviceImportStore.showDrawer ? (
+                    <DeviceImportDrawer />
+                ) : (
+                    <DeviceListPanel />
+                )}
+
+                {/* Import History */}
+                {deviceImportStore.history.length > 0 && (
+                    <div className={styles.historySection}>
+                        <Divider />
+                        <div style={{ display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, margin: `${tokens.spacingVerticalS} 0` }}>
+                            <HistoryRegular />
+                            <Text weight="semibold" size={200}>History</Text>
+                        </div>
+                        {deviceImportStore.history.map((entry, i) => (
+                            <div
+                                key={i}
+                                className={styles.historyItem}
+                                onClick={() => {
+                                    runInAction(() => {
+                                        deviceImportStore.importLog = entry.log;
+                                        deviceImportStore.showDrawer = true;
+                                    });
+                                }}
+                            >
+                                <Text size={200}>
+                                    {entry.deviceName} · {entry.screenCount} screens ·{" "}
+                                    {new Date(entry.timestamp).toLocaleDateString()}
+                                </Text>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+});

@@ -2,7 +2,7 @@ import React from "react";
 import { action, makeObservable } from "mobx";
 import { observer } from "mobx-react";
 
-import { IconAction } from "eez-studio-ui/action";
+import { IconAction } from "./fluent-toolbar";
 
 import { ProjectContext } from "project-editor/project/context";
 import { Messages } from "project-editor/ui-components/Output";

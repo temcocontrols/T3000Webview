@@ -46,11 +46,7 @@ import {
     Body
 } from "eez-studio-ui/header-with-body";
 import { Toolbar } from "eez-studio-ui/toolbar";
-import {
-    ButtonAction,
-    DropdownIconAction,
-    DropdownItem
-} from "eez-studio-ui/action";
+import { ButtonAction } from "eez-studio-ui/action";
 import { List, ListItem, IListNode } from "eez-studio-ui/list";
 import {
     info,
@@ -60,6 +56,8 @@ import {
 import * as notification from "eez-studio-ui/notification";
 import { SearchInput } from "eez-studio-ui/search-input";
 import { FlexLayoutContainer } from "eez-studio-ui/FlexLayout";
+import { Input, Button, Badge, makeStyles, tokens, mergeClasses } from "@fluentui/react-components";
+import { SearchRegular, ArrowDownloadRegular, ArrowSyncRegular } from "@fluentui/react-icons";
 
 import { ExtensionShortcuts } from "home/extensions-manager/extension-shortcuts";
 import { extensionsCatalog } from "home/extensions-manager/catalog";
@@ -1449,170 +1447,82 @@ const ExtensionsManagerSubNavigation = observer(
 
         render() {
             return (
-                <div className="EezStudio_ExtensionsManager_SubNavigation">
-                    <div></div>
-
-                    <div className="EezStudio_ExtensionsManager_ViewFilter">
-                        <ul className="nav nav-pills">
-                            <li
-                                className="nav-item"
-                                onClick={action(
-                                    () =>
-                                        (extensionsManagerStore.viewFilter =
-                                            ViewFilter.ALL)
-                                )}
-                            >
-                                <a
-                                    href="#"
-                                    className={classNames("nav-link", {
-                                        active:
-                                            extensionsManagerStore.viewFilter ===
-                                            ViewFilter.ALL
-                                    })}
-                                >
-                                    <Count
-                                        label={"All"}
-                                        count={
-                                            extensionsManagerStore.all.length
-                                        }
-                                        attention={false}
-                                    />
-                                </a>
-                            </li>
-                            {extensionsManagerStore.installed.length > 0 && (
-                                <li
-                                    className="nav-item"
-                                    onClick={action(
-                                        () =>
-                                            (extensionsManagerStore.viewFilter =
-                                                ViewFilter.INSTALLED)
-                                    )}
-                                >
-                                    <a
-                                        href="#"
-                                        className={classNames("nav-link", {
-                                            active:
-                                                extensionsManagerStore.viewFilter ===
-                                                ViewFilter.INSTALLED
-                                        })}
-                                    >
-                                        <Count
-                                            label={"Installed"}
-                                            count={
-                                                extensionsManagerStore.installed
-                                                    .length
-                                            }
-                                            attention={false}
-                                        />
-                                    </a>
-                                </li>
-                            )}
-                            {extensionsManagerStore.notInstalled.length > 0 && (
-                                <li
-                                    className="nav-item"
-                                    onClick={action(
-                                        () =>
-                                            (extensionsManagerStore.viewFilter =
-                                                ViewFilter.NOT_INSTALLED)
-                                    )}
-                                >
-                                    <a
-                                        href="#"
-                                        className={classNames("nav-link", {
-                                            active:
-                                                extensionsManagerStore.viewFilter ===
-                                                ViewFilter.NOT_INSTALLED
-                                        })}
-                                    >
-                                        <Count
-                                            label={"Not installed"}
-                                            count={
-                                                extensionsManagerStore
-                                                    .notInstalled.length
-                                            }
-                                            attention={false}
-                                        />
-                                    </a>
-                                </li>
-                            )}
-                            {extensionsManagerStore.newVersions.length > 0 && (
-                                <li
-                                    className="nav-item"
-                                    onClick={action(
-                                        () =>
-                                            (extensionsManagerStore.viewFilter =
-                                                ViewFilter.NEW_VERSIONS)
-                                    )}
-                                >
-                                    <a
-                                        href="#"
-                                        className={classNames("nav-link", {
-                                            active:
-                                                extensionsManagerStore.viewFilter ===
-                                                ViewFilter.NEW_VERSIONS
-                                        })}
-                                    >
-                                        <Count
-                                            label={"New versions"}
-                                            count={
-                                                extensionsManagerStore
-                                                    .newVersions.length
-                                            }
-                                            attention={
-                                                extensionsManagerStore
-                                                    .newVersions.length > 0
-                                            }
-                                        />
-                                    </a>
-                                </li>
-                            )}
-                        </ul>
+                <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
+                    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                }}>
+                    <div style={{ display: "flex", gap: "1px" }}>
+                        <FilterTab
+                            label="All"
+                            count={extensionsManagerStore.all.length}
+                            selected={extensionsManagerStore.viewFilter === ViewFilter.ALL}
+                            onClick={action(() => (extensionsManagerStore.viewFilter = ViewFilter.ALL))}
+                        />
+                        {extensionsManagerStore.installed.length > 0 && (
+                            <FilterTab
+                                label="Installed"
+                                count={extensionsManagerStore.installed.length}
+                                selected={extensionsManagerStore.viewFilter === ViewFilter.INSTALLED}
+                                onClick={action(() => (extensionsManagerStore.viewFilter = ViewFilter.INSTALLED))}
+                            />
+                        )}
+                        {extensionsManagerStore.notInstalled.length > 0 && (
+                            <FilterTab
+                                label="Not installed"
+                                count={extensionsManagerStore.notInstalled.length}
+                                selected={extensionsManagerStore.viewFilter === ViewFilter.NOT_INSTALLED}
+                                onClick={action(() => (extensionsManagerStore.viewFilter = ViewFilter.NOT_INSTALLED))}
+                            />
+                        )}
+                        {extensionsManagerStore.newVersions.length > 0 && (
+                            <FilterTab
+                                label="New versions"
+                                count={extensionsManagerStore.newVersions.length}
+                                selected={extensionsManagerStore.viewFilter === ViewFilter.NEW_VERSIONS}
+                                onClick={action(() => (extensionsManagerStore.viewFilter = ViewFilter.NEW_VERSIONS))}
+                                attention={extensionsManagerStore.newVersions.length > 0}
+                            />
+                        )}
                     </div>
 
-                    <div>
-                        {
-                            <ButtonAction
-                                text="Update All"
-                                title=""
-                                className="btn-success"
-                                onClick={this.updateAll}
-                                style={{
-                                    visibility:
-                                        extensionsManagerStore.viewFilter ===
-                                            ViewFilter.NEW_VERSIONS &&
-                                        extensionsManagerStore.extensionNodes
-                                            .length > 0 &&
-                                        !this.isUpdatingAll
-                                            ? "visible"
-                                            : "hidden"
-                                }}
-                            />
-                        }
-                        <DropdownIconAction
-                            icon="material:menu"
-                            title="Actions"
+                    <div style={{ display: "flex", gap: tokens.spacingHorizontalXS, alignItems: "center" }}>
+                        <Button
+                            appearance="primary"
+                            size="small"
+                            onClick={this.updateAll}
+                            disabled={this.isUpdatingAll}
+                            style={{
+                                visibility:
+                                    extensionsManagerStore.viewFilter === ViewFilter.NEW_VERSIONS &&
+                                    extensionsManagerStore.extensionNodes.length > 0 &&
+                                    !this.isUpdatingAll
+                                        ? "visible"
+                                        : "hidden",
+                            }}
                         >
-                            <DropdownItem
-                                text="Update Catalog"
-                                onClick={this.updateCatalog}
-                            />
-                            {(extensionsManagerStore.section == "iext" ||
-                                extensionsManagerStore.section ==
-                                    "measurement-functions") && (
-                                <DropdownItem
-                                    text="Install Extension"
-                                    title="Install extension from local file"
-                                    onClick={this.installExtensionFromFile}
-                                />
-                            )}
-                            {extensionsManagerStore.section == "pext" && (
-                                <DropdownItem
-                                    text="Install Extension"
-                                    title="Install extension from local folder"
-                                    onClick={this.installExtensionFromFolder}
-                                />
-                            )}
-                        </DropdownIconAction>
+                            Update All
+                        </Button>
+                        <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<ArrowSyncRegular />}
+                            title="Update Catalog"
+                            onClick={this.updateCatalog}
+                        />
+                        <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<ArrowDownloadRegular />}
+                            title="Install Extension"
+                            onClick={
+                                extensionsManagerStore.section == "pext"
+                                    ? this.installExtensionFromFolder
+                                    : this.installExtensionFromFile
+                            }
+                        />
                     </div>
                 </div>
             );
@@ -1664,112 +1574,49 @@ export const ExtensionsManager = observer(
         render() {
             return (
                 <div className="EezStudio_ExtensionsManager">
-                    <SearchInput
-                        searchText={extensionsManagerStore.searchText}
-                        onClear={action(() => {
-                            extensionsManagerStore.searchText = "";
-                        })}
-                        onChange={extensionsManagerStore.onSearchChange}
-                    />
+                    <div style={{
+                        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+                        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                    }}>
+                        <Input
+                            contentBefore={<SearchRegular />}
+                            placeholder="Search extensions..."
+                            value={extensionsManagerStore.searchText}
+                            onChange={(e) => {
+                                runInAction(() => {
+                                    extensionsManagerStore.searchText = e.target.value;
+                                    extensionsManagerStore._viewFilter = ViewFilter.ALL;
+                                });
+                            }}
+                            size="small"
+                            style={{ maxWidth: "360px" }}
+                        />
+                    </div>
 
-                    <div className="EezStudio_ExtensionsManager_Navigation">
-                        <div
-                            className={classNames(
-                                "EezStudio_ExtensionsManager_NavigationItem",
-                                {
-                                    selected:
-                                        extensionsManagerStore.section == "pext"
-                                }
-                            )}
-                            onClick={
-                                extensionsManagerStore.switchToProjectExtensions
-                            }
-                        >
-                            <Count
-                                label="Project Editor Extensions"
-                                count={
-                                    extensionsManagerStore.searchText
-                                        ? extensionsManagerStore.extensionsVersionsCatalogBuilder.get(
-                                              "pext",
-                                              ViewFilter.ALL,
-                                              extensionsManagerStore.searchText
-                                          ).length
-                                        : undefined
-                                }
-                                attention={
-                                    extensionsManagerStore.extensionsVersionsCatalogBuilder.get(
-                                        "pext",
-                                        ViewFilter.NEW_VERSIONS,
-                                        ""
-                                    ).length > 0
-                                }
-                            />
-                        </div>
-                        <div
-                            className={classNames(
-                                "EezStudio_ExtensionsManager_NavigationItem",
-                                {
-                                    selected:
-                                        extensionsManagerStore.section == "iext"
-                                }
-                            )}
-                            onClick={
-                                extensionsManagerStore.switchToInstrumentExtensions
-                            }
-                        >
-                            <Count
-                                label="Instrument Extensions"
-                                count={
-                                    extensionsManagerStore.searchText
-                                        ? extensionsManagerStore.extensionsVersionsCatalogBuilder.get(
-                                              "iext",
-                                              ViewFilter.ALL,
-                                              extensionsManagerStore.searchText
-                                          ).length
-                                        : undefined
-                                }
-                                attention={
-                                    extensionsManagerStore.extensionsVersionsCatalogBuilder.get(
-                                        "iext",
-                                        ViewFilter.NEW_VERSIONS,
-                                        ""
-                                    ).length > 0
-                                }
-                            />
-                        </div>
-                        <div
-                            className={classNames(
-                                "EezStudio_ExtensionsManager_NavigationItem",
-                                {
-                                    selected:
-                                        extensionsManagerStore.section ==
-                                        "measurement-functions"
-                                }
-                            )}
-                            onClick={
-                                extensionsManagerStore.switchToMeasurementExtensions
-                            }
-                        >
-                            <Count
-                                label="Measurement Extensions"
-                                count={
-                                    extensionsManagerStore.searchText
-                                        ? extensionsManagerStore.extensionsVersionsCatalogBuilder.get(
-                                              "measurement-functions",
-                                              ViewFilter.ALL,
-                                              extensionsManagerStore.searchText
-                                          ).length
-                                        : undefined
-                                }
-                                attention={
-                                    extensionsManagerStore.extensionsVersionsCatalogBuilder.get(
-                                        "measurement-functions",
-                                        ViewFilter.NEW_VERSIONS,
-                                        ""
-                                    ).length > 0
-                                }
-                            />
-                        </div>
+                    <div style={{
+                        display: "flex",
+                        gap: "1px",
+                        padding: `0 ${tokens.spacingHorizontalM}`,
+                        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                    }}>
+                        <NavTab
+                            label="Project Editor Extensions"
+                            selected={extensionsManagerStore.section == "pext"}
+                            onClick={extensionsManagerStore.switchToProjectExtensions}
+                            attention={extensionsManagerStore.extensionsVersionsCatalogBuilder.get("pext", ViewFilter.NEW_VERSIONS, "").length > 0}
+                        />
+                        <NavTab
+                            label="Instrument Extensions"
+                            selected={extensionsManagerStore.section == "iext"}
+                            onClick={extensionsManagerStore.switchToInstrumentExtensions}
+                            attention={extensionsManagerStore.extensionsVersionsCatalogBuilder.get("iext", ViewFilter.NEW_VERSIONS, "").length > 0}
+                        />
+                        <NavTab
+                            label="Measurement Extensions"
+                            selected={extensionsManagerStore.section == "measurement-functions"}
+                            onClick={extensionsManagerStore.switchToMeasurementExtensions}
+                            attention={extensionsManagerStore.extensionsVersionsCatalogBuilder.get("measurement-functions", ViewFilter.NEW_VERSIONS, "").length > 0}
+                        />
                     </div>
 
                     <div className="EezStudio_ExtensionsManager_Body">
@@ -1797,40 +1644,88 @@ export const ExtensionsManager = observer(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-const Count = observer(
+const FilterTab = observer(
     ({
         label,
         count,
-        attention
+        selected,
+        onClick,
+        attention,
     }: {
         label: string;
-        count: number | undefined;
+        count: number;
+        selected: boolean;
+        onClick: () => void;
+        attention?: boolean;
+    }) => (
+        <div
+            onClick={onClick}
+            style={{
+                padding: `4px ${tokens.spacingHorizontalS}`,
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: selected ? 600 : 400,
+                color: selected ? tokens.colorNeutralForeground1 : tokens.colorNeutralForeground2,
+                backgroundColor: selected ? tokens.colorNeutralBackground1Selected : "transparent",
+                borderRadius: tokens.borderRadiusMedium,
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                transition: "background-color 0.15s",
+            }}
+        >
+            {label}
+            <Badge appearance="filled" color="informative" size="tiny">{count}</Badge>
+            {attention && (
+                <span style={{
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    backgroundColor: tokens.colorStatusDangerBackground3,
+                    display: "inline-block",
+                }} />
+            )}
+        </div>
+    )
+);
+
+const NavTab = observer(
+    ({
+        label,
+        selected,
+        onClick,
+        attention,
+    }: {
+        label: string;
+        selected: boolean;
+        onClick: () => void;
         attention: boolean;
-    }) => {
-        const result = (
-            <>
-                {label}
-                {count != undefined && (
-                    <span
-                        className={classNames(
-                            "badge rounded-pill bg-secondary"
-                        )}
-                    >
-                        {count}
-                    </span>
-                )}
-            </>
-        );
-
-        if (attention) {
-            return (
-                <div className="EezStudio_AttentionContainer">
-                    {result}
-                    <div className="EezStudio_AttentionDiv" />
-                </div>
-            );
-        }
-
-        return result;
-    }
+    }) => (
+        <div
+            onClick={onClick}
+            style={{
+                padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: selected ? 600 : 400,
+                color: selected ? tokens.colorNeutralForeground1 : tokens.colorNeutralForeground2,
+                borderBottom: selected ? `2px solid ${tokens.colorBrandStroke1}` : "2px solid transparent",
+                transition: "border-color 0.15s, color 0.15s",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+            }}
+        >
+            {label}
+            {attention && (
+                <span style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    backgroundColor: tokens.colorStatusDangerBackground3,
+                    display: "inline-block",
+                }} />
+            )}
+        </div>
+    )
 );

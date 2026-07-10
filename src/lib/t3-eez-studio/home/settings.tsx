@@ -58,8 +58,8 @@ import {
 import dbVacuum from "db-services/vacuum";
 import { getMoment } from "eez-studio-shared/util";
 import type { IMruItem } from "main/settings";
-import { IconAction } from "eez-studio-ui/action";
-import { HOME_TAB_OPEN_ICON } from "project-editor/ui-components/icons";
+import { IconBtn } from "./fluent-home";
+import { AddRegular, FolderOpenRegular, DeleteRegular } from "@fluentui/react-icons";
 import { FlexLayoutContainer } from "eez-studio-ui/FlexLayout";
 import { homeLayoutModels } from "./home-layout-models";
 
@@ -728,23 +728,25 @@ const DatatabaseList = observer(
             return (
                 <VerticalHeaderWithBody className="EezStudio_Settings_Databases_List">
                     <ToolbarHeader>
-                        <IconAction
-                            icon="material:add"
+                        <IconBtn
+                            icon={<AddRegular />}
                             title="Create a new database"
                             onClick={settingsController.createNewDatabase}
                         />
-                        <IconAction
-                            icon={HOME_TAB_OPEN_ICON}
+                        <IconBtn
+                            icon={<FolderOpenRegular />}
                             title="Open an existing database"
                             onClick={settingsController.openDatabase}
                         />
-                        <IconAction
-                            icon="material:delete"
+                        <IconBtn
+                            icon={<DeleteRegular />}
                             title="Delete a database"
                             onClick={settingsController.deleteDatabase}
-                            enabled={
+                            disabled={
                                 settingsController.selectedDatabase &&
                                 !settingsController.selectedDatabase.isActive
+                                    ? false
+                                    : true
                             }
                         />
                     </ToolbarHeader>
