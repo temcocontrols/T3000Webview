@@ -128,7 +128,7 @@ fn routes_wasm() -> Router {
     Router::new().nest_service(
         "/",
         get_service(ServeDir::new(
-            crate::t3_eez_studio::data_root().join("resources").join("t3-eez-studio")
+            crate::t3_eez_studio::data_root().join("resources").join("eez-studio-wasm")
         )).handle_error(|_| async move {
             (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         }),
@@ -251,7 +251,7 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         // .nest("/api", crate::t3_device::trend_routes::trend_data_routes())
         .with_state(app_state)
         // Serve WASM runtimes & font assets from the Rust resource tree (not public/)
-        .nest("/t3-eez-studio", routes_wasm())
+        .nest("/eez-studio-wasm", routes_wasm())
         .nest("/eez-studio-assets", routes_assets())
         .fallback_service(routes_static())
         .layer(middleware::from_fn(propagate_flow_id))

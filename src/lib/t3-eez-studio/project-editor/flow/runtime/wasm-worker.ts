@@ -48,7 +48,7 @@ async function loadEezRuntimeBrowser(): Promise<any> {
     // mismatches when browser cache serves stale wasm with a fresh JS glue.
     if (!_eezRuntimeFetchPatched && typeof g.fetch === "function") {
         const originalFetch = g.fetch.bind(g);
-        const wasmPath = "/t3-eez-studio/wasm/eez_runtime.wasm";
+        const wasmPath = "/eez-studio-wasm/wasm/eez_runtime.wasm";
         const wasmPathWithVersion = `${wasmPath}?v=${EEZ_RUNTIME_CACHE_BUSTER}`;
 
         g.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
@@ -79,10 +79,10 @@ async function loadEezRuntimeBrowser(): Promise<any> {
 
     // Electron's eez_runtime.js uses __dirname + "/" + path for locateFile.
     // Set __dirname to point to where our server serves the WASM files.
-    (g as any).__dirname = "/t3-eez-studio/wasm";
+    (g as any).__dirname = "/eez-studio-wasm/wasm";
 
     const s = document.createElement("script");
-    s.src = `/t3-eez-studio/wasm/eez_runtime.js?v=${EEZ_RUNTIME_CACHE_BUSTER}`;
+    s.src = `/eez-studio-wasm/wasm/eez_runtime.js?v=${EEZ_RUNTIME_CACHE_BUSTER}`;
     return new Promise((resolve, reject) => {
         function getFactory() {
             const exports = (globalThis as any).module?.exports;

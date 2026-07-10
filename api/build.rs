@@ -79,7 +79,7 @@ fn copy_selected_files(
 /// Copy WASM runtimes and font assets from source repos into profile_root.
 /// Called once for release (target/) and once for dev (api/).
 fn copy_wasm_and_fonts(manifest_dir: &str, root: &Path) {
-    // Dashboard + GUI lite runtime → t3-eez-studio/wasm/
+    // Dashboard + GUI lite runtime → eez-studio-wasm/wasm/
     copy_selected_files(
         manifest_dir, root,
         "../../studio-wasm-libs/release/wasm",
@@ -91,9 +91,9 @@ fn copy_wasm_and_fonts(manifest_dir: &str, root: &Path) {
             ("lz4.js", "wasm/lz4.js"),
             ("lz4.wasm", "wasm/lz4.wasm"),
         ],
-        "t3-eez-studio",
+        "eez-studio-wasm",
     );
-    // LVGL per-version runtimes → t3-eez-studio/wasm/lvgl/{version}/
+    // LVGL per-version runtimes → eez-studio-wasm/wasm/lvgl/{version}/
     copy_selected_files(
         manifest_dir, root,
         "../../studio-wasm-libs/release/wasm",
@@ -109,7 +109,7 @@ fn copy_wasm_and_fonts(manifest_dir: &str, root: &Path) {
             ("lvgl_runtime_v9.5.0.js", "wasm/lvgl/9.5.0/lvgl_runtime_v9.5.0.js"),
             ("lvgl_runtime_v9.5.0.wasm", "wasm/lvgl/9.5.0/lvgl_runtime_v9.5.0.wasm"),
         ],
-        "t3-eez-studio",
+        "eez-studio-wasm",
     );
     // Font assets → eez-studio-assets/
     copy_selected_files(

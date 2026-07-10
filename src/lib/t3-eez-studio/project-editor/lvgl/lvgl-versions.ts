@@ -196,7 +196,7 @@ const V9_LV_SIZE_CONTENT = V9_LV_COORD_SET_SPEC(V9_LV_COORD_MAX);
 ////////////////////////////////////////////////////////////////////////////////
 
 const version_8 = {
-    wasmFlowRuntime: "/t3-eez-studio/wasm/lvgl/8.4.0/lvgl_runtime_v8.4.0.js",
+    wasmFlowRuntime: "/eez-studio-wasm/wasm/lvgl/8.4.0/lvgl_runtime_v8.4.0.js",
 
     LV_COORD: {
         LV_COORD_MAX: V8_LV_COORD_MAX,
@@ -610,7 +610,7 @@ export function getLvglWasmFlowRuntimeConstructor(
         const fileName = wasmFlowRuntime.replace(/^.*[/\\]/, "");
         const versionMatch = fileName.match(/v?(\d+\.\d+\.\d+)/);
         const version = versionMatch ? versionMatch[1] : "9.5.0";
-        const jsUrl = `/t3-eez-studio/wasm/lvgl/${version}/${fileName}`;
+        const jsUrl = `/eez-studio-wasm/wasm/lvgl/${version}/${fileName}`;
 
         // Load the JS glue once (sets globalThis.LVGLWasmRuntime)
         const loadPromise = (() => {
