@@ -60,6 +60,7 @@ import { getMoment } from "eez-studio-shared/util";
 import type { IMruItem } from "main/settings";
 import { IconBtn } from "./fluent-home";
 import { AddRegular, FolderOpenRegular, DeleteRegular } from "@fluentui/react-icons";
+import { makeStyles, tokens, Text, Switch } from "@fluentui/react-components";
 import { FlexLayoutContainer } from "eez-studio-ui/FlexLayout";
 import { homeLayoutModels } from "./home-layout-models";
 
@@ -421,8 +422,13 @@ class SettingsController {
     };
 
     restart = () => {
-        app.relaunch();
-        app.exit();
+        // Electron reload (legacy):
+        // app.relaunch();
+        // app.exit();
+
+        // Browser mode: reload the EEZ Studio page
+        console.log("[settings] Restart clicked, redirecting to /#/t3000/eez");
+        window.location.href = "/#/t3000/eez";
     };
 
     setAsActiveDatabase = action(() => {
@@ -807,16 +813,12 @@ const Databases = observer(
 
         render() {
             return (
-                <tr>
-                    <td colSpan={2}>
-                        <div className="EezStudio_Settings_Databases">
-                            <FlexLayoutContainer
-                                model={homeLayoutModels.databaseSettings}
-                                factory={this.factory}
-                            />
-                        </div>
-                    </td>
-                </tr>
+                <div className="EezStudio_Settings_Databases">
+                    <FlexLayoutContainer
+                        model={homeLayoutModels.databaseSettings}
+                        factory={this.factory}
+                    />
+                </div>
             );
         }
     }
@@ -858,10 +860,7 @@ const PythonSettings = observer(
 
         render() {
             return (
-                <tr>
-                    <td>Python</td>
-                    <td>
-                        <PropertyList>
+                <PropertyList>
                             <StaticProperty
                                 name="Default path"
                                 value={
@@ -892,8 +891,6 @@ const PythonSettings = observer(
                                 />
                             )}
                         </PropertyList>
-                    </td>
-                </tr>
             );
         }
     }
@@ -947,53 +944,32 @@ const TemplateSettings = observer(
     class TemplateSettings extends React.Component {
         render() {
             return (
-                <tr>
-                    <td>Project Templates</td>
-                    <td>
-                        <PropertyList>
-                            <BooleanProperty
-                                name={`Use local templates folder`}
-                                value={settingsController.useLocalTemplates}
-                                onChange={action(
-                                    value =>
-                                    (settingsController.useLocalTemplates =
-                                        value)
-                                )}
-                                checkboxStyleSwitch={true}
+                <PropertyList>
+                    <BooleanProperty
+                        name="Use local templates folder"
+                        value={settingsController.useLocalTemplates}
+                        onChange={action(
+                            value =>
+                            (settingsController.useLocalTemplates = value)
+                        )}
+                        checkboxStyleSwitch={true}
+                    />
+                    {settingsController.useLocalTemplates && (
+                        <>
+                            <AbsoluteDirectoryInputProperty
+                                name="Local templates path"
+                                value={settingsController.localTemplatesPath}
+                                onChange={action(value => {
+                                    settingsController.localTemplatesPath = value;
+                                })}
                             />
-                            {settingsController.useLocalTemplates && (
-                                <>
-                                    <AbsoluteDirectoryInputProperty
-                                        name="Local templates path"
-                                        value={
-                                            settingsController.localTemplatesPath
-                                        }
-                                        onChange={action(value => {
-                                            settingsController.localTemplatesPath =
-                                                value;
-                                        })}
-                                    />
-                                    <tr>
-                                        <td>Repository</td>
-                                        <td>
-                                            <a
-                                                href="#"
-                                                onClick={e => {
-                                                    e.preventDefault();
-                                                    shell.openExternal(
-                                                        EEZ_PROJECT_TEMPLATES_REPO_URL
-                                                    );
-                                                }}
-                                            >
-                                                {EEZ_PROJECT_TEMPLATES_REPO_URL}
-                                            </a>
-                                        </td>
-                                    </tr>
-                                </>
-                            )}
-                        </PropertyList>
-                    </td>
-                </tr>
+                            <StaticProperty
+                                name="Repository"
+                                value={EEZ_PROJECT_TEMPLATES_REPO_URL}
+                            />
+                        </>
+                    )}
+                </PropertyList>
             );
         }
     }
@@ -1015,109 +991,155 @@ const SettingsSectionHeader = ({
 
 ////////////////////////////////////////////////////////////////////////////////
 
+const cardStyle: React.CSSProperties = {
+    border: `1px solid var(--fluent-colorNeutralStroke1, #d1d1d1)`,
+    borderRadius: "8px",
+    padding: "16px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+    minHeight: 0,
+};
+
+const cardTitleStyle: React.CSSProperties = {
+    fontSize: "14px",
+    fontWeight: 600,
+    color: "var(--fluent-colorNeutralForeground1, #242424)",
+    marginBottom: "4px",
+};
+
 export const Settings = observer(
     class Settings extends React.Component {
         render() {
             return (
-                <div className="EezStudio_HomeSettingsBody">
-                    <PropertyList>
-                        <SettingsSectionHeader title="Databases" />
-                        <Databases />
+                <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "16px",
+                    padding: "16px",
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: "hidden",
+                }}>
+                    {/* Row 1: 2 columns �?Databases + External Tools */}
+                    <div style={{ display: "flex", gap: "16px", flex: 2, minHeight: 0 }}>
+                        {/* Databases */}
+                        <div style={{ ...cardStyle, flex: 1, minWidth: 0, minHeight: 0 }}>
+                            <div style={cardTitleStyle}>Databases</div>
+                            <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+                                <Databases />
+                            </div>
+                        </div>
 
-                        <SettingsSectionHeader title="Localization" />
-                        <SelectProperty
-                            name="Locale"
-                            value={settingsController.locale}
-                            onChange={settingsController.onLocaleChange}
-                        >
-                            {Object.keys(LOCALES)
-                                .slice()
-                                .sort((a, b) =>
-                                    stringCompare(
-                                        (LOCALES as any)[a],
-                                        (LOCALES as any)[b]
-                                    )
-                                )
-                                .map(locale => (
-                                    <option key={locale} value={locale}>
-                                        {(LOCALES as any)[locale]}
-                                    </option>
-                                ))}
-                        </SelectProperty>
-                        <SelectProperty
-                            name="Date format"
-                            value={settingsController.dateFormat}
-                            onChange={settingsController.onDateFormatChanged}
-                        >
-                            {DATE_FORMATS.map(dateFormat => {
-                                const safeLocale =
-                                    typeof settingsController.locale === "string"
-                                        ? settingsController.locale
-                                        : "en";
+                        {/* External Tools */}
+                        <div style={{ ...cardStyle, flex: 1, minWidth: 0, minHeight: 0, overflow: "auto" }}>
+                            <div style={cardTitleStyle}>External Tools</div>
+                            <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                                <div style={{ fontSize: "13px", fontWeight: 500, minWidth: "70px", paddingTop: "3px", color: "var(--fluent-colorNeutralForeground1, #242424)" }}>Python</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <PythonSettings />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                                // Add log here
-                                console.log("Locale value in map:", settingsController.locale);
-
-                                return (
-                                    <option
-                                        key={dateFormat.format}
-                                        value={dateFormat.format}
-                                    >
-                                        {getMoment()(new Date())
-                                            .locale(safeLocale)
-                                            .format(dateFormat.format)}
-                                    </option>
-                                );
-                            })}
-
-                        </SelectProperty>
-                        <SelectProperty
-                            name="Time format"
-                            value={settingsController.timeFormat}
-                            onChange={settingsController.onTimeFormatChanged}
-                        >
-                            {TIME_FORMATS.map(timeFormat => (
-                                <option
-                                    key={timeFormat.format}
-                                    value={timeFormat.format}
+                    {/* Row 2: 3 columns �?Localization + Project Editor + Appearance & Restart */}
+                    <div style={{ display: "flex", gap: "16px", flex: 1, minHeight: 0 }}>
+                        {/* Localization */}
+                        <div style={{ ...cardStyle, flex: 1, minWidth: 0, minHeight: 0, overflow: "auto" }}>
+                            <div style={cardTitleStyle}>Localization</div>
+                            <PropertyList>
+                                <SelectProperty
+                                    name="Locale"
+                                    value={settingsController.locale}
+                                    onChange={settingsController.onLocaleChange}
                                 >
-                                    {getMoment()(new Date())
-                                        .locale(settingsController.locale || "en")
-                                        .format(timeFormat.format)}
-                                </option>
-                            ))}
-                        </SelectProperty>
+                                    {Object.keys(LOCALES).slice().sort((a, b) =>
+                                        stringCompare((LOCALES as any)[a], (LOCALES as any)[b])
+                                    ).map(locale => (
+                                        <option key={locale} value={locale}>
+                                            {(LOCALES as any)[locale]}
+                                        </option>
+                                    ))}
+                                </SelectProperty>
+                                <SelectProperty
+                                    name="Date format"
+                                    value={settingsController.dateFormat}
+                                    onChange={settingsController.onDateFormatChanged}
+                                >
+                                    {DATE_FORMATS.map(dateFormat => {
+                                        const safeLocale = typeof settingsController.locale === "string"
+                                            ? settingsController.locale : "en";
+                                        return (
+                                            <option key={dateFormat.format} value={dateFormat.format}>
+                                                {getMoment()(new Date()).locale(safeLocale).format(dateFormat.format)}
+                                            </option>
+                                        );
+                                    })}
+                                </SelectProperty>
+                                <SelectProperty
+                                    name="Time format"
+                                    value={settingsController.timeFormat}
+                                    onChange={settingsController.onTimeFormatChanged}
+                                >
+                                    {TIME_FORMATS.map(timeFormat => (
+                                        <option key={timeFormat.format} value={timeFormat.format}>
+                                            {getMoment()(new Date()).locale(settingsController.locale || "en").format(timeFormat.format)}
+                                        </option>
+                                    ))}
+                                </SelectProperty>
+                            </PropertyList>
+                        </div>
 
-                        <SettingsSectionHeader title="External Tools" />
-                        <PythonSettings />
+                        {/* Project Editor */}
+                        <div style={{ ...cardStyle, flex: 1, minWidth: 0, minHeight: 0, overflow: "auto" }}>
+                            <div style={cardTitleStyle}>Project Editor</div>
+                            <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                                <div style={{ fontSize: "13px", fontWeight: 500, minWidth: "120px", paddingTop: "3px", color: "var(--fluent-colorNeutralForeground1, #242424)" }}>Project Templates</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <TemplateSettings />
+                                </div>
+                            </div>
+                            <PropertyList>
+                                <BooleanProperty
+                                    name="Show components palette"
+                                    value={settingsController.showComponentsPaletteInProjectEditor}
+                                    onChange={action(value => {
+                                        settingsController.showComponentsPaletteInProjectEditor = value;
+                                    })}
+                                    checkboxStyleSwitch={true}
+                                />
+                            </PropertyList>
+                        </div>
 
-                        <SettingsSectionHeader title="Project Editor" />
-                        <TemplateSettings />
-
-                        <SettingsSectionHeader title="Appearance" />
-                        <BooleanProperty
-                            name={`Dark theme`}
-                            value={settingsController.isDarkTheme}
-                            onChange={settingsController.switchTheme}
-                            checkboxStyleSwitch={true}
-                        />
-                    </PropertyList>
-                    {settingsController.restartRequired && (
-                        <Header className="EezStudio_HomeSettingsBar EezStudio_PanelHeader">
-                            <div className="btn-group me-2">
+                        {/* Appearance + Restart */}
+                        <div style={{ ...cardStyle, width: "220px", flexShrink: 0, minHeight: 0, overflow: "auto" }}>
+                            <div style={cardTitleStyle}>Appearance</div>
+                            <PropertyList>
+                                <BooleanProperty
+                                    name="Dark theme"
+                                    value={settingsController.isDarkTheme}
+                                    onChange={settingsController.switchTheme}
+                                    checkboxStyleSwitch={true}
+                                />
+                            </PropertyList>
+                            <div style={{
+                                borderTop: `1px solid var(--fluent-colorNeutralStroke1, #d1d1d1)`,
+                                paddingTop: "12px",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "8px",
+                            }}>
                                 <button
-                                    className="btn btn-primary EezStudio_PulseTransition"
-                                    onClick={settingsController.restart}
+                                    className="btn btn-primary"
                                 >
                                     Restart
                                 </button>
                             </div>
-                        </Header>
-                    )}
+                        </div>
+                    </div>
                 </div>
             );
         }
     }
 );
-
-////////////////////////////////////////////////////////////////////////////////
