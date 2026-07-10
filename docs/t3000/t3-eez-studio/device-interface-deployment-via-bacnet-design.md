@@ -500,3 +500,263 @@ Step 4: ESP32 applies changes
 Step 5: Device responds
     → { deployed: 3, failed: 0, status: "ok" }
 ```
+
+### 6.9. Image/Icon API — Binary Assets
+
+Images and icons (bitmaps, PNGs, compressed LVGL image formats) are binary assets, not JSON. They are transferred as complete files — never partial or delta updates. The display JSON references them by `imageId` rather than embedding raw bytes.
+
+#### 6.9.1. Design Rationale
+
+| Concern | Decision |
+|---------|----------|
+| **Embed vs. reference** | Reference by `imageId` — keeps display JSON lean (~30KB), avoids base64 bloat |
+| **Transfer unit** | Always full file — images are opaque binary blobs; partial updates are meaningless |
+| **Caching** | `ETag` + `If-None-Match` — device returns 304 if the image hasn't changed |
+| **Format** | LVGL-compatible binary (`.bin` header + RGBA/INDEXED pixel data), or raw PNG for editor convenience |
+| **Storage** | Per-image file in SPIFFS/LittleFS: `/images/<id>.bin` |
+
+#### 6.9.2. API Surface
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/api/v1/images` | **List all** — returns `{ images: [{id, name, width, height, format, size, checksum}] }` |
+| `GET` | `/api/v1/images/:id` | **Download** — binary image blob (Content-Type: `application/octet-stream`) |
+| `GET` | `/api/v1/images/:id/info` | **Metadata** — `{id, name, width, height, format, size, checksum}` without the binary body |
+| `PUT` | `/api/v1/images/:id` | **Upload/replace** — binary body, creates or overwrites |
+| `POST` | `/api/v1/images` | **Upload new** — multipart form with `id`, `name`, and binary `file` field; returns `{id, status}` |
+| `DELETE` | `/api/v1/images/:id` | **Remove** — delete image from device flash |
+| `GET` | `/api/v1/images/:id?format=png` | **Convert & download** — device converts `.bin` → PNG on-the-fly for editor previews |
+
+#### 6.9.3. How Display JSON References Images
+
+Screen JSON uses an `imageId` field instead of embedding pixel data:
+
+```json
+{
+  "name": "Home",
+  "bitmaps": [
+    { "id": "bg_home",      "name": "bg_home.bin",      "type": "background" },
+    { "id": "icon_fan_on",  "name": "icon_fan_on.bin",  "type": "icon" },
+    { "id": "icon_fan_off", "name": "icon_fan_off.bin", "type": "icon" }
+  ],
+  "widgets": {
+    "bg": {
+      "type": "Image",
+      "imageId": "bg_home",
+      "x_pos": 0, "y_pos": 0,
+      "width": 480, "height": 320
+    },
+    "fan_icon": {
+      "type": "Image",
+      "imageId": "icon_fan_off",
+      "action": "setImageId",
+      "bindings": [
+        { "property": "imageId", "expression": "fans[0].running ? 'icon_fan_on' : 'icon_fan_off'" }
+      ]
+    }
+  }
+}
+```
+
+Key rules:
+- `bitmaps` declares all images the screen needs — the editor uses this for bundle calculation.
+- `imageId` in a widget is a string key, resolved to a file via the bitmaps table.
+- Dynamic image switching (e.g., fan on/off) uses `imageId` binding expressions — the device maps the string to the cached binary at render time.
+- The `imageId` namespace is **per-device** (not per-screen). Screens can share images to avoid duplicate transfers.
+
+#### 6.9.4. Upload Flow
+
+```
+Step 1: Editor collects all imageIds referenced by the project
+    → scans .eez-project bitmaps → resolves to local file paths
+
+Step 2: Check what the device already has
+    → GET /api/v1/images
+    → Response: { images: [{id:"bg_home", checksum:"a1b2c3"}, ...] }
+
+Step 3: Compute diff — skip images with matching checksums
+    → only upload new or changed images
+
+Step 4: Upload each image (parallel for throughput, sequential for embedded devices)
+    → PUT /api/v1/images/bg_home
+    → Header: Content-Type: application/octet-stream
+    → Header: X-Image-Name: bg_home.bin
+    → Header: X-Image-Checksum: sha256:a1b2c3d4...
+    → Body: <binary pixel data>
+
+Step 5: Device stores
+    → Validates binary header (magic bytes, dimensions, format)
+    → Writes to flash: /images/bg_home.bin
+    → Updates checksum registry for fast diff on next connect
+    → Responds: { id: "bg_home", status: "stored", checksum: "sha256:a1b2c3d4..." }
+```
+
+#### 6.9.5. Download Flow (Editor: Import from Device)
+
+```
+Step 1: Editor requests image list
+    → GET /api/v1/images
+    → Knows which images exist, their sizes, and checksums
+
+Step 2: For each image needed by the editor:
+    → GET /api/v1/images/bg_home
+    → Header: If-None-Match: "a1b2c3d4"   ← client's cached checksum
+
+Step 3: Device responds:
+    → 200 OK + binary body           (image is new or changed)
+    → 304 Not Modified               (client already has this version — skip)
+```
+
+#### 6.9.6. Caching & ETag
+
+The device computes an ETag from the image's content hash (SHA-256 or CRC32 for constrained devices):
+
+```
+GET /api/v1/images/bg_home
+→ 200 OK
+  ETag: "a1b2c3d4e5f6..."
+  Content-Type: application/octet-stream
+  Content-Length: 153600
+  X-Image-Format: rgba8888
+  X-Image-Width: 480
+  X-Image-Height: 320
+
+GET /api/v1/images/bg_home
+  If-None-Match: "a1b2c3d4e5f6..."
+→ 304 Not Modified
+```
+
+This avoids retransferring large images that haven't changed between editing sessions.
+
+#### 6.9.7. Format Negotiation
+
+The device stores images in its native LVGL binary format. The editor can request conversion:
+
+| Query | Response Content-Type | Use Case |
+|-------|----------------------|----------|
+| (none) | `application/octet-stream` | Raw LVGL `.bin` for display rendering |
+| `?format=png` | `image/png` | Editor preview, thumbnail generation |
+| `?format=raw` | `application/octet-stream` + headers | Machine-to-machine transfer |
+
+If the device cannot convert (`?format=png` on a memory-constrained MCU), it returns `501 Not Implemented`. The editor falls back to downloading the raw `.bin` and converting client-side (via `lv_img_conv` in the browser).
+
+#### 6.9.8. Device-Side Implementation Notes
+
+**Storage layout:**
+```
+/spiffs/images/
+├── _registry.json          ← { "bg_home": {"file":"bg_home.bin","checksum":"a1b2",...}, ... }
+├── bg_home.bin
+├── icon_fan_on.bin
+└── icon_fan_off.bin
+```
+
+**ESP32 handler pseudocode:**
+```c
+// GET /api/v1/images/:id
+esp_err_t image_get_handler(httpd_req_t *req) {
+    char id[64];
+    get_path_param(req, "id", id);
+
+    // Check ETag for 304
+    char etag[65];
+    registry_get_checksum(id, etag);
+    if (check_if_none_match(req, etag)) {
+        httpd_resp_set_status(req, "304 Not Modified");
+        return httpd_resp_send(req, NULL, 0);
+    }
+
+    // Read from flash
+    char path[128];
+    snprintf(path, sizeof(path), "/spiffs/images/%s.bin", id);
+    FILE *f = fopen(path, "rb");
+    if (!f) { httpd_resp_send_404(req); return ESP_FAIL; }
+
+    // Stream binary response
+    httpd_resp_set_type(req, "application/octet-stream");
+    httpd_resp_set_hdr(req, "ETag", etag);
+    httpd_resp_set_hdr(req, "X-Image-Format", "rgba8888");
+
+    char buf[1024];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+        httpd_resp_send_chunk(req, buf, n);
+    }
+    httpd_resp_send_chunk(req, NULL, 0);  // end chunked
+    fclose(f);
+    return ESP_OK;
+}
+
+// PUT /api/v1/images/:id
+esp_err_t image_put_handler(httpd_req_t *req) {
+    char id[64];
+    get_path_param(req, "id", id);
+
+    // Read body in chunks, write to flash
+    char path[128];
+    snprintf(path, sizeof(path), "/spiffs/images/%s.bin", id);
+    FILE *f = fopen(path, "wb");
+
+    char buf[1024];
+    int received, total = 0;
+    while ((received = httpd_req_recv(req, buf, sizeof(buf))) > 0) {
+        fwrite(buf, 1, received, f);
+        total += received;
+    }
+    fclose(f);
+
+    // Update registry
+    char checksum[65];
+    compute_sha256(path, checksum);
+    registry_set(id, path, total, checksum);
+
+    // Respond
+    char resp[256];
+    snprintf(resp, sizeof(resp), "{\"id\":\"%s\",\"status\":\"stored\",\"size\":%d,\"checksum\":\"%s\"}", id, total, checksum);
+    httpd_resp_set_type(req, "application/json");
+    return httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
+}
+```
+
+**Memory budget (ESP32):**
+- 1024-byte streaming buffer (reused for both GET and PUT)
+- Registry in RAM: ~100 bytes per image × typical 20 images = 2KB
+- Flash budget: depends on SPIFFS partition size — typically 1–4MB for images
+- No image decoding in the HTTP handler — LVGL decodes from flash on render demand
+
+#### 6.9.9. Updated Full API Surface
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/api/v1/screens` | Load all screens |
+| `PUT` | `/api/v1/screens` | Deploy all screens |
+| `GET` | `/api/v1/screens/:name` | Load single screen |
+| `PUT` | `/api/v1/screens/:name` | Deploy/replace single screen |
+| `PATCH` | `/api/v1/screens/:name` | Delta update — only changed keys |
+| `PATCH` | `/api/v1/screens/:name/widgets/:id` | Delta single widget |
+| `POST` | `/api/v1/screens/:name/actions` | Execute action |
+| `GET` | `/api/v1/images` | **List all images** |
+| `GET` | `/api/v1/images/:id` | **Download image binary** |
+| `GET` | `/api/v1/images/:id/info` | **Image metadata** |
+| `PUT` | `/api/v1/images/:id` | **Upload/replace image** |
+| `POST` | `/api/v1/images` | **Upload new image (multipart)** |
+| `DELETE` | `/api/v1/images/:id` | **Remove image** |
+
+#### 6.9.10. Full Deploy Flow (Screens + Images)
+
+```
+User clicks "Deploy":
+
+Phase 1 — Images first (larger, fewer round-trips)
+  ├── GET  /api/v1/images                    → list + checksums
+  ├── Diff: skip matching checksums
+  └── PUT  /api/v1/images/bg_home            → for each new/changed image
+      PUT  /api/v1/images/icon_fan_on
+      PUT  /api/v1/images/icon_fan_off
+      PUT  /api/v1/images/icon_mode_heat
+
+Phase 2 — Screens (now safe: all imageIds resolve)
+  └── PUT  /api/v1/screens                   → full JSON deployment
+
+Result: Device has all images on flash before any screen references them.
+```
