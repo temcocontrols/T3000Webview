@@ -1043,8 +1043,29 @@ export const Settings = observer(
                         </div>
                     </div>
 
-                    {/* Row 2: 3 columns �?Localization + Project Editor + Appearance & Restart */}
+                    {/* Row 2: Project Editor + Localization + Appearance */}
                     <div style={{ display: "flex", gap: "16px", flex: 1, minHeight: 0 }}>
+                        {/* Project Editor */}
+                        <div style={{ ...cardStyle, flex: 2, minWidth: 0, minHeight: 0, overflow: "auto" }}>
+                            <div style={cardTitleStyle}>Project Editor</div>
+                            <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                                <div style={{ fontSize: "13px", fontWeight: 500, minWidth: "120px", paddingTop: "3px", color: "var(--fluent-colorNeutralForeground1, #242424)" }}>Project Templates</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <TemplateSettings />
+                                </div>
+                            </div>
+                            <PropertyList>
+                                <BooleanProperty
+                                    name="Show components palette"
+                                    value={settingsController.showComponentsPaletteInProjectEditor}
+                                    onChange={action(value => {
+                                        settingsController.showComponentsPaletteInProjectEditor = value;
+                                    })}
+                                    checkboxStyleSwitch={true}
+                                />
+                            </PropertyList>
+                        </div>
+
                         {/* Localization */}
                         <div style={{ ...cardStyle, flex: 1, minWidth: 0, minHeight: 0, overflow: "auto" }}>
                             <div style={cardTitleStyle}>Localization</div>
@@ -1088,27 +1109,6 @@ export const Settings = observer(
                                         </option>
                                     ))}
                                 </SelectProperty>
-                            </PropertyList>
-                        </div>
-
-                        {/* Project Editor */}
-                        <div style={{ ...cardStyle, flex: 1, minWidth: 0, minHeight: 0, overflow: "auto" }}>
-                            <div style={cardTitleStyle}>Project Editor</div>
-                            <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
-                                <div style={{ fontSize: "13px", fontWeight: 500, minWidth: "120px", paddingTop: "3px", color: "var(--fluent-colorNeutralForeground1, #242424)" }}>Project Templates</div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <TemplateSettings />
-                                </div>
-                            </div>
-                            <PropertyList>
-                                <BooleanProperty
-                                    name="Show components palette"
-                                    value={settingsController.showComponentsPaletteInProjectEditor}
-                                    onChange={action(value => {
-                                        settingsController.showComponentsPaletteInProjectEditor = value;
-                                    })}
-                                    checkboxStyleSwitch={true}
-                                />
                             </PropertyList>
                         </div>
 
