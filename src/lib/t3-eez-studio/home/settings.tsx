@@ -813,7 +813,7 @@ const Databases = observer(
 
         render() {
             return (
-                <div className="EezStudio_Settings_Databases">
+                <div className="EezStudio_Settings_Databases" style={{ width: "100%", height: "100%", border: "none" }}>
                     <FlexLayoutContainer
                         model={homeLayoutModels.databaseSettings}
                         factory={this.factory}
@@ -1035,12 +1035,11 @@ export const Settings = observer(
                     padding: "12px",
                     flex: 1,
                     minHeight: 0,
-                    overflow: "hidden",
                 }}>
                     {/* Row 1 Col 1: Databases */}
                     <div style={{ ...cardStyle, minHeight: 0 }}>
                         <div style={cardTitleStyle}>Databases</div>
-                        <div style={cardBodyStyle}>
+                        <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
                             <Databases />
                         </div>
                     </div>
