@@ -1638,7 +1638,7 @@ export const ExtensionsManager = observer(
                     <div style={{
                         display: "flex",
                         gap: "1px",
-                        margin: `0 8px`,
+                        margin: `0 24px`,
                         borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
                         justifyContent: "center",
                     }}>

@@ -27,8 +27,11 @@ const useStyles = makeStyles({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        justifyContent: "center",
         gap: "4px",
-        padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalL}`,
+        padding: `${tokens.spacingVerticalM} 0`,
+        margin: `0 10px`,
+        width: "110px",
         cursor: "pointer",
         borderRadius: tokens.borderRadiusMedium,
         transition: "background-color 0.15s",
@@ -46,12 +49,12 @@ const useStyles = makeStyles({
         },
     },
     navIcon: {
-        fontSize: "28px",
+        fontSize: "32px",
         display: "flex",
     },
     navLabel: {
-        fontSize: "12px",
-        fontWeight: "500",
+        fontSize: "13px",
+        fontWeight: "600",
     },
 
     // Generic toolbar
