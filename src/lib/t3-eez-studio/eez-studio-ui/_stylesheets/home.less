@@ -939,7 +939,25 @@
             height: 100%;
 
             .EezStudio_ListItem {
-                padding: 2px 2px 2px 4px;
+                padding: 10px 12px;
+                border-bottom: 1px solid #edebe9;
+                border-radius: 6px;
+                margin-bottom: 4px;
+                transition: background-color 0.15s;
+
+                &:hover {
+                    background-color: #f5f5f5;
+                }
+
+                &.EezStudio_Selected {
+                    background-color: #e8f0fe;
+                }
+
+                & > div:nth-child(1) {
+                    img {
+                        border-radius: 0;
+                    }
+                }
 
                 & > div:nth-child(2) {
                     white-space: unset;

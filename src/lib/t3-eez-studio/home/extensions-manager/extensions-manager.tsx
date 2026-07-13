@@ -498,49 +498,38 @@ export const ExtensionInMasterView = observer(
         }
 
         render() {
-            const badgeClassName = classNames("badge", {
-                "bg-success": this.extensionInstalled,
-                "bg-secondary": !this.extensionInstalled
-            });
+            const installed = this.extensionInstalled;
 
             return (
                 <ListItem
                     leftIcon={this.props.extension.image}
-                    leftIconSize={64}
+                    leftIconSize={120}
                     label={
-                        <div>
-                            <div
-                                style={{
-                                    display: "flex",
-                                    flexDirection: "row",
-                                    justifyContent: "space-between"
-                                }}
-                            >
-                                <h5
-                                    className="EezStudio_NoWrap"
-                                    style={{ marginBottom: 0 }}
+                        <div style={{ padding: "2px 0" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" }}>
+                                <span style={{ fontSize: "14px", fontWeight: 600, color: tokens.colorNeutralForeground1 }}>
+                                    {this.props.extension.displayName || this.props.extension.name}
+                                </span>
+                                <Badge
+                                    appearance="filled"
+                                    size="medium"
+                                    style={{
+                                        fontWeight: 700,
+                                        backgroundColor: installed ? "#dff6dd" : "#deecf9",
+                                        color: installed ? "#0b5e2e" : "#0f4c7a",
+                                    }}
                                 >
-                                    {this.props.extension.displayName ||
-                                        this.props.extension.name}
-                                    <span
-                                        className={badgeClassName}
-                                        style={{
-                                            marginLeft: 10,
-                                            fontSize: "70%"
-                                        }}
-                                    >
-                                        <div>
-                                            {this.extensionInstalled
-                                                ? "Installed"
-                                                : "Not installed"}
-                                        </div>
-                                    </span>
-                                </h5>
-                                <small>{this.props.extension.version}</small>
+                                    {installed ? "Installed" : "Not installed"}
+                                </Badge>
+                                <span style={{ marginLeft: "auto", fontSize: "12px", color: tokens.colorNeutralForeground3 }}>
+                                    v{this.props.extension.version}
+                                </span>
                             </div>
-                            <div>{this.props.extension.description}</div>
-                            <div className="EezStudio_NoWrap">
-                                <small>{this.props.extension.author}</small>
+                            <div style={{ fontSize: "12px", color: tokens.colorNeutralForeground2, marginBottom: "2px" }}>
+                                {this.props.extension.description}
+                            </div>
+                            <div style={{ fontSize: "11px", color: tokens.colorNeutralForeground3 }}>
+                                {this.props.extension.author}
                             </div>
                         </div>
                     }
@@ -1470,6 +1459,23 @@ const ExtensionsManagerSubNavigation = observer(
                                 onClick={action(() => (extensionsManagerStore.viewFilter = ViewFilter.INSTALLED))}
                             />
                         )}
+                        {extensionsManagerStore.notInstalled.length > 0 && (
+                            <FilterTab
+                                label="Not installed"
+                                count={extensionsManagerStore.notInstalled.length}
+                                selected={extensionsManagerStore.viewFilter === ViewFilter.NOT_INSTALLED}
+                                onClick={action(() => (extensionsManagerStore.viewFilter = ViewFilter.NOT_INSTALLED))}
+                            />
+                        )}
+                        {extensionsManagerStore.newVersions.length > 0 && (
+                            <FilterTab
+                                label="New versions"
+                                count={extensionsManagerStore.newVersions.length}
+                                selected={extensionsManagerStore.viewFilter === ViewFilter.NEW_VERSIONS}
+                                onClick={action(() => (extensionsManagerStore.viewFilter = ViewFilter.NEW_VERSIONS))}
+                                attention={extensionsManagerStore.newVersions.length > 0}
+                            />
+                        )}
                     </div>
 
                     {/* Action menu at bottom-right */}
@@ -1652,7 +1658,7 @@ const FilterTab = observer(
             }}
         >
             {label}
-            <Badge appearance="filled" color="informative" size="tiny">{count}</Badge>
+            <Badge appearance="filled" color="informative" size="small" style={{ fontSize: "12px", fontWeight: 600 }}>{count}</Badge>
             {attention && (
                 <span style={{
                     width: "6px",
