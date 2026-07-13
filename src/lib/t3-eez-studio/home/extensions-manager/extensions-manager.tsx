@@ -522,7 +522,7 @@ export const ExtensionInMasterView = observer(
             return (
                 <ListItem
                     leftIcon={imgSrc}
-                    leftIconSize={120}
+                    leftIconSize={80}
                     label={
                         <div style={{ padding: "2px 0" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" }}>
@@ -1201,7 +1201,8 @@ export const DetailsView = observer(
                                         }
                                     }
                                 }
-                                return <img src={imgSrc} width={256} />;
+                                const imgWidth = extension.extensionType === "iext" ? 256 : 128;
+                                return <img src={imgSrc} width={imgWidth} />;
                             })()}
                             {extension.installationFolderPath &&
                                 extension.extensionType == "iext" && (
