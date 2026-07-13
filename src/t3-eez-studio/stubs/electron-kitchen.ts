@@ -1,4 +1,5 @@
 // Comprehensive browser stub for Electron — all APIs as no-ops
+
 const noop = () => { };
 const noopAsync = () => Promise.resolve();
 const noopObj = () => ({});
@@ -171,8 +172,68 @@ export const ipcRenderer = {
 export const ipcMain = { on: noop, handle: noop, handleOnce: noop, removeHandler: noop, removeAllListeners: noop };
 export const app = { getPath: (p: string) => { if (p === "userData") return "/userData"; if (p === "home") return "/project"; return "/"; }, getVersion: () => "0.0.0", relaunch: noop, exit: noop, whenReady: noopAsync, on: noop, getName: () => "EEZ Studio", getAppPath: () => "/", isPackaged: false, commandLine: { appendSwitch: noop }, getLocale: () => "en" };
 export const dialog = { showOpenDialog: () => Promise.resolve({ filePaths: [], canceled: false }), showSaveDialog: () => Promise.resolve({ filePath: void 0, canceled: false }), showMessageBox: () => Promise.resolve({ response: 0 }) };
-export const shell = { openPath: () => Promise.resolve(""), openExternal: () => Promise.resolve(), showItemInFolder: noop, beep: noop, moveItemToTrash: () => Promise.resolve(), openPathAsync: () => Promise.resolve("") };
-export const clipboard = { writeText: noop, readText: () => "", writeBuffer: noop, readBuffer: () => Buffer.alloc(0), writeHTML: noop, readHTML: () => "", writeImage: noop, readImage: () => ({}), write: noop, read: () => "", clear: noop, availableFormats: () => [] };
+export const shell = {
+    openPath: () => Promise.resolve(""),
+    openExternal: (url: string) => {
+        window.open(url, "_blank", "noopener,noreferrer");
+        return Promise.resolve();
+    },
+    showItemInFolder(path: string) {
+        // Call the Rust backend to open the real OS file explorer
+        fetch("/api/eez-studio/show-item-in-folder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path }),
+        }).catch(err => {
+            console.error("showItemInFolder API call failed:", err);
+        });
+    },
+    beep: noop,
+    moveItemToTrash: () => Promise.resolve(),
+    openPathAsync: () => Promise.resolve(""),
+};
+
+export const clipboard = {
+    writeText(text: string) {
+        // Use real clipboard API
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(text).catch(err => {
+                console.error("clipboard.writeText failed:", err);
+                fallbackCopyTextToClipboard(text);
+            });
+        } else {
+            fallbackCopyTextToClipboard(text);
+        }
+    },
+    readText: () => "",
+    writeBuffer: noop,
+    readBuffer: () => Buffer.alloc(0),
+    writeHTML: noop,
+    readHTML: () => "",
+    writeImage: noop,
+    readImage: () => ({}),
+    write: noop,
+    read: () => "",
+    clear: noop,
+    availableFormats: () => [],
+};
+
+function fallbackCopyTextToClipboard(text: string) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand("copy");
+        console.log("clipboard: text copied via fallback");
+    } catch (err) {
+        console.error("clipboard fallback failed:", err);
+    }
+    document.body.removeChild(textarea);
+}
 export const screen = { getPrimaryDisplay: () => ({ workAreaSize: { width: 1920, height: 1080 }, bounds: { width: 1920, height: 1080 }, size: { width: 1920, height: 1080 } }), getAllDisplays: () => [], getCursorScreenPoint: () => ({ x: 0, y: 0 }), getDisplayMatching: noopObj };
 export const nativeTheme = { shouldUseDarkColors: false, themeSource: "system", addListener: noop, removeListener: noop, on: noop };
 export const session = { defaultSession: { loadExtension: noopAsync, clearCache: noopAsync, clearStorageData: noopAsync, setPermissionRequestHandler: noop }, fromPartition: noopObj };

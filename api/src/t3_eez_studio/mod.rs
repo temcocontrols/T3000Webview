@@ -576,6 +576,69 @@ async fn exec_command(Json(req): Json<ExecRequest>) -> Json<ExecResponse> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Show item in folder — opens OS file explorer at the given path
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Deserialize)]
+struct ShowItemInFolderBody {
+    path: String,
+}
+
+#[derive(Debug, Serialize)]
+struct ShowItemInFolderResponse {
+    success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+async fn show_item_in_folder(
+    Json(body): Json<ShowItemInFolderBody>,
+) -> Result<Json<ShowItemInFolderResponse>, StatusCode> {
+    let full_path = resolve_path(&data_root().to_string_lossy(), &body.path);
+
+    // On Windows, use "explorer /select,<path>" to select the file in Explorer.
+    // On macOS, use "open -R <path>".
+    // On Linux, use "xdg-open <dir>" (opens the containing folder).
+    #[cfg(target_os = "windows")]
+    let result = Command::new("explorer")
+        .arg("/select,")
+        .arg(full_path.to_string_lossy().as_ref())
+        .spawn();
+
+    #[cfg(target_os = "macos")]
+    let result = Command::new("open")
+        .arg("-R")
+        .arg(full_path.to_string_lossy().as_ref())
+        .spawn();
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let result = {
+        let dir = if full_path.is_dir() {
+            full_path.clone()
+        } else {
+            full_path.parent().map(|p| p.to_path_buf()).unwrap_or(full_path.clone())
+        };
+        Command::new("xdg-open")
+            .arg(dir.to_string_lossy().as_ref())
+            .spawn()
+    };
+
+    match result {
+        Ok(_) => {
+            info!("show_item_in_folder: opened {}", full_path.display());
+            Ok(Json(ShowItemInFolderResponse { success: true, error: None }))
+        }
+        Err(e) => {
+            error!("show_item_in_folder: failed to open {}: {}", full_path.display(), e);
+            Ok(Json(ShowItemInFolderResponse {
+                success: false,
+                error: Some(format!("Failed to open folder: {}", e)),
+            }))
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Store — SQLite-backed persistence (replaces Electron's better-sqlite3)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -813,6 +876,7 @@ pub fn bridge_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/eez-studio/health", get(health))
         .route("/api/eez-studio/exec", post(exec_command))
+        .route("/api/eez-studio/show-item-in-folder", post(show_item_in_folder))
         .route("/api/eez-studio/read-text-file", get(read_text_file))
         .route("/api/eez-studio/read-file", get(read_file))
         .route("/api/eez-studio/write-file", post(write_file))
