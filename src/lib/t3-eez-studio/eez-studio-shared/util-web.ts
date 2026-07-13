@@ -213,17 +213,9 @@ export async function readJsObjectFromFile(
 }
 
 export async function removeFolder(folderPath: string): Promise<void> {
-    // Recursive delete — list files and delete each
+    // Use recursive delete — handles non-empty directories
     try {
-        const files = await getBridgeAPI().listFiles(folderPath);
-        for (const file of files) {
-            await getBridgeAPI().deleteFile(folderPath + "/" + file);
-        }
-    } catch (_) {
-        // Folder might not exist
-    }
-    try {
-        await getBridgeAPI().deleteFile(folderPath);
+        await getBridgeAPI().deleteRecursive(folderPath);
     } catch (_) {
         // Folder might not exist
     }
@@ -238,11 +230,11 @@ export async function renameFile(
     const isDir = await getBridgeAPI().isDirectory(oldPath);
     console.log("[ext-install] renameFile isDir:", isDir);
     if (isDir) {
-        // Remove existing destination if present (leftover from previous failed install)
-        try { await getBridgeAPI().deleteFile(newPath); } catch {}
+        // Remove existing destination if present (use recursive delete for dirs)
+        try { await getBridgeAPI().deleteRecursive(newPath); } catch {}
         // Recursively copy all files, then delete source
         await copyDirRecursive(oldPath, newPath);
-        await removeFolder(oldPath);
+        await getBridgeAPI().deleteRecursive(oldPath);
     } else {
         const data = await getBridgeAPI().readFile(oldPath);
         await getBridgeAPI().writeFile(newPath, data);
@@ -270,7 +262,8 @@ async function copyDirRecursive(src: string, dest: string): Promise<void> {
 export async function readFolder(
     folderPath: string
 ): Promise<string[]> {
-    return getBridgeAPI().listFiles(folderPath);
+    const names = await getBridgeAPI().listFiles(folderPath);
+    return names.map(name => folderPath + "/" + name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

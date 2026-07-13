@@ -98,9 +98,15 @@ async function loadExtension(
                     extension.installationFolderPath = extensionFolderPath;
 
                     extension.image = packageJson.image;
+                    // Auto-detect image if package.json doesn't specify one
+                    if (!extension.image) {
+                        const defaultImagePath = extensionFolderPath + "/image.png";
+                        if (await fileExists(defaultImagePath)) {
+                            extension.image = "image.png";
+                        }
+                    }
                     if (extension.image) {
-                        const imageFilePath =
-                            extensionFolderPath + "/" + extension.image;
+                        const imageFilePath = extensionFolderPath + "/" + extension.image;
                         if (await fileExists(imageFilePath)) {
                             extension.image = localPathToFileUrl(imageFilePath);
                         }
@@ -194,13 +200,16 @@ export async function reloadExtension(folder: string) {
 ///////////////////////////////////////////////////////////////////////////////
 
 export async function loadExtensions(nodeModuleFolders: string[]) {
+    console.log("[ext-load] loadExtensions start, extensionsFolderPath:", extensionsFolderPath);
     let preinstalledExtensionFolders = await readFolder(
         preInstalledExtensionsFolderPath
     );
+    console.log("[ext-load] preinstalled folders:", preinstalledExtensionFolders.length);
 
     let installedExtensionFolders: string[];
     try {
         installedExtensionFolders = await readFolder(extensionsFolderPath);
+        console.log("[ext-load] installed folders raw:", installedExtensionFolders.length, installedExtensionFolders);
 
         installedExtensionFolders = installedExtensionFolders.filter(
             extensionFolderPath => {

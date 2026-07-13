@@ -90,6 +90,7 @@ const t3: BridgeAPI = {
     makeFolder: p => apiOK("/make-folder",{method:"POST",body:JSON.stringify({path:p})}),
     fileExists: p => api(`/file-exists?path=${enc(p)}`).then(r=>r.json()).then(function(j: any) { return (j && j.exists) || false; }),
     deleteFile: p => apiOK(`/delete-file?path=${enc(p)}`,{method:"DELETE"}),
+    deleteRecursive: p => apiOK(`/delete-recursive?path=${enc(p)}&force=true`,{method:"DELETE"}),
     listFiles: p => api(`/list-files?path=${enc(p)}`).then(r=>r.json()),
     getFileSize: p => api(`/file-size?path=${enc(p)}`).then(r=>r.json()).then(function(j: any) { return (j && j.size) || 0; }),
     isDirectory: p => api(`/is-directory?path=${enc(p)}`).then(r=>r.json()).then(function(j: any) { return (j && j.is_directory) || false; }),

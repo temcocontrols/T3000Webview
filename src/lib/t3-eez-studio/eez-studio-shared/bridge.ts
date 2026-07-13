@@ -17,6 +17,7 @@ export interface BridgeAPI {
     makeFolder(path: string): Promise<void>;
     fileExists(path: string): Promise<boolean>;
     deleteFile(path: string): Promise<void>;
+    deleteRecursive(path: string): Promise<void>;
     listFiles(path: string): Promise<string[]>;
     getFileSize(path: string): Promise<number>;
     isDirectory(path: string): Promise<boolean>;

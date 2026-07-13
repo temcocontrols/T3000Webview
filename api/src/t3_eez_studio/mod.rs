@@ -139,10 +139,18 @@ async fn read_text_file(
 
 async fn read_file(
     Query(q): Query<PathQuery>,
-) -> Result<Vec<u8>, StatusCode> {
+) -> Result<(axum::http::HeaderMap, Vec<u8>), StatusCode> {
     let full_path = resolve_path(&data_root().to_string_lossy(), &q.path);
     match fs::read(&full_path).await {
-        Ok(data) => Ok(data),
+        Ok(data) => {
+            let mime = mime_guess::from_path(&full_path).first_or_octet_stream();
+            let mut headers = axum::http::HeaderMap::new();
+            headers.insert(
+                axum::http::header::CONTENT_TYPE,
+                mime.to_string().parse().unwrap(),
+            );
+            Ok((headers, data))
+        }
         Err(e) => {
             error!("read_file failed: {} — {:?}", full_path.display(), e);
             Err(StatusCode::NOT_FOUND)

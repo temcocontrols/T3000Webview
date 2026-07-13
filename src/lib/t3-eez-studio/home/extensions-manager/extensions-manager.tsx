@@ -499,10 +499,29 @@ export const ExtensionInMasterView = observer(
 
         render() {
             const installed = this.extensionInstalled;
+            const ext = this.props.extension;
+
+            // Proxy local file paths through API (browser can't load file:// or /absolute/paths)
+            let imgSrc = ext.image;
+            if (imgSrc && typeof imgSrc === "string") {
+                if (!imgSrc.startsWith("data:") && !imgSrc.startsWith("http")) {
+                    console.log(`[ExtImg] proxying: name="${ext.name}" raw="${ext.image}"`);
+                    if (imgSrc.startsWith("file://")) {
+                        imgSrc = `/api/eez-studio/read-file?path=${encodeURIComponent(imgSrc.replace(/^file:\/\/\//, "").replace(/^file:\/\//, ""))}`;
+                    } else if (imgSrc.startsWith("/") || /^[A-Za-z]:/.test(imgSrc)) {
+                        imgSrc = `/api/eez-studio/read-file?path=${encodeURIComponent(imgSrc)}`;
+                    }
+                    console.log(`[ExtImg] proxied: "${imgSrc}"`);
+                } else {
+                    console.log(`[ExtImg] passthrough: name="${ext.name}" type=${imgSrc.substring(0, 30)}...`);
+                }
+            } else {
+                console.log(`[ExtImg] empty: name="${ext.name}"`);
+            }
 
             return (
                 <ListItem
-                    leftIcon={this.props.extension.image}
+                    leftIcon={imgSrc}
                     leftIconSize={120}
                     label={
                         <div style={{ padding: "2px 0" }}>
@@ -1141,7 +1160,19 @@ export const DetailsView = observer(
                 <VerticalHeaderWithBody className="EezStudio_ExtensionsManager_DetailsView">
                     <Header className="EezStudio_ExtensionDetailsHeader">
                         <div className="EezStudio_ExtensionDetailsHeaderImageContainer">
-                            <img src={extension.image} width={256} />
+                            {(() => {
+                                let imgSrc = extension.image;
+                                if (imgSrc && typeof imgSrc === "string") {
+                                    if (!imgSrc.startsWith("data:") && !imgSrc.startsWith("http")) {
+                                        if (imgSrc.startsWith("file://")) {
+                                            imgSrc = `/api/eez-studio/read-file?path=${encodeURIComponent(imgSrc.replace(/^file:\/\/\//, "").replace(/^file:\/\//, ""))}`;
+                                        } else if (imgSrc.startsWith("/") || /^[A-Za-z]:/.test(imgSrc)) {
+                                            imgSrc = `/api/eez-studio/read-file?path=${encodeURIComponent(imgSrc)}`;
+                                        }
+                                    }
+                                }
+                                return <img src={imgSrc} width={256} />;
+                            })()}
                             {extension.installationFolderPath &&
                                 extension.extensionType == "iext" && (
                                     <a

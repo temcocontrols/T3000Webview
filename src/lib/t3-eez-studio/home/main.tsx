@@ -158,18 +158,22 @@ const Main = observer(
 );
 
 async function main() {
+    console.log("[main] STARTING main()");
     const params = new URLSearchParams(location.search);
     const buildProject = params.get("build-project") === "1";
 
     let nodeModuleFolders: string[];
     try {
         nodeModuleFolders = await getNodeModuleFolders();
+        console.log("[main] nodeModuleFolders:", nodeModuleFolders);
     } catch (err) {
         console.info(`Failed to get node module folders.`);
         nodeModuleFolders = [];
     }
 
+    console.log("[main] calling loadExtensions...");
     await loadExtensions(nodeModuleFolders);
+    console.log("[main] loadExtensions done");
 
     extensionsCatalog.load();
 
