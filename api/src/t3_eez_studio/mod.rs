@@ -766,6 +766,57 @@ async fn pick_save_file(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Vacuum database — runs SQLite VACUUM to reclaim disk space
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Serialize)]
+struct VacuumResponse {
+    success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+async fn vacuum_database(
+    Json(body): Json<ShowItemInFolderBody>,
+) -> Result<Json<VacuumResponse>, StatusCode> {
+    let full_path = resolve_path(&data_root().to_string_lossy(), &body.path);
+
+    info!("vacuum_database: vacuuming {}", full_path.display());
+
+    tokio::task::spawn_blocking(move || {
+        match rusqlite::Connection::open(&full_path) {
+            Ok(conn) => {
+                match conn.execute_batch("VACUUM") {
+                    Ok(_) => {
+                        info!("vacuum_database: VACUUM completed for {}", full_path.display());
+                        Ok(Json(VacuumResponse { success: true, error: None }))
+                    }
+                    Err(e) => {
+                        error!("vacuum_database: VACUUM failed for {}: {}", full_path.display(), e);
+                        Ok(Json(VacuumResponse {
+                            success: false,
+                            error: Some(format!("VACUUM failed: {}", e)),
+                        }))
+                    }
+                }
+            }
+            Err(e) => {
+                error!("vacuum_database: failed to open {}: {}", full_path.display(), e);
+                Ok(Json(VacuumResponse {
+                    success: false,
+                    error: Some(format!("Failed to open database: {}", e)),
+                }))
+            }
+        }
+    })
+    .await
+    .map_err(|e| {
+        error!("vacuum_database: spawn_blocking failed: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Store — SQLite-backed persistence (replaces Electron's better-sqlite3)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1006,6 +1057,7 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/show-item-in-folder", post(show_item_in_folder))
         .route("/api/eez-studio/pick-open-file", post(pick_open_file))
         .route("/api/eez-studio/pick-save-file", post(pick_save_file))
+        .route("/api/eez-studio/vacuum-database", post(vacuum_database))
         .route("/api/eez-studio/read-text-file", get(read_text_file))
         .route("/api/eez-studio/read-file", get(read_file))
         .route("/api/eez-studio/write-file", post(write_file))
