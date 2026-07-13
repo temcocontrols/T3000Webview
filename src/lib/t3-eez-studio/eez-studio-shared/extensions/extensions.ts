@@ -101,6 +101,7 @@ async function loadExtension(
                         packageJsonEezStudio.properties || {},
                         { shortcuts: packageJsonEezStudio.shortcuts || [] }
                     );
+                    console.log("[ext-load] properties loaded:", extension.name, JSON.stringify(extension.properties).substring(0, 200));
 
                     extension.image = packageJson.image;
                     // Auto-detect image if package.json doesn't specify one

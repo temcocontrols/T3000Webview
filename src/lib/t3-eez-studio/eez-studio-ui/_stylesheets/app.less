@@ -464,6 +464,12 @@ input::placeholder {
     flex-direction: column;
 
     position: relative;
+
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 transparent;
+
+    &::-webkit-scrollbar { width: 6px; height: 6px; }
+    &::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
 }
 
 .EezStudio_NoWrap {

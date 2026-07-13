@@ -623,29 +623,36 @@ export const ExtensionSections = observer(
 
         render() {
             const ext = this.props.extension;
+            const hasRenderProps = typeof ext.renderPropertiesComponent === "function";
+            const propsResult = hasRenderProps ? ext.renderPropertiesComponent!() : null;
+            const hasShortcuts = !!(ext.properties && ext.properties.shortcuts && ext.properties.shortcuts.length > 0);
             console.log("[ExtSections] render:", {
                 name: ext.displayName || ext.name,
-                hasRenderProps: !!ext.renderPropertiesComponent,
+                hasRenderPropsFn: hasRenderProps,
+                propsResultTruthy: !!propsResult,
                 hasProperties: !!ext.properties,
-                hasShortcuts: !!(ext.properties && ext.properties.shortcuts),
+                propertiesKeys: ext.properties ? Object.keys(ext.properties) : [],
+                hasShortcuts,
                 shortcutsLen: ext.properties?.shortcuts?.length,
             });
 
             let availableSections: SectionType[] = [];
 
+            const props = this.props.extension.properties;
             const propertiesComponent = this.props.extension
                 .renderPropertiesComponent
                 ? this.props.extension.renderPropertiesComponent()
                 : null;
 
-            if (propertiesComponent) {
+            // Fallback: render generic property sections from package.json data
+            const hasGenericProperties = props && (
+                props.connection || props.channels || props.lists || props.fileDownload
+            );
+            if (propertiesComponent || hasGenericProperties) {
                 availableSections.push("properties");
             }
 
-            if (
-                this.props.extension.properties &&
-                this.props.extension.properties.shortcuts
-            ) {
+            if (props && props.shortcuts && props.shortcuts.length > 0) {
                 availableSections.push("shortcuts");
             }
 
@@ -679,13 +686,21 @@ export const ExtensionSections = observer(
 
             let body;
             if (activeSection === "properties") {
-                body = propertiesComponent;
+                body = propertiesComponent || (
+                    <pre style={{ padding: "10px", fontSize: "11px", lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "Consolas, Monaco, monospace", margin: 0 }}>
+                        {JSON.stringify(props, null, 2)}
+                    </pre>
+                );
             } else if (activeSection === "shortcuts") {
                 body = <ExtensionShortcuts extension={this.props.extension} />;
             }
 
             return (
                 <div className="EezStudio_ExtensionsManager_DetailsView_Body">
+                    <style>{`
+                        .EezStudio_ExtensionsManager_DetailsView .EezStudio_Body::-webkit-scrollbar { width: 6px; height: 6px; }
+                        .EezStudio_ExtensionsManager_DetailsView .EezStudio_Body::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+                    `}</style>
                     <div style={{ marginTop: "10px" }}>
                         <ul className="nav nav-tabs">{navigationItems}</ul>
                     </div>
