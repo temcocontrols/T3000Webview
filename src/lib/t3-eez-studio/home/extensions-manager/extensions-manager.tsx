@@ -622,6 +622,15 @@ export const ExtensionSections = observer(
         }
 
         render() {
+            const ext = this.props.extension;
+            console.log("[ExtSections] render:", {
+                name: ext.displayName || ext.name,
+                hasRenderProps: !!ext.renderPropertiesComponent,
+                hasProperties: !!ext.properties,
+                hasShortcuts: !!(ext.properties && ext.properties.shortcuts),
+                shortcutsLen: ext.properties?.shortcuts?.length,
+            });
+
             let availableSections: SectionType[] = [];
 
             const propertiesComponent = this.props.extension
@@ -683,7 +692,13 @@ export const ExtensionSections = observer(
 
                     <div
                         style={{
-                            padding: "10px"
+                            padding: "10px",
+                            fontSize: "12px",
+                            overflowY: "auto",
+                            overflowX: "auto",
+                            scrollbarWidth: "thin",
+                            scrollbarColor: "#c1c1c1 transparent",
+                            maxHeight: "100%",
                         }}
                     >
                         {body}

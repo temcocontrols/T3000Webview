@@ -96,6 +96,11 @@ async function loadExtension(
                     extension.download = packageJson.download;
                     extension.sha256 = packageJson.sha256;
                     extension.installationFolderPath = extensionFolderPath;
+                    extension.properties = Object.assign(
+                        {},
+                        packageJsonEezStudio.properties || {},
+                        { shortcuts: packageJsonEezStudio.shortcuts || [] }
+                    );
 
                     extension.image = packageJson.image;
                     // Auto-detect image if package.json doesn't specify one
