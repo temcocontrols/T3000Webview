@@ -56,8 +56,8 @@ import {
 import * as notification from "eez-studio-ui/notification";
 import { SearchInput } from "eez-studio-ui/search-input";
 import { FlexLayoutContainer } from "eez-studio-ui/FlexLayout";
-import { Input, Button, Badge, makeStyles, tokens, mergeClasses } from "@fluentui/react-components";
-import { SearchRegular, ArrowDownloadRegular, ArrowSyncRegular } from "@fluentui/react-icons";
+import { Input, Button, Badge, makeStyles, tokens, mergeClasses, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from "@fluentui/react-components";
+import { SearchRegular, ArrowDownloadRegular, ArrowSyncRegular, MoreHorizontalRegular } from "@fluentui/react-icons";
 
 import { ExtensionShortcuts } from "home/extensions-manager/extension-shortcuts";
 import { extensionsCatalog } from "home/extensions-manager/catalog";
@@ -1449,12 +1449,13 @@ const ExtensionsManagerSubNavigation = observer(
             return (
                 <div style={{
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
-                    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                    flexDirection: "column",
+                    padding: "10px",
+                    minWidth: "260px",
+                    maxWidth: "260px",
                 }}>
-                    <div style={{ display: "flex", gap: "1px" }}>
+                    {/* Filter list */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                         <FilterTab
                             label="All"
                             count={extensionsManagerStore.all.length}
@@ -1469,60 +1470,29 @@ const ExtensionsManagerSubNavigation = observer(
                                 onClick={action(() => (extensionsManagerStore.viewFilter = ViewFilter.INSTALLED))}
                             />
                         )}
-                        {extensionsManagerStore.notInstalled.length > 0 && (
-                            <FilterTab
-                                label="Not installed"
-                                count={extensionsManagerStore.notInstalled.length}
-                                selected={extensionsManagerStore.viewFilter === ViewFilter.NOT_INSTALLED}
-                                onClick={action(() => (extensionsManagerStore.viewFilter = ViewFilter.NOT_INSTALLED))}
-                            />
-                        )}
-                        {extensionsManagerStore.newVersions.length > 0 && (
-                            <FilterTab
-                                label="New versions"
-                                count={extensionsManagerStore.newVersions.length}
-                                selected={extensionsManagerStore.viewFilter === ViewFilter.NEW_VERSIONS}
-                                onClick={action(() => (extensionsManagerStore.viewFilter = ViewFilter.NEW_VERSIONS))}
-                                attention={extensionsManagerStore.newVersions.length > 0}
-                            />
-                        )}
                     </div>
 
-                    <div style={{ display: "flex", gap: tokens.spacingHorizontalXS, alignItems: "center" }}>
-                        <Button
-                            appearance="primary"
-                            size="small"
-                            onClick={this.updateAll}
-                            disabled={this.isUpdatingAll}
-                            style={{
-                                visibility:
-                                    extensionsManagerStore.viewFilter === ViewFilter.NEW_VERSIONS &&
-                                    extensionsManagerStore.extensionNodes.length > 0 &&
-                                    !this.isUpdatingAll
-                                        ? "visible"
-                                        : "hidden",
-                            }}
-                        >
-                            Update All
-                        </Button>
-                        <Button
-                            appearance="subtle"
-                            size="small"
-                            icon={<ArrowSyncRegular />}
-                            title="Update Catalog"
-                            onClick={this.updateCatalog}
-                        />
-                        <Button
-                            appearance="subtle"
-                            size="small"
-                            icon={<ArrowDownloadRegular />}
-                            title="Install Extension"
-                            onClick={
-                                extensionsManagerStore.section == "pext"
-                                    ? this.installExtensionFromFolder
-                                    : this.installExtensionFromFile
-                            }
-                        />
+                    {/* Action menu at bottom-right */}
+                    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", paddingTop: "8px" }}>
+                        <Menu positioning="above-end">
+                            <MenuTrigger disableButtonEnhancement>
+                                <Button appearance="subtle" size="small" icon={<MoreHorizontalRegular />} />
+                            </MenuTrigger>
+                            <MenuPopover>
+                                <MenuList style={{ backgroundColor: "#faf9f8", boxShadow: tokens.shadow8, border: "1px solid #edebe9", borderRadius: "6px", padding: "4px" }}>
+                                    <MenuItem icon={<ArrowSyncRegular />} onClick={this.updateCatalog} style={{ padding: "8px 12px", borderRadius: "4px" }}>
+                                        Update Catalog
+                                    </MenuItem>
+                                    <MenuItem icon={<ArrowDownloadRegular />} onClick={
+                                        extensionsManagerStore.section == "pext"
+                                            ? this.installExtensionFromFolder
+                                            : this.installExtensionFromFile
+                                    } style={{ padding: "8px 12px", borderRadius: "4px" }}>
+                                        Install Extension
+                                    </MenuItem>
+                                </MenuList>
+                            </MenuPopover>
+                        </Menu>
                     </div>
                 </div>
             );
@@ -1624,7 +1594,7 @@ export const ExtensionsManager = observer(
                         />
                     </div>
 
-                    <div className="EezStudio_ExtensionsManager_Body">
+                    <div className="EezStudio_ExtensionsManager_Body" style={{ marginTop: "10px" }}>
                         {extensionsManagerStore.extensionsVersionsCatalogBuilder.get(
                             extensionsManagerStore.section,
                             ViewFilter.ALL,
@@ -1666,16 +1636,18 @@ const FilterTab = observer(
         <div
             onClick={onClick}
             style={{
-                padding: `4px ${tokens.spacingHorizontalS}`,
+                padding: `6px 12px`,
                 cursor: "pointer",
-                fontSize: "12px",
+                fontSize: "14px",
                 fontWeight: selected ? 600 : 400,
                 color: selected ? tokens.colorNeutralForeground1 : tokens.colorNeutralForeground2,
                 backgroundColor: selected ? tokens.colorNeutralBackground1Selected : "transparent",
                 borderRadius: tokens.borderRadiusMedium,
                 display: "flex",
                 alignItems: "center",
-                gap: "4px",
+                justifyContent: "space-between",
+                width: "100%",
+                gap: "6px",
                 transition: "background-color 0.15s",
             }}
         >
@@ -1711,7 +1683,7 @@ const NavTab = observer(
             style={{
                 padding: `${tokens.spacingVerticalS} 24px`,
                 cursor: "pointer",
-                fontSize: "14px",
+                fontSize: "15px",
                 fontWeight: selected ? 700 : 500,
                 color: selected ? tokens.colorNeutralForeground1 : tokens.colorNeutralForeground2,
                 borderBottom: selected ? `2px solid ${tokens.colorBrandStroke1}` : "2px solid transparent",
