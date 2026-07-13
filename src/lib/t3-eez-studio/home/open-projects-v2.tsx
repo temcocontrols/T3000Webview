@@ -607,7 +607,11 @@ class DeviceImportStore {
             const projectDir = `project/${device.panel_name}`;
             const stagingDir = `${projectDir}/device-import`;
             this.appendLog("⏳ Step 0 — Creating project folder...");
-            await fetch(`/api/files/mkdir?path=${encodeURIComponent(stagingDir)}`, { method: "POST" });
+            await fetch(`/api/eez-studio/make-folder`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: stagingDir }),
+            });
             this.appendLog("✅ Step 0 — Project folder ready");
 
             // Step 1 — Connect via REST (primary) or BACnet (fallback)
@@ -631,8 +635,8 @@ class DeviceImportStore {
             for (const screen of result.screens) {
                 const screenPath = `${stagingDir}/${screen.name}.json`;
                 await fetch(
-                    `/api/files/write?path=${encodeURIComponent(screenPath)}`,
-                    { method: "PUT", body: JSON.stringify(screen.json) }
+                    `/api/eez-studio/write-file?path=${encodeURIComponent(screenPath)}`,
+                    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(screen.json) }
                 );
                 stagingScreens.push(screen);
                 const kb = Math.round(JSON.stringify(screen.json).length / 1024);
@@ -654,8 +658,8 @@ class DeviceImportStore {
             const projectPath = `project/${device.panel_name}/${device.panel_name}.eez-project`;
             const jsonStr = JSON.stringify(project, null, 2);
             const saveResp = await fetch(
-                `/api/files/write?path=${encodeURIComponent(projectPath)}`,
-                { method: "PUT", body: jsonStr }
+                `/api/eez-studio/write-text-file?path=${encodeURIComponent(projectPath)}`,
+                { method: "POST", body: jsonStr }
             );
             if (!saveResp.ok) throw new Error("Failed to save project");
             this.appendLog(`✅ Step 4 — Project saved`);
@@ -676,7 +680,7 @@ class DeviceImportStore {
             settingsController.addItemToMRU(projectPath, { projectType: "LVGL", hasFlowSupport: true });
 
             const readResp = await fetch(
-                `/api/files/read?path=${encodeURIComponent(projectPath)}`
+                `/api/eez-studio/read-text-file?path=${encodeURIComponent(projectPath)}`
             );
             const projectJson = await readResp.json();
 

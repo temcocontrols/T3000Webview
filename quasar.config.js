@@ -233,6 +233,12 @@ module.exports = configure(function (/* ctx */) {
             changeOrigin: true,
             secure: false,
           },
+          // All other API routes (files, users, modbus, etc.)
+          "/api": {
+            target: "http://localhost:9103",
+            changeOrigin: true,
+            secure: false,
+          },
           // WASM runtimes & LVGL served from Rust resource tree (not public/)
           "/eez-studio-wasm": {
             target: "http://localhost:9103",
