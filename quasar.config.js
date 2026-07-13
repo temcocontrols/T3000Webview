@@ -227,6 +227,12 @@ module.exports = configure(function (/* ctx */) {
             secure: false,
             rewrite: path => path.replace(/^\/api\/eez-studio/, "/api/eez-studio")
           },
+          // T3000 device API proxy
+          "/api/t3_device": {
+            target: "http://localhost:9103",
+            changeOrigin: true,
+            secure: false,
+          },
           // WASM runtimes & LVGL served from Rust resource tree (not public/)
           "/eez-studio-wasm": {
             target: "http://localhost:9103",

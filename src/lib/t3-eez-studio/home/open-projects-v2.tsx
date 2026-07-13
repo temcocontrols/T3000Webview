@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 import { clipboard, ipcRenderer } from "electron";
 import { Menu, MenuItem } from "@electron/remote";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
     computed,
     action,
@@ -31,6 +31,7 @@ import {
     ArrowSortDownRegular,
     ArrowSortUpRegular,
     ArrowDownloadRegular,
+    ArrowClockwiseRegular,
     ArrowSyncRegular,
     PlugDisconnectedRegular,
     DismissRegular,
@@ -39,6 +40,7 @@ import {
     EditRegular,
     CopyRegular,
     DeleteRegular,
+    InfoRegular,
 } from "@fluentui/react-icons";
 
 import { stringCompare } from "eez-studio-shared/string";
@@ -58,10 +60,11 @@ const useStyles = makeStyles({
         display: "flex",
         gap: tokens.spacingHorizontalXL,
         height: "100%",
+        width: "100%",
         padding: tokens.spacingHorizontalL,
     },
     leftColumn: {
-        flex: 1.3,
+        flex: 0.45,
         minWidth: 0,
         display: "flex",
         flexDirection: "column",
@@ -69,7 +72,7 @@ const useStyles = makeStyles({
         paddingRight: tokens.spacingHorizontalXL,
     },
     rightColumn: {
-        flex: 1,
+        flex: 0.55,
         minWidth: 0,
         display: "flex",
         flexDirection: "column",
@@ -244,6 +247,7 @@ const useStyles = makeStyles({
         flex: 1,
         display: "flex",
         flexDirection: "column",
+        width: "100%",
     },
     devicePanelHeader: {
         display: "flex",
@@ -267,20 +271,20 @@ const useStyles = makeStyles({
     deviceItem: {
         display: "flex",
         alignItems: "center",
-        gap: tokens.spacingHorizontalS,
-        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+        gap: tokens.spacingHorizontalM,
+        padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
         borderRadius: tokens.borderRadiusMedium,
-        border: `1px solid ${tokens.colorNeutralStroke1}`,
-        marginBottom: tokens.spacingVerticalS,
         cursor: "pointer",
-        transition: "border-color 0.15s, background-color 0.15s",
+        transition: "background-color 0.15s",
         "&:hover": {
-            borderColor: tokens.colorBrandStroke1,
+            backgroundColor: tokens.colorNeutralBackground1Hover,
         },
     },
     deviceItemSelected: {
-        borderColor: tokens.colorBrandStroke1,
-        backgroundColor: tokens.colorBrandBackground,
+        backgroundColor: tokens.colorNeutralBackground1Selected,
+        "&:hover": {
+            backgroundColor: tokens.colorNeutralBackground1Selected,
+        },
     },
     deviceName: {
         fontWeight: "600",
@@ -547,10 +551,29 @@ class DeviceImportStore {
 
     async fetchDevices() {
         try {
-            const resp = await fetch("/api/devices");
+            const apiBase = typeof window !== "undefined"
+                ? `${window.location.protocol}//${window.location.hostname}:9103`
+                : "http://localhost:9103";
+            const resp = await fetch(`${apiBase}/api/t3_device/devices`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const json = await resp.json();
+            const rawDevices: any[] = json.devices || [];
             runInAction(() => {
-                this.devices = json.data || json.devices || [];
+                this.devices = rawDevices
+                    .filter((d: any) => {
+                        const sn = d.serialNumber ?? d.SerialNumber ?? d.panel_serial_number;
+                        return Number.isFinite(sn);
+                    })
+                    .map((d: any) => ({
+                        panel_id: d.panelId ?? d.PanelId ?? d.panel_id ?? 0,
+                        panel_name: d.nameShowOnTree ?? d.showLabelName ?? d.panel_name ?? "Unknown",
+                        panel_serial_number: d.serialNumber ?? d.SerialNumber ?? d.panel_serial_number ?? 0,
+                        panel_ipaddress: d.ipAddress ?? d.IP_Address ?? d.panel_ipaddress ?? "",
+                    }))
+                    // Hide unknown devices — same logic as t3-react deviceTreeStore
+                    .filter((d: any) =>
+                        d.panel_name && d.panel_name !== "Unknown" && d.panel_name !== "(Unknown)"
+                    );
             });
         } catch {
             runInAction(() => {
@@ -567,7 +590,7 @@ class DeviceImportStore {
 
     async startImport() {
         if (!this.selectedDeviceId) return;
-        const device = this.devices.find(d => d.panel_id === this.selectedDeviceId);
+        const device = this.devices.find(d => d.panel_serial_number === this.selectedDeviceId);
         if (!device) return;
 
         runInAction(() => {
@@ -966,41 +989,81 @@ const DeviceListPanel: React.FC = observer(() => {
                         ? `${deviceImportStore.devices.length} device${deviceImportStore.devices.length !== 1 ? "s" : ""} found`
                         : ""}
                 </Text>
-                <Button
-                    appearance="transparent"
-                    icon={<ArrowSyncRegular />}
-                    title="Refresh device list"
-                    onClick={() => deviceImportStore.fetchDevices()}
-                />
             </div>
 
             {deviceImportStore.devices.length === 0 ? (
-                <Text size={200} className={styles.noDevices}>
-                    No devices found. Check backend connection.
-                </Text>
+                <div style={{ padding: "0", display: "flex", flexDirection: "column", alignItems: "stretch", gap: tokens.spacingVerticalM, width: "100%", flex: 1 }}>
+                    <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "6px 10px",
+                        borderRadius: "4px",
+                        background: "#f3f9fd",
+                        width: "100%",
+                    }}>
+                        <InfoRegular style={{ fontSize: "13px", color: "#0f6cbd", flexShrink: 0 }} />
+                        <Text size={200} style={{ fontSize: "12px", color: "#323130", lineHeight: 1.25 }}>
+                            No devices found. Check backend connection.
+                        </Text>
+                    </div>
+                    <Button
+                        appearance="primary"
+                        icon={<ArrowClockwiseRegular />}
+                        onClick={() => deviceImportStore.fetchDevices()}
+                        style={{ fontWeight: 400, fontSize: "13px", width: "100%" }}
+                    >
+                        Scan for Devices
+                    </Button>
+                    <div style={{
+                        marginTop: tokens.spacingVerticalM,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: tokens.spacingVerticalS,
+                    }}>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: tokens.spacingHorizontalS }}>
+                            <Text size={200} style={{ color: tokens.colorBrandForeground1, fontWeight: 600, minWidth: "20px" }}>1.</Text>
+                            <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+                                Connect T3000 controller to the network
+                            </Text>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: tokens.spacingHorizontalS }}>
+                            <Text size={200} style={{ color: tokens.colorBrandForeground1, fontWeight: 600, minWidth: "20px" }}>2.</Text>
+                            <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+                                Click <b>Scan for Devices</b> to discover controllers
+                            </Text>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: tokens.spacingHorizontalS }}>
+                            <Text size={200} style={{ color: tokens.colorBrandForeground1, fontWeight: 600, minWidth: "20px" }}>3.</Text>
+                            <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+                                Select a device and click <b>Import from Device</b>
+                            </Text>
+                        </div>
+                    </div>
+                </div>
             ) : (
                 <div className={styles.deviceList}>
                     {deviceImportStore.devices.map(d => (
                         <div
-                            key={d.panel_id}
+                            key={d.panel_serial_number}
                             className={mergeClasses(
                                 styles.deviceItem,
-                                deviceImportStore.selectedDeviceId === d.panel_id && styles.deviceItemSelected
+                                deviceImportStore.selectedDeviceId === d.panel_serial_number && styles.deviceItemSelected
                             )}
                             onClick={() =>
                                 runInAction(() => {
-                                    deviceImportStore.selectedDeviceId = d.panel_id;
+                                    deviceImportStore.selectedDeviceId = d.panel_serial_number;
                                 })
                             }
                         >
                             <input
                                 type="radio"
                                 name="device"
-                                value={d.panel_id}
-                                checked={deviceImportStore.selectedDeviceId === d.panel_id}
+                                value={d.panel_serial_number}
+                                checked={deviceImportStore.selectedDeviceId === d.panel_serial_number}
                                 onChange={() =>
                                     runInAction(() => {
-                                        deviceImportStore.selectedDeviceId = d.panel_id;
+                                        deviceImportStore.selectedDeviceId = d.panel_serial_number;
                                     })
                                 }
                                 style={{ accentColor: tokens.colorBrandStroke1 }}
@@ -1023,6 +1086,7 @@ const DeviceListPanel: React.FC = observer(() => {
                 className={styles.importBtn}
                 disabled={!deviceImportStore.selectedDeviceId || deviceImportStore.importing}
                 onClick={() => deviceImportStore.startImport()}
+                style={{ fontWeight: 400, fontSize: "13px" }}
             >
                 {deviceImportStore.importing ? "Importing..." : "Import from Device"}
             </Button>
@@ -1030,32 +1094,130 @@ const DeviceListPanel: React.FC = observer(() => {
     );
 });
 
-// ── Import Drawer ─────────────────────────────────────────────────────
+// ── Import Progress Panel ─────────────────────────────────────────────
 
-const DeviceImportDrawer: React.FC = observer(() => {
+const DeviceImportPanel: React.FC = observer(() => {
     const styles = useStyles();
+    const [parsedSteps, setParsedSteps] = useState<{ label: string; status: "pending" | "active" | "done" | "error" }[]>([]);
+
+    useEffect(() => {
+        const steps: { label: string; status: "pending" | "active" | "done" | "error" }[] = [];
+        let currentStatus: "done" | "error" = "done";
+        let hasActive = false;
+        const doneSteps = new Set<string>();
+
+        for (const line of deviceImportStore.importLog) {
+            const doneMatch = line.match(/^✅\s*(.+)/);
+            const activeMatch = line.match(/^⏳\s*(.+)/);
+            const errorMatch = line.match(/^❌\s*(.+)/);
+
+            if (doneMatch) {
+                const label = doneMatch[1].replace(/^Step \d+\s*[—–-]\s*/, "").trim();
+                if (!doneSteps.has(label)) {
+                    doneSteps.add(label);
+                    steps.push({ label, status: "done" });
+                }
+            } else if (activeMatch && !hasActive) {
+                const label = activeMatch[1].replace(/^Step \d+\s*[—–-]\s*/, "").trim();
+                if (!doneSteps.has(label)) {
+                    steps.push({ label, status: "active" });
+                    hasActive = true;
+                }
+            } else if (errorMatch) {
+                currentStatus = "error";
+            }
+        }
+
+        if (currentStatus === "error" && steps.length > 0) {
+            steps[steps.length - 1] = { ...steps[steps.length - 1], status: "error" };
+        }
+
+        setParsedSteps(steps);
+    }, [deviceImportStore.importLog.length]);
 
     return (
-        <div className={styles.importDrawer}>
-            <div className={styles.drawerHeader}>
-                <Text weight="semibold">Import Log</Text>
-                <Button
-                    appearance="transparent"
-                    icon={<DismissRegular />}
-                    onClick={() =>
-                        runInAction(() => {
-                            deviceImportStore.showDrawer = false;
-                        })
-                    }
-                />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: tokens.spacingVerticalM }}>
+                <Text weight="semibold" size={300}>
+                    {deviceImportStore.importing ? "Importing..." : deviceImportStore.importLog.some(l => l.includes("❌")) ? "Import Failed" : "Import Complete"}
+                </Text>
+                {!deviceImportStore.importing && (
+                    <Button
+                        appearance="transparent"
+                        icon={<DismissRegular />}
+                        onClick={() => runInAction(() => { deviceImportStore.showDrawer = false; })}
+                    />
+                )}
             </div>
-            <div className={styles.drawerLog}>
-                {deviceImportStore.importLog.map((line, i) => (
-                    <div key={i} className={styles.logLine}>
-                        {line}
+
+            {/* Steps */}
+            <div style={{ flex: 1, overflowY: "auto", scrollbarWidth: "thin" }}>
+                {parsedSteps.map((step, i) => (
+                    <div key={i} style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: tokens.spacingHorizontalM,
+                        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+                        borderRadius: tokens.borderRadiusMedium,
+                        marginBottom: tokens.spacingVerticalXXS,
+                    }}>
+                        {/* Status icon */}
+                        <div style={{
+                            width: "24px",
+                            height: "24px",
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            ...(step.status === "done" ? { background: "#107c10", color: "#fff" } :
+                                step.status === "active" ? { background: "#0f6cbd", color: "#fff" } :
+                                step.status === "error" ? { background: "#d32f2f", color: "#fff" } :
+                                { background: tokens.colorNeutralBackground2, color: tokens.colorNeutralForeground3 })
+                        }}>
+                            {step.status === "done" ? "✓" :
+                             step.status === "active" ? <Spinner size="tiny" style={{ width: "14px", height: "14px" }} /> :
+                             step.status === "error" ? "✕" :
+                             i + 1}
+                        </div>
+                        <Text size={200} style={{
+                            color: step.status === "done" ? tokens.colorNeutralForeground1 :
+                                   step.status === "active" ? tokens.colorBrandForeground1 :
+                                   step.status === "error" ? "#d32f2f" :
+                                   tokens.colorNeutralForeground3,
+                            fontWeight: step.status === "active" ? 600 : 400,
+                        }}>
+                            {step.label}
+                        </Text>
                     </div>
                 ))}
             </div>
+
+            {/* Detail log */}
+            <details style={{ marginTop: tokens.spacingVerticalM }}>
+                <summary style={{ fontSize: "12px", color: tokens.colorNeutralForeground3, cursor: "pointer" }}>
+                    Detail Log
+                </summary>
+                <div style={{
+                    maxHeight: "120px",
+                    overflowY: "auto",
+                    marginTop: tokens.spacingVerticalS,
+                    fontFamily: "monospace",
+                    fontSize: "11px",
+                    lineHeight: 1.6,
+                    color: tokens.colorNeutralForeground2,
+                    padding: tokens.spacingVerticalXS,
+                    background: tokens.colorNeutralBackground2,
+                    borderRadius: tokens.borderRadiusSmall,
+                    scrollbarWidth: "thin",
+                }}>
+                    {deviceImportStore.importLog.map((line, i) => (
+                        <div key={i} style={{ whiteSpace: "pre-wrap" }}>{line}</div>
+                    ))}
+                </div>
+            </details>
         </div>
     );
 });
@@ -1074,47 +1236,72 @@ export const Projects: React.FC = observer(() => {
             <RecentProjectsColumn />
             <div className={styles.rightColumn}>
                 <div className={styles.columnHeader}>
-                    <Text size={500} weight="semibold" className={styles.columnTitle}>
-                        Load from Device
-                    </Text>
-                    <Text size={200} className={styles.columnDesc}>
-                        Import screens from a T3000 hardware controller.
-                    </Text>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <Text size={300} weight="semibold" style={{ whiteSpace: "nowrap" }}>
+                            Load from Device
+                        </Text>
+                        <Text size={200} className={styles.columnDesc} style={{ whiteSpace: "nowrap" }}>
+                            Import screens from a T3000 hardware controller.
+                        </Text>
+                    </div>
                 </div>
 
-                {deviceImportStore.showDrawer ? (
-                    <DeviceImportDrawer />
-                ) : (
-                    <DeviceListPanel />
-                )}
-
-                {/* Import History */}
-                {deviceImportStore.history.length > 0 && (
-                    <div className={styles.historySection}>
-                        <Divider />
-                        <div style={{ display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, margin: `${tokens.spacingVerticalS} 0` }}>
-                            <HistoryRegular />
-                            <Text weight="semibold" size={200}>History</Text>
-                        </div>
-                        {deviceImportStore.history.map((entry, i) => (
-                            <div
-                                key={i}
-                                className={styles.historyItem}
-                                onClick={() => {
-                                    runInAction(() => {
-                                        deviceImportStore.importLog = entry.log;
-                                        deviceImportStore.showDrawer = true;
-                                    });
-                                }}
-                            >
-                                <Text size={200}>
-                                    {entry.deviceName} · {entry.screenCount} screens ·{" "}
-                                    {new Date(entry.timestamp).toLocaleDateString()}
-                                </Text>
-                            </div>
-                        ))}
+                <div style={{ flex: 1, minHeight: 0, display: "flex", gap: tokens.spacingHorizontalL }}>
+                    {/* Device list — always visible */}
+                    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                        <DeviceListPanel />
                     </div>
-                )}
+
+                    {/* Import progress — side panel when importing */}
+                    {deviceImportStore.showDrawer && (
+                        <div style={{
+                            width: "320px",
+                            flexShrink: 0,
+                            display: "flex",
+                            flexDirection: "column",
+                            borderLeft: `1px solid ${tokens.colorNeutralStroke1}`,
+                            paddingLeft: tokens.spacingHorizontalM,
+                        }}>
+                            <DeviceImportPanel />
+                        </div>
+                    )}
+
+                    {/* Import History */}
+                    {deviceImportStore.history.length > 0 && (
+                        <div style={{
+                            width: "220px",
+                            flexShrink: 0,
+                            display: "flex",
+                            flexDirection: "column",
+                            borderLeft: `1px solid ${tokens.colorNeutralStroke1}`,
+                            paddingLeft: tokens.spacingHorizontalM,
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, marginBottom: tokens.spacingVerticalS }}>
+                                <HistoryRegular />
+                                <Text weight="semibold" size={200}>History</Text>
+                            </div>
+                            <div style={{ flex: 1, overflowY: "auto", scrollbarWidth: "thin" }}>
+                                {deviceImportStore.history.map((entry, i) => (
+                                    <div
+                                        key={i}
+                                        className={styles.historyItem}
+                                        onClick={() => {
+                                            runInAction(() => {
+                                                deviceImportStore.importLog = entry.log;
+                                                deviceImportStore.showDrawer = true;
+                                            });
+                                        }}
+                                    >
+                                        <Text size={200}>
+                                            {entry.deviceName} · {entry.screenCount} screens ·{" "}
+                                            {new Date(entry.timestamp).toLocaleDateString()}
+                                        </Text>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
