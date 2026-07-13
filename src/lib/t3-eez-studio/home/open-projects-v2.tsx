@@ -565,10 +565,10 @@ class DeviceImportStore {
                         return Number.isFinite(sn);
                     })
                     .map((d: any) => ({
-                        panel_id: d.panelId ?? d.PanelId ?? d.panel_id ?? 0,
+                        panel_id: d.panelId ?? d.PanelId ?? d.panel_id ?? d.serialNumber ?? 0,
                         panel_name: d.nameShowOnTree ?? d.showLabelName ?? d.panel_name ?? "Unknown",
                         panel_serial_number: d.serialNumber ?? d.SerialNumber ?? d.panel_serial_number ?? 0,
-                        panel_ipaddress: d.ipAddress ?? d.IP_Address ?? d.panel_ipaddress ?? "",
+                        panel_ipaddress: d.ipAddress ?? d.IP_Address ?? d.pcIpAddress ?? d.PC_IP_Address ?? d.panel_ipaddress ?? "",
                     }))
                     // Hide unknown devices — same logic as t3-react deviceTreeStore
                     .filter((d: any) =>
@@ -589,7 +589,7 @@ class DeviceImportStore {
     }
 
     async startImport() {
-        if (!this.selectedDeviceId) return;
+        if (this.selectedDeviceId == null) return;
         const device = this.devices.find(d => d.panel_serial_number === this.selectedDeviceId);
         if (!device) return;
 
@@ -607,21 +607,25 @@ class DeviceImportStore {
             const projectDir = `project/${device.panel_name}`;
             const stagingDir = `${projectDir}/device-import`;
             this.appendLog("⏳ Step 0 — Creating project folder...");
+            console.log("[import] Step 0 — calling make-folder");
             await fetch(`/api/eez-studio/make-folder`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ path: stagingDir }),
             });
+            console.log("[import] Step 0 — make-folder done");
             this.appendLog("✅ Step 0 — Project folder ready");
 
-            // Step 1 — Connect via REST (primary) or BACnet (fallback)
+            // Step 1 — Connect via REST
+            if (!device.panel_ipaddress) {
+                throw new Error("Device has no IP address assigned. Please configure the device IP first.");
+            }
+            this.appendLog("⏳ Step 1 — Connecting to device...");
+            console.log("[import] Step 1 — connecting to", device.panel_ipaddress);
             const { DeviceRestClient } = await import("project-editor/build/device-rest-client");
             const client = new DeviceRestClient();
-            const conn = await client.connect(
-                device.panel_ipaddress,
-                device.panel_id,
-                device.panel_serial_number
-            );
+            const conn = await client.connect(device.panel_ipaddress);
+            console.log("[import] Step 1 — connect result:", conn);
             this.appendLog(`✅ Step 1 — Connected via ${conn.mode.toUpperCase()}`);
             if (conn.error) {
                 throw new Error(conn.error);
@@ -1088,7 +1092,7 @@ const DeviceListPanel: React.FC = observer(() => {
                 appearance="primary"
                 icon={deviceImportStore.importing ? <Spinner size="tiny" /> : <ArrowDownloadRegular />}
                 className={styles.importBtn}
-                disabled={!deviceImportStore.selectedDeviceId || deviceImportStore.importing}
+                disabled={deviceImportStore.selectedDeviceId == null || deviceImportStore.importing}
                 onClick={() => deviceImportStore.startImport()}
                 style={{ fontWeight: 400, fontSize: "13px" }}
             >

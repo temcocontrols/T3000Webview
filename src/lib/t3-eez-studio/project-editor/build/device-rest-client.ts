@@ -82,6 +82,7 @@ export interface ConnectionResult {
 // ═══════════════════════════════════════════════════════════════════
 
 const REST_BASE = "/api/v1";
+const REST_PORT = 8000; // ESP32 device REST API port
 const REACHABILITY_TIMEOUT_MS = 2000; // short timeout for probing
 const REQUEST_TIMEOUT_MS = 30000; // normal request timeout
 
@@ -140,7 +141,7 @@ export class DeviceRestClient {
             const timer = setTimeout(() => controller.abort(), REACHABILITY_TIMEOUT_MS);
 
             const response = await fetch(
-                `http://${deviceIp}${REST_BASE}/screens`,
+                `http://${deviceIp}:${REST_PORT}${REST_BASE}/screens`,
                 { method: "HEAD", signal: controller.signal }
             );
             clearTimeout(timer);
@@ -170,7 +171,7 @@ export class DeviceRestClient {
 
     private async restLoadAll(): Promise<LoadAllResponse> {
         const response = await fetch(
-            `http://${this.deviceIp}${REST_BASE}/screens`,
+            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens`,
             { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
         );
         if (!response.ok) {
@@ -221,7 +222,7 @@ export class DeviceRestClient {
         screens: { name: string; json: DeviceScreen }[]
     ): Promise<DeployAllResponse> {
         const response = await fetch(
-            `http://${this.deviceIp}${REST_BASE}/screens`,
+            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens`,
             {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -269,7 +270,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            `http://${this.deviceIp}${REST_BASE}/screens/${encodeURIComponent(name)}`,
+            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens/${encodeURIComponent(name)}`,
             { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
         );
         if (!response.ok) {
@@ -289,7 +290,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            `http://${this.deviceIp}${REST_BASE}/screens/${encodeURIComponent(name)}`,
+            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens/${encodeURIComponent(name)}`,
             {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -317,7 +318,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            `http://${this.deviceIp}${REST_BASE}/screens/${encodeURIComponent(name)}`,
+            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens/${encodeURIComponent(name)}`,
             {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -345,7 +346,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            `http://${this.deviceIp}${REST_BASE}/screens/${encodeURIComponent(screenName)}/widgets/${encodeURIComponent(widgetId)}`,
+            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens/${encodeURIComponent(screenName)}/widgets/${encodeURIComponent(widgetId)}`,
             {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
