@@ -324,87 +324,39 @@ class SettingsController {
         });
     }
 
-    createNewDatabase = async () => {
-        let defaultPath = window.localStorage.getItem("lastDatabaseSavePath");
-
-        const result = await dialog.showSaveDialog(getCurrentWindow(), {
-            filters: [
-                { name: "DB files", extensions: ["db"] },
-                { name: "All Files", extensions: ["*"] }
-            ],
-            defaultPath: defaultPath ?? undefined
-        });
-
-        const filePath = result.filePath;
-
-        if (filePath) {
+    createNewDatabase = () => {
+        console.log("[settings] createNewDatabase: opening save dialog...");
+        ipcRenderer.once("database-file-created", async (event: any, data: { filePath: string; name: string }) => {
+            console.log("[settings] database-file-created received:", data);
+            const filePath = data?.filePath;
+            if (!filePath) { console.log("[settings] no filePath"); return; }
+            console.log("[settings] initInstrumentDatabase:", filePath);
             try {
-                createEmptyFile(filePath);
-
                 await initInstrumentDatabase(filePath);
-
-                const onFinish = action((isActive: boolean) => {
-                    this.addDatabase(filePath, isActive);
-
-                    window.localStorage.setItem(
-                        "lastDatabaseSavePath",
-                        path.dirname(filePath)
-                    );
-
-                    if (isActive) {
-                        this.askForRestart();
-                    }
-                });
-
-                confirm(
-                    "Do you want to make this database active?",
-                    undefined,
-                    () => onFinish(true),
-                    () => onFinish(false)
-                );
-            } catch (error) {
-                notification.error(error.toString());
+                console.log("[settings] initInstrumentDatabase OK");
+            } catch (err) {
+                console.error("[settings] initInstrumentDatabase failed:", err);
             }
-        }
+            console.log("[settings] adding database:", filePath);
+            this.addDatabase(filePath, true);
+            window.localStorage.setItem("lastDatabaseSavePath", path.dirname(filePath));
+            console.log("[settings] done");
+        });
+        ipcRenderer.send("create-database-file");
     };
 
-    openDatabase = async () => {
-        let defaultPath = window.localStorage.getItem("lastDatabaseOpenPath");
-
-        const result = await dialog.showOpenDialog(getCurrentWindow(), {
-            properties: ["openFile"],
-            filters: [
-                { name: "DB files", extensions: ["db"] },
-                { name: "All Files", extensions: ["*"] }
-            ],
-            defaultPath: defaultPath ?? undefined
+    openDatabase = () => {
+        console.log("[settings] openDatabase: opening file picker...");
+        ipcRenderer.once("database-file-selected", (event: any, data: { filePath: string; name: string }) => {
+            console.log("[settings] database-file-selected received:", data);
+            const filePath = data?.filePath;
+            if (!filePath) { console.log("[settings] no filePath"); return; }
+            console.log("[settings] adding database:", filePath);
+            this.addDatabase(filePath, true);
+            window.localStorage.setItem("lastDatabaseOpenPath", path.dirname(filePath));
+            console.log("[settings] done");
         });
-
-        const filePaths = result.filePaths;
-
-        if (filePaths && filePaths[0]) {
-            const filePath = filePaths[0];
-
-            const onFinish = action((isActive: boolean) => {
-                this.addDatabase(filePath, isActive);
-
-                window.localStorage.setItem(
-                    "lastDatabaseOpenPath",
-                    path.dirname(filePath)
-                );
-
-                if (isActive) {
-                    this.askForRestart();
-                }
-            });
-
-            confirm(
-                "Do you want to make this database active?",
-                undefined,
-                () => onFinish(true),
-                () => onFinish(false)
-            );
-        }
+        ipcRenderer.send("open-database-file");
     };
 
     askForRestart = () => {
@@ -732,7 +684,7 @@ const DatatabaseList = observer(
 
         render() {
             return (
-                <VerticalHeaderWithBody className="EezStudio_Settings_Databases_List">
+                <VerticalHeaderWithBody className="EezStudio_Settings_Databases_List" style={{ scrollbarWidth: "thin", scrollbarColor: "#c1c1c1 transparent" }}>
                     <ToolbarHeader>
                         <IconBtn
                             icon={<AddRegular />}
@@ -760,6 +712,7 @@ const DatatabaseList = observer(
                         <div
                             className="EezStudio_Settings_Databases_List_Body"
                             ref={this.ref}
+                            style={{ scrollbarWidth: "thin", scrollbarColor: "#c1c1c1 transparent" }}
                         >
                             <table>
                                 <tbody>
@@ -797,6 +750,15 @@ const DatatabaseList = observer(
 
 const Databases = observer(
     class Databases extends React.Component {
+        componentDidMount() {
+            const style = document.createElement("style");
+            style.id = "db-thin-scrollbar";
+            style.textContent = ".EezStudio_Settings_Databases .flexlayout__tab{scrollbar-width:thin!important;scrollbar-color:#c1c1c1 transparent!important}";
+            if (!document.getElementById("db-thin-scrollbar")) {
+                document.head.appendChild(style);
+            }
+        }
+
         factory(node: FlexLayout.TabNode) {
             var component = node.getComponent();
 

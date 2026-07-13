@@ -93,15 +93,13 @@ export const ipcRenderer = {
                 const folderPath = "/project";
                 const projPath = `/project/${file.name}`;
                 try {
-                    // await fetch("http://localhost:9103/api/bridge/make-folder",
-                    await fetch("/api/bridge/make-folder",
+                    await fetch("/api/eez-studio/make-folder",
                         {
                             method: "POST",
                             body: JSON.stringify({ path: folderPath }),
                             headers: { "Content-Type": "application/json" }
                         });
-                    // const resp = await fetch("http://localhost:9103/api/bridge/write-text-file?path=" + encodeURIComponent(projPath), {
-                    const resp = await fetch("/api/bridge/write-text-file?path=" + encodeURIComponent(projPath), {
+                    const resp = await fetch("/api/eez-studio/write-text-file?path=" + encodeURIComponent(projPath), {
                         method: "POST",
                         body: text,
                         headers: { "Content-Type": "text/plain" }
@@ -109,6 +107,56 @@ export const ipcRenderer = {
                     if (!resp.ok) console.error("Upload failed:", resp.status);
                 } catch (e) { console.error("Upload error:", e); }
                 window.dispatchEvent(new CustomEvent("eez-open-project", { detail: projPath }));
+            };
+            input.click();
+        }
+        if (ch === "open-database-file") {
+            console.log("[electron-kitchen] open-database-file triggered");
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".db";
+            input.style.display = "none";
+            document.body.appendChild(input);
+            input.onchange = () => {
+                const file = input.files?.[0];
+                document.body.removeChild(input);
+                console.log("[electron-kitchen] file selected:", file?.name);
+                if (file) {
+                    const dbPath = "/project/" + file.name;
+                    console.log("[electron-kitchen] emitting database-file-selected:", dbPath);
+                    emitIPC("database-file-selected", null, { filePath: dbPath, name: file.name });
+                }
+            };
+            input.click();
+        }
+        if (ch === "create-database-file") {
+            console.log("[electron-kitchen] create-database-file triggered");
+            const input = document.createElement("input");
+            input.type = "file";
+            input.setAttribute("nwsaveas", "new_database.db");
+            input.accept = ".db";
+            input.style.display = "none";
+            document.body.appendChild(input);
+            input.onchange = async () => {
+                const file = input.files?.[0];
+                document.body.removeChild(input);
+                console.log("[electron-kitchen] save file selected:", file?.name);
+                if (!file) return;
+                const dbName = file.name.endsWith(".db") ? file.name : file.name + ".db";
+                const dbPath = "/project/" + dbName;
+                console.log("[electron-kitchen] creating:", dbPath);
+                try {
+                    const resp = await fetch("/api/eez-studio/write-text-file?path=" + encodeURIComponent(dbPath), {
+                        method: "POST",
+                        body: "",
+                        headers: { "Content-Type": "text/plain" }
+                    });
+                    console.log("[electron-kitchen] write response:", resp.status);
+                    if (resp.ok) {
+                        console.log("[electron-kitchen] emitting database-file-created:", dbPath);
+                        emitIPC("database-file-created", null, { filePath: dbPath, name: dbName });
+                    }
+                } catch (e) { console.error("[electron-kitchen] Create DB error:", e); }
             };
             input.click();
         }
