@@ -10,6 +10,7 @@ import { CheckmarkCircleRegular, ErrorCircleRegular } from "@fluentui/react-icon
 
 // EEZ Studio stylesheets
 import "eez-studio-ui/_stylesheets/main.less";
+import "eez-studio-ui/_stylesheets/main-dark-runtime.less";
 import "flexlayout-react/style/light.css";
 
 const useBackendStyles = makeStyles({

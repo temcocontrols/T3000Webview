@@ -1,0 +1,54 @@
+// Dark theme runtime overrides for browser (Vite bundles this alongside main.less).
+// Electron uses separate main-dark.css with vars-dark.less; browser uses CSS class toggle.
+// Bootstrap handles body bg/text via data-bs-theme="dark"; this file overrides EEZ custom colors.
+
+.theme-dark {
+    // Panel & layout borders
+    --eez-border-color: #444;
+    --eez-panel-header-bg: #333;
+    --eez-dark-text: #ddd;
+    --eez-selection-bg: #3682c1;
+    --eez-selection-color: #e1e1e1;
+    --eez-hover-bg: #555;
+    --eez-hover-color: #e1e1e1;
+    --eez-table-border: #444;
+}
+
+// Apply CSS custom properties as overrides for LESS-compiled values
+.theme-dark {
+    .EezStudio_HeaderWithBody {
+        .EezStudio_Header {
+            background-color: var(--eez-panel-header-bg);
+            border-bottom-color: var(--eez-border-color);
+        }
+    }
+
+    .EezStudio_ToolbarHeader {
+        background-color: var(--eez-panel-header-bg);
+        border-bottom-color: var(--eez-border-color);
+    }
+
+    .EezStudio_HomeTab {
+        background-color: var(--bs-body-bg);
+    }
+
+    // Splitter
+    .EezStudio_Splitter {
+        background-color: var(--eez-panel-header-bg);
+    }
+
+    // Tables
+    table.table, .EezStudio_PropertyList {
+        border-color: var(--eez-table-border);
+    }
+
+    .EezStudio_SettingsSectionHeader {
+        background-color: var(--eez-panel-header-bg);
+    }
+
+    // Selection / hover in lists
+    .EezStudio_ListContainer .EezStudio_List .EezStudio_ListItem.selected {
+        background-color: var(--eez-selection-bg);
+        color: var(--eez-selection-color);
+    }
+}

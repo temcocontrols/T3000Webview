@@ -137,7 +137,12 @@ class SettingsController {
     locale: string = getLocale();
     dateFormat: string = getDateFormat();
     timeFormat: string = getTimeFormat();
-    isDarkTheme: boolean = getIsDarkTheme();
+    isDarkTheme: boolean = (() => {
+        // Load from localStorage (falls back to Electron IPC)
+        const stored = window.localStorage.getItem("eez-dark-theme");
+        if (stored !== null) return stored === "1";
+        return getIsDarkTheme();
+    })();
     mru: IMruItem[] = getMRU();
 
     pythonUseCustomPath: boolean = false;
@@ -247,13 +252,7 @@ class SettingsController {
         setTimeFormat(value);
     }
 
-    onThemeSwitchedTimeout: any;
-
     switchTheme(value: boolean) {
-        if (this.onThemeSwitchedTimeout) {
-            return;
-        }
-
         this.isDarkTheme = value;
         setIsDarkTheme(value);
         this.onThemeSwitched();
@@ -263,47 +262,31 @@ class SettingsController {
         const content = document.getElementById(
             "EezStudio_Content"
         ) as HTMLDivElement;
-        if (!content) return; // element not yet mounted
-        content.style.opacity = "0";
+        if (!content) return;
 
-        const body = document.querySelector("#EezStudio_Content>.EezStudio_HeaderWithBody>.EezStudio_Body");
-        if (body && body instanceof HTMLDivElement && body.style) {
-            body.style.display = "none";
-        }
+        const html = document.documentElement;
 
-        const mainLinkElement = document.getElementById(
-            "main-css"
-        ) as HTMLLinkElement;
-
-        const flexlayoutLinkElement = document.getElementById(
-            "flexlayout-css"
-        ) as HTMLLinkElement;
-
+        // Toggle flexlayout dark CSS dynamically
+        const flexDarkId = "flexlayout-dark-css";
         if (this.isDarkTheme) {
-            document.body.parentElement?.setAttribute("data-bs-theme", "dark");
-
-            mainLinkElement.href =
-                "../eez-studio-ui/_stylesheets/main-dark.css";
-
-            flexlayoutLinkElement.href =
-                "../../node_modules/flexlayout-react/style/dark.css";
+            html.setAttribute("data-bs-theme", "dark");
+            html.classList.add("theme-dark");
+            if (!document.getElementById(flexDarkId)) {
+                const link = document.createElement("link");
+                link.id = flexDarkId;
+                link.rel = "stylesheet";
+                link.href = "node_modules/flexlayout-react/style/dark.css";
+                document.head.appendChild(link);
+            }
         } else {
-            document.body.parentElement?.setAttribute("data-bs-theme", "light");
-
-            mainLinkElement.href = "../eez-studio-ui/_stylesheets/main.css";
-
-            flexlayoutLinkElement.href =
-                "../../node_modules/flexlayout-react/style/light.css";
+            html.setAttribute("data-bs-theme", "light");
+            html.classList.remove("theme-dark");
+            const darkLink = document.getElementById(flexDarkId);
+            if (darkLink) darkLink.remove();
         }
 
-        this.onThemeSwitchedTimeout = setTimeout(() => {
-            if (body && body instanceof HTMLDivElement && body.style) {
-                body.style.display = "flex";
-            }
-
-            this.onThemeSwitchedTimeout = undefined;
-            content.style.opacity = "";
-        }, 50);
+        // Persist to localStorage so it survives refresh
+        window.localStorage.setItem("eez-dark-theme", this.isDarkTheme ? "1" : "0");
     }
 
     removeItemFromMRU(mruItem: IMruItem) {

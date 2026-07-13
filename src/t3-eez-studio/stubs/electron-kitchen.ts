@@ -85,6 +85,7 @@ export const ipcRenderer = {
     send: (ch: string, ...args: any[]) => {
         if (ch === "setMRU") { writeMRU(args[0]); emitIPC("mru-changed", null, readMRU()); }
         if (ch === "setDbPaths") { writeDbPaths(args[0]); emitIPC("db-paths-changed", null, readDbPaths()); }
+        if (ch === "setIsDarkTheme") { window.localStorage.setItem("eez-dark-theme", args[0] ? "1" : "0"); }
         if (ch === "setMruFilePath") {
             const item = args[0] as { filePath: string; projectType?: string; hasFlowSupport?: boolean };
             if (item?.filePath) {
