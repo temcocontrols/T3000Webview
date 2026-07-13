@@ -36,6 +36,9 @@ import {
     DismissRegular,
     HistoryRegular,
     PlayRegular,
+    EditRegular,
+    CopyRegular,
+    DeleteRegular,
 } from "@fluentui/react-icons";
 
 import { stringCompare } from "eez-studio-shared/string";
@@ -58,7 +61,7 @@ const useStyles = makeStyles({
         padding: tokens.spacingHorizontalL,
     },
     leftColumn: {
-        flex: 1,
+        flex: 1.3,
         minWidth: 0,
         display: "flex",
         flexDirection: "column",
@@ -75,7 +78,7 @@ const useStyles = makeStyles({
         marginBottom: tokens.spacingVerticalL,
     },
     columnTitle: {
-        marginBottom: tokens.spacingVerticalXXS,
+        marginBottom: "8px",
     },
     columnDesc: {
         color: tokens.colorNeutralForeground3,
@@ -95,6 +98,10 @@ const useStyles = makeStyles({
         flex: 1,
         overflowY: "auto",
         marginBottom: tokens.spacingVerticalM,
+        scrollbarWidth: "thin",
+        scrollbarColor: "#c1c1c1 transparent",
+        "&::-webkit-scrollbar": { width: "6px" },
+        "&::-webkit-scrollbar-thumb": { background: "#c1c1c1", borderRadius: "3px" },
     },
     projectItem: {
         display: "flex",
@@ -147,9 +154,76 @@ const useStyles = makeStyles({
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
     },
+    // ── Master-detail split inside left column ──
+    leftColumnContent: {
+        flex: 1,
+        minHeight: 0,
+        display: "flex",
+        gap: 0,
+    },
+    leftColumnList: {
+        flex: 1,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        transition: "flex 0.2s",
+    },
+    leftColumnListNarrow: {
+        flex: 1,
+    },
+    projectDetailPanel: {
+        width: "220px",
+        flexShrink: 0,
+        display: "flex",
+        flexDirection: "column",
+        borderLeft: `1px solid ${tokens.colorNeutralStroke1}`,
+        paddingLeft: tokens.spacingHorizontalL,
+        marginLeft: tokens.spacingHorizontalL,
+    },
+    projectDetailIcon: {
+        width: "40px",
+        height: "40px",
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: tokens.borderRadiusMedium,
+        backgroundColor: tokens.colorNeutralBackground2,
+        overflow: "hidden",
+        "& img": {
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+        },
+    },
+    projectDetailName: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+        minWidth: 0,
+        overflow: "hidden",
+    },
+    projectDetailActions: {
+        display: "flex",
+        flexDirection: "column",
+        gap: tokens.spacingVerticalM,
+        marginTop: tokens.spacingVerticalXL,
+    },
+    projectDetailAction: {
+        display: "flex",
+        gap: tokens.spacingHorizontalM,
+        alignItems: "center",
+        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+        borderRadius: tokens.borderRadiusMedium,
+        cursor: "pointer",
+        transition: "background-color 0.15s",
+        "&:hover": {
+            backgroundColor: tokens.colorNeutralBackground1Hover,
+        },
+    },
     // ── Footer ──
     footer: {
-        padding: `${tokens.spacingVerticalM} 0`,
+        paddingTop: "4px",
         display: "flex",
         flexDirection: "column",
         gap: tokens.spacingVerticalS,
@@ -715,20 +789,24 @@ const RecentProjectsColumn: React.FC = observer(() => {
     return (
         <div className={styles.leftColumn}>
             <div className={styles.columnHeader}>
-                <Text size={500} weight="semibold" className={styles.columnTitle}>
-                    Recent Projects
-                </Text>
-                <Text size={200} className={styles.columnDesc}>
-                    Open, edit, or run existing projects from disk.
-                </Text>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Text size={300} weight="semibold">
+                        Recent Projects
+                    </Text>
+                    <Text size={200} className={styles.columnDesc}>
+                        Open, edit, or run existing projects from disk.
+                    </Text>
+                </div>
             </div>
 
             {/* Search + Sort */}
+            <style>{`.open-projects-search input::placeholder { font-size: 12px; }`}</style>
             <div className={styles.toolbar}>
                 <Input
-                    className={styles.searchInput}
-                    contentBefore={<SearchRegular />}
+                    className={`open-projects-search ${styles.searchInput}`}
+                    contentBefore={<SearchRegular fontSize={16} />}
                     placeholder="Search projects..."
+                    size="small"
                     value={openProjectsStore.searchText}
                     onChange={(e) => {
                         runInAction(() => {
@@ -746,28 +824,115 @@ const RecentProjectsColumn: React.FC = observer(() => {
                 />
             </div>
 
-            {/* Project list */}
-            <div className={styles.projectList}>
-                {openProjectsStore.allMruItems.map(node => (
-                    <ProjectListItem
-                        key={node.id}
-                        mruItem={node.data}
-                        isSelected={node.selected}
-                        onClick={() =>
-                            runInAction(() => {
-                                openProjectsStore.selectedMruItem = node.data;
-                            })
-                        }
-                        onDoubleClick={openProjectsStore.editProject}
-                        onContextMenu={() => onContextMenu(node)}
-                    />
-                ))}
-                {openProjectsStore.allMruItems.length === 0 && (
-                    <Text size={200} style={{ color: tokens.colorNeutralForeground3, padding: tokens.spacingVerticalL }}>
-                        {openProjectsStore.searchText
-                            ? "No matching projects."
-                            : "No recent projects."}
-                    </Text>
+            {/* Master-detail body */}
+            <div className={styles.leftColumnContent}>
+                {/* Project list */}
+                <div
+                    className={mergeClasses(
+                        styles.leftColumnList,
+                        openProjectsStore.selectedProjectInfo && styles.leftColumnListNarrow
+                    )}
+                >
+                    <div className={styles.projectList}>
+                        {openProjectsStore.allMruItems.map(node => (
+                            <ProjectListItem
+                                key={node.id}
+                                mruItem={node.data}
+                                isSelected={node.selected}
+                                onClick={() =>
+                                    runInAction(() => {
+                                        openProjectsStore.selectedMruItem = node.data;
+                                    })
+                                }
+                                onDoubleClick={openProjectsStore.editProject}
+                                onContextMenu={() => onContextMenu(node)}
+                            />
+                        ))}
+                        {openProjectsStore.allMruItems.length === 0 && (
+                            <Text size={200} style={{ color: tokens.colorNeutralForeground3, padding: tokens.spacingVerticalL }}>
+                                {openProjectsStore.searchText
+                                    ? "No matching projects."
+                                    : "No recent projects."}
+                            </Text>
+                        )}
+                    </div>
+                </div>
+
+                {/* Detail panel */}
+                {openProjectsStore.selectedProjectInfo && (
+                    <div className={styles.projectDetailPanel}>
+                        <div style={{ display: "flex", gap: tokens.spacingHorizontalM, alignItems: "center" }}>
+                            <div className={styles.projectDetailIcon}>
+                                {getProjectIcon(
+                                    openProjectsStore.selectedMruItem!.filePath,
+                                    openProjectsStore.selectedMruItem!.projectType,
+                                    40,
+                                    openProjectsStore.selectedMruItem!.hasFlowSupport
+                                )}
+                            </div>
+                            <div className={styles.projectDetailName}>
+                                <Text weight="semibold">
+                                    {openProjectsStore.selectedProjectInfo.baseName}
+                                </Text>
+                                <Text size={200} style={{ color: tokens.colorNeutralForeground3, wordBreak: "break-all" }}>
+                                    {openProjectsStore.selectedMruItem!.filePath}
+                                </Text>
+                            </div>
+                        </div>
+
+                        <div className={styles.projectDetailActions}>
+                            <Button
+                                appearance="primary"
+                                icon={<EditRegular fontSize={18} />}
+                                onClick={openProjectsStore.editProject}
+                                style={{ justifyContent: "flex-start", fontWeight: 400, color: "#fff" }}
+                            >
+                                Edit Project
+                            </Button>
+                            <Button
+                                icon={<CopyRegular fontSize={18} />}
+                                onClick={openProjectsStore.copyProjectPath}
+                                style={{
+                                    justifyContent: "flex-start",
+                                    fontWeight: 400,
+                                    color: "#fff",
+                                    backgroundColor: "#6c757d",
+                                    borderColor: "#5a6268",
+                                }}
+                            >
+                                Copy Project Path
+                            </Button>
+                            {openProjectsStore.selectedProjectInfo.hasFlowSupport && (
+                                <Button
+                                    icon={<PlayRegular fontSize={18} />}
+                                    onClick={openProjectsStore.runProject}
+                                    style={{
+                                        justifyContent: "flex-start",
+                                        fontWeight: 400,
+                                        color: "#fff",
+                                        backgroundColor: "#6c757d",
+                                        borderColor: "#5a6268",
+                                    }}
+                                >
+                                    Run Project
+                                </Button>
+                            )}
+                            <Button
+                                appearance="secondary"
+                                icon={<DeleteRegular fontSize={18} />}
+                                onClick={openProjectsStore.removeFromList}
+                                style={{
+                                    justifyContent: "flex-start",
+                                    fontWeight: 400,
+                                    color: "#fff",
+                                    backgroundColor: "#d32f2f",
+                                    borderColor: "#d32f2f",
+                                }}
+                            >
+                                Remove From List
+                            </Button>
+                        </div>
+                    </div>
                 )}
             </div>
 
@@ -776,31 +941,13 @@ const RecentProjectsColumn: React.FC = observer(() => {
                 <Button
                     appearance="primary"
                     icon={<FolderOpenRegular />}
+                    size="medium"
+                    style={{ fontWeight: 400, fontSize: "13px" }}
                     className={styles.footerButton}
                     onClick={() => ipcRenderer.send("open-project")}
                 >
                     Open Project
                 </Button>
-                {openProjectsStore.selectedProjectInfo && (
-                    <div className={styles.projectInfo}>
-                        <Text weight="semibold">
-                            {openProjectsStore.selectedProjectInfo.baseName}
-                        </Text>
-                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                            {openProjectsStore.selectedProjectInfo.dirName}
-                        </Text>
-                        {openProjectsStore.selectedProjectInfo.hasFlowSupport && (
-                            <Button
-                                appearance="primary"
-                                icon={<PlayRegular />}
-                                size="small"
-                                onClick={openProjectsStore.runProject}
-                            >
-                                Run Project
-                            </Button>
-                        )}
-                    </div>
-                )}
             </div>
         </div>
     );

@@ -1638,8 +1638,7 @@ export const ExtensionsManager = observer(
                     <div style={{
                         display: "flex",
                         gap: "1px",
-                        margin: `0 24px`,
-                        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                        margin: `0 24px 8px 24px`,
                         justifyContent: "center",
                     }}>
                         <NavTab

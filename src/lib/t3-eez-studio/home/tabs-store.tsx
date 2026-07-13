@@ -2,6 +2,7 @@ import fs from "fs";
 import { clipboard, ipcRenderer } from "electron";
 import { getCurrentWindow } from "@electron/remote";
 import React from "react";
+import { HomeRegular } from "@fluentui/react-icons";
 import {
     observable,
     action,
@@ -91,7 +92,7 @@ export class HomeTab implements IHomeTab {
 
     id = "home";
     title = "Home";
-    icon = "material:home";
+    icon = <HomeRegular fontSize={18} />;
     category: HomeTabCategory = "none";
 
     get titleStr() {

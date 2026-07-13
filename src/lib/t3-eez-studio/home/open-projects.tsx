@@ -412,6 +412,7 @@ export const ProjectInfo = observer(
                                 text="Remove From List"
                                 title="Remove From List"
                                 icon="material:close"
+                                style={{ backgroundColor: "#d32f2f", borderColor: "#d32f2f", color: "#fff" }}
                                 onClick={openProjectsStore.removeFromList}
                             />
                         </div>
