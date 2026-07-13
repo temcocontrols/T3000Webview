@@ -1575,11 +1575,15 @@ export const ExtensionsManager = observer(
             return (
                 <div className="EezStudio_ExtensionsManager">
                     <div style={{
-                        margin: `${tokens.spacingVerticalS} 8px`,
-                        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                        margin: `${tokens.spacingVerticalS} auto`,
+                        // borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                        maxWidth: "500px",
+                        width: "100%",
                     }}>
+                        <style>{`.eez-ext-search-input input::placeholder { font-size: 12px; }`}</style>
                         <Input
-                            contentBefore={<SearchRegular />}
+                            className="eez-ext-search-input"
+                            contentBefore={<SearchRegular fontSize={16} />}
                             placeholder="Search extensions..."
                             value={extensionsManagerStore.searchText}
                             onChange={(e) => {
@@ -1588,8 +1592,8 @@ export const ExtensionsManager = observer(
                                     extensionsManagerStore._viewFilter = ViewFilter.ALL;
                                 });
                             }}
-                            size="large"
-                            style={{ width: "100%", borderRadius: 0 }}
+                            size="medium"
+                            style={{ width: "100%", borderRadius: 10, fontSize: "14px" }}
                         />
                     </div>
 
@@ -1598,6 +1602,7 @@ export const ExtensionsManager = observer(
                         gap: "1px",
                         margin: `0 8px`,
                         borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                        justifyContent: "center",
                     }}>
                         <NavTab
                             label="Project Editor Extensions"
@@ -1704,15 +1709,16 @@ const NavTab = observer(
         <div
             onClick={onClick}
             style={{
-                padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+                padding: `${tokens.spacingVerticalS} 24px`,
                 cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: selected ? 600 : 400,
+                fontSize: "14px",
+                fontWeight: selected ? 700 : 500,
                 color: selected ? tokens.colorNeutralForeground1 : tokens.colorNeutralForeground2,
                 borderBottom: selected ? `2px solid ${tokens.colorBrandStroke1}` : "2px solid transparent",
                 transition: "border-color 0.15s, color 0.15s",
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "center",
                 gap: "6px",
             }}
         >
