@@ -639,6 +639,59 @@ async fn show_item_in_folder(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Detect Python — runs python to find its executable path
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Serialize)]
+struct DetectPythonResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+async fn detect_python() -> Json<DetectPythonResponse> {
+    let result = tokio::task::spawn_blocking(move || {
+        #[cfg(target_os = "windows")]
+        let cmd_name = "python";
+        #[cfg(not(target_os = "windows"))]
+        let cmd_name = "python3";
+
+        match Command::new(cmd_name)
+            .args(["-c", "import sys;print(sys.executable)"])
+            .output()
+        {
+            Ok(output) => {
+                if output.status.success() {
+                    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    if !path.is_empty() {
+                        info!("detect_python: found {}", path);
+                        Json(DetectPythonResponse { path: Some(path), error: None })
+                    } else {
+                        Json(DetectPythonResponse { path: None, error: Some("Python returned empty path".into()) })
+                    }
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    warn!("detect_python: python exited with error: {}", stderr.trim());
+                    Json(DetectPythonResponse { path: None, error: Some(format!("Python error: {}", stderr.trim())) })
+                }
+            }
+            Err(e) => {
+                warn!("detect_python: python not found: {}", e);
+                Json(DetectPythonResponse { path: None, error: Some("Python not found on system".into()) })
+            }
+        }
+    })
+    .await
+    .unwrap_or_else(|e| {
+        error!("detect_python: spawn_blocking failed: {}", e);
+        Json(DetectPythonResponse { path: None, error: Some("Internal error".into()) })
+    });
+
+    result
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Native file dialogs — opens real OS file picker, returns absolute path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1054,6 +1107,7 @@ pub fn bridge_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/eez-studio/health", get(health))
         .route("/api/eez-studio/exec", post(exec_command))
+        .route("/api/eez-studio/detect-python", get(detect_python))
         .route("/api/eez-studio/show-item-in-folder", post(show_item_in_folder))
         .route("/api/eez-studio/pick-open-file", post(pick_open_file))
         .route("/api/eez-studio/pick-save-file", post(pick_save_file))

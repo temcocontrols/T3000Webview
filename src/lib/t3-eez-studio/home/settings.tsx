@@ -799,23 +799,9 @@ const PythonSettings = observer(
         constructor(props: any) {
             super(props);
 
-            const { PythonShell } =
-                require("python-shell") as typeof import("python-shell");
-
-            PythonShell.runString(
-                "import sys;print(sys.executable)",
-                undefined,
-                action((err, output) => {
-                    if (err) {
-                        console.log(err);
-                        this.pythonPathError = true;
-                    } else if (!output) {
-                        this.pythonPathError = true;
-                    } else {
-                        this.pythonPath = output[0];
-                    }
-                })
-            );
+            // Try the Rust backend API first (browser mode uses this).
+            // If unavailable, fall back to Electron's python-shell.
+            this.detectPython();
 
             makeObservable(this, {
                 pythonPath: observable,
@@ -826,39 +812,154 @@ const PythonSettings = observer(
         pythonPath: string = "";
         pythonPathError: boolean = false;
 
+        async detectPython() {
+            // Try the Rust backend API first (browser mode).
+            try {
+                const resp = await fetch("/api/eez-studio/detect-python");
+                if (resp.ok) {
+                    const data = await resp.json();
+                    runInAction(() => {
+                        if (data.path) {
+                            this.pythonPath = data.path;
+                            this.pythonPathError = false;
+                        } else {
+                            this.pythonPathError = true;
+                        }
+                    });
+                    return;
+                }
+                // API responded but not OK — set error and stop (don't fall through)
+                console.warn("[PythonSettings] detect-python API returned status:", resp.status);
+                runInAction(() => { this.pythonPathError = true; });
+                return;
+            } catch (err) {
+                // Fetch failed — API not running (Electron mode), fall back to python-shell
+                console.log("[PythonSettings] detect-python API unavailable, trying python-shell");
+            }
+
+            // Electron fallback: use python-shell
+            try {
+                const { PythonShell } =
+                    require("python-shell") as typeof import("python-shell");
+
+                PythonShell.runString(
+                    "import sys;print(sys.executable)",
+                    undefined,
+                    action((err: any, output: string[]) => {
+                        if (err) {
+                            console.log("[PythonSettings] python-shell error:", err);
+                            this.pythonPathError = true;
+                        } else if (!output) {
+                            this.pythonPathError = true;
+                        } else {
+                            this.pythonPath = output[0];
+                        }
+                    })
+                );
+            } catch {
+                this.pythonPathError = true;
+            }
+        }
+
         render() {
             return (
-                <PropertyList>
-                            <StaticProperty
-                                name="Default path"
-                                value={
-                                    this.pythonPathError
-                                        ? "Python not found"
-                                        : this.pythonPath
-                                }
-                                className="StaticPropertyValueWrap"
+                <div style={{ fontSize: "12px" }}>
+                    <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "70px 120px 1fr",
+                        gap: "6px 12px",
+                        alignItems: "center",
+                    }}>
+                        {/* Row 1: "Python" section label */}
+                        <div style={{ fontWeight: 600, color: "#323130" }}>Python</div>
+                        <div style={{ color: "#605e5c" }}>Default path</div>
+                        <div style={{
+                            padding: "2px 8px",
+                            background: "#faf9f8",
+                            border: "1px solid #edebe9",
+                            borderRadius: "2px",
+                            lineHeight: "22px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                        }}>
+                            {this.pythonPathError
+                                ? "Python not found"
+                                : this.pythonPath || "—"}
+                        </div>
+
+                        {/* Row 2: Set custom path */}
+                        <div />{/* empty cell under Python */}
+                        <div style={{ color: "#605e5c" }}>Set custom path</div>
+                        <div className="form-check form-switch" style={{ minHeight: "auto", marginBottom: 0, paddingLeft: 0 }}>
+                            <input
+                                type="checkbox"
+                                className="form-check-input"
+                                style={{ marginLeft: 0 }}
+                                checked={settingsController.pythonUseCustomPath}
+                                onChange={e => {
+                                    settingsController.pythonUseCustomPath = e.target.checked;
+                                }}
                             />
-                            <BooleanProperty
-                                name={`Set custom path`}
-                                value={settingsController.pythonUseCustomPath}
-                                onChange={action(
-                                    value =>
-                                    (settingsController.pythonUseCustomPath =
-                                        value)
-                                )}
-                                checkboxStyleSwitch={true}
-                            />
-                            {settingsController.pythonUseCustomPath && (
-                                <AbsoluteFileInputProperty
-                                    name="Custom Python path"
-                                    value={settingsController.pythonCustomPath}
-                                    onChange={action(value => {
-                                        settingsController.pythonCustomPath =
-                                            value;
-                                    })}
-                                />
-                            )}
-                        </PropertyList>
+                        </div>
+
+                        {/* Row 3: Custom Python path */}
+                        {settingsController.pythonUseCustomPath && (
+                            <>
+                                <div />{/* empty cell under Python */}
+                                <div style={{ color: "#605e5c" }}>Custom Python path</div>
+                                <div className="input-group" style={{ height: "28px" }}>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        style={{ height: "28px", fontSize: "12px", padding: "2px 8px" }}
+                                        value={settingsController.pythonCustomPath}
+                                        onChange={e => {
+                                            settingsController.pythonCustomPath = e.target.value;
+                                        }}
+                                    />
+                                    <button
+                                        className="btn btn-secondary"
+                                        type="button"
+                                        style={{ height: "28px", fontSize: "12px", padding: "2px 8px" }}
+                                        onClick={async () => {
+                                            // Try native file picker via Rust API (browser mode).
+                                            // Fall back to Electron dialog if API unavailable.
+                                            try {
+                                                const resp = await fetch("/api/eez-studio/pick-open-file", {
+                                                    method: "POST",
+                                                    headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify({
+                                                        title: "Select Python Executable",
+                                                        filters: [{ name: "Executable", extensions: ["exe", "*"] }],
+                                                    }),
+                                                });
+                                                if (resp.ok) {
+                                                    const data = await resp.json();
+                                                    if (data.file_path) {
+                                                        settingsController.pythonCustomPath = data.file_path;
+                                                        return;
+                                                    }
+                                                }
+                                            } catch {
+                                                // API not available — fall back to Electron dialog
+                                            }
+                                            const result = await dialog.showOpenDialog(getCurrentWindow(), {
+                                                properties: ["openFile"],
+                                                filters: [{ name: "All Files", extensions: ["*"] }],
+                                            });
+                                            if (result.filePaths && result.filePaths[0]) {
+                                                settingsController.pythonCustomPath = result.filePaths[0];
+                                            }
+                                        }}
+                                    >
+                                        &hellip;
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
             );
         }
     }
@@ -1015,13 +1116,10 @@ export const Settings = observer(
                     {/* Row 1 Col 2: External Tools */}
                     <div style={{ ...cardStyle, minHeight: 0 }}>
                         <div style={cardTitleStyle}>External Tools</div>
-                        <div style={{ ...cardBodyStyle, display: "flex", gap: "12px", alignItems: "flex-start" }}>
-                                <div style={{ fontSize: "13px", fontWeight: 500, minWidth: "70px", paddingTop: "3px", color: "var(--fluent-colorNeutralForeground1, #242424)" }}>Python</div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <PythonSettings />
-                                </div>
-                            </div>
+                        <div style={{ ...cardBodyStyle }}>
+                            <PythonSettings />
                         </div>
+                    </div>
 
                         {/* Project Editor */}
                         <div style={{ ...cardStyle, minHeight: 0 }}>
