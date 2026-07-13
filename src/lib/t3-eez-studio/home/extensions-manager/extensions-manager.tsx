@@ -1440,8 +1440,8 @@ const ExtensionsManagerSubNavigation = observer(
                     display: "flex",
                     flexDirection: "column",
                     padding: "10px",
-                    minWidth: "260px",
-                    maxWidth: "260px",
+                    minWidth: "200px",
+                    maxWidth: "200px",
                 }}>
                     {/* Filter list */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
