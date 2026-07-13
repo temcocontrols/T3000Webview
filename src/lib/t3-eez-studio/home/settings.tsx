@@ -698,7 +698,13 @@ const DatatabaseList = observer(
                         />
                         <IconBtn
                             icon={<DeleteRegular />}
-                            title="Delete a database"
+                            title={
+                                !settingsController.selectedDatabase
+                                    ? "Delete a database (select a non-active database first)"
+                                    : settingsController.selectedDatabase.isActive
+                                    ? "Cannot delete the active database"
+                                    : "Delete a database"
+                            }
                             onClick={settingsController.deleteDatabase}
                             disabled={
                                 settingsController.selectedDatabase &&

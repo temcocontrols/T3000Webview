@@ -639,6 +639,133 @@ async fn show_item_in_folder(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Native file dialogs — opens real OS file picker, returns absolute path
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Deserialize)]
+struct PickFileRequest {
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    filters: Option<Vec<FileFilterDef>>,
+    #[serde(default)]
+    default_path: Option<String>,
+    #[serde(default)]
+    file_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FileFilterDef {
+    name: String,
+    extensions: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct PickFileResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    file_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cancelled: Option<bool>,
+}
+
+/// Opens a native OS file-open dialog and returns the selected file path.
+/// If the user cancels, returns `{ cancelled: true }`.
+async fn pick_open_file(
+    Json(req): Json<PickFileRequest>,
+) -> Result<Json<PickFileResponse>, StatusCode> {
+    let result = tokio::task::spawn_blocking(move || {
+        let mut dialog = rfd::FileDialog::new();
+
+        if let Some(ref title) = req.title {
+            dialog = dialog.set_title(title);
+        }
+        if let Some(ref default_path) = req.default_path {
+            dialog = dialog.set_directory(default_path);
+        }
+        if let Some(ref filters) = req.filters {
+            for f in filters {
+                dialog = dialog.add_filter(&f.name, &f.extensions.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+            }
+        }
+
+        dialog.pick_file()
+    })
+    .await
+    .map_err(|e| {
+        error!("pick_open_file: spawn_blocking failed: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    match result {
+        Some(path) => {
+            let path_str = path.to_string_lossy().to_string();
+            info!("pick_open_file: selected {}", path_str);
+            Ok(Json(PickFileResponse {
+                file_path: Some(path_str),
+                cancelled: None,
+            }))
+        }
+        None => {
+            info!("pick_open_file: cancelled");
+            Ok(Json(PickFileResponse {
+                file_path: None,
+                cancelled: Some(true),
+            }))
+        }
+    }
+}
+
+/// Opens a native OS file-save dialog and returns the chosen file path.
+/// If the user cancels, returns `{ cancelled: true }`.
+async fn pick_save_file(
+    Json(req): Json<PickFileRequest>,
+) -> Result<Json<PickFileResponse>, StatusCode> {
+    let result = tokio::task::spawn_blocking(move || {
+        let mut dialog = rfd::FileDialog::new();
+
+        if let Some(ref title) = req.title {
+            dialog = dialog.set_title(title);
+        }
+        if let Some(ref default_path) = req.default_path {
+            dialog = dialog.set_directory(default_path);
+        }
+        if let Some(ref file_name) = req.file_name {
+            dialog = dialog.set_file_name(file_name);
+        }
+        if let Some(ref filters) = req.filters {
+            for f in filters {
+                dialog = dialog.add_filter(&f.name, &f.extensions.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+            }
+        }
+
+        dialog.save_file()
+    })
+    .await
+    .map_err(|e| {
+        error!("pick_save_file: spawn_blocking failed: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    match result {
+        Some(path) => {
+            let path_str = path.to_string_lossy().to_string();
+            info!("pick_save_file: selected {}", path_str);
+            Ok(Json(PickFileResponse {
+                file_path: Some(path_str),
+                cancelled: None,
+            }))
+        }
+        None => {
+            info!("pick_save_file: cancelled");
+            Ok(Json(PickFileResponse {
+                file_path: None,
+                cancelled: Some(true),
+            }))
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Store — SQLite-backed persistence (replaces Electron's better-sqlite3)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -877,6 +1004,8 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/health", get(health))
         .route("/api/eez-studio/exec", post(exec_command))
         .route("/api/eez-studio/show-item-in-folder", post(show_item_in_folder))
+        .route("/api/eez-studio/pick-open-file", post(pick_open_file))
+        .route("/api/eez-studio/pick-save-file", post(pick_save_file))
         .route("/api/eez-studio/read-text-file", get(read_text_file))
         .route("/api/eez-studio/read-file", get(read_file))
         .route("/api/eez-studio/write-file", post(write_file))

@@ -114,10 +114,43 @@ function writeMRU(value: any[]) {
     } catch { /* noop */ }
 }
 
+// DB paths helpers — persist database selection across page refresh
+const DB_PATHS_STORAGE_KEY = "eez-studio-db-paths";
+function readDbPaths(): any[] {
+    try {
+        const raw = window.localStorage.getItem(DB_PATHS_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+function writeDbPaths(value: any[]) {
+    try {
+        window.localStorage.setItem(DB_PATHS_STORAGE_KEY, JSON.stringify(value));
+    } catch { /* noop */ }
+}
+function getActiveDbPathFromStorage(): string {
+    const paths = readDbPaths();
+    const active = paths.find((p: any) => p.isActive);
+    return active?.filePath || "/userData/storage.db";
+}
+
+function fallbackCopyText(text: string) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand("copy");
+    } catch (err) {
+        console.error("clipboard fallback failed:", err);
+    }
+    document.body.removeChild(textarea);
+}
+
 // ipcSyncDefaults — shared fallback values for sendSync
 const ipcSyncDefaults: Record<string, any> = {
-    getDbPaths: [],
-    getActiveDbPath: "/userData/storage.db",
     getSettings: {},
     getMRU: [],
     getReservedKeybindings: [],
@@ -207,6 +240,7 @@ const _jsPanelLayouts: Record<string, any[]> = {};
             on: ()=>{}, once: ()=>{}, removeListener: ()=>{}, removeAllListeners: ()=>{},
             send: (ch: string, ...args: any[]) => {
                 if (ch === "setMRU") { writeMRU(args[0]); }
+                if (ch === "setDbPaths") { writeDbPaths(args[0]); }
                 if (ch === "setMruFilePath") {
                     const item = args[0] as { filePath: string; projectType?: string; hasFlowSupport?: boolean };
                     if (item?.filePath) {
@@ -220,9 +254,15 @@ const _jsPanelLayouts: Record<string, any[]> = {};
             },
             sendSync: (ch:string) => {
                 if (ch === "getMRU") { return readMRU(); }
+                if (ch === "getActiveDbPath") { return getActiveDbPathFromStorage(); }
+                if (ch === "getDbPaths") { return readDbPaths(); }
                 return ipcSyncDefaults[ch] ?? [];
             },
-            invoke: (ch:string) => Promise.resolve(ipcSyncDefaults[ch] ?? {}),
+            invoke: (ch:string) => {
+                if (ch === "getActiveDbPath") { return Promise.resolve(getActiveDbPathFromStorage()); }
+                if (ch === "getDbPaths") { return Promise.resolve(readDbPaths()); }
+                return Promise.resolve(ipcSyncDefaults[ch] ?? {});
+            },
             sendToHost: ()=>{}, postMessage: ()=>{},
         },
         ipcMain: {
@@ -243,8 +283,43 @@ const _jsPanelLayouts: Record<string, any[]> = {};
             on: () => {},
             commandLine: { appendSwitch: () => {} },
         },
-        dialog:{}, shell:{},
-        clipboard: { writeText:()=>{}, readText:()=>"", writeBuffer:()=>{}, readBuffer:()=>new ArrayBuffer(0), write:()=>{}, read:()=>"", clear:()=>{}, availableFormats:()=>[] },
+        dialog:{},
+        shell: {
+            openPath: () => Promise.resolve(""),
+            openExternal: (url: string) => {
+                window.open(url, "_blank", "noopener,noreferrer");
+                return Promise.resolve();
+            },
+            showItemInFolder(path: string) {
+                fetch("/api/eez-studio/show-item-in-folder", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ path }),
+                }).catch(err => { console.error("showItemInFolder API call failed:", err); });
+            },
+            beep: () => {},
+            moveItemToTrash: () => Promise.resolve(),
+            openPathAsync: () => Promise.resolve(""),
+        },
+        clipboard: {
+            writeText(text: string) {
+                if (navigator.clipboard?.writeText) {
+                    navigator.clipboard.writeText(text).catch(err => {
+                        console.error("clipboard.writeText failed:", err);
+                        fallbackCopyText(text);
+                    });
+                } else {
+                    fallbackCopyText(text);
+                }
+            },
+            readText: () => "",
+            writeBuffer: () => {},
+            readBuffer: () => new ArrayBuffer(0),
+            write: () => {},
+            read: () => "",
+            clear: () => {},
+            availableFormats: () => [],
+        },
     };
     if (path === "tmp") return { tmpName:()=>{}, dir:()=>{} };
     if (path === "python-shell") return { PythonShell: { runString:()=>{} } };
@@ -256,9 +331,25 @@ const _jsPanelLayouts: Record<string, any[]> = {};
         exec(){} close(){} pragma(){} defaultSafeIntegers(){return this} transaction(fn:Function){return fn}
     };
     if (path === "main/settings") return {
-        getActiveDbPath: () => "/userData/storage.db",
-        getDbPaths: () => [],
-        setDbPaths: () => {},
+        getActiveDbPath: () => {
+            try {
+                const raw = window.localStorage.getItem("eez-studio-db-paths");
+                const paths: any[] = raw ? JSON.parse(raw) : [];
+                const active = paths.find((p: any) => p.isActive);
+                return active?.filePath || "/userData/storage.db";
+            } catch { return "/userData/storage.db"; }
+        },
+        getDbPaths: () => {
+            try {
+                const raw = window.localStorage.getItem("eez-studio-db-paths");
+                return raw ? JSON.parse(raw) : [];
+            } catch { return []; }
+        },
+        setDbPaths: (value: any[]) => {
+            try {
+                window.localStorage.setItem("eez-studio-db-paths", JSON.stringify(value));
+            } catch { /* noop */ }
+        },
         getSettings: () => ({}),
         getMRU: () => [],
         getIsDarkTheme: () => false,

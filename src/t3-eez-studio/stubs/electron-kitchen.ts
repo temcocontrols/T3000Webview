@@ -19,9 +19,29 @@ function writeMRU(value: any[]) {
     } catch { /* noop */ }
 }
 
+// Persist dbPaths in localStorage so database selection survives page refresh
+const DB_PATHS_STORAGE_KEY = "eez-studio-db-paths";
+
+function readDbPaths(): any[] {
+    try {
+        const raw = window.localStorage.getItem(DB_PATHS_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+
+function writeDbPaths(value: any[]) {
+    try {
+        window.localStorage.setItem(DB_PATHS_STORAGE_KEY, JSON.stringify(value));
+    } catch { /* noop */ }
+}
+
+function getActiveDbPathFromStorage(): string {
+    const paths = readDbPaths();
+    const active = paths.find((p: any) => p.isActive);
+    return active?.filePath || "/userData/storage.db";
+}
+
 const ipcSyncDefaults: Record<string, any> = {
-    getDbPaths: [],
-    getActiveDbPath: "/userData/storage.db",
     getSettings: {},
     getMRU: [],
     getReservedKeybindings: [],
@@ -64,6 +84,7 @@ export const ipcRenderer = {
     },
     send: (ch: string, ...args: any[]) => {
         if (ch === "setMRU") { writeMRU(args[0]); emitIPC("mru-changed", null, readMRU()); }
+        if (ch === "setDbPaths") { writeDbPaths(args[0]); emitIPC("db-paths-changed", null, readDbPaths()); }
         if (ch === "setMruFilePath") {
             const item = args[0] as { filePath: string; projectType?: string; hasFlowSupport?: boolean };
             if (item?.filePath) {
@@ -112,61 +133,73 @@ export const ipcRenderer = {
             input.click();
         }
         if (ch === "open-database-file") {
-            console.log("[electron-kitchen] open-database-file triggered");
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = ".db";
-            input.style.display = "none";
-            document.body.appendChild(input);
-            input.onchange = () => {
-                const file = input.files?.[0];
-                document.body.removeChild(input);
-                console.log("[electron-kitchen] file selected:", file?.name);
-                if (file) {
-                    const dbPath = "/project/" + file.name;
-                    console.log("[electron-kitchen] emitting database-file-selected:", dbPath);
-                    emitIPC("database-file-selected", null, { filePath: dbPath, name: file.name });
-                }
-            };
-            input.click();
+            console.log("[electron-kitchen] open-database-file: opening native file dialog via API");
+            fetch("/api/eez-studio/pick-open-file", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: "Open Database File",
+                    filters: [{ name: "SQLite Database", extensions: ["db", "sqlite", "sqlite3"] }],
+                }),
+            })
+                .then(r => r.json())
+                .then((data: { file_path?: string; cancelled?: boolean }) => {
+                    if (data.file_path) {
+                        console.log("[electron-kitchen] database-file-selected:", data.file_path);
+                        const name = data.file_path.split(/[\\/]/).pop() || "";
+                        emitIPC("database-file-selected", null, { filePath: data.file_path, name });
+                    } else {
+                        console.log("[electron-kitchen] open-database-file cancelled");
+                    }
+                })
+                .catch(err => console.error("[electron-kitchen] pick-open-file failed:", err));
         }
         if (ch === "create-database-file") {
-            console.log("[electron-kitchen] create-database-file triggered");
-            const input = document.createElement("input");
-            input.type = "file";
-            input.setAttribute("nwsaveas", "new_database.db");
-            input.accept = ".db";
-            input.style.display = "none";
-            document.body.appendChild(input);
-            input.onchange = async () => {
-                const file = input.files?.[0];
-                document.body.removeChild(input);
-                console.log("[electron-kitchen] save file selected:", file?.name);
-                if (!file) return;
-                const dbName = file.name.endsWith(".db") ? file.name : file.name + ".db";
-                const dbPath = "/project/" + dbName;
-                console.log("[electron-kitchen] creating:", dbPath);
-                try {
-                    const resp = await fetch("/api/eez-studio/write-text-file?path=" + encodeURIComponent(dbPath), {
-                        method: "POST",
-                        body: "",
-                        headers: { "Content-Type": "text/plain" }
-                    });
-                    console.log("[electron-kitchen] write response:", resp.status);
-                    if (resp.ok) {
-                        console.log("[electron-kitchen] emitting database-file-created:", dbPath);
-                        emitIPC("database-file-created", null, { filePath: dbPath, name: dbName });
+            console.log("[electron-kitchen] create-database-file: opening native save dialog via API");
+            fetch("/api/eez-studio/pick-save-file", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: "Create New Database",
+                    file_name: "new_database.db",
+                    filters: [{ name: "SQLite Database", extensions: ["db"] }],
+                }),
+            })
+                .then(r => r.json())
+                .then(async (data: { file_path?: string; cancelled?: boolean }) => {
+                    if (data.file_path) {
+                        console.log("[electron-kitchen] database-file-created:", data.file_path);
+                        // Create an empty file at the chosen path
+                        try {
+                            const resp = await fetch("/api/eez-studio/write-text-file?path=" + encodeURIComponent(data.file_path), {
+                                method: "POST",
+                                body: "",
+                                headers: { "Content-Type": "text/plain" }
+                            });
+                            console.log("[electron-kitchen] write response:", resp.status);
+                            if (resp.ok) {
+                                const name = data.file_path.split(/[\\/]/).pop() || "";
+                                emitIPC("database-file-created", null, { filePath: data.file_path, name });
+                            }
+                        } catch (e) { console.error("[electron-kitchen] Create DB error:", e); }
+                    } else {
+                        console.log("[electron-kitchen] create-database-file cancelled");
                     }
-                } catch (e) { console.error("[electron-kitchen] Create DB error:", e); }
-            };
-            input.click();
+                })
+                .catch(err => console.error("[electron-kitchen] pick-save-file failed:", err));
         }
     },
     sendSync: (ch: string) => {
         if (ch === "getMRU") { return readMRU(); }
+        if (ch === "getActiveDbPath") { return getActiveDbPathFromStorage(); }
+        if (ch === "getDbPaths") { return readDbPaths(); }
         return ipcSyncDefaults[ch] ?? [];
     },
-    invoke: (ch: string) => Promise.resolve(ipcSyncDefaults[ch] ?? {}),
+    invoke: (ch: string) => {
+        if (ch === "getActiveDbPath") { return Promise.resolve(getActiveDbPathFromStorage()); }
+        if (ch === "getDbPaths") { return Promise.resolve(readDbPaths()); }
+        return Promise.resolve(ipcSyncDefaults[ch] ?? {});
+    },
     sendToHost: noop, postMessage: noop,
 };
 export const ipcMain = { on: noop, handle: noop, handleOnce: noop, removeHandler: noop, removeAllListeners: noop };
