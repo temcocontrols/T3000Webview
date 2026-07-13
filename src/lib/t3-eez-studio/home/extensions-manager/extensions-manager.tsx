@@ -1575,7 +1575,7 @@ export const ExtensionsManager = observer(
             return (
                 <div className="EezStudio_ExtensionsManager">
                     <div style={{
-                        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+                        margin: `${tokens.spacingVerticalS} 8px`,
                         borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
                     }}>
                         <Input
@@ -1588,15 +1588,15 @@ export const ExtensionsManager = observer(
                                     extensionsManagerStore._viewFilter = ViewFilter.ALL;
                                 });
                             }}
-                            size="small"
-                            style={{ maxWidth: "360px" }}
+                            size="large"
+                            style={{ width: "100%", borderRadius: 0 }}
                         />
                     </div>
 
                     <div style={{
                         display: "flex",
                         gap: "1px",
-                        padding: `0 ${tokens.spacingHorizontalM}`,
+                        margin: `0 8px`,
                         borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
                     }}>
                         <NavTab
