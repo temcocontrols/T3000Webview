@@ -976,6 +976,24 @@ class AbsoluteDirectoryInputProperty extends React.Component<
     {}
 > {
     onSelect = async () => {
+        // Try native directory picker via Rust API (browser mode).
+        try {
+            const resp = await fetch("/api/eez-studio/pick-directory", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: "Select Directory" }),
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.file_path) {
+                    this.props.onChange(data.file_path);
+                    return;
+                }
+            }
+        } catch {
+            // API not available — fall back to Electron dialog
+        }
+
         const result = await dialog.showOpenDialog(getCurrentWindow(), {
             properties: ["openDirectory"]
         });
@@ -1013,32 +1031,98 @@ const TemplateSettings = observer(
     class TemplateSettings extends React.Component {
         render() {
             return (
-                <PropertyList>
-                    <BooleanProperty
-                        name="Use local templates folder"
-                        value={settingsController.useLocalTemplates}
-                        onChange={action(
-                            value =>
-                            (settingsController.useLocalTemplates = value)
-                        )}
-                        checkboxStyleSwitch={true}
-                    />
+                <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "120px 160px 1fr",
+                    gap: "6px 12px",
+                    alignItems: "center",
+                    fontSize: "12px",
+                }}>
+                    {/* Row 1: Project Templates label */}
+                    <div style={{ fontWeight: 600, color: "#323130" }}>Project Templates</div>
+                    <div style={{ color: "#605e5c" }}>Use local templates</div>
+                    <div className="form-check form-switch" style={{ minHeight: "auto", marginBottom: 0, paddingLeft: 0 }}>
+                        <input
+                            type="checkbox"
+                            className="form-check-input"
+                            style={{ marginLeft: 0 }}
+                            checked={settingsController.useLocalTemplates}
+                            onChange={e => {
+                                settingsController.useLocalTemplates = e.target.checked;
+                            }}
+                        />
+                    </div>
+
+                    {/* Row 2: Local templates path */}
                     {settingsController.useLocalTemplates && (
                         <>
-                            <AbsoluteDirectoryInputProperty
-                                name="Local templates path"
-                                value={settingsController.localTemplatesPath}
-                                onChange={action(value => {
-                                    settingsController.localTemplatesPath = value;
-                                })}
-                            />
-                            <StaticProperty
-                                name="Repository"
-                                value={EEZ_PROJECT_TEMPLATES_REPO_URL}
-                            />
+                            <div />{/* empty under section label */}
+                            <div style={{ color: "#605e5c" }}>Local templates path</div>
+                            <div className="input-group" style={{ height: "28px" }}>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    style={{ height: "28px", fontSize: "12px", padding: "2px 8px" }}
+                                    value={settingsController.localTemplatesPath}
+                                    onChange={e => {
+                                        settingsController.localTemplatesPath = e.target.value;
+                                    }}
+                                />
+                                <button
+                                    className="btn btn-secondary"
+                                    type="button"
+                                    style={{ height: "28px", fontSize: "12px", padding: "2px 8px" }}
+                                    onClick={async () => {
+                                        try {
+                                            const resp = await fetch("/api/eez-studio/pick-directory", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ title: "Select Templates Directory" }),
+                                            });
+                                            if (resp.ok) {
+                                                const data = await resp.json();
+                                                if (data.file_path) {
+                                                    settingsController.localTemplatesPath = data.file_path;
+                                                    return;
+                                                }
+                                            }
+                                        } catch {
+                                            // API not available — fall back to Electron dialog
+                                        }
+                                        const result = await dialog.showOpenDialog(getCurrentWindow(), {
+                                            properties: ["openDirectory"],
+                                        });
+                                        if (result.filePaths && result.filePaths[0]) {
+                                            settingsController.localTemplatesPath = result.filePaths[0];
+                                        }
+                                    }}
+                                >
+                                    &hellip;
+                                </button>
+                            </div>
                         </>
                     )}
-                </PropertyList>
+
+                    {/* Row 3: Repository URL */}
+                    {settingsController.useLocalTemplates && (
+                        <>
+                            <div />{/* empty under section label */}
+                            <div style={{ color: "#605e5c" }}>Repository</div>
+                            <div style={{
+                                padding: "2px 8px",
+                                background: "#faf9f8",
+                                border: "1px solid #edebe9",
+                                borderRadius: "2px",
+                                lineHeight: "22px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                            }}>
+                                {EEZ_PROJECT_TEMPLATES_REPO_URL}
+                            </div>
+                        </>
+                    )}
+                </div>
             );
         }
     }
@@ -1124,11 +1208,8 @@ export const Settings = observer(
                         {/* Project Editor */}
                         <div style={{ ...cardStyle, minHeight: 0 }}>
                             <div style={cardTitleStyle}>Project Editor</div>
-                            <div style={{ ...cardBodyStyle, display: "flex", gap: "12px", alignItems: "flex-start" }}>
-                                <div style={{ fontSize: "12px", fontWeight: 600, minWidth: "120px", color: "#323130" }}>Project Templates</div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <TemplateSettings />
-                                </div>
+                            <div style={{ ...cardBodyStyle }}>
+                                <TemplateSettings />
                             </div>
                         </div>
 

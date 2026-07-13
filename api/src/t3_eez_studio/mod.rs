@@ -818,6 +818,47 @@ async fn pick_save_file(
     }
 }
 
+/// Opens a native OS directory-picker dialog and returns the selected folder path.
+async fn pick_directory(
+    Json(req): Json<PickFileRequest>,
+) -> Result<Json<PickFileResponse>, StatusCode> {
+    let result = tokio::task::spawn_blocking(move || {
+        let mut dialog = rfd::FileDialog::new();
+
+        if let Some(ref title) = req.title {
+            dialog = dialog.set_title(title);
+        }
+        if let Some(ref default_path) = req.default_path {
+            dialog = dialog.set_directory(default_path);
+        }
+
+        dialog.pick_folder()
+    })
+    .await
+    .map_err(|e| {
+        error!("pick_directory: spawn_blocking failed: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    match result {
+        Some(path) => {
+            let path_str = path.to_string_lossy().to_string();
+            info!("pick_directory: selected {}", path_str);
+            Ok(Json(PickFileResponse {
+                file_path: Some(path_str),
+                cancelled: None,
+            }))
+        }
+        None => {
+            info!("pick_directory: cancelled");
+            Ok(Json(PickFileResponse {
+                file_path: None,
+                cancelled: Some(true),
+            }))
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Vacuum database — runs SQLite VACUUM to reclaim disk space
 ////////////////////////////////////////////////////////////////////////////////
@@ -1111,6 +1152,7 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/show-item-in-folder", post(show_item_in_folder))
         .route("/api/eez-studio/pick-open-file", post(pick_open_file))
         .route("/api/eez-studio/pick-save-file", post(pick_save_file))
+        .route("/api/eez-studio/pick-directory", post(pick_directory))
         .route("/api/eez-studio/vacuum-database", post(vacuum_database))
         .route("/api/eez-studio/read-text-file", get(read_text_file))
         .route("/api/eez-studio/read-file", get(read_file))
