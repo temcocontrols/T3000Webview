@@ -292,7 +292,7 @@ export class WizardModel {
         commandsProtocol: string;
     };
 
-    lvglVersion: LVGLVersion = "8.4.0";
+    lvglVersion: LVGLVersion = "9.5.0";
 
     commandsProtocol: CommandsProtocolType;
 
@@ -370,7 +370,7 @@ export class WizardModel {
                     this.projectVersion = options.projectVersion;
                     this.gitClone = options.gitClone;
                     this.gitInit = options.gitInit;
-                    this.lvglVersion = options.lvglVersion ?? "8.4.0";
+                    this.lvglVersion = options.lvglVersion ?? "9.5.0";
                     this.commandsProtocol = options.commandsProtocol ?? "SCPI";
                 }
             } catch (err) {
@@ -660,6 +660,12 @@ export class WizardModel {
                 return;
             }
 
+            // Only include LVGL project types for T3000
+            const lvglTypes = ["LVGL", "LVGL with EEZ Flow"];
+            if (!lvglTypes.includes(projectType.projectType)) {
+                return;
+            }
+
             const folderId = "_example_" + example.folder;
 
             let projectTypes = map.get(folderId);
@@ -805,45 +811,12 @@ export class WizardModel {
     get standardProjectTypes(): IProjectType[] {
         return [
             {
-                id: "dashboard",
-                projectType: PROJECT_TYPE_NAMES[ProjectType.DASHBOARD],
-                image: DASHBOARD_PROJECT_ICON(128),
-                projectName: "Dashboard",
-                description:
-                    "Start your new Dashboard project development here.",
-                projectFileUrl: getTemplatePathOrUrl(
-                    "templates/dashboard.eez-project"
-                )
-            },
-            {
-                id: "firmware",
-                projectType: PROJECT_TYPE_NAMES[ProjectType.FIRMWARE],
-                image: EEZ_GUI_PROJECT_ICON(128),
-                projectName: "EEZ-GUI",
-                description: "Start your new EEZ-GUI project development here.",
-                projectFileUrl: getTemplatePathOrUrl(
-                    "templates/firmware.eez-project"
-                )
-            },
-            {
                 id: "LVGL",
                 projectType: PROJECT_TYPE_NAMES[ProjectType.LVGL],
                 image: LVGL_PROJECT_ICON(128),
                 projectName: "LVGL",
                 description: "Start your new LVGL project development here.",
                 projectFileUrl: {
-                    "8.4.0": getTemplatePathOrUrl(
-                        "templates/v0.23.0/LVGL-8.3.eez-project"
-                    ),
-                    "9.2.2": getTemplatePathOrUrl(
-                        "templates/v0.23.0/LVGL-9.0.eez-project"
-                    ),
-                    "9.3.0": getTemplatePathOrUrl(
-                        "templates/v0.23.0/LVGL-9.0.eez-project"
-                    ),
-                    "9.4.0": getTemplatePathOrUrl(
-                        "templates/v0.23.0/LVGL-9.0.eez-project"
-                    ),
                     "9.5.0": getTemplatePathOrUrl(
                         "templates/v0.23.0/LVGL-9.0.eez-project"
                     )
@@ -857,98 +830,20 @@ export class WizardModel {
                 description:
                     "Start your new LVGL with EEZ Flow project development here.",
                 projectFileUrl: {
-                    "8.4.0": getTemplatePathOrUrl(
-                        "templates/v0.23.0/LVGL with EEZ Flow-8.3.eez-project"
-                    ),
-                    "9.2.2": getTemplatePathOrUrl(
-                        "templates/v0.23.0/LVGL with EEZ Flow-9.0.eez-project"
-                    ),
-                    "9.3.0": getTemplatePathOrUrl(
-                        "templates/v0.23.0/LVGL with EEZ Flow-9.0.eez-project"
-                    ),
-                    "9.4.0": getTemplatePathOrUrl(
-                        "templates/v0.23.0/LVGL with EEZ Flow-9.0.eez-project"
-                    ),
                     "9.5.0": getTemplatePathOrUrl(
                         "templates/v0.23.0/LVGL with EEZ Flow-9.0.eez-project"
                     )
                 }
-            },
-            {
-                id: "IEXT",
-                projectType: PROJECT_TYPE_NAMES[ProjectType.IEXT],
-                image: IEXT_PROJECT_ICON(128),
-                projectName: "IEXT",
-                description: "Start your new IEXT project development here.",
-                projectFileUrl: {
-                    SCPI: getTemplatePathOrUrl("templates/IEXT.eez-project"),
-                    PROPRIETARY: getTemplatePathOrUrl(
-                        "templates/IEXT - PROPRIETARY.eez-project"
-                    )
-                }
-            },
-            {
-                id: "EEZ-GUI Lite",
-                projectType: PROJECT_TYPE_NAMES[ProjectType.EEZ_GUI_LITE],
-                image: EEZ_GUI_LITE_PROJECT_ICON(128),
-                projectName: "EEZ-GUI Lite",
-                description: "Start your new EEZ-GUI Lite project development here.",
-                projectFileUrl: getTemplatePathOrUrl(
-                    "templates/eez-gui-lite.eez-project"
-                )
             }
         ].filter(projectType => this.searchFilter(projectType));
     }
 
     get bb3ProjectTypes(): IProjectType[] {
-        return [
-            {
-                id: "applet",
-                projectType: PROJECT_TYPE_NAMES[ProjectType.APPLET],
-                image: APPLET_ICON(128),
-                projectName: "BB3 Applet",
-                description:
-                    "Start your new BB3 Applet project development here.",
-                projectFileUrl: getTemplatePathOrUrl(
-                    "templates/applet.eez-project"
-                )
-            },
-            {
-                id: "resource",
-                projectType: PROJECT_TYPE_NAMES[ProjectType.RESOURCE],
-                image: MICROPYTHON_ICON(128),
-                projectName: "BB3 MicroPython Script",
-                description:
-                    "Start your new BB3 MicroPython project development here.",
-                projectFileUrl: getTemplatePathOrUrl(
-                    "templates/resource.eez-project"
-                )
-            }
-        ].filter(projectType => this.searchFilter(projectType));
+        return [];
     }
 
     get templateProjectTypes(): IProjectType[] {
-        return this.templateProjects
-            .map(templateProject => ({
-                id: templateProject.clone_url,
-                repository: templateProject.html_url,
-                projectType: templateProject._projectType,
-                image: templateProject._image_url,
-                projectName: templateProject.name.startsWith(
-                    "eez-flow-template-"
-                )
-                    ? templateProject.name.substring(
-                        "eez-flow-template-".length
-                    )
-                    : templateProject.name,
-                description: templateProject._description,
-                keywords: templateProject._keywords,
-                displayWidth: templateProject._displayWidth,
-                displayHeight: templateProject._displayHeight,
-                targetPlatform: templateProject._targetPlatform,
-                targetPlatformLink: templateProject._targetPlatformLink
-            }))
-            .filter(projectType => this.searchFilter(projectType));
+        return []; // External templates not relevant for T3000
     }
 
     get allTemplateProjectTypes(): IProjectType[] {
@@ -992,23 +887,6 @@ export class WizardModel {
                     ),
                     children: [],
                     selected: this.folder == "_standard",
-                    expanded: true,
-                    data: undefined
-                });
-            }
-
-            if (this.bb3ProjectTypes.length > 0) {
-                children.push({
-                    id: "_bb3",
-                    label: (
-                        <Count
-                            label="BB3 Script Templates"
-                            count={this.bb3ProjectTypes.length}
-                            attention={false}
-                        ></Count>
-                    ),
-                    children: [],
-                    selected: this.folder == "_bb3",
                     expanded: true,
                     data: undefined
                 });
@@ -2384,10 +2262,6 @@ const ProjectProperties = observer(
                                                 color: tokens.colorNeutralForeground1,
                                             }}
                                         >
-                                            <option value="8.4.0">8.4.0</option>
-                                            <option value="9.2.2">9.2.2</option>
-                                            <option value="9.3.0">9.3.0</option>
-                                            <option value="9.4.0">9.4.0</option>
                                             <option value="9.5.0">9.5.0</option>
                                         </select>
                                     </div>
