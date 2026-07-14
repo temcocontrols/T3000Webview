@@ -2335,10 +2335,18 @@ const ProjectProperties = observer(
                     <PlatformDescription wizardModel={wizardModel} />
 
                     <div className="EezStudio_NewProjectWizard_ProjectProperties_Section">
-                        <h6>Project Settings</h6>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                            <div style={{
+                                width: "3px",
+                                height: "14px",
+                                borderRadius: "2px",
+                                backgroundColor: tokens.colorBrandStroke1,
+                            }} />
+                            <Text size={200} weight="semibold">Project Settings</Text>
+                        </div>
                         <div>
                             <div style={{ marginBottom: "12px" }}>
-                                <Text size={200} weight="semibold" style={{ display: "block", marginBottom: "4px" }}>
+                                <Text size={200} style={{ display: "block", marginBottom: "4px" }}>
                                     Name
                                 </Text>
                                 <Input
@@ -2359,7 +2367,7 @@ const ProjectProperties = observer(
                                     wizardModel.type ==
                                     "LVGL with EEZ Flow") && (
                                     <div style={{ marginBottom: "12px" }}>
-                                        <Text size={200} weight="semibold" style={{ display: "block", marginBottom: "4px" }}>
+                                        <Text size={200} style={{ display: "block", marginBottom: "4px" }}>
                                             LVGL version
                                         </Text>
                                         <select
@@ -2388,7 +2396,7 @@ const ProjectProperties = observer(
                             {wizardModel.section == "templates" &&
                                 wizardModel.type == "IEXT" && (
                                     <div style={{ marginBottom: "12px" }}>
-                                        <Text size={200} weight="semibold" style={{ display: "block", marginBottom: "4px" }}>
+                                        <Text size={200} style={{ display: "block", marginBottom: "4px" }}>
                                             Commands protocol
                                         </Text>
                                         <select
@@ -2412,7 +2420,7 @@ const ProjectProperties = observer(
                                 )}
 
                             <div style={{ marginBottom: "12px" }}>
-                                <Text size={200} weight="semibold" style={{ display: "block", marginBottom: "4px" }}>
+                                <Text size={200} style={{ display: "block", marginBottom: "4px" }}>
                                     Location
                                 </Text>
                                 <DirectoryBrowserInput
@@ -2442,7 +2450,7 @@ const ProjectProperties = observer(
                                 )}
 
                             <div style={{ marginBottom: "12px" }}>
-                                <Text size={200} weight="semibold" style={{ display: "block", marginBottom: "4px" }}>
+                                <Text size={200} style={{ display: "block", marginBottom: "4px" }}>
                                     {wizardModel.selectedTemplateProject ||
                                         (wizardModel.isSelectedExampleWithGitRepository &&
                                             wizardModel.gitClone)
