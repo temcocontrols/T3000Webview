@@ -33,20 +33,17 @@ const useStyles = makeStyles({
         margin: `0 10px`,
         width: "110px",
         cursor: "pointer",
-        borderRadius: tokens.borderRadiusMedium,
-        transition: "background-color 0.15s",
+        borderBottom: "3px solid transparent",
+        borderRadius: "0",
+        transition: "color 0.15s, border-color 0.15s",
         color: tokens.colorNeutralForeground2,
         "&:hover": {
-            backgroundColor: tokens.colorNeutralBackground1Hover,
             color: tokens.colorNeutralForeground1,
         },
     },
     navItemSelected: {
-        backgroundColor: tokens.colorNeutralBackground1Selected,
+        borderBottomColor: tokens.colorBrandForeground1,
         color: tokens.colorNeutralForeground1,
-        "&:hover": {
-            backgroundColor: tokens.colorNeutralBackground1Selected,
-        },
     },
     navIcon: {
         fontSize: "32px",

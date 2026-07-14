@@ -2591,7 +2591,7 @@ const ProjectProperties = observer(
                                             icon={<EditRegular />}
                                             onClick={this.onCreateProject}
                                             disabled={wizardModel.createProjectInProgress}
-                                            style={{ fontWeight: 400 }}
+                                            style={{ fontWeight: 400, fontSize: "13px" }}
                                         >
                                             Edit Project
                                         </Button>
@@ -2602,7 +2602,7 @@ const ProjectProperties = observer(
                                                     icon={<PlayRegular />}
                                                     onClick={this.onRunProject}
                                                     disabled={wizardModel.createProjectInProgress}
-                                                    style={{ fontWeight: 400 }}
+                                                    style={{ fontWeight: 400, fontSize: "13px" }}
                                                 >
                                                     Run Project
                                                 </Button>
@@ -2774,6 +2774,7 @@ class NameInput extends React.Component<{
                 type="text"
                 id={this.props.id}
                 className="form-control"
+                style={{ fontSize: "13px" }}
                 value={this.props.value || ""}
                 onChange={event => this.props.onChange(event.target.value)}
                 onKeyDown={this.props.onKeyDown}

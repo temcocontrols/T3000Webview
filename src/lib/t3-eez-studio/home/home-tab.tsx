@@ -6,7 +6,7 @@ import { NavItem } from "./fluent-home";
 import {
     FolderOpenRegular,
     AddRegular,
-    PlayRegular,
+    DocumentBulletListRegular,
     MusicNote2Regular,
     PuzzlePieceRegular,
     SettingsRegular,
@@ -28,7 +28,7 @@ import { instrumentDatabases } from "eez-studio-shared/db";
 
 const HOME_TAB_OPEN_ICON = <FolderOpenRegular />;
 const HOME_TAB_CREATE_ICON = <AddRegular />;
-const HOME_TAB_EXAMPLES_ICON = <PlayRegular />;
+const HOME_TAB_EXAMPLES_ICON = <DocumentBulletListRegular />;
 const HOME_TAB_INSTRUMENTS_ICON = <MusicNote2Regular />;
 const HOME_TAB_EXTENSIONS_ICON = <PuzzlePieceRegular />;
 const HOME_TAB_SETTINGS_ICON = <SettingsRegular />;
@@ -95,21 +95,21 @@ export const Home = observer(
                         <div className="EezStudio_HomeTab_Navigation">
                             <NavItem
                                 icon={HOME_TAB_OPEN_ICON}
-                                label="Open"
+                                label="OPEN"
                                 title="Open a local project or select one from the recent list"
                                 selected={homeTabStore.activeTab == "open"}
                                 onClick={action(() => { homeTabStore.activeTab = "open"; })}
                             />
                             <NavItem
                                 icon={HOME_TAB_CREATE_ICON}
-                                label="Create"
+                                label="CREATE"
                                 title="Create a new project"
                                 selected={homeTabStore.activeTab == "create"}
                                 onClick={action(() => { homeTabStore.activeTab = "create"; })}
                             />
                             <NavItem
                                 icon={HOME_TAB_EXAMPLES_ICON}
-                                label="Examples"
+                                label="EXAMPLES"
                                 title="Example projects ready to run or edit"
                                 selected={homeTabStore.activeTab == "examples"}
                                 onClick={action(() => { homeTabStore.activeTab = "examples"; })}
@@ -126,14 +126,14 @@ export const Home = observer(
                             */}
                             <NavItem
                                 icon={HOME_TAB_EXTENSIONS_ICON}
-                                label="Extensions"
+                                label="EXTENSIONS"
                                 title="Extensions manager"
                                 selected={homeTabStore.activeTab == "extensions"}
                                 onClick={action(() => { homeTabStore.activeTab = "extensions"; })}
                             />
                             <NavItem
                                 icon={HOME_TAB_SETTINGS_ICON}
-                                label="Settings"
+                                label="SETTINGS"
                                 title="Global user settings"
                                 selected={homeTabStore.activeTab == "settings"}
                                 onClick={action(() => { homeTabStore.activeTab = "settings"; })}

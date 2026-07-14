@@ -607,13 +607,11 @@ class DeviceImportStore {
             const projectDir = `project/${device.panel_name}`;
             const stagingDir = `${projectDir}/device-import`;
             this.appendLog("⏳ Step 0 — Creating project folder...");
-            console.log("[import] Step 0 — calling make-folder");
             await fetch(`/api/eez-studio/make-folder`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ path: stagingDir }),
             });
-            console.log("[import] Step 0 — make-folder done");
             this.appendLog("✅ Step 0 — Project folder ready");
 
             // Step 1 — Connect via REST
@@ -621,11 +619,9 @@ class DeviceImportStore {
                 throw new Error("Device has no IP address assigned. Please configure the device IP first.");
             }
             this.appendLog("⏳ Step 1 — Connecting to device...");
-            console.log("[import] Step 1 — connecting to", device.panel_ipaddress);
             const { DeviceRestClient } = await import("project-editor/build/device-rest-client");
             const client = new DeviceRestClient();
             const conn = await client.connect(device.panel_ipaddress);
-            console.log("[import] Step 1 — connect result:", conn);
             this.appendLog(`✅ Step 1 — Connected via ${conn.mode.toUpperCase()}`);
             if (conn.error) {
                 throw new Error(conn.error);
@@ -765,7 +761,7 @@ const ProjectListItem: React.FC<{
             </div>
             <div className={styles.projectMeta}>
                 <div className={styles.projectName}>
-                    <Text weight="semibold">{baseName}</Text>
+                    <Text weight="semibold" style={{ fontSize: "13px" }}>{baseName}</Text>
                     <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                         {extension}
                     </Text>
@@ -820,13 +816,23 @@ const RecentProjectsColumn: React.FC = observer(() => {
     return (
         <div className={styles.leftColumn}>
             <div className={styles.columnHeader}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Text size={300} weight="semibold">
-                        Recent Projects
-                    </Text>
-                    <Text size={200} className={styles.columnDesc}>
-                        Open, edit, or run existing projects from disk.
-                    </Text>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <Text weight="semibold" style={{ fontSize: "13px" }}>
+                            Recent Projects
+                        </Text>
+                        <Text size={200} className={styles.columnDesc}>
+                            Open, edit, or run existing projects from disk.
+                        </Text>
+                    </div>
+                    <Button
+                        appearance="primary"
+                        icon={<FolderOpenRegular />}
+                        style={{ justifyContent: "flex-start", fontWeight: 400, color: "#fff", fontSize: "12px" }}
+                        onClick={() => ipcRenderer.send("open-project")}
+                    >
+                        Open Project
+                    </Button>
                 </div>
             </div>
 
@@ -902,7 +908,7 @@ const RecentProjectsColumn: React.FC = observer(() => {
                                 )}
                             </div>
                             <div className={styles.projectDetailName}>
-                                <Text weight="semibold">
+                                <Text weight="semibold" style={{ fontSize: "13px" }}>
                                     {openProjectsStore.selectedProjectInfo.baseName}
                                 </Text>
                                 <Text size={200} style={{ color: tokens.colorNeutralForeground3, wordBreak: "break-all" }}>
@@ -916,7 +922,7 @@ const RecentProjectsColumn: React.FC = observer(() => {
                                 appearance="primary"
                                 icon={<EditRegular fontSize={18} />}
                                 onClick={openProjectsStore.editProject}
-                                style={{ justifyContent: "flex-start", fontWeight: 400, color: "#fff" }}
+                                style={{ justifyContent: "flex-start", fontWeight: 400, color: "#fff", fontSize: "12px" }}
                             >
                                 Edit Project
                             </Button>
@@ -927,6 +933,7 @@ const RecentProjectsColumn: React.FC = observer(() => {
                                     justifyContent: "flex-start",
                                     fontWeight: 400,
                                     color: "#fff",
+                                    fontSize: "12px",
                                     backgroundColor: "#6c757d",
                                     borderColor: "#5a6268",
                                 }}
@@ -941,6 +948,7 @@ const RecentProjectsColumn: React.FC = observer(() => {
                                         justifyContent: "flex-start",
                                         fontWeight: 400,
                                         color: "#fff",
+                                        fontSize: "12px",
                                         backgroundColor: "#6c757d",
                                         borderColor: "#5a6268",
                                     }}
@@ -956,6 +964,7 @@ const RecentProjectsColumn: React.FC = observer(() => {
                                     justifyContent: "flex-start",
                                     fontWeight: 400,
                                     color: "#fff",
+                                    fontSize: "12px",
                                     backgroundColor: "#d32f2f",
                                     borderColor: "#d32f2f",
                                 }}
@@ -965,20 +974,6 @@ const RecentProjectsColumn: React.FC = observer(() => {
                         </div>
                     </div>
                 )}
-            </div>
-
-            {/* Footer */}
-            <div className={styles.footer}>
-                <Button
-                    appearance="primary"
-                    icon={<FolderOpenRegular />}
-                    size="medium"
-                    style={{ fontWeight: 400, fontSize: "13px" }}
-                    className={styles.footerButton}
-                    onClick={() => ipcRenderer.send("open-project")}
-                >
-                    Open Project
-                </Button>
             </div>
         </div>
     );
@@ -1077,7 +1072,7 @@ const DeviceListPanel: React.FC = observer(() => {
                                 style={{ accentColor: tokens.colorBrandStroke1 }}
                             />
                             <div>
-                                <Text className={styles.deviceName}>{d.panel_name}</Text>
+                                <Text className={styles.deviceName} style={{ fontSize: "13px" }}>{d.panel_name}</Text>
                                 <br />
                                 <Text size={200} className={styles.deviceInfo}>
                                     {d.panel_ipaddress} · SN: {d.panel_serial_number}
@@ -1087,17 +1082,6 @@ const DeviceListPanel: React.FC = observer(() => {
                     ))}
                 </div>
             )}
-
-            <Button
-                appearance="primary"
-                icon={deviceImportStore.importing ? <Spinner size="tiny" /> : <ArrowDownloadRegular />}
-                className={styles.importBtn}
-                disabled={deviceImportStore.selectedDeviceId == null || deviceImportStore.importing}
-                onClick={() => deviceImportStore.startImport()}
-                style={{ fontWeight: 400, fontSize: "13px" }}
-            >
-                {deviceImportStore.importing ? "Importing..." : "Import from Device"}
-            </Button>
         </div>
     );
 });
@@ -1146,7 +1130,7 @@ const DeviceImportPanel: React.FC = observer(() => {
     return (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: tokens.spacingVerticalM }}>
-                <Text weight="semibold" size={300}>
+                <Text weight="semibold" style={{ fontSize: "13px" }}>
                     {deviceImportStore.importing ? "Importing..." : deviceImportStore.importLog.some(l => l.includes("❌")) ? "Import Failed" : "Import Complete"}
                 </Text>
                 {!deviceImportStore.importing && (
@@ -1244,13 +1228,24 @@ export const Projects: React.FC = observer(() => {
             <RecentProjectsColumn />
             <div className={styles.rightColumn}>
                 <div className={styles.columnHeader}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <Text size={300} weight="semibold" style={{ whiteSpace: "nowrap" }}>
-                            Load from Device
-                        </Text>
-                        <Text size={200} className={styles.columnDesc} style={{ whiteSpace: "nowrap" }}>
-                            Import screens from a T3000 hardware controller.
-                        </Text>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Text weight="semibold" style={{ fontSize: "13px", whiteSpace: "nowrap" }}>
+                                Load from Device
+                            </Text>
+                            <Text size={200} className={styles.columnDesc} style={{ whiteSpace: "nowrap" }}>
+                                Import screens from a T3000 hardware controller.
+                            </Text>
+                        </div>
+                        <Button
+                            appearance="primary"
+                            icon={deviceImportStore.importing ? undefined : <ArrowDownloadRegular />}
+                            disabled={deviceImportStore.selectedDeviceId == null || deviceImportStore.importing}
+                            onClick={() => deviceImportStore.startImport()}
+                            style={{ justifyContent: "flex-start", fontWeight: 400, fontSize: "12px", color: "#fff", flexShrink: 0 }}
+                        >
+                            {deviceImportStore.importing ? "Importing..." : "Import from Device"}
+                        </Button>
                     </div>
                 </div>
 
