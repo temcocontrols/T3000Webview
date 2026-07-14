@@ -114,6 +114,15 @@ export function firmwareToProject(
                 lvglVersion: "9.5.0",
                 hasFlowSupport: true,
             },
+            build: {
+                configurations: [
+                    { name: "Default" },
+                ],
+                lvglInclude: "lvgl/lvgl.h",
+                generateSourceCodeForEezFramework: false,
+                compressFlowDefinition: false,
+                executionQueueSize: 1000,
+            },
         },
         importedFrom: {
             device: device.panel_name,
@@ -136,7 +145,9 @@ export function firmwareToProject(
         })),
         lvglStyles: [],
         lvglGroups: [],
-        variables: {},
+        variables: {
+            globalVariables: [],
+        },
         actions: [],
         userWidgets: [],
     };

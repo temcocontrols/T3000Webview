@@ -50,6 +50,7 @@ import { getProjectIcon } from "home/helper";
 import { ProjectStore, loadProject } from "project-editor/store";
 import { ProjectEditorTab, tabs } from "home/tabs-store";
 import { initProjectEditor } from "project-editor/project-editor-bootstrap";
+import type { LoadAllResponse } from "project-editor/build/device-rest-client";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Styles (Fluent tokens)
@@ -411,6 +412,11 @@ class OpenProjectsStore {
                         mruItem.filePath,
                         "utf8"
                     );
+                    const projectJs = JSON.parse(jsonStr);
+                    if (!projectJs || !projectJs.settings) {
+                        // Corrupted or non-EEZ file — skip detail loading
+                        return;
+                    }
                     await initProjectEditor(tabs, ProjectEditorTab);
                     const projectStore = ProjectStore.create({
                         type: "read-only"
@@ -588,6 +594,59 @@ class DeviceImportStore {
         });
     }
 
+    // ── Mock: load screens from local disk instead of device REST API ──
+    // TODO: Remove this mock once real device REST APIs are complete.
+    //       Replace with the real DeviceRestClient.connect() + loadAllScreens().
+
+    /** Relative path (under T3Web/t3-eez) to example device-config folder */
+    static readonly MOCK_DEVICE_CONFIG_PATH =
+        "project/examples/Smart Home (LVGL 9.x)/device-config";
+
+    /**
+     * Read all JSON screen files from the mock device-config folder.
+     */
+    async mockLoadAllScreens(): Promise<LoadAllResponse> {
+        const listResp = await fetch(
+            `/api/eez-studio/list-files-detailed?path=${encodeURIComponent(DeviceImportStore.MOCK_DEVICE_CONFIG_PATH)}`
+        );
+        if (!listResp.ok) {
+            throw new Error(`Mock: cannot read device-config folder (${listResp.status})`);
+        }
+        const listing = await listResp.json();
+        const entries: { name: string; is_directory: boolean }[] = listing.entries || [];
+
+        const screens: any[] = [];
+
+        for (const entry of entries) {
+            if (entry.is_directory || !entry.name.endsWith(".json")) continue;
+
+            const filePath = `${DeviceImportStore.MOCK_DEVICE_CONFIG_PATH}/${entry.name}`;
+            const fileResp = await fetch(
+                `/api/eez-studio/read-text-file?path=${encodeURIComponent(filePath)}`
+            );
+            if (!fileResp.ok) {
+                this.appendLog(`   ⚠️ Skipping ${entry.name}: read error ${fileResp.status}`);
+                continue;
+            }
+            const text = await fileResp.text();
+            const raw = JSON.parse(text);
+            for (const [screenName, screenData] of Object.entries(raw)) {
+                screens.push({
+                    name: screenName,
+                    json: screenData as any,
+                });
+            }
+        }
+
+        return {
+            screens,
+            meta: {
+                panel_name: "Smart Home (Mock)",
+                serial_number: 0,
+            },
+        };
+    }
+
     async startImport() {
         if (this.selectedDeviceId == null) return;
         const device = this.devices.find(d => d.panel_serial_number === this.selectedDeviceId);
@@ -601,7 +660,7 @@ class DeviceImportStore {
 
         try {
             this.appendLog(`📋 Importing from ${device.panel_name}`);
-            this.appendLog(`   IP: ${device.panel_ipaddress}  SN: ${device.panel_serial_number}`);
+            this.appendLog(`   IP: ${device.panel_ipaddress || "(mock)"}  SN: ${device.panel_serial_number}`);
 
             // Step 0 — Create project skeleton
             const projectDir = `project/${device.panel_name}`;
@@ -614,22 +673,32 @@ class DeviceImportStore {
             });
             this.appendLog("✅ Step 0 — Project folder ready");
 
-            // Step 1 — Connect via REST
-            if (!device.panel_ipaddress) {
-                throw new Error("Device has no IP address assigned. Please configure the device IP first.");
-            }
-            this.appendLog("⏳ Step 1 — Connecting to device...");
-            const { DeviceRestClient } = await import("project-editor/build/device-rest-client");
-            const client = new DeviceRestClient();
-            const conn = await client.connect(device.panel_ipaddress);
-            this.appendLog(`✅ Step 1 — Connected via ${conn.mode.toUpperCase()}`);
-            if (conn.error) {
-                throw new Error(conn.error);
+            // ── USE_MOCK when device has no IP (real REST APIs not yet ready) ──
+            const USE_MOCK = !device.panel_ipaddress;
+
+            let result: LoadAllResponse;
+
+            if (USE_MOCK) {
+                // Step 1+2 (mock) — Read from local disk
+                this.appendLog("⏳ Step 1 — [MOCK] Reading from local device-config...");
+                result = await this.mockLoadAllScreens();
+                this.appendLog(`✅ Step 1 — [MOCK] Loaded ${result.screens.length} screens from disk`);
+            } else {
+                // Step 1 — Connect via REST (real device)
+                this.appendLog("⏳ Step 1 — Connecting to device...");
+                const { DeviceRestClient } = await import("project-editor/build/device-rest-client");
+                const client = new DeviceRestClient();
+                const conn = await client.connect(device.panel_ipaddress);
+                this.appendLog(`✅ Step 1 — Connected via ${conn.mode.toUpperCase()}`);
+                if (conn.error) {
+                    throw new Error(conn.error);
+                }
+
+                // Step 2 — Fetch all screens
+                this.appendLog("⏳ Step 2 — Fetching screens...");
+                result = await client.loadAllScreens();
             }
 
-            // Step 2 — Fetch all screens in one call
-            this.appendLog("⏳ Step 2 — Fetching screens...");
-            const result = await client.loadAllScreens();
             const stagingScreens: { name: string; json: any }[] = [];
 
             for (const screen of result.screens) {
@@ -642,7 +711,7 @@ class DeviceImportStore {
                 const kb = Math.round(JSON.stringify(screen.json).length / 1024);
                 this.appendLog(`   ${screen.name} — ${kb}KB ✓`);
             }
-            this.appendLog(`✅ Step 2 — Fetched ${stagingScreens.length} screens`);
+            this.appendLog(`✅ Step ${USE_MOCK ? "2" : "2"} — Fetched ${stagingScreens.length} screens`);
 
             // Step 3 — Build .eez-project
             this.appendLog("⏳ Step 3 — Building project...");
@@ -675,20 +744,33 @@ class DeviceImportStore {
                 }
             } catch {}
 
-            // Step 5 — Open in editor
+            // Step 5 — Add to MRU and open in editor
             this.appendLog("⏳ Step 5 — Opening editor...");
-            settingsController.addItemToMRU(projectPath, { projectType: "LVGL", hasFlowSupport: true });
+
+            // Add to MRU so it appears in the recent projects list
+            const mruEntry: IMruItem = {
+                filePath: projectPath,
+                projectType: "LVGL",
+                hasFlowSupport: true,
+            } as IMruItem;
+            settingsController.mru.unshift(mruEntry);
 
             const readResp = await fetch(
                 `/api/eez-studio/read-text-file?path=${encodeURIComponent(projectPath)}`
             );
-            const projectJson = await readResp.json();
+            const projectText = await readResp.text();
+            const projectJson = JSON.parse(projectText);
 
             await initProjectEditor(tabs, ProjectEditorTab);
             const store = ProjectStore.create({ type: "read-only" });
             const loaded = loadProject(store, JSON.stringify(projectJson), false);
             store.setProject(loaded, projectPath);
-            tabs.openTab(ProjectEditorTab, { store });
+
+            // Open the project as a new editor tab
+            const tab = tabs.addProjectTab(projectPath);
+            if (tab) {
+                tab.makeActive();
+            }
 
             this.appendLog("✅ Done — Project opened");
 
