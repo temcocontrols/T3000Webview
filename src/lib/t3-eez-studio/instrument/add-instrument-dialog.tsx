@@ -7,7 +7,6 @@ import {
     computed,
     runInAction
 } from "mobx";
-import classNames from "classnames";
 import { uniqBy } from "lodash";
 
 import { IExtension } from "eez-studio-shared/extensions/extension";
@@ -16,16 +15,27 @@ import {
     isInstrumentExtension
 } from "eez-studio-shared/extensions/extensions";
 
-import { BootstrapDialog, showDialog } from "eez-studio-ui/dialog";
-import { List, IListNode, ListItem } from "eez-studio-ui/list";
+import { showDialog } from "eez-studio-ui/dialog";
 import * as notification from "eez-studio-ui/notification";
-import { Loader } from "eez-studio-ui/loader";
 
 import {
     ExtensionsManagerStore,
     ViewFilter,
     downloadAndInstallExtension
 } from "home/extensions-manager/extensions-manager";
+
+// ── Fluent UI v9 ─────────────────────────────────────────────────
+import {
+    Button,
+    Text,
+    Spinner,
+    FluentProvider,
+    webLightTheme,
+    tokens,
+} from "@fluentui/react-components";
+import {
+    DismissRegular,
+} from "@fluentui/react-icons";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -111,7 +121,11 @@ export const setupState = new SetupState();
 
 function renderManufacturer(node: IListNode) {
     let instrumentExtension = node.data as IExtension;
-    return <ListItem label={getManufacturer(instrumentExtension)} />;
+    return (
+        <Text size={200} style={{ fontWeight: node.selected ? 600 : 400 }}>
+            {getManufacturer(instrumentExtension)}
+        </Text>
+    );
 }
 
 function getExtensionName(extension: IExtension) {
@@ -129,12 +143,35 @@ function getExtensionName(extension: IExtension) {
 function renderExtension(node: IListNode) {
     let instrumentExtension = node.data as IExtension;
     return (
-        <ListItem
-            leftIcon={instrumentExtension.image}
-            leftIconSize={48}
-            label={getExtensionName(instrumentExtension)}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {instrumentExtension.image && (
+                <div style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "4px",
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: tokens.colorNeutralBackground2,
+                }}>
+                    {typeof instrumentExtension.image === "string"
+                        ? <img src={instrumentExtension.image} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                        : instrumentExtension.image}
+                </div>
+            )}
+            <Text size={200} style={{ fontWeight: node.selected ? 600 : 400 }}>
+                {getExtensionName(instrumentExtension)}
+            </Text>
+        </div>
     );
+}
+
+interface IListNode {
+    id: string;
+    data: any;
+    selected: boolean;
 }
 
 async function onAddInstrument(onAddCallback: (instrumentId: string) => void) {
@@ -207,77 +244,117 @@ async function onAddInstrument(onAddCallback: (instrumentId: string) => void) {
 }
 
 const Setup = observer(() => {
-    console.log("[add-instrument] Setup render: manufacturers=", setupState.manufacturers.length, "extensions=", setupState.extensionNodes.length, "installing=", !!setupState.extensionInstalling);
-
     if (setupState.extensionInstalling) {
-        const buttonsContainerClassName = classNames(
-            "d-flex justify-content-between mt-3 mb-5",
-            {
-                invisible:
-                    setupState.extensionInstalling.infoType !==
-                    notification.ERROR
-            }
-        );
-
         return (
-            <div className="d-flex flex-column justify-content-center align-items-center h-100">
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "16px", padding: "20px" }}>
                 {setupState.extensionInstalling.inProgress && (
-                    <div>
-                        <h3>Installing Extension</h3>
-                        <Loader />
+                    <div style={{ textAlign: "center" }}>
+                        <Text size={400} weight="semibold" style={{ display: "block", marginBottom: "12px" }}>Installing Extension</Text>
+                        <Spinner size="large" />
                     </div>
                 )}
-                <h5
-                    className="d-flex flex-column justify-content-center align-items-center"
-                    style={{ minHeight: 120 }}
-                >
+                <Text size={300} style={{ minHeight: 120, textAlign: "center" }}>
                     {setupState.extensionInstalling.infoNode}
-                </h5>
-                <div
-                    className={buttonsContainerClassName}
-                    style={{ width: "400" }}
-                >
-                    <button
-                        className="btn btn-secondary"
-                        onClick={action(event => {
-                            event.preventDefault();
+                </Text>
+                {setupState.extensionInstalling.infoType === notification.ERROR && (
+                    <Button
+                        appearance="secondary"
+                        onClick={action(() => {
                             runInAction(() => {
                                 setupState.extensionInstalling = undefined;
                             });
                         })}
                     >
                         Back
-                    </button>
-                </div>
-            </div>
-        );
-    } else {
-        return (
-            <div className="d-flex flex-column justify-content-center align-items-center h-100">
-                <div
-                    className={classNames("d-flex justify-content-center h-50")}
-                    style={{ minHeight: 220, maxHeight: 400, width: "100%" }}
-                >
-                    <List
-                        nodes={setupState.manufacturers}
-                        renderNode={renderManufacturer}
-                        selectNode={setupState.selectManufacturer}
-                        className="overflow-auto border"
-                        style={{ width: 240 }}
-                        tabIndex={0}
-                    />
-                    <List
-                        nodes={setupState.extensionNodes}
-                        renderNode={renderExtension}
-                        selectNode={setupState.selectExtension}
-                        className="overflow-auto border ml-2"
-                        style={{ width: 320 }}
-                        tabIndex={0}
-                    />
-                </div>
+                    </Button>
+                )}
             </div>
         );
     }
+
+    // ── List item helper ──
+    const listItemStyle = (selected: boolean): React.CSSProperties => ({
+        display: "flex",
+        alignItems: "center",
+        padding: "6px 10px",
+        cursor: "pointer",
+        borderRadius: "4px",
+        backgroundColor: selected ? tokens.colorNeutralBackground1Selected : "transparent",
+        color: selected ? tokens.colorBrandForeground1 : tokens.colorNeutralForeground2,
+        transition: "background-color 0.1s",
+        fontSize: "13px",
+        minHeight: "36px",
+    });
+
+    return (
+        <div style={{ display: "flex", justifyContent: "center", padding: "8px 0", gap: "12px", height: "360px" }}>
+            {/* Manufacturers list */}
+            <div style={{
+                width: "220px",
+                border: "1px solid #e0e0e0",
+                borderRadius: "6px",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+            }}>
+                <div style={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    padding: "6px 10px",
+                    borderBottom: "1px solid #e0e0e0",
+                    backgroundColor: "#f5f5f5",
+                }}>
+                    Manufacturer
+                </div>
+                <div className="eez-instrument-list" style={{ flex: 1, overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: "#c1c1c1 transparent", padding: "4px 0" }}>
+                    {setupState.manufacturers.map(node => (
+                        <div
+                            key={node.id}
+                            style={listItemStyle(node.selected)}
+                            onClick={() => setupState.selectManufacturer(node)}
+                            onMouseEnter={(e) => { if (!node.selected) e.currentTarget.style.backgroundColor = "#f5f5f5"; }}
+                            onMouseLeave={(e) => { if (!node.selected) e.currentTarget.style.backgroundColor = "transparent"; }}
+                        >
+                            {renderManufacturer(node)}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Extensions list */}
+            <div style={{
+                width: "320px",
+                border: "1px solid #e0e0e0",
+                borderRadius: "6px",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+            }}>
+                <div style={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    padding: "6px 10px",
+                    borderBottom: "1px solid #e0e0e0",
+                    backgroundColor: "#f5f5f5",
+                }}>
+                    Instrument
+                </div>
+                <div className="eez-instrument-list" style={{ flex: 1, overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: "#c1c1c1 transparent", padding: "4px 0" }}>
+                    {setupState.extensionNodes.map(node => (
+                        <div
+                            key={node.id}
+                            style={listItemStyle(node.selected)}
+                            onClick={() => setupState.selectExtension(node)}
+                            onMouseEnter={(e) => { if (!node.selected) e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground1Hover; }}
+                            onMouseLeave={(e) => { if (!node.selected) e.currentTarget.style.backgroundColor = "transparent"; }}
+                        >
+                            {renderExtension(node)}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
 });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,43 +391,72 @@ const AddInstrumentDialog = observer(
         }
 
         render() {
+            if (!this.open) return null;
             return (
-                <BootstrapDialog
-                    modal={true}
-                    title="Add Instrument"
-                    open={this.open}
-                    size={"large"}
-                    onCancel={this.onCancel}
-                    disableButtons={false}
-                    okEnabled={() => false}
-                    backdrop="static"
-                    buttons={[
-                        {
-                            id: "cancel",
-                            type: "secondary",
-                            position: "right",
-                            onClick: this.onCancel,
-                            disabled:
-                                setupState.extensionInstalling != undefined &&
-                                setupState.extensionInstalling.infoType !==
-                                    notification.ERROR,
-                            style: {},
-                            text: "Cancel"
-                        },
-                        {
-                            id: "ok",
-                            type: "primary",
-                            position: "right",
-                            onClick: this.onOk,
-                            disabled:
-                                setupState.extensionInstalling != undefined,
-                            style: {},
-                            text: "OK"
-                        }
-                    ]}
-                >
-                    <Setup />
-                </BootstrapDialog>
+                <FluentProvider theme={webLightTheme}>
+                    <div style={{
+                        position: "fixed", inset: 0, zIndex: 1000,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        backgroundColor: "rgba(0,0,0,0.4)",
+                    }}>
+                        <style>{`.eez-instrument-list ::-webkit-scrollbar{width:6px}.eez-instrument-list ::-webkit-scrollbar-thumb{background:#c1c1c1;border-radius:3px}`}</style>
+                        <div style={{
+                            backgroundColor: "#fff",
+                            borderRadius: "6px",
+                            boxShadow: "0 8px 32px rgba(0,0,0,0.24)",
+                            width: "580px",
+                            display: "flex",
+                            flexDirection: "column",
+                        }}>
+                            {/* Header */}
+                            <div style={{
+                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                padding: "10px 12px",
+                                borderBottom: "1px solid #e0e0e0",
+                            }}>
+                                <Text size={200} weight="semibold">Add Instrument</Text>
+                                <Button
+                                    appearance="transparent"
+                                    icon={<DismissRegular />}
+                                    onClick={this.onCancel}
+                                />
+                            </div>
+
+                            {/* Body */}
+                            <div style={{ overflow: "hidden", padding: "0 8px" }}>
+                                <Setup />
+                            </div>
+
+                            {/* Footer */}
+                            <div style={{
+                                display: "flex", justifyContent: "flex-end", gap: "8px",
+                                padding: "10px 12px",
+                            }}>
+                                <Button
+                                    appearance="secondary"
+                                    size="medium"
+                                    onClick={this.onCancel}
+                                    disabled={
+                                        setupState.extensionInstalling != undefined &&
+                                        setupState.extensionInstalling.infoType !== notification.ERROR
+                                    }
+                                    style={{ fontWeight: 400, fontSize: "12px", minWidth: "80px" }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    appearance="primary"
+                                    size="medium"
+                                    onClick={this.onOk}
+                                    disabled={setupState.extensionInstalling != undefined}
+                                    style={{ fontWeight: 400, fontSize: "12px", minWidth: "80px" }}
+                                >
+                                    OK
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </FluentProvider>
             );
         }
     }

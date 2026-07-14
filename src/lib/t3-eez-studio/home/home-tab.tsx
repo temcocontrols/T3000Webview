@@ -114,6 +114,8 @@ export const Home = observer(
                                 selected={homeTabStore.activeTab == "examples"}
                                 onClick={action(() => { homeTabStore.activeTab = "examples"; })}
                             />
+                            {/* Instruments not relevant for T3000 */}
+                            {/*
                             <NavItem
                                 icon={HOME_TAB_INSTRUMENTS_ICON}
                                 label="Instruments"
@@ -121,6 +123,7 @@ export const Home = observer(
                                 selected={homeTabStore.activeTab == "instruments"}
                                 onClick={action(() => { homeTabStore.activeTab = "instruments"; })}
                             />
+                            */}
                             <NavItem
                                 icon={HOME_TAB_EXTENSIONS_ICON}
                                 label="Extensions"
@@ -170,12 +173,14 @@ export const Home = observer(
                             <div style={{ margin: "auto" }}></div>
                         )
                         */}
+                        {/* Instruments not relevant for T3000
                         {homeTabStore.activeTab == "instruments" && (
                             <Instruments
                                 instrumentsStore={defaultInstrumentsStore}
                                 size="M"
                             />
                         )}
+                        */}
                         {homeTabStore.activeTab == "extensions" && (
                             <ExtensionsManager />
                         )}
