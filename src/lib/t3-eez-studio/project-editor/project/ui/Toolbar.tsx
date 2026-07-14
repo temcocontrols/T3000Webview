@@ -137,7 +137,7 @@ export const Toolbar = observer(
                     padding: `2px ${tokens.spacingHorizontalS}`,
                     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
                     backgroundColor: tokens.colorNeutralBackground1,
-                    minHeight: "34px",
+                    minHeight: "40px",
                     gap: tokens.spacingHorizontalXS,
                 }}>
                     {showEditorButtons ? <EditorButtons /> : <div />}
@@ -829,9 +829,16 @@ const PageZoomButton = observer(
                 <div style={{ display: "flex" }}>
                     <button
                         ref={this.buttonRef}
-                        className="btn btn-primary dropdown-toggle EezStudio_PageZoomButton"
+                        className="dropdown-toggle EezStudio_PageZoomButton"
                         type="button"
                         onClick={this.openDropdown}
+                        style={{
+                            border: "1px solid #d1d1d1",
+                            background: "transparent",
+                            padding: "2px 8px",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                        }}
                     >
                         {Math.round(this.zoom * 100)}%
                     </button>

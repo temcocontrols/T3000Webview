@@ -67,7 +67,6 @@
 
     > .EezStudio_ProjectEditor_ToolbarNav {
         padding: 3px;
-        background-color: @panelHeaderColor;
         border-bottom: 1px solid @borderColor;
         min-height: 45px;
 
@@ -89,12 +88,13 @@
             }
             justify-content: flex-start;
             display: flex;
+            gap: 8px;
         }
 
         .EezStudio_ProjectEditor_ToolbarNav_RunEditSwitchControls {
             display: flex;
+            gap: 8px;
             z-index: 1;
-            background-color: @panelHeaderColor;
         }
 
         .EezStudio_ProjectEditor_ToolbarNav_FlowRuntimeControls {
@@ -277,6 +277,22 @@
     .EezStudio_ComponentsPalette {
         flex-grow: 1;
         overflow: auto;
+
+        scrollbar-width: thin;
+        scrollbar-color: #c1c1c1 transparent;
+
+        &::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
 
         .eez-component-palette-group {
             border: none;
@@ -515,6 +531,22 @@
     flex-direction: column;
     overflow: hidden;
 
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 transparent;
+
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: #c1c1c1;
+        border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
     .EezStudio_PropertiesPanel_Header {
         flex-shrink: 0;
         flex-grow: 0;
@@ -544,6 +576,22 @@
     .EezStudio_PropertiesPanel_Body {
         height: 100%;
         overflow: auto;
+
+        scrollbar-width: thin;
+        scrollbar-color: #c1c1c1 transparent;
+
+        &::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background-color: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
 
         .EezStudio_PropertyGrid_NothingSelected {
             height: 100%;
@@ -3245,6 +3293,22 @@
     flex-grow: 1;
     overflow-x: hidden;
     overflow-y: auto;
+
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 transparent;
+
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
 
     select,
     input.form-control,

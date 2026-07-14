@@ -75,7 +75,7 @@ function resolveIcon(icon: string | React.ReactNode, size?: number): React.React
 const useStyles = makeStyles({
     btnGroup: {
         display: "flex",
-        gap: "1px",
+        gap: "4px",
         "& .fluent-toolbar-btn": {
             minWidth: "28px",
             height: "28px",
@@ -128,8 +128,12 @@ interface ButtonActionProps {
     text: string;
     title?: string;
     icon?: React.ReactNode;
+    iconSize?: number;
     onClick: () => void;
     enabled?: boolean;
+    selected?: boolean;
+    attention?: boolean;
+    loader?: boolean;
     className?: string;
 }
 
@@ -137,20 +141,51 @@ export const ButtonAction: React.FC<ButtonActionProps> = ({
     text,
     title,
     icon,
+    iconSize,
     onClick,
     enabled = true,
+    selected = false,
+    attention = false,
+    loader = false,
 }) => {
+    const resolvedIcon = icon
+        ? typeof icon === "string"
+            ? resolveIcon(icon, iconSize) ?? undefined
+            : (React.isValidElement(icon) ? icon as React.ReactElement : undefined)
+        : undefined;
+
+    const iconEl = resolvedIcon
+        ? React.cloneElement(resolvedIcon, {
+              style: { fontSize: iconSize ?? 20, ...(resolvedIcon.props as any).style }
+          } as any)
+        : undefined;
+
+    let appearance: "primary" | "subtle" | "outline" = "subtle";
+    if (selected) {
+        appearance = "primary";
+    } else if (attention) {
+        appearance = "outline";
+    }
+
     return (
         <Button
-            appearance="primary"
-            icon={icon ? (React.isValidElement(icon) ? icon as React.ReactElement : undefined) : undefined}
+            appearance={appearance}
+            icon={iconEl}
             title={title}
             onClick={onClick}
             disabled={!enabled}
+            disabledFocusable={loader}
             size="small"
-            style={{ padding: "2px 8px", minHeight: "26px" }}
+            style={{ padding: "2px 8px", minHeight: "26px", fontWeight: 400, fontSize: "13px" }}
         >
-            {text}
+            {loader ? (
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span className="spinner-border spinner-border-sm" role="status" style={{ width: "12px", height: "12px" }} />
+                    {text}
+                </span>
+            ) : (
+                text
+            )}
         </Button>
     );
 };
