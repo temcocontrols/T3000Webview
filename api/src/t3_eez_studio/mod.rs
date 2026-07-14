@@ -924,7 +924,7 @@ async fn vacuum_database(
 
 lazy_static::lazy_static! {
     static ref STORE_DB: Option<Mutex<rusqlite::Connection>> = {
-        let db_path = data_root().join("storage.db");
+        let db_path = data_root().join("userData").join("storage.db");
         info!("store_db: opening {}", db_path.display());
         match rusqlite::Connection::open(&db_path) {
             Ok(conn) => {

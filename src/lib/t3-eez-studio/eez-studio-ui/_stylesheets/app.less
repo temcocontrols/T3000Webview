@@ -1065,6 +1065,22 @@ button.EezStudio_Action {
     border: 2px dashed transparent;
     height: 100%;
 
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 transparent;
+
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
     &:not(.drag-source) {
         .tree-row:not(.drag-source) {
             &.selected {
