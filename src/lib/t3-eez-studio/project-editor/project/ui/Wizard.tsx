@@ -2,11 +2,11 @@ import { dialog, getCurrentWindow } from "@electron/remote";
 import fs from "fs";
 import { rmdir } from "fs/promises";
 import path from "path";
+import { SimpleGitProgressEvent } from "simple-git";
 import React from "react";
 import showdown from "showdown";
 import packageJSON from "../../../package.json";
 import ReactDOM from "react-dom";
-import { SimpleGitProgressEvent } from "simple-git";
 import classNames from "classnames";
 import {
     action,
@@ -30,9 +30,7 @@ import { guid } from "eez-studio-shared/guid";
 import { stringCompare } from "eez-studio-shared/string";
 
 import { showDialog } from "eez-studio-ui/dialog";
-import { Loader } from "eez-studio-ui/loader";
 import { ITreeNode, Tree } from "eez-studio-ui/tree";
-import { SearchInput } from "eez-studio-ui/search-input";
 import { Icon } from "eez-studio-ui/icon";
 
 import { openProject } from "home/tabs-store";
@@ -58,9 +56,30 @@ import {
     PROJECT_TYPE_NAMES,
     ProjectType
 } from "project-editor/project/project";
-import { ButtonAction } from "eez-studio-ui/action";
 import type { CommandsProtocolType } from "eez-studio-shared/extensions/extension";
 import { compareVersions } from "eez-studio-shared/util";
+
+// ── Fluent UI v9 ─────────────────────────────────────────────────
+import {
+    Button,
+    Input,
+    Text,
+    Spinner,
+    Badge,
+    Dropdown,
+    Option,
+    Switch,
+    makeStyles,
+    tokens,
+    mergeClasses,
+} from "@fluentui/react-components";
+import {
+    SearchRegular,
+    DismissRegular,
+    EditRegular,
+    PlayRegular,
+    FolderOpenRegular,
+} from "@fluentui/react-icons";
 
 // from https://envox.eu/gitea
 interface TemplateProject {
@@ -1921,16 +1940,47 @@ export const wizardModelExamples = WizardModel.makeExamplesWizardModel();
 
 const FoldersTree = observer(
     class FoldersTree extends React.Component<{ wizardModel: WizardModel }> {
+        renderNode(node: ITreeNode, depth: number = 0): React.ReactNode {
+            const isSelected = node.selected;
+            const hasChildren = node.children && node.children.length > 0;
+            return (
+                <div key={node.id}>
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "5px 8px",
+                            marginBottom: "2px",
+                            marginLeft: depth * 16,
+                            cursor: "pointer",
+                            borderRadius: "4px",
+                            fontSize: "13px",
+                            color: isSelected ? tokens.colorBrandForeground1 : tokens.colorNeutralForeground2,
+                            backgroundColor: isSelected ? tokens.colorNeutralBackground1Selected : "transparent",
+                            fontWeight: isSelected ? 600 : 400,
+                            transition: "background-color 0.1s",
+                        }}
+                        onClick={() => this.props.wizardModel.changeFolder(node.id)}
+                        onMouseEnter={(e) => {
+                            if (!isSelected) e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground1Hover;
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!isSelected) e.currentTarget.style.backgroundColor = "transparent";
+                        }}
+                    >
+                        {node.label}
+                    </div>
+                    {hasChildren && node.children!.map(child => this.renderNode(child, depth + 1))}
+                </div>
+            );
+        }
+
         render() {
             return (
-                <Tree
-                    rootNode={this.props.wizardModel.folders}
-                    selectNode={node => {
-                        this.props.wizardModel.changeFolder(node.id);
-                    }}
-                    showOnlyChildren={true}
-                    style={{ height: "100%", overflow: "auto" }}
-                />
+                <div style={{ flex: 1, maxWidth: "220px", overflowY: "auto", scrollbarWidth: "thin", padding: "4px 4px" }}>
+                    {this.props.wizardModel.folders.children?.map(child => this.renderNode(child))}
+                </div>
             );
         }
     }
@@ -2140,12 +2190,14 @@ const ProjectTypeComponent = observer(
                                 {projectType.keywords
                                     .split(" ")
                                     .map(keyword => (
-                                        <span
+                                        <Badge
                                             key={keyword}
-                                            className="badge bg-info"
+                                            appearance="tint"
+                                            color="informative"
+                                            size="small"
                                         >
                                             {keyword}
-                                        </span>
+                                        </Badge>
                                     ))}
                             </div>
                         )}
@@ -2269,9 +2321,11 @@ const ProjectProperties = observer(
             if (wizardModel.createProjectInProgress) {
                 return (
                     <div className="EezStudio_NewProjectWizard_CreateProjectProgress">
-                        <h6>Creating project ...</h6>
-                        <Loader />
-                        <div>{wizardModel.progress || <span>&nbsp;</span>}</div>
+                        <Text size={400} weight="semibold">Creating project ...</Text>
+                        <Spinner size="large" />
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                            {wizardModel.progress || "\u00A0"}
+                        </Text>
                     </div>
                 );
             }
@@ -2283,26 +2337,20 @@ const ProjectProperties = observer(
                     <div className="EezStudio_NewProjectWizard_ProjectProperties_Section">
                         <h6>Project Settings</h6>
                         <div>
-                            <div className="mb-3">
-                                <label
-                                    htmlFor="new-project-wizard-name-input"
-                                    className="form-label"
-                                >
+                            <div style={{ marginBottom: "12px" }}>
+                                <Text size={200} weight="semibold" style={{ display: "block", marginBottom: "4px" }}>
                                     Name
-                                </label>
-                                <NameInput
-                                    id="new-project-wizard-name-input"
+                                </Text>
+                                <Input
                                     value={wizardModel.name || ""}
-                                    onChange={action(
-                                        (value: string | undefined) =>
-                                            (wizardModel.name = value)
-                                    )}
+                                    onChange={(e) => action((value: string | undefined) => (wizardModel.name = value))(e.target.value)}
                                     onKeyDown={this.onKeyDown}
+                                    style={{ width: "100%" }}
                                 />
                                 {wizardModel.nameError && (
-                                    <div className="form-text text-danger">
+                                    <Text size={100} style={{ color: tokens.colorPaletteRedForeground1, marginTop: "4px" }}>
                                         {wizardModel.nameError}
-                                    </div>
+                                    </Text>
                                 )}
                             </div>
 
@@ -2310,27 +2358,23 @@ const ProjectProperties = observer(
                                 (wizardModel.type == "LVGL" ||
                                     wizardModel.type ==
                                     "LVGL with EEZ Flow") && (
-                                    <div className="mb-3">
-                                        <label
-                                            className="form-label"
-                                            htmlFor="new-project-wizard-lvgl-version"
-                                        >
+                                    <div style={{ marginBottom: "12px" }}>
+                                        <Text size={200} weight="semibold" style={{ display: "block", marginBottom: "4px" }}>
                                             LVGL version
-                                        </label>
+                                        </Text>
                                         <select
-                                            id="new-project-wizard-lvgl-version"
-                                            className="form-select"
-                                            onChange={action(
-                                                event =>
-                                                (wizardModel.lvglVersion =
-                                                    event.target.value == "9.2.2" ||
-                                                        event.target.value == "9.3.0" ||
-                                                        event.target.value == "9.4.0" ||
-                                                        event.target.value == "9.5.0"
-                                                        ? event.target.value
-                                                        : "8.4.0")
-                                            )}
                                             value={wizardModel.lvglVersion}
+                                            onChange={action(e => (wizardModel.lvglVersion = e.target.value))}
+                                            style={{
+                                                width: "100%",
+                                                height: "32px",
+                                                padding: "0 8px",
+                                                border: `1px solid ${tokens.colorNeutralStroke1}`,
+                                                borderRadius: tokens.borderRadiusMedium,
+                                                background: tokens.colorNeutralBackground1,
+                                                fontSize: "13px",
+                                                color: tokens.colorNeutralForeground1,
+                                            }}
                                         >
                                             <option value="8.4.0">8.4.0</option>
                                             <option value="9.2.2">9.2.2</option>
@@ -2343,41 +2387,34 @@ const ProjectProperties = observer(
 
                             {wizardModel.section == "templates" &&
                                 wizardModel.type == "IEXT" && (
-                                    <div className="mb-3">
-                                        <label
-                                            className="form-label"
-                                            htmlFor="new-project-wizard-commands-protocol"
-                                        >
+                                    <div style={{ marginBottom: "12px" }}>
+                                        <Text size={200} weight="semibold" style={{ display: "block", marginBottom: "4px" }}>
                                             Commands protocol
-                                        </label>
+                                        </Text>
                                         <select
-                                            id="new-project-wizard-commands-protocol"
-                                            className="form-select"
-                                            onChange={action(
-                                                event =>
-                                                (wizardModel.commandsProtocol =
-                                                    event.target.value ==
-                                                        "PROPRIETARY"
-                                                        ? "PROPRIETARY"
-                                                        : "SCPI")
-                                            )}
                                             value={wizardModel.commandsProtocol}
+                                            onChange={action(e => (wizardModel.commandsProtocol = e.target.value as CommandsProtocolType))}
+                                            style={{
+                                                width: "100%",
+                                                height: "32px",
+                                                padding: "0 8px",
+                                                border: `1px solid ${tokens.colorNeutralStroke1}`,
+                                                borderRadius: tokens.borderRadiusMedium,
+                                                background: tokens.colorNeutralBackground1,
+                                                fontSize: "13px",
+                                                color: tokens.colorNeutralForeground1,
+                                            }}
                                         >
                                             <option value="SCPI">SCPI</option>
-                                            <option value="PROPRIETARY">
-                                                Proprietary
-                                            </option>
+                                            <option value="PROPRIETARY">Proprietary</option>
                                         </select>
                                     </div>
                                 )}
 
-                            <div className="mb-3">
-                                <label
-                                    htmlFor="new-project-wizard-location-input"
-                                    className="col-form-label"
-                                >
+                            <div style={{ marginBottom: "12px" }}>
+                                <Text size={200} weight="semibold" style={{ display: "block", marginBottom: "4px" }}>
                                     Location
-                                </label>
+                                </Text>
                                 <DirectoryBrowserInput
                                     value={wizardModel.location || ""}
                                     onChange={action(
@@ -2392,54 +2429,40 @@ const ProjectProperties = observer(
                                 )}
                             </div>
 
-                            {!(
-                                wizardModel.selectedTemplateProject ||
+                            {!(wizardModel.selectedTemplateProject ||
                                 (wizardModel.isSelectedExampleWithGitRepository &&
-                                    wizardModel.gitClone)
-                            ) && (
-                                    <div className="mb-3 form-check">
-                                        <input
-                                            id="new-project-wizard-create-directory-checkbox"
-                                            className="form-check-input"
-                                            type="checkbox"
+                                    wizardModel.gitClone)) && (
+                                    <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <Switch
                                             checked={wizardModel.createDirectory}
-                                            onChange={action(
-                                                event =>
-                                                (wizardModel.createDirectory =
-                                                    event.target.checked)
-                                            )}
+                                            onChange={(e) => action((v: boolean) => (wizardModel.createDirectory = v))(e.target.checked)}
                                         />
-                                        <label
-                                            className="form-check-label"
-                                            htmlFor="new-project-wizard-create-directory-checkbox"
-                                        >
-                                            Create directory
-                                        </label>
+                                        <Text size={200}>Create directory</Text>
                                     </div>
                                 )}
 
-                            <div className="mb-3">
-                                <label
-                                    htmlFor="new-project-wizard-project-path-static"
-                                    className="form-label"
-                                >
+                            <div style={{ marginBottom: "12px" }}>
+                                <Text size={200} weight="semibold" style={{ display: "block", marginBottom: "4px" }}>
                                     {wizardModel.selectedTemplateProject ||
                                         (wizardModel.isSelectedExampleWithGitRepository &&
                                             wizardModel.gitClone)
                                         ? "Project folder path"
                                         : "Project file path"}
-                                </label>
-                                <div
-                                    id="new-project-wizard-project-path-static"
-                                    className="form-control EezStudio_NewProjectWizard_StaticField"
-                                >
+                                </Text>
+                                <div style={{
+                                    padding: "6px 10px",
+                                    borderRadius: "4px",
+                                    background: tokens.colorNeutralBackground2,
+                                    border: `1px solid ${tokens.colorNeutralStroke1}`,
+                                    fontSize: "13px",
+                                    color: tokens.colorNeutralForeground2,
+                                    wordBreak: "break-all",
+                                }}>
                                     {(wizardModel.selectedTemplateProject ||
                                         (wizardModel.isSelectedExampleWithGitRepository &&
                                             wizardModel.gitClone)
                                         ? wizardModel.projectFolderPath
-                                        : wizardModel.projectFilePath) || (
-                                            <span>&nbsp;</span>
-                                        )}
+                                        : wizardModel.projectFilePath) || "\u00A0"}
                                 </div>
                             </div>
 
@@ -2669,57 +2692,48 @@ const ProjectProperties = observer(
                                     </div>
                                 )}
 
-                            <div className="d-flex justify-content-end">
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: tokens.spacingHorizontalS }}>
                                 {wizardModel.section == "templates" ? (
-                                    <button
-                                        className="btn btn-lg btn-success"
+                                    <Button
+                                        appearance="primary"
                                         onClick={this.onCreateProject}
-                                        disabled={
-                                            wizardModel.createProjectInProgress
-                                        }
+                                        disabled={wizardModel.createProjectInProgress}
+                                        style={{ fontWeight: 400, fontSize: "13px" }}
                                     >
                                         Create Project
-                                    </button>
+                                    </Button>
                                 ) : (
                                     <>
-                                        <ButtonAction
-                                            className="btn-primary"
-                                            text="Edit Project"
-                                            title="Edit Project"
-                                            icon="material:edit"
+                                        <Button
+                                            appearance="primary"
+                                            icon={<EditRegular />}
                                             onClick={this.onCreateProject}
-                                            enabled={
-                                                !wizardModel.createProjectInProgress
-                                            }
-                                        />
+                                            disabled={wizardModel.createProjectInProgress}
+                                            style={{ fontWeight: 400 }}
+                                        >
+                                            Edit Project
+                                        </Button>
                                         {wizardModel.selectedProjectType
                                             ?.projectType != "IEXT" && (
-                                                <ButtonAction
-                                                    className="btn-secondary"
-                                                    text="Run Project"
-                                                    title="Run Project"
-                                                    icon="material:play_arrow"
+                                                <Button
+                                                    appearance="secondary"
+                                                    icon={<PlayRegular />}
                                                     onClick={this.onRunProject}
-                                                    enabled={
-                                                        !wizardModel.createProjectInProgress
-                                                    }
-                                                    style={{
-                                                        marginLeft: 10
-                                                    }}
-                                                />
+                                                    disabled={wizardModel.createProjectInProgress}
+                                                    style={{ fontWeight: 400 }}
+                                                >
+                                                    Run Project
+                                                </Button>
                                             )}
                                     </>
                                 )}
                             </div>
 
                             {wizardModel.projectCreationError && (
-                                <div className="EezStudio_NewProjectWizard_CreationStatus">
-                                    <div
-                                        className="alert alert-danger"
-                                        style={{ flex: 1 }}
-                                    >
+                                <div style={{ marginTop: "12px", padding: "8px 12px", borderRadius: "4px", background: "#fde7e9", border: "1px solid #d32f2f" }}>
+                                    <Text size={200} style={{ color: "#d32f2f" }}>
                                         {wizardModel.projectCreationError}
-                                    </div>
+                                    </Text>
                                 </div>
                             )}
                         </div>
@@ -2804,13 +2818,22 @@ export const NewProjectWizard = observer(
                         disabled: wizardModel.createProjectInProgress
                     })}
                 >
-                    <SearchInput
-                        searchText={wizardModel.searchText}
-                        onClear={action(() => {
-                            wizardModel.searchText = "";
-                        })}
-                        onChange={wizardModel.onSearchChange}
-                    />
+                    <div style={{
+                        margin: "4px auto 10px",
+                        maxWidth: "500px",
+                        width: "100%",
+                    }}>
+                        <style>{`.eez-wizard-search input::placeholder { font-size: 12px; }`}</style>
+                        <Input
+                            className="eez-wizard-search"
+                            contentBefore={<SearchRegular fontSize={16} />}
+                            placeholder={`Search ${wizardModel.section === "templates" ? "templates" : "examples"}...`}
+                            value={wizardModel.searchText}
+                            onChange={wizardModel.onSearchChange}
+                            size="medium"
+                            style={{ width: "100%", borderRadius: 10, fontSize: "14px" }}
+                        />
+                    </div>
 
                     <div className="EezStudio_NewProjectWizard_Body">
                         {wizardModel.folders.children.length > 0 ? (
@@ -2823,12 +2846,10 @@ export const NewProjectWizard = observer(
                                 />
                             </>
                         ) : (
-                            <div className="EezStudio_NewProjectWizard_NoProjects">
-                                No{" "}
-                                {wizardModel.section == "templates"
-                                    ? "templates"
-                                    : "examples"}{" "}
-                                found
+                            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <Text size={400} style={{ color: tokens.colorNeutralForeground3 }}>
+                                    No {wizardModel.section == "templates" ? "templates" : "examples"} found
+                                </Text>
                             </div>
                         )}
                     </div>
@@ -2896,11 +2917,12 @@ class DirectoryBrowserInput extends React.Component<{
 
     render() {
         return (
-            <div className="input-group">
+            <div className="input-group" style={{ height: "32px" }}>
                 <input
                     type="text"
                     id={this.props.id}
                     className="form-control"
+                    style={{ height: "32px", fontSize: "13px" }}
                     value={this.props.value || ""}
                     onChange={event => this.props.onChange(event.target.value)}
                 />
@@ -2908,6 +2930,7 @@ class DirectoryBrowserInput extends React.Component<{
                     <button
                         className="btn btn-secondary"
                         type="button"
+                        style={{ height: "32px", fontSize: "13px" }}
                         onClick={this.onSelect}
                     >
                         &hellip;
