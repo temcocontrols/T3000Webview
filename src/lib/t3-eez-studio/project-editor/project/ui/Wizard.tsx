@@ -2815,7 +2815,6 @@ export const NewProjectWizard = observer(
                     <div className="EezStudio_NewProjectWizard_Body">
                         {wizardModel.folders.children.length > 0 ? (
                             <>
-                                <div className="EezStudio_NewProjectWizard_Space"></div>
                                 <FoldersTree wizardModel={wizardModel} />
                                 <ProjectTypesList wizardModel={wizardModel} />
                                 <ProjectProperties

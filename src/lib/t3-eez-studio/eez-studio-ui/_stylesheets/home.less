@@ -249,26 +249,21 @@
         margin: 10px auto;
         width: 360px;
         border: 1px solid @borderColor;
-        border-radius: 18px;
+        border-radius: 6px;
         padding: 5px 10px;
-        font-size: 120%;
-        /*
-        box-shadow: 0 2px 5px 1px @borderColor;
-        &:hover {
-            box-shadow: 0 2px 8px 1px @borderColor;
-        }
-        */
+        font-size: 13px;
     }
 
     .EezStudio_NewProjectWizard_Body {
         flex: 1;
-        justify-content: center;
+        justify-content: flex-start;
         align-items: start;
         display: flex;
         overflow: hidden;
         position: relative;
 
         margin-bottom: 10px;
+        padding-left: 10px;
 
         .EezStudio_NewProjectWizard_NoProjects {
             display: flex;
@@ -282,10 +277,14 @@
             margin: 0 10px;
             box-sizing: border-box;
             border: 1px solid @borderColor;
-            border-radius: 10px;
+            border-radius: 6px;
             overflow-y: auto;
             overflow-x: hidden;
             max-height: 100%;
+            scrollbar-width: thin;
+            scrollbar-color: #c1c1c1 transparent;
+            &::-webkit-scrollbar { width: 6px; }
+            &::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
         }
 
         .EezStudio_NewProjectWizard_Space {
@@ -297,13 +296,14 @@
 
         .EezStudio_SimpleTree {
             flex: 1;
-            max-width: 240px;
+            max-width: 220px;
 
             height: fit-content !important;
 
             .EezStudio_TreeRow {
                 width: 100%;
-                height: 24px;
+                height: 28px;
+                font-size: 13px;
 
                 .EezStudio_TreeRowLabel,
                 .EezStudio_TreeRowLabel_Triangle {
@@ -329,8 +329,8 @@
         }
 
         .EezStudio_NewProjectWizard_ProjectTypes {
-            flex: 3;
-            max-width: 720px;
+            flex: 2;
+            max-width: 560px;
 
             display: flex;
             flex-direction: column;
@@ -350,6 +350,7 @@
                 &.selected {
                     color: @selectionColor;
                     background-color: @selectionBackgroundColor;
+                    border-radius: 4px;
                     border-bottom: 1px solid transparent;
                     .EezStudio_NewProjectWizard_ProjectType_Image.imageZoomEnabled {
                         > img,
@@ -386,15 +387,17 @@
                     .EezStudio_NewProjectWizard_ProjectType_Details_Title {
                         display: flex;
                         justify-content: space-between;
+                        font-size: 14px;
                         h6 {
                             margin-bottom: 0;
+                            font-size: 14px;
                         }
                     }
 
                     .EezStudio_NewProjectWizard_ProjectType_Details_Keywords {
                         span.badge {
                             margin-right: 5px;
-                            font-size: 0.8em;
+                            font-size: 11px;
                             &:last-child {
                                 margin-right: 0;
                             }
@@ -404,10 +407,12 @@
                     .EezStudio_NewProjectWizard_ProjectType_Details_Description {
                         margin-top: 10px;
                         opacity: 75%;
+                        font-size: 13px;
                     }
 
                     .EezStudio_NewProjectWizard_ProjectType_Details_InfoList {
                         margin-top: 10px;
+                        font-size: 12px;
                         .lighter {
                             opacity: 75%;
                         }
@@ -420,12 +425,16 @@
         }
 
         .EezStudio_NewProjectWizard_ProjectProperties {
-            flex: 2;
-            max-width: 480px;
+            flex: 1;
+            max-width: none;
             min-height: 200px;
 
             overflow-y: auto;
             overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: #c1c1c1 transparent;
+            &::-webkit-scrollbar { width: 6px; }
+            &::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
 
             .EezStudio_NewProjectWizard_ProjectProperties_Section {
                 position: relative;
@@ -435,10 +444,12 @@
                     padding: 5px 10px;
                     text-transform: uppercase;
                     margin: 0;
+                    font-size: 12px;
                 }
 
                 & > div {
                     padding: 10px;
+                    font-size: 13px;
                 }
 
                 .markdown {
