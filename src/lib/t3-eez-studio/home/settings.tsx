@@ -1120,7 +1120,15 @@ const SettingsSectionHeader = ({
 }) => (
     <tr className="EezStudio_SettingsSectionHeader">
         <td colSpan={2}>
-            <h5>{title}</h5>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{
+                    width: "3px",
+                    height: "14px",
+                    borderRadius: "2px",
+                    backgroundColor: "#0f6cbd",
+                }} />
+                <h5 style={{ margin: 0 }}>{title}</h5>
+            </div>
         </td>
     </tr>
 );
@@ -1174,7 +1182,10 @@ export const Settings = observer(
                 }}>
                     {/* Row 1 Col 1: Databases */}
                     <div style={{ ...cardStyle, minHeight: 0 }}>
-                        <div style={cardTitleStyle}>Databases</div>
+                        <div style={{ ...cardTitleStyle, gap: "8px", paddingLeft: "12px" }}>
+                            <div style={{ width: "3px", height: "14px", borderRadius: "2px", backgroundColor: "#0f6cbd", flexShrink: 0 }} />
+                            Databases
+                        </div>
                         <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
                             <Databases />
                         </div>
@@ -1182,7 +1193,10 @@ export const Settings = observer(
 
                     {/* Row 1 Col 2: External Tools */}
                     <div style={{ ...cardStyle, minHeight: 0 }}>
-                        <div style={cardTitleStyle}>External Tools</div>
+                        <div style={{ ...cardTitleStyle, gap: "8px", paddingLeft: "12px" }}>
+                            <div style={{ width: "3px", height: "14px", borderRadius: "2px", backgroundColor: "#0f6cbd", flexShrink: 0 }} />
+                            External Tools
+                        </div>
                         <div style={{ ...cardBodyStyle }}>
                             <PythonSettings />
                         </div>
@@ -1190,7 +1204,10 @@ export const Settings = observer(
 
                         {/* Project Editor */}
                         <div style={{ ...cardStyle, minHeight: 0 }}>
-                            <div style={cardTitleStyle}>Project Editor</div>
+                            <div style={{ ...cardTitleStyle, gap: "8px", paddingLeft: "12px" }}>
+                                <div style={{ width: "3px", height: "14px", borderRadius: "2px", backgroundColor: "#0f6cbd", flexShrink: 0 }} />
+                                Project Editor
+                            </div>
                             <div style={{ ...cardBodyStyle }}>
                                 <TemplateSettings />
                             </div>
@@ -1199,7 +1216,10 @@ export const Settings = observer(
                         {/* Localization + Appearance */}
                         <div style={{ display: "flex", gap: "12px", minHeight: 0 }}>
                             <div style={{ ...cardStyle, flex: 1, minHeight: 0 }}>
-                                <div style={cardTitleStyle}>Localization</div>
+                                <div style={{ ...cardTitleStyle, gap: "8px", paddingLeft: "12px" }}>
+                                    <div style={{ width: "3px", height: "14px", borderRadius: "2px", backgroundColor: "#0f6cbd", flexShrink: 0 }} />
+                                    Localization
+                                </div>
                             <div style={{ ...cardBodyStyle, fontSize: "12px" }}>
                             <PropertyList>
                                 <SelectProperty
@@ -1247,7 +1267,10 @@ export const Settings = observer(
 
                         {/* Appearance + Restart */}
                         <div style={{ ...cardStyle, minHeight: 0 }}>
-                            <div style={cardTitleStyle}>Appearance</div>
+                            <div style={{ ...cardTitleStyle, gap: "8px", paddingLeft: "12px" }}>
+                                <div style={{ width: "3px", height: "14px", borderRadius: "2px", backgroundColor: "#0f6cbd", flexShrink: 0 }} />
+                                Appearance
+                            </div>
                             <div style={cardBodyStyle}>
                             <PropertyList>
                                 <BooleanProperty
