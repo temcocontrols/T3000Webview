@@ -372,46 +372,64 @@ export class ExtensionsManagerStore {
     }
 
     get all() {
+        // All extensions hidden pending custom LVGL extensions
+        return [];
+        /*
         return this.extensionsVersionsCatalogBuilder.get(
             this.section,
             ViewFilter.ALL,
             this.searchText
         );
+        */
     }
 
     get installed() {
+        return [];
+        /*
         return this.extensionsVersionsCatalogBuilder.get(
             this.section,
             ViewFilter.INSTALLED,
             this.searchText
         );
+        */
     }
 
     get notInstalled() {
+        return [];
+        /*
         return this.extensionsVersionsCatalogBuilder.get(
             this.section,
             ViewFilter.NOT_INSTALLED,
             this.searchText
         );
+        */
     }
 
     get newVersions() {
+        return [];
+        /*
         return this.extensionsVersionsCatalogBuilder.get(
             this.section,
             ViewFilter.NEW_VERSIONS,
             this.searchText
         );
+        */
     }
 
     get newVersionsInAllSections() {
+        return [];
+        /*
         return this.extensionsVersionsCatalogBuilder.get(
             undefined,
             ViewFilter.NEW_VERSIONS,
             ""
         );
+        */
     }
 
     get extensionNodes() {
+        return [];
+        /*
         return this.extensionsVersionsCatalogBuilder
             .get(
                 this.section,
@@ -433,6 +451,7 @@ export class ExtensionsManagerStore {
                     extension.versionInFocus.id ===
                         extensionsManagerStore.selectedExtension.id
             }));
+        */
     }
 
     selectExtensionById(id: string) {
