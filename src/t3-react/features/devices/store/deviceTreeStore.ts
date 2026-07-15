@@ -803,7 +803,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Select tree node
       selectNode: (nodeId: string) => {
-        console.log(`[selectNode] Called with nodeId: ${nodeId}`);
         const findNode = (nodes: TreeNode[], id: string): TreeNode | null => {
           for (const node of nodes) {
             if (node.id === id) return node;
@@ -816,7 +815,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         };
 
         const node = findNode(get().treeData, nodeId);
-        console.log(`[selectNode] Found node:`, node?.data ? `${node.data.nameShowOnTree} (SN: ${node.data.serialNumber})` : 'none');
         set({
           selectedNodeId: nodeId,
           selectedDevice: node?.data || null,

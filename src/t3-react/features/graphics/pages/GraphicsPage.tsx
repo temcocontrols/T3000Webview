@@ -38,6 +38,7 @@ import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './GraphicsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
 
 export const GraphicsPage: React.FC = () => {
   const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
@@ -60,15 +61,9 @@ export const GraphicsPage: React.FC = () => {
   useEffect(() => {
     if (!selectedDevice && treeData.length > 0) {
       const filteredDevices = getFilteredDevices();
-      console.log('[GraphicsPage] Auto-select check:', {
-        hasSelectedDevice: !!selectedDevice,
-        treeDataLength: treeData.length,
-        filteredDevicesCount: filteredDevices.length,
-      });
 
       if (filteredDevices.length > 0) {
         const firstDevice = filteredDevices[0];
-        console.log(`[GraphicsPage] Auto-selecting first device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
         selectDevice(firstDevice);
       }
     }
@@ -90,7 +85,7 @@ export const GraphicsPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load graphics';
       setError(errorMessage);
-      console.error('Error fetching graphics:', err);
+      LogUtil.Error('Error fetching graphics:', err);
     } finally {
       setLoading(false);
       setDbChecked(true);
@@ -116,12 +111,10 @@ export const GraphicsPage: React.FC = () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (graphics.length > 0) {
-        console.log('[GraphicsPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('[GraphicsPage] Database empty, auto-refreshing from device using Action 17...');
       setLoading(true);
 
       try {
@@ -136,9 +129,9 @@ export const GraphicsPage: React.FC = () => {
             }
           }
         });
-        setMessage(`✓ Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
+        setMessage(`�?Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
-        console.error('[GraphicsPage] Auto-refresh failed:', error);
+        LogUtil.Error('[GraphicsPage] Auto-refresh failed:', error);
         setMessage(`Failed to sync graphics: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       } finally {
         // Always reload from database to show what was actually saved
@@ -192,7 +185,6 @@ export const GraphicsPage: React.FC = () => {
 
     setRefreshing(true);
     try {
-      console.log('[GraphicsPage] Refreshing graphics from device using Action 17...');
 
       // Use PanelDataRefreshService with Action 17 (GET_WEBVIEW_LIST)
       // EntryType.GROUP = 10 (BAC_GRP)
@@ -206,12 +198,12 @@ export const GraphicsPage: React.FC = () => {
         }
       });
 
-      setMessage(`✓ Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
+      setMessage(`�?Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
 
       // Reload from database to show saved data
       await fetchGraphics();
     } catch (error) {
-      console.error('[GraphicsPage] Refresh failed:', error);
+      LogUtil.Error('[GraphicsPage] Refresh failed:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to refresh graphics';
       setError(errorMsg);
       setMessage(`Failed to sync graphics: ${errorMsg}`, 'error');
@@ -278,12 +270,6 @@ export const GraphicsPage: React.FC = () => {
     // Construct the webview URL for this graphic
     const webviewUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/graphics/${graphic.Graphic_ID}/webview`;
 
-    console.log('🖼️ [GraphicsPage] Opening webview for graphic:', {
-      serialNumber: selectedDevice.serialNumber,
-      graphicId: graphic.Graphic_ID,
-      label: graphic.Label,
-      url: webviewUrl,
-    });
 
     // Open in a new window/tab
     window.open(webviewUrl, '_blank');

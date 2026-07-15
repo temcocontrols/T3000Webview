@@ -70,6 +70,7 @@ import { UserLoginTab, type UserLoginSettings } from '../components/UserLoginTab
 import { ExpansionIOTab, type ExpansionIOSettings } from '../components/ExpansionIOTab';
 import { API_BASE_URL } from '@t3-react/config/constants';
 import cssStyles from './SettingsPage.module.css';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
 
 // Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
 // UART_9600=5, UART_19200=6, UART_38400=7, UART_115200=9, UART_57600=11
@@ -672,7 +673,7 @@ export const SettingsPage: React.FC = () => {
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({
     LCD_Display: 0, // Default to LCD Always Off
   });
-  // Separate state for the delay seconds value — preserved even when switching modes
+  // Separate state for the delay seconds value �?preserved even when switching modes
   // (matches C++ behavior: delay field retains value when switching to Always On/Off)
   const [lcdDelaySeconds, setLcdDelaySeconds] = useState<number>(0);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({});
@@ -691,20 +692,20 @@ export const SettingsPage: React.FC = () => {
   }, [selectedDevice, devices, selectDevice]);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // EXTERNAL DATA FETCH — data NOT in Str_Setting_Info (400 bytes)
+  // EXTERNAL DATA FETCH �?data NOT in Str_Setting_Info (400 bytes)
   //
   // Email, Users, Expansion IO are separate C++ structures fetched via live FFI,
   // the same path as basic settings (GET_WEBVIEW_LIST / Action 17).
   //
   // ⚠️  Entry types 43 (email) and 37 (expansion IO) require C++ to add the
-  //     corresponding cases in the GET_WEBVIEW_LIST switch — currently unimplemented.
+  //     corresponding cases in the GET_WEBVIEW_LIST switch �?currently unimplemented.
   //     Users (entryType 14 = ENUM_USER_NAME) may already work.
   //
   // Old REST API calls (DB-backed, commented out):
   // const base = `http://localhost:9103/api/t3_device`;
-  // fetch(`${base}/devices/${serialNumber}/settings/email`)  → GET EMAIL_ALARMS table
-  // fetch(`${base}/users/${serialNumber}`)                    → GET USERS table
-  // fetch(`${base}/devices/${serialNumber}/settings/expansion-io`) → GET EXTIO_DEVICES table
+  // fetch(`${base}/devices/${serialNumber}/settings/email`)  �?GET EMAIL_ALARMS table
+  // fetch(`${base}/users/${serialNumber}`)                    �?GET USERS table
+  // fetch(`${base}/devices/${serialNumber}/settings/expansion-io`) �?GET EXTIO_DEVICES table
   // ─────────────────────────────────────────────────────────────────────────────
   const fetchExternalSettings = useCallback(async (serialNumber: number) => {
     const transport = new T3Transport({ apiBaseUrl: `${API_BASE_URL}/api` });
@@ -722,7 +723,7 @@ export const SettingsPage: React.FC = () => {
         return;
       }
 
-      // ── Email (Str_Email_point — entryType 43 = READ_EMAIL_ALARM) ────────────
+      // ── Email (Str_Email_point �?entryType 43 = READ_EMAIL_ALARM) ────────────
       // ⚠️  Waiting for C++ to add case 43 in GET_WEBVIEW_LIST handler
       try {
         const resp = await transport.send(WebViewMessageType.GET_WEBVIEW_LIST, {
@@ -733,13 +734,12 @@ export const SettingsPage: React.FC = () => {
           entryIndexEnd: 0,
           objectinstance: device.object_instance,
         });
-        // TODO: parse resp.data when C++ implements this — mirrors Str_Email_point fields
-        console.log('[fetchExternalSettings] Email FFI response:', resp);
+        // TODO: parse resp.data when C++ implements this �?mirrors Str_Email_point fields
       } catch (e) {
         console.warn('[fetchExternalSettings] Email FFI call failed:', e);
       }
 
-      // ── Users (Str_userlogin_point[8] — entryType 14 = ENUM_USER_NAME) ───────
+      // ── Users (Str_userlogin_point[8] �?entryType 14 = ENUM_USER_NAME) ───────
       try {
         const resp = await transport.send(WebViewMessageType.GET_WEBVIEW_LIST, {
           panelId: device.panel_number,
@@ -758,12 +758,11 @@ export const SettingsPage: React.FC = () => {
           }));
           setUserLoginSettings(prev => ({ ...prev, users }));
         }
-        console.log('[fetchExternalSettings] Users FFI response:', resp);
       } catch (e) {
         console.warn('[fetchExternalSettings] Users FFI call failed:', e);
       }
 
-      // ── Expansion IO (Str_Extio_point[] — entryType 37 = READEXT_IO_T3000) ───
+      // ── Expansion IO (Str_Extio_point[] �?entryType 37 = READEXT_IO_T3000) ───
       // ⚠️  Waiting for C++ to add case 37 in GET_WEBVIEW_LIST handler
       try {
         const resp = await transport.send(WebViewMessageType.GET_WEBVIEW_LIST, {
@@ -774,8 +773,7 @@ export const SettingsPage: React.FC = () => {
           entryIndexEnd: 11,  // up to 12 expansion IO devices
           objectinstance: device.object_instance,
         });
-        // TODO: parse resp.data when C++ implements this — mirrors Str_Extio_point fields
-        console.log('[fetchExternalSettings] Expansion IO FFI response:', resp);
+        // TODO: parse resp.data when C++ implements this �?mirrors Str_Extio_point fields
       } catch (e) {
         console.warn('[fetchExternalSettings] Expansion IO FFI call failed:', e);
       }
@@ -800,7 +798,6 @@ export const SettingsPage: React.FC = () => {
 
       if (!settings) {
         // No cached data - fetch from device
-        console.log('[SettingsPage] No cached settings, refreshing from device...');
         const result = await SettingsRefreshApi.refreshFromDevice(serial);
 
         if (!result.success || !result.data) {
@@ -900,7 +897,7 @@ export const SettingsPage: React.FC = () => {
         LCD_Point_Type: settings.lcd_point_type,
         LCD_Point_Number: settings.lcd_point_number,
       });
-      // Preserve delay seconds — restore from device if it was in delay mode
+      // Preserve delay seconds �?restore from device if it was in delay mode
       if (settings.LCD_Display > 0 && settings.LCD_Display < 255) {
         setLcdDelaySeconds(settings.LCD_Display);
       }
@@ -912,14 +909,14 @@ export const SettingsPage: React.FC = () => {
       });
 
       // ⚠️ Email / Users / Expansion IO are NOT in Str_Setting_Info (400 bytes).
-      // They live in separate C++ structures — fetch them via dedicated endpoints.
+      // They live in separate C++ structures �?fetch them via dedicated endpoints.
       void fetchExternalSettings(serial);
 
       return settings;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
-      console.error('[SettingsPage] Failed to fetch settings:', err);
+      LogUtil.Error('[SettingsPage] Failed to fetch settings:', err);
       return undefined;
     } finally {
       setLoading(false);
@@ -988,7 +985,7 @@ export const SettingsPage: React.FC = () => {
           Time_Zone_Summer_Daytime: settings.time_zone_summer_daytime,
           Enable_SNTP: settings.en_sntp,
           SNTP_Server: settings.sntp_server,
-          Time_Sync_Auto_Manual: settings.time_sync_auto_manual, // offset 240 ✅
+          Time_Sync_Auto_Manual: settings.time_sync_auto_manual, // offset 240 �?
           Start_Month: settings.start_month,
           Start_Day: settings.start_day,
           End_Month: settings.end_month,
@@ -1054,7 +1051,7 @@ export const SettingsPage: React.FC = () => {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
-      console.error('[SettingsPage] Failed to refresh settings:', err);
+      LogUtil.Error('[SettingsPage] Failed to refresh settings:', err);
     } finally {
       setLoading(false);
     }
@@ -1080,9 +1077,8 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleSaveBasicInfo = async () => {
-    console.log('[Done] handleSaveBasicInfo called', { selectedDevice, settings });
     if (!selectedDevice || !settings) {
-      console.warn('[Done] EARLY EXIT — selectedDevice:', selectedDevice, '| settings:', settings);
+      console.warn('[Done] EARLY EXIT �?selectedDevice:', selectedDevice, '| settings:', settings);
       return;
     }
 
@@ -1094,7 +1090,7 @@ export const SettingsPage: React.FC = () => {
       // Merge all Basic Information tab editable fields back into the 400-byte settings object
       const networkNum = protocolSettings.Network_Number ?? 0;
       // C++ routing fields: panel_number and object_instance must be the real device-list values.
-      // If the settings were never properly fetched (all[] was empty → both are 0), fall back to
+      // If the settings were never properly fetched (all[] was empty �?both are 0), fall back to
       // selectedDevice which always carries the values from the live device list scan.
       const safePanelNumber =
         (deviceInfo.Panel_Number ?? 0) > 0
@@ -1120,19 +1116,14 @@ export const SettingsPage: React.FC = () => {
         // LCD Options
         LCD_Display:         featureFlags.LCD_Display              ?? settings.LCD_Display,
       };
-      console.log('[Done] routing fields — panel_number:', merged.panel_number, '| object_instance:', merged.object_instance, '| selectedDevice.panelNumber:', selectedDevice.panelNumber);
 
-      console.log('[Done] merged settings:', merged);
 
       const validation = SettingsUpdateApi.validateSettings(merged);
-      console.log('[Done] validation result:', validation);
       if (!validation.valid) {
         throw new Error(validation.errors.join(', '));
       }
 
-      console.log('[Done] calling updateDeviceSettings...');
       const result = await SettingsUpdateApi.updateDeviceSettings(merged);
-      console.log('[Done] updateDeviceSettings result:', result);
       if (!result.success) {
         throw new Error(result.error || 'Failed to update device');
       }
@@ -1149,7 +1140,7 @@ export const SettingsPage: React.FC = () => {
         }
       }
     } catch (err) {
-      console.error('[Done] caught error:', err);
+      LogUtil.Error('[Done] caught error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save basic info');
     } finally {
       setLoading(false);
@@ -1253,20 +1244,20 @@ export const SettingsPage: React.FC = () => {
     setSuccessMessage('Clock synchronised with local PC successfully.');
   };
 
-  // Trigger NTP sync on device (C++: OnBnClickedButtonSyncTime — sets reset_default=99)
+  // Trigger NTP sync on device (C++: OnBnClickedButtonSyncTime �?sets reset_default=99)
   // C++ waits 4 seconds (SetTimer 4000ms) before re-reading to let device finish NTP sync
   const handleSyncTimeServer = async () => {
     if (!selectedDevice || !settings) return;
     updateSettings({ reset_default: 99, time_sync_auto_manual: 0 });
     await handleSaveTime();
-    setSuccessMessage('Time server sync command sent to device. Refreshing in 4s…');
+    setSuccessMessage('Time server sync command sent to device. Refreshing in 4s...');
     await new Promise(resolve => setTimeout(resolve, 4000));
     await fetchSettings();
     setSuccessMessage('Time server sync complete.');
   };
 
   // Re-read device settings to refresh the displayed device time.
-  // Mirrors C++ case TIME_COMMAND: — if in PC sync mode and clock is off by >3 min,
+  // Mirrors C++ case TIME_COMMAND: �?if in PC sync mode and clock is off by >3 min,
   // shows CShowMessageDlg confirmation before syncing (with 3-day ignore option).
   const handleRefreshDeviceTime = async () => {
     const freshSettings = await fetchSettings();
@@ -1279,7 +1270,7 @@ export const SettingsPage: React.FC = () => {
     const pcEpoch = Math.floor(Date.now() / 1000);
     const diff = Math.abs(pcEpoch - deviceEpoch);
 
-    if (diff <= 180) return; // within 3 minutes — no sync needed
+    if (diff <= 180) return; // within 3 minutes �?no sync needed
 
     // Check localStorage 3-day ignore flag (mirrors C++ INI SYNC_Time/ignore_pop)
     const ignorePop = localStorage.getItem('t3000_sync_time_ignore_pop');
@@ -1332,7 +1323,7 @@ export const SettingsPage: React.FC = () => {
     setError(null);
     setSuccessMessage(null);
     try {
-      // Map React field names → Rust camelCase request body
+      // Map React field names �?Rust camelCase request body
       const body = {
         smtpServer:            emailSettings.smtp_domain,
         smtpPort:              emailSettings.smtp_port,
@@ -1356,7 +1347,7 @@ export const SettingsPage: React.FC = () => {
         const err = await response.json().catch(() => ({}));
         throw new Error((err as any)?.message || (err as any)?.error || 'Failed to save email settings');
       }
-      // ⚠️ Saved to local DB only — device sync requires C++ to implement FFI entryType=50
+      // ⚠️ Saved to local DB only �?device sync requires C++ to implement FFI entryType=50
       setSuccessMessage('Email settings saved to local database successfully');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save email settings');
@@ -1383,7 +1374,7 @@ export const SettingsPage: React.FC = () => {
     );
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      // 501 means C++ not yet implemented — not an error from user perspective
+      // 501 means C++ not yet implemented �?not an error from user perspective
       if (response.status === 501) return;
       throw new Error((err as any)?.message || (err as any)?.error || 'Failed to save user');
     }
@@ -1409,7 +1400,7 @@ export const SettingsPage: React.FC = () => {
   const handleDoneExpansion = async (settings: ExpansionIOSettings) => {
     if (!selectedDevice) throw new Error('No device selected');
     // POST each ExtIO device to /api/t3_device/devices/:serial/settings/expansion-io
-    // ⚠️ Saved to local DB only — device sync requires C++ to implement FFI entryType=51
+    // ⚠️ Saved to local DB only �?device sync requires C++ to implement FFI entryType=51
     const base = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/settings/expansion-io`;
     for (let i = 0; i < settings.devices.length; i++) {
       const device = settings.devices[i];
@@ -1536,7 +1527,7 @@ export const SettingsPage: React.FC = () => {
     // Capture new IP before saving so progress dialog can poll it
     const newIp = networkSettings.IP_Address ?? '';
     await handleSaveNetwork();
-    // If we get here without throwing, the save succeeded → show reboot dialog
+    // If we get here without throwing, the save succeeded �?show reboot dialog
     setChangeIpNewAddress(newIp);
     setShowChangeIpDialog(true);
   };
@@ -1659,12 +1650,12 @@ export const SettingsPage: React.FC = () => {
                 </Field>
                 <Field label="Serial Number" size="small" className={styles.horizontalField}>
                   <span className={styles.basicFieldValue}>
-                    {deviceInfo.SerialNumber ?? selectedDevice?.serialNumber ?? '—'}
+                    {deviceInfo.SerialNumber ?? selectedDevice?.serialNumber ?? ''}
                   </span>
                 </Field>
                 <Field label="MAC Address" size="small" className={styles.horizontalField}>
                   <span className={styles.basicFieldValue}>
-                    {networkSettings.MAC_Address || '—'}
+                    {networkSettings.MAC_Address || ''}
                   </span>
                 </Field>
                 <Field label="MSTP Network" size="small" className={styles.horizontalField}>
@@ -2405,7 +2396,7 @@ export const SettingsPage: React.FC = () => {
         serialNumber={selectedDevice?.serialNumber ?? 0}
       />
 
-      {/* RS485 Warning Dialog — mirrors C++ "Changing Subnet Baud Rate and Protocol" popup */}
+      {/* RS485 Warning Dialog �?mirrors C++ "Changing Subnet Baud Rate and Protocol" popup */}
       {/* Auto-applies after 3 seconds; Cancel discards the pending change */}
       <Dialog open={showRS485WarnDialog} onOpenChange={(_, d) => { if (!d.open) { setShowRS485WarnDialog(false); pendingRS485Action.current = null; } }}>
         <DialogSurface style={{ maxWidth: 440, marginTop: '48px', alignSelf: 'flex-start' }}>
@@ -2447,7 +2438,7 @@ export const SettingsPage: React.FC = () => {
         </DialogSurface>
       </Dialog>
 
-      {/* Sync Confirm Dialog — mirrors C++ CShowMessageDlg for Refresh Time button */}
+      {/* Sync Confirm Dialog �?mirrors C++ CShowMessageDlg for Refresh Time button */}
       <Dialog open={showSyncConfirmDialog} onOpenChange={(_, d) => { if (!d.open) setShowSyncConfirmDialog(false); }}>
         <DialogSurface style={{ maxWidth: 420, marginTop: '48px', alignSelf: 'flex-start' }}>
           <DialogBody>

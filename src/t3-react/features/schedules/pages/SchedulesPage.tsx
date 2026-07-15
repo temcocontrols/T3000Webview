@@ -41,6 +41,7 @@ import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefr
 import styles from './SchedulesPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
 
 // Types based on Rust entity (schedules.rs) and C++ BacnetWeeklyRoutine structure
 interface SchedulePoint {
@@ -109,7 +110,6 @@ export const SchedulesPage: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('Schedules API response:', result);
 
       if (result.data && Array.isArray(result.data)) {
         setSchedules(result.data);
@@ -118,7 +118,7 @@ export const SchedulesPage: React.FC = () => {
         setSchedules([]);
       }
     } catch (err) {
-      console.error('Error fetching schedules:', err);
+      LogUtil.Error('Error fetching schedules:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch schedules');
       // DON'T clear schedules on database fetch error - preserve what we have
     } finally {
@@ -148,21 +148,18 @@ export const SchedulesPage: React.FC = () => {
 
       // Check if database has schedule data
       if (schedules.length > 0) {
-        console.log('🔄 Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('🔄 Database empty, auto-refreshing schedules from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
         const result = await PanelDataRefreshService.refreshAllSchedules(serial);
-        console.log('✅ Auto-refresh result:', result);
         // Data already saved by service, just reload from database
         await fetchSchedules();
         setAutoRefreshed(true);
       } catch (err) {
-        console.error('❌ Auto-refresh failed:', err);
+        LogUtil.Error('Auto-refresh failed:', err);
       }
     };
 
@@ -183,13 +180,11 @@ export const SchedulesPage: React.FC = () => {
 
     try {
       const serial = selectedDevice.serialNumber;
-      console.log('🔄 Refreshing all schedules from device...');
       const result = await PanelDataRefreshService.refreshAllSchedules(serial);
-      console.log('✅ Device refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchSchedules();
     } catch (err) {
-      console.error('❌ Refresh from device failed:', err);
+      LogUtil.Error('Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
     } finally {
       setRefreshing(false);
@@ -206,14 +201,12 @@ export const SchedulesPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       const scheduleIndex = parseInt(item.scheduleId);
-      console.log(`🔄 Refreshing single schedule from device: ${scheduleIndex}`);
 
       const result = await PanelDataRefreshService.refreshSingleSchedule(serial, scheduleIndex);
-      console.log('✅ Single schedule refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchSchedules();
     } catch (err) {
-      console.error('❌ Single schedule refresh failed:', err);
+      LogUtil.Error('Single schedule refresh failed:', err);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -363,7 +356,6 @@ export const SchedulesPage: React.FC = () => {
       )
     );
 
-    console.log('Toggle Auto/Manual:', item.scheduleId, newValue);
     // TODO: Call API to update auto_manual value
   };
 

@@ -46,6 +46,7 @@ import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefr
 import styles from './HolidaysPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
 
 // Types based on C++ BacnetAnnualRoutine structure
 interface HolidayPoint {
@@ -112,7 +113,7 @@ export const HolidaysPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load holidays';
       setError(errorMessage);
-      console.error('Error fetching holidays:', err);
+      LogUtil.Error('Error fetching holidays:', err);
       // DON'T clear holidays on database fetch error - preserve what we have
     } finally {
       setLoading(false);
@@ -140,21 +141,18 @@ export const HolidaysPage: React.FC = () => {
 
       // Check if database has holiday data
       if (holidays.length > 0) {
-        console.log('🔄 Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('🔄 Database empty, auto-refreshing holidays from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
         const result = await PanelDataRefreshService.refreshAllHolidays(serial);
-        console.log('✅ Auto-refresh result:', result);
         // Data already saved by service, just reload from database
         await fetchHolidays();
         setAutoRefreshed(true);
       } catch (err) {
-        console.error('❌ Auto-refresh failed:', err);
+        LogUtil.Error('Auto-refresh failed:', err);
       }
     };
 
@@ -176,13 +174,11 @@ export const HolidaysPage: React.FC = () => {
 
     try {
       const serial = selectedDevice.serialNumber;
-      console.log('🔄 Refreshing all holidays from device...');
       const result = await PanelDataRefreshService.refreshAllHolidays(serial);
-      console.log('✅ Device refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchHolidays();
     } catch (err) {
-      console.error('❌ Refresh from device failed:', err);
+      LogUtil.Error('Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
     } finally {
       setRefreshing(false);
@@ -199,14 +195,12 @@ export const HolidaysPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       const holidayIndex = parseInt(item.holidayId);
-      console.log(`🔄 Refreshing single holiday from device: ${holidayIndex}`);
 
       const result = await PanelDataRefreshService.refreshSingleHoliday(serial, holidayIndex);
-      console.log('✅ Single holiday refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchHolidays();
     } catch (err) {
-      console.error('❌ Single holiday refresh failed:', err);
+      LogUtil.Error('Single holiday refresh failed:', err);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -345,7 +339,6 @@ export const HolidaysPage: React.FC = () => {
     setIsSaving(true);
     try {
       // TODO: Implement API call to save
-      console.log('Saving:', editingCell, editValue);
 
       // Update local state
       setHolidays(prevHolidays =>
@@ -358,7 +351,7 @@ export const HolidaysPage: React.FC = () => {
 
       setEditingCell(null);
     } catch (error) {
-      console.error('Error saving:', error);
+      LogUtil.Error('Error saving:', error);
     } finally {
       setIsSaving(false);
     }
@@ -384,7 +377,6 @@ export const HolidaysPage: React.FC = () => {
       )
     );
 
-    console.log('Toggle Auto/Manual:', item.holidayId, newValue);
     // TODO: Call API to update
   };
 

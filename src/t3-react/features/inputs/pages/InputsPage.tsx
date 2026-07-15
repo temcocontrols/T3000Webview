@@ -58,6 +58,7 @@ import styles from './InputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import { TagsColumnCell, fetchTagsForDevice } from '../components/TagsColumnCell';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
@@ -112,16 +113,9 @@ const InputsPageDesktop: React.FC = () => {
     if (!selectedDevice && treeData.length > 0) {
       // Get the first device from filtered devices list (respects current filters)
       const filteredDevices = getFilteredDevices();
-      console.log('[InputsPage] Auto-select check:', {
-        hasSelectedDevice: !!selectedDevice,
-        treeDataLength: treeData.length,
-        filteredDevicesCount: filteredDevices.length,
-        filteredDevicesList: filteredDevices.map(d => `${d.nameShowOnTree} (SN: ${d.serialNumber})`),
-      });
 
       if (filteredDevices.length > 0) {
         const firstDevice = filteredDevices[0];
-        console.log(`[InputsPage] Auto-selecting first device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
         selectDevice(firstDevice);
       }
     }
@@ -157,7 +151,7 @@ const InputsPageDesktop: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load inputs';
       setError(errorMessage);
-      console.error('Error fetching inputs:', err);
+      LogUtil.Error('Error fetching inputs:', err);
     } finally {
       setLoading(false);
       setDbChecked(true);
@@ -186,12 +180,10 @@ const InputsPageDesktop: React.FC = () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (inputs.length > 0) {
-        console.log('[InputsPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('[InputsPage] Database empty, auto-refreshing from device...');
       setLoading(true);
 
       try {
@@ -206,9 +198,9 @@ const InputsPageDesktop: React.FC = () => {
             }
           }
         });
-        setMessage(`✓ Synced ${result.itemCount} inputs from ${selectedDevice.nameShowOnTree}`, 'success');
+        setMessage(`Synced ${result.itemCount} inputs from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
-        console.error('[InputsPage] Auto-refresh failed:', error);
+        LogUtil.Error('[InputsPage] Auto-refresh failed:', error);
         setMessage(`Failed to sync inputs: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       } finally {
         // Always reload from database to show what was actually saved (even if batch had errors)
@@ -246,7 +238,6 @@ const InputsPageDesktop: React.FC = () => {
     setMessage('Refreshing inputs from device...', 'info');
 
     try {
-      console.log('[InputsPage] Refreshing all inputs from device via FFI...');
       // Pass loading callback to show loading state during Action 17 FFI call
       const result = await PanelDataRefreshService.refreshFromDevice({
         serialNumber: selectedDevice.serialNumber,
@@ -257,10 +248,9 @@ const InputsPageDesktop: React.FC = () => {
           }
         }
       });
-      console.log('[InputsPage] Refresh result:', result);
       setMessage(result.message, 'success');
     } catch (error) {
-      console.error('[InputsPage] Failed to refresh from device:', error);
+      LogUtil.Error('[InputsPage] Failed to refresh from device:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
       setError(errorMsg);
       setMessage(errorMsg, 'error');
@@ -275,20 +265,18 @@ const InputsPageDesktop: React.FC = () => {
 
     const index = parseInt(inputIndex, 10);
     if (isNaN(index)) {
-      console.error('[InputsPage] Invalid input index:', inputIndex);
+      LogUtil.Error('[InputsPage] Invalid input index:', inputIndex);
       return;
     }
 
     setRefreshingItems(prev => new Set(prev).add(inputIndex));
     try {
-      console.log(`[InputsPage] Refreshing input ${index} from device via FFI...`);
       const result = await PanelDataRefreshService.refreshSingleInput(selectedDevice.serialNumber, index);
-      console.log('[InputsPage] Refresh result:', result);
 
       // Reload data from database after save
       await fetchInputs();
     } catch (error) {
-      console.error(`[InputsPage] Failed to refresh input ${index}:`, error);
+      LogUtil.Error(`[InputsPage] Failed to refresh input ${index}:`, error);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -348,11 +336,9 @@ const InputsPageDesktop: React.FC = () => {
     const nextDevice = getNextDevice();
 
     if (!nextDevice) {
-      console.log('[InputsPage] No next device available');
       return;
     }
 
-    console.log(`[InputsPage] Auto-loading next device: ${nextDevice.nameShowOnTree} (SN: ${nextDevice.serialNumber})`);
     setIsLoadingNextDevice(true);
 
     // Switch device (this will trigger fetchInputs via useEffect)
@@ -377,7 +363,6 @@ const InputsPageDesktop: React.FC = () => {
     if (isAtBottom && inputs.length > 0) {
       // Mark that we're at bottom
       isAtBottomRef.current = true;
-      console.log('[InputsPage] Reached bottom, scroll again to load next device');
     } else {
       // Not at bottom anymore, reset the flag
       isAtBottomRef.current = false;
@@ -392,7 +377,6 @@ const InputsPageDesktop: React.FC = () => {
 
     // If user is scrolling down (deltaY > 0) and already at bottom, load next device
     if (e.deltaY > 0 && isAtBottomRef.current) {
-      console.log('[InputsPage] User scrolled down while at bottom, loading next device');
       isAtBottomRef.current = false; // Reset
       loadNextDevice();
     }
@@ -436,7 +420,6 @@ const InputsPageDesktop: React.FC = () => {
   /*
   const updateFullLabelUsingAction3 = async (serialNumber: number, inputIndex: string, newLabel: string) => {
     try {
-      console.log(`[Action 3] Attempting to update full label for Input ${inputIndex} (SN: ${serialNumber})`);
       console.warn('[Action 3] WARNING: fullLabel is NOT supported by Action 3 in C++!');
       console.warn('[Action 3] C++ only supports: control, value, auto_manual');
 
@@ -455,7 +438,6 @@ const InputsPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Action 3] Response:', result);
       console.warn('[Action 3] The API may return success, but C++ did NOT update the field!');
       return result;
     } catch (error) {
@@ -475,7 +457,6 @@ const InputsPageDesktop: React.FC = () => {
     currentInput: InputPoint
   ) => {
     try {
-      console.log(`[FFI Action 16] Updating ${field} on device - Input ${inputIndex} (SN: ${serialNumber})`);
 
       // Build FFI message for UPDATE_WEBVIEW_LIST (Action 16)
       const ffiMessage = {
@@ -498,7 +479,6 @@ const InputsPageDesktop: React.FC = () => {
         decom: 0,
       };
 
-      console.log('[FFI Action 16] Sending to device:', ffiMessage);
 
       const response = await fetch(`${API_BASE_URL}/api/t3000/ffi/call`, {
         method: 'POST',
@@ -512,10 +492,9 @@ const InputsPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[FFI Action 16] Device updated successfully:', result);
       return result;
     } catch (error) {
-      console.error('[FFI Action 16] Device update failed:', error);
+      LogUtil.Error('[FFI Action 16] Device update failed:', error);
       throw error;
     }
   };
@@ -529,7 +508,6 @@ const InputsPageDesktop: React.FC = () => {
     currentInput: InputPoint
   ) => {
     try {
-      console.log(`[Database] Updating ${field} in database - Input ${inputIndex} (SN: ${serialNumber})`);
 
       const payload = {
         fullLabel: field === 'fullLabel' ? newValue : (currentInput.fullLabel || ''),
@@ -559,10 +537,9 @@ const InputsPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Database] Database updated successfully:', result);
       return result;
     } catch (error) {
-      console.error('[Database] Database update failed:', error);
+      LogUtil.Error('[Database] Database update failed:', error);
       throw error;
     }
   };
@@ -583,8 +560,6 @@ const InputsPageDesktop: React.FC = () => {
     try {
       // Process for all editable fields (fullLabel, label, fValue, range, autoManual)
       if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual'].includes(editingCell.field)) {
-        console.log(`=== Updating ${editingCell.field} (Two-Step Process) ===`);
-        console.log(`Device: ${selectedDevice.serialNumber}, Input: ${editingCell.inputIndex}, New Value: "${editValue}"`);
 
         // Find the current input data
         const currentInput = inputs.find(
@@ -599,7 +574,6 @@ const InputsPageDesktop: React.FC = () => {
         const panelId = selectedDevice.panelId || 1;
 
         // Step 1: Update device FIRST using FFI (Action 16)
-        console.log('Step 1/2: Updating device via FFI...');
         await updateDeviceUsingFFI(
           panelId,
           selectedDevice.serialNumber,
@@ -608,10 +582,8 @@ const InputsPageDesktop: React.FC = () => {
           editValue,
           currentInput
         );
-        console.log('✅ Device updated successfully');
 
         // Step 2: Update database SECOND
-        console.log('Step 2/2: Updating database...');
         await updateDatabaseOnly(
           selectedDevice.serialNumber,
           editingCell.inputIndex,
@@ -619,9 +591,7 @@ const InputsPageDesktop: React.FC = () => {
           editValue,
           currentInput
         );
-        console.log('✅ Database updated successfully');
 
-        console.log(`✅ ${editingCell.field} updated successfully (device + database)!`);
       }
 
       // Update local state optimistically
@@ -639,10 +609,9 @@ const InputsPageDesktop: React.FC = () => {
         )
       );
 
-      console.log('Updated', editingCell.field, ':', editValue, 'for', editingCell);
       setEditingCell(null);
     } catch (error) {
-      console.error('Failed to update:', error);
+      LogUtil.Error('Failed to update:', error);
       alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
@@ -702,8 +671,6 @@ const InputsPageDesktop: React.FC = () => {
     if (!selectedInputForRange || !selectedDevice) return;
 
     try {
-      console.log(`=== Updating range (Two-Step Process) ===`);
-      console.log(`Device: ${selectedDevice.serialNumber}, Input: ${selectedInputForRange.inputIndex}, New Range: ${newRange}, New DigitalAnalog: ${newDigitalAnalog}`);
 
       // Find the current input data
       const currentInput = inputs.find(
@@ -719,7 +686,6 @@ const InputsPageDesktop: React.FC = () => {
       const panelId = selectedDevice.panelId || 1;
 
       // Step 1: Update device FIRST using FFI
-      console.log('Step 1/2: Updating device via FFI...');
       await updateDeviceUsingFFI(
         panelId,
         selectedDevice.serialNumber,
@@ -728,10 +694,8 @@ const InputsPageDesktop: React.FC = () => {
         newRange.toString(),
         updatedInput
       );
-      console.log('✅ Device updated successfully');
 
       // Step 2: Update database SECOND
-      console.log('Step 2/2: Updating database...');
       await updateDatabaseOnly(
         selectedDevice.serialNumber,
         selectedInputForRange.inputIndex,
@@ -739,7 +703,6 @@ const InputsPageDesktop: React.FC = () => {
         newRange.toString(),
         updatedInput
       );
-      console.log('✅ Database updated successfully');
 
       // Update local state optimistically
       setInputs(prevInputs =>
@@ -751,16 +714,14 @@ const InputsPageDesktop: React.FC = () => {
         )
       );
 
-      console.log('✅ Range updated successfully!');
     } catch (error) {
-      console.error('Failed to update range:', error);
+      LogUtil.Error('Failed to update range:', error);
       alert(`Failed to update range: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    console.log('Search query:', e.target.value);
   };
 
   // Controlled sort state for asc→desc→clear
@@ -986,8 +947,6 @@ const InputsPageDesktop: React.FC = () => {
 
         const handleToggle = async () => {
           const newValue = !isAuto ? '1' : '0';
-          console.log('=== Auto/Man toggled (Two-Step Process) ===');
-          console.log('Device:', item.serialNumber, 'Input:', item.inputIndex, 'New Value:', newValue);
 
           try {
             // Find the current input data
@@ -1006,7 +965,6 @@ const InputsPageDesktop: React.FC = () => {
             const panelId = selectedDevice.panelId || 1;
 
             // Step 1: Update device FIRST using FFI
-            console.log('Step 1/2: Updating device via FFI...');
             await updateDeviceUsingFFI(
               panelId,
               item.serialNumber,
@@ -1015,10 +973,8 @@ const InputsPageDesktop: React.FC = () => {
               newValue,
               currentInput
             );
-            console.log('✅ Device updated successfully');
 
             // Step 2: Update database SECOND
-            console.log('Step 2/2: Updating database...');
             await updateDatabaseOnly(
               item.serialNumber,
               item.inputIndex,
@@ -1026,7 +982,6 @@ const InputsPageDesktop: React.FC = () => {
               newValue,
               currentInput
             );
-            console.log('✅ Database updated successfully');
 
             // Update local state optimistically
             setInputs(prevInputs =>
@@ -1037,9 +992,8 @@ const InputsPageDesktop: React.FC = () => {
               )
             );
 
-            console.log('✅ Auto/Man updated successfully (device + database)!');
           } catch (error) {
-            console.error('Failed to update Auto/Man:', error);
+            LogUtil.Error('Failed to update Auto/Man:', error);
             alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
         };

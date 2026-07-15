@@ -108,7 +108,6 @@ export class PanelDataRefreshService {
       }
 
       /* COMMENTED OUT - Action 15 implementation (disabled in C++ by default)
-      console.log(`[PanelDataRefreshService] Calling Action 15 (LOGGING_DATA) for ${type} (entryType=${entryType}${index !== undefined ? `, index=${index}` : ''})`);
 
       // Call Action 15: LOGGING_DATA - Gets all inputs, outputs, and variables
       const response = await transport.getFullDeviceData(serialNumber);
@@ -160,10 +159,6 @@ export class PanelDataRefreshService {
         items = response.data.variables;
       }
       */
-
-      if (import.meta.env.DEV) {
-        console.log(`[PanelDataRefreshService] Received ${items.length} ${type}(s) from device`);
-      }
 
       if (items.length === 0) {
         return {
@@ -250,8 +245,6 @@ export class PanelDataRefreshService {
       } else if (response.data.variables) {
         items = response.data.variables;
       }
-
-      LogUtil.Debug(`[PanelDataRefreshService] Received ${items.length} ${type}(s) from device`);
 
       if (items.length === 0) {
         return {
