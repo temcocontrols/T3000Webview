@@ -52,6 +52,7 @@ import { TrendChartContent } from '../components/TrendChartContent';
 import { TrendPolicyPage } from './TrendPolicyPage';
 import { TrendlogVerifyDrawer } from '../components/TrendlogVerifyDrawer';
 import { FlowLogTab } from '../../logs/components/FlowLogTab';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
 import styles from './TrendlogsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
@@ -605,7 +606,7 @@ export const TrendLogsPage: React.FC = () => {
         variableLastSyncFmt: variableLatest?.syncTimeFmt || 'N/A',
       });
     } catch (summaryError) {
-      console.error('[TrendLogsPage] Failed to load point sync summary:', summaryError);
+      LogUtil.Error('[TrendLogsPage] Failed to load point sync summary:', summaryError);
       setDevicePointSyncSummary(EMPTY_POINT_SYNC_SUMMARY);
     } finally {
       setPointSummaryLoading(false);
@@ -705,7 +706,7 @@ export const TrendLogsPage: React.FC = () => {
         setMonitorInputs([]);
       }
     } catch (error) {
-      console.error('[TrendLogsPage] Error loading inputs:', error);
+      LogUtil.Error('[TrendLogsPage] Error loading inputs:', error);
       setMonitorInputs([]);
     } finally {
       setLoadingInputs(false);
@@ -824,7 +825,7 @@ export const TrendLogsPage: React.FC = () => {
           },
         });
       } catch (error) {
-        console.error('[TrendLogsPage] Failed to load inputs for chart:', error);
+        LogUtil.Error('[TrendLogsPage] Failed to load inputs for chart:', error);
         navigate(fullPageUrl, {
           state: {
             serialNumber: selectedDevice.serialNumber,
@@ -983,7 +984,7 @@ const fetchTrendLogs = useCallback(async () => {
 
       // In chart context with an explicit requested monitor, never fallback to MON1.
       if (isChartContext && requestedNormalized && !queriedTrendlog) {
-        console.warn('[TrendLogsPage] Requested monitor not found in chart context; skipping fallback selection.', {
+        LogUtil.Warn('[TrendLogsPage] Requested monitor not found in chart context; skipping fallback selection.', {
           requestedMonitorId: reqMonId,
           requestedTrendlogId: reqTrendId,
         });
@@ -1014,7 +1015,7 @@ const fetchTrendLogs = useCallback(async () => {
     }
     const errorMessage = err instanceof Error ? err.message : 'Failed to load trendlogs';
     setError(errorMessage);
-    console.error('Error fetching trendlogs:', err);
+    LogUtil.Error('Error fetching trendlogs:', err);
   } finally {
     if (requestId !== fetchRequestIdRef.current) {
       return;
@@ -1101,7 +1102,7 @@ useEffect(() => {
       await fetchTrendLogs();
       setAutoRefreshed(true);
     } catch (error) {
-      console.error('[TrendLogsPage] Auto-refresh failed:', error);
+      LogUtil.Error('[TrendLogsPage] Auto-refresh failed:', error);
       setAutoRefreshed(true);
     } finally {
       setSyncingPointTypes(new Set());
@@ -1143,7 +1144,7 @@ const handleRefreshFromDevice = async () => {
     const refreshResponse = await TrendlogRefreshApi.refreshAllFromDevice(serial);
     await fetchTrendLogs();
   } catch (error) {
-    console.error('[TrendLogsPage] Failed to refresh from device:', error);
+    LogUtil.Error('[TrendLogsPage] Failed to refresh from device:', error);
     setError(error instanceof Error ? error.message : 'Failed to refresh from device');
   } finally {
     setSyncingPointTypes(new Set());
@@ -1160,7 +1161,7 @@ const handleRefreshSingleTrendlog = async (trendlogIndex: string) => {
   const match = trendlogIndex.match(/^MON(\d+)$/i);
   const index = match ? parseInt(match[1], 10) - 1 : parseInt(trendlogIndex, 10);
   if (isNaN(index) || index < 0) {
-    console.error('[TrendLogsPage] Invalid trendlog index:', trendlogIndex);
+    LogUtil.Error('[TrendLogsPage] Invalid trendlog index:', trendlogIndex);
     return;
   }
 
@@ -1169,7 +1170,7 @@ const handleRefreshSingleTrendlog = async (trendlogIndex: string) => {
     const refreshResponse = await TrendlogRefreshApi.refreshSingleFromDevice(selectedDevice.serialNumber, index);
     await fetchTrendLogs();
   } catch (error) {
-    console.error(`[TrendLogsPage] Failed to refresh trendlog ${index}:`, error);
+    LogUtil.Error(`[TrendLogsPage] Failed to refresh trendlog ${index}:`, error);
   } finally {
     setRefreshingItems(prev => {
       const newSet = new Set(prev);
@@ -1621,7 +1622,7 @@ const saveCurrentPointSet = useCallback(async () => {
     setIsTemporarySetMode(false);
     setPointSetActionMessage(`Set "${normalizedName}" saved successfully.`);
     } catch (error) {
-      console.error('[TrendLogsPage] Failed to save set to DB:', error);
+      LogUtil.Error('[TrendLogsPage] Failed to save set to DB:', error);
       setPointSetActionMessage('Failed to save set to database.');
     }
   }, [pointSetPointTags, pointSetSelectedKeys, pointSetSelectedOrder, pointSetName, pointSetSerialNumber, requestConfirmDialog, requestPromptDialog, savePointSetToDb, savedPointSets, selectedPointSetName]);
@@ -1689,7 +1690,7 @@ const renamePointSetByName = useCallback(async (setName: string, nextNameRaw: st
     setInlineRenameValue('');
     setPointSetActionMessage(`Renamed to "${nextName}".`);
   } catch (error) {
-    console.error('[TrendLogsPage] Failed to rename set in DB:', error);
+    LogUtil.Error('[TrendLogsPage] Failed to rename set in DB:', error);
     setPointSetActionMessage('Failed to rename set in database.');
   }
 }, [pointSetSerialNumber, renamePointSetInDb, requestConfirmDialog, savedPointSets, selectedPointSetName]);
@@ -1737,7 +1738,7 @@ const removePointSetByName = useCallback(async (setName: string) => {
     setIsTemporarySetMode(false);
     setPointSetActionMessage(`Deleted set "${targetName}".`);
   } catch (error) {
-    console.error('[TrendLogsPage] Failed to delete set from DB:', error);
+    LogUtil.Error('[TrendLogsPage] Failed to delete set from DB:', error);
     setPointSetActionMessage('Failed to delete set from database.');
   }
 }, [deletePointSetFromDb, inlineRenamePointSetName, pointSetSerialNumber, requestConfirmDialog, savedPointSets, selectedPointSetName]);
@@ -1830,7 +1831,7 @@ const loadPointSetByName = useCallback(async (setName: string) => {
 
     applyPointSetSelection(target);
   } catch (error) {
-    console.error('[TrendLogsPage] Failed to refresh point sets on selection:', error);
+    LogUtil.Error('[TrendLogsPage] Failed to refresh point sets on selection:', error);
     const fallback = savedPointSets.find((setItem) => setItem.name === setName);
     if (!fallback) {
       setPointSetActionMessage('Failed to load selected set from database.');
@@ -2059,7 +2060,7 @@ useEffect(() => {
           });
         }
       } catch (haystackLoadError) {
-        console.warn('[TrendLogsPage] Failed to load backend Haystack tags:', haystackLoadError);
+        LogUtil.Warn('[TrendLogsPage] Failed to load backend Haystack tags:', haystackLoadError);
       }
 
       // Import persisted Haystack tags authored in Points and Tags workspace.
@@ -2099,13 +2100,13 @@ useEffect(() => {
           });
         }
       } catch (policyLoadError) {
-        console.warn('[TrendLogsPage] Failed to load tags from Points and Tags workspace:', policyLoadError);
+        LogUtil.Warn('[TrendLogsPage] Failed to load tags from Points and Tags workspace:', policyLoadError);
       }
 
       setPointSetPoints(merged);
       setPointSetPointTags(seededTags);
     } catch (pointSetPointsError) {
-      console.error('[TrendLogsPage] Failed to load global points:', pointSetPointsError);
+      LogUtil.Error('[TrendLogsPage] Failed to load global points:', pointSetPointsError);
       setPointSetPoints([]);
       setPointSetPointTags({});
     } finally {
@@ -2143,7 +2144,7 @@ useEffect(() => {
         setPointSetInitialized(false);
       }
     } catch (error) {
-      console.error('[TrendLogsPage] Failed to load point sets from DB:', error);
+      LogUtil.Error('[TrendLogsPage] Failed to load point sets from DB:', error);
       if (cancelled) return;
       setSavedPointSets([]);
       setSelectedSavedSetName('');
