@@ -137,6 +137,11 @@
   color: #0078d4 !important;
 }
 
+/* Keep offline icon red even when selected */
+.treeItemSelected :global(.fui-TreeItemLayout__iconBefore svg[data-offline="true"]) {
+  color: #a80000 !important;
+}
+
 /* Add extra margin to leaf nodes to align with branch content (for missing expand icon) */
 :global(.fui-TreeItem[itemtype="leaf"] .fui-TreeItemLayout__main) {
   margin-left: 44px !important;

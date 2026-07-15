@@ -1723,9 +1723,25 @@
   const DB_STATUS_POLL_MS = 60000
   let dbStatusTimer: ReturnType<typeof setInterval> | null = null
 
+  // AbortController for canceling in-flight dbStatus requests on unmount
+  let dbStatusAbortController: AbortController | null = null
+
   async function checkDbStatus() {
+    // Prevent execution after unmount
+    if (isUnmounted.value) {
+      return
+    }
+
+    // Cancel any in-flight request
+    if (dbStatusAbortController) {
+      dbStatusAbortController.abort()
+    }
+    dbStatusAbortController = new AbortController()
+
     try {
-      const res = await fetch('http://localhost:9103/api/sync/health')
+      const res = await fetch('http://localhost:9103/api/sync/health', {
+        signal: dbStatusAbortController.signal
+      })
       if (!res.ok) return
       const data = await res.json()
 
@@ -1758,6 +1774,10 @@
         hint: hintMap[status] ?? 'Check Database Settings for more information.',
       }
     } catch (e) {
+      // Ignore abort errors
+      if (e instanceof Error && e.name === 'AbortError') {
+        return
+      }
       console.error('[TrendLogChart] dbStatus check failed:', e)
     }
   }
@@ -7453,6 +7473,11 @@
    * Auto-backfill missing data when user returns to TrendLog page
    */
   const handleVisibilityChange = async () => {
+    // Prevent execution after unmount
+    if (isUnmounted.value) {
+      return
+    }
+
     if (document.hidden) {
       // Page became hidden - user navigated away
       LogUtil.Info('👋 TrendLogChart: Page hidden - user navigated away', {
@@ -15030,7 +15055,11 @@
     }
   }
 
+  // Cleanup flag to prevent operations after unmount
+  const isUnmounted = ref(false)
+
   onUnmounted(() => {
+    isUnmounted.value = true
     stopRealTimeUpdates()
     destroyAllCharts()
 
@@ -15045,6 +15074,13 @@
     // Cleanup FFI countdown timer
     if (ffiCountdownTimer) {
       clearInterval(ffiCountdownTimer)
+      ffiCountdownTimer = null
+    }
+
+    // Cleanup Rediscover countdown timer (if exists)
+    if (rediscoverCountdownTimer) {
+      clearInterval(rediscoverCountdownTimer)
+      rediscoverCountdownTimer = null
     }
 
     if (dbStatusTimer) {
@@ -15055,9 +15091,15 @@
     // 🆕 Cleanup timebase change timeout and abort controller
     if (timebaseChangeTimeout) {
       clearTimeout(timebaseChangeTimeout)
+      timebaseChangeTimeout = null
     }
     if (historyAbortController) {
       historyAbortController.abort()
+      historyAbortController = null
+    }
+    if (historyFetchDebounceTimeout) {
+      clearTimeout(historyFetchDebounceTimeout)
+      historyFetchDebounceTimeout = null
     }
   })
 

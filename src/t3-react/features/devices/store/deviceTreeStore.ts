@@ -30,6 +30,7 @@ import { API_BASE_URL } from '../../../config/constants';
 import { T3Transport } from '../../../../lib/t3-transport/core/T3Transport';
 import { T3Database } from '../../../../lib/t3-database';
 import PanelDataRefreshService from '../../../shared/services/panelDataRefreshService';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
 
 /**
  * Clean device name: remove null bytes and garbage characters from C++ buffers
@@ -175,7 +176,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
             // Clean device names (remove null bytes and garbage from C++ buffers).
             // Unknown devices are kept in the store (saved to DB) but hidden from the tree
-            // by buildTreeStructure.  Their name is left as-is — do NOT format them as
+            // by buildTreeStructure.  Their name is left as-is �?do NOT format them as
             // "Panel X (SN YYYY)" since they don't have real discovery data.
             const cleanedDevices = response.devices
               .map(device => ({
@@ -189,6 +190,21 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               isLoading: false,
               lastSyncTime: new Date(),
             });
+
+            // Seed deviceStatuses from persisted isOnline field (only if scan has run)
+            const newStatuses = new Map<number, DeviceStatus>();
+            cleanedDevices.forEach((d) => {
+              // Only trust persisted status if last_checked is set (scan actually ran)
+              if (d.lastChecked) {
+                if (d.isOnline === true || d.isOnline === (1 as any)) {
+                  newStatuses.set(d.serialNumber, 'online');
+                } else {
+                  newStatuses.set(d.serialNumber, 'offline');
+                }
+              }
+              // No last_checked �?stays 'unknown' (info icon)
+            });
+            set({ deviceStatuses: newStatuses });
 
             // Auto-expand root building on first load (devices directly under building, no subnet level)
             const { expandedNodes } = get();
@@ -204,26 +220,55 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             get().buildTreeStructure();
 
             // Auto-select first device if none is selected
+            // Use same filtering & sorting as buildTreeStructure so selection matches the tree
             const { selectedDevice, selectDevice, devices } = get();
-            console.log(`[fetchDevices] Devices loaded:`, response.devices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
-            console.log(`[fetchDevices] Current selectedDevice:`, selectedDevice?.nameShowOnTree || 'none');
 
             if (!selectedDevice && devices.length > 0) {
-              // Skip unknown devices for auto-select — they are hidden from tree.
+              // Match buildTreeStructure: filter unknown + sort alphabetically
               const isUnknown = (d: DeviceInfo) =>
                 !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
               const knownDevices = devices.filter(d => !isUnknown(d));
-              const firstDevice = knownDevices.length > 0 ? knownDevices[0] : null;
-              if (firstDevice) {
-                console.log(`[fetchDevices] Auto-selecting first known device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
-                selectDevice(firstDevice);
+              knownDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+
+              // Try to restore last-selected device from localStorage first
+              const lastSerial = localStorage.getItem('t3.lastSelectedDevice');
+              const lastDevice = lastSerial
+                ? knownDevices.find(d => String(d.serialNumber) === lastSerial)
+                : null;
+
+              if (lastDevice) {
+                selectDevice(lastDevice);
               } else {
-                console.log('[fetchDevices] No known devices to auto-select');
+                const firstDevice = knownDevices.length > 0 ? knownDevices[0] : null;
+                if (firstDevice) {
+                  selectDevice(firstDevice);
+                }
               }
             }
 
-            // Update status bar with success message
-            useStatusBarStore.getState().setMessage(`Loaded ${response.devices.length} devices`, 'success');
+            // Update status bar with device counts from DB
+            const allDevices = response.devices;
+            const isUnknownDevice = (d: any) => {
+              const name = (d.productName || d.showLabelName || '').trim();
+              return !name || name === '(Unknown)' || name === 'Unknown';
+            };
+            const visible = allDevices.filter((d: any) => !isUnknownDevice(d));
+            const hidden = allDevices.filter((d: any) => isUnknownDevice(d));
+            const onlineList = visible.filter((d: any) => d.isOnline === 1 || d.isOnline === true);
+            const offlineList = visible.filter((d: any) => !(d.isOnline === 1 || d.isOnline === true));
+            const parts: string[] = [];
+            if (onlineList.length > 0) {
+              parts.push(`${onlineList.length} online (${onlineList.map((d: any) => d.productName).join(', ')})`);
+            }
+            if (offlineList.length > 0) {
+              const names = offlineList.map((d: any) => d.productName).join(', ');
+              parts.push(`${offlineList.length} offline (${names})`);
+            }
+            if (hidden.length > 0) {
+              const sns = hidden.map((d: any) => `SN${d.serialNumber}`).join(', ');
+              parts.push(`${hidden.length} unknown (${sns})`);
+            }
+            useStatusBarStore.getState().setMessage(parts.join(' | '), 'success');
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch devices';
             set({
@@ -233,7 +278,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
             // Send error to status bar instead of inline display
             useStatusBarStore.getState().setMessage(`Error: ${errorMessage}`, 'error');
-            console.error('Device fetch error:', errorMessage);
+            LogUtil.Error('Device fetch error:', errorMessage);
           } finally {
             fetchDevicesInFlight = null;
           }
@@ -253,7 +298,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         try {
           const newDevices = await DeviceApiService.scanDevices(options);
           // TODO: Add discovered devices to database
-          console.log('Discovered devices:', newDevices);
           set({ isLoading: false });
         } catch (error) {
           set({
@@ -295,19 +339,10 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           // Check if response has data
           if (response && response.data && response.data.data) {
             const panels = response.data.data;
-            console.log('[loadDevicesWithSync] FFI returned panels:', panels);
-            console.log(`[loadDevicesWithSync] Total panels: ${panels.length}`);
+
 
             // Log detailed panel information for debugging
             panels.forEach((panel: any, idx: number) => {
-              console.log(`[loadDevicesWithSync] Panel ${idx + 1}:`, {
-                panel_name: panel.panel_name,
-                panel_number: panel.panel_number,
-                serial_number: panel.serial_number,
-                pid: panel.pid,
-                object_instance: panel.object_instance,
-                online_time: panel.online_time
-              });
             });
 
             // Filter out unknown devices before processing
@@ -315,7 +350,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               const name = (panel.panel_name || panel.panelName || '').trim();
               return name !== '(Unknown)' && name !== '';
             });
-            console.log(`[loadDevicesWithSync] Known panels after filter: ${knownPanels.length} (filtered ${panels.length - knownPanels.length})`);
 
             // Save ALL panels to database (including Unknown ones)
             // Tree display will filter them out later via buildTreeFromDevices
@@ -330,7 +364,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                 try {
                   serialNumber = panel.serial_number || panel.serialNumber;
 
-                  // Keep raw panel_name (including "(Unknown)") — do NOT format as
+                  // Keep raw panel_name (including "(Unknown)") �?do NOT format as
                   // "Panel X (SN YYYY)" since unknown devices should be hidden.
                   const rawPanelName = panel.panel_name || panel.panelName;
                   const panelName = cleanDeviceName(rawPanelName, '');
@@ -344,24 +378,37 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                     MainBuilding_Name: 'Default_Building',
                     Building_Name: 'Local View',
                     show_label_name: panelName,
+                    is_online: 1,
+                    last_checked: new Date().toISOString(),
                     // Don't set description - let backend handle it or leave null
                   };
 
                   // Add BACnet_MSTP_MAC_ID if available (from object_instance)
                   if (panel.object_instance !== undefined && panel.object_instance !== null) {
                     deviceData.BACnet_MSTP_MAC_ID = panel.object_instance;
-                    console.log(`[loadDevicesWithSync] Panel ${serialNumber} - Setting BACnet_MSTP_MAC_ID = ${panel.object_instance}`);
                   }
 
-                  console.log(`[loadDevicesWithSync] Creating device ${serialNumber}:`, JSON.stringify(deviceData, null, 2));
                   await db.devices.create(deviceData);
-                  console.log(`[loadDevicesWithSync] ✅ Device ${serialNumber} (${panelName}) saved successfully`);
                   savedCount++;
                 } catch (error: any) {
+                  // Create may fail if device already exists �?try update to at least refresh online status
+                  if (serialNumber && (error?.message || '').toLowerCase().includes('duplicate') || String(error).includes('already exists')) {
+                    try {
+                      await fetch(`${API_BASE_URL}/api/t3_device/devices/${serialNumber}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ is_online: 1, last_checked: new Date().toISOString() }),
+                      });
+                      savedCount++;
+                      continue;
+                    } catch (updateErr) {
+                      LogUtil.Error(`[loadDevicesWithSync] Update also failed for ${serialNumber}:`, updateErr);
+                    }
+                  }
                   failedCount++;
-                  console.error(`[loadDevicesWithSync] ❌ Failed to save device ${serialNumber ?? 'UNKNOWN'}:`, error);
-                  console.error('[loadDevicesWithSync] Device data was:', deviceData ?? 'NOT_SET');
-                  console.error('[loadDevicesWithSync] Error details:', error?.message || error);
+                  LogUtil.Error(`[loadDevicesWithSync] Failed to save device ${serialNumber ?? 'UNKNOWN'}:`, error);
+                  LogUtil.Error('[loadDevicesWithSync] Device data was:', deviceData ?? 'NOT_SET');
+                  LogUtil.Error('[loadDevicesWithSync] Error details:', error?.message || error);
                 }
               }
             } catch (dbError) {
@@ -369,19 +416,52 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             }
 
             // Show detailed statistics
-            console.log(`[loadDevicesWithSync] Save statistics: ${savedCount} saved, ${failedCount} failed out of ${panels.length} total`);
             if (savedCount > 0) {
               setMessage(`Found ${panels.length} device(s), saved ${savedCount} successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`, savedCount === panels.length ? 'success' : 'warning');
             } else {
               setMessage(`Found ${panels.length} device(s) but failed to save any to database`, 'error');
             }
 
+            // Mark offline devices: update last_checked for all DB devices not in FFI response,
+            // so the frontend can trust their isOnline=0 status (otherwise they stay "unknown")
+            try {
+              const onlineSerials = panels.map((p: any) => p.serial_number || p.serialNumber).filter(Boolean);
+              const allDbSerials = get().devices.map(d => d.serialNumber);
+              const offlineSerials = allDbSerials.filter(s => !onlineSerials.includes(s));
+              if (offlineSerials.length > 0) {
+                const now = new Date().toISOString();
+                await Promise.all(offlineSerials.map(s =>
+                  fetch(`${API_BASE_URL}/api/t3_device/devices/${s}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_online: 0, last_checked: now }),
+                  }).catch(() => { })
+                ));
+              }
+            } catch (e) {
+              console.warn('[loadDevicesWithSync] Failed to mark offline:', e);
+            }
+
             // Step 3: Reload from DB to get updated list
             await get().fetchDevices();
 
-            // Step 4: Auto-select first device (point sync handled by each page)
-            const { devices: updatedDevices, selectDevice } = get();
-            console.log(`[loadDevicesWithSync] Devices after reload:`, updatedDevices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
+            // Show final summary: FFI result vs DB state (with device names)
+            const { devices: updatedDevices, selectDevice, deviceStatuses: finalStatuses } = get();
+            const ffiNames = panels.map((p: any) => p.panel_name || p.panelName || '').filter(Boolean);
+            const isUnknown = (d: DeviceInfo) => {
+              const name = (d.productName || d.showLabelName || '').trim();
+              return !name || name === '(Unknown)' || name === 'Unknown';
+            };
+            const visibleDevs = updatedDevices.filter(d => !isUnknown(d));
+            const hiddenDevs = updatedDevices.filter(d => isUnknown(d));
+            const onlineList = visibleDevs.filter(d => finalStatuses.get(d.serialNumber) === 'online');
+            const offlineList = visibleDevs.filter(d => finalStatuses.get(d.serialNumber) === 'offline');
+            const summaryParts: string[] = [];
+            if (ffiNames.length > 0) summaryParts.push(`FFI: ${ffiNames.join(', ')}`);
+            if (onlineList.length > 0) summaryParts.push(`${onlineList.length} online (${onlineList.map(d => d.nameShowOnTree).join(', ')})`);
+            if (offlineList.length > 0) summaryParts.push(`${offlineList.length} offline (${offlineList.map(d => d.nameShowOnTree).join(', ')})`);
+            if (hiddenDevs.length > 0) summaryParts.push(`${hiddenDevs.length} unknown (${hiddenDevs.map(d => `SN${d.serialNumber}`).join(', ')})`);
+            setMessage(summaryParts.join(' | '), offlineList.length > 0 ? 'warning' : 'success');
 
             if (updatedDevices.length > 0) {
               // Sort devices alphabetically, pushing (Unknown) devices to the bottom
@@ -392,7 +472,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                 return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
               });
               const firstDevice = sortedDevices[0];
-              console.log(`[loadDevicesWithSync] Selecting first device (alphabetically): ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
               selectDevice(firstDevice);
             }
           } else {
@@ -402,7 +481,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
           await transport.disconnect();
         } catch (error) {
-          console.error('[loadDevicesWithSync] Failed:', error);
+          LogUtil.Error('[loadDevicesWithSync] Failed:', error);
           const errorMsg = error instanceof Error ? error.message : 'Failed to load devices';
           setMessage(errorMsg, 'error');
         }
@@ -455,7 +534,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           get().buildTreeStructure();
 
         } catch (error) {
-          console.error('[syncDatabaseWithCpp] Error:', error);
+          LogUtil.Error('[syncDatabaseWithCpp] Error:', error);
           setMessage('Failed to remove devices', 'error');
         }
       },
@@ -478,11 +557,11 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           const variableCount = variablesResult.savedCount || variablesResult.itemCount || 0;
 
           setMessage(
-            `✓ Synced ${device.nameShowOnTree}: ${inputCount} inputs, ${outputCount} outputs, ${variableCount} variables`,
+            `�?Synced ${device.nameShowOnTree}: ${inputCount} inputs, ${outputCount} outputs, ${variableCount} variables`,
             'success'
           );
         } catch (error) {
-          console.error('[syncDevicePoints] Failed:', error);
+          LogUtil.Error('[syncDevicePoints] Failed:', error);
           setMessage(`Failed to sync ${device.nameShowOnTree}, showing cached data`, 'warning');
         }
       },
@@ -514,12 +593,12 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           const safeDevice: DeviceInfo = updatedDevice?.serialNumber
             ? updatedDevice
             : (() => {
-                const merged = { ...(get().devices.find(d => d.serialNumber === serialNumber)!), ...updates };
-                return {
-                  ...merged,
-                  nameShowOnTree: (updates as any).showLabelName || merged.showLabelName || merged.productName || `Device ${serialNumber}`,
-                };
-              })();
+              const merged = { ...(get().devices.find(d => d.serialNumber === serialNumber)!), ...updates };
+              return {
+                ...merged,
+                nameShowOnTree: (updates as any).showLabelName || merged.showLabelName || merged.productName || `Device ${serialNumber}`,
+              };
+            })();
           set((state) => ({
             devices: state.devices.map((d) =>
               d.serialNumber === serialNumber ? safeDevice : d
@@ -570,7 +649,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             return { deviceStatuses: newStatuses };
           });
         } catch (error) {
-          console.error(`Failed to check status for device ${serialNumber}:`, error);
+          LogUtil.Error(`Failed to check status for device ${serialNumber}:`, error);
         }
       },
 
@@ -579,7 +658,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         try {
           await DeviceApiService.connectDevice(serialNumber);
         } catch (error) {
-          console.error(`Failed to connect to device ${serialNumber}:`, error);
+          LogUtil.Error(`Failed to connect to device ${serialNumber}:`, error);
           throw error;
         }
       },
@@ -589,7 +668,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         try {
           await DeviceApiService.disconnectDevice(serialNumber);
         } catch (error) {
-          console.error(`Failed to disconnect from device ${serialNumber}:`, error);
+          LogUtil.Error(`Failed to disconnect from device ${serialNumber}:`, error);
           throw error;
         }
       },
@@ -627,7 +706,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           );
         }
 
-        // Hide unknown devices from the tree — they are saved to DB but have no
+        // Hide unknown devices from the tree �?they are saved to DB but have no
         // real discovery data and would clutter the UI with empty entries.
         const isUnknownDevice = (d: DeviceInfo) =>
           !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
@@ -705,7 +784,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Select tree node
       selectNode: (nodeId: string) => {
-        console.log(`[selectNode] Called with nodeId: ${nodeId}`);
         const findNode = (nodes: TreeNode[], id: string): TreeNode | null => {
           for (const node of nodes) {
             if (node.id === id) return node;
@@ -718,31 +796,38 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         };
 
         const node = findNode(get().treeData, nodeId);
-        console.log(`[selectNode] Found node:`, node?.data ? `${node.data.nameShowOnTree} (SN: ${node.data.serialNumber})` : 'none');
         set({
           selectedNodeId: nodeId,
           selectedDevice: node?.data || null,
         });
+
+        // Persist selection so it survives page refresh
+        if (node?.data) {
+          localStorage.setItem('t3.lastSelectedDevice', String(node.data.serialNumber));
+        }
       },
 
       // Select device directly
       selectDevice: async (device: DeviceInfo | null) => {
-        console.log(`[selectDevice] Called with device:`, device ? `${device.nameShowOnTree} (SN: ${device.serialNumber})` : 'null');
         set({
           selectedDevice: device,
           selectedNodeId: device ? `device-${device.serialNumber}` : null,
         });
+
+        // Persist selection so it survives page refresh
+        if (device) {
+          localStorage.setItem('t3.lastSelectedDevice', String(device.serialNumber));
+        } else {
+          localStorage.removeItem('t3.lastSelectedDevice');
+        }
 
         // Smart auto-sync: Check if device needs sync (DB is empty)
         if (device) {
           const needsSync = await get().checkIfDeviceNeedsSync(device.serialNumber);
           if (needsSync) {
             // DB is empty, auto-sync from device
-            console.log(`[selectDevice] Auto-syncing ${device.nameShowOnTree} (DB empty)`);
             await get().syncDevicePoints(device);
-          } else {
-            console.log(`[selectDevice] Using cached data for ${device.nameShowOnTree}`);
-          }
+          } 
         }
       },
 
@@ -820,34 +905,24 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         const { selectedDevice } = get();
         const filteredDevices = get().getFilteredDevices();
 
-        console.log('[deviceTreeStore] getNextDevice called:', {
-          selectedDevice: selectedDevice ? `${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber})` : 'none',
-          totalFilteredDevices: filteredDevices.length,
-          deviceList: filteredDevices.map(d => `${d.nameShowOnTree} (SN: ${d.serialNumber})`),
-        });
 
         if (!selectedDevice) {
-          console.log('[deviceTreeStore] No selected device');
           return null;
         }
 
         if (filteredDevices.length === 0) {
-          console.log('[deviceTreeStore] No filtered devices available');
           return null;
         }
 
         // Only one device - no next device
         if (filteredDevices.length === 1) {
-          console.log('[deviceTreeStore] Only one device available');
           return null;
         }
 
         const currentIndex = filteredDevices.findIndex(d => d.serialNumber === selectedDevice.serialNumber);
 
-        console.log('[deviceTreeStore] Current device index:', currentIndex);
 
         if (currentIndex === -1) {
-          console.log('[deviceTreeStore] Current device not in filtered list');
           return null;
         }
 
@@ -856,12 +931,10 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         // Circular navigation: if at last device, loop back to first
         if (nextIndex >= filteredDevices.length) {
           const firstDevice = filteredDevices[0];
-          console.log(`[deviceTreeStore] At last device (${currentIndex + 1}/${filteredDevices.length}), looping to first: ${firstDevice.nameShowOnTree}`);
           return firstDevice;
         }
 
         const nextDevice = filteredDevices[nextIndex];
-        console.log(`[deviceTreeStore] Next device found: ${nextDevice.nameShowOnTree} (SN: ${nextDevice.serialNumber}) - ${nextIndex + 1}/${filteredDevices.length}`);
 
         return nextDevice;
       },
@@ -940,7 +1013,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       },
 
       fetchProjectPointTree: async () => {
-        // Guard against concurrent calls — return early if already fetching
+        // Guard against concurrent calls �?return early if already fetching
         const { isLoading } = get();
         if (isLoading) return;
 
@@ -976,7 +1049,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           deviceCapacities.set(serialNumber, data);
           set({ deviceCapacities: new Map(deviceCapacities) });
         } catch (error) {
-          console.error('Error fetching device capacity:', error);
+          LogUtil.Error('Error fetching device capacity:', error);
         }
       },
     }),

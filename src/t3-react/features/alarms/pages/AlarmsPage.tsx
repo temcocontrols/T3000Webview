@@ -37,6 +37,7 @@ import { AlarmRefreshApi } from '../services/alarmRefreshApi';
 import styles from './AlarmsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
 
 // Alarm interface matching ALARMS entity and C++ BacnetAlarmLog (7 columns)
 interface Alarm {
@@ -112,7 +113,6 @@ const AlarmsPageDesktop: React.FC = () => {
   useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSettings = () => {
-    console.log('Settings clicked');
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,7 +157,7 @@ const AlarmsPageDesktop: React.FC = () => {
       const result = await response.json();
       setAlarms(result.data || []);
     } catch (err) {
-      console.error('Error fetching alarms:', err);
+      LogUtil.Error('Error fetching alarms:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch alarms');
       setAlarms([]);
     } finally {
@@ -184,15 +184,13 @@ const AlarmsPageDesktop: React.FC = () => {
     const checkAndRefresh = async () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
-      console.log('🔄 Auto-refreshing alarms from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
         const response = await AlarmRefreshApi.refreshAllFromDevice(serial);
-        console.log('✅ Auto-refresh response:', response);
         await fetchAlarms();
         setAutoRefreshed(true);
       } catch (err) {
-        console.error('❌ Auto-refresh failed:', err);
+        LogUtil.Error('Auto-refresh failed:', err);
       }
     };
 
@@ -207,12 +205,10 @@ const AlarmsPageDesktop: React.FC = () => {
 
     try {
       const serial = selectedDevice.serialNumber;
-      console.log('🔄 Refreshing all alarms from device...');
       const response = await AlarmRefreshApi.refreshAllFromDevice(serial);
-      console.log('✅ Device refresh response:', response);
       await fetchAlarms();
     } catch (err) {
-      console.error('❌ Refresh from device failed:', err);
+      LogUtil.Error('Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
     } finally {
       setRefreshing(false);
@@ -229,13 +225,11 @@ const AlarmsPageDesktop: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       const alarmIndex = parseInt(item.alarm_id);
-      console.log(`🔄 Refreshing single alarm from device: ${alarmIndex}`);
 
       const response = await AlarmRefreshApi.refreshSingleFromDevice(serial, alarmIndex);
-      console.log('✅ Single alarm refresh response:', response);
       await fetchAlarms();
     } catch (err) {
-      console.error('❌ Single alarm refresh failed:', err);
+      LogUtil.Error('Single alarm refresh failed:', err);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -268,11 +262,10 @@ const AlarmsPageDesktop: React.FC = () => {
     setIsSaving(true);
     try {
       // TODO: Implement batch save when API is ready
-      console.log('Saving changes:', editedValues);
       setEditedValues({});
       setHasChanges(false);
     } catch (error) {
-      console.error('Error saving changes:', error);
+      LogUtil.Error('Error saving changes:', error);
     } finally {
       setIsSaving(false);
     }
@@ -294,7 +287,6 @@ const AlarmsPageDesktop: React.FC = () => {
   // Handle Delete
   const handleDelete = (alarm: Alarm) => {
     // TODO: Implement delete logic
-    console.log('Delete alarm:', alarm.alarm_id);
   };
 
   const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
@@ -520,7 +512,7 @@ const AlarmsPageDesktop: React.FC = () => {
                     title="Refresh from Device"
                     aria-label="Refresh from Device"
                   >
-                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                    <ArrowClockwiseRegular className={refreshing ? styles.rotating : ''} />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Trend Chart Content
  *
  * Shared content component used by both:
@@ -1620,29 +1620,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       let startTime = now - timeRangeMs;
       let endTime = now;
 
-      // 馃啎 SMART LOADING: Check if we already have data in this time range (skip when force reload)
+      // SMART LOADING: Check if we already have data in this time range (skip when force reload)
       const existingRange = forceReload ? null : getExistingDataTimeRange();
       if (existingRange) {
-        console.log('馃搳 TrendChartContent: Existing data detected - optimizing load range', {
-          requestedRange: {
-            start: new Date(startTime).toISOString(),
-            end: new Date(endTime).toISOString(),
-          },
-          existingRange: {
-            start: new Date(existingRange.earliest).toISOString(),
-            end: new Date(existingRange.latest).toISOString(),
-          },
-        });
 
         // Only load data BEFORE the earliest existing point (historical gap)
         if (startTime < existingRange.earliest) {
           endTime = existingRange.earliest - 1000; // 1 second before earliest
-          console.log('馃攳 TrendChartContent: Loading historical gap BEFORE existing data', {
-            gapStart: new Date(startTime).toISOString(),
-            gapEnd: new Date(endTime).toISOString(),
-          });
         } else {
-          console.log('TrendChartContent: All requested data already exists in memory - skipping database load');
           setLoading(false);
           return;
         }
@@ -1665,14 +1650,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         })),
       };
 
-      console.log('馃摜 TrendChartContent: Fetching historical data', request);
 
       const response = await TrendChartApiService.getTrendHistory(request);
 
-      console.log('TrendChartContent: Historical data received', {
-        totalRecords: response.total_records,
-        dataPoints: response.data.length,
-      });
 
       // Process and MERGE data into series (don't replace)
       const updatedSeries = [...seriesRef.current]; // Use ref for latest state
@@ -1782,19 +1762,12 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       if (props.monitorInputs !== undefined) {
         if (props.monitorInputs.length === 0) {
           // Monitor has no inputs configured — show empty left panel
-          console.log('[TrendChartContent] monitorInputs provided but empty — no items to show');
           seriesRef.current = [];
           setSeries([]);
           return;
         }
       }
       if (props.monitorInputs && props.monitorInputs.length > 0) {
-        console.log('鉁?TrendChartContent: Initializing series from monitorInputs', {
-          inputCount: props.monitorInputs.length,
-          sampleInput: props.monitorInputs[0],
-          serialNumber,
-          panelId,
-        });
 
         // Fetch all point data once for each type
         const pointsCache: Record<string, any[]> = {};
@@ -1814,7 +1787,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                            'variable-points';
             const pointUrl = `${API_BASE_URL}/api/t3_device/devices/${serialNumber}/${endpoint}`;
 
-            console.log(`馃摗 Fetching ${pointTypeStr} points from:`, pointUrl);
             const response = await fetch(pointUrl);
 
             if (response.ok) {
@@ -1823,7 +1795,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                               pointTypeStr === 'OUTPUT' ? 'output_points' :
                               'variable_points';
               pointsCache[pointTypeStr] = data[pointsKey] || [];
-              console.log(`鉁?Fetched ${pointsCache[pointTypeStr].length} ${pointTypeStr} points`);
             } else {
               console.error(`鉂?Failed to fetch ${pointTypeStr} points:`, response.status);
               pointsCache[pointTypeStr] = [];
@@ -1880,11 +1851,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
               digitalAnalog = 'Digital';
             }
 
-            console.log(`鉁?[${pointId}] Metadata mapped`, {
-              digitalAnalog,
-              rawDigitalAnalog: rawValue,
-              resolvedUnit,
-            });
           }
 
           // Preserve existing data to prevent flash-to-blank when parent re-renders
@@ -1909,13 +1875,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
         seriesRef.current = generatedSeries; // Update ref synchronously before setState
         setSeries(generatedSeries);
-        console.log('鉁?TrendChartContent: Series initialized from monitorInputs', {
-          count: generatedSeries.length,
-          serialNumber,
-          panelId,
-          digitalCount: generatedSeries.filter(s => s.digitalAnalog === 'Digital').length,
-          analogCount: generatedSeries.filter(s => s.digitalAnalog === 'Analog').length,
-        });
         return;
       }
 
@@ -1924,10 +1883,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const inputData = props.itemData.t3Entry.input;
         const rangeData = props.itemData.t3Entry.range;
 
-        console.log('TrendChartContent: Initializing series from itemData', {
-          inputCount: inputData.length,
-          rangeCount: rangeData.length,
-        });
 
         // Generate series from monitor configuration
         const generatedSeries: TrendSeries[] = [];
@@ -1981,16 +1936,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
         seriesRef.current = generatedSeries; // Update ref synchronously before setState
         setSeries(generatedSeries);
-        console.log('TrendChartContent: Series initialized from itemData', {
-          count: generatedSeries.length,
-          serialNumber,
-          panelId,
-        });
         return;
       }
 
       // Fallback: Create sample series if no itemData
-      console.log('鈿狅笍 TrendChartContent: No itemData available, using sample series');
       const sampleSeries: TrendSeries[] = [
         {
           name: 'IN1',
@@ -2029,11 +1978,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
       setSeries(sampleSeries);
 
-      console.log('TrendChartContent: Series initialized', {
-        count: sampleSeries.length,
-        serialNumber,
-        panelId,
-      });
     } catch (error) {
       console.error('TrendChartContent: Failed to initialize series', error);
     }
@@ -2075,7 +2019,7 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const updated = prev.map(s => ({ ...s, data: [...s.data] }));
         let matched = 0;
 
-        // ⚠️ IMPORTANT: do NOT write fallback zeros to DB. Skip rows when source value is missing/invalid.
+        // ?? IMPORTANT: do NOT write fallback zeros to DB. Skip rows when source value is missing/invalid.
         // Same validation as Vue's toFiniteNumber()
         const toFiniteNumber = (raw: any): number | null => {
           if (raw === null || raw === undefined || raw === '') return null;
@@ -2098,9 +2042,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           const selectedRaw = isAnalog ? item.value : item.control;
           const parsedValue = toFiniteNumber(selectedRaw);
 
-          // ✅ Skip fallback zeros (missing/invalid values)
+          // ? Skip fallback zeros (missing/invalid values)
           if (parsedValue === null) {
-            console.debug(`⏭️ SKIPPING fallback zero - ${s.pointId}: missing/invalid ${isAnalog ? 'value' : 'control'}`);
+            console.debug(`?? SKIPPING fallback zero - ${s.pointId}: missing/invalid ${isAnalog ? 'value' : 'control'}`);
             return;
           }
 
@@ -2454,10 +2398,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const gapSeconds = Math.floor((now - lastDataTimestampRef.current) / 1000);
 
         if (gapSeconds >= 10) {
-          console.log('馃攧 TrendChartContent: Backfilling data gap', {
-            gapSeconds,
-            lastTimestamp: new Date(lastDataTimestampRef.current).toISOString(),
-          });
           await loadHistoricalData();
         }
       }
@@ -2490,17 +2430,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     };
 
     const initializeData = async () => {
-      console.log('🚀 TrendChartContent: Starting initialization sequence');
 
       // Step 1: Initialize series from monitor config (Vue: regenerateDataSeries)
       await initializeSeries();
 
-      console.log('TrendChartContent: Series initialized, waiting for series state update');
 
       // Wait for series state to be updated before loading data
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      console.log('TrendChartContent: Series state updated, loading historical data');
 
       // Step 2: Load initial historical data (Vue: initializeData -> loadHistoricalDataFromDatabase)
       await loadHistoricalData();
@@ -2512,11 +2449,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
       // TODO: re-enable pollRealtimeData when FFI Action=15 is stable
       if (!realtimeIntervalRef.current) {
         const intervalMs = calcPollIntervalMs();
-        console.log(`📡 TrendChartContent: Starting history reload poll every ${intervalMs / 1000}s`);
         realtimeIntervalRef.current = setInterval(() => loadHistoricalData(true), intervalMs);
       }
 
-      console.log('TrendChartContent: Initialization completed');
     };
 
     initializeData();
@@ -2552,35 +2487,26 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   useEffect(() => {
     // Skip if series not initialized yet
     if (series.length === 0) {
-      console.log('鈿狅笍 TrendChartContent: No series yet, skipping timebase effect');
       return;
     }
 
     // Skip if this is the first load and we haven't loaded initial data yet
     if (!hasLoadedInitialDataRef.current) {
-      console.log('鈿狅笍 TrendChartContent: Initial data not loaded yet, skipping timebase effect');
       return;
     }
 
     // Cancel previous pending timebase change
     if (timebaseChangeTimeoutRef.current) {
       clearTimeout(timebaseChangeTimeoutRef.current);
-      console.log('鈴革笍 TrendChartContent: Cancelled pending timebase change');
     }
 
     // Abort any ongoing history API request
     if (historyAbortControllerRef.current) {
       historyAbortControllerRef.current.abort();
-      console.log('馃洃 TrendChartContent: Aborted previous history API request');
     }
 
     // Debounce: wait 300ms before executing
     timebaseChangeTimeoutRef.current = setTimeout(async () => {
-      console.log('TrendChartContent: TimeBase changed - loading data', {
-        timeBase,
-        isRealtime,
-        seriesCount: series.length,
-      });
 
       try {
         // Create new abort controller for this request
@@ -2591,15 +2517,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
         const hasExistingData = existingRange && existingRange.totalPoints > 0;
 
         if (hasExistingData) {
-          console.log('TrendChartContent: Existing data found - merging with historical', {
-            existingPoints: existingRange?.totalPoints,
-          });
         }
 
         // Load data based on Auto Scroll state
         if (isRealtime) {
           // Auto Scroll ON: Load real-time + historical data
-          console.log('馃搳 TrendChartContent: Auto Scroll ON - Loading historical + starting real-time');
           await loadHistoricalData();
 
           // Ensure periodic history reload is active (FFI realtime polling disabled)
@@ -2612,12 +2534,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                 + (Number(entry.second_interval_time) || 0)
               : 0;
             const intervalMs = totalSecs > 0 ? Math.max(totalSecs * 1000, 15000) : 15000;
-            console.log(`📡 TrendChartContent: Starting history reload poll every ${intervalMs / 1000}s`);
             realtimeIntervalRef.current = setInterval(() => loadHistoricalData(true), intervalMs);
           }
         } else {
           // Auto Scroll OFF: Load historical data only
-          console.log('馃摎 TrendChartContent: Auto Scroll OFF - Loading historical only');
 
           // Stop real-time updates
           if (realtimeIntervalRef.current) {
@@ -2628,15 +2548,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           await loadHistoricalData();
         }
 
-        console.log('TrendChartContent: Timebase change completed', {
-          timeBase,
-          isRealtime,
-          totalPoints: series.reduce((sum, s) => sum + s.data.length, 0),
-        });
       } catch (error: any) {
         // Check if error is due to abort
         if (error.name === 'AbortError') {
-          console.log('鈴癸笍 TrendChartContent: History request aborted (newer request started)');
           return;
         }
 
@@ -2662,17 +2576,14 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
   useEffect(() => {
     // Only manage interval after initial load is complete
     if (!hasLoadedInitialDataRef.current) {
-      console.log('鈴革笍 TrendChartContent: Skipping Auto Scroll effect - not initialized yet');
       return;
     }
 
-    console.log('馃攧 TrendChartContent: Auto Scroll state changed', { isRealtime });
 
     if (isRealtime) {
       // Start periodic history reload (FFI realtime polling disabled)
       // TODO: replace with setInterval(pollRealtimeData, 5000) when FFI Action=15 is stable
       if (!realtimeIntervalRef.current) {
-        console.log('TrendChartContent: Starting history reload interval');
         realtimeIntervalRef.current = setInterval(() => {
           loadHistoricalData(true);
         }, 15000);
@@ -2680,7 +2591,6 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
     } else {
       // Stop interval
       if (realtimeIntervalRef.current) {
-        console.log('TrendChartContent: Stopping reload interval');
         clearInterval(realtimeIntervalRef.current);
         realtimeIntervalRef.current = null;
       }

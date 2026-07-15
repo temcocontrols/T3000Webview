@@ -8,6 +8,8 @@
   overflow-y: auto;
   background-color: #ffffff;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
 }
 
 /* ── Fluent overrides — scoped to .container so Equipment View is unaffected ── */

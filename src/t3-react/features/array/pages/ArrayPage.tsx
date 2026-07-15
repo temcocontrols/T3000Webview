@@ -14,7 +14,7 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SettingsRegular,
   SearchRegular,
   ErrorCircleRegular,
@@ -280,8 +280,8 @@ const ArrayPage: React.FC = () => {
                     title="Refresh"
                     aria-label="Refresh"
                   >
-                    <ArrowSyncRegular />
-                    <span>Refresh</span>
+                    <ArrowClockwiseRegular className={loading ? styles.rotating : ''} />
+                    <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

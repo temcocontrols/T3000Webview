@@ -73,6 +73,12 @@ pub struct Model {
     pub show_label_name: Option<String>,       // C++ show_label_name (display name)
     #[sea_orm(column_name = "connection_type")]
     pub connection_type: Option<String>,       // C++ connection type (Serial/Ethernet/etc)
+
+    // Online status tracking (set by FFI Action 4 scan)
+    #[sea_orm(column_name = "is_online")]
+    pub is_online: Option<i32>,                // 0 = offline/unknown, 1 = online
+    #[sea_orm(column_name = "last_checked")]
+    pub last_checked: Option<String>,          // ISO 8601 timestamp of last status check
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

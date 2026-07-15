@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::app_state::T3AppState;
+use crate::server::debug_log;
 use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
 use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest, CreateOutputPointRequest, CreateVariablePointRequest};
 use crate::entity::t3_device::{input_points, output_points, variable_points, trendlogs};
@@ -953,6 +954,82 @@ async fn get_device_points_count(
         "outputCount": output_count,
         "variableCount": variable_count,
         "totalCount": input_count + output_count + variable_count
+    })))
+}
+
+/// Batch update device online status from FFI Action 4 scan
+/// POST /api/t3_device/devices/batch-online-status
+/// Body: { "onlineSerials": [237219], "offlineSerials": [240488] }
+#[derive(Deserialize)]
+struct BatchOnlineStatusRequest {
+    #[serde(default)]
+    online_serials: Vec<i32>,
+    #[serde(default)]
+    offline_serials: Vec<i32>,
+}
+
+async fn batch_update_device_online_status(
+    State(state): State<T3AppState>,
+    Json(payload): Json<BatchOnlineStatusRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let db_guard = get_t3_device_conn!(state);
+    let db: &sea_orm::DatabaseConnection = &*db_guard;
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut updated = 0i32;
+    let mut errors: Vec<String> = Vec::new();
+
+    debug_log(&format!("[batch-online] Payload: onlineSerials={:?}, offlineSerials={:?}",
+        payload.online_serials, payload.offline_serials));
+
+    // Mark online devices
+    for serial in &payload.online_serials {
+        let sql = format!(
+            "UPDATE DEVICES SET is_online = 1, last_checked = '{}' WHERE SerialNumber = {}",
+            now, serial
+        );
+        debug_log(&format!("[batch-online] SQL: {}", sql));
+        match db.execute_unprepared(&sql).await {
+            Ok(res) => {
+                let rows = res.rows_affected();
+                debug_log(&format!("[batch-online] Marked SN {} as online (rows: {})", serial, rows));
+                updated += rows as i32;
+            }
+            Err(e) => {
+                let msg = format!("Failed to update SN {}: {}", serial, e);
+                debug_log(&format!("[batch-online] ERROR: {}", msg));
+                errors.push(msg);
+            }
+        }
+    }
+
+    // Mark offline devices
+    for serial in &payload.offline_serials {
+        let sql = format!(
+            "UPDATE DEVICES SET is_online = 0, last_checked = '{}' WHERE SerialNumber = {}",
+            now, serial
+        );
+        match db.execute_unprepared(&sql).await {
+            Ok(res) => {
+                let rows = res.rows_affected();
+                debug_log(&format!("[batch-online] Marked SN {} as offline (rows: {})", serial, rows));
+                updated += rows as i32;
+            }
+            Err(e) => {
+                let msg = format!("Failed to update SN {}: {}", serial, e);
+                debug_log(&format!("[batch-online] ERROR: {}", msg));
+                errors.push(msg);
+            }
+        }
+    }
+
+    debug_log(&format!("[batch-online] Done: {} updated, {} errors", updated, errors.len()));
+
+    Ok(Json(json!({
+        "success": errors.is_empty(),
+        "updated": updated,
+        "onlineCount": payload.online_serials.len(),
+        "offlineCount": payload.offline_serials.len(),
+        "errors": errors,
     })))
 }
 

@@ -431,3 +431,86 @@
   gap: 8px;
   padding: 12px;
 }
+
+/* Scan Status Drawer (C++ equivalent: CScanDbWaitDlg) */
+.scanOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.scanDrawer {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  width: 620px;
+  max-width: 95vw;
+  overflow: hidden;
+}
+
+.scanDrawerHeader {
+  padding: 10px 20px;
+  border-bottom: 1px solid #edebe9;
+}
+
+.scanDrawerBody {
+  padding: 4px 20px 8px;
+}
+
+.scanInfoBar {
+  padding: 8px 20px 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scanDrawerFooter {
+  padding: 8px 20px;
+  border-top: 1px solid #edebe9;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.scanTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  font-size: 12px;
+}
+
+.scanTable th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #edebe9;
+  color: #605e5c;
+  font-weight: 600;
+}
+
+.scanTable td {
+  padding: 8px;
+  border-bottom: 1px solid #f3f2f1;
+  vertical-align: middle;
+}
+
+.infoStrip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f0f6ff;
+  border-bottom: 1px solid #c7e0f4;
+  font-size: 12px;
+  color: #323130;
+  line-height: 1.5;
+}
+
+.infoStripIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #0078d4;
+  font-size: 16px;
+}

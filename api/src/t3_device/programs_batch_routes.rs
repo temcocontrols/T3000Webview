@@ -153,8 +153,8 @@ async fn execute_batch_save(
                     .filter(programs::Column::SerialNumber.eq(serial))
                     .filter(programs::Column::ProgramId.eq(program_id))
                     .col_expr(programs::Column::SwitchNode, Expr::value(program_update.panel.clone()))
-                    .col_expr(programs::Column::ProgramLabel, Expr::value(program_update.label.clone()))
-                    .col_expr(programs::Column::ProgramList, Expr::value(program_update.full_label.clone()))
+                    .col_expr(programs::Column::ProgramLabel, Expr::value(program_update.full_label.clone()))
+                    .col_expr(programs::Column::ProgramList, Expr::value(program_update.label.clone()))
                     .col_expr(programs::Column::ProgramStatus, Expr::value(program_update.status.clone()))
                     .col_expr(programs::Column::AutoManual, Expr::value(program_update.auto_manual.clone()))
                     .col_expr(programs::Column::ProgramSize, Expr::value(program_update.size.clone()))
@@ -191,8 +191,8 @@ async fn execute_batch_save(
                     serial_number: Set(serial),
                     program_id: Set(Some(program_id.to_string())),
                     switch_node: Set(program_update.panel.clone()),
-                    program_label: Set(program_update.label.clone()),
-                    program_list: Set(program_update.full_label.clone()),
+                    program_label: Set(program_update.full_label.clone()),
+                    program_list: Set(program_update.label.clone()),
                     program_status: Set(program_update.status.clone()),
                     auto_manual: Set(program_update.auto_manual.clone()),
                     program_size: Set(program_update.size.clone()),

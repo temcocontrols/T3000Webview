@@ -272,7 +272,6 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   const { handlers: fileHandlers, state: fileState } = useFileMenu(
     (message) => {
       // Show success notification
-      console.log('✅ File operation success:', message);
       // TODO: Show toast notification
     },
     (error) => {
@@ -286,12 +285,10 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   const { handlers: toolsHandlers, state: toolsState } = useToolsMenu(
     (message) => {
       // Show success notification
-      console.log('✅ Tools operation success:', message);
       // TODO: Show toast notification
     },
     (error) => {
       // Show error notification
-      console.error('❌ Tools operation error:', error);
       // TODO: Show error toast
     }
   );
@@ -314,7 +311,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   // CSV operations (global context — Export/Import to CSV)
   const { triggerExport, triggerImport, isExportAvailable, isImportAvailable } = useCsvOperations();
 
-  console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
+  // console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
 
   // Helper function to convert TreeNode to DeviceInfo
   const convertTreeNodeToDeviceInfo = (node: any): DeviceInfo => ({
@@ -337,7 +334,6 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     if (typeof action === 'function') {
       action();
     } else {
-      console.log('Menu action:', action);
 
       // Handle specific menu actions
       switch (action) {
@@ -548,7 +544,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           break;
         // Add other menu actions as needed
         default:
-          console.log('Unhandled menu action:', action);
+          break;
       }
     }
   };
@@ -639,7 +635,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
 
   // Handle toolbar button click
   const handleToolbarClick = (item: any) => {
-    console.log('Toolbar button clicked:', item);
+
 
     if (item.windowId !== undefined) {
       // Navigate to window by windowId
