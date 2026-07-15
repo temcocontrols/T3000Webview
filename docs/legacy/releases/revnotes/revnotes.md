@@ -223,3 +223,42 @@ Mouse hovering displays the full function name.
 ![2](./pic/2026-02-04/2.png)
 
 #### 3. Corrected digital output data handling. Fixed database storage to properly save control field (0/1) instead of value field for accurate historical trends. Fixed scaling bug where digital control values were incorrectly divided by 1000, ensuring proper chart positioning.
+
+## 2026-07-15
+
+### 1. Haystack Semantic Tags System
+- New Haystack Tags v2 backend with 3-table SQLite schema and 8 REST APIs
+- Auto-tagging of device points during FFI sync (label + units → Haystack tags)
+- Standard Tags page with interactive tag tree, search, and sync from official defs.json
+- Custom Tags page for user-defined semantic tags
+- Tags column added to Inputs, Outputs, Variables pages
+
+![1](./pic/2026-07-15/1.png)
+
+![2](./pic/2026-07-15/2.png)
+
+![3](./pic/2026-07-15/3.png)
+
+![4](./pic/2026-07-15/4.png)
+
+![5](./pic/2026-07-15/5.png)
+
+### 2. Logging Cleanup
+- Removed all verbose console.log from 14+ pages/stores across the codebase
+- Migrated all console.error to LogUtil.Error throughout t3-react and Rust backend 
+
+### 3. UI/UX Improvements
+- FluentUI v9 built-in sorting adopted across all data tables; column width fixes
+- Device tree: online/offline status with icon, last-device persistence, summary info
+- Thin scrollbar styling in point list views
+- Status bar and refresh button style updates 
+
+### 4. Bug Fixes
+- Duplicate React key warnings in RecentActivity widget
+- Program loading/save issues; PIDLoop network issues
+- Input/Output/Variable page: layout, sorting, tag assignment, column width fixes
+- TrendLogChart unmount safety (abort controllers, timer cleanup, visibility guards) 
+
+### 5. Rust Backend
+- Haystack v2 migration replaces v1 (new 3-table schema)
+- Migration always-on for webview_t3_device 
