@@ -1,4 +1,7 @@
-# Haystack 4 Input Point Integration Guide
+# Haystack v1 — Legacy Single-Table Design
+
+> ⚠️ **DEPRECATED — June 2026**  
+> Replaced by [v2-haystack-current-implementation.md](./v2-haystack-current-implementation.md)
 
 ## Purpose
 
