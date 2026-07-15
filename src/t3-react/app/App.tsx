@@ -177,7 +177,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 export const App: React.FC = () => {
   const [theme] = React.useState<'light' | 'dark'>('light');
 
-  console.log('🚀 React App component rendering...');
 
   return (
     <div className={styles.appContainer}>

@@ -221,8 +221,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             // Auto-select first device if none is selected
             // Use same filtering & sorting as buildTreeStructure so selection matches the tree
             const { selectedDevice, selectDevice, devices } = get();
-            console.log(`[fetchDevices] Devices loaded:`, response.devices.map((d, idx) => `[${idx}] ${d.nameShowOnTree} (SN: ${d.serialNumber})`));
-            console.log(`[fetchDevices] Current selectedDevice:`, selectedDevice?.nameShowOnTree || 'none');
 
             if (!selectedDevice && devices.length > 0) {
               // Match buildTreeStructure: filter unknown + sort alphabetically
@@ -238,15 +236,11 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                 : null;
 
               if (lastDevice) {
-                console.log(`[fetchDevices] Restoring last-selected device: ${lastDevice.nameShowOnTree} (SN: ${lastDevice.serialNumber})`);
                 selectDevice(lastDevice);
               } else {
                 const firstDevice = knownDevices.length > 0 ? knownDevices[0] : null;
                 if (firstDevice) {
-                  console.log(`[fetchDevices] Auto-selecting first device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
                   selectDevice(firstDevice);
-                } else {
-                  console.log('[fetchDevices] No known devices to auto-select');
                 }
               }
             }
@@ -457,7 +451,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ is_online: 0, last_checked: now }),
-                  }).catch(() => {})
+                  }).catch(() => { })
                 ));
                 console.log('[loadDevicesWithSync] Marked offline:', offlineSerials);
               }
@@ -618,12 +612,12 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           const safeDevice: DeviceInfo = updatedDevice?.serialNumber
             ? updatedDevice
             : (() => {
-                const merged = { ...(get().devices.find(d => d.serialNumber === serialNumber)!), ...updates };
-                return {
-                  ...merged,
-                  nameShowOnTree: (updates as any).showLabelName || merged.showLabelName || merged.productName || `Device ${serialNumber}`,
-                };
-              })();
+              const merged = { ...(get().devices.find(d => d.serialNumber === serialNumber)!), ...updates };
+              return {
+                ...merged,
+                nameShowOnTree: (updates as any).showLabelName || merged.showLabelName || merged.productName || `Device ${serialNumber}`,
+              };
+            })();
           set((state) => ({
             devices: state.devices.map((d) =>
               d.serialNumber === serialNumber ? safeDevice : d
@@ -836,7 +830,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Select device directly
       selectDevice: async (device: DeviceInfo | null) => {
-        console.log(`[selectDevice] Called with device:`, device ? `${device.nameShowOnTree} (SN: ${device.serialNumber})` : 'null');
         set({
           selectedDevice: device,
           selectedNodeId: device ? `device-${device.serialNumber}` : null,
@@ -854,11 +847,8 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           const needsSync = await get().checkIfDeviceNeedsSync(device.serialNumber);
           if (needsSync) {
             // DB is empty, auto-sync from device
-            console.log(`[selectDevice] Auto-syncing ${device.nameShowOnTree} (DB empty)`);
             await get().syncDevicePoints(device);
-          } else {
-            console.log(`[selectDevice] Using cached data for ${device.nameShowOnTree}`);
-          }
+          } 
         }
       },
 
