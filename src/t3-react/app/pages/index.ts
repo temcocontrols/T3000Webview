@@ -22,6 +22,7 @@ export { HolidaysPage } from '../../features/schedules/pages/HolidaysPage';
 
 // Haystack
 export { HaystackTagsPage } from '../../features/haystack/pages/HaystackTagsPage';
+export { default as AutoTaggingMcpPage } from '../../features/haystack/pages/AutoTaggingMcpPage';
 
 // Monitoring
 export { TrendLogsPage } from '../../features/trendlogs/pages/TrendlogsPage';

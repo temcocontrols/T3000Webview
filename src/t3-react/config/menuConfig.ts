@@ -696,6 +696,13 @@ const haystackMenu: MenuItem = {
       action: () => { window.location.hash = '#/t3000/custom-tags'; },
       icon: 'Tag',
     },
+    {
+      id: 'haystack-auto-tagging',
+      label: 'Auto-Tagging & MCP',
+      type: 'item',
+      action: () => { window.location.hash = '#/t3000/auto-tagging'; },
+      icon: 'BrainCircuit',
+    },
   ],
 };
 
