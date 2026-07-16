@@ -6,6 +6,7 @@ import {
   DataGrid, DataGridHeader, DataGridRow, DataGridCell, DataGridBody,
   createTableColumn,
   Popover, PopoverSurface, PopoverTrigger,
+  Dropdown, Option,
 } from '@fluentui/react-components';
 import {
   ArrowClockwiseRegular, AddRegular, DismissRegular,
@@ -330,28 +331,25 @@ const RuleDialog: React.FC<{ mode: 'create'; onClose: () => void }> = ({ mode, o
 // ═══ Run Tab ═══
 
 const RunTab: React.FC = () => {
-  const { selectedDevice, devices } = useDeviceTreeStore();
-  const [serialInput, setSerialInput] = useState('');
+  const { devices } = useDeviceTreeStore();
+  const [selectedSerials, setSelectedSerials] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(true);
   const [running, setRunning] = useState(false);
   const [previewData, setPreviewData] = useState<TagMatch[] | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [runConfirmOpen, setRunConfirmOpen] = useState(false);
+  const [rulesCount, setRulesCount] = useState(0);
 
-  const getSerials = (): number[] => {
-    if (serialInput.trim()) {
-      return serialInput.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-    }
-    if (selectedDevice?.serialNumber) return [selectedDevice.serialNumber];
-    return [];
-  };
+  const allDevices = devices.filter(d => d.productName && d.productName !== 'Unknown' && d.productName !== '(Unknown)');
+  const allSerials = allDevices.map(d => String(d.serialNumber));
+  const effectiveSerials = selectAll ? allSerials : selectedSerials;
+  const serials = effectiveSerials.map(Number).filter(n => !isNaN(n));
 
   const handlePreview = async () => {
-    const serials = getSerials();
-    if (serials.length === 0) { setError('Enter serial numbers or select a device'); return; }
-    setRunning(true);
-    setError(null);
-    setPreviewData(null);
-    setResult(null);
+    if (serials.length === 0) { setError('No devices available'); return; }
+    setRunning(true); setError(null); setPreviewData(null); setResult(null);
     try {
       const res = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/preview`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -361,21 +359,12 @@ const RunTab: React.FC = () => {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setPreviewData(data.matches || []);
       setResult(`Found ${data.matches?.length || 0} matches across ${serials.length} device(s).`);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setRunning(false);
-    }
+    } catch (e: any) { setError(e.message); } finally { setRunning(false); }
   };
 
   const handleRun = async () => {
-    const serials = getSerials();
-    if (serials.length === 0) { setError('Enter serial numbers or select a device'); return; }
-    if (!confirm(`Run auto-tagging on ${serials.length} device(s)? This will write tags to the database.`)) return;
-    setRunning(true);
-    setError(null);
-    setPreviewData(null);
-    setResult(null);
+    if (serials.length === 0) { setError('No devices available'); return; }
+    setRunning(true); setError(null); setPreviewData(null); setResult(null);
     try {
       const res = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/run`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -383,74 +372,120 @@ const RunTab: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      setResult(`${data.tagged || 0} points tagged.`);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setRunning(false);
-    }
+      setResult(`Successfully tagged ${data.tagged || 0} points.`);
+      setPreviewData(data.matches || []);
+    } catch (e: any) { setError(e.message); } finally { setRunning(false); }
   };
 
   const handleReset = async () => {
-    const serials = getSerials();
-    if (serials.length === 0) { setError('Enter serial numbers or select a device'); return; }
-    if (!confirm(`Reset auto-tags on ${serials.length} device(s)?`)) return;
-    setRunning(true);
-    setError(null);
+    setResetOpen(false);
+    if (serials.length === 0) { setError('No devices available'); return; }
+    setRunning(true); setError(null);
     try {
       const res = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/reset`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serialNumbers: serials }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      setResult('Tags reset.');
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setRunning(false);
-    }
+      if (!res.ok) { const d = await res.json().catch(() => ({ error: `HTTP ${res.status}` })); throw new Error(d.error); }
+      setResult('Tags reset. All auto-assigned tags cleared.');
+    } catch (e: any) { setError(e.message); } finally { setRunning(false); }
   };
 
-  const serials = getSerials();
+  useEffect(() => { handlePreview(); }, []);
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/haystack/auto-tagging/rules`)
+      .then(r => r.json()).then(d => setRulesCount((d.rules || []).filter((r: AutoTaggingRule) => r.enabled).length))
+      .catch(() => {});
+  }, []);
+
+  const getDeviceName = (sn: number) => {
+    const d = allDevices.find(d => d.serialNumber === sn);
+    return d?.productName || '';
+  };
 
   return (
     <div>
-      <div className={styles.runPanel}>
-        <Field label="Device Serial Numbers">
-          <Input
-            placeholder={selectedDevice ? `Selected: ${selectedDevice.serialNumber}` : 'e.g., 1,2,3'}
-            value={serialInput}
-            onChange={(_, d) => setSerialInput(d.value)}
-          />
-        </Field>
-        <div className={styles.runButtons}>
-          <Button icon={<EyeRegular />} onClick={handlePreview} disabled={running}>
-            Preview
-          </Button>
-          <Button icon={<PlayRegular />} onClick={handleRun} disabled={running} appearance="primary">
-            Run Auto-Tag
-          </Button>
-          <Button icon={<DeleteRegular />} onClick={handleReset} disabled={running} appearance="subtle">
-            Reset Tags
-          </Button>
-        </div>
+      <div className={styles.runHint}>
+        <InfoRegular style={{ fontSize: 13 }} /> Select devices and preview auto-tagging results before applying. No changes are made until you run.
+      </div>
 
-        <div className={styles.deviceHint}>
-          {serials.length > 0
-            ? <span><CheckmarkCircleRegular /> Targeting {serials.length} device(s): {serials.join(', ')}</span>
-            : <span style={{ color: '#888' }}>Select a device in the tree or enter serial numbers above.</span>
-          }
-        </div>
+      <div className={styles.runRow}>
+        <Dropdown
+          size="small"
+          multiselect
+          className={styles.runDropdown}
+          placeholder={selectAll ? `${allSerials.length} devices selected` : selectedSerials.length === 0 ? 'No devices selected' : `${selectedSerials.length} device${selectedSerials.length > 1 ? 's' : ''} selected`}
+          selectedOptions={selectAll ? allSerials : selectedSerials}
+          onOptionSelect={(_, d) => { setSelectedSerials(d.selectedOptions); setSelectAll(false); }}
+          value=""
+        >
+          <div onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setSelectAll(!selectAll); if (selectAll) setSelectedSerials([]); }} style={{ padding: '5px 12px', cursor: 'pointer', fontSize: 13, color: '#0078d4' }}>
+            {selectAll ? 'Deselect All' : 'Select All'}
+          </div>
+          {allDevices.map(d => (
+            <Option key={String(d.serialNumber)} value={String(d.serialNumber)} style={{ fontSize: 12 }}>
+              {d.serialNumber} — {d.productName || `Device ${d.serialNumber}`}
+            </Option>
+          ))}
+        </Dropdown>
+      <div className={styles.runActions}>
+        <Button icon={<EyeRegular style={{ fontSize: 14 }} />} onClick={handlePreview} disabled={running} size="small" appearance="primary">Preview</Button>
+        <Popover open={runConfirmOpen} onOpenChange={(_, d) => setRunConfirmOpen(d.open)} withArrow>
+          <PopoverTrigger disableButtonEnhancement>
+            <Button icon={<PlayRegular style={{ fontSize: 14 }} />} disabled={running} size="small">Run Auto-Tag</Button>
+          </PopoverTrigger>
+          <PopoverSurface style={{ padding: 12, maxWidth: 400 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12 }}>
+              <InfoRegular style={{ color: '#0078d4', fontSize: 16, marginTop: 1, flexShrink: 0 }} />
+              <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+                <strong>Run auto-tagging</strong> using {rulesCount} active rule{rulesCount !== 1 ? 's' : ''} on{' '}
+                {serials.length === 1 ? (
+                  <><strong>{getDeviceName(serials[0]) || `Device ${serials[0]}`}</strong></>
+                ) : (
+                  <>{serials.length} devices:</>
+                )}
+              </div>
+            </div>
+            {serials.length > 1 && (
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 12, maxHeight: 120, overflowY: 'auto', lineHeight: 1.6 }}>
+                {serials.map(s => (
+                  <div key={s}>{s} — {getDeviceName(s) || `Device ${s}`}</div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button size="small" onClick={() => setRunConfirmOpen(false)}>Cancel</Button>
+              <Button size="small" appearance="primary" onClick={() => { setRunConfirmOpen(false); handleRun(); }}>Run</Button>
+            </div>
+          </PopoverSurface>
+        </Popover>
+        <Popover open={resetOpen} onOpenChange={(_, d) => setResetOpen(d.open)} withArrow>
+          <PopoverTrigger disableButtonEnhancement>
+              <Button icon={<DeleteRegular style={{ fontSize: 14 }} />} disabled={running} size="small">Reset Tags</Button>
+          </PopoverTrigger>
+          <PopoverSurface style={{ padding: 12, maxWidth: 300 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+              <WarningRegular style={{ color: '#d32f2f', fontSize: 16, marginTop: 1, flexShrink: 0 }} />
+              <div style={{ fontSize: 12 }}>
+                <strong>Warning:</strong> This will permanently delete all auto-assigned Haystack tags and Brick classes for {serials.length} device(s). Manual tags are preserved.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button size="small" onClick={() => setResetOpen(false)}>Cancel</Button>
+              <Button size="small" appearance="primary" style={{ background: '#d32f2f' }} onClick={handleReset}>Reset</Button>
+            </div>
+          </PopoverSurface>
+        </Popover>
+      </div>
       </div>
 
       {error && <div className={styles.errorBanner}><WarningRegular /> {error}</div>}
       {result && <div className={styles.successBanner}><CheckmarkCircleRegular /> {result}</div>}
-      {running && <Spinner label="Processing..." />}
+      {running && <Spinner size="extra-small" label="Processing..." className={styles.loadingSpinner} />}
 
       {previewData && (
         <div className={styles.previewSection}>
-          <h4>Preview Results ({previewData.length} matches)</h4>
+          <div className={styles.sectionTitle}>Preview Results ({previewData.length} matches)</div>
           <table className={styles.previewTable}>
             <thead>
               <tr>
@@ -465,7 +500,7 @@ const RunTab: React.FC = () => {
             <tbody>
               {previewData.map((m, i) => (
                 <tr key={i}>
-                  <td>{m.point.serial_number}</td>
+                  <td>{m.point.serial_number}{getDeviceName(m.point.serial_number) ? ` — ${getDeviceName(m.point.serial_number)}` : ''}</td>
                   <td>{m.point.point_type} #{m.point.point_index}</td>
                   <td>{m.point.full_label || m.point.label || '—'}</td>
                   <td><Badge size="small">{m.matched_rule}</Badge></td>

@@ -130,18 +130,38 @@
 .formGrid input, .formGrid select { font-size: 12px; height: 28px; min-height: 28px; }
 
 /* ── Run Tab ── */
-.runPanel {
-  background: var(--colorNeutralBackground1);
-  border: 1px solid var(--colorNeutralStroke1);
-  border-radius: 4px;
-  padding: 16px;
-  margin-bottom: 16px;
+.runHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--colorNeutralForeground2);
+  padding-bottom: 8px;
 }
-.runButtons {
+
+.runRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 12px 0;
+}
+.runDropdown { width: 380px; min-height: 32px; }
+.selectAllLink {
+  font-size: 11px;
+  color: var(--colorBrandForeground1);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.selectAllLink:hover { text-decoration: underline; }
+.runDropdown input { height: 28px; }
+.runActions {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
+  align-items: center;
+  flex-shrink: 0;
 }
+.runActions button { min-height: 28px; height: 28px; }
 .deviceHint {
   margin-top: 8px;
   font-size: 12px;
@@ -184,6 +204,7 @@
   border-bottom: 1px solid var(--colorNeutralStroke2);
 }
 .previewTable tr:hover td { background: var(--colorNeutralBackground2); }
+.previewTable td:first-child { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── MCP Tab ── */
 .mcpSection { max-width: 800px; }
