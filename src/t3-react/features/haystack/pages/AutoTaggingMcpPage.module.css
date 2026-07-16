@@ -47,12 +47,15 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   flex-wrap: wrap;
   flex-shrink: 0;
-  padding-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--colorNeutralStroke2);
 }
+.filterInput { width: 220px; }
+.filterInput input { font-size: 12px; height: 28px; }
+.rulesTop button { min-height: 28px; height: 28px; }
 .rulesBottom {
   flex: 1;
   overflow: auto;
@@ -61,6 +64,43 @@
   scrollbar-color: #c1c1c1 transparent;
 }
 .count { font-size: 11px; color: var(--colorNeutralForeground3); margin-left: auto; }
+
+/* ── Rule Source Info ── */
+.ruleInfo {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+}
+.ruleInfo a { color: var(--colorBrandForeground1); text-decoration: none; }
+.ruleInfo a:hover { text-decoration: underline; }
+
+/* ── DataGrid Overrides ── */
+.dataGrid { font-size: 12px; }
+.dataGrid [class*="fui-DataGridHeader"] {
+  background: var(--colorNeutralBackground3, #f0f0f0);
+}
+.dataGrid [class*="fui-DataGridHeaderCell"] {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.dataGrid [class*="fui-DataGridCell"] {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.ruleCell { display: flex; align-items: center; gap: 6px; }
+.ruleName { font-weight: 600; font-size: 12px; }
+.patternCode {
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+  word-break: break-all;
+}
+.targetCell { font-size: 12px; }
 
 .rulesTable {
   overflow: auto;
@@ -99,8 +139,10 @@
 .formGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
+.formGrid label { font-size: 12px; }
+.formGrid input, .formGrid select { font-size: 12px; }
 
 /* ── Run Tab ── */
 .runPanel {

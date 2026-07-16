@@ -8,7 +8,7 @@ import {
   Toast, ToastTitle, useToastController,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular, AddRegular, DismissRegular,
+  ArrowClockwiseRegular, AddRegular, DismissRegular,
   PlayRegular, EyeRegular, CheckmarkCircleRegular,
   WarningRegular, InfoRegular, DeleteRegular,
   TagRegular, FlashRegular, BrainCircuitRegular, SettingsRegular,
@@ -71,10 +71,7 @@ const AutoTaggingMcpPage: React.FC = () => {
           <div className={styles.infoText}>
             <div className={styles.infoTitle}>Auto-Tagging &amp; MCP</div>
             <div className={styles.infoDesc}>
-              Regex-based Haystack tagging &amp; Brick classification engine with Model Context Protocol server for LLM agent integration.
-            </div>
-            <div className={styles.infoMeta}>
-              v3 — Manage rules, preview and apply auto-tagging, configure MCP tools.
+              Manage regex-based rules for automatic Haystack tagging and Brick classification. Includes an MCP server for LLM agent integration.
             </div>
           </div>
         </div>
@@ -148,24 +145,22 @@ const RulesTab: React.FC = () => {
   );
 
   const columns: TableColumnDefinition<AutoTaggingRule>[] = [
-    createTableColumn({ columnId: 'enabled', renderHeaderCell: () => 'On', renderCell: (r) => (
-      <Switch checked={r.enabled} onChange={() => handleToggle(r)} />
-    ) }),
     createTableColumn({ columnId: 'name', renderHeaderCell: () => 'Rule', renderCell: (r) => (
-      <div>
-        <Badge appearance="filled" color={r.category === 'brick' ? 'important' : 'informative'} size="small">
+      <div className={styles.ruleCell}>
+        <Badge appearance="filled" color={r.category === 'brick' ? 'important' : 'informative'} size="extra-small">
           {r.category}
         </Badge>
-        <span style={{ marginLeft: 6, fontWeight: 600 }}>{r.rule_name}</span>
+        <span className={styles.ruleName}>{r.rule_name}</span>
       </div>
     ) }),
     createTableColumn({ columnId: 'pattern', renderHeaderCell: () => 'Pattern', renderCell: (r) => (
-      <code style={{ fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 250, display: 'inline-block' }}>
-        {r.pattern}
-      </code>
+      <code className={styles.patternCode}>{r.pattern}</code>
     ) }),
     createTableColumn({ columnId: 'brick_class', renderHeaderCell: () => 'Brick Class', renderCell: (r) => (
-      <span>{r.brick_class || r.haystack_tags || '—'}</span>
+      <span className={styles.targetCell}>{r.brick_class || r.haystack_tags || '—'}</span>
+    ) }),
+    createTableColumn({ columnId: 'status', renderHeaderCell: () => 'Status', renderCell: (r) => (
+      <Switch checked={r.enabled} onChange={() => handleToggle(r)} />
     ) }),
     createTableColumn({ columnId: 'actions', renderHeaderCell: () => '', renderCell: (r) => (
       <Tooltip content="Delete rule" relationship="label">
@@ -178,13 +173,23 @@ const RulesTab: React.FC = () => {
     <div className={styles.rulesLayout}>
       <div className={styles.rulesTop}>
         <Input
-          placeholder="Filter rules..."
+          size="small"
+          placeholder="Filter rules…"
           value={filter}
           onChange={(_, d) => setFilter(d.value)}
-          style={{ width: 280 }}
+          contentAfter={filter ? <DismissRegular style={{ fontSize: 12, cursor: 'pointer', color: '#888' }} onClick={() => setFilter('')} /> : undefined}
+          className={styles.filterInput}
         />
-        <Button icon={<ArrowSyncRegular />} onClick={fetchRules} size="small">Refresh</Button>
-        <Button icon={<AddRegular />} onClick={() => setCreating(true)} size="small" appearance="primary">New Rule</Button>
+        <Button icon={<ArrowClockwiseRegular style={{ fontSize: 14 }} />} onClick={fetchRules} size="small">Refresh</Button>
+        <Button icon={<AddRegular style={{ fontSize: 14 }} />} onClick={() => setCreating(true)} size="small" appearance="primary">New Rule</Button>
+        <span className={styles.ruleInfo}>
+          <InfoRegular />
+          Default rules sourced from{' '}
+          <a href="https://github.com/qnst/brick-bacnet-mcp" target="_blank" rel="noopener noreferrer">brick-bacnet-mcp ↗</a>
+          {' '}(regex patterns) &amp;{' '}
+          <a href="https://github.com/qnst/Brick" target="_blank" rel="noopener noreferrer">Brick Schema ↗</a>
+          {' '}(ontology).
+        </span>
         <span className={styles.count}>{filtered.length} rules</span>
       </div>
 
@@ -254,29 +259,29 @@ const RuleDialog: React.FC<{ mode: 'create'; onClose: () => void }> = ({ mode, o
           <DialogTitle>Create Rule</DialogTitle>
           <DialogContent>
             <div className={styles.formGrid}>
-              <Field label="Rule Name" required>
-                <Input value={form.rule_name} onChange={(_, d) => setForm(prev => ({ ...prev, rule_name: d.value }))} />
+              <Field label="Rule Name" required size="small">
+                <Input size="small" value={form.rule_name} onChange={(_, d) => setForm(prev => ({ ...prev, rule_name: d.value }))} />
               </Field>
-              <Field label="Category">
-                <Select value={form.category} onChange={(_, d) => setForm(prev => ({ ...prev, category: d.value }))}>
+              <Field label="Category" size="small">
+                <Select size="small" value={form.category} onChange={(_, d) => setForm(prev => ({ ...prev, category: d.value }))}>
                   <option value="haystack">Haystack</option>
                   <option value="brick">Brick</option>
                 </Select>
               </Field>
-              <Field label="Pattern (regex)">
-                <Input value={form.pattern} onChange={(_, d) => setForm(prev => ({ ...prev, pattern: d.value }))} placeholder="(?i)(?<![A-Za-z])(oat|outside...)(?![A-Za-z])" />
+              <Field label="Pattern (regex)" size="small">
+                <Input size="small" value={form.pattern} onChange={(_, d) => setForm(prev => ({ ...prev, pattern: d.value }))} placeholder="(?i)(?<![A-Za-z])(oat|outside...)(?![A-Za-z])" />
               </Field>
-              <Field label="Brick Class">
-                <Input value={form.brick_class} onChange={(_, d) => setForm(prev => ({ ...prev, brick_class: d.value }))} placeholder="Supply_Air_Temperature_Sensor" />
+              <Field label="Brick Class" size="small">
+                <Input size="small" value={form.brick_class} onChange={(_, d) => setForm(prev => ({ ...prev, brick_class: d.value }))} placeholder="Supply_Air_Temperature_Sensor" />
               </Field>
-              <Field label="Haystack Tags (comma-separated)">
-                <Input value={form.haystack_tags} onChange={(_, d) => setForm(prev => ({ ...prev, haystack_tags: d.value }))} placeholder="point,sensor,outside,air,temp" />
+              <Field label="Haystack Tags" size="small">
+                <Input size="small" value={form.haystack_tags} onChange={(_, d) => setForm(prev => ({ ...prev, haystack_tags: d.value }))} placeholder="point,sensor,outside,air,temp" />
               </Field>
-              <Field label="Units filter (comma-separated)">
-                <Input value={form.units} onChange={(_, d) => setForm(prev => ({ ...prev, units: d.value }))} placeholder="degF,degC" />
+              <Field label="Units filter" size="small">
+                <Input size="small" value={form.units} onChange={(_, d) => setForm(prev => ({ ...prev, units: d.value }))} placeholder="degF,degC" />
               </Field>
-              <Field label="Haystack Kind">
-                <Select value={form.haystack_kind} onChange={(_, d) => setForm(prev => ({ ...prev, haystack_kind: d.value }))}>
+              <Field label="Haystack Kind" size="small">
+                <Select size="small" value={form.haystack_kind} onChange={(_, d) => setForm(prev => ({ ...prev, haystack_kind: d.value }))}>
                   <option value="">—</option>
                   <option value="Number">Number</option>
                   <option value="Bool">Bool</option>
@@ -284,14 +289,14 @@ const RuleDialog: React.FC<{ mode: 'create'; onClose: () => void }> = ({ mode, o
                   <option value="Str">Str</option>
                 </Select>
               </Field>
-              <Field label="Haystack Unit">
-                <Input value={form.haystack_unit} onChange={(_, d) => setForm(prev => ({ ...prev, haystack_unit: d.value }))} placeholder="°F" />
+              <Field label="Haystack Unit" size="small">
+                <Input size="small" value={form.haystack_unit} onChange={(_, d) => setForm(prev => ({ ...prev, haystack_unit: d.value }))} placeholder="°F" />
               </Field>
             </div>
           </DialogContent>
           <DialogActions>
-            <Button appearance="secondary" onClick={onClose}>Cancel</Button>
-            <Button appearance="primary" onClick={handleSave} disabled={saving || !form.rule_name}>
+            <Button appearance="secondary" onClick={onClose} size="small" style={{ fontSize: 12 }}>Cancel</Button>
+            <Button appearance="primary" onClick={handleSave} disabled={saving || !form.rule_name} size="small" style={{ fontSize: 12 }}>
               {saving ? <Spinner size="tiny" /> : 'Create'}
             </Button>
           </DialogActions>
