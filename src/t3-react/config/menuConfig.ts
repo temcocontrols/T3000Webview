@@ -701,7 +701,7 @@ const haystackMenu: MenuItem = {
       label: 'Auto-Tagging & MCP',
       type: 'item',
       action: () => { window.location.hash = '#/t3000/auto-tagging'; },
-      icon: 'BrainCircuit',
+      icon: 'Flash',
     },
   ],
 };

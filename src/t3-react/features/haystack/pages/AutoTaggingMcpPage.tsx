@@ -11,7 +11,7 @@ import {
   ArrowSyncRegular, AddRegular, DismissRegular,
   PlayRegular, EyeRegular, CheckmarkCircleRegular,
   WarningRegular, InfoRegular, DeleteRegular,
-  TagRegular, BrainCircuitRegular, SettingsRegular,
+  TagRegular, FlashRegular, BrainCircuitRegular, SettingsRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -64,11 +64,20 @@ const AutoTaggingMcpPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>
-          <BrainCircuitRegular /> Auto-Tagging &amp; MCP
-        </h2>
-        <span className={styles.subtitle}>v3 — Regex-based Haystack tagging &amp; Brick classification with MCP server</span>
+      {/* ── Info Bar ── */}
+      <div className={styles.infoBar}>
+        <div className={styles.infoBarLeft}>
+          <FlashRegular className={styles.infoIcon} />
+          <div className={styles.infoText}>
+            <div className={styles.infoTitle}>Auto-Tagging &amp; MCP</div>
+            <div className={styles.infoDesc}>
+              Regex-based Haystack tagging &amp; Brick classification engine with Model Context Protocol server for LLM agent integration.
+            </div>
+            <div className={styles.infoMeta}>
+              v3 — Manage rules, preview and apply auto-tagging, configure MCP tools.
+            </div>
+          </div>
+        </div>
       </div>
 
       <TabList selectedValue={activeTab} onTabSelect={(_, d) => setActiveTab(d.value as string)}>
