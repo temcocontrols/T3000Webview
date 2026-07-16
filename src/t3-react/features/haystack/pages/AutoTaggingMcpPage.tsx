@@ -160,7 +160,7 @@ const RulesTab: React.FC = () => {
       <span className={styles.targetCell}>{r.brick_class || r.haystack_tags || '—'}</span>
     ) }),
     createTableColumn({ columnId: 'status', renderHeaderCell: () => 'Status', renderCell: (r) => (
-      <Switch checked={r.enabled} onChange={() => handleToggle(r)} />
+      <Switch checked={r.enabled} onChange={() => handleToggle(r)} className={styles.switchScale} />
     ) }),
     createTableColumn({ columnId: 'actions', renderHeaderCell: () => '', renderCell: (r) => (
       <Tooltip content="Delete rule" relationship="label">
@@ -254,10 +254,18 @@ const RuleDialog: React.FC<{ mode: 'create'; onClose: () => void }> = ({ mode, o
 
   return (
     <Dialog open onOpenChange={() => onClose()}>
-      <DialogSurface>
+      <DialogSurface style={{ maxWidth: 620 }}>
         <DialogBody>
-          <DialogTitle>Create Rule</DialogTitle>
+          <DialogTitle style={{ fontSize: 14 }}>Create Rule</DialogTitle>
           <DialogContent>
+            <div className={styles.dialogInfo}>
+              <InfoRegular />
+              Learn how regex patterns and Brick classes work:{' '}
+              <a href="https://github.com/qnst/brick-bacnet-mcp" target="_blank" rel="noopener noreferrer">brick-bacnet-mcp ↗</a>
+              {' '}(patterns) &amp;{' '}
+              <a href="https://github.com/qnst/Brick" target="_blank" rel="noopener noreferrer">Brick Schema ↗</a>
+              {' '}(ontology).
+            </div>
             <div className={styles.formGrid}>
               <Field label="Rule Name" required size="small">
                 <Input size="small" value={form.rule_name} onChange={(_, d) => setForm(prev => ({ ...prev, rule_name: d.value }))} />
@@ -294,7 +302,7 @@ const RuleDialog: React.FC<{ mode: 'create'; onClose: () => void }> = ({ mode, o
               </Field>
             </div>
           </DialogContent>
-          <DialogActions>
+          <DialogActions style={{ marginTop: 8 }}>
             <Button appearance="secondary" onClick={onClose} size="small" style={{ fontSize: 12 }}>Cancel</Button>
             <Button appearance="primary" onClick={handleSave} disabled={saving || !form.rule_name} size="small" style={{ fontSize: 12 }}>
               {saving ? <Spinner size="tiny" /> : 'Create'}
