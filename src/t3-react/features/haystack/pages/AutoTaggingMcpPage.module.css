@@ -78,6 +78,7 @@
 
 /* ── DataGrid ── */
 .dataGrid { font-size: 12px; }
+.container :global(.fui-DataGridHeader) { background-color: #e8e8e8; }
 
 /* Column widths — Rule 16% | Pattern 40% | Brick Class 28% | Status 8% | Delete 5% */
 .container :global(.fui-DataGridHeaderCell):nth-child(1),
@@ -92,7 +93,7 @@
 .container :global(.fui-DataGridCell):nth-child(5) { width: 5%; min-width: 48px; flex: 0 0 5%; justify-content: center; }
 
 .ruleCell { display: flex; align-items: center; gap: 6px; }
-.ruleName { font-weight: 600; font-size: 12px; }
+.ruleName { font-weight: 600; font-size: 13px; }
 .patternCode {
   display: block;
   width: 100%;

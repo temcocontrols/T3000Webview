@@ -64,6 +64,7 @@ const AutoTaggingMcpPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      <style>{'[role="tooltip"],[role="tooltip"] *{max-width:none!important;white-space:nowrap!important;width:auto!important}'}</style>
       {/* ── Info Bar ── */}
       <div className={styles.infoBar}>
         <div className={styles.infoBarLeft}>
@@ -147,14 +148,16 @@ const RulesTab: React.FC = () => {
   const columns: TableColumnDefinition<AutoTaggingRule>[] = [
     createTableColumn({ columnId: 'name', renderHeaderCell: () => 'Rule', renderCell: (r) => (
       <div className={styles.ruleCell}>
-        <Badge appearance="filled" color={r.category === 'brick' ? 'important' : 'informative'} size="extra-small">
+        <Badge appearance="filled" color={r.category === 'brick' ? 'important' : 'informative'} size="small">
           {r.category}
         </Badge>
         <span className={styles.ruleName}>{r.rule_name}</span>
       </div>
     ) }),
     createTableColumn({ columnId: 'pattern', renderHeaderCell: () => 'Pattern', renderCell: (r) => (
-      <code className={styles.patternCode}>{r.pattern}</code>
+      <Tooltip content={r.pattern} relationship="description" positioning="above-end">
+        <code className={styles.patternCode}>{r.pattern}</code>
+      </Tooltip>
     ) }),
     createTableColumn({ columnId: 'brick_class', renderHeaderCell: () => 'Brick Class', renderCell: (r) => (
       <span className={styles.targetCell}>{r.brick_class || r.haystack_tags || '—'}</span>
