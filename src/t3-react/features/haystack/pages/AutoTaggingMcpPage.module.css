@@ -64,6 +64,7 @@
   scrollbar-color: #c1c1c1 transparent;
 }
 .count { font-size: 11px; color: var(--colorNeutralForeground3); margin-left: auto; }
+.loadingSpinner { justify-content: flex-start; margin-top: 24px; }
 
 /* ── Rule Source Info ── */
 .ruleInfo {

@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Spinner, Button, Input, Field, Switch, Tooltip,
   Tab, TabList, Dialog, DialogSurface, DialogBody, DialogTitle,
-  DialogContent, DialogActions, Textarea, Badge, Select, Option,
+  DialogContent, DialogActions, Badge, Select,
   DataGrid, DataGridHeader, DataGridRow, DataGridCell, DataGridBody,
-  TableColumnDefinition, createTableColumn,
-  Toast, ToastTitle, useToastController,
+  createTableColumn,
+  Popover, PopoverSurface, PopoverTrigger,
 } from '@fluentui/react-components';
 import {
   ArrowClockwiseRegular, AddRegular, DismissRegular,
@@ -131,7 +131,6 @@ const RulesTab: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this rule?')) return;
     try {
       await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/rules/${id}`, { method: 'DELETE' });
       await fetchRules();
@@ -165,11 +164,22 @@ const RulesTab: React.FC = () => {
     createTableColumn({ columnId: 'status', renderHeaderCell: () => 'Status', renderCell: (r) => (
       <Switch checked={r.enabled} onChange={() => handleToggle(r)} className={styles.switchScale} />
     ) }),
-    createTableColumn({ columnId: 'actions', renderHeaderCell: () => '', renderCell: (r) => (
-      <Tooltip content="Delete rule" relationship="label">
-        <Button size="small" icon={<DeleteRegular />} appearance="subtle" onClick={() => handleDelete(r.id)} />
-      </Tooltip>
-    ) }),
+    createTableColumn({ columnId: 'actions', renderHeaderCell: () => '', renderCell: (r) => {
+      const [open, setOpen] = useState(false);
+      return (
+      <Popover open={open} onOpenChange={(_, d) => setOpen(d.open)} withArrow>
+        <PopoverTrigger disableButtonEnhancement>
+          <Button size="small" icon={<DeleteRegular />} appearance="subtle" />
+        </PopoverTrigger>
+        <PopoverSurface style={{ padding: 12 }}>
+          <div style={{ fontSize: 12, marginBottom: 8 }}>Delete <strong>{r.rule_name}</strong>?</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button size="small" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button size="small" appearance="primary" style={{ background: '#d32f2f' }} onClick={() => { handleDelete(r.id); setOpen(false); }}>Delete</Button>
+          </div>
+        </PopoverSurface>
+      </Popover>
+    )}}),
   ];
 
   return (
@@ -200,7 +210,7 @@ const RulesTab: React.FC = () => {
 
       <div className={styles.rulesBottom}>
         {loading ? (
-          <Spinner label="Loading rules..." />
+          <Spinner size="extra-small" label="Loading rules…" className={styles.loadingSpinner} />
         ) : (
           <DataGrid items={filtered} columns={columns} sortable className={styles.dataGrid}>
             <DataGridHeader>

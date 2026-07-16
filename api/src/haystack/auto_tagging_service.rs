@@ -55,7 +55,6 @@ pub struct AutoTagRequest {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct CreateRuleRequest {
     pub rule_name: String,
     pub category: String,
@@ -90,7 +89,7 @@ pub async fn list_rules(db: &impl ConnectionTrait) -> Result<Vec<AutoTaggingRule
             sea_orm::DatabaseBackend::Sqlite,
             "SELECT id, rule_name, category, pattern, units, object_types, haystack_tags,
                     brick_class, haystack_kind, haystack_unit, enabled, priority, created_at, updated_at
-             FROM HAYSTACK_AUTO_TAGGING_RULES ORDER BY priority, category, rule_name",
+             FROM HAYSTACK_AUTO_TAGGING_RULES ORDER BY priority, id, category, rule_name",
         ))
         .await?;
 
