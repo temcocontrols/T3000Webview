@@ -81,9 +81,9 @@ const AutoTaggingMcpPage: React.FC = () => {
       </div>
 
       <TabList selectedValue={activeTab} onTabSelect={(_, d) => setActiveTab(d.value as string)}>
-        <Tab value="rules" icon={<SettingsRegular />}>Rules</Tab>
-        <Tab value="run" icon={<PlayRegular />}>Run Auto-Tag</Tab>
-        <Tab value="mcp" icon={<BrainCircuitRegular />}>MCP Server</Tab>
+        <Tab value="rules" icon={<SettingsRegular />}><span style={{fontSize:13}}>Rules</span></Tab>
+        <Tab value="run" icon={<PlayRegular />}><span style={{fontSize:13}}>Run Auto-Tag</span></Tab>
+        <Tab value="mcp" icon={<BrainCircuitRegular />}><span style={{fontSize:13}}>MCP Server</span></Tab>
       </TabList>
 
       <div className={styles.tabContent}>
@@ -175,8 +175,8 @@ const RulesTab: React.FC = () => {
   ];
 
   return (
-    <div>
-      <div className={styles.tabActions}>
+    <div className={styles.rulesLayout}>
+      <div className={styles.rulesTop}>
         <Input
           placeholder="Filter rules..."
           value={filter}
@@ -185,28 +185,29 @@ const RulesTab: React.FC = () => {
         />
         <Button icon={<ArrowSyncRegular />} onClick={fetchRules} size="small">Refresh</Button>
         <Button icon={<AddRegular />} onClick={() => setCreating(true)} size="small" appearance="primary">New Rule</Button>
+        <span className={styles.count}>{filtered.length} rules</span>
       </div>
 
       {error && <div className={styles.errorBanner}><WarningRegular /> {error}</div>}
 
-      {loading ? (
-        <Spinner label="Loading rules..." />
-      ) : (
-        <DataGrid items={filtered} columns={columns} sortable className={styles.dataGrid}>
-          <DataGridHeader>
-            <DataGridRow>{({ renderHeaderCell }) => <DataGridCell>{renderHeaderCell()}</DataGridCell>}</DataGridRow>
-          </DataGridHeader>
-          <DataGridBody<AutoTaggingRule>>
-            {({ item, rowId }) => (
-              <DataGridRow<AutoTaggingRule> key={rowId}>
-                {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
-              </DataGridRow>
-            )}
-          </DataGridBody>
-        </DataGrid>
-      )}
-
-      <div className={styles.count}>{filtered.length} rules</div>
+      <div className={styles.rulesBottom}>
+        {loading ? (
+          <Spinner label="Loading rules..." />
+        ) : (
+          <DataGrid items={filtered} columns={columns} sortable className={styles.dataGrid}>
+            <DataGridHeader>
+              <DataGridRow>{({ renderHeaderCell }) => <DataGridCell>{renderHeaderCell()}</DataGridCell>}</DataGridRow>
+            </DataGridHeader>
+            <DataGridBody<AutoTaggingRule>>
+              {({ item, rowId }) => (
+                <DataGridRow<AutoTaggingRule> key={rowId}>
+                  {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
+                </DataGridRow>
+              )}
+            </DataGridBody>
+          </DataGrid>
+        )}
+      </div>
 
       {creating && <RuleDialog mode="create" onClose={() => { setCreating(false); fetchRules(); }} />}
     </div>

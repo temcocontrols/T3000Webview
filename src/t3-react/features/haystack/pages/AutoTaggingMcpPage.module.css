@@ -38,15 +38,28 @@
 }
 
 /* ── Rules Tab ── */
-.tabActions {
+.rulesLayout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.rulesTop {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
 }
-.filterInput { width: 220px; }
-.filterInput input { font-size: 12px; height: 28px; }
+.rulesBottom {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
 .count { font-size: 11px; color: var(--colorNeutralForeground3); margin-left: auto; }
 
 .rulesTable {
