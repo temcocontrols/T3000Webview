@@ -4079,7 +4079,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? INPUT point {}:{} UPDATED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "INPUTS",
                     serial_number,
@@ -4140,7 +4140,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? INPUT point {}:{} INSERTED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "INPUTS",
                     serial_number,
@@ -4223,7 +4223,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? OUTPUT point {}:{} UPDATED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "OUTPUTS",
                     serial_number,
@@ -4284,7 +4284,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? OUTPUT point {}:{} INSERTED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "OUTPUTS",
                     serial_number,
@@ -4372,7 +4372,7 @@ impl T3000MainService {
                     "? VARIABLE point {}:{} UPDATED",
                     serial_number, point.index
                 );
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "VARIABLES",
                     serial_number,
@@ -4436,7 +4436,7 @@ impl T3000MainService {
                     "? VARIABLE point {}:{} INSERTED",
                     serial_number, point.index
                 );
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "VARIABLES",
                     serial_number,

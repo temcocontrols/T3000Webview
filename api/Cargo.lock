@@ -3421,6 +3421,7 @@ dependencies = [
  "mime_guess",
  "once_cell",
  "open",
+ "regex",
  "reqwest",
  "rusqlite",
  "sea-orm",

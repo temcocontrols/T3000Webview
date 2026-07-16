@@ -28,6 +28,7 @@ pub mod database_management;
 
 // T3000 device modules
 pub mod t3_device;
+pub mod haystack;
 pub mod t3_socket;
 
 // Developer tools modules
