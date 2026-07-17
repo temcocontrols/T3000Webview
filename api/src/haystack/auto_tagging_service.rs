@@ -210,22 +210,22 @@ pub async fn delete_rule(db: &impl ConnectionTrait, id: i64) -> Result<(), Strin
 // ── Auto-tagging Engine ──
 
 /// Run auto-tagging for all points on the given devices.
-/// Returns the number of points that were tagged.
+/// Returns (count of tagged points, list of matched points).
 pub async fn run_auto_tagging(
     db: &impl ConnectionTrait,
     serial_numbers: &[i32],
-) -> Result<usize, String> {
+) -> Result<(usize, Vec<TagMatch>), String> {
     if serial_numbers.is_empty() {
-        return Ok(0);
+        return Ok((0, Vec::new()));
     }
 
-    // Load all enabled rules (ordered by priority —lower = higher priority)
+    // Load all enabled rules
     let rules = list_enabled_rules(db).await
         .map_err(|e| format!("Failed to load rules: {}", e))?;
 
-    if rules.is_empty() {
-        return Ok(0);
-    }
+    // Load range rules (metadata-based)
+    let range_rules = load_range_rules(db).await
+        .map_err(|e| format!("Failed to load range rules: {}", e))?;
 
     // Split into haystack and brick rule sets
     let haystack_rules: Vec<CompiledRule> = rules.iter()
@@ -239,16 +239,20 @@ pub async fn run_auto_tagging(
 
     let sn_list = serial_numbers.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(",");
     let mut tagged_count = 0usize;
+    let mut all_matches = Vec::new();
 
-    // Process each point type
-    tagged_count += process_points(db, &sn_list, "INPUTS", "INPUT", &haystack_rules, &brick_rules).await?;
-    tagged_count += process_points(db, &sn_list, "OUTPUTS", "OUTPUT", &haystack_rules, &brick_rules).await?;
-    tagged_count += process_points(db, &sn_list, "VARIABLES", "VARIABLE", &haystack_rules, &brick_rules).await?;
+    for table in &["INPUTS", "OUTPUTS", "VARIABLES"] {
+        let pt = match *table { "INPUTS" => "INPUT", "OUTPUTS" => "OUTPUT", _ => "VARIABLE" };
+        let (count, matches) = process_points(db, &sn_list, table, pt, &range_rules, &haystack_rules, &brick_rules).await?;
+        tagged_count += count;
+        all_matches.extend(matches);
+    }
 
-    Ok(tagged_count)
+    Ok((tagged_count, all_matches))
 }
 
-/// Preview what tags would be assigned without writing to DB.
+/// Preview auto-tagging results: shows existing tags on points (from haystack_point_tags).
+/// Groups tags by point and looks up labels from the point tables.
 pub async fn preview_auto_tagging(
     db: &impl ConnectionTrait,
     serial_numbers: &[i32],
@@ -257,24 +261,79 @@ pub async fn preview_auto_tagging(
         return Ok(Vec::new());
     }
 
-    let rules = list_enabled_rules(db).await
-        .map_err(|e| format!("Failed to load rules: {}", e))?;
-
-    let haystack_rules: Vec<CompiledRule> = rules.iter()
-        .filter(|r| r.category == "haystack")
-        .filter_map(|r| compile_rule(r))
-        .collect();
-    let brick_rules: Vec<CompiledRule> = rules.iter()
-        .filter(|r| r.category == "brick")
-        .filter_map(|r| compile_rule(r))
-        .collect();
-
     let sn_list = serial_numbers.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(",");
-    let mut matches = Vec::new();
 
-    matches.extend(preview_points(db, &sn_list, "INPUTS", "INPUT", &haystack_rules, &brick_rules).await?);
-    matches.extend(preview_points(db, &sn_list, "OUTPUTS", "OUTPUT", &haystack_rules, &brick_rules).await?);
-    matches.extend(preview_points(db, &sn_list, "VARIABLES", "VARIABLE", &haystack_rules, &brick_rules).await?);
+    let sql = format!(
+        "SELECT hpt.serial_number, hpt.point_type, hpt.point_index,
+                GROUP_CONCAT(hpt.tag_name, ',') AS tags,
+                pbc.brick_class,
+                CASE hpt.point_type
+                    WHEN 'INPUT' THEN (SELECT Full_Label FROM INPUTS WHERE SerialNumber = hpt.serial_number AND Input_Index = CAST(hpt.point_index AS INTEGER))
+                    WHEN 'OUTPUT' THEN (SELECT Full_Label FROM OUTPUTS WHERE SerialNumber = hpt.serial_number AND Output_Index = CAST(hpt.point_index AS INTEGER))
+                    WHEN 'VARIABLE' THEN (SELECT Full_Label FROM VARIABLES WHERE SerialNumber = hpt.serial_number AND Variable_Index = CAST(hpt.point_index AS INTEGER))
+                END AS full_label,
+                CASE hpt.point_type
+                    WHEN 'INPUT' THEN (SELECT Label FROM INPUTS WHERE SerialNumber = hpt.serial_number AND Input_Index = CAST(hpt.point_index AS INTEGER))
+                    WHEN 'OUTPUT' THEN (SELECT Label FROM OUTPUTS WHERE SerialNumber = hpt.serial_number AND Output_Index = CAST(hpt.point_index AS INTEGER))
+                    WHEN 'VARIABLE' THEN (SELECT Label FROM VARIABLES WHERE SerialNumber = hpt.serial_number AND Variable_Index = CAST(hpt.point_index AS INTEGER))
+                END AS label,
+                CASE hpt.point_type
+                    WHEN 'INPUT' THEN (SELECT Units FROM INPUTS WHERE SerialNumber = hpt.serial_number AND Input_Index = CAST(hpt.point_index AS INTEGER))
+                    WHEN 'OUTPUT' THEN (SELECT Units FROM OUTPUTS WHERE SerialNumber = hpt.serial_number AND Output_Index = CAST(hpt.point_index AS INTEGER))
+                    WHEN 'VARIABLE' THEN (SELECT Units FROM VARIABLES WHERE SerialNumber = hpt.serial_number AND Variable_Index = CAST(hpt.point_index AS INTEGER))
+                END AS units
+         FROM haystack_point_tags hpt
+         LEFT JOIN HAYSTACK_POINT_BRICK_CLASS pbc
+            ON pbc.serial_number = hpt.serial_number
+           AND pbc.point_type = hpt.point_type
+           AND pbc.point_index = CAST(hpt.point_index AS INTEGER)
+         WHERE hpt.serial_number IN ({})
+         GROUP BY hpt.serial_number, hpt.point_type, hpt.point_index
+         ORDER BY hpt.serial_number, hpt.point_type, hpt.point_index",
+        sn_list
+    );
+
+    let rows = db
+        .query_all(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
+        .await
+        .map_err(|e| format!("Failed to query tagged points: {}", e))?;
+
+    let mut matches = Vec::new();
+    for row in &rows {
+        let sn: i32 = row.try_get("", "serial_number").unwrap_or(0);
+        let pt: String = row.try_get("", "point_type").unwrap_or_default();
+        let idx_str: String = row.try_get("", "point_index").unwrap_or_default();
+        let idx: i32 = idx_str.parse().unwrap_or(0);
+        let tags_str: String = row.try_get("", "tags").unwrap_or_default();
+        let brick_class: Option<String> = row.try_get("", "brick_class").ok().flatten();
+        let full_label: Option<String> = row.try_get("", "full_label").ok().flatten();
+        let label: Option<String> = row.try_get("", "label").ok().flatten();
+        let units: Option<String> = row.try_get("", "units").ok().flatten();
+
+        let haystack_tags: Vec<String> = if tags_str.is_empty() {
+            Vec::new()
+        } else {
+            tags_str.split(',').map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).collect()
+        };
+
+        matches.push(TagMatch {
+            point: PointInfo {
+                serial_number: sn,
+                point_type: pt,
+                point_index: idx,
+                label,
+                full_label,
+                units,
+                digital_analog: None,
+                object_type: None,
+            },
+            matched_rule: String::new(),
+            haystack_tags,
+            brick_class,
+            haystack_kind: None,
+            haystack_unit: None,
+        });
+    }
 
     Ok(matches)
 }
@@ -290,20 +349,18 @@ pub async fn reset_auto_tags(
 
     let sn_list = serial_numbers.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(",");
 
-    // Delete point tags that match our auto-tagging rules
-    // (tags that were assigned by the auto-tagger)
-    // We also reset brick_class to NULL for these points
+    // Delete only auto-assigned tags (preserve manual tags)
     let sql = format!(
-        "DELETE FROM haystack_point_tags WHERE serial_number IN ({})",
+        "DELETE FROM haystack_point_tags WHERE serial_number IN ({}) AND auto_assigned = 1",
         sn_list
     );
     db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
         .await
         .map_err(|e| format!("Failed to reset tags: {}", e))?;
 
-    // Also clear brick_class
+    // Also clear brick classes
     let sql = format!(
-        "UPDATE HAYSTACK_POINT_TAGS SET brick_class = NULL WHERE serial_number IN ({})",
+        "DELETE FROM HAYSTACK_POINT_BRICK_CLASS WHERE serial_number IN ({})",
         sn_list
     );
     db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
@@ -314,6 +371,53 @@ pub async fn reset_auto_tags(
 }
 
 // ── Internal helpers ──
+
+struct RangeRule {
+    haystack_tags: Vec<String>,
+    brick_class: Option<String>,
+    haystack_kind: Option<String>,
+    haystack_unit: Option<String>,
+}
+
+/// Load range rules into a HashMap keyed by (point_type, digital_analog, range_value)
+async fn load_range_rules(
+    db: &impl ConnectionTrait,
+) -> Result<std::collections::HashMap<(String, i32, i32), RangeRule>, String> {
+    let rows = db
+        .query_all(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "SELECT point_type, digital_analog, range_value,
+                    haystack_tags, brick_class, haystack_kind, haystack_unit
+             FROM HAYSTACK_AUTO_TAGGING_RULES
+             WHERE category = 'range' AND enabled = 1",
+        ))
+        .await
+        .map_err(|e| format!("Failed to load range rules: {}", e))?;
+
+    let mut map = std::collections::HashMap::new();
+    for row in &rows {
+        let pt: String = row.try_get("", "point_type").unwrap_or_default();
+        let da: i32 = row.try_get("", "digital_analog").unwrap_or(0);
+        let rv: i32 = row.try_get("", "range_value").unwrap_or(0);
+        let tags_str: Option<String> = row.try_get("", "haystack_tags").ok();
+        let bc: Option<String> = row.try_get("", "brick_class").ok();
+        let hk: Option<String> = row.try_get("", "haystack_kind").ok();
+        let hu: Option<String> = row.try_get("", "haystack_unit").ok();
+
+        let haystack_tags: Vec<String> = tags_str
+            .as_deref()
+            .map(|s| s.split(',').map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).collect())
+            .unwrap_or_default();
+
+        map.insert((pt, da, rv), RangeRule {
+            haystack_tags,
+            brick_class: bc,
+            haystack_kind: hk,
+            haystack_unit: hu,
+        });
+    }
+    Ok(map)
+}
 
 struct CompiledRule {
     id: i64,
@@ -430,9 +534,10 @@ async fn process_points(
     sn_list: &str,
     table: &str,
     point_type: &str,
+    range_rules: &std::collections::HashMap<(String, i32, i32), RangeRule>,
     haystack_rules: &[CompiledRule],
     brick_rules: &[CompiledRule],
-) -> Result<usize, String> {
+) -> Result<(usize, Vec<TagMatch>), String> {
     let col_index = match table {
         "INPUTS" => "Input_Index",
         "OUTPUTS" => "Output_Index",
@@ -440,7 +545,7 @@ async fn process_points(
     };
 
     let sql = format!(
-        "SELECT SerialNumber as sn, {} as idx, Full_Label, Label, Units
+        "SELECT SerialNumber as sn, {} as idx, Full_Label, Label, Units, Digital_Analog, Range_Field
          FROM {} WHERE SerialNumber IN ({})",
         col_index, table, sn_list
     );
@@ -451,6 +556,7 @@ async fn process_points(
         .map_err(|e| format!("Failed to read {}: {}", table, e))?;
 
     let mut tagged = 0usize;
+    let mut matches = Vec::new();
 
     for row in &rows {
         let sn: i32 = row.try_get("", "sn").unwrap_or(0);
@@ -458,6 +564,10 @@ async fn process_points(
         let full_label: Option<String> = row.try_get("", "Full_Label").ok();
         let label: Option<String> = row.try_get("", "Label").ok();
         let units: Option<String> = row.try_get("", "Units").ok();
+        let da_str: Option<String> = row.try_get("", "Digital_Analog").ok();
+        let rf_str: Option<String> = row.try_get("", "Range_Field").ok();
+        let da: i32 = da_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
+        let rf: i32 = rf_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
 
         let display_label = full_label.as_deref().or(label.as_deref()).unwrap_or("");
 
@@ -469,36 +579,101 @@ async fn process_points(
         );
         let idx_str = idx.to_string();
 
-        // Apply haystack tags from first matching haystack rule
-        if let Some(rule) = eval_rules(display_label, units.as_deref(), None, haystack_rules) {
-            for tag in &rule.haystack_tags {
+        let point_info = PointInfo {
+            serial_number: sn,
+            point_type: point_type.to_string(),
+            point_index: idx,
+            label: label.clone(),
+            full_label: full_label.clone(),
+            units: units.clone(),
+            digital_analog: Some(da),
+            object_type: None,
+        };
+
+        let mut point_tagged = false;
+        let mut combined_tags: Vec<String> = Vec::new();
+        let mut brick_class: Option<String> = None;
+        let mut haystack_kind: Option<String> = None;
+        let mut haystack_unit: Option<String> = None;
+        let mut matched_rule = String::new();
+
+        // ── STEP 1: Range Rules (metadata-based) ──
+        if let Some(range_rule) = range_rules.get(&(point_type.to_string(), da, rf)) {
+            for tag in &range_rule.haystack_tags {
                 db.execute(Statement::from_sql_and_values(
                     sea_orm::DatabaseBackend::Sqlite,
-                    "INSERT OR IGNORE INTO haystack_point_tags (serial_number, point_type, point_index, point_id, tag_name) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT OR IGNORE INTO haystack_point_tags (serial_number, point_type, point_index, point_id, tag_name, auto_assigned) VALUES (?, ?, ?, ?, ?, 1)",
                     vec![sn.into(), point_type.into(), idx_str.clone().into(), point_id.clone().into(), tag.clone().into()],
                 ))
                 .await
                 .map_err(|e| format!("Failed to insert tag: {}", e))?;
             }
-        }
-
-        // Apply brick_class from first matching brick rule
-        if let Some(rule) = eval_rules(display_label, units.as_deref(), None, brick_rules) {
-            if let Some(ref bc) = rule.brick_class {
+            if let Some(ref bc) = range_rule.brick_class {
                 db.execute(Statement::from_sql_and_values(
                     sea_orm::DatabaseBackend::Sqlite,
-                    "INSERT OR REPLACE INTO haystack_point_tags (serial_number, point_type, point_index, point_id, tag_name, brick_class) VALUES (?, ?, ?, ?, '__brick_class__', ?)",
-                    vec![sn.into(), point_type.into(), idx_str.clone().into(), point_id.clone().into(), bc.clone().into()],
+                    "INSERT OR REPLACE INTO HAYSTACK_POINT_BRICK_CLASS (serial_number, point_type, point_index, brick_class) VALUES (?, ?, ?, ?)",
+                    vec![sn.into(), point_type.into(), idx.into(), bc.clone().into()],
                 ))
                 .await
                 .map_err(|e| format!("Failed to set brick_class: {}", e))?;
             }
+            combined_tags = range_rule.haystack_tags.clone();
+            brick_class = range_rule.brick_class.clone();
+            haystack_kind = range_rule.haystack_kind.clone();
+            haystack_unit = range_rule.haystack_unit.clone();
+            point_tagged = true;
         }
 
-        tagged += 1;
+        // ── STEP 2: Haystack Regex Rules ──
+        if let Some(rule) = eval_rules(display_label, units.as_deref(), None, haystack_rules) {
+            for tag in &rule.haystack_tags {
+                db.execute(Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    "INSERT OR IGNORE INTO haystack_point_tags (serial_number, point_type, point_index, point_id, tag_name, auto_assigned) VALUES (?, ?, ?, ?, ?, 1)",
+                    vec![sn.into(), point_type.into(), idx_str.clone().into(), point_id.clone().into(), tag.clone().into()],
+                ))
+                .await
+                .map_err(|e| format!("Failed to insert tag: {}", e))?;
+            }
+            if combined_tags.is_empty() {
+                combined_tags = rule.haystack_tags.clone();
+            }
+            if haystack_kind.is_none() { haystack_kind = rule.haystack_kind.clone(); }
+            if haystack_unit.is_none() { haystack_unit = rule.haystack_unit.clone(); }
+            if matched_rule.is_empty() { matched_rule = rule.rule_name.clone(); }
+            point_tagged = true;
+        }
+
+        // ── STEP 3: Brick Regex Rules ──
+        if let Some(rule) = eval_rules(display_label, units.as_deref(), None, brick_rules) {
+            if let Some(ref bc) = rule.brick_class {
+                db.execute(Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    "INSERT OR REPLACE INTO HAYSTACK_POINT_BRICK_CLASS (serial_number, point_type, point_index, brick_class) VALUES (?, ?, ?, ?)",
+                    vec![sn.into(), point_type.into(), idx.into(), bc.clone().into()],
+                ))
+                .await
+                .map_err(|e| format!("Failed to set brick_class: {}", e))?;
+            }
+            brick_class = rule.brick_class.clone();
+            if matched_rule.is_empty() { matched_rule = rule.rule_name.clone(); }
+            point_tagged = true;
+        }
+
+        if point_tagged {
+            tagged += 1;
+            matches.push(TagMatch {
+                point: point_info,
+                matched_rule,
+                haystack_tags: combined_tags,
+                brick_class,
+                haystack_kind,
+                haystack_unit,
+            });
+        }
     }
 
-    Ok(tagged)
+    Ok((tagged, matches))
 }
 
 async fn preview_points(

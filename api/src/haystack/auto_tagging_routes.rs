@@ -46,7 +46,7 @@ async fn run_auto_tagging(
     Json(payload): Json<RunRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let db = get_db(&state).await?;
-    let count = ats::run_auto_tagging(&db, &payload.serial_numbers)
+    let (count, matches) = ats::run_auto_tagging(&db, &payload.serial_numbers)
         .await
         .map_err(|e| {
             tracing::error!("run_auto_tagging failed: {}", e);
@@ -55,7 +55,8 @@ async fn run_auto_tagging(
     Ok(Json(json!({
         "success": true,
         "message": "Auto-tagging completed",
-        "tagged": count
+        "tagged": count,
+        "matches": matches
     })))
 }
 

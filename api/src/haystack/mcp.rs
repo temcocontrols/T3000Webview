@@ -1,5 +1,5 @@
-// MCP (Model Context Protocol) Server — JSON-RPC 2.0 over stdio
-// Exposes Haystack tagging tools for LLM agents.
+// MCP (Model Context Protocol) Server — JSON-RPC 2.0 over HTTP
+// Exposes Haystack tagging tools for LLM agents via POST /api/mcp
 //
 // Protocol spec: https://spec.modelcontextprotocol.io/
 // Tools exposed:
@@ -11,12 +11,12 @@
 //   haystack_list_rules     — List auto-tagging rules
 //   haystack_get_brick_class— Get Brick class for a point
 
-use std::io::{self, BufRead, Write};
-
+use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sea_orm::ConnectionTrait;
 
+use crate::app_state::T3AppState;
 use crate::haystack::auto_tagging_service as ats;
 use crate::haystack::tags_service as ts;
 
@@ -112,7 +112,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "haystack_auto_tag",
-        description: "Run auto-tagging on specified devices. Applies regex rules from the HAYSTACK_AUTO_TAGGING_RULES table to derive Haystack tags and Brick classes from point names and units. Returns count of points tagged.",
+        description: "Run auto-tagging on specified devices. Applies range rules (based on point_type, digital/analog, range_value) first, then regex rules from labels. Derives Haystack tags and Brick classes. Returns count of points tagged.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -172,57 +172,46 @@ struct ToolDef {
     input_schema: Value,
 }
 
-// ═══ MCP Server ═══
+// ═══ MCP Server (HTTP) ═══
 
 const SERVER_NAME: &str = "T3000 Haystack MCP";
 const SERVER_VERSION: &str = "1.0.0";
 
-/// Run the MCP server over stdio. Blocking — call in a dedicated thread.
-pub async fn run_stdio(db: sea_orm::DatabaseConnection) {
-    let stdin = io::stdin();
-    let stdout = io::stdout();
-    let mut stdout = stdout.lock();
-
-    eprintln!("[MCP] T3000 Haystack MCP server starting...");
-
-    let reader = stdin.lock();
-    for line in reader.lines() {
-        let line = match line {
-            Ok(l) => l,
-            Err(e) => {
-                eprintln!("[MCP] stdin error: {}", e);
-                break;
-            }
-        };
-
-        if line.trim().is_empty() {
-            continue;
-        }
-
-        let req: JsonRpcRequest = match serde_json::from_str(&line) {
-            Ok(r) => r,
-            Err(e) => {
-                let resp = JsonRpcResponse {
-                    jsonrpc: "2.0".into(),
-                    id: None,
-                    result: None,
-                    error: Some(JsonRpcError {
-                        code: -32700,
-                        message: format!("Parse error: {}", e),
-                    }),
-                };
-                let _ = writeln!(stdout, "{}", serde_json::to_string(&resp).unwrap_or_default());
-                let _ = stdout.flush();
-                continue;
-            }
-        };
-
-        let resp = handle_request(&req, &db).await;
-        let _ = writeln!(stdout, "{}", serde_json::to_string(&resp).unwrap_or_default());
-        let _ = stdout.flush();
+/// Helper to get DB from T3AppState
+async fn get_db(state: &T3AppState) -> Result<sea_orm::DatabaseConnection, (StatusCode, Json<Value>)> {
+    if let Some(conn) = &state.local_config_conn {
+        return Ok(conn.lock().await.clone());
     }
+    Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Local database connection not available"}))))
+}
 
-    eprintln!("[MCP] Server shutting down.");
+/// POST /api/mcp — JSON-RPC 2.0 endpoint
+pub async fn mcp_handler(
+    State(state): State<T3AppState>,
+    Json(body): Json<Value>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let db = get_db(&state).await?;
+
+    let req: JsonRpcRequest = serde_json::from_value(body).map_err(|e| {
+        (StatusCode::BAD_REQUEST, Json(json!({
+            "jsonrpc": "2.0",
+            "id": null,
+            "error": { "code": -32700, "message": format!("Parse error: {}", e) }
+        })))
+    })?;
+
+    let resp = handle_request(&req, &db).await;
+    Ok(Json(serde_json::to_value(resp).unwrap_or(json!({
+        "jsonrpc": "2.0",
+        "id": null,
+        "error": { "code": -32603, "message": "Internal error" }
+    }))))
+}
+
+/// Create MCP routes for the Axum router
+pub fn create_mcp_routes() -> Router<T3AppState> {
+    Router::new()
+        .route("/api/mcp", post(mcp_handler))
 }
 
 async fn handle_request(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnection) -> JsonRpcResponse {
@@ -402,7 +391,7 @@ async fn execute_tool(
                 return Ok(json!({"error": "No serial numbers provided"}).to_string());
             }
 
-            let count = ats::run_auto_tagging(db, &serial_numbers).await?;
+            let (count, _matches) = ats::run_auto_tagging(db, &serial_numbers).await?;
             Ok(json!({
                 "success": true,
                 "message": "Auto-tagging completed",
@@ -456,9 +445,9 @@ async fn execute_tool(
                 .join(",");
 
             let sql = format!(
-                "SELECT serial_number, point_type, point_index, point_id, brick_class
-                 FROM haystack_point_tags
-                 WHERE serial_number IN ({}) AND tag_name = '__brick_class__' AND brick_class IS NOT NULL",
+                "SELECT serial_number, point_type, point_index, brick_class
+                 FROM HAYSTACK_POINT_BRICK_CLASS
+                 WHERE serial_number IN ({})",
                 sn_list
             );
 
@@ -473,12 +462,21 @@ async fn execute_tool(
             let results: Vec<Value> = rows
                 .iter()
                 .filter_map(|r| {
+                    let sn = r.try_get::<i32>("", "serial_number").ok()?;
+                    let pt: String = r.try_get("", "point_type").ok()?;
+                    let idx: i32 = r.try_get("", "point_index").ok()?;
+                    let bc: String = r.try_get("", "brick_class").ok()?;
+                    let point_id = format!("dev{}.{}{}",
+                        sn,
+                        match pt.as_str() { "INPUT" => "in", "OUTPUT" => "out", _ => "var" },
+                        idx
+                    );
                     Some(json!({
-                        "serial_number": r.try_get::<i32>("", "serial_number").ok()?,
-                        "point_type": r.try_get::<String>("", "point_type").ok()?,
-                        "point_index": r.try_get::<String>("", "point_index").ok()?,
-                        "point_id": r.try_get::<String>("", "point_id").ok()?,
-                        "brick_class": r.try_get::<String>("", "brick_class").ok()?,
+                        "serial_number": sn,
+                        "point_type": pt,
+                        "point_index": idx,
+                        "point_id": point_id,
+                        "brick_class": bc,
                     }))
                 })
                 .collect();
