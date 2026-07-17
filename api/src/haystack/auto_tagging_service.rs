@@ -360,9 +360,9 @@ pub async fn reset_auto_tags(
         .await
         .map_err(|e| format!("Failed to reset tags: {}", e))?;
 
-    // Also clear brick classes
+    // Also clear auto-assigned brick classes (preserve manual ones)
     let sql = format!(
-        "DELETE FROM HAYSTACK_POINT_BRICK_CLASS WHERE serial_number IN ({})",
+        "DELETE FROM HAYSTACK_POINT_BRICK_CLASS WHERE serial_number IN ({}) AND auto_assigned = 1",
         sn_list
     );
     db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
@@ -615,7 +615,7 @@ async fn process_points(
             if let Some(ref bc) = range_rule.brick_class {
                 db.execute(Statement::from_sql_and_values(
                     sea_orm::DatabaseBackend::Sqlite,
-                    "INSERT OR REPLACE INTO HAYSTACK_POINT_BRICK_CLASS (serial_number, point_type, point_index, brick_class) VALUES (?, ?, ?, ?)",
+                    "INSERT OR REPLACE INTO HAYSTACK_POINT_BRICK_CLASS (serial_number, point_type, point_index, brick_class, auto_assigned) VALUES (?, ?, ?, ?, 1)",
                     vec![sn.into(), point_type.into(), idx.into(), bc.clone().into()],
                 ))
                 .await
@@ -653,7 +653,7 @@ async fn process_points(
             if let Some(ref bc) = rule.brick_class {
                 db.execute(Statement::from_sql_and_values(
                     sea_orm::DatabaseBackend::Sqlite,
-                    "INSERT OR REPLACE INTO HAYSTACK_POINT_BRICK_CLASS (serial_number, point_type, point_index, brick_class) VALUES (?, ?, ?, ?)",
+                    "INSERT OR REPLACE INTO HAYSTACK_POINT_BRICK_CLASS (serial_number, point_type, point_index, brick_class, auto_assigned) VALUES (?, ?, ?, ?, 1)",
                     vec![sn.into(), point_type.into(), idx.into(), bc.clone().into()],
                 ))
                 .await

@@ -405,7 +405,7 @@ const RunTab: React.FC = () => {
         body: JSON.stringify({ serialNumbers: serials }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({ error: `HTTP ${res.status}` })); throw new Error(d.error); }
-      setResult('Tags reset. All auto-assigned tags cleared.');
+      setResult('Auto-tags cleared. Manual tags preserved.');
     } catch (e: any) { setError(e.message); } finally { setRunning(false); }
   };
 
@@ -479,18 +479,18 @@ const RunTab: React.FC = () => {
         </Popover>
         <Popover open={resetOpen} onOpenChange={(_, d) => setResetOpen(d.open)} withArrow>
           <PopoverTrigger disableButtonEnhancement>
-              <Button icon={<DeleteRegular style={{ fontSize: 14 }} />} disabled={running} size="small">Reset Tags</Button>
+              <Button icon={<DeleteRegular style={{ fontSize: 14 }} />} disabled={running} size="small">Clear Auto-Tags</Button>
           </PopoverTrigger>
           <PopoverSurface style={{ padding: 12, maxWidth: 300 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
               <WarningRegular style={{ color: '#d32f2f', fontSize: 16, marginTop: 1, flexShrink: 0 }} />
               <div style={{ fontSize: 12 }}>
-                <strong>Warning:</strong> This will permanently delete all auto-assigned Haystack tags and Brick classes for {serials.length} device(s). Manual tags are preserved.
+                <strong>Clear Auto-Tags:</strong> This will permanently delete all auto-assigned Haystack tags and Brick classes for {serials.length} device(s). Manual tags are preserved.
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Button size="small" onClick={() => setResetOpen(false)}>Cancel</Button>
-              <Button size="small" appearance="primary" style={{ background: '#d32f2f' }} onClick={handleReset}>Reset</Button>
+              <Button size="small" appearance="primary" style={{ background: '#d32f2f' }} onClick={handleReset}>Clear</Button>
             </div>
           </PopoverSurface>
         </Popover>
