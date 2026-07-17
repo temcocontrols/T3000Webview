@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input } from '@fluentui/react-components';
 import { DismissRegular, SearchRegular } from '@fluentui/react-icons';
 import { useHaystackStore } from '../store/haystackStore';
@@ -35,7 +35,20 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
   const [brickClass, setBrickClass] = useState<string>(currentBrickClass || '');
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [brickClassOptions, setBrickClassOptions] = useState<string[]>([]);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   useEffect(() => { fetchTags(); }, []);
 
@@ -53,22 +66,25 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
 
   // Build unified suggestion list: brick:xxx + haystack tags + custom tags
   const filteredSuggestions = (() => {
-    const results: { label: string; prefix: string; isStandard: boolean }[] = [];
+    const results: { label: string; prefix: string; isStandard: boolean; isAssigned: boolean }[] = [];
     const q = search.toLowerCase().trim();
+    const showAll = !q;
     // Brick class suggestions
     for (const bc of brickClassOptions) {
-      if (brickClass && bc === brickClass) continue;
       if (q && !bc.toLowerCase().includes(q) && !`brick:${bc}`.toLowerCase().includes(q)) continue;
-      results.push({ label: bc, prefix: 'brick', isStandard: true });
+      const assigned = brickClass === bc;
+      results.push({ label: bc, prefix: 'brick', isStandard: true, isAssigned: assigned });
     }
     // Haystack tag suggestions
     for (const t of tags) {
-      if (selectedTags.includes(t.tag_name)) continue;
       if (q && !t.tag_name.toLowerCase().includes(q)) continue;
       const prefix = t.category === 'haystack' ? 'hay' : '';
-      results.push({ label: t.tag_name, prefix, isStandard: t.category === 'haystack' });
+      const assigned = selectedTags.includes(t.tag_name);
+      results.push({ label: t.tag_name, prefix, isStandard: t.category === 'haystack', isAssigned: assigned });
     }
-    return results.slice(0, 20);
+    // Sort: unassigned first, then assigned (dimmed)
+    results.sort((a, b) => Number(a.isAssigned) - Number(b.isAssigned));
+    return showAll ? results : results.slice(0, 20);
   })();
 
   const handleAddTag = (item: { label: string; prefix: string }) => {
@@ -155,25 +171,31 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
         </div>
 
         {/* Add Tag Autocomplete */}
-        <div className={styles.sectionSearch}>
+        <div className={styles.sectionSearch} ref={searchRef}>
           <div className={styles.sectionTitle}>Add Tag</div>
           <Input
             placeholder="Search tags or brick classes..."
             value={search}
             onChange={(_, d) => setSearch(d.value)}
+            onFocus={() => setFocused(true)}
             contentBefore={<SearchRegular style={{ fontSize: 14 }} />}
             contentAfter={search ? <DismissRegular style={{ fontSize: 12, cursor: 'pointer', color: '#888' }} onClick={() => setSearch('')} /> : undefined}
             className={styles.searchInput}
           />
-          {search && (
-            <div className={styles.suggestions}>
+          {(search || focused) && (
+            <div className={styles.suggestions}
+              onMouseDown={(e) => e.preventDefault()}>
               {filteredSuggestions.map((s) => (
-                <div key={`${s.prefix}:${s.label}`} className={styles.suggestionItem} onClick={() => handleAddTag(s)}>
+                <div key={`${s.prefix}:${s.label}`}
+                  className={styles.suggestionItem}
+                  onClick={() => !s.isAssigned && handleAddTag(s)}
+                  style={s.isAssigned ? { background: '#e8f5e9', cursor: 'default' } : undefined}
+                >
                   <span style={{ fontWeight: s.prefix === 'brick' ? 600 : 400 }}>
                     {s.prefix ? `${s.prefix}:${s.label}` : s.label}
                   </span>
                   <span className={styles.suggestionMeta}>
-                    {s.prefix === 'brick' ? 'brick class' : s.isStandard ? 'standard' : 'custom'}
+                    {s.isAssigned ? '✓ assigned' : s.prefix === 'brick' ? 'brick class' : s.isStandard ? 'standard' : 'custom'}
                   </span>
                 </div>
               ))}

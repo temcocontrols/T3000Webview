@@ -68,6 +68,7 @@
 }
 .count { font-size: 11px; color: var(--colorNeutralForeground3); margin-left: auto; }
 .loadingSpinner { justify-content: flex-start; margin-top: 24px; }
+.loadingSpinner :global(.fui-Spinner__spinner) { width: 16px; height: 16px; }
 
 /* ── Rule Source Info ── */
 .ruleInfo {
