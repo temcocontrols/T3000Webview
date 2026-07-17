@@ -14,6 +14,9 @@ mod m20260607_add_haystack_v2;
 mod m20260607_remove_haystack_v1;
 mod m20260611_add_device_online_status;
 mod m20260715_add_auto_tagging_rules;
+mod m20260716_add_point_brick_class_table;
+mod m20260717_add_range_rules;
+mod m20260718_add_extended_brick_rules;
 
 /// Migrator for webview_database.db (users, files, app config, LCD options)
 pub struct Migrator;
@@ -47,6 +50,9 @@ impl MigratorTrait for T3DeviceMigrator {
             Box::new(m20260607_remove_haystack_v1::Migration),
             Box::new(m20260611_add_device_online_status::Migration),
             Box::new(m20260715_add_auto_tagging_rules::Migration),
+            Box::new(m20260716_add_point_brick_class_table::Migration),
+            Box::new(m20260717_add_range_rules::Migration),
+            Box::new(m20260718_add_extended_brick_rules::Migration),
         ]
     }
 }
