@@ -12,7 +12,9 @@ import {
   ArrowClockwiseRegular, AddRegular, DismissRegular,
   PlayRegular, EyeRegular, CheckmarkCircleRegular,
   WarningRegular, InfoRegular, DeleteRegular,
-  TagRegular, FlashRegular, BrainCircuitRegular, SettingsRegular,
+  TagRegular, FlashRegular, SettingsRegular,
+  SparkleRegular, CopyRegular, LightbulbRegular,
+  CodeRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -82,13 +84,15 @@ const AutoTaggingMcpPage: React.FC = () => {
       <TabList selectedValue={activeTab} onTabSelect={(_, d) => setActiveTab(d.value as string)}>
         <Tab value="rules" icon={<SettingsRegular />}><span style={{fontSize:13}}>Rules</span></Tab>
         <Tab value="run" icon={<PlayRegular />}><span style={{fontSize:13}}>Run Auto-Tag</span></Tab>
-        <Tab value="mcp" icon={<BrainCircuitRegular />}><span style={{fontSize:13}}>MCP Server</span></Tab>
+        <Tab value="mcp" icon={<SparkleRegular />}><span style={{fontSize:13}}>MCP Server</span></Tab>
+        <Tab value="examples" icon={<LightbulbRegular />}><span style={{fontSize:13}}>Examples</span></Tab>
       </TabList>
 
       <div className={styles.tabContent}>
         {activeTab === 'rules' && <RulesTab />}
         {activeTab === 'run' && <RunTab />}
         {activeTab === 'mcp' && <McpTab />}
+        {activeTab === 'examples' && <ExamplesTab />}
       </div>
     </div>
   );
@@ -520,64 +524,331 @@ const RunTab: React.FC = () => {
 
 // ═══ MCP Tab ═══
 
+const MCP_CONFIG_JSON = `{
+  "mcpServers": {
+    "t3000": {
+      "url": "http://<host>:9103/api/mcp",
+      "transport": "http"
+    }
+  }
+}`;
+
 const McpTab: React.FC = () => {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
   return (
-    <div className={styles.mcpSection}>
-      <div className={styles.mcpCard}>
-        <h3><BrainCircuitRegular /> Model Context Protocol Server</h3>
-        <p>
-          The T3000 Haystack MCP server exposes auto-tagging and tagging tools to LLM agents via JSON-RPC 2.0 over stdio.
-          Connect any MCP-compatible client (Claude Desktop, VS Code Copilot, etc.) to query and manage Haystack tags programmatically.
-        </p>
+    <div>
+      {/* ── What is MCP ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
+        <SparkleRegular style={{ color: '#0078d4', fontSize: 20, marginTop: 2, flexShrink: 0 }} />
+        <div style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--colorNeutralForeground2)' }}>
+          <strong style={{ fontSize: 13, color: 'var(--colorNeutralForeground1)' }}>Model Context Protocol (MCP) Server</strong>
+          <br />
+          The T3000 MCP server lets LLM agents (Claude Desktop, VS Code Copilot, etc.) query and manage Haystack tags programmatically via JSON-RPC 2.0 over HTTP on port 9103.
+          Runs <strong>inside the T3000 API</strong> — no separate process needed.
+        </div>
       </div>
 
-      <div className={styles.mcpCard}>
-        <h4>Available Tools</h4>
+      {/* ── How to Connect ── */}
+      <div className={styles.mcpSection}>
+        <div className={styles.sectionTitle}>
+          <SettingsRegular style={{ fontSize: 14 }} /> How to Connect
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--colorNeutralForeground2)', marginBottom: 10, lineHeight: 1.6 }}>
+          The MCP server is exposed as an HTTP endpoint on the T3000 API. Replace <code>&lt;host&gt;</code> with <code>localhost</code> or the machine's IP. Paste into your client config:
+        </div>
+        <div style={{ position: 'relative', marginBottom: 12 }}>
+          <pre style={{
+            background: 'var(--colorNeutralBackground2, #f5f5f5)',
+            border: '1px solid var(--colorNeutralStroke1)',
+            borderRadius: 4,
+            padding: '12px 40px 12px 12px',
+            fontSize: 12,
+            overflowX: 'auto',
+            margin: 0,
+            lineHeight: 1.5,
+          }}>
+            <code>{MCP_CONFIG_JSON}</code>
+          </pre>
+          <Button
+            size="small" appearance="subtle"
+            icon={copied === 'config' ? <CheckmarkCircleRegular style={{ color: '#1e7e34' }} /> : <CopyRegular />}
+            style={{ position: 'absolute', top: 6, right: 6, minHeight: 24, height: 24 }}
+            onClick={() => handleCopy(MCP_CONFIG_JSON, 'config')}
+          >{copied === 'config' ? 'Copied' : 'Copy'}</Button>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)', lineHeight: 1.5 }}>
+          <strong>Claude Desktop</strong> → paste into <code>claude_desktop_config.json</code> and restart.<br />
+          <strong>VS Code Copilot</strong> → add to <code>.vscode/mcp.json</code> in your workspace.<br />
+          The T3000 API must be running (default port <code>9103</code>). Use <code>localhost</code> for local, or the machine's LAN IP for remote access.
+        </div>
+      </div>
+
+      {/* ── Available Tools ── */}
+      <div className={styles.mcpSection} style={{ marginTop: 20 }}>
+        <div className={styles.sectionTitle}>
+          <TagRegular style={{ fontSize: 14 }} /> Available Tools
+        </div>
         <table className={styles.mcpToolTable}>
           <thead>
-            <tr><th>Tool</th><th>Description</th></tr>
+            <tr><th style={{width:'22%'}}>Tool</th><th style={{width:'36%'}}>Description</th><th style={{width:'42%'}}>Parameters</th></tr>
           </thead>
           <tbody>
             <tr>
               <td><code>haystack_list_tags</code></td>
-              <td>List all Haystack tags with categories, documentation, usage counts</td>
+              <td>List all Haystack tags with categories, documentation, and usage counts</td>
+              <td>filter?: string</td>
             </tr>
             <tr>
               <td><code>haystack_get_point_tags</code></td>
               <td>Get tags assigned to specific points by serial number</td>
+              <td>serial_numbers: int[]<br/>point_type?: "INPUT" | "OUTPUT" | "VARIABLE"</td>
             </tr>
             <tr>
               <td><code>haystack_search_points</code></td>
-              <td>Search for points matching specific tag filters</td>
+              <td>Search for points matching specific tag or brick class filters</td>
+              <td>tags: string[]<br/>serial_numbers?: int[]<br/>point_types?: string[]</td>
             </tr>
             <tr>
               <td><code>haystack_auto_tag</code></td>
-              <td>Run regex-based auto-tagging on devices</td>
+              <td>Run auto-tagging on devices (range rules + regex rules)</td>
+              <td>serial_numbers: int[]</td>
             </tr>
             <tr>
               <td><code>haystack_preview_tags</code></td>
-              <td>Preview auto-tagging results without writing</td>
+              <td>Preview auto-tagging results without writing to database</td>
+              <td>serial_numbers: int[]</td>
             </tr>
             <tr>
               <td><code>haystack_list_rules</code></td>
-              <td>List all auto-tagging rules with patterns</td>
+              <td>List all auto-tagging rules with patterns and priorities</td>
+              <td>—</td>
             </tr>
             <tr>
               <td><code>haystack_get_brick_class</code></td>
-              <td>Get Brick ontology class for points</td>
+              <td>Get Brick ontology class for specified points</td>
+              <td>serial_numbers: int[]</td>
             </tr>
           </tbody>
         </table>
       </div>
+    </div>
+  );
+};
 
-      <div className={styles.mcpCard}>
-        <h4>Connection</h4>
-        <p>The MCP server runs on <code>stdio</code> (standard input/output) as a child process.</p>
-        <p><strong>Endpoint:</strong> <code>t3_webview_api MCP server</code> (embedded in the API binary)</p>
-        <p className={styles.mcpNote}>
-          <InfoRegular /> The MCP server is always available when the T3000 WebView API is running. No separate process needed.
-        </p>
+// ═══ Examples Tab ═══
+
+const MCP_URL = `http://<host>:9103/api/mcp`;
+
+interface ExampleItem {
+  title: string;
+  description: string;
+  tool: string;
+  request: object;
+}
+
+const examples: ExampleItem[] = [
+  {
+    title: 'Initialize MCP session',
+    description: 'First call — the client sends an initialize request to discover server capabilities.',
+    tool: 'initialize',
+    request: {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: { name: 'my-client', version: '1.0' },
+      },
+    },
+  },
+  {
+    title: 'List available tools',
+    description: 'Discover all Haystack tools the server provides.',
+    tool: 'tools/list',
+    request: {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/list',
+    },
+  },
+  {
+    title: 'List all Haystack tags',
+    description: 'Get the full tag vocabulary with categories, docs, and usage counts.',
+    tool: 'tools/call',
+    request: {
+      jsonrpc: '2.0',
+      id: 3,
+      method: 'tools/call',
+      params: {
+        name: 'haystack_list_tags',
+        arguments: { filter: 'haystack' },
+      },
+    },
+  },
+  {
+    title: 'Get tags for a specific point',
+    description: 'Retrieve all Haystack tags and Brick class assigned to device 233626.',
+    tool: 'tools/call',
+    request: {
+      jsonrpc: '2.0',
+      id: 4,
+      method: 'tools/call',
+      params: {
+        name: 'haystack_get_point_tags',
+        arguments: { serial_numbers: [233626], point_type: 'INPUT' },
+      },
+    },
+  },
+  {
+    title: 'Search points by tags',
+    description: 'Find all outside air temperature sensors across the building.',
+    tool: 'tools/call',
+    request: {
+      jsonrpc: '2.0',
+      id: 5,
+      method: 'tools/call',
+      params: {
+        name: 'haystack_search_points',
+        arguments: { tags: ['outside', 'air', 'temp'] },
+      },
+    },
+  },
+  {
+    title: 'Run auto-tagging',
+    description: 'Apply range rules + regex rules to tag points on devices 233626 and 237219.',
+    tool: 'tools/call',
+    request: {
+      jsonrpc: '2.0',
+      id: 6,
+      method: 'tools/call',
+      params: {
+        name: 'haystack_auto_tag',
+        arguments: { serial_numbers: [233626, 237219] },
+      },
+    },
+  },
+  {
+    title: 'Preview auto-tagging results',
+    description: 'See what tags would be assigned without writing to the database.',
+    tool: 'tools/call',
+    request: {
+      jsonrpc: '2.0',
+      id: 7,
+      method: 'tools/call',
+      params: {
+        name: 'haystack_preview_tags',
+        arguments: { serial_numbers: [233626] },
+      },
+    },
+  },
+  {
+    title: 'Get Brick classes',
+    description: 'Retrieve the Brick ontology class for points on a device.',
+    tool: 'tools/call',
+    request: {
+      jsonrpc: '2.0',
+      id: 8,
+      method: 'tools/call',
+      params: {
+        name: 'haystack_get_brick_class',
+        arguments: { serial_numbers: [233626] },
+      },
+    },
+  },
+];
+
+const ExamplesTab: React.FC = () => {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  return (
+    <div>
+      {/* ── LLM Integration ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 20 }}>
+        <LightbulbRegular style={{ color: '#0078d4', fontSize: 20, marginTop: 2, flexShrink: 0 }} />
+        <div style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--colorNeutralForeground2)' }}>
+          <strong style={{ fontSize: 13, color: 'var(--colorNeutralForeground1)' }}>Usage Examples</strong>
+          <br />
+          The MCP endpoint is at <code>{MCP_URL}</code>. Use the config from the <strong>MCP Server</strong> tab to connect Claude or any MCP client.
+        </div>
       </div>
+
+      {/* ── LLM Workflow ── */}
+      <div className={styles.mcpSection} style={{ marginBottom: 24 }}>
+        <div className={styles.sectionTitle}>
+          <SparkleRegular style={{ fontSize: 14 }} /> Using with Claude / LLM Agents
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--colorNeutralForeground2)', lineHeight: 1.7 }}>
+          <strong>1. Add the config</strong> from the MCP Server tab to <code>claude_desktop_config.json</code> or <code>.vscode/mcp.json</code> and restart.<br />
+          <strong>2. Claude discovers the tools</strong> — you'll see a 🔌 icon confirming the T3000 MCP server is connected.<br />
+          <strong>3. Ask natural language questions</strong> — Claude automatically calls the right tools:
+        </div>
+        <div style={{ marginTop: 10, padding: '10px 14px', background: 'var(--colorNeutralBackground2)', borderRadius: 4, fontSize: 12, lineHeight: 1.7 }}>
+          <div style={{ marginBottom: 6 }}>🗣️ <em>"What Haystack tags are available?"</em><br />→ Calls <code>haystack_list_tags</code></div>
+          <div style={{ marginBottom: 6 }}>🗣️ <em>"Show me all outside air temperature sensors"</em><br />→ Calls <code>haystack_search_points</code> with tags [outside, air, temp]</div>
+          <div style={{ marginBottom: 6 }}>🗣️ <em>"Auto-tag device 233626"</em><br />→ Calls <code>haystack_auto_tag</code></div>
+          <div>🗣️ <em>"What Brick class does point dev233626.in5 have?"</em><br />→ Calls <code>haystack_get_brick_class</code></div>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)', marginTop: 8, lineHeight: 1.5 }}>
+          <strong>Claude Desktop</strong> and <strong>Claude Code (VS Code)</strong> both support HTTP MCP transport natively (spec 2024-11-05).
+          No proxy or stdio wrapper needed.
+        </div>
+      </div>
+
+      {/* ── Raw JSON-RPC Examples ── */}
+      <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>
+        <CodeRegular style={{ fontSize: 14 }} /> Raw JSON-RPC Requests
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)', marginBottom: 16 }}>
+        For testing or non-MCP HTTP clients — POST to <code>{MCP_URL}</code>
+      </div>
+
+      {examples.map((ex, i) => (
+        <div key={i} className={styles.mcpSection} style={{ marginBottom: 20 }}>
+          <div className={styles.sectionTitle}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{ex.title}</span>
+            <Badge appearance="outline" size="small" style={{ marginLeft: 8 }}>
+              {ex.tool}
+            </Badge>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--colorNeutralForeground2)', marginBottom: 8, lineHeight: 1.5 }}>
+            {ex.description}
+          </div>
+          <div style={{ position: 'relative' }}>
+            <pre style={{
+              background: 'var(--colorNeutralBackground2, #f5f5f5)',
+              border: '1px solid var(--colorNeutralStroke1)',
+              borderRadius: 4,
+              padding: '10px 40px 10px 10px',
+              fontSize: 11,
+              overflowX: 'auto',
+              margin: 0,
+              lineHeight: 1.5,
+            }}>
+              <code>{JSON.stringify(ex.request, null, 2)}</code>
+            </pre>
+            <Button
+              size="small" appearance="subtle"
+              icon={copied === `ex-${i}` ? <CheckmarkCircleRegular style={{ color: '#1e7e34' }} /> : <CopyRegular />}
+              style={{ position: 'absolute', top: 4, right: 4, minHeight: 22, height: 22 }}
+              onClick={() => handleCopy(JSON.stringify(ex.request, null, 2), `ex-${i}`)}
+            >{copied === `ex-${i}` ? 'Copied' : 'Copy'}</Button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

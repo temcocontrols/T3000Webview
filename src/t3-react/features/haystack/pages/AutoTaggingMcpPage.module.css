@@ -207,15 +207,8 @@
 .previewTable td:first-child { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── MCP Tab ── */
-.mcpSection { max-width: 800px; }
-.mcpCard {
-  background: var(--colorNeutralBackground1);
-  border: 1px solid var(--colorNeutralStroke1);
-  border-radius: 4px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-.mcpCard p {
+.mcpSection { max-width: none; }
+.mcpSection p {
   margin: 4px 0;
   font-size: 12px;
   line-height: 1.5;
@@ -240,23 +233,14 @@
 .mcpToolTable td {
   padding: 5px 10px;
   border-bottom: 1px solid var(--colorNeutralStroke2);
+  text-align: left;
+  vertical-align: top;
 }
 .mcpToolTable code {
   background: var(--colorNeutralBackground2);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 11px;
-}
-.mcpNote {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #1a7a2e;
-  background: #f0fdf4;
-  padding: 8px 12px;
-  border-radius: 4px;
-  margin-top: 8px !important;
 }
 
 /* ── Shared ── */
