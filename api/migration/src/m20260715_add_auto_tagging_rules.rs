@@ -117,10 +117,10 @@ impl MigrationTrait for Migration {
             )",
         ).await?;
 
-        // 2. Add brick_class column to existing table
-        db.execute_unprepared(
+        // 2. Add brick_class column to existing table (idempotent — may already exist)
+        let _ = db.execute_unprepared(
             "ALTER TABLE HAYSTACK_POINT_TAGS ADD COLUMN brick_class TEXT",
-        ).await?;
+        ).await;
 
         // 3. Seed 68 default rules
         for (i, rule) in default_rules().iter().enumerate() {
