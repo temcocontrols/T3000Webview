@@ -30,13 +30,13 @@ Add a semantic tagging layer on top of T3000's existing point data that:
 T3000 v2 already has Haystack tagging (manual assignment, basic auto-tagging). V3 adds:
 
 ```
-v2 (current)                          v3 (planned)
-───────────                           ───────────
+v2 (current)                          v3
+───────────                           ──
 Hardcoded auto_tag_point()      →     Rules table + regex engine
 Haystack tags only              →     + Brick class per point
 POST /api/haystack/rebuild      →     /api/haystack/auto-tagging/run
-No MCP                          →     MCP server (4 tools over stdio)
-No rules management UI          →     Auto-Tagging & MCP page (4 tabs)
+No MCP                          →     MCP server (7 tools over stdio)
+No rules management UI          →     Auto-Tagging & MCP page (3 tabs)
 ```
 
 ### 1.5 End-to-End Flow
@@ -45,18 +45,19 @@ No rules management UI          →     Auto-Tagging & MCP page (4 tabs)
 1. DEVICE SYNC
    C++ FFI → INPUTS/OUTPUTS/VARIABLES tables updated
 
-2. AUTO-TAGGING (on FFI sync or manual trigger)
-   For each point: read name + units + type
-   → Match against AUTO_TAGGING_RULES (priority order)
-   → Assign: haystack_tags[] + brick_class + haystack_kind + haystack_unit
-   → Write to HAYSTACK_POINT_TAGS
+2. AUTO-TAGGING (three-step engine)
+   Step 1 — Range rules: lookup (point_type, digital_analog, Range_Field) → baseline tags + brick_class
+   Step 2 — Haystack regex: eval_rules(label, units) → extra tags (INSERT OR IGNORE)
+   Step 3 — Brick regex: eval_rules(label, units) → brick_class (overrides range)
+   → Write tags to HAYSTACK_POINT_TAGS (auto_assigned=1)
+   → Write brick_class to HAYSTACK_POINT_BRICK_CLASS
 
 3. WEB UI
    Auto-Tagging & MCP page → manage rules, run tagging, view MCP status
    Inputs/Outputs/Variables pages → Tags column shows tags + Brick badge
 
 4. MCP SERVER
-   Tools query HAYSTACK_POINT_TAGS + point tables
+   Tools query HAYSTACK_POINT_TAGS + HAYSTACK_POINT_BRICK_CLASS + point tables
    Returns semantic-tagged data via JSON-RPC/stdio
 
 5. LLM AGENT
@@ -79,22 +80,25 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
                    └─────────────┼─────────────┘
                                  │
                          ┌───────▼────────┐
-                         │  Auto-Tagging  │   Regex engine
-                         │    Engine      │   (AUTO_TAGGING_RULES)
+                         │  Auto-Tagging  │   3-step engine:
+                         │    Engine      │   range → haystack → brick
                          └───────┬────────┘
                                  │
               ┌──────────────────┼──────────────────┐
               │                                     │
-    HAYSTACK_POINT_TAGS                    AUTO_TAGGING_RULES
-    (tags + brick_class column)            (68 default rules seeded)
+    HAYSTACK_POINT_TAGS                  HAYSTACK_POINT_BRICK_CLASS
+    (tags per point, auto_assigned)      (brick class per point)
+              │                                     │
+              ├─────────────────────────────────────┤
+              │         HAYSTACK_AUTO_TAGGING_RULES │
+              │         (228 rules in 3 categories) │
               │                                     │
     ┌─────────┴──────────┐              ┌──────────┴──────────┐
     │   React Frontend    │              │    MCP Server       │
-    │  • Auto-Tagging &   │              │  • list_devices     │
-    │    MCP page         │              │  • list_objects     │
-    │  • Tags column on   │              │  • get_object_value │
-    │    point pages      │              │  • get_tagged       │
-    │                     │              │    _topology        │
+    │  • Auto-Tagging &   │              │  • haystack_list_*  │
+    │    MCP page         │              │  • haystack_search_*│
+    │  • Tags column on   │              │  • haystack_get_*   │
+    │    point pages      │              │                     │
     └────────────────────┘              └─────────────────────┘
                                                │
                                         ┌──────▼──────┐
@@ -107,30 +111,68 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
 
 ## 3. Database Schema
 
-### 3.1 Changes to Existing
-
-`HAYSTACK_POINT_TAGS` gets one new column:
+### 3.1 `HAYSTACK_POINT_TAGS` — tag assignments (1 row per tag per point)
 
 ```sql
-ALTER TABLE HAYSTACK_POINT_TAGS ADD COLUMN brick_class TEXT;
+CREATE TABLE HAYSTACK_POINT_TAGS (
+    serial_number  INTEGER NOT NULL,
+    point_type     TEXT NOT NULL,
+    point_index    TEXT NOT NULL,
+    point_id       TEXT NOT NULL,
+    tag_name       TEXT NOT NULL,
+    auto_assigned  INTEGER NOT NULL DEFAULT 0,  -- 1=auto-tagged, 0=manual
+    PRIMARY KEY (serial_number, point_type, point_index, tag_name)
+);
 ```
 
-All v2 tables unchanged (`HAYSTACK_TAGS`, `HAYSTACK_TAG_RELATIONS`).
+- `auto_assigned` added by m20260716; default 0 preserves existing manual tags
+- Auto-tagging INSERTs with `auto_assigned=1`
+- Reset deletes `WHERE auto_assigned=1` — manual tags survive
+- Old `brick_class` column dropped in m20260716
 
-### 3.2 New Table — AUTO_TAGGING_RULES
+### 3.2 `HAYSTACK_POINT_BRICK_CLASS` — brick classification (1 row per point)
 
 ```sql
-CREATE TABLE AUTO_TAGGING_RULES (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    rule_name     TEXT NOT NULL UNIQUE,
-    category      TEXT NOT NULL CHECK(category IN ('haystack','brick')),
-    pattern       TEXT NOT NULL,
-    units         TEXT,
-    object_types  TEXT,
-    haystack_tags TEXT,
-    brick_class   TEXT,
-    haystack_kind TEXT,
-    haystack_unit TEXT,
+CREATE TABLE HAYSTACK_POINT_BRICK_CLASS (
+    serial_number INTEGER NOT NULL,
+    point_type    TEXT NOT NULL,
+    point_index   INTEGER NOT NULL,
+    brick_class   TEXT NOT NULL,
+    PRIMARY KEY (serial_number, point_type, point_index)
+);
+```
+
+- Separate from `HAYSTACK_POINT_TAGS` — brick_class is point-level, not tag-level
+- Replaces old `__brick_class__` marker row pattern from v3.0
+- Preview joins with `LEFT JOIN HAYSTACK_POINT_BRICK_CLASS`
+
+### 3.3 `HAYSTACK_AUTO_TAGGING_RULES` — rule definitions
+
+Three categories share one table (haystack, brick, range):
+
+```sql
+CREATE TABLE HAYSTACK_AUTO_TAGGING_RULES (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_name      TEXT NOT NULL UNIQUE,
+    category       TEXT NOT NULL CHECK(category IN ('haystack','brick','range')),
+
+    -- Regex rules (haystack / brick)
+    pattern        TEXT,           -- regex (NULL for range rules)
+    units          TEXT,           -- units filter or display unit
+    object_types   TEXT,           -- object type filter or range category
+
+    -- Range rules (range)
+    point_type     TEXT,           -- 'INPUT'|'OUTPUT'|'VARIABLE' (NULL for regex)
+    digital_analog INTEGER,        -- 0=digital, 1=analog (NULL for regex)
+    range_value    INTEGER,        -- matches Range_Field (NULL for regex)
+
+    -- Output (all categories)
+    haystack_tags TEXT,            -- comma-separated
+    brick_class   TEXT,            -- Brick class name
+    haystack_kind TEXT,            -- Haystack kind tag
+    haystack_unit TEXT,            -- Normalized Haystack unit
+
+    -- Control
     enabled       INTEGER NOT NULL DEFAULT 1,
     priority      INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -138,31 +180,44 @@ CREATE TABLE AUTO_TAGGING_RULES (
 );
 ```
 
-### 3.3 Seed Data (68 Rules)
+**Category usage matrix:**
 
-Migration inserts 68 default rules. Source: `brick-bacnet-mcp` YAML files.
+| Column | haystack | brick | range |
+|---|---|---|---|
+| `pattern` | regex | regex | NULL |
+| `units` | optional filter | optional filter | display unit (e.g. "Amps") |
+| `object_types` | optional filter | optional filter | range category (e.g. "Temperature") |
+| `point_type` | NULL | NULL | INPUT/OUTPUT/VARIABLE |
+| `digital_analog` | NULL | NULL | 0 or 1 |
+| `range_value` | NULL | NULL | 0–104 |
+| `haystack_tags` | comma-separated | NULL | comma-separated |
+| `brick_class` | NULL | class name | class name |
 
-| Category | Count | Pattern Coverage |
+### 3.4 Seed Data
+
+| Category | Count | Source |
 |---|---|---|
-| `brick` | 37 | Outside/Supply/Return/Zone/Mixed Air Temp, Humidity, CO2, Fan, Damper, VAV, Valve, Setpoint, Occupancy |
-| `haystack` | 31 | Same coverage, outputting tag sets + kind + unit |
+| `haystack` (regex) | 31 | brick-bacnet-mcp YAML |
+| `brick` (regex) | 37 | brick-bacnet-mcp YAML |
+| `range` (metadata) | ~160 | Frontend rangeData.ts |
+| **Total** | **~228** | |
 
 **Rule examples:**
 
 ```
-rule_name:    brick:oat
-category:     brick
-pattern:      (?i)(oat|outside[_ ]?air[_ ]?temp)
-units:        degF,degC
+rule_name:    brick:oat          category: brick
+pattern:      (?i)(oat\|outside[_ ]?air[_ ]?temp)
 brick_class:  Outside_Air_Temperature_Sensor
 
-rule_name:    hs:oat
-category:     haystack
-pattern:      (?i)(oat|outside[_ ]?air[_ ]?temp)
-units:        degF,degC
+rule_name:    hs:oat             category: haystack
+pattern:      (?i)(oat\|outside[_ ]?air[_ ]?temp)
 haystack_tags: point,sensor,outside,air,temp
-haystack_kind: Number
-haystack_unit: °F
+
+rule_name:    range:in-ana-3     category: range
+point_type:   INPUT              digital_analog: 1    range_value: 3
+haystack_tags: point,sensor,air,temp
+brick_class:  Temperature_Sensor
+units:        Deg.C
 ```
 
 ---
@@ -171,37 +226,69 @@ haystack_unit: °F
 
 **File:** `api/src/haystack/auto_tagging_service.rs`
 
-### 4.1 Matching Algorithm
+### 4.1 Evaluation — Three-Step Flow
+
+Auto-tagging runs in three sequential steps per point. Range rules apply first (metadata-based), then regex rules refine.
 
 ```
-tag_point(point_name, point_units, point_type) → (brick_class, haystack_tags, kind, unit)
+For each point (row from INPUTS/OUTPUTS/VARIABLES):
+  Read: SerialNumber, point_index, Full_Label, Label, Units,
+        Digital_Analog, Range_Field
 
-  1. Fetch all rules WHERE enabled=1 ORDER BY priority ASC
-  2. Initialize: brick_class = None, haystack_tags = [], kind = None, unit = None
+  display_label = Full_Label || Label || ""
 
-  3. For each rule:
-     a. If rule.object_types is set AND point_type not in it → skip
-     b. If regex does not match point_name → skip
-     c. If rule.units is set AND point_units not in it → skip
-     d. If rule.category = 'brick' AND brick_class is None: set brick_class = rule.brick_class
-     e. If rule.category = 'haystack' AND haystack_tags is empty: set haystack_tags, kind, unit
-     f. If both brick_class AND haystack_tags are set → break (both categories matched)
+  ┌── STEP 1: Range Rules ────────────────────────────┐
+  │  SELECT * FROM HAYSTACK_AUTO_TAGGING_RULES         │
+  │  WHERE category='range' AND enabled=1              │
+  │    AND point_type=? AND digital_analog=?           │
+  │    AND range_value=?                               │
+  │                                                    │
+  │  → INSERT tags into HAYSTACK_POINT_TAGS            │
+  │    (auto_assigned=1, INSERT OR IGNORE on PK)       │
+  │  → INSERT OR REPLACE brick_class into              │
+  │    HAYSTACK_POINT_BRICK_CLASS                      │
+  └────────────────────────────────────────────────────┘
 
-  4. Return (brick_class, haystack_tags, kind, unit)
-  5. Caller writes to HAYSTACK_POINT_TAGS
+  ┌── STEP 2: Haystack Regex Rules ────────────────────┐
+  │  eval_rules(display_label, units, None,            │
+  │             haystack_rules)                        │
+  │  → INSERT OR IGNORE extra tags (auto_assigned=1)   │
+  │  → IGNORE prevents overwriting Step 1 tags         │
+  └────────────────────────────────────────────────────┘
+
+  ┌── STEP 3: Brick Regex Rules ───────────────────────┐
+  │  eval_rules(display_label, units, None,            │
+  │             brick_rules)                           │
+  │  → INSERT OR REPLACE brick_class                   │
+  │  → REPLACE = regex overrides range-based class     │
+  └────────────────────────────────────────────────────┘
+
+  tagged++ if any step produced output
 ```
 
-### 4.2 Triggers
+### 4.2 `eval_rules()` — Regex Matching
+
+```rust
+fn eval_rules(label, units, object_type, rules) -> Option<&CompiledRule> {
+    for rule in rules {  // priority-ordered, first match wins
+        if !rule.regex.is_match(label)      { continue; }
+        if rule.units_filter is set
+           && point.units not in filter     { continue; }
+        if rule.object_types_filter is set
+           && point.type not in filter      { continue; }
+        return Some(rule);
+    }
+    None
+}
+```
+
+### 4.3 Triggers
 
 | Trigger | Code Path |
 |---|---|
-| FFI sync (per row) | `t3_ffi_sync_service.rs` → `auto_tagging_service::tag_point()` |
-| Manual "Run Auto-Tagging" | `POST /api/haystack/auto-tagging/run` → clears existing tags → re-tags all points |
-| Toggle state | `POST /api/haystack/auto-tagging/toggle` sets global flag; FFI sync checks flag before calling tag engine |
-
-### 4.3 Test Rule
-
-`POST /api/haystack/auto-tagging/test` accepts a sample point + rule and returns the match result without writing to DB. Used by the frontend "Test Rule" button.
+| Manual "Run Auto-Tag" | `POST /api/haystack/auto-tagging/run` → `run_auto_tagging()` |
+| "Preview" button | `POST /api/haystack/auto-tagging/preview` → `preview_auto_tagging()` |
+| "Reset Tags" button | `POST /api/haystack/auto-tagging/reset` → `reset_auto_tags()` |
 
 ---
 
@@ -217,20 +304,20 @@ All v2 routes remain under `/api/haystack/` — tags CRUD, point-tags read/write
 
 | Route | Method | Input | Output |
 |---|---|---|---|
-| `/api/haystack/auto-tagging/rules` | GET | Query: `?category=haystack\|brick` | `{ rules: TaggingRule[], total: N }` |
-| `/api/haystack/auto-tagging/rules` | POST | `{ rule_name, category, pattern, units?, object_types?, haystack_tags?, brick_class?, haystack_kind?, haystack_unit?, priority? }` | `{ id, message }` |
+| `/api/haystack/auto-tagging/rules` | GET | Query: `?category=haystack\|brick\|range` | `{ rules: TaggingRule[], total: N }` |
+| `/api/haystack/auto-tagging/rules` | POST | `{ rule_name, category, pattern?, units?, object_types?, haystack_tags?, brick_class?, haystack_kind?, haystack_unit?, point_type?, digital_analog?, range_value?, priority? }` | `{ id, message }` |
 | `/api/haystack/auto-tagging/rules/:id` | PUT | Partial rule fields | `{ message }` |
 | `/api/haystack/auto-tagging/rules/:id` | DELETE | — | `{ message }` |
-| `/api/haystack/auto-tagging/test` | POST | `{ rule: partial rule, sample: { point_name, point_units, point_type } }` | `{ matched: bool, output: { brick_class?, haystack_tags?, kind?, unit? } }` |
-| `/api/haystack/auto-tagging/run` | POST | `{ serial_numbers: [i32] }` | `{ success, message, points_tagged: N }` |
-| `/api/haystack/auto-tagging/coverage` | POST | `{ serial_numbers: [i32] }` | `{ total_points, tagged_points, coverage_pct, brick_tagged, haystack_tagged, unmatched: [{ label, count }] }` |
-| `/api/haystack/auto-tagging/toggle` | POST | `{ enabled: bool }` | `{ enabled, message }` |
+| `/api/haystack/auto-tagging/rules/:id/toggle` | POST | — | `{ enabled, message }` |
+| `/api/haystack/auto-tagging/run` | POST | `{ serialNumbers: [i32] }` | `{ success, message, tagged: N, matches: TagMatch[] }` |
+| `/api/haystack/auto-tagging/preview` | POST | `{ serialNumbers: [i32] }` | `{ matches: TagMatch[], total: N }` |
+| `/api/haystack/auto-tagging/reset` | POST | `{ serialNumbers: [i32] }` | `{ success, message }` |
 
 ---
 
 ## 6. MCP Server
 
-**Files:** `api/src/haystack/mcp/server.rs`, `api/src/haystack/mcp/tools.rs`
+**File:** `api/src/haystack/mcp.rs`
 
 ### 6.1 Transport
 
@@ -240,12 +327,15 @@ All v2 routes remain under `/api/haystack/` — tags CRUD, point-tags read/write
 
 ### 6.2 Tools
 
-| Tool | Input Schema | SQL / Data Source |
-|---|---|---|
-| `list_devices` | `{}` | `SELECT serial_number, product_name, panel_number, is_online FROM DEVICES WHERE is_online = 1` |
-| `list_objects` | `{ serial_number: i32 }` | UNION of INPUTS, OUTPUTS, VARIABLES for serial + LEFT JOIN HAYSTACK_POINT_TAGS |
-| `get_object_value` | `{ serial_number: i32, point_type: string, point_index: string }` | Single row from point table + tags join |
-| `get_tagged_topology` | `{ filter_tags?: string[], filter_brick?: string }` | Points table + HAYSTACK_POINT_TAGS WHERE tag_name IN (filter) OR brick_class = filter |
+| Tool | Description |
+|---|---|
+| `haystack_list_tags` | List all available Haystack tags |
+| `haystack_get_point_tags` | Get tags for a specific point |
+| `haystack_search_points` | Search points by tag or brick class filter |
+| `haystack_auto_tag` | Trigger auto-tagging on selected devices |
+| `haystack_preview_tags` | Preview auto-tagging results without applying |
+| `haystack_list_rules` | List all auto-tagging rules |
+| `haystack_get_brick_class` | Get brick class for points (queries `HAYSTACK_POINT_BRICK_CLASS`) |
 
 ### 6.3 Tool Output Format
 
@@ -299,12 +389,11 @@ All v2 routes remain under `/api/haystack/` — tags CRUD, point-tags read/write
 
 **Tabs:**
 
-| Tab | Content | Data Source |
-|---|---|---|
-| Brick Classes | Searchable reference table | `GET /api/haystack/brick-classes` |
-| Haystack Rules | CRUD table — `category=haystack` rules | `GET/POST/PUT/DELETE /api/haystack/auto-tagging/rules` |
-| Brick Rules | CRUD table — `category=brick` rules | Same endpoints, filtered by category |
-| MCP Server | Status, tool list, restart, log viewer | `GET /api/mcp/status` |
+| Tab | Content |
+|---|---|
+| Rules | CRUD table for all rules (haystack, brick, range), filter by category |
+| Run Auto-Tag | Device selection, preview, run, and reset auto-tagging |
+| MCP Server | Tool reference, connection info for LLM agents |
 
 **Persistent status bar across all tabs:**
 
@@ -342,55 +431,44 @@ Haystack ▼
 ## 8. Rust Code Structure
 
 ```
-api/src/haystack/                          ← new dedicated module
+api/src/haystack/
   ├── mod.rs
-  ├── tags_service.rs                      ← moved from t3_device/
-  ├── tags_routes.rs                       ← moved from t3_device/
-  ├── auto_tagging_service.rs              ← rule engine + rules CRUD
-  ├── auto_tagging_routes.rs               ← 8 API handlers
-  ├── brick_class_service.rs               ← brick reference queries
-  ├── mcp/
-  │   ├── mod.rs
-  │   ├── server.rs                        ← MCP stdio transport
-  │   └── tools.rs                         ← 4 tool implementations
-  └── tests/
-      └── auto_tagging_tests.rs
+  ├── tags_service.rs
+  ├── tags_routes.rs
+  ├── auto_tagging_service.rs       ← rule engine + rules CRUD + eval_rules
+  ├── auto_tagging_routes.rs        ← run/preview/reset + rules CRUD endpoints
+  └── mcp.rs                        ← MCP server (7 tools, JSON-RPC/stdio)
 
-Files to move:
-  api/src/t3_device/haystack_tags_service.rs  →  api/src/haystack/tags_service.rs
-  api/src/t3_device/haystack_tags_routes.rs   →  api/src/haystack/tags_routes.rs
+api/migration/src/
+  ├── m20260715_add_auto_tagging_rules.rs
+  ├── m20260716_add_point_brick_class_table.rs
+  └── m20260717_add_range_rules.rs  (to be created)
 
-Files to update (import paths):
-  api/src/server.rs                   ← route registration
-  api/src/t3_device/mod.rs            ← remove mod declarations
-  api/src/t3_device/t3_ffi_sync_service.rs  ← auto_tag_point import
-
-Migration:
-  api/migration/src/m20260715_add_auto_tagging_rules.rs
-  Registers in T3DeviceMigrator (webview_t3_device.db)
+src/t3-react/features/haystack/pages/
+  └── AutoTaggingMcpPage.tsx        ← Rules / Run Auto-Tag / MCP Server tabs
 ```
 
 ---
 
-## 9. Migration
+## 9. Migrations
 
-**Migration file:** `m20260715_add_auto_tagging_rules`
+### m20260715 — Original rules + brick_class column
 
-Operations executed on `webview_t3_device.db`:
+- Creates `HAYSTACK_AUTO_TAGGING_RULES` with 68 seed rules (37 brick + 31 haystack)
+- Adds `brick_class` column to `HAYSTACK_POINT_TAGS`
 
-```sql
--- 1. New table
-CREATE TABLE IF NOT EXISTS AUTO_TAGGING_RULES ( ... );
+### m20260716 — Point brick class table + auto_assigned
 
--- 2. Alter existing
-ALTER TABLE HAYSTACK_POINT_TAGS ADD COLUMN brick_class TEXT;
+1. Creates `HAYSTACK_POINT_BRICK_CLASS` table
+2. Migrates old `__brick_class__` marker rows → new table, then deletes them
+3. Adds `auto_assigned` column to `HAYSTACK_POINT_TAGS` (DEFAULT 0)
+4. Drops old `brick_class` column from `HAYSTACK_POINT_TAGS`
 
--- 3. Seed rules (68 INSERT statements)
-INSERT INTO AUTO_TAGGING_RULES (rule_name, category, pattern, units, ...) VALUES
-  ('brick:oat', 'brick', '(?i)(oat|outside[_ ]?air[_ ]?temp)', 'degF,degC', ...),
-  ('hs:oat', 'haystack', '(?i)(oat|outside[_ ]?air[_ ]?temp)', 'degF,degC', ...),
-  -- ... 66 more
-```
+### m20260717 — Range rules
+
+1. Adds `point_type`, `digital_analog`, `range_value` columns to rules table
+2. Drops/recreates CHECK constraint to include `'range'` category
+3. Seeds ~160 range rules from frontend `rangeData.ts`
 
 ---
 
