@@ -372,6 +372,41 @@ pub async fn reset_auto_tags(
     Ok(serial_numbers.len())
 }
 
+/// Get brick classes for given devices (all — auto and manual).
+pub async fn get_brick_classes(
+    db: &impl ConnectionTrait,
+    serial_numbers: &[i32],
+) -> Result<Vec<serde_json::Value>, String> {
+    if serial_numbers.is_empty() {
+        return Ok(vec![]);
+    }
+    let sn_list = serial_numbers.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(",");
+    let sql = format!(
+        "SELECT serial_number, point_type, point_index, brick_class FROM HAYSTACK_POINT_BRICK_CLASS WHERE serial_number IN ({})",
+        sn_list
+    );
+    let rows = db
+        .query_all(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
+        .await
+        .map_err(|e| format!("Failed to query brick classes: {}", e))?;
+    let entries: Vec<serde_json::Value> = rows
+        .iter()
+        .filter_map(|r| {
+            let sn: i32 = r.try_get("", "serial_number").ok()?;
+            let pt: String = r.try_get("", "point_type").ok()?;
+            let pi: i32 = r.try_get("", "point_index").ok()?;
+            let bc: String = r.try_get("", "brick_class").ok()?;
+            Some(serde_json::json!({
+                "serial_number": sn,
+                "point_type": pt,
+                "point_index": pi,
+                "brick_class": bc,
+            }))
+        })
+        .collect();
+    Ok(entries)
+}
+
 // ── Internal helpers ──
 
 struct RangeRule {

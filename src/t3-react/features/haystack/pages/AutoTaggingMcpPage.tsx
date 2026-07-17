@@ -405,6 +405,7 @@ const RunTab: React.FC = () => {
         body: JSON.stringify({ serialNumbers: serials }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({ error: `HTTP ${res.status}` })); throw new Error(d.error); }
+      setPreviewData(null);
       setResult('Auto-tags cleared. Manual tags preserved.');
     } catch (e: any) { setError(e.message); } finally { setRunning(false); }
   };

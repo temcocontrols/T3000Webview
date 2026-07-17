@@ -48,13 +48,14 @@ interface HaystackState {
 }
 
 export interface BatchPointTagUpdate {
-  serial_number: number;
-  point_type: string;
-  point_index: string;
-  point_id: string;
-  add_tags?: string[];
-  remove_tags?: string[];
-  set_tags?: string[];
+  serialNumber: number;
+  pointType: string;
+  pointIndex: string;
+  pointId: string;
+  addTags?: string[];
+  removeTags?: string[];
+  setTags?: string[];
+  brickClass?: string;
 }
 
 export const useHaystackStore = create<HaystackState>((set, get) => ({

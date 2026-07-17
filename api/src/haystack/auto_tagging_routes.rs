@@ -37,6 +37,7 @@ pub fn create_auto_tagging_routes() -> Router<T3AppState> {
         .route("/api/haystack/auto-tagging/rules", get(list_rules).post(create_rule))
         .route("/api/haystack/auto-tagging/rules/:id", put(update_rule).delete(delete_rule))
         .route("/api/haystack/auto-tagging/rules/:id/toggle", post(toggle_rule))
+        .route("/api/haystack/auto-tagging/brick-classes", post(get_brick_classes))
 }
 
 // ── Auto-tagging execution ──
@@ -93,6 +94,20 @@ async fn reset_auto_tags(
         "message": "Auto-tags reset",
         "devices": count
     })))
+}
+
+async fn get_brick_classes(
+    State(state): State<T3AppState>,
+    Json(payload): Json<RunRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let db = get_db(&state).await?;
+    let entries = ats::get_brick_classes(&db, &payload.serial_numbers)
+        .await
+        .map_err(|e| {
+            tracing::error!("get_brick_classes failed: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e})))
+        })?;
+    Ok(Json(json!({ "entries": entries })))
 }
 
 // ── Rules CRUD ──
