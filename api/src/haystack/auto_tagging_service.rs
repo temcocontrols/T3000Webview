@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 pub struct AutoTaggingRule {
     pub id: i64,
     pub rule_name: String,
-    pub category: String,       // "haystack" | "brick"
-    pub pattern: String,
+    pub category: String,       // "haystack" | "brick" | "range"
+    pub pattern: Option<String>, // NULL for range rules
     pub units: Option<String>,     // comma-separated unit substrings
     pub object_types: Option<String>, // comma-separated BACnet types
     pub haystack_tags: Option<String>, // comma-separated tags to assign
@@ -89,7 +89,9 @@ pub async fn list_rules(db: &impl ConnectionTrait) -> Result<Vec<AutoTaggingRule
             sea_orm::DatabaseBackend::Sqlite,
             "SELECT id, rule_name, category, pattern, units, object_types, haystack_tags,
                     brick_class, haystack_kind, haystack_unit, enabled, priority, created_at, updated_at
-             FROM HAYSTACK_AUTO_TAGGING_RULES ORDER BY priority, id, category, rule_name",
+             FROM HAYSTACK_AUTO_TAGGING_RULES
+             ORDER BY CASE category WHEN 'haystack' THEN 1 WHEN 'brick' THEN 2 ELSE 3 END,
+                      priority, COALESCE(point_type, ''), COALESCE(range_value, 0), id",
         ))
         .await?;
 
@@ -99,7 +101,7 @@ pub async fn list_rules(db: &impl ConnectionTrait) -> Result<Vec<AutoTaggingRule
             id: r.try_get("", "id").ok()?,
             rule_name: r.try_get("", "rule_name").ok()?,
             category: r.try_get("", "category").unwrap_or_default(),
-            pattern: r.try_get("", "pattern").ok()?,
+            pattern: r.try_get("", "pattern").ok(),
             units: r.try_get("", "units").ok(),
             object_types: r.try_get("", "object_types").ok(),
             haystack_tags: r.try_get("", "haystack_tags").ok(),
@@ -433,7 +435,8 @@ struct CompiledRule {
 }
 
 fn compile_rule(rule: &AutoTaggingRule) -> Option<CompiledRule> {
-    let regex = Regex::new(&rule.pattern).ok()?;
+    let pattern = rule.pattern.as_deref()?;
+    let regex = Regex::new(pattern).ok()?;
     let units_filter = rule.units.as_ref()
         .map(|u| u.split(',').map(|s| s.trim().to_lowercase()).collect())
         .unwrap_or_default();

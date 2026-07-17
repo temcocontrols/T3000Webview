@@ -25,8 +25,8 @@ import styles from './AutoTaggingMcpPage.module.css';
 interface AutoTaggingRule {
   id: number;
   rule_name: string;
-  category: 'haystack' | 'brick';
-  pattern: string;
+  category: 'haystack' | 'brick' | 'range';
+  pattern?: string;
   units?: string;
   object_types?: string;
   haystack_tags?: string;
@@ -159,8 +159,8 @@ const RulesTab: React.FC = () => {
       </div>
     ) }),
     createTableColumn({ columnId: 'pattern', renderHeaderCell: () => 'Pattern', renderCell: (r) => (
-      <Tooltip content={r.pattern} relationship="description" positioning="above-end">
-        <code className={styles.patternCode}>{r.pattern}</code>
+      <Tooltip content={r.pattern || '(metadata-based)'} relationship="description" positioning="above-end">
+        <code className={styles.patternCode}>{r.pattern || '—'}</code>
       </Tooltip>
     ) }),
     createTableColumn({ columnId: 'brick_class', renderHeaderCell: () => 'Brick Class', renderCell: (r) => (
@@ -292,6 +292,7 @@ const RuleDialog: React.FC<{ mode: 'create'; onClose: () => void }> = ({ mode, o
                 <Select size="small" value={form.category} onChange={(_, d) => setForm(prev => ({ ...prev, category: d.value }))}>
                   <option value="haystack">Haystack</option>
                   <option value="brick">Brick</option>
+                  <option value="range">Range</option>
                 </Select>
               </Field>
               <Field label="Pattern (regex)" size="small">
@@ -487,9 +488,15 @@ const RunTab: React.FC = () => {
       {result && <div className={styles.successBanner}><CheckmarkCircleRegular /> {result}</div>}
       {running && <Spinner size="extra-small" label="Processing..." className={styles.loadingSpinner} />}
 
-      {previewData && (
+      {previewData && (() => {
+        const sorted = [...previewData].sort((a, b) =>
+          a.point.serial_number - b.point.serial_number
+          || a.point.point_type.localeCompare(b.point.point_type)
+          || a.point.point_index - b.point.point_index
+        );
+        return (
         <div className={styles.previewSection}>
-          <div className={styles.sectionTitle}>Preview Results ({previewData.length} matches)</div>
+          <div className={styles.sectionTitle}>Preview Results ({sorted.length} matches)</div>
           <table className={styles.previewTable}>
             <thead>
               <tr>
@@ -502,14 +509,16 @@ const RunTab: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {previewData.map((m, i) => (
+              {sorted.map((m, i) => (
                 <tr key={i}>
                   <td>{m.point.serial_number}{getDeviceName(m.point.serial_number) ? ` — ${getDeviceName(m.point.serial_number)}` : ''}</td>
                   <td>{m.point.point_type} #{m.point.point_index}</td>
                   <td>{m.point.full_label || m.point.label || '—'}</td>
-                  <td><Badge size="small">{m.matched_rule}</Badge></td>
+                  <td><Badge size="small">{m.matched_rule || '—'}</Badge></td>
                   <td>
-                    {m.haystack_tags.map(t => <Badge key={t} size="small" style={{ marginRight: 2 }}>{t}</Badge>)}
+                    {m.haystack_tags.length > 0
+                      ? m.haystack_tags.map(t => <Badge key={t} size="small" style={{ marginRight: 2 }}>{t}</Badge>)
+                      : '—'}
                   </td>
                   <td>{m.brick_class || '—'}</td>
                 </tr>
@@ -517,7 +526,8 @@ const RunTab: React.FC = () => {
             </tbody>
           </table>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

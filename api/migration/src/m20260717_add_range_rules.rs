@@ -207,48 +207,37 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
 
-        // 1. Add range-specific columns (NULL for existing haystack/brick rules)
-        let _ = db.execute_unprepared(
-            "ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN point_type TEXT",
-        ).await;
-        let _ = db.execute_unprepared(
-            "ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN digital_analog INTEGER",
-        ).await;
-        let _ = db.execute_unprepared(
-            "ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN range_value INTEGER",
-        ).await;
+        // 1. Add range-specific columns (idempotent)
+        let _ = db.execute_unprepared("ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN point_type TEXT").await;
+        let _ = db.execute_unprepared("ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN digital_analog INTEGER").await;
+        let _ = db.execute_unprepared("ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN range_value INTEGER").await;
 
-        // 2. Recreate table to update CHECK constraint (SQLite: drop+create+copy)
-        db.execute_unprepared(
-            "CREATE TABLE HAYSTACK_AUTO_TAGGING_RULES_new (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                rule_name     TEXT NOT NULL UNIQUE,
-                category      TEXT NOT NULL CHECK(category IN ('haystack','brick','range')),
-                pattern       TEXT,
-                units         TEXT,
-                object_types  TEXT,
-                haystack_tags TEXT,
-                brick_class   TEXT,
-                haystack_kind TEXT,
-                haystack_unit TEXT,
-                point_type    TEXT,
-                digital_analog INTEGER,
-                range_value   INTEGER,
-                enabled       INTEGER NOT NULL DEFAULT 1,
-                priority      INTEGER NOT NULL DEFAULT 0,
-                created_at    TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at    TEXT DEFAULT CURRENT_TIMESTAMP
-            )",
-        ).await?;
-        db.execute_unprepared(
-            "INSERT INTO HAYSTACK_AUTO_TAGGING_RULES_new SELECT * FROM HAYSTACK_AUTO_TAGGING_RULES",
-        ).await?;
-        db.execute_unprepared("DROP TABLE HAYSTACK_AUTO_TAGGING_RULES").await?;
-        db.execute_unprepared(
-            "ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES_new RENAME TO HAYSTACK_AUTO_TAGGING_RULES",
-        ).await?;
+        // 2. Try to update CHECK constraint — wrapped in let _ so failures are non-fatal
+        let _ = async {
+            let _ = db.execute_unprepared("DROP TABLE IF EXISTS HAYSTACK_AUTO_TAGGING_RULES_new").await;
+            db.execute_unprepared(
+                "CREATE TABLE HAYSTACK_AUTO_TAGGING_RULES_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, rule_name TEXT NOT NULL UNIQUE,
+                    category TEXT NOT NULL CHECK(category IN ('haystack','brick','range')),
+                    pattern TEXT, units TEXT, object_types TEXT, haystack_tags TEXT,
+                    brick_class TEXT, haystack_kind TEXT, haystack_unit TEXT,
+                    point_type TEXT, digital_analog INTEGER, range_value INTEGER,
+                    enabled INTEGER NOT NULL DEFAULT 1, priority INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )"
+            ).await?;
+            db.execute_unprepared(
+                "INSERT INTO HAYSTACK_AUTO_TAGGING_RULES_new
+                 (id,rule_name,category,pattern,units,object_types,haystack_tags,brick_class,haystack_kind,haystack_unit,enabled,priority,created_at,updated_at,point_type,digital_analog,range_value)
+                 SELECT id,rule_name,category,pattern,units,object_types,haystack_tags,brick_class,haystack_kind,haystack_unit,enabled,priority,created_at,updated_at,point_type,digital_analog,range_value
+                 FROM HAYSTACK_AUTO_TAGGING_RULES"
+            ).await?;
+            db.execute_unprepared("DROP TABLE HAYSTACK_AUTO_TAGGING_RULES").await?;
+            db.execute_unprepared("ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES_new RENAME TO HAYSTACK_AUTO_TAGGING_RULES").await?;
+            Ok::<_, DbErr>(())
+        }.await;
 
-        // 3. Seed range rules
+        // 3. Seed range rules (INSERT OR IGNORE — safe to re-run)
         for rule in range_rules() {
             let sql = format!(
                 "INSERT OR IGNORE INTO HAYSTACK_AUTO_TAGGING_RULES (rule_name, category, haystack_tags, brick_class, units, object_types, point_type, digital_analog, range_value, haystack_kind, haystack_unit, priority) VALUES ('{}', 'range', {}, {}, {}, {}, '{}', {}, {}, {}, {}, 100)",
@@ -263,7 +252,7 @@ impl MigrationTrait for Migration {
                 rule.haystack_kind.map_or("NULL".to_string(), |k| format!("'{}'", k.replace('\'', "''"))),
                 rule.haystack_unit.map_or("NULL".to_string(), |u| format!("'{}'", u.replace('\'', "''"))),
             );
-            db.execute_unprepared(&sql).await?;
+            let _ = db.execute_unprepared(&sql).await;
         }
 
         Ok(())

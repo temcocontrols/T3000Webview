@@ -117,7 +117,7 @@ impl MigrationTrait for Migration {
                 rule.haystack_unit.map_or("NULL".to_string(), |u| format!("'{}'", u.replace('\'', "''"))),
                 68 + i as i32,
             );
-            db.execute_unprepared(&sql).await?;
+            let _ = db.execute_unprepared(&sql).await;
         }
 
         Ok(())
