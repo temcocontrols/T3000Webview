@@ -563,7 +563,8 @@ async fn process_points(
 
     for row in &rows {
         let sn: i32 = row.try_get("", "sn").unwrap_or(0);
-        let idx: i32 = row.try_get("", "idx").unwrap_or(0);
+        let idx_str_tmp: Option<String> = row.try_get("", "idx").ok();
+        let idx: i32 = idx_str_tmp.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
         let full_label: Option<String> = row.try_get("", "Full_Label").ok();
         let label: Option<String> = row.try_get("", "Label").ok();
         let units: Option<String> = row.try_get("", "Units").ok();
@@ -708,7 +709,8 @@ async fn preview_points(
 
     for row in &rows {
         let sn: i32 = row.try_get("", "sn").unwrap_or(0);
-        let idx: i32 = row.try_get("", "idx").unwrap_or(0);
+        let idx_str_raw: Option<String> = row.try_get("", "idx").ok();
+        let idx: i32 = idx_str_raw.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
         let full_label: Option<String> = row.try_get("", "Full_Label").ok();
         let label: Option<String> = row.try_get("", "Label").ok();
         let units: Option<String> = row.try_get("", "Units").ok();
