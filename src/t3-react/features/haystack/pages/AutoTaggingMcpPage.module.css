@@ -55,6 +55,9 @@
 }
 .filterInput { width: 220px; }
 .filterInput input { font-size: 12px; height: 28px; }
+.typeDropdown { width: 130px; }
+.typeDropdown :global(.fui-Select) { min-height: 28px; }
+.typeDropdown :global(.fui-Select__select) { min-height: 28px; height: 28px; font-size: 12px; padding: 0 6px; }
 .rulesTop button { min-height: 28px; height: 28px; }
 .rulesBottom {
   flex: 1;

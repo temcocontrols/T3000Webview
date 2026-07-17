@@ -105,6 +105,7 @@ const RulesTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [editing, setEditing] = useState<AutoTaggingRule | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -145,14 +146,15 @@ const RulesTab: React.FC = () => {
   };
 
   const filtered = rules.filter(r =>
-    !filter || r.rule_name.toLowerCase().includes(filter.toLowerCase()) ||
-    r.category.includes(filter) || (r.brick_class || '').toLowerCase().includes(filter.toLowerCase())
+    (categoryFilter === 'all' || r.category === categoryFilter) &&
+    (!filter || r.rule_name.toLowerCase().includes(filter.toLowerCase()) ||
+    r.category.includes(filter) || (r.brick_class || '').toLowerCase().includes(filter.toLowerCase()))
   );
 
   const columns: TableColumnDefinition<AutoTaggingRule>[] = [
     createTableColumn({ columnId: 'name', renderHeaderCell: () => 'Rule', renderCell: (r) => (
       <div className={styles.ruleCell}>
-        <Badge appearance="filled" color={r.category === 'brick' ? 'important' : 'informative'} size="small">
+        <Badge appearance="filled" color={r.category === 'brick' ? 'important' : r.category === 'range' ? 'severe' : 'informative'} size="small">
           {r.category}
         </Badge>
         <span className={styles.ruleName}>{r.rule_name}</span>
@@ -190,6 +192,17 @@ const RulesTab: React.FC = () => {
   return (
     <div className={styles.rulesLayout}>
       <div className={styles.rulesTop}>
+        <Select
+          size="small"
+          value={categoryFilter}
+          onChange={(_, d) => setCategoryFilter(d.value)}
+          className={styles.typeDropdown}
+        >
+          <option value="all">All Types</option>
+          <option value="haystack">Haystack</option>
+          <option value="brick">Brick</option>
+          <option value="range">Range</option>
+        </Select>
         <Input
           size="small"
           placeholder="Filter rules…"
@@ -215,7 +228,7 @@ const RulesTab: React.FC = () => {
 
       <div className={styles.rulesBottom}>
         {loading ? (
-          <Spinner size="extra-small" label="Loading rules…" className={styles.loadingSpinner} />
+          <Spinner size="tiny" label="Loading rules…" className={styles.loadingSpinner} />
         ) : (
           <DataGrid items={filtered} columns={columns} sortable className={styles.dataGrid}>
             <DataGridHeader>
