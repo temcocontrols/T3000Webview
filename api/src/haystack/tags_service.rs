@@ -572,7 +572,8 @@ pub async fn rebuild_tags_for_serials(
 
     for row in &input_rows {
         let sn: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
-        let idx: i32 = row.try_get("", "Input_Index").unwrap_or(0);
+        let idx_str: Option<String> = row.try_get("", "Input_Index").ok();
+        let idx: i32 = idx_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
         let full_label: Option<String> = row.try_get("", "Full_Label").ok();
         let label: Option<String> = row.try_get("", "Label").ok();
         let da: Option<i32> = row.try_get("", "Digital_Analog").ok();
@@ -597,7 +598,8 @@ pub async fn rebuild_tags_for_serials(
 
     for row in &output_rows {
         let sn: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
-        let idx: i32 = row.try_get("", "Output_Index").unwrap_or(0);
+        let idx_str: Option<String> = row.try_get("", "Output_Index").ok();
+        let idx: i32 = idx_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
         let full_label: Option<String> = row.try_get("", "Full_Label").ok();
         let label: Option<String> = row.try_get("", "Label").ok();
         let da: Option<i32> = row.try_get("", "Digital_Analog").ok();
@@ -622,7 +624,8 @@ pub async fn rebuild_tags_for_serials(
 
     for row in &var_rows {
         let sn: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
-        let idx: i32 = row.try_get("", "Variable_Index").unwrap_or(0);
+        let idx_str: Option<String> = row.try_get("", "Variable_Index").ok();
+        let idx: i32 = idx_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
         let full_label: Option<String> = row.try_get("", "Full_Label").ok();
         let label: Option<String> = row.try_get("", "Label").ok();
         let da: Option<i32> = row.try_get("", "Digital_Analog").ok();

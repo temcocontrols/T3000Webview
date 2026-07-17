@@ -212,8 +212,19 @@ impl MigrationTrait for Migration {
         let _ = db.execute_unprepared("ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN digital_analog INTEGER").await;
         let _ = db.execute_unprepared("ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN range_value INTEGER").await;
 
-        // 2. Try to update CHECK constraint — wrapped in let _ so failures are non-fatal
-        let _ = async {
+        // 2. Update CHECK constraint — only if not already done.
+        // Detect whether the schema already allows 'range' by checking if a
+        // dummy range row can be inserted into the existing table.
+        let needs_recreate = db
+            .execute_unprepared(
+                "INSERT INTO HAYSTACK_AUTO_TAGGING_RULES (rule_name, category, haystack_tags, point_type, digital_analog, range_value)
+                 VALUES ('__migration_probe__', 'range', 'point', 'INPUT', 0, 9999)"
+            )
+            .await
+            .is_err();
+
+        if needs_recreate {
+            // Clean up stale _new table from a previous failed run
             let _ = db.execute_unprepared("DROP TABLE IF EXISTS HAYSTACK_AUTO_TAGGING_RULES_new").await;
             db.execute_unprepared(
                 "CREATE TABLE HAYSTACK_AUTO_TAGGING_RULES_new (
@@ -234,8 +245,12 @@ impl MigrationTrait for Migration {
             ).await?;
             db.execute_unprepared("DROP TABLE HAYSTACK_AUTO_TAGGING_RULES").await?;
             db.execute_unprepared("ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES_new RENAME TO HAYSTACK_AUTO_TAGGING_RULES").await?;
-            Ok::<_, DbErr>(())
-        }.await;
+        } else {
+            // Probe row was inserted — delete it
+            let _ = db.execute_unprepared(
+                "DELETE FROM HAYSTACK_AUTO_TAGGING_RULES WHERE rule_name = '__migration_probe__'"
+            ).await;
+        }
 
         // 3. Seed range rules (INSERT OR IGNORE — safe to re-run)
         for rule in range_rules() {
