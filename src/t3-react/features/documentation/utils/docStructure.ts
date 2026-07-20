@@ -116,6 +116,7 @@ export const docStructure: DocSection[] = [
     items: [
       { title: 'Claude Desktop Setup', path: 't3000/haystack/mcp-claude-desktop' },
       { title: 'VS Code Copilot Setup', path: 't3000/haystack/mcp-vscode-copilot' },
+      { title: 'MCP API Examples', path: 't3000/haystack/mcp-api-examples' },
     ],
   },
 ];

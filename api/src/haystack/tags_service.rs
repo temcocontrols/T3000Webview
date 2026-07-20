@@ -91,7 +91,9 @@ pub async fn list_tags(
          FROM haystack_tags t WHERE 1=1",
     );
     if let Some(cat) = filter {
-        sql.push_str(&format!(" AND t.category = '{}'", cat));
+        if !cat.is_empty() {
+            sql.push_str(&format!(" AND t.category = '{}'", cat));
+        }
     }
     sql.push_str(" ORDER BY t.category, t.tag_name");
 

@@ -754,183 +754,69 @@ const McpTab: React.FC = () => {
 
 const MCP_URL = `http://<host>:9103/api/mcp`;
 
-interface ExampleItem {
-  title: string;
-  description: string;
+interface PromptExample {
+  prompt: string;
   tool: string;
-  request: object;
+  desc: string;
 }
 
-const examples: ExampleItem[] = [
+interface PromptCategory {
+  name: string;
+  tools: number;
+  items: PromptExample[];
+}
+
+const promptCategories: PromptCategory[] = [
   {
-    title: 'Initialize MCP session',
-    description: 'First call — the client sends an initialize request to discover server capabilities.',
-    tool: 'initialize',
-    request: {
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
-      params: {
-        protocolVersion: '2025-03-26',
-        capabilities: {},
-        clientInfo: { name: 'my-client', version: '1.0' },
-      },
-    },
+    name: 'Haystack Tagging', tools: 7, items: [
+      { prompt: 'What Haystack tags are available?', tool: 'haystack_list_tags', desc: 'List all tag definitions with categories and docs' },
+      { prompt: 'What tags are assigned to device 233626?', tool: 'haystack_get_point_tags', desc: 'Get all tags for a device\'s points' },
+      { prompt: 'Search for all temperature sensors', tool: 'haystack_search_points', desc: 'Find points with temp and sensor tags' },
+      { prompt: 'Auto-tag device 233626', tool: 'haystack_auto_tag', desc: 'Run auto-tagging on a single device' },
+      { prompt: 'Preview what tags would be assigned to device 240488', tool: 'haystack_preview_tags', desc: 'Dry-run without writing to DB' },
+      { prompt: 'List the Haystack auto-tagging rules', tool: 'haystack_list_rules', desc: 'Show all regex rules with status' },
+      { prompt: 'What Brick class does input 8 on device 237219 have?', tool: 'haystack_get_brick_class', desc: 'Check Brick ontology assignments' },
+    ]
   },
   {
-    title: 'List available tools',
-    description: 'Discover all Haystack tools the server provides.',
-    tool: 'tools/list',
-    request: {
-      jsonrpc: '2.0',
-      id: 2,
-      method: 'tools/list',
-    },
+    name: 'Data & Discovery', tools: 4, items: [
+      { prompt: 'List all T3000 devices', tool: 'device_list', desc: 'Enumerate all devices with serials and point counts' },
+      { prompt: 'Show me the input points for device T3-NB-ESP', tool: 'device_get_points', desc: 'Get all inputs on a device' },
+      { prompt: 'Get full metadata for input 0 on device 240488', tool: 'point_get_metadata', desc: 'Label, units, range, tags, Brick class' },
+      { prompt: 'Search for points labeled temperature', tool: 'metadata_search', desc: 'Cross-device label search' },
+    ]
   },
   {
-    title: 'List all Haystack tags',
-    description: 'Get the full tag vocabulary with categories, docs, and usage counts.',
-    tool: 'tools/call',
-    request: {
-      jsonrpc: '2.0',
-      id: 3,
-      method: 'tools/call',
-      params: {
-        name: 'haystack_list_tags',
-        arguments: { filter: 'haystack' },
-      },
-    },
+    name: 'Operational', tools: 4, items: [
+      { prompt: 'Read input point 0 on device 233626', tool: 'point_read', desc: 'Read a single point value' },
+      { prompt: 'Set output 5 on device 233626 to 72.5', tool: 'point_write', desc: 'Write a value (requires confirm)' },
+      { prompt: 'Read inputs 0, 1, and 2 on device 240488 all at once', tool: 'point_read_batch', desc: 'Batch read multiple points' },
+      { prompt: 'Set outputs 0 through 3 on device 237219 to 100', tool: 'point_write_batch', desc: 'Batch write (requires confirm)' },
+    ]
   },
   {
-    title: 'Get tags for a specific point',
-    description: 'Retrieve all Haystack tags and Brick class assigned to device 233626.',
-    tool: 'tools/call',
-    request: {
-      jsonrpc: '2.0',
-      id: 4,
-      method: 'tools/call',
-      params: {
-        name: 'haystack_get_point_tags',
-        arguments: { serial_numbers: [233626], point_type: 'INPUT' },
-      },
-    },
+    name: 'Analytics & Export', tools: 2, items: [
+      { prompt: 'Validate the Haystack tags on device 237219', tool: 'haystack_validate', desc: 'Check for missing tags, conflicts' },
+      { prompt: 'Export device 233626 as Brick Turtle RDF', tool: 'haystack_export', desc: 'Export semantic model in brick-ttl format' },
+    ]
   },
   {
-    title: 'Search points by tags',
-    description: 'Find all outside air temperature sensors across the building.',
-    tool: 'tools/call',
-    request: {
-      jsonrpc: '2.0',
-      id: 5,
-      method: 'tools/call',
-      params: {
-        name: 'haystack_search_points',
-        arguments: { tags: ['outside', 'air', 'temp'] },
-      },
-    },
+    name: 'Rules Management', tools: 2, items: [
+      { prompt: 'Disable auto-tagging rule 5', tool: 'rule_toggle', desc: 'Enable or disable a tagging rule' },
+      { prompt: 'Create a rule that tags CO2 labels as air, co2, sensor', tool: 'rule_create', desc: 'Create a new auto-tagging rule' },
+    ]
   },
   {
-    title: 'Run auto-tagging',
-    description: 'Apply range rules + regex rules to tag points on devices 233626 and 237219.',
-    tool: 'tools/call',
-    request: {
-      jsonrpc: '2.0',
-      id: 6,
-      method: 'tools/call',
-      params: {
-        name: 'haystack_auto_tag',
-        arguments: { serial_numbers: [233626, 237219] },
-      },
-    },
-  },
-  {
-    title: 'Preview auto-tagging results',
-    description: 'See what tags would be assigned without writing to the database.',
-    tool: 'tools/call',
-    request: {
-      jsonrpc: '2.0',
-      id: 7,
-      method: 'tools/call',
-      params: {
-        name: 'haystack_preview_tags',
-        arguments: { serial_numbers: [233626] },
-      },
-    },
-  },
-  {
-    title: 'Get Brick classes',
-    description: 'Retrieve the Brick ontology class for points on a device.',
-    tool: 'tools/call',
-    request: {
-      jsonrpc: '2.0',
-      id: 8,
-      method: 'tools/call',
-      params: {
-        name: 'haystack_get_brick_class',
-        arguments: { serial_numbers: [233626] },
-      },
-    },
-  },
-  {
-    title: 'List all devices',
-    description: 'Get all T3000 devices with their point counts and metadata.',
-    tool: 'tools/call',
-    request: {
-      jsonrpc: '2.0',
-      id: 9,
-      method: 'tools/call',
-      params: {
-        name: 'device_list',
-        arguments: {},
-      },
-    },
-  },
-  {
-    title: 'Read a point value',
-    description: 'Read the current value of a specific input point on device 233626.',
-    tool: 'tools/call',
-    request: {
-      jsonrpc: '2.0',
-      id: 10,
-      method: 'tools/call',
-      params: {
-        name: 'point_read',
-        arguments: { serial_number: 233626, point_type: 'INPUT', point_index: 0 },
-      },
-    },
-  },
-  {
-    title: 'List active alarms',
-    description: 'Get all unacknowledged alarms across all devices.',
-    tool: 'tools/call',
-    request: {
-      jsonrpc: '2.0',
-      id: 11,
-      method: 'tools/call',
-      params: {
-        name: 'alarm_list',
-        arguments: { active_only: true },
-      },
-    },
-  },
-  {
-    title: 'Validate Haystack tagging',
-    description: 'Check all points for tagging rule violations (sensor→INPUT, cmd→OUTPUT, etc.)',
-    tool: 'tools/call',
-    request: {
-      jsonrpc: '2.0',
-      id: 12,
-      method: 'tools/call',
-      params: {
-        name: 'haystack_validate',
-        arguments: {},
-      },
-    },
+    name: 'Alarms & Trends', tools: 3, items: [
+      { prompt: 'List all active alarms', tool: 'alarm_list', desc: 'Get unacknowledged alarms' },
+      { prompt: 'Get trend data for input 8 on device 237219 for the last hour', tool: 'trendlog_query', desc: 'Query historical trend data' },
+    ]
   },
 ];
 
 const ExamplesTab: React.FC = () => {
   const [copied, setCopied] = useState<string | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -938,80 +824,102 @@ const ExamplesTab: React.FC = () => {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const toggleCategory = (name: string) => {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  };
+
+  const totalPrompts = promptCategories.reduce((sum, c) => sum + c.items.length, 0);
+
   return (
     <div>
-      {/* ── LLM Integration ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 20 }}>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
         <LightbulbRegular style={{ color: '#0078d4', fontSize: 20, marginTop: 2, flexShrink: 0 }} />
-        <div style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--colorNeutralForeground2)' }}>
-          <strong style={{ fontSize: 13, color: 'var(--colorNeutralForeground1)' }}>Usage Examples</strong>
+        <div style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--colorNeutralForeground2)', flex: 1 }}>
+          <strong style={{ fontSize: 13, color: 'var(--colorNeutralForeground1)' }}>Natural Language Prompts</strong>
           <br />
-          The MCP endpoint is at <code>{MCP_URL}</code>. Use the config from the <strong>MCP Server</strong> tab to connect Claude or any MCP client.
+          {totalPrompts} prompts across {promptCategories.length} categories. Click any prompt to copy, then paste into Copilot Chat or Claude.
+          The MCP endpoint is at <code>{MCP_URL}</code>.
         </div>
+        <a
+          href="#/t3000/documentation/t3000/haystack/mcp-api-examples"
+          style={{ fontSize: 11, color: 'var(--colorBrandForeground1, #0078d4)', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0, marginTop: 2 }}
+        >
+          Full Docs →
+        </a>
       </div>
 
-      {/* ── LLM Workflow ── */}
-      <div className={styles.mcpSection} style={{ marginBottom: 24 }}>
-        <div className={styles.sectionTitle}>
-          <SparkleRegular style={{ fontSize: 14 }} /> Using with Claude / LLM Agents
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--colorNeutralForeground2)', lineHeight: 1.7 }}>
-          <strong>1. Add the config</strong> from the MCP Server tab to <code>claude_desktop_config.json</code> or <code>.vscode/mcp.json</code> and restart.<br />
-          <strong>2. Claude discovers the tools</strong> — you'll see a 🔌 icon confirming the T3000 MCP server is connected.<br />
-          <strong>3. Ask natural language questions</strong> — Claude automatically calls the right tools:
-        </div>
-        <div style={{ marginTop: 10, padding: '10px 14px', background: 'var(--colorNeutralBackground2)', borderRadius: 4, fontSize: 12, lineHeight: 1.7 }}>
-          <div style={{ marginBottom: 6 }}>🗣️ <em>"What Haystack tags are available?"</em><br />→ Calls <code>haystack_list_tags</code></div>
-          <div style={{ marginBottom: 6 }}>🗣️ <em>"Show me all outside air temperature sensors"</em><br />→ Calls <code>haystack_search_points</code> with tags [outside, air, temp]</div>
-          <div style={{ marginBottom: 6 }}>🗣️ <em>"Auto-tag device 233626"</em><br />→ Calls <code>haystack_auto_tag</code></div>
-          <div>🗣️ <em>"What Brick class does point dev233626.in5 have?"</em><br />→ Calls <code>haystack_get_brick_class</code></div>
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)', marginTop: 8, lineHeight: 1.5 }}>
-          <strong>Claude Desktop</strong> and <strong>VS Code Copilot</strong> both support MCP Streamable HTTP natively (spec 2025-03-26).
-        </div>
-      </div>
+      {/* ── Prompt Categories ── */}
+      {promptCategories.map((cat) => {
+        const isCollapsed = collapsedCategories.has(cat.name);
+        return (
+          <div key={cat.name} style={{ marginBottom: 12 }}>
+            {/* Category Header */}
+            <div
+              onClick={() => toggleCategory(cat.name)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
+                cursor: 'pointer', userSelect: 'none',
+                borderBottom: '1px solid var(--colorNeutralStroke2)',
+                marginBottom: isCollapsed ? 0 : 8,
+              }}
+            >
+              <span style={{
+                fontSize: 11, transition: 'transform 0.15s',
+                transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                color: 'var(--colorNeutralForeground3)',
+              }}>▼</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--colorNeutralForeground1)' }}>{cat.name}</span>
+              <Badge appearance="outline" size="small" style={{ fontSize: 10 }}>{cat.tools} tools</Badge>
+              <span style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)', marginLeft: 'auto' }}>{cat.items.length} prompts</span>
+            </div>
 
-      {/* ── Raw JSON-RPC Examples ── */}
-      <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>
-        <CodeRegular style={{ fontSize: 14 }} /> Raw JSON-RPC Requests
-      </div>
-      <div style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)', marginBottom: 16 }}>
-        For testing or non-MCP HTTP clients — POST to <code>{MCP_URL}</code>
-      </div>
+            {/* Prompt Cards */}
+            {!isCollapsed && (
+              <div className={styles.promptGrid}>
+                {cat.items.map((item, idx) => {
+                  const key = `${cat.name}-${idx}`;
+                  return (
+                    <div
+                      key={key}
+                      className={styles.promptCard}
+                      onClick={() => handleCopy(item.prompt, key)}
+                      title="Click to copy prompt"
+                    >
+                      <div className={styles.promptText}>{item.prompt}</div>
+                      <div className={styles.promptMeta}>
+                        <code style={{ fontSize: 10, color: 'var(--colorNeutralForeground3)' }}>{item.tool}</code>
+                        <span style={{ fontSize: 10, color: 'var(--colorNeutralForeground4)' }}>{item.desc}</span>
+                      </div>
+                      <div className={styles.promptCopyIcon}>
+                        {copied === key
+                          ? <CheckmarkCircleRegular style={{ color: '#1e7e34', fontSize: 14 }} />
+                          : <CopyRegular style={{ color: 'var(--colorNeutralForeground3)', fontSize: 12 }} />
+                        }
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
-      {examples.map((ex, i) => (
-        <div key={i} className={styles.mcpSection} style={{ marginBottom: 20 }}>
-          <div className={styles.sectionTitle}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{ex.title}</span>
-            <Badge appearance="outline" size="small" style={{ marginLeft: 8 }}>
-              {ex.tool}
-            </Badge>
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--colorNeutralForeground2)', marginBottom: 8, lineHeight: 1.5 }}>
-            {ex.description}
-          </div>
-          <div style={{ position: 'relative' }}>
-            <pre style={{
-              background: 'var(--colorNeutralBackground2, #f5f5f5)',
-              border: '1px solid var(--colorNeutralStroke1)',
-              borderRadius: 4,
-              padding: '10px 40px 10px 10px',
-              fontSize: 11,
-              overflowX: 'auto',
-              margin: 0,
-              lineHeight: 1.5,
-            }}>
-              <code>{JSON.stringify(ex.request, null, 2)}</code>
-            </pre>
-            <Button
-              size="small" appearance="subtle"
-              icon={copied === `ex-${i}` ? <CheckmarkCircleRegular style={{ color: '#1e7e34' }} /> : <CopyRegular />}
-              style={{ position: 'absolute', top: 4, right: 4, minHeight: 22, height: 22 }}
-              onClick={() => handleCopy(JSON.stringify(ex.request, null, 2), `ex-${i}`)}
-            >{copied === `ex-${i}` ? 'Copied' : 'Copy'}</Button>
-          </div>
-        </div>
-      ))}
+      {/* ── Footer ── */}
+      <div style={{
+        marginTop: 20, paddingTop: 12,
+        borderTop: '1px solid var(--colorNeutralStroke2)',
+        display: 'flex', alignItems: 'center', gap: 8, fontSize: 11,
+        color: 'var(--colorNeutralForeground3)',
+      }}>
+        <BookOpenRegular style={{ fontSize: 14 }} />
+        <span>See the full <a href="#/t3000/documentation/t3000/haystack/mcp-api-examples" style={{ color: 'var(--colorBrandForeground1)' }}>MCP API Examples</a> doc for all 25 tools with detailed descriptions.</span>
+      </div>
     </div>
   );
 };

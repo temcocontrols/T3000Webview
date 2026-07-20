@@ -2,35 +2,40 @@
 
 > ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp)
 
-Connect VS Code Copilot directly to the T3000 MCP server — native HTTP support, no bridge needed.
+Connect VS Code Copilot to the T3000 MCP server to let Copilot query devices, read/write points, and manage Haystack tags.
 
 ---
 
 ## Prerequisites
 
 - T3000 API running on port `9103`
-- VS Code with GitHub Copilot extension installed
+- <a href="https://marketplace.visualstudio.com/items?itemName=GitHub.copilot" target="_blank">GitHub Copilot extension</a> installed in VS Code (includes built-in MCP support)
 
 ---
 
 ## Step 1: Create MCP Config
 
-In your project root, create `.vscode/mcp.json`:
+In your project root, create `.vscode/mcp.json`. For global access across all projects, place it at `C:\Users\<username>\AppData\Roaming\Code\User\mcp.json` (Windows) or `~/.config/Code/User/mcp.json` (macOS/Linux).
 
 ```json
 {
   "servers": {
     "T3000": {
       "type": "http",
-      "url": "http://localhost:9103/api/mcp"
+      "url": "http://<host>:9103/api/mcp"
     }
   }
 }
 ```
 
-For remote access, replace `localhost` with the machine's LAN IP.
+Replace `<host>` with `localhost` (local) or the machine's LAN IP (remote).
 
 > **Note:** VS Code uses `"servers"` (not `"mcpServers"` like Claude Desktop).
+
+| | |
+|---|---|
+| ![Settings](images/vscode1.png) | ![Config](images/vscode2.png) |
+
 
 ---
 
@@ -42,22 +47,28 @@ Press `Ctrl+Shift+P` → type **Reload Window** → press Enter.
 
 ## Step 3: Verify Connection
 
-Open Copilot Chat and ask: *"List T3000 devices"*
+Press `Ctrl+Shift+P` → type **MCP: List Servers** → press Enter.
 
-Copilot should call the `device_list` tool and show your connected devices.
+Confirm the `T3000` server shows as **connected**. If it shows an error or "disconnected", check that:
+- The T3000 API is running on port 9103
+- The URL in `mcp.json` is reachable (ping the host)
+
+| | |
+|---|---|
+| ![Settings](images/vscode3.png) | ![Config](images/vscode4.png) |
 
 ---
 
-## Step 4: Try More Queries
+## Step 4: Try a Query
+
+Open Copilot Chat and test any tool:
 
 | Ask Copilot | Expected Tool |
 |---|---|
-| *"What Haystack tags are available?"* | `haystack_list_tags` |
-| *"Show me outside air temperature sensors"* | `haystack_search_points` |
-| *"Auto-tag device 233626"* | `haystack_auto_tag` |
-| *"Read input point 0 on device 233626"* | `point_read` |
-| *"List active alarms"* | `alarm_list` |
-| *"Get trend data for the last hour"* | `trendlog_query` |
+| *"List the Haystack auto-tagging rules"* | `haystack_list_rules` |
+| *"Show me the input points for device T3-NB-ESP"* | `device_get_points` |
+
+See the full [MCP API examples](./mcp-api-examples.md) for all 25 tools with prompt text.
 
 ---
 

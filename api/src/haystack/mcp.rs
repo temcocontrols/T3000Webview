@@ -936,7 +936,9 @@ async fn execute_tool(
 ) -> Result<String, String> {
     match name {
         "haystack_list_tags" => {
-            let filter = args.get("filter").and_then(|v| v.as_str());
+            let filter = args.get("filter")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty());
             let tags = ts::list_tags(db, filter)
                 .await
                 .map_err(|e| format!("Failed to list tags: {}", e))?;

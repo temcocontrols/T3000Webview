@@ -5,6 +5,9 @@
 | Document | Description |
 |---|---|
 | [v4-haystack-mcp-complete.md](./v4-haystack-mcp-complete.md) | **Current (v4)** — Complete 25-tool MCP server: discovery, read/write, alarms, trends, validation, export |
+| [mcp-api-examples.md](./mcp-api-examples.md) | **Examples** — Natural-language prompts for all 25 MCP tools, organized by category |
+| [mcp-vscode-copilot.md](./mcp-vscode-copilot.md) | **Setup** — Connect VS Code Copilot to the T3000 MCP server |
+| [mcp-claude-desktop.md](./mcp-claude-desktop.md) | **Setup** — Connect Claude Desktop (and Cursor, Cline, Continue.dev) to the T3000 MCP server |
 | [v3-haystack-auto-tagging-mcp.md](./v3-haystack-auto-tagging-mcp.md) | **Implemented (v3)** — Auto-Tagging rules engine + 7-tool MCP server design |
 | [v2-haystack-current-implementation.md](./v2-haystack-current-implementation.md) | **Legacy (v2)** — Schema, APIs, basic auto-tagging, frontend |
 | [v1-haystack-legacy-single-table.md](./v1-haystack-legacy-single-table.md) | **Deprecated (v1)** — Original HAYSTACK_ENTITY table design |

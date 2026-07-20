@@ -79,7 +79,18 @@ Close and reopen Claude Desktop. On first run, `npx` will automatically download
 
 Look for the 🔌 **plug icon** in Claude's interface — it confirms the MCP server is connected.
 
-Ask Claude: *"List T3000 devices"* — it should call the `device_list` tool and return your devices.
+---
+
+## Step 5: Try a Query
+
+Ask Claude any of these:
+
+| Query | Expected Tool |
+|---|---|
+| *"List the Haystack auto-tagging rules"* | `haystack_list_rules` |
+| *"Show me the input points for device T3-NB-ESP"* | `device_get_points` |
+
+See the full [MCP API examples](./mcp-api-examples.md) for all 25 tools with prompt text.
 
 ---
 
