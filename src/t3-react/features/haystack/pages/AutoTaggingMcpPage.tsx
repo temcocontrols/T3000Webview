@@ -548,11 +548,20 @@ const RunTab: React.FC = () => {
 
 // ═══ MCP Tab ═══
 
-const MCP_CONFIG_JSON = `{
+const MCP_CONFIG_CLAUDE = `{
   "mcpServers": {
     "t3000": {
-      "url": "http://<host>:9103/api/mcp",
-      "transport": "http"
+      "type": "http",
+      "url": "http://<host>:9103/api/mcp"
+    }
+  }
+}`;
+
+const MCP_CONFIG_VSCODE = `{
+  "servers": {
+    "t3000": {
+      "type": "http",
+      "url": "http://<host>:9103/api/mcp"
     }
   }
 }`;
@@ -572,10 +581,10 @@ const McpTab: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
         <SparkleRegular style={{ color: '#0078d4', fontSize: 20, marginTop: 2, flexShrink: 0 }} />
         <div style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--colorNeutralForeground2)' }}>
-          <strong style={{ fontSize: 13, color: 'var(--colorNeutralForeground1)' }}>Model Context Protocol (MCP) Server</strong>
+          <strong style={{ fontSize: 13, color: 'var(--colorNeutralForeground1)' }}>Model Context Protocol (MCP) Server — Streamable HTTP</strong>
           <br />
-          The T3000 MCP server lets LLM agents (Claude Desktop, VS Code Copilot, etc.) query and manage Haystack tags programmatically via JSON-RPC 2.0 over HTTP on port 9103.
-          Runs <strong>inside the T3000 API</strong> — no separate process needed.
+          The T3000 MCP server lets LLM agents (Claude Desktop, VS Code Copilot, Cursor, Cline, etc.) query devices, read/write points, manage Haystack tags, and run analytics via MCP Streamable HTTP on port 9103.
+          Runs <strong>inside the T3000 API</strong>.
         </div>
       </div>
 
@@ -585,80 +594,134 @@ const McpTab: React.FC = () => {
           <SettingsRegular style={{ fontSize: 14 }} /> How to Connect
         </div>
         <div style={{ fontSize: 12, color: 'var(--colorNeutralForeground2)', marginBottom: 10, lineHeight: 1.6 }}>
-          The MCP server is exposed as an HTTP endpoint on the T3000 API. Replace <code>&lt;host&gt;</code> with <code>localhost</code> or the machine's IP. Paste into your client config:
+          Copy the config below into your MCP client. Replace <code>&lt;host&gt;</code> with <code>localhost</code> (local) or the machine's LAN IP (remote). The T3000 API must be running on port <code>9103</code>.
         </div>
-        <div style={{ position: 'relative', marginBottom: 12 }}>
-          <pre style={{
-            background: 'var(--colorNeutralBackground2, #f5f5f5)',
-            border: '1px solid var(--colorNeutralStroke1)',
-            borderRadius: 4,
-            padding: '12px 40px 12px 12px',
-            fontSize: 12,
-            overflowX: 'auto',
-            margin: 0,
-            lineHeight: 1.5,
-          }}>
-            <code>{MCP_CONFIG_JSON}</code>
-          </pre>
-          <Button
-            size="small" appearance="subtle"
-            icon={copied === 'config' ? <CheckmarkCircleRegular style={{ color: '#1e7e34' }} /> : <CopyRegular />}
-            style={{ position: 'absolute', top: 6, right: 6, minHeight: 24, height: 24 }}
-            onClick={() => handleCopy(MCP_CONFIG_JSON, 'config')}
-          >{copied === 'config' ? 'Copied' : 'Copy'}</Button>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {/* Claude / Cursor config */}
+          <div style={{ flex: '1 1 280px', position: 'relative' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--colorNeutralForeground1)' }}>Claude Desktop / Cursor</div>
+            <pre style={{
+              background: 'var(--colorNeutralBackground2, #f5f5f5)',
+              border: '1px solid var(--colorNeutralStroke1)',
+              borderRadius: 4,
+              padding: '10px 36px 10px 10px',
+              fontSize: 11,
+              overflowX: 'auto',
+              margin: 0,
+              lineHeight: 1.5,
+            }}>
+              <code>{MCP_CONFIG_CLAUDE}</code>
+            </pre>
+            <Button
+              size="small" appearance="subtle"
+              icon={copied === 'claude' ? <CheckmarkCircleRegular style={{ color: '#1e7e34' }} /> : <CopyRegular />}
+              style={{ position: 'absolute', top: 22, right: 2, minHeight: 22, height: 22 }}
+              onClick={() => handleCopy(MCP_CONFIG_CLAUDE, 'claude')}
+            >{copied === 'claude' ? 'Copied' : ''}</Button>
+          </div>
+
+          {/* VS Code config */}
+          <div style={{ flex: '1 1 280px', position: 'relative' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--colorNeutralForeground1)' }}>VS Code Copilot</div>
+            <pre style={{
+              background: 'var(--colorNeutralBackground2, #f5f5f5)',
+              border: '1px solid var(--colorNeutralStroke1)',
+              borderRadius: 4,
+              padding: '10px 36px 10px 10px',
+              fontSize: 11,
+              overflowX: 'auto',
+              margin: 0,
+              lineHeight: 1.5,
+            }}>
+              <code>{MCP_CONFIG_VSCODE}</code>
+            </pre>
+            <Button
+              size="small" appearance="subtle"
+              icon={copied === 'vscode' ? <CheckmarkCircleRegular style={{ color: '#1e7e34' }} /> : <CopyRegular />}
+              style={{ position: 'absolute', top: 22, right: 2, minHeight: 22, height: 22 }}
+              onClick={() => handleCopy(MCP_CONFIG_VSCODE, 'vscode')}
+            >{copied === 'vscode' ? 'Copied' : ''}</Button>
+          </div>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)', lineHeight: 1.5 }}>
-          <strong>Claude Desktop</strong> → paste into <code>claude_desktop_config.json</code> and restart.<br />
-          <strong>VS Code Copilot</strong> → add to <code>.vscode/mcp.json</code> in your workspace.<br />
-          The T3000 API must be running (default port <code>9103</code>). Use <code>localhost</code> for local, or the machine's LAN IP for remote access.
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 12, lineHeight: 1.6, marginTop: 10 }}>
+          {/* Claude Desktop */}
+          <div style={{ padding: '10px 12px', background: 'var(--colorNeutralBackground2)', borderRadius: 4 }}>
+            <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>Claude Desktop</div>
+            <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--colorNeutralForeground2)' }}>
+              <li>Open <code>Claude</code> → Settings → Developer → Edit Config</li>
+              <li>Paste the <strong>Claude Desktop</strong> config (left) into <code>claude_desktop_config.json</code></li>
+              <li>Restart Claude Desktop</li>
+              <li>Look for the 🔌 icon — you should see 25 T3000 tools available</li>
+            </ol>
+          </div>
+
+          {/* VS Code Copilot */}
+          <div style={{ padding: '10px 12px', background: 'var(--colorNeutralBackground2)', borderRadius: 4 }}>
+            <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>VS Code Copilot</div>
+            <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--colorNeutralForeground2)' }}>
+              <li>In your project, create <code>.vscode/mcp.json</code></li>
+              <li>Paste the <strong>VS Code Copilot</strong> config (right) — note: uses <code>"servers"</code> not <code>"mcpServers"</code></li>
+              <li>Reload VS Code (<code>Ctrl+Shift+P</code> → Reload Window)</li>
+              <li>In Copilot Chat, verify tools appear by asking "list available tools"</li>
+            </ol>
+          </div>
+
+          {/* Cursor / Cline / Continue.dev */}
+          <div style={{ padding: '10px 12px', background: 'var(--colorNeutralBackground2)', borderRadius: 4 }}>
+            <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>Cursor / Cline / Continue.dev</div>
+            <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--colorNeutralForeground2)' }}>
+              <li>Open your MCP settings (Cursor: <code>.cursor/mcp.json</code>, Cline: MCP Servers view, Continue: <code>config.json</code>)</li>
+              <li>Paste the <strong>Claude Desktop</strong> config (same format as Cursor)</li>
+              <li>Restart or reload the extension</li>
+              <li>Verify: ask "list T3000 devices" — it should call <code>device_list</code></li>
+            </ol>
+          </div>
         </div>
       </div>
 
       {/* ── Available Tools ── */}
       <div className={styles.mcpSection} style={{ marginTop: 20 }}>
         <div className={styles.sectionTitle}>
-          <TagRegular style={{ fontSize: 14 }} /> Available Tools
+          <TagRegular style={{ fontSize: 14 }} /> Available Tools (25 across 7 categories)
         </div>
         <table className={styles.mcpToolTable}>
           <thead>
             <tr><th style={{width:'22%'}}>Tool</th><th style={{width:'36%'}}>Description</th><th style={{width:'42%'}}>Parameters</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td><code>haystack_list_tags</code></td>
-              <td>List all Haystack tags with categories, documentation, and usage counts</td>
-              <td>filter?: string</td>
-            </tr>
-            <tr>
-              <td><code>haystack_get_point_tags</code></td>
-              <td>Get tags assigned to specific points by serial number</td>
-              <td>serial_numbers: int[]<br/>point_type?: "INPUT" | "OUTPUT" | "VARIABLE"</td>
-            </tr>
-            <tr>
-              <td><code>haystack_search_points</code></td>
-              <td>Search for points matching specific tag or brick class filters</td>
-              <td>tags: string[]<br/>serial_numbers?: int[]<br/>point_types?: string[]</td>
-            </tr>
-            <tr>
-              <td><code>haystack_auto_tag</code></td>
-              <td>Run auto-tagging on devices (range rules + regex rules)</td>
-              <td>serial_numbers: int[]</td>
-            </tr>
-            <tr>
-              <td><code>haystack_preview_tags</code></td>
-              <td>Preview auto-tagging results without writing to database</td>
-              <td>serial_numbers: int[]</td>
-            </tr>
-            <tr>
-              <td><code>haystack_list_rules</code></td>
-              <td>List all auto-tagging rules with patterns and priorities</td>
-              <td>—</td>
-            </tr>
-            <tr>
-              <td><code>haystack_get_brick_class</code></td>
-              <td>Get Brick ontology class for specified points</td>
-              <td>serial_numbers: int[]</td>
-            </tr>
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Haystack Tagging</td></tr>
+            <tr><td><code>haystack_list_tags</code></td><td>List all Haystack tags with categories, documentation, and usage counts</td><td>filter?: string</td></tr>
+            <tr><td><code>haystack_get_point_tags</code></td><td>Get tags assigned to specific points by serial number</td><td>serial_numbers: int[]<br/>point_type?: INPUT|OUTPUT|VARIABLE</td></tr>
+            <tr><td><code>haystack_search_points</code></td><td>Search for points matching specific tag filters</td><td>tags: string[]<br/>serial_numbers?: int[]<br/>point_types?: string[]</td></tr>
+            <tr><td><code>haystack_auto_tag</code></td><td>Run auto-tagging on devices (range+regex rules)</td><td>serial_numbers: int[]</td></tr>
+            <tr><td><code>haystack_preview_tags</code></td><td>Preview auto-tagging results without writing to DB</td><td>serial_numbers: int[]</td></tr>
+            <tr><td><code>haystack_list_rules</code></td><td>List all auto-tagging rules with patterns and priorities</td><td>—</td></tr>
+            <tr><td><code>haystack_get_brick_class</code></td><td>Get Brick ontology class for specified points</td><td>serial_numbers: int[]</td></tr>
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🟢 Core</td></tr>
+            <tr><td><code>ping</code></td><td>Health check — returns server status and timestamp</td><td>—</td></tr>
+            <tr><td><code>get_version</code></td><td>Server name, version, protocol version, tool count</td><td>—</td></tr>
+            <tr><td><code>describe_tool</code></td><td>Get full schema and description for any tool</td><td>tool_name: string</td></tr>
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🟡 Data &amp; Metadata</td></tr>
+            <tr><td><code>device_list</code></td><td>List all devices with serial, name, type, point counts</td><td>filter_name?: string</td></tr>
+            <tr><td><code>device_get_points</code></td><td>Get all points for a device with tags and Brick class</td><td>serial_number: int<br/>point_type?: INPUT|OUTPUT|VARIABLE</td></tr>
+            <tr><td><code>point_get_metadata</code></td><td>Full metadata: label, units, range, tags, Brick class</td><td>serial_number, point_type, point_index</td></tr>
+            <tr><td><code>metadata_search</code></td><td>Search points across devices by label text</td><td>query: string<br/>serial_numbers?, point_types?, limit?</td></tr>
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🟠 Operational (Read/Write)</td></tr>
+            <tr><td><code>point_read</code></td><td>Read current value of a single point</td><td>serial_number, point_type, point_index</td></tr>
+            <tr><td><code>point_write</code></td><td>Write a value to a point (confirm:true required)</td><td>serial_number, point_type, point_index, value, confirm</td></tr>
+            <tr><td><code>point_read_batch</code></td><td>Read multiple points in a single call</td><td>points: [&#123;serial_number, point_type, point_index&#125;]</td></tr>
+            <tr><td><code>point_write_batch</code></td><td>Write values to multiple points (confirm:true required)</td><td>points: [&#123;...value&#125;], confirm</td></tr>
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔴 Analytics</td></tr>
+            <tr><td><code>haystack_validate</code></td><td>Validate tagging against ontology rules (sensor→INPUT, etc.)</td><td>serial_numbers?: int[]</td></tr>
+            <tr><td><code>haystack_export</code></td><td>Export semantic model as haystack-json, brick-ttl, or brick-jsonld</td><td>serial_numbers: int[]<br/>format: string</td></tr>
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🟣 Rules Management</td></tr>
+            <tr><td><code>rule_toggle</code></td><td>Enable or disable an auto-tagging rule by ID</td><td>rule_id: int, enabled: boolean</td></tr>
+            <tr><td><code>rule_create</code></td><td>Create a new auto-tagging rule with regex pattern</td><td>rule_name, pattern, category<br/>haystack_tags?, brick_class?, etc.</td></tr>
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>⚫ Alarms &amp; Trends</td></tr>
+            <tr><td><code>alarm_list</code></td><td>List alarms, optionally filtered to active-only</td><td>serial_numbers?: int[]<br/>active_only?: boolean</td></tr>
+            <tr><td><code>alarm_acknowledge</code></td><td>Acknowledge an alarm by device serial and alarm ID</td><td>serial_number: int<br/>alarm_id: string</td></tr>
+            <tr><td><code>trendlog_query</code></td><td>Query historical trend data for a point over a time range</td><td>serial_number, point_type, point_index, start<br/>end?, limit?</td></tr>
           </tbody>
         </table>
       </div>
@@ -687,7 +750,7 @@ const examples: ExampleItem[] = [
       id: 1,
       method: 'initialize',
       params: {
-        protocolVersion: '2024-11-05',
+        protocolVersion: '2025-03-26',
         capabilities: {},
         clientInfo: { name: 'my-client', version: '1.0' },
       },
@@ -787,6 +850,62 @@ const examples: ExampleItem[] = [
       },
     },
   },
+  {
+    title: 'List all devices',
+    description: 'Get all T3000 devices with their point counts and metadata.',
+    tool: 'tools/call',
+    request: {
+      jsonrpc: '2.0',
+      id: 9,
+      method: 'tools/call',
+      params: {
+        name: 'device_list',
+        arguments: {},
+      },
+    },
+  },
+  {
+    title: 'Read a point value',
+    description: 'Read the current value of a specific input point on device 233626.',
+    tool: 'tools/call',
+    request: {
+      jsonrpc: '2.0',
+      id: 10,
+      method: 'tools/call',
+      params: {
+        name: 'point_read',
+        arguments: { serial_number: 233626, point_type: 'INPUT', point_index: 0 },
+      },
+    },
+  },
+  {
+    title: 'List active alarms',
+    description: 'Get all unacknowledged alarms across all devices.',
+    tool: 'tools/call',
+    request: {
+      jsonrpc: '2.0',
+      id: 11,
+      method: 'tools/call',
+      params: {
+        name: 'alarm_list',
+        arguments: { active_only: true },
+      },
+    },
+  },
+  {
+    title: 'Validate Haystack tagging',
+    description: 'Check all points for tagging rule violations (sensor→INPUT, cmd→OUTPUT, etc.)',
+    tool: 'tools/call',
+    request: {
+      jsonrpc: '2.0',
+      id: 12,
+      method: 'tools/call',
+      params: {
+        name: 'haystack_validate',
+        arguments: {},
+      },
+    },
+  },
 ];
 
 const ExamplesTab: React.FC = () => {
@@ -827,8 +946,7 @@ const ExamplesTab: React.FC = () => {
           <div>🗣️ <em>"What Brick class does point dev233626.in5 have?"</em><br />→ Calls <code>haystack_get_brick_class</code></div>
         </div>
         <div style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)', marginTop: 8, lineHeight: 1.5 }}>
-          <strong>Claude Desktop</strong> and <strong>Claude Code (VS Code)</strong> both support HTTP MCP transport natively (spec 2024-11-05).
-          No proxy or stdio wrapper needed.
+          <strong>Claude Desktop</strong> and <strong>VS Code Copilot</strong> both support MCP Streamable HTTP natively (spec 2025-03-26).
         </div>
       </div>
 
