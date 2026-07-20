@@ -4,8 +4,9 @@
 
 | Document | Description |
 |---|---|
-| [v2-haystack-current-implementation.md](./v2-haystack-current-implementation.md) | **Current (v2)** — Implemented schema, APIs, auto-tagging, frontend |
-| [v3-haystack-auto-tagging-mcp.md](./v3-haystack-auto-tagging-mcp.md) | **Planned (v3)** — Auto-Tagging rules engine + MCP server design |
+| [v4-haystack-mcp-complete.md](./v4-haystack-mcp-complete.md) | **Current (v4)** — Complete 25-tool MCP server: discovery, read/write, alarms, trends, validation, export |
+| [v3-haystack-auto-tagging-mcp.md](./v3-haystack-auto-tagging-mcp.md) | **Implemented (v3)** — Auto-Tagging rules engine + 7-tool MCP server design |
+| [v2-haystack-current-implementation.md](./v2-haystack-current-implementation.md) | **Legacy (v2)** — Schema, APIs, basic auto-tagging, frontend |
 | [v1-haystack-legacy-single-table.md](./v1-haystack-legacy-single-table.md) | **Deprecated (v1)** — Original HAYSTACK_ENTITY table design |
 
 ## Key Concepts
@@ -13,7 +14,7 @@
 - **Haystack** — Flat tag-based semantic model for building data (`point`, `sensor`, `outside`, `air`, `temp`)
 - **Brick** — Formal ontology with class hierarchy and relationships (`Outside_Air_Temperature_Sensor isPartOf AHU`)
 - **Auto-Tagging** — Regex rules automatically assign tags + Brick classes to device points
-- **MCP (Model Context Protocol)** — JSON-RPC protocol for exposing tools to LLM agents
+- **MCP (Model Context Protocol)** — JSON-RPC protocol for exposing 25 tools to LLM agents across 7 categories: Haystack tagging, Core/Discovery, Device/Points, Read/Write, Analytics, Rules Management, Alarms & Trends
 
 ## Database Tables
 
@@ -26,7 +27,25 @@
 
 ## API Routes
 
-See [v3-haystack-auto-tagging-mcp.md](./v3-haystack-auto-tagging-mcp.md) §5 for the full API reference.
+| Route | Description |
+|---|---|
+| `POST /api/mcp` | MCP JSON-RPC 2.0 endpoint (25 tools) |
+| `POST /api/haystack/auto-tagging/run` | Run auto-tagging |
+| `POST /api/haystack/auto-tagging/preview` | Preview results |
+| `POST /api/haystack/auto-tagging/reset` | Reset auto-tags |
+| `GET/POST /api/haystack/auto-tagging/rules` | List/create rules |
+| `PUT/DELETE /api/haystack/auto-tagging/rules/:id` | Update/delete rule |
+| `POST /api/haystack/auto-tagging/rules/:id/toggle` | Toggle rule on/off |
+| `POST /api/haystack/auto-tagging/brick-classes` | Get Brick classes |
+| `GET/POST /api/haystack/tags` | List/create tags |
+| `PUT/DELETE /api/haystack/tags/:name` | Update/delete tag |
+| `POST /api/haystack/point-tags/read` | Read point tags |
+| `POST /api/haystack/point-tags/write` | Batch write point tags |
+| `POST /api/haystack/replace-tag` | Replace tag globally |
+| `POST /api/haystack/rebuild` | Rebuild tags for serials |
+| `POST /api/haystack/sync` | Sync from official defs.json |
+
+See [v4-haystack-mcp-complete.md](./v4-haystack-mcp-complete.md) §5 for full MCP tool schemas.
 
 ## Frontend Pages
 
