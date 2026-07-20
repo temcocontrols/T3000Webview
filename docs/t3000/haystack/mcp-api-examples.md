@@ -1,159 +1,584 @@
 # MCP API Examples
 
-> ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp)
+> ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](./mcp-vscode-copilot.md) &nbsp;|&nbsp; [Setup: Claude Desktop](./mcp-claude-desktop.md)
 
-Natural-language prompt examples for all 25 MCP tools. Copy any prompt below and paste into Copilot Chat or Claude.
+Complete reference of natural-language prompts for all 25 MCP tools across 7 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
 ---
 
-## Haystack Tagging (7 tools)
+## Haystack Tagging <span style="font-weight:400;font-size:12px;color:#888">7 tools</span>
+
+### `haystack_list_tags` — Discover available tags
+
+Discover the full Haystack tag vocabulary. Tags are organized by category: `haystack` (standard v4 tags like `air`, `sensor`, `temp`), `brick` (Brick ontology classes), and `custom` (user-defined). Returns tag names, descriptions, parent relationships, and how many points use each tag.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **What Haystack tags are available?**
-*`haystack_list_tags`* — List all tag definitions with categories and docs
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Show me all Haystack tags in the brick category**
-*`haystack_list_tags`* — Filter tags by category
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List custom tags defined in the system**
+
+</div>
+
+</div>
+
+### `haystack_get_point_tags` — Get tags assigned to points
+
+Retrieve all Haystack tags assigned to specific device points. Filter by device serial number and optionally by point type (INPUT, OUTPUT, VARIABLE). Returns a flat list of point→tag assignments showing what semantic meaning each point carries.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **What tags are assigned to device 233626?**
-*`haystack_get_point_tags`* — Get all tags assigned to a device's points
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Get tags for the INPUT points on device 237219**
-*`haystack_get_point_tags`* — Filter by point type
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me all tags for OUTPUT points on devices 233626 and 240488**
+
+</div>
+
+</div>
+
+### `haystack_search_points` — Find points by tags
+
+Search across all devices for points that have specific combinations of Haystack tags. Points must match ALL specified tags. Use this to find all temperature sensors, all outside air points, all command points, etc. Optionally restrict by device serials or point types.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Search for all temperature sensors**
-*`haystack_search_points`* — Find points that have specific tags
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Find outside air temperature sensors**
-*`haystack_search_points`* — Search by outside, air, temp, sensor tags
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me all humidity sensors on device 237219**
+
+</div>
+
+</div>
+
+### `haystack_auto_tag` — Run auto-tagging
+
+Apply the auto-tagging engine to devices. First applies range-based rules (digital/analog, engineering units, value ranges), then regex rules that match point labels. Assigns Haystack tags AND Brick ontology classes to every point. Returns the count of points tagged.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Auto-tag device 233626**
-*`haystack_auto_tag`* — Run auto-tagging on devices
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Auto-tag all my devices: 233626, 237219, 240488**
-*`haystack_auto_tag`* — Batch auto-tag multiple devices
+
+</div>
+
+</div>
+
+### `haystack_preview_tags` — Preview tags without saving
+
+See exactly what tags and Brick classes would be assigned by auto-tagging BEFORE writing to the database. Essential for testing new rules or verifying tag assignments. Returns full preview with tags, Brick class, and the rule that matched for each point.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Preview what tags would be assigned to device 240488**
-*`haystack_preview_tags`* — Dry-run without writing to DB
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me a preview of auto-tagging for device 233626 without applying**
+
+</div>
+
+</div>
+
+### `haystack_list_rules` — Show all tagging rules
+
+Lists every auto-tagging rule in the system with its regex pattern, target tags, Brick class (if any), category, priority, and enabled/disabled status. Currently 248 rules covering Haystack v4 tags and Brick ontology classes.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **List the Haystack auto-tagging rules**
-*`haystack_list_rules`* — Show all auto-tagging regex rules
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me all enabled tagging rules in the brick category**
+
+</div>
+
+</div>
+
+### `haystack_get_brick_class` — Get Brick ontology classes
+
+Brick is a formal ontology for buildings (brickschema.org). After auto-tagging, each point gets a Brick class like `Supply_Air_Temperature_Sensor` or `Outside_Air_Flow_Sensor`. Use this to check what Brick classes are assigned to your device points.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **What Brick class does input 8 on device 237219 have?**
-*`haystack_get_brick_class`* — Get Brick ontology class for points
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show all Brick classes for device 233626**
+
+</div>
+
+</div>
 
 ---
 
-## Core (3 tools)
+## Data & Discovery <span style="font-weight:400;font-size:12px;color:#888">4 tools</span>
 
-**Is the T3000 MCP server running?**
-*`ping`* — Health check
+### `device_list` — Enumerate all devices
 
-**What version is the MCP server?**
-*`get_version`* — Server name, version, protocol version
+Get every T3000 device in the system with serial number, name, device type, building/floor/room, and counts of INPUT, OUTPUT, and VARIABLE points. Optionally filter by device name substring.
 
-**Describe the device_list tool**
-*`describe_tool`* — Get full input schema for any tool
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
----
-
-## Data & Metadata (4 tools)
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **List all T3000 devices**
-*`device_list`* — Enumerate all devices
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Find devices named T3-NB-ESP**
-*`device_list`* — Filter devices by name substring
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**How many devices are in this system?**
+
+</div>
+
+</div>
+
+### `device_get_points` — Get all points for a device
+
+Returns every point on a device — labels, engineering units, Haystack tags, and Brick classes. Optionally filter by point type to get only INPUTs, OUTPUTs, or VARIABLEs.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Show me the input points for device T3-NB-ESP**
-*`device_get_points`* — Get all points for a device
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Show all VARIABLE points on device 233626**
-*`device_get_points`* — Filter by point type
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List all points on device 240488**
+
+</div>
+
+</div>
+
+### `point_get_metadata` — Full metadata for one point
+
+Deep-dive into a single point: label, full label, engineering units, range (low/high), description, digital vs analog, all Haystack tags, and Brick class. Useful when you need to understand exactly what a point represents.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Get full metadata for input 0 on device 240488**
-*`point_get_metadata`* — Full metadata for one point
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What are the units and range for output 3 on device 237219?**
+
+</div>
+
+</div>
+
+### `metadata_search` — Cross-device label search
+
+Search point labels across all devices by keyword. Matches against point labels, full labels, and descriptions. Optionally filter by device serials and point types. Great for finding all points related to "temperature", "flow", "pressure", etc.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Search for points labeled temperature**
-*`metadata_search`* — Search points by label across devices
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Search for flow across all output points**
-*`metadata_search`* — Search with type filter
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Find all points with fan in the name on device 233626**
+
+</div>
+
+</div>
 
 ---
 
-## Operational — Read/Write (4 tools)
+## Operational — Read/Write <span style="font-weight:400;font-size:12px;color:#888">4 tools</span>
+
+### `point_read` — Read a single point value
+
+Read the current (last synced) value of any point from the database. Returns the value, engineering units, label, and timestamp of the last reading.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Read input point 0 on device 233626**
-*`point_read`* — Read a single point value
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **What's the current value of output 3 on device 237219?**
-*`point_read`* — Read an output point
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Read variable 12 on device 240488**
+
+</div>
+
+</div>
+
+### `point_write` — Write a value to a point
+
+Write a new value to an output or variable point. **Safety:** requires `confirm: true` for OUTPUT and VARIABLE points (INPUT points are read-only and will be rejected). Writes go through the C++ FFI layer to the actual device.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Set output 5 on device 233626 to 72.5**
-*`point_write`* — Write a value (requires confirm)
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Turn on output 7 on device 237219**
+
+</div>
+
+</div>
+
+### `point_read_batch` — Read multiple points at once
+
+Read values for multiple points in a single call. Points can span different devices and point types. Much faster than calling `point_read` repeatedly for bulk operations.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Read inputs 0, 1, and 2 on device 240488 all at once**
-*`point_read_batch`* — Read multiple points at once
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Read input 0 on 233626 and output 0 on 237219 together**
+
+</div>
+
+</div>
+
+### `point_write_batch` — Write multiple points at once
+
+Write values to multiple points atomically. All writes must succeed or none are applied. Requires `confirm: true`. Points can span different devices.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Set outputs 0 through 3 on device 237219 to 100**
-*`point_write_batch`* — Write multiple points (requires confirm)
+
+</div>
+
+</div>
 
 ---
 
-## Analytics (2 tools)
+## Core <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
+
+### `ping` — Health check
+
+Simple connectivity test. Returns server status, current timestamp, and server name.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Is the T3000 MCP server running?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Ping the MCP server**
+
+</div>
+
+</div>
+
+### `get_version` — Server metadata
+
+Returns server name, version number, MCP protocol version (2025-03-26), and total tool count.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What version is the MCP server?**
+
+</div>
+
+</div>
+
+### `describe_tool` — Tool documentation
+
+Get the complete input schema, description, and parameter details for any tool by name. Useful for LLM agents to understand tool capabilities before calling.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Describe the device_list tool**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What parameters does trendlog_query accept?**
+
+</div>
+
+</div>
+
+---
+
+## Analytics & Export <span style="font-weight:400;font-size:12px;color:#888">2 tools</span>
+
+### `haystack_validate` — Validate tagging quality
+
+Run ontology validation rules against tagged points. Checks for: sensor tags on non-INPUT points, command tags on non-OUTPUT points, missing required tags, conflicting tag combinations, invalid Brick class assignments, and orphaned tag references. Returns warnings and errors.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Validate the Haystack tags on device 237219**
-*`haystack_validate`* — Check tagging for errors and conflicts
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Validate tagging across all devices**
-*`haystack_validate`* — Omit serial_numbers for all-device check
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Are there any tagging errors in device 233626?**
+
+</div>
+
+</div>
+
+### `haystack_export` — Export semantic model
+
+Export the full semantic model for devices in standard formats. **haystack-json**: Project Haystack tagged entity format. **brick-ttl**: Brick ontology in Turtle RDF (W3C standard). **brick-jsonld**: Brick ontology in JSON-LD (linked data). Use for integration with other building systems or semantic analysis tools.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Export device 233626 as Brick Turtle RDF**
-*`haystack_export`* — Export to brick-ttl format
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Export all three devices as Haystack JSON**
-*`haystack_export`* — Export to haystack-json format
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Export device 240488 as Brick JSON-LD**
-*`haystack_export`* — Export to brick-jsonld format
+
+</div>
+
+</div>
 
 ---
 
-## Rules Management (2 tools)
+## Rules Management <span style="font-weight:400;font-size:12px;color:#888">2 tools</span>
+
+### `rule_toggle` — Enable or disable rules
+
+Toggle an auto-tagging rule on or off by its rule ID. Disabled rules are skipped during auto-tagging but remain in the database. Use `haystack_list_rules` to find rule IDs.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Disable auto-tagging rule 5**
-*`rule_toggle`* — Enable or disable a tagging rule
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Enable rule 3**
-*`rule_toggle`* — Re-enable a rule
+
+</div>
+
+</div>
+
+### `rule_create` — Create a new tagging rule
+
+Add a custom auto-tagging rule. Specify a regex pattern to match point labels, the Haystack tags to assign, and optionally a Brick class. Rules can target specific point types, engineering units, or object types. Higher priority rules are applied first.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Create a rule that tags any point with CO2 in the label as air, co2, sensor**
-*`rule_create`* — Create a new auto-tagging rule
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Add a Brick rule to classify ZoneTemp labels as Zone_Air_Temperature_Sensor**
-*`rule_create`* — Create a Brick classification rule
+
+</div>
+
+</div>
 
 ---
 
-## Alarms & Trends (3 tools)
+## Alarms & Trends <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
+
+### `alarm_list` — List alarms
+
+Get all alarms in the system with severity, message, timestamp, and acknowledgment status. Filter by device serials or show only unacknowledged (active) alarms.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **List all active alarms**
-*`alarm_list`* — List alarms, optionally filtered to active-only
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Show me alarms for device 233626**
-*`alarm_list`* — Filter alarms by device
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Are there any unacknowledged alarms on device 237219?**
+
+</div>
+
+</div>
+
+### `alarm_acknowledge` — Acknowledge an alarm
+
+Acknowledge a specific alarm by device serial number and alarm ID. Acknowledged alarms are marked with a timestamp. Use `alarm_list` to find alarm IDs.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Acknowledge alarm abc123 on device 233626**
-*`alarm_acknowledge`* — Acknowledge an alarm
+
+</div>
+
+</div>
+
+### `trendlog_query` — Query historical trend data
+
+Retrieve time-series data for any point over a specified time range. Specify start and optional end time in ISO 8601 format, and limit the number of data points returned. Returns timestamp-value pairs with engineering units and point metadata.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Get trend data for input 8 on device 237219 for the last hour**
-*`trendlog_query`* — Query historical trend data
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Show me trend data for variable 0 on device 240488 from yesterday to now**
-*`trendlog_query`* — Custom date range
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Get the last 100 readings for output 2 on device 233626**
-*`trendlog_query`* — Limit data points
+
+</div>
+
+</div>
 
 ---
 
@@ -161,8 +586,22 @@ Natural-language prompt examples for all 25 MCP tools. Copy any prompt below and
 
 After setup, try these two to confirm everything works:
 
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
 **List the Haystack auto-tagging rules**
-*`haystack_list_rules`*
+
+<code style="font-size:11px;background:#eee;padding:1px 5px;border-radius:3px">haystack_list_rules</code>
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Show me the input points for device T3-NB-ESP**
-*`device_get_points`*
+
+<code style="font-size:11px;background:#eee;padding:1px 5px;border-radius:3px">device_get_points</code>
+
+</div>
+
+</div>
