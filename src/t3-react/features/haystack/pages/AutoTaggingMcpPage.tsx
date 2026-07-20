@@ -18,6 +18,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
+import { useLocation } from 'react-router-dom';
 import styles from './AutoTaggingMcpPage.module.css';
 
 // ── Types ──
@@ -63,7 +64,10 @@ interface TagMatch {
 
 const AutoTaggingMcpPage: React.FC = () => {
   const { selectedDevice, devices } = useDeviceTreeStore();
-  const [activeTab, setActiveTab] = useState('rules');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(
+    location.hash === '#mcp' ? 'mcp' : 'rules'
+  );
 
   return (
     <div className={styles.container}>
@@ -601,9 +605,9 @@ const McpTab: React.FC = () => {
         <div style={{ fontSize: 12, color: 'var(--colorNeutralForeground2)', marginBottom: 10, lineHeight: 1.6 }}>
           Copy the config below into your MCP client. Replace <code>&lt;host&gt;</code> with <code>localhost</code> (local) or the machine's LAN IP (remote). The T3000 API must be running on port <code>9103</code>.
         </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'stretch' }}>
           {/* Claude / Cursor config */}
-          <div style={{ flex: '1 1 280px', position: 'relative' }}>
+          <div style={{ flex: '1 1 280px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
             <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--colorNeutralForeground1)' }}>Claude Desktop / Cursor (via mcp-remote)</div>
             <pre style={{
               background: 'var(--colorNeutralBackground2, #f5f5f5)',
@@ -614,6 +618,7 @@ const McpTab: React.FC = () => {
               overflowX: 'auto',
               margin: 0,
               lineHeight: 1.5,
+              flex: 1,
             }}>
               <code>{MCP_CONFIG_CLAUDE}</code>
             </pre>
@@ -626,7 +631,7 @@ const McpTab: React.FC = () => {
           </div>
 
           {/* VS Code config */}
-          <div style={{ flex: '1 1 280px', position: 'relative' }}>
+          <div style={{ flex: '1 1 280px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
             <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--colorNeutralForeground1)' }}>VS Code Copilot</div>
             <pre style={{
               background: 'var(--colorNeutralBackground2, #f5f5f5)',
@@ -637,6 +642,7 @@ const McpTab: React.FC = () => {
               overflowX: 'auto',
               margin: 0,
               lineHeight: 1.5,
+              flex: 1,
             }}>
               <code>{MCP_CONFIG_VSCODE}</code>
             </pre>
@@ -652,7 +658,10 @@ const McpTab: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 12, lineHeight: 1.6, marginTop: 10 }}>
           {/* Claude Desktop */}
           <div style={{ padding: '10px 12px', background: 'var(--colorNeutralBackground2)', borderRadius: 4 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>Claude Desktop</div>
+            <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>
+              Claude Desktop
+              <a href="#/t3000/documentation/t3000/haystack/mcp-claude-desktop" style={{ fontSize: 11, color: 'var(--colorBrandForeground1, #0078d4)', textDecoration: 'none', marginLeft: 8, fontWeight: 400 }}>Full Details →</a>
+            </div>
             <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--colorNeutralForeground2)' }}>
               <li>Open <code>Claude</code> → Settings → Developer → Edit Config</li>
               <li>Paste the <strong>Claude Desktop</strong> config (left) into <code>claude_desktop_config.json</code></li>
@@ -664,7 +673,10 @@ const McpTab: React.FC = () => {
 
           {/* VS Code Copilot */}
           <div style={{ padding: '10px 12px', background: 'var(--colorNeutralBackground2)', borderRadius: 4 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>VS Code Copilot</div>
+            <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>
+              VS Code Copilot
+              <a href="#/t3000/documentation/t3000/haystack/mcp-vscode-copilot" style={{ fontSize: 11, color: 'var(--colorBrandForeground1, #0078d4)', textDecoration: 'none', marginLeft: 8, fontWeight: 400 }}>Full Details →</a>
+            </div>
             <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--colorNeutralForeground2)' }}>
               <li>In your project, create <code>.vscode/mcp.json</code></li>
               <li>Paste the <strong>VS Code Copilot</strong> config (right)</li>
@@ -675,7 +687,10 @@ const McpTab: React.FC = () => {
 
           {/* Cursor / Cline / Continue.dev */}
           <div style={{ padding: '10px 12px', background: 'var(--colorNeutralBackground2)', borderRadius: 4 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>Cursor / Cline / Continue.dev</div>
+            <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>
+              Cursor / Cline / Continue.dev
+              <a href="#/t3000/documentation/t3000/haystack/mcp-claude-desktop" style={{ fontSize: 11, color: 'var(--colorBrandForeground1, #0078d4)', textDecoration: 'none', marginLeft: 8, fontWeight: 400 }}>Full Details →</a>
+            </div>
             <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--colorNeutralForeground2)' }}>
               <li>Open your MCP settings (Cursor: <code>.cursor/mcp.json</code>, Cline: MCP Servers view, Continue: <code>config.json</code>)</li>
               <li>Use the <strong>Claude Desktop</strong> config (left) — same <code>mcp-remote</code> approach</li>
@@ -730,16 +745,6 @@ const McpTab: React.FC = () => {
             <tr><td><code>trendlog_query</code></td><td>Query historical trend data for a point over a time range</td><td>serial_number, point_type, point_index, start<br/>end?, limit?</td></tr>
           </tbody>
         </table>
-      </div>
-
-      {/* ── Full Details Link ── */}
-      <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--colorNeutralStroke1)', display: 'flex', gap: 12, fontSize: 12 }}>
-        <a href="#/t3000/documentation/t3000/haystack/mcp-claude-desktop" style={{ color: 'var(--colorBrandForeground1, #0078d4)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <BookOpenRegular style={{ fontSize: 14 }} /> Claude Desktop Setup Guide →
-        </a>
-        <a href="#/t3000/documentation/t3000/haystack/mcp-vscode-copilot" style={{ color: 'var(--colorBrandForeground1, #0078d4)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <BookOpenRegular style={{ fontSize: 14 }} /> VS Code Copilot Setup Guide →
-        </a>
       </div>
     </div>
   );

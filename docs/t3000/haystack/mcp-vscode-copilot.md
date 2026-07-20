@@ -1,4 +1,6 @@
-# VS Code Copilot MCP Setup
+## VS Code Copilot MCP Setup
+
+> ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp)
 
 Connect VS Code Copilot directly to the T3000 MCP server — native HTTP support, no bridge needed.
 

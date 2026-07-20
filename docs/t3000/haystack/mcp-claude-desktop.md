@@ -1,4 +1,6 @@
-# Claude Desktop MCP Setup
+## Claude Desktop MCP Setup
+
+> ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp)
 
 Connect Claude Desktop to the T3000 MCP server to let Claude query devices, read/write points, manage Haystack tags, and run analytics.
 
@@ -17,6 +19,10 @@ Covers: **Claude Desktop**, **Cursor**, **Cline**, **Continue.dev** — all use 
 ## Step 1: Open Claude Settings
 
 Open Claude Desktop → **Settings** → **Developer** → **Edit Config**
+
+| | |
+|---|---|
+| ![Settings](images/claude1.png) | ![Config](images/claude2.png) |
 
 ---
 
@@ -56,6 +62,10 @@ Example for local:
   }
 }
 ```
+
+| | |
+|---|---|
+| ![Settings](images/claude3.png) | ![Config](images/claude4.png) |
 
 ---
 
@@ -105,3 +115,8 @@ Ask Claude: *"List T3000 devices"* — it should call the `device_list` tool and
 | **Analytics** | `haystack_validate`, `haystack_export` |
 | **Rules** | `rule_toggle`, `rule_create` |
 | **Alarms** | `alarm_list`, `alarm_acknowledge`, `trendlog_query` |
+
+
+| | |
+|---|---|
+| ![Settings](images/claude5.png) | ![Config](images/claude6.png) |
