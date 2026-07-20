@@ -1,6 +1,6 @@
 # MCP API Examples
 
-> ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](./mcp-vscode-copilot.md) &nbsp;|&nbsp; [Setup: Claude Desktop](./mcp-claude-desktop.md)
+> ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
 Complete reference of natural-language prompts for all 25 MCP tools across 7 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 

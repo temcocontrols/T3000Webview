@@ -11,7 +11,7 @@ Covers: **Claude Desktop**, **Cursor**, **Cline**, **Continue.dev** — all use 
 ## Prerequisites
 
 - T3000 API running on port `9103`
-- [Node.js](https://nodejs.org/) installed (provides `npx`)
+- <a href="https://nodejs.org/" target="_blank">Node.js</a> installed (provides `npx`)
 - Claude Desktop installed
 
 ---
@@ -87,10 +87,10 @@ Ask Claude any of these:
 
 | Query | Expected Tool |
 |---|---|
-| *"List the Haystack auto-tagging rules"* | `haystack_list_rules` |
-| *"Show me the input points for device T3-NB-ESP"* | `device_get_points` |
+| *List the Haystack auto-tagging rules* | `haystack_list_rules` |
+| *Show me the input points for device T3-NB-ESP* | `device_get_points` |
 
-See the full [MCP API examples](./mcp-api-examples.md) for all 25 tools with prompt text.
+See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-examples) for all 25 tools with prompt text.
 
 ---
 
@@ -108,7 +108,7 @@ See the full [MCP API examples](./mcp-api-examples.md) for all 25 tools with pro
 
 | Issue | Fix |
 |---|---|
-| `npx` not found | Install Node.js from [nodejs.org](https://nodejs.org/) |
+| `npx` not found | Install Node.js from <a href="https://nodejs.org/" target="_blank">nodejs.org</a> |
 | Connection refused | Ensure T3000 API is running on port 9103 |
 | Tools not appearing | Check Claude logs: `Help` → `View Logs` |
 | 25 tools expected | Verify you see all categories: Haystack, Core, Data, Operational, Analytics, Rules, Alarms |

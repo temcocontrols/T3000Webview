@@ -65,10 +65,10 @@ Open Copilot Chat and test any tool:
 
 | Ask Copilot | Expected Tool |
 |---|---|
-| *"List the Haystack auto-tagging rules"* | `haystack_list_rules` |
-| *"Show me the input points for device T3-NB-ESP"* | `device_get_points` |
+| *List the Haystack auto-tagging rules* | `haystack_list_rules` |
+| *Show me the input points for device T3-NB-ESP* | `device_get_points` |
 
-See the full [MCP API examples](./mcp-api-examples.md) for all 25 tools with prompt text.
+See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-examples) for all 25 tools with prompt text.
 
 ---
 
