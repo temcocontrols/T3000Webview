@@ -763,7 +763,6 @@ pub async fn mcp_sse_handler(
 ) -> Result<impl IntoResponse, (StatusCode, Json<Value>)> {
     let sessions = get_session_store(&state);
 
-    // Validate session
     let session_id = headers
         .get("mcp-session-id")
         .and_then(|v| v.to_str().ok());
@@ -779,18 +778,15 @@ pub async fn mcp_sse_handler(
         }
     }
 
-    // Return SSE stream with initial endpoint event + keepalive
-    // Using raw response for maximum compatibility (no axum SSE feature needed)
     let endpoint = format!("/api/mcp?session={}", session_id.unwrap_or(""));
     let body = format!(
-        "event: endpoint\ndata: {}\n\n: keepalive\n\n",
+        "event: endpoint\ndata: {}\n\n",
         endpoint
     );
 
     let mut response_headers = HeaderMap::new();
     response_headers.insert("Content-Type", "text/event-stream".parse().unwrap());
     response_headers.insert("Cache-Control", "no-cache".parse().unwrap());
-    response_headers.insert("Connection", "keep-alive".parse().unwrap());
 
     Ok((response_headers, body))
 }

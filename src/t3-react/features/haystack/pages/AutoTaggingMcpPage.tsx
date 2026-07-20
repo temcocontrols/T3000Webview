@@ -550,16 +550,21 @@ const RunTab: React.FC = () => {
 
 const MCP_CONFIG_CLAUDE = `{
   "mcpServers": {
-    "t3000": {
-      "type": "http",
-      "url": "http://<host>:9103/api/mcp"
+    "T3000": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://<host>:9103/api/mcp",
+        "--allow-http"
+      ]
     }
   }
 }`;
 
 const MCP_CONFIG_VSCODE = `{
   "servers": {
-    "t3000": {
+    "T3000": {
       "type": "http",
       "url": "http://<host>:9103/api/mcp"
     }
@@ -599,7 +604,7 @@ const McpTab: React.FC = () => {
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {/* Claude / Cursor config */}
           <div style={{ flex: '1 1 280px', position: 'relative' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--colorNeutralForeground1)' }}>Claude Desktop / Cursor</div>
+            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--colorNeutralForeground1)' }}>Claude Desktop / Cursor (via mcp-remote)</div>
             <pre style={{
               background: 'var(--colorNeutralBackground2, #f5f5f5)',
               border: '1px solid var(--colorNeutralStroke1)',
@@ -651,7 +656,8 @@ const McpTab: React.FC = () => {
             <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--colorNeutralForeground2)' }}>
               <li>Open <code>Claude</code> → Settings → Developer → Edit Config</li>
               <li>Paste the <strong>Claude Desktop</strong> config (left) into <code>claude_desktop_config.json</code></li>
-              <li>Restart Claude Desktop</li>
+              <li>Make sure <code>npx</code> is installed (<code>npm install -g npx</code> if needed)</li>
+              <li>Restart Claude Desktop — first run will download <code>mcp-remote</code> automatically</li>
               <li>Look for the 🔌 icon — you should see 25 T3000 tools available</li>
             </ol>
           </div>
@@ -661,7 +667,7 @@ const McpTab: React.FC = () => {
             <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>VS Code Copilot</div>
             <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--colorNeutralForeground2)' }}>
               <li>In your project, create <code>.vscode/mcp.json</code></li>
-              <li>Paste the <strong>VS Code Copilot</strong> config (right) — note: uses <code>"servers"</code> not <code>"mcpServers"</code></li>
+              <li>Paste the <strong>VS Code Copilot</strong> config (right)</li>
               <li>Reload VS Code (<code>Ctrl+Shift+P</code> → Reload Window)</li>
               <li>In Copilot Chat, verify tools appear by asking "list available tools"</li>
             </ol>
@@ -672,7 +678,7 @@ const McpTab: React.FC = () => {
             <div style={{ fontWeight: 600, marginBottom: 4, borderLeft: '3px solid var(--colorBrandForeground1, #0078d4)', paddingLeft: 8 }}>Cursor / Cline / Continue.dev</div>
             <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--colorNeutralForeground2)' }}>
               <li>Open your MCP settings (Cursor: <code>.cursor/mcp.json</code>, Cline: MCP Servers view, Continue: <code>config.json</code>)</li>
-              <li>Paste the <strong>Claude Desktop</strong> config (same format as Cursor)</li>
+              <li>Use the <strong>Claude Desktop</strong> config (left) — same <code>mcp-remote</code> approach</li>
               <li>Restart or reload the extension</li>
               <li>Verify: ask "list T3000 devices" — it should call <code>device_list</code></li>
             </ol>
