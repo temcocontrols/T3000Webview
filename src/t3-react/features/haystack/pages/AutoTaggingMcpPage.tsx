@@ -14,7 +14,7 @@ import {
   WarningRegular, InfoRegular, DeleteRegular,
   TagRegular, FlashRegular, SettingsRegular,
   SparkleRegular, CopyRegular, LightbulbRegular,
-  CodeRegular,
+  CodeRegular, BookOpenRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -730,6 +730,16 @@ const McpTab: React.FC = () => {
             <tr><td><code>trendlog_query</code></td><td>Query historical trend data for a point over a time range</td><td>serial_number, point_type, point_index, start<br/>end?, limit?</td></tr>
           </tbody>
         </table>
+      </div>
+
+      {/* ── Full Details Link ── */}
+      <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--colorNeutralStroke1)', display: 'flex', gap: 12, fontSize: 12 }}>
+        <a href="#/t3000/documentation/t3000/haystack/mcp-claude-desktop" style={{ color: 'var(--colorBrandForeground1, #0078d4)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <BookOpenRegular style={{ fontSize: 14 }} /> Claude Desktop Setup Guide →
+        </a>
+        <a href="#/t3000/documentation/t3000/haystack/mcp-vscode-copilot" style={{ color: 'var(--colorBrandForeground1, #0078d4)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <BookOpenRegular style={{ fontSize: 14 }} /> VS Code Copilot Setup Guide →
+        </a>
       </div>
     </div>
   );
