@@ -1,7 +1,11 @@
-// MCP (Model Context Protocol) Server — JSON-RPC 2.0 over HTTP
-// Exposes 25 tools for LLM agents via POST /api/mcp
+// MCP (Model Context Protocol) Server — Streamable HTTP transport
+// Exposes 25 tools for LLM agents via POST /api/mcp (JSON-RPC 2.0)
+// SSE server→client streaming via GET /api/mcp
+// Session termination via DELETE /api/mcp
 //
 // Protocol spec: https://spec.modelcontextprotocol.io/
+// Transport spec: Streamable HTTP (2025-03-26)
+//
 // Categories:
 //   Haystack (7):  list_tags, get_point_tags, search_points, auto_tag,
 //                   preview_tags, list_rules, get_brick_class
@@ -12,11 +16,21 @@
 //   Rules (2):     rule_toggle, rule_create
 //   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
 
-use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
+use axum::{
+    extract::State,
+    http::{StatusCode, HeaderMap},
+    response::IntoResponse,
+    routing::{delete, get, post},
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sea_orm::ConnectionTrait;
 use chrono::Utc;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use uuid::Uuid;
 
 use crate::app_state::T3AppState;
 use crate::haystack::auto_tagging_service as ats;
@@ -51,7 +65,22 @@ struct JsonRpcResponse {
 struct JsonRpcError {
     code: i32,
     message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    data: Option<Value>,
 }
+
+// ═══ Session State ═══
+
+/// MCP session tracking — one per connected client
+#[derive(Debug, Clone)]
+struct McpSession {
+    id: String,
+    created_at: String,
+    initialized: bool,
+}
+
+/// Shared session store (in-memory, lost on restart)
+type SessionStore = Arc<Mutex<HashMap<String, McpSession>>>;
 
 // ═══ Tool Definitions ═══
 
@@ -59,6 +88,7 @@ lazy_static::lazy_static! {
     static ref TOOLS: Vec<ToolDef> = vec![
     ToolDef {
         name: "haystack_list_tags",
+        title: "List Haystack Tags",
         description: "List all Haystack tags in the system with their categories, documentation, and usage counts. Use to discover available tags.",
         input_schema: json!({
             "type": "object",
@@ -72,6 +102,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "haystack_get_point_tags",
+        title: "Get Point Tags",
         description: "Get all Haystack tags assigned to specific points by serial number and point type.",
         input_schema: json!({
             "type": "object",
@@ -91,6 +122,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "haystack_search_points",
+        title: "Search Points by Tags",
         description: "Search for points that have specific tags. Returns matching point metadata with full tag sets.",
         input_schema: json!({
             "type": "object",
@@ -116,6 +148,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "haystack_auto_tag",
+        title: "Auto-Tag Devices",
         description: "Run auto-tagging on specified devices. Applies range rules (based on point_type, digital/analog, range_value) first, then regex rules from labels. Derives Haystack tags and Brick classes. Returns count of points tagged.",
         input_schema: json!({
             "type": "object",
@@ -131,6 +164,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "haystack_preview_tags",
+        title: "Preview Auto-Tags",
         description: "Preview what tags and Brick classes would be assigned by auto-tagging without actually writing to the database. Useful for testing rules before applying.",
         input_schema: json!({
             "type": "object",
@@ -146,6 +180,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "haystack_list_rules",
+        title: "List Tagging Rules",
         description: "List all auto-tagging rules with their patterns, categories, and whether they are enabled.",
         input_schema: json!({
             "type": "object",
@@ -154,6 +189,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "haystack_get_brick_class",
+        title: "Get Brick Class",
         description: "Get the Brick ontology class assigned to specific points. Returns the Brick class name (e.g., Supply_Air_Temperature_Sensor) if one has been auto-tagged.",
         input_schema: json!({
             "type": "object",
@@ -170,6 +206,7 @@ lazy_static::lazy_static! {
     // ═══ v4: Core / Generic ═══
     ToolDef {
         name: "ping",
+        title: "Ping Server",
         description: "Health check. Returns server status and timestamp.",
         input_schema: json!({
             "type": "object",
@@ -178,6 +215,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "get_version",
+        title: "Server Version",
         description: "Return server name, version, protocol version, and tool count.",
         input_schema: json!({
             "type": "object",
@@ -186,6 +224,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "describe_tool",
+        title: "Describe Tool",
         description: "Return the full input schema, description, and parameter details for a single tool by name.",
         input_schema: json!({
             "type": "object",
@@ -201,6 +240,7 @@ lazy_static::lazy_static! {
     // ═══ v4: Data & Metadata ═══
     ToolDef {
         name: "device_list",
+        title: "List Devices",
         description: "Enumerate all devices with serial numbers, names, types, point counts, and online status.",
         input_schema: json!({
             "type": "object",
@@ -214,6 +254,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "device_get_points",
+        title: "Get Device Points",
         description: "Return all points for a device, optionally filtered by point type (INPUT, OUTPUT, VARIABLE).",
         input_schema: json!({
             "type": "object",
@@ -232,6 +273,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "point_get_metadata",
+        title: "Get Point Metadata",
         description: "Get complete metadata for one point: label, engineering units, range, description, Haystack tags, and Brick class.",
         input_schema: json!({
             "type": "object",
@@ -254,6 +296,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "metadata_search",
+        title: "Search Metadata",
         description: "Search points across devices by label text, tag, or Brick class.",
         input_schema: json!({
             "type": "object",
@@ -283,6 +326,7 @@ lazy_static::lazy_static! {
     // ═══ v4: Operational ═══
     ToolDef {
         name: "point_read",
+        title: "Read Point Value",
         description: "Read the current value of a single point from the database (last synced value).",
         input_schema: json!({
             "type": "object",
@@ -305,6 +349,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "point_write",
+        title: "Write Point Value",
         description: "Write a value to a point. Requires confirm:true for OUTPUT/VARIABLE points as a safety measure.",
         input_schema: json!({
             "type": "object",
@@ -334,6 +379,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "point_read_batch",
+        title: "Batch Read Points",
         description: "Read current values for multiple points in a single call from the database.",
         input_schema: json!({
             "type": "object",
@@ -357,6 +403,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "point_write_batch",
+        title: "Batch Write Points",
         description: "Write values to multiple points atomically. Requires confirm:true.",
         input_schema: json!({
             "type": "object",
@@ -386,6 +433,7 @@ lazy_static::lazy_static! {
     // ═══ v4: Analytics ═══
     ToolDef {
         name: "haystack_validate",
+        title: "Validate Tagging",
         description: "Validate Haystack/Brick tagging against ontology rules. Returns warnings and errors for: missing required tags, conflicting tag combinations, invalid Brick class assignments, orphaned tag references.",
         input_schema: json!({
             "type": "object",
@@ -400,6 +448,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "haystack_export",
+        title: "Export Semantic Model",
         description: "Export the full semantic model for devices. Supports haystack-json (Project Haystack), brick-ttl (Turtle RDF), and brick-jsonld (JSON-LD) formats.",
         input_schema: json!({
             "type": "object",
@@ -420,6 +469,7 @@ lazy_static::lazy_static! {
     // ═══ v4: Rules Management ═══
     ToolDef {
         name: "rule_toggle",
+        title: "Toggle Rule",
         description: "Enable or disable an auto-tagging rule by ID.",
         input_schema: json!({
             "type": "object",
@@ -438,6 +488,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "rule_create",
+        title: "Create Rule",
         description: "Create a new auto-tagging rule with a regex pattern and target tags.",
         input_schema: json!({
             "type": "object",
@@ -481,6 +532,7 @@ lazy_static::lazy_static! {
     // ═══ v4: Alarms & Trends ═══
     ToolDef {
         name: "alarm_list",
+        title: "List Alarms",
         description: "List alarms for devices, optionally filtered to active-only.",
         input_schema: json!({
             "type": "object",
@@ -499,6 +551,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "alarm_acknowledge",
+        title: "Acknowledge Alarm",
         description: "Acknowledge an alarm by device serial and alarm ID.",
         input_schema: json!({
             "type": "object",
@@ -517,6 +570,7 @@ lazy_static::lazy_static! {
     },
     ToolDef {
         name: "trendlog_query",
+        title: "Query Trend Log",
         description: "Query historical trend data for a point over a time range.",
         input_schema: json!({
             "type": "object",
@@ -554,14 +608,16 @@ lazy_static::lazy_static! {
 
 struct ToolDef {
     name: &'static str,
+    title: &'static str,
     description: &'static str,
     input_schema: Value,
 }
 
-// ═══ MCP Server (HTTP) ═══
+// ═══ MCP Server (Streamable HTTP) ═══
 
 const SERVER_NAME: &str = "T3000 Haystack MCP";
 const SERVER_VERSION: &str = "1.0.0";
+const PROTOCOL_VERSION: &str = "2025-03-26";
 
 /// Helper to get DB from T3AppState
 async fn get_db(state: &T3AppState) -> Result<sea_orm::DatabaseConnection, (StatusCode, Json<Value>)> {
@@ -571,13 +627,75 @@ async fn get_db(state: &T3AppState) -> Result<sea_orm::DatabaseConnection, (Stat
     Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Local database connection not available"}))))
 }
 
-/// POST /api/mcp — JSON-RPC 2.0 endpoint
-pub async fn mcp_handler(
-    State(state): State<T3AppState>,
-    Json(body): Json<Value>,
-) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let db = get_db(&state).await?;
+// ═══ Session Store ═══
 
+fn get_session_store(_state: &T3AppState) -> SessionStore {
+    // Reuse or create session store — stored in a static for now
+    // In production this should be in T3AppState
+    use std::sync::OnceLock;
+    static SESSIONS: OnceLock<SessionStore> = OnceLock::new();
+    SESSIONS.get_or_init(|| Arc::new(Mutex::new(HashMap::new()))).clone()
+}
+
+// ═══ Routes ═══
+
+/// Create MCP routes for the Axum router
+pub fn create_mcp_routes() -> Router<T3AppState> {
+    Router::new()
+        .route("/api/mcp", post(mcp_post_handler))
+        .route("/api/mcp", get(mcp_sse_handler))
+        .route("/api/mcp", delete(mcp_delete_handler))
+}
+
+// ═══ POST /api/mcp — JSON-RPC 2.0 request handling ═══
+
+pub async fn mcp_post_handler(
+    State(state): State<T3AppState>,
+    headers: HeaderMap,
+    Json(body): Json<Value>,
+) -> Result<impl IntoResponse, (StatusCode, Json<Value>)> {
+    let db = get_db(&state).await?;
+    let sessions = get_session_store(&state);
+
+    // Extract or create session
+    let session_id = headers
+        .get("mcp-session-id")
+        .and_then(|v| v.to_str().ok())
+        .map(String::from);
+
+    let session_id = match session_id {
+        Some(id) => {
+            // Validate existing session
+            let sessions_map = sessions.lock().await;
+            if sessions_map.contains_key(&id) {
+                id
+            } else {
+                // Invalid session — create new
+                drop(sessions_map);
+                let new_id = Uuid::new_v4().to_string();
+                let mut map = sessions.lock().await;
+                map.insert(new_id.clone(), McpSession {
+                    id: new_id.clone(),
+                    created_at: Utc::now().to_rfc3339(),
+                    initialized: false,
+                });
+                new_id
+            }
+        }
+        None => {
+            // No session — create one
+            let new_id = Uuid::new_v4().to_string();
+            let mut map = sessions.lock().await;
+            map.insert(new_id.clone(), McpSession {
+                id: new_id.clone(),
+                created_at: Utc::now().to_rfc3339(),
+                initialized: false,
+            });
+            new_id
+        }
+    };
+
+    // Parse JSON-RPC request
     let req: JsonRpcRequest = serde_json::from_value(body).map_err(|e| {
         (StatusCode::BAD_REQUEST, Json(json!({
             "jsonrpc": "2.0",
@@ -586,23 +704,116 @@ pub async fn mcp_handler(
         })))
     })?;
 
+    // JSON-RPC 2.0: notifications have no "id" — server MUST NOT respond
+    if req.id.is_none() {
+        // Acknowledge notifications/initialized to mark session ready
+        if req.method == "notifications/initialized" {
+            let mut map = sessions.lock().await;
+            if let Some(session) = map.get_mut(&session_id) {
+                session.initialized = true;
+            }
+        }
+        // Return empty 202 Accepted for notifications
+        let mut response_headers = HeaderMap::new();
+        response_headers.insert(
+            "mcp-session-id",
+            axum::http::HeaderValue::from_str(&session_id).unwrap_or(
+                axum::http::HeaderValue::from_static("unknown")
+            ),
+        );
+        return Ok((response_headers, Json(json!({}))));
+    }
+
+    // Track initialization state for regular requests too
+    if req.method == "initialize" {
+        let mut map = sessions.lock().await;
+        if let Some(session) = map.get_mut(&session_id) {
+            session.initialized = true;
+        }
+    }
+
     let resp = handle_request(&req, &db).await;
-    Ok(Json(serde_json::to_value(resp).unwrap_or(json!({
+
+    // Build response with session header
+    let mut response_headers = HeaderMap::new();
+    response_headers.insert(
+        "mcp-session-id",
+        axum::http::HeaderValue::from_str(&session_id).unwrap_or(
+            axum::http::HeaderValue::from_static("unknown")
+        ),
+    );
+
+    let body = Json(serde_json::to_value(&resp).unwrap_or(json!({
         "jsonrpc": "2.0",
         "id": null,
         "error": { "code": -32603, "message": "Internal error" }
-    }))))
+    })));
+
+    Ok((response_headers, body))
 }
 
-/// Create MCP routes for the Axum router
-pub fn create_mcp_routes() -> Router<T3AppState> {
-    Router::new()
-        .route("/api/mcp", post(mcp_handler))
+// ═══ GET /api/mcp — SSE endpoint for server→client notifications ═══
+
+pub async fn mcp_sse_handler(
+    State(state): State<T3AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, (StatusCode, Json<Value>)> {
+    let sessions = get_session_store(&state);
+
+    // Validate session
+    let session_id = headers
+        .get("mcp-session-id")
+        .and_then(|v| v.to_str().ok());
+
+    if let Some(id) = session_id {
+        let map = sessions.lock().await;
+        if !map.contains_key(id) {
+            return Err((StatusCode::NOT_FOUND, Json(json!({
+                "jsonrpc": "2.0",
+                "id": null,
+                "error": { "code": -32001, "message": "Session not found" }
+            }))));
+        }
+    }
+
+    // Return SSE stream with initial endpoint event + keepalive
+    // Using raw response for maximum compatibility (no axum SSE feature needed)
+    let endpoint = format!("/api/mcp?session={}", session_id.unwrap_or(""));
+    let body = format!(
+        "event: endpoint\ndata: {}\n\n: keepalive\n\n",
+        endpoint
+    );
+
+    let mut response_headers = HeaderMap::new();
+    response_headers.insert("Content-Type", "text/event-stream".parse().unwrap());
+    response_headers.insert("Cache-Control", "no-cache".parse().unwrap());
+    response_headers.insert("Connection", "keep-alive".parse().unwrap());
+
+    Ok((response_headers, body))
 }
+
+// ═══ DELETE /api/mcp — Session termination ═══
+
+pub async fn mcp_delete_handler(
+    State(state): State<T3AppState>,
+    headers: HeaderMap,
+) -> Result<StatusCode, (StatusCode, Json<Value>)> {
+    let sessions = get_session_store(&state);
+
+    if let Some(id) = headers.get("mcp-session-id").and_then(|v| v.to_str().ok()) {
+        let mut map = sessions.lock().await;
+        map.remove(id);
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ═══ Request Dispatch ═══
 
 async fn handle_request(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnection) -> JsonRpcResponse {
     match req.method.as_str() {
         "initialize" => handle_initialize(req),
+        "ping" => handle_ping(req),
         "tools/list" => handle_tools_list(req),
         "tools/call" => handle_tools_call(req, db).await,
         _ => JsonRpcResponse {
@@ -612,6 +823,7 @@ async fn handle_request(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnection) 
             error: Some(JsonRpcError {
                 code: -32601,
                 message: format!("Method not found: {}", req.method),
+                data: None,
             }),
         },
     }
@@ -622,15 +834,27 @@ fn handle_initialize(req: &JsonRpcRequest) -> JsonRpcResponse {
         jsonrpc: "2.0".into(),
         id: req.id.clone(),
         result: Some(json!({
-            "protocolVersion": "2024-11-05",
+            "protocolVersion": PROTOCOL_VERSION,
             "serverInfo": {
                 "name": SERVER_NAME,
                 "version": SERVER_VERSION
             },
             "capabilities": {
-                "tools": {}
+                "tools": {
+                    "listChanged": true
+                }
             }
         })),
+        error: None,
+    }
+}
+
+fn handle_ping(req: &JsonRpcRequest) -> JsonRpcResponse {
+    // Protocol-level ping (different from the "ping" tool)
+    JsonRpcResponse {
+        jsonrpc: "2.0".into(),
+        id: req.id.clone(),
+        result: Some(json!({})),
         error: None,
     }
 }
@@ -641,6 +865,7 @@ fn handle_tools_list(req: &JsonRpcRequest) -> JsonRpcResponse {
         .map(|t| {
             json!({
                 "name": t.name,
+                "title": t.title,
                 "description": t.description,
                 "inputSchema": t.input_schema
             })
@@ -663,7 +888,7 @@ async fn handle_tools_call(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnectio
                 jsonrpc: "2.0".into(),
                 id: req.id.clone(),
                 result: None,
-                error: Some(JsonRpcError { code: -32602, message: "Invalid params".into() }),
+                error: Some(JsonRpcError { code: -32602, message: "Invalid params".into(), data: None }),
             };
         }
     };
@@ -687,11 +912,20 @@ async fn handle_tools_call(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnectio
             })),
             error: None,
         },
+        // Tool execution errors → isError: true (LLM can see friendly message)
         Err(e) => JsonRpcResponse {
             jsonrpc: "2.0".into(),
             id: req.id.clone(),
-            result: None,
-            error: Some(JsonRpcError { code: -32000, message: e }),
+            result: Some(json!({
+                "content": [
+                    {
+                        "type": "text",
+                        "text": e
+                    }
+                ],
+                "isError": true
+            })),
+            error: None,
         },
     }
 }
@@ -889,7 +1123,7 @@ async fn execute_tool(
             Ok(json!({
                 "name": SERVER_NAME,
                 "version": SERVER_VERSION,
-                "protocolVersion": "2024-11-05",
+                "protocolVersion": PROTOCOL_VERSION,
                 "toolCount": TOOLS.len()
             }).to_string())
         }
@@ -900,6 +1134,7 @@ async fn execute_tool(
                 Some(tool) => {
                     serde_json::to_string_pretty(&json!({
                         "name": tool.name,
+                        "title": tool.title,
                         "description": tool.description,
                         "inputSchema": tool.input_schema
                     }))
