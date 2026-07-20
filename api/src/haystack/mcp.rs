@@ -1955,13 +1955,11 @@ async fn execute_tool(
             let end = args.get("end").and_then(|v| v.as_str()).map(String::from);
             let limit: u64 = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(1000);
 
-            let point_id = format!("{}_{}_{}", serial,
-                match point_type { "INPUT" => "in", "OUTPUT" => "out", _ => "var" },
-                point_index);
-
+            // Query TRENDLOG_INPUTS to find which trendlog this point belongs to
             let tl_sql = format!(
-                "SELECT ID, PanelID FROM TRENDLOGS WHERE SerialNumber = {} AND Point_ID LIKE '%{}%' LIMIT 1",
-                serial, point_id
+                "SELECT Trendlog_ID, PanelId FROM TRENDLOG_INPUTS
+                 WHERE SerialNumber = {} AND Point_Type = '{}' AND Point_Index = '{}' LIMIT 1",
+                serial, point_type, point_index
             );
             let tl_rows = db
                 .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &tl_sql))
@@ -1977,8 +1975,8 @@ async fn execute_tool(
                 }).to_string());
             }
 
-            let trendlog_id: String = tl_rows[0].try_get("", "ID").unwrap_or_default();
-            let panel_id: i32 = tl_rows[0].try_get::<i32>("", "PanelID").unwrap_or(0);
+            let trendlog_id: String = tl_rows[0].try_get("", "Trendlog_ID").unwrap_or_default();
+            let panel_id: i32 = tl_rows[0].try_get::<i32>("", "PanelId").unwrap_or(0);
 
             let request = TrendlogHistoryRequest {
                 serial_number: serial,
