@@ -42,6 +42,7 @@ use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHis
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
+    #[allow(dead_code)]
     jsonrpc: String,
     #[serde(default)]
     id: Option<Value>,
@@ -74,7 +75,9 @@ struct JsonRpcError {
 /// MCP session tracking — one per connected client
 #[derive(Debug, Clone)]
 struct McpSession {
+    #[allow(dead_code)]
     id: String,
+    #[allow(dead_code)]
     created_at: String,
     initialized: bool,
 }
@@ -1259,6 +1262,11 @@ async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;
 
+            // Validate point_type early — prevents SQL injection
+            if point_type != "INPUT" && point_type != "OUTPUT" && point_type != "VARIABLE" {
+                return Err(format!("Invalid point_type: {}. Must be INPUT, OUTPUT, or VARIABLE", point_type));
+            }
+
             let sn_filter = vec![serial];
             let tag_entries = ts::get_point_tags(db, &sn_filter, Some(point_type))
                 .await
@@ -1287,7 +1295,7 @@ async fn execute_tool(
                 "INPUT" => "INPUTS",
                 "OUTPUT" => "OUTPUTS",
                 "VARIABLE" => "VARIABLES",
-                _ => return Err(format!("Invalid point_type: {}", point_type)),
+                _ => unreachable!(), // validated above
             };
             let idx_col = match point_type {
                 "INPUT" => "Input_Index", "OUTPUT" => "Output_Index", _ => "Variable_Index"
