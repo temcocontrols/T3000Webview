@@ -27,9 +27,17 @@
 
 ## API Routes
 
-| Route | Description |
-|---|---|
-| `POST /api/mcp` | MCP JSON-RPC 2.0 endpoint (25 tools) |
+### MCP Server (Streamable HTTP — v4.1)
+
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/api/mcp` | MCP JSON-RPC 2.0 requests (25 tools) |
+| `GET` | `/api/mcp` | SSE endpoint (server → client notifications) |
+| `DELETE` | `/api/mcp` | Session termination |
+
+No bridge needed — connects directly via `"type": "http"` to `http://localhost:9103/api/mcp`.
+
+### Haystack REST APIs
 | `POST /api/haystack/auto-tagging/run` | Run auto-tagging |
 | `POST /api/haystack/auto-tagging/preview` | Preview results |
 | `POST /api/haystack/auto-tagging/reset` | Reset auto-tags |

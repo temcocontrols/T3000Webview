@@ -39,8 +39,9 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
                                  │
                       ┌──────────▼──────────┐
                       │   MCP Server (v4)    │
-                      │   POST /api/mcp      │
-                      │   JSON-RPC 2.0        │
+                      │   Streamable HTTP     │
+                      │   POST/GET/DELETE     │
+                      │   /api/mcp            │
                       │   25 tools            │
                       └──────────────────────┘
 ```
@@ -128,7 +129,22 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
 
 ## 5. Protocol
 
-JSON-RPC 2.0 over `POST /api/mcp`. Unchanged from v3.
+MCP Streamable HTTP (2025-03-26) over `/api/mcp`. No bridge needed.
+
+### 5.1 Transport
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/mcp` | JSON-RPC 2.0 requests (client → server) |
+| `GET` | `/api/mcp` | SSE endpoint (server → client notifications) |
+| `DELETE` | `/api/mcp` | Session termination |
+
+Session management via `Mcp-Session-Id` header — returned in every POST response, validated on GET/DELETE.
+
+### 5.2 JSON-RPC Methods
+
+Standard methods: `initialize`, `ping`, `tools/list`, `tools/call`.  
+Notifications: `notifications/initialized` (accepted, no response).
 
 ```
 Request:
@@ -139,12 +155,30 @@ Response (success):
 { "jsonrpc": "2.0", "id": 1,
   "result": { "content": [{ "type": "text", "text": "<json>" }] } }
 
-Response (error):
+Response (tool error — isError: true):
+{ "jsonrpc": "2.0", "id": 1,
+  "result": { "content": [{ "type": "text", "text": "<error>" }], "isError": true } }
+
+Response (protocol error):
 { "jsonrpc": "2.0", "id": 1,
   "error": { "code": -32602, "message": "..." } }
 ```
 
-Standard JSON-RPC methods: `initialize`, `tools/list`, `tools/call`.
+### 5.3 MCP Compliance
+
+| Spec Requirement | Status |
+|---|---|
+| Streamable HTTP transport (POST + GET + DELETE) | ✅ |
+| `Mcp-Session-Id` header | ✅ |
+| `initialize` with `protocolVersion`, `serverInfo`, `capabilities` | ✅ `2025-03-26` |
+| `capabilities.tools.listChanged: true` | ✅ |
+| `notifications/initialized` (no response) | ✅ |
+| Protocol-level `ping` | ✅ |
+| `tools/list` with `name`, `title`, `description`, `inputSchema` | ✅ |
+| `tools/call` success: `{ content: [{ type: "text", text }] }` | ✅ |
+| `tools/call` error: `{ content: [...], isError: true }` | ✅ |
+| Standard JSON-RPC error codes | ✅ |
+| Works with all modern MCP clients (VS Code, Claude, Cursor, etc.) | ✅ |
 
 ---
 
@@ -187,9 +221,13 @@ Standard JSON-RPC methods: `initialize`, `tools/list`, `tools/call`.
 
 | Section | Change |
 |---|---|
-| `TOOLS` lazy_static | Append 18 new `ToolDef` entries |
-| `handle_request` match | Add 18 arms to `"tools/call"` branch |
-| New `async fn handle_*` | 18 handler functions |
+| `TOOLS` lazy_static | All 25 `ToolDef` entries with `name`, `title`, `description`, `inputSchema` |
+| `handle_request` match | 4 methods: `initialize`, `ping`, `tools/list`, `tools/call` |
+| `mcp_post_handler` | Session management via `Mcp-Session-Id`, notification handling |
+| `mcp_sse_handler` | GET /api/mcp SSE endpoint |
+| `mcp_delete_handler` | DELETE /api/mcp session termination |
+| `handle_tools_call` | `isError: true` for tool errors (LLM-friendly) |
+| `execute_tool` | 25 tool handlers + input validation |
 
 ### 9.2 Service Dependencies
 
@@ -199,15 +237,15 @@ Standard JSON-RPC methods: `initialize`, `tools/list`, `tools/call`.
 | `device_list` | `T3DeviceService` |
 | `device_get_points`, `point_get_metadata` | Point tables + `tags_service` + Brick class query |
 | `metadata_search` | `tags_service::search_points` |
-| `point_read`, `point_read_batch` | FFI action=17 |
-| `point_write`, `point_write_batch` | FFI action=16 |
+| `point_read`, `point_read_batch` | Raw SQL SELECT fValue |
+| `point_write`, `point_write_batch` | Raw SQL UPDATE fValue |
 | `haystack_validate` | `HAYSTACK_POINT_TAGS` + `HAYSTACK_POINT_BRICK_CLASS` + point tables |
 | `haystack_export` | All tagged points → serialize |
 | `rule_toggle`, `rule_create` | `auto_tagging_service` |
 | `alarm_list`, `alarm_acknowledge` | Alarm tables |
 | `trendlog_query` | `T3TrendlogDataService` |
 
-### 9.3 Files Not Touched
+### 9.3 Files Not Touched (unchanged from v4.0)
 
 - `api/src/server.rs` — no route changes (MCP already registered)
 - `api/src/t3_device/` — no changes (existing services used as-is)
@@ -217,11 +255,43 @@ Standard JSON-RPC methods: `initialize`, `tools/list`, `tools/call`.
 - `api/src/haystack/auto_tagging_service.rs` — no changes
 - All frontend files — no changes
 - All database migrations — no changes
-- `tools/t3000-mcp-bridge.js` — no changes
+
+### 9.4 Removed (v4.1)
+
+- `tools/t3000-mcp-bridge.js` — no longer needed; server speaks Streamable HTTP natively
 
 ---
 
-## 10. Database Tables (unchanged)
+## 10. Changelog
+
+### v4.1 — 2026-07-20 (MCP Streamable HTTP compliance)
+
+| Change | Detail |
+|---|---|
+| Transport | POST + GET(SSE) + DELETE `/api/mcp` (Streamable HTTP) |
+| Sessions | UUID sessions via `Mcp-Session-Id` header |
+| Protocol version | `2025-03-26` |
+| Capabilities | `tools.listChanged: true` |
+| `notifications/initialized` | Accepted as JSON-RPC notification (no response) |
+| Protocol `ping` | Added separate from tool `ping` |
+| Tool errors | `isError: true` in result (not JSON-RPC error) |
+| Tool `title` | All 25 tools have `title` field |
+| `describe_tool` | Includes `title` in output |
+| `get_version` | Uses `PROTOCOL_VERSION` constant |
+| `point_get_metadata` | `point_type` validated before SQL (security) |
+| Bridge | Removed `tools/t3000-mcp-bridge.js` — no longer needed |
+
+### v4.0 — 2026-07-20
+
+| Change | Detail |
+|---|---|
+| Tools | Extended from 7 to 25 across 7 categories |
+| Categories | Haystack, Core, Data, Operational, Analytics, Rules, Alarms |
+| File changes | `mcp.rs` only |
+
+---
+
+## 11. Database Tables (unchanged)
 
 | Table | Rows (approx) |
 |---|---|
