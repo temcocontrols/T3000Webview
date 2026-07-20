@@ -180,7 +180,7 @@ const RulesTab: React.FC = () => {
       return (
       <Popover open={open} onOpenChange={(_, d) => setOpen(d.open)} withArrow>
         <PopoverTrigger disableButtonEnhancement>
-          <Button size="small" icon={<DeleteRegular />} appearance="subtle" />
+          <Button size="small" icon={<DeleteRegular style={{ fontSize: 17 }} />} appearance="subtle" />
         </PopoverTrigger>
         <PopoverSurface style={{ padding: 12 }}>
           <div style={{ fontSize: 12, marginBottom: 8 }}>Delete <strong>{r.rule_name}</strong>?</div>
