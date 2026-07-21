@@ -84,9 +84,12 @@ export const HvacDesignerPage: React.FC = () => {
   // Initialize HVAC UI system once when page mounts
   useEffect(() => {
     try {
-      // Clear residual SVG from Strict Mode remount.
-      const svgArea = document.getElementById('svg-area');
-      svgArea?.replaceChildren();
+      // Clear residual SVG from Strict Mode remount — must clear ALL
+      // SVG containers: #svg-area AND the ruler divs. SetUpRulers
+      // creates new SVG elements inside h-ruler/v-ruler on each mount.
+      document.getElementById('svg-area')?.replaceChildren();
+      document.getElementById('h-ruler')?.replaceChildren();
+      document.getElementById('v-ruler')?.replaceChildren();
 
       Hvac.UI.Initialize(null);
 

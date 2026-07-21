@@ -138,7 +138,6 @@ class KeyboardOpt {
    * @param event - The keyboard event object
    */
   static OnKeyDown(event) {
-    console.warn('[KEY-DBG] OnKeyDown fired — keyCode:', event.keyCode, 'ctrl:', event.ctrlKey, 'target:', event.target?.tagName);
     LogUtil.Debug('U.KeyboardUtil: Processing key down event', event.keyCode);
 
     const keyCode = event.keyCode;
