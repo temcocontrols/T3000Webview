@@ -85,14 +85,19 @@ export const HvacDesignerPage: React.FC = () => {
   // Initialize HVAC UI system once when page mounts
   useEffect(() => {
     try {
-      Hvac.UI.Initialize(null);
-
-      const svgEl = document.querySelector('#svg-area svg');
-      if (!svgEl && T3Gv?.docUtil) {
-        (T3Gv.docUtil as any).svgDoc = null;
-        (T3Gv.docUtil as any).InitSvgArea({});
-        UIUtil.InitT3GvOpt();
+      // Clear any residual SVGs from Strict Mode remount
+      const svgArea = document.getElementById('svg-area');
+      if (svgArea) {
+        while (svgArea.firstChild) {
+          svgArea.removeChild(svgArea.firstChild);
+        }
       }
+      // Reset svgDoc so InitSvgArea creates a fresh SVG
+      if (T3Gv?.docUtil) {
+        (T3Gv.docUtil as any).svgDoc = null;
+      }
+
+      Hvac.UI.Initialize(null);
 
       Hvac.IdxPageReact.initQuasar(null);
       Hvac.IdxPageReact.initPageReact();

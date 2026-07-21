@@ -26,7 +26,6 @@ import {
   ZoomOutRegular,
   GridRegular,
   RulerRegular,
-  ArrowExportRegular,
   LockClosedRegular,
   LockOpenRegular,
   SelectAllOnRegular,
@@ -43,7 +42,6 @@ import {
   AlignCenterVerticalRegular,
   AlignBottomRegular,
   AddRegular,
-  EraserRegular,
   CursorRegular,
   ImageAddRegular,
   ResizeImageRegular,
@@ -53,9 +51,12 @@ import {
   NavigationRegular,
   ArrowLeftRegular,
 } from '@fluentui/react-icons';
-import { useHvacDesignerStore } from '../../store/designerStore';
-import { useDrawing } from '../../hooks/useDrawing';
 import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
+import EvtOpt from '@/lib/t3-hvac/Event/EvtOpt';
+
+const toolOpt = EvtOpt.toolOpt;
+// Synthetic event for ToolOpt methods that expect a DOM event
+const noopEvent = { preventDefault: () => {}, stopPropagation: () => {} } as any;
 
 const useStyles = makeStyles({
   container: {
@@ -166,33 +167,10 @@ interface TopToolbarProps {
 
 export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNavigateBack }) => {
   const styles = useStyles();
-  const {
-    canvas,
-    history,
-    selectedShapeIds,
-    shapes,
-    isDirty,
-    undo,
-    redo,
-    copyToClipboard,
-    cutToClipboard,
-    pasteFromClipboard,
-    deleteShapes,
-    duplicateShapes,
-    toggleGrid,
-    toggleRulers,
-    selectAll,
-    clearSelection,
-    groupShapes,
-    ungroupShape,
-    clearDrawing,
-  } = useHvacDesignerStore();
 
-  const { saveDrawing, exportAs, createNew, isSaving } = useDrawing();
   // Use existing Hvac library for zoom operations
-  const zoomIn = () => T3Gv.docUtil?.SetZoomLevel((T3Gv.docUtil.zoom.value || 100) + 10);
-  const zoomOut = () => T3Gv.docUtil?.SetZoomLevel((T3Gv.docUtil.zoom.value || 100) - 10);
-  const [showExportMenu, setShowExportMenu] = useState(false);
+  const zoomIn = () => T3Gv.docUtil?.SetZoomLevel((T3Gv.docUtil?.GetZoomFactor() ?? 100) + 10);
+  const zoomOut = () => T3Gv.docUtil?.SetZoomLevel((T3Gv.docUtil?.GetZoomFactor() ?? 100) - 10);
   const [showRotateMenu, setShowRotateMenu] = useState(false);
   const [showAlignMenu, setShowAlignMenu] = useState(false);
   const [showFlipMenu, setShowFlipMenu] = useState(false);
@@ -201,61 +179,71 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
   const [zoomValue, setZoomValue] = useState(100);
 
   const handleSave = async () => {
-    try {
-      await saveDrawing();
-    } catch (error) {
-      console.error('Failed to save:', error);
-    }
-  };
-
-  const handleExport = async (format: 'json' | 'svg' | 'png' | 'pdf') => {
-    try {
-      await exportAs({ format });
-      setShowExportMenu(false);
-    } catch (error) {
-      console.error('Failed to export:', error);
-    }
+    toolOpt.SaveAct();
   };
 
   const handleDelete = () => {
-    if (selectedShapeIds.length > 0) {
-      deleteShapes(selectedShapeIds);
-    }
+    toolOpt.DeleteAct(noopEvent);
   };
 
   const handleDuplicate = () => {
-    if (selectedShapeIds.length > 0) {
-      duplicateShapes(selectedShapeIds);
-    }
+    toolOpt.DuplicateAct(noopEvent);
   };
 
   const handleGroup = () => {
-    if (selectedShapeIds.length > 1) {
-      groupShapes(selectedShapeIds);
-    }
+    toolOpt.GroupAct(noopEvent);
+  };
+
+  const handleUngroup = () => {
+    toolOpt.UnGroupAct(noopEvent);
+  };
+
+  const handleBringToFront = () => {
+    toolOpt.ShapeBringToFrontAct(noopEvent);
+  };
+
+  const handleSendToBack = () => {
+    toolOpt.ShapeSendToBackAct(noopEvent);
+  };
+
+  const handleCopy = () => {
+    toolOpt.CopyAct(noopEvent);
+  };
+
+  const handleCut = () => {
+    toolOpt.CutAct(noopEvent);
+  };
+
+  const handlePaste = () => {
+    toolOpt.PasteAct(noopEvent);
+  };
+
+  const handleUndo = () => {
+    toolOpt.UndoAct(noopEvent);
+  };
+
+  const handleRedo = () => {
+    toolOpt.RedoAct(noopEvent);
   };
 
   const handleRotate = (angle: number) => {
-    // TODO: Implement rotation
-    console.log('Rotate:', angle);
+    toolOpt.RotateAct(noopEvent, angle);
     setShowRotateMenu(false);
   };
 
   const handleAlign = (type: string) => {
-    // TODO: Implement alignment
-    console.log('Align:', type);
+    toolOpt.ShapeAlignAct(type);
     setShowAlignMenu(false);
   };
 
   const handleFlip = (type: string) => {
-    // TODO: Implement flip
-    console.log('Flip:', type);
+    if (type === 'horizontal') toolOpt.ShapeFlipHorizontalAct(noopEvent);
+    else toolOpt.ShapeFlipVerticalAct(noopEvent);
     setShowFlipMenu(false);
   };
 
   const handleMakeSame = (type: string) => {
-    // TODO: Implement make same
-    console.log('Make same:', type);
+    toolOpt.MakeSameSizeAct(noopEvent, type);
     setShowMakeSameMenu(false);
   };
 
@@ -319,19 +307,19 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 1: Selection */}
       <div className={styles.group}>
-        <div className={styles.toolItem} onClick={clearSelection}>
+        <div className={styles.toolItem} onClick={() => toolOpt.SelectAct(noopEvent)}>
           <CursorRegular className={styles.toolIcon} />
           <span>Select</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleLock : undefined}>
+        <div className={styles.toolItem} onClick={handleLock}>
           <LockClosedRegular className={styles.toolIcon} />
           <span>Lock</span>
         </div>
-        <div className={styles.toolItem} onClick={selectAll}>
+        <div className={styles.toolItem} onClick={() => toolOpt.SelectAllObjects()}>
           <SelectAllOnRegular className={styles.toolIcon} />
           <span>Select All</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleUnlock : undefined}>
+        <div className={styles.toolItem} onClick={handleUnlock}>
           <LockOpenRegular className={styles.toolIcon} />
           <span>Unlock</span>
         </div>
@@ -341,23 +329,23 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 2: Clipboard */}
       <div className={styles.group}>
-        <div className={styles.toolItem} onClick={pasteFromClipboard}>
+        <div className={styles.toolItem} onClick={handlePaste}>
           <ClipboardPasteRegular className={styles.toolIcon} />
           <span>Paste</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? copyToClipboard : undefined}>
+        <div className={styles.toolItem} onClick={handleCopy}>
           <CopyRegular className={styles.toolIcon} />
           <span>Copy</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? cutToClipboard : undefined}>
+        <div className={styles.toolItem} onClick={handleCut}>
           <CutRegular className={styles.toolIcon} />
           <span>Cut</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleDelete : undefined}>
+        <div className={styles.toolItem} onClick={handleDelete}>
           <DeleteRegular className={styles.toolIcon} />
           <span>Delete</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleDuplicate : undefined}>
+        <div className={styles.toolItem} onClick={handleDuplicate}>
           <AddRegular className={styles.toolIcon} />
           <span>Duplicate</span>
         </div>
@@ -371,21 +359,17 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 3: History & Save */}
       <div className={styles.group}>
-        <div className={styles.toolItem} data-disabled={history.past.length === 0} onClick={history.past.length > 0 ? undo : undefined}>
+        <div className={styles.toolItem} onClick={handleUndo}>
           <ArrowUndoRegular className={styles.toolIcon} />
           <span>Undo</span>
         </div>
-        <div className={styles.toolItem} data-disabled={!isDirty || isSaving} onClick={isDirty && !isSaving ? handleSave : undefined}>
+        <div className={styles.toolItem} onClick={handleSave}>
           <SaveRegular className={styles.toolIcon} />
-          <span>{isSaving ? 'Saving...' : 'Save'}</span>
+          <span>Save</span>
         </div>
-        <div className={styles.toolItem} data-disabled={history.future.length === 0} onClick={history.future.length > 0 ? redo : undefined}>
+        <div className={styles.toolItem} onClick={handleRedo}>
           <ArrowRedoRegular className={styles.toolIcon} />
           <span>Redo</span>
-        </div>
-        <div className={styles.toolItem} onClick={clearDrawing}>
-          <EraserRegular className={styles.toolIcon} />
-          <span>Clear</span>
         </div>
       </div>
 
@@ -395,7 +379,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
       <div className={styles.group}>
         <Menu open={showRotateMenu} onOpenChange={(_e, data) => setShowRotateMenu(data.open)}>
           <MenuTrigger>
-            <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+            <div className={styles.toolItem}>
               <ArrowRotateClockwiseRegular className={styles.toolIcon} />
               <span>Rotate</span>
               <ChevronDownRegular style={{ fontSize: '10px' }} />
@@ -403,7 +387,6 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem className={styles.menuItem} onClick={() => handleRotate(0)}>0°</MenuItem>
               <MenuItem className={styles.menuItem} onClick={() => handleRotate(45)}>45°</MenuItem>
               <MenuItem className={styles.menuItem} onClick={() => handleRotate(90)}>90°</MenuItem>
               <MenuItem className={styles.menuItem} onClick={() => handleRotate(180)}>180°</MenuItem>
@@ -413,7 +396,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
         </Menu>
         <Menu open={showAlignMenu} onOpenChange={(_e, data) => setShowAlignMenu(data.open)}>
           <MenuTrigger>
-            <div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2}>
+            <div className={styles.toolItem}>
               <AlignCenterHorizontalRegular className={styles.toolIcon} />
               <span>Align</span>
               <ChevronDownRegular style={{ fontSize: '10px' }} />
@@ -432,7 +415,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
         </Menu>
         <Menu open={showFlipMenu} onOpenChange={(_e, data) => setShowFlipMenu(data.open)}>
           <MenuTrigger>
-            <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+            <div className={styles.toolItem}>
               <ArrowRotateCounterclockwiseRegular className={styles.toolIcon} />
               <span>Flip</span>
               <ChevronDownRegular style={{ fontSize: '10px' }} />
@@ -447,7 +430,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
         </Menu>
         <Menu open={showMakeSameMenu} onOpenChange={(_e, data) => setShowMakeSameMenu(data.open)}>
           <MenuTrigger>
-            <div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2}>
+            <div className={styles.toolItem}>
               <ResizeImageRegular className={styles.toolIcon} />
               <span>Make same</span>
               <ChevronDownRegular style={{ fontSize: '10px' }} />
@@ -467,19 +450,19 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 5: Arrange */}
       <div className={styles.group}>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2} onClick={selectedShapeIds.length >= 2 ? handleGroup : undefined}>
+        <div className={styles.toolItem} onClick={handleGroup}>
           <GroupRegular className={styles.toolIcon} />
           <span>Group</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+        <div className={styles.toolItem} onClick={handleBringToFront}>
           <ArrowUpRegular className={styles.toolIcon} />
           <span>Bring to Front</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+        <div className={styles.toolItem} onClick={handleUngroup}>
           <GroupDismissRegular className={styles.toolIcon} />
           <span>Ungroup</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+        <div className={styles.toolItem} onClick={handleSendToBack}>
           <ArrowDownRegular className={styles.toolIcon} />
           <span>Send to Back</span>
         </div>
@@ -489,7 +472,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 6: Library */}
       <div className={styles.group}>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+        <div className={styles.toolItem}>
           <AddRegular className={styles.toolIcon} />
           <span>Add to Library</span>
         </div>
@@ -520,11 +503,17 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
             </MenuList>
           </MenuPopover>
         </Menu>
-        <div className={styles.toolItem} onClick={toggleRulers}>
+        <div className={styles.toolItem} onClick={() => {
+          const dc = T3Gv.docUtil?.docConfig;
+          if (dc) { dc.showRulers = !dc.showRulers; T3Gv.docUtil?.UpdateRulerVisibility(); }
+        }}>
           <RulerRegular className={styles.toolIcon} />
           <span>Rulers</span>
         </div>
-        <div className={styles.toolItem} onClick={toggleGrid}>
+        <div className={styles.toolItem} onClick={() => {
+          const dc = T3Gv.docUtil?.docConfig;
+          if (dc) { dc.showGrid = !dc.showGrid; T3Gv.docUtil?.UpdateGrid(); }
+        }}>
           <GridRegular className={styles.toolIcon} />
           <span>Grid</span>
         </div>
