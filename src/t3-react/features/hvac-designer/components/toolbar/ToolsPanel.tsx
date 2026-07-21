@@ -1,13 +1,6 @@
 /**
  * Tools Panel Component
- * Left sidebar with drawing tools organized in expandable sections.
- *
- * Tool clicks delegate to the t3-hvac library's ToolOpt:
- *   - SelectAct()  → selection / cancel
- *   - StampShapeFromToolAct(event, shapeType, uniShapeType)
- *   - ToolLineAct(lineType, event)
- *   - DrawWall(event)
- *   - ClickSymbolAct(event) / DragDropSymbolAct(event)
+ * Left sidebar with drawing tools organized in expandable sections
  */
 
 import React, { useState, useMemo } from 'react';
@@ -25,100 +18,11 @@ import {
 } from '@fluentui/react-icons';
 import { useHvacDesignerStore } from '../../store/designerStore';
 import { NewTool, toolsCategories, selectedTool } from '@/lib/t3-hvac';
-import EvtOpt from '@/lib/t3-hvac/Event/EvtOpt';
 
-const toolOpt = EvtOpt.toolOpt;
-
-// Map tool names to the library's ToolOpt methods (exact shapeType numbers from EvtOpt.ts)
-const handleToolActivate = (tool: any) => {
-  const name = tool.name;
-  console.log('[ToolsPanel] 🔧 Tool selected:', name);
-
-  selectedTool.value = { ...tool, type: 'default' };
-
-  // Build a synthetic mouse event at SVG center — some library paths read
-  // clientX/clientY from the event even if they're not used for positioning.
-  const svgArea = document.getElementById('svg-area');
-  const rect = svgArea?.getBoundingClientRect();
-  const se: any = {
-    clientX: rect ? rect.left + rect.width / 2 : 400,
-    clientY: rect ? rect.top + rect.height / 2 : 300,
-    button: 0,
-    preventDefault: () => {},
-    stopPropagation: () => {},
-  };
-
-  switch (name) {
-    case 'Pointer': toolOpt.SelectAct(se); break;
-    case 'Line':    toolOpt.ToolLineAct('line', se); break;
-    case 'ArcLine': toolOpt.ToolLineAct('arcLine', se); break;
-    case 'SegLine': toolOpt.ToolLineAct('segLine', se); break;
-    case 'Wall':    toolOpt.DrawWall(se); break;
-    // Rectangle shapes
-    case 'Rect':
-    case 'Box':
-    case 'G_Rectangle':
-      toolOpt.StampShapeFromToolAct(se, 2, 'Rect'); break;
-    // Oval/Ellipse shapes
-    case 'Oval':
-      toolOpt.StampShapeFromToolAct(se, 4, 'Oval'); break;
-    // Circle shapes
-    case 'Circle':
-    case 'G_Circle':
-      toolOpt.StampShapeFromToolAct(se, 9, 'Circle'); break;
-    case 'Text':    toolOpt.StampShapeFromToolAct(se, 'textLabel', 'Text'); break;
-    case 'Image':   toolOpt.StampShapeFromToolAct(se, 1, 'Image'); break;
-    // Arrows
-    case 'ArrowRight': toolOpt.StampShapeFromToolAct(se, 10, 'ArrR'); break;
-    case 'ArrowLeft':  toolOpt.StampShapeFromToolAct(se, 11, 'ArrL'); break;
-    case 'ArrowTop':   toolOpt.StampShapeFromToolAct(se, 12, 'ArrT'); break;
-    case 'ArrowBottom':toolOpt.StampShapeFromToolAct(se, 13, 'ArrB'); break;
-    // Library/symbol tools — try ClickSymbolAct for all non-basic tools
-    default:
-      if (tool.cat) {
-        toolOpt.ClickSymbolAct(se);
-      } else {
-        toolOpt.SelectAct(se);
-      }
-  }
-};
-
-/**
- * Parse svg sprite icon string from NewTool definitions.
- * Format: "svguse:icons.svg#iconName|viewBox"
- * Renders an inline SVG with <use> tag referencing the sprite.
- */
-const ToolIcon: React.FC<{ iconDef: string }> = ({ iconDef }) => {
-  if (!iconDef || !iconDef.startsWith('svguse:')) {
-    return <CursorRegular fontSize={14} />;
-  }
-
-  // Parse: "svguse:icons.svg#cursor|0 0 280 200"
-  const withoutPrefix = iconDef.replace('svguse:', '');
-  const [pathAndFragment, viewBox] = withoutPrefix.split('|');
-  const [spritePath, fragmentId] = pathAndFragment.split('#');
-
-  const href = `/${spritePath}#${fragmentId}`;
-  const vb = viewBox || '0 0 24 24';
-
-  return (
-    <svg
-      viewBox={vb}
-      width="16"
-      height="16"
-      style={{ display: 'block', fill: 'currentColor' }}
-    >
-      <use href={href} />
-    </svg>
-  );
-};
-
-// Map tool names to Fluent UI icons (fallback for non-svguse icons)
-const getToolIcon = (tool: any) => {
-  if (tool.icon && tool.icon.startsWith('svguse:')) {
-    return <ToolIcon iconDef={tool.icon} />;
-  }
-  return <CursorRegular fontSize={14} />;
+// Map tool names to Fluent UI icons
+const getToolIcon = (iconName: string) => {
+  // For now, use a default icon - you can map specific icons later
+  return <CursorRegular />;
 };
 
 const useStyles = makeStyles({
@@ -190,12 +94,10 @@ const useStyles = makeStyles({
 });
 
 export const ToolsPanel: React.FC = () => {
-  console.log('🟡 [ToolsPanel] Mounted — left sidebar tools panel is alive');
-
   const styles = useStyles();
-  const { setActiveTool } = useHvacDesignerStore();
+  const { activeTool, setActiveTool } = useHvacDesignerStore();
   const [openItems, setOpenItems] = useState<string[]>(['Basic', 'General', 'Pipe', 'Duct', 'Room', 'Metrics', 'User']);
-  const [selectedToolLocal, setSelectedToolLocal] = useState(NewTool[0]);
+  const [selectedToolLocal, setSelectedToolLocal] = useState(NewTool[0]); // Local state for UI
 
   // Group tools by category
   const toolsByCategory = useMemo(() => {
@@ -208,10 +110,11 @@ export const ToolsPanel: React.FC = () => {
 
   const handleToolClick = (tool: any) => {
     setSelectedToolLocal(tool);
-    // Activate the tool through the library's ToolOpt
-    handleToolActivate(tool);
-    // Sync React state for UI
+    // Update the library's selectedTool (this is what the drawing logic uses)
+    selectedTool.value = { ...tool, type: 'default' };
+    // Also update the local store for React state
     setActiveTool(tool.name.toLowerCase() as any);
+    console.log('🔧 Tool selected:', tool.name);
   };
 
   return (
@@ -239,7 +142,7 @@ export const ToolsPanel: React.FC = () => {
                       positioning="after"
                     >
                       <ToolbarButton
-                        icon={getToolIcon(tool)}
+                        icon={getToolIcon(tool.icon)}
                         appearance={selectedToolLocal.name === tool.name ? 'primary' : 'subtle'}
                         onClick={() => handleToolClick(tool)}
                         className={styles.toolButton}

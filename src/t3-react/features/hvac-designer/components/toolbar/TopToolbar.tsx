@@ -10,7 +10,6 @@ import {
   MenuPopover,
   MenuList,
   MenuItem,
-  Button,
   makeStyles,
 } from '@fluentui/react-components';
 import {
@@ -50,8 +49,6 @@ import {
   ImageRegular,
   ArrowResetRegular,
   ChevronDownRegular,
-  NavigationRegular,
-  ArrowLeftRegular,
 } from '@fluentui/react-icons';
 import { useHvacDesignerStore } from '../../store/designerStore';
 import { useDrawing } from '../../hooks/useDrawing';
@@ -118,34 +115,6 @@ const useStyles = makeStyles({
   toolIcon: {
     fontSize: '14px',
   },
-  leftSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    padding: '0',
-    flexShrink: 0,
-    width: '115px',
-    borderRight: '1px solid rgba(0,0,0,0.1)',
-  },
-  leftRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '4px 8px',
-    height: '30px',
-    gap: '6px',
-  },
-  leftTitle: {
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#323130',
-    whiteSpace: 'nowrap',
-  },
-  leftVersion: {
-    fontSize: '10px',
-    color: '#605e5c',
-    whiteSpace: 'nowrap',
-  },
   divider: {
     width: '1px',
     alignSelf: 'stretch',
@@ -159,12 +128,7 @@ const useStyles = makeStyles({
   },
 });
 
-interface TopToolbarProps {
-  onToggleLeftPanel: () => void;
-  onNavigateBack: () => void;
-}
-
-export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNavigateBack }) => {
+export const TopToolbar: React.FC = () => {
   const styles = useStyles();
   const {
     canvas,
@@ -293,30 +257,6 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
   return (
     <div className={styles.container}>
-      {/* Left: Title + version + controls (2 rows) */}
-      <div className={styles.leftSection}>
-        <div className={styles.leftRow}>
-          <span className={styles.leftTitle}>T3 Hvac</span>
-          <Button
-            appearance="subtle"
-            size="small"
-            icon={<NavigationRegular style={{ fontSize: '14px' }} />}
-            onClick={onToggleLeftPanel}
-            title="Collapse panel"
-          />
-        </div>
-        <div className={styles.leftRow}>
-          <span className={styles.leftVersion}>v1.0</span>
-          <Button
-            appearance="subtle"
-            size="small"
-            icon={<ArrowLeftRegular style={{ fontSize: '14px' }} />}
-            onClick={onNavigateBack}
-            title="Back to main page"
-          />
-        </div>
-      </div>
-
       {/* Group 1: Selection */}
       <div className={styles.group}>
         <div className={styles.toolItem} onClick={clearSelection}>

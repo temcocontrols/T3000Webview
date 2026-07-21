@@ -951,14 +951,6 @@ class EvtUtil {
     return function (event) {
       LogUtil.Debug("E.Evt StampObjectDragEnd input:", event);
 
-      // Normalize: Hammer dragend events have coords at event.gesture.center,
-      // but DragDropObjectDone expects event.clientX / event.clientY.
-      // Copy them onto the event object so the downstream code works unchanged.
-      if (event.gesture && event.gesture.center) {
-        event.clientX = event.gesture.center.clientX;
-        event.clientY = event.gesture.center.clientY;
-      }
-
       // Process the drag completion and place the stamp object
       DrawUtil.DragDropObjectDone(event, stampObject);
 
