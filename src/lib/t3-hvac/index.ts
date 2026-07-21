@@ -30,6 +30,7 @@ export * from './Data/T3Data'; // Export all named exports (T3Data, appStateV2, 
 export { default as IdxUtils } from './Opt/Common/IdxUtils';
 export { default as IdxPage } from './Opt/Common/IdxPage';
 export { default as IdxPage2 } from './Opt/Common/IdxPage2';
+export { default as IdxPageReact } from './Opt/Common/IdxPageReact';
 
 // FFI APIs - Note: Vue composables (use*) not available in migrated version
 // export { useT3000FfiApi } from './Opt/FFI/T3000FfiApi';

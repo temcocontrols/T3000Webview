@@ -17,6 +17,7 @@ const VariablesPage = lazy(() => import('../pages').then(m => ({ default: m.Vari
 const ProgramsPage = lazy(() => import('../pages').then(m => ({ default: m.ProgramsPage })));
 const PIDLoopsPage = lazy(() => import('../pages').then(m => ({ default: m.PIDLoopsPage })));
 const GraphicsPage = lazy(() => import('../pages').then(m => ({ default: m.GraphicsPage })));
+const HaystackTagsPage = lazy(() => import('../pages').then(m => ({ default: m.HaystackTagsPage })));
 const SchedulesPage = lazy(() => import('../pages').then(m => ({ default: m.SchedulesPage })));
 const HolidaysPage = lazy(() => import('../pages').then(m => ({ default: m.HolidaysPage })));
 const TrendLogsPage = lazy(() => import('../pages').then(m => ({ default: m.TrendLogsPage })));
@@ -192,6 +193,13 @@ export const t3000Routes: T3000Route[] = [
     windowId: 8, // WINDOW_SCREEN
     shortcut: 'Alt+G',
     requiresDevice: true,
+  },
+  {
+    path: '/t3000/haystack-tags',
+    element: HaystackTagsPage,
+    title: 'Haystack Tags',
+    shortcut: 'Alt+Y',
+    requiresDevice: false,
   },
   {
     path: '/t3000/trendlogs',

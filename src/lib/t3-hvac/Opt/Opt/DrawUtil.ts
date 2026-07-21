@@ -259,8 +259,8 @@ class DrawUtil {
 
       // Register event handlers for shape dragging
       T3Gv.opt.mainAppHammer.on('mousemove', EvtUtil.Evt_StampObjectDrag);
-      // T3Gv.opt.mainAppHammer.on('dragend', T3Gv.Evt_StampObjectDragEnd);
-      T3Gv.opt.mainAppHammer.on('mouseup', T3Gv.Evt_StampObjectDragEnd);
+      T3Gv.opt.mainAppHammer.on('dragend', T3Gv.Evt_StampObjectDragEnd);
+      // T3Gv.opt.mainAppHammer.on('mouseup', T3Gv.Evt_StampObjectDragEnd);  // T3Hammer doesn't emit 'mouseup' — use 'dragend' instead
       // T3Gv.opt.mainAppHammer.on('click', T3Gv.Evt_StampObjectDragEnd);
 
       // Initialize tracking and prepare for movement

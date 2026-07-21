@@ -49,6 +49,7 @@ import {
   BuildingMultipleRegular,
   ArrowClockwiseRegular,
   ArrowSyncRegular,
+  TagRegular,
 } from '@fluentui/react-icons';
 
 /**
@@ -131,6 +132,16 @@ export const toolbarConfig: ToolbarButton[] = [
     windowId: WINDOW_SCREEN,
     route: '/t3000/graphics',
     shortcut: 'Alt+G',
+  },
+  {
+    id: 'toolbar-haystack-tags',
+    icon: TagRegular,
+    label: 'Haystack Tags',
+    tooltip: 'Haystack Tags [ Alt-Y ]',
+    description: 'Semantic tagging system for points',
+    action: 'openWindow',
+    route: '/t3000/haystack-tags',
+    shortcut: 'Alt+Y',
   },
   {
     id: 'toolbar-schedules',

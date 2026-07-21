@@ -59,6 +59,7 @@ import { InputsPageMobile } from '@t3-mobile/features/inputs/pages/InputsPageMob
 import styles from './InputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { TagsColumnCell } from '../components/TagsColumnCell';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
@@ -1281,6 +1282,29 @@ const InputsPageDesktop: React.FC = () => {
               </span>
             )}
           </TableCellLayout>
+        );
+      },
+    }),
+    // 12. TAGS
+    createTableColumn<InputPoint>({
+      columnId: 'tags',
+      renderHeaderCell: () => (
+        <div className={styles.headerCell}><span>TAGS</span></div>
+      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) return <TableCellLayout>—</TableCellLayout>;
+        const idx = item.inputIndex || '';
+        const pid = `dev${item.serialNumber}.in${idx}`;
+        return (
+          <TagsColumnCell
+            serialNumber={item.serialNumber}
+            pointType="INPUT"
+            pointIndex={idx}
+            pointId={pid}
+            pointLabel={item.label || item.fullLabel || `IN${idx}`}
+            deviceName={selectedDevice?.nameShowOnTree || selectedDevice?.productName}
+            isEmpty={isEmptyRow(item)}
+          />
         );
       },
     }),
