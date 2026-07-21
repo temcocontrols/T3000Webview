@@ -138,6 +138,7 @@ class KeyboardOpt {
    * @param event - The keyboard event object
    */
   static OnKeyDown(event) {
+    console.warn('[KEY-DBG] OnKeyDown fired — keyCode:', event.keyCode, 'ctrl:', event.ctrlKey, 'target:', event.target?.tagName);
     LogUtil.Debug('U.KeyboardUtil: Processing key down event', event.keyCode);
 
     const keyCode = event.keyCode;
@@ -200,7 +201,7 @@ class KeyboardOpt {
       T3Gv.userSetting.DisableCtrlArrowShapeInsert
     );
 
-    // Handle clipboard operations in Firefox
+    // Handle clipboard operations in Firefox (needs explicit focus on hidden div)
     if (modifierKey == 1 && (
       keyCode == 67 || keyCode == 99 ||  // 'C' or 'c'
       keyCode == 88 || keyCode == 120 || // 'X' or 'x'
@@ -210,13 +211,17 @@ class KeyboardOpt {
         T3Clipboard.FocusOnIEclipboardDiv();
         LogUtil.Debug('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
       }
-    } else {
-      // Get the current selection context
-      if (selectionObj != null) {
-        contexts.push(selectionObj);
-      }
+      // Don't return — fall through to command execution below.
+      // Previously the else{} block was skipped entirely for Ctrl+C/V/X,
+      // which meant these shortcuts silently did nothing in non-Firefox browsers.
+    }
 
-      let selectionContext = toolUtil.GetSelectionContext();
+    // Get the current selection context
+    if (selectionObj != null) {
+      contexts.push(selectionObj);
+    }
+
+    let selectionContext = toolUtil.GetSelectionContext();
 
       // Handle title input specifically
       if (event.target.id === "titleInput") {
@@ -321,7 +326,6 @@ class KeyboardOpt {
           LogUtil.Debug('U.KeyboardUtil: Key event handled by shapes controller');
         }
       }
-    }
 
     LogUtil.Debug('U.KeyboardUtil: Key down handling complete');
   }

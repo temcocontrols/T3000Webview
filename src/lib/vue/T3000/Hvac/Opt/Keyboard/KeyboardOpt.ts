@@ -200,7 +200,7 @@ class KeyboardOpt {
       T3Gv.userSetting.DisableCtrlArrowShapeInsert
     );
 
-    // Handle clipboard operations in Firefox
+    // Handle clipboard operations in Firefox (needs explicit focus on hidden div)
     if (modifierKey == 1 && (
       keyCode == 67 || keyCode == 99 ||  // 'C' or 'c'
       keyCode == 88 || keyCode == 120 || // 'X' or 'x'
@@ -210,18 +210,15 @@ class KeyboardOpt {
         T3Clipboard.FocusOnIEclipboardDiv();
         LogUtil.Debug('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
       }
-    } else {
-      // Get the current selection context
-      if (selectionObj != null) {
+      // Don't return — fall through to command execution below.
+    }
+
+    // Get the current selection context
+    if (selectionObj != null) {
         contexts.push(selectionObj);
       }
 
-      let selectionContext = toolUtil.GetSelectionContext();
-
-      // Handle title input specifically
-      if (event.target.id === "titleInput") {
-        selectionContext = KeyboardConstant.Contexts.Text;
-      }
+    let selectionContext = toolUtil.GetSelectionContext();
 
       // Process multiple contexts if available
       if (selectionContext instanceof Array) {
@@ -321,7 +318,6 @@ class KeyboardOpt {
           LogUtil.Debug('U.KeyboardUtil: Key event handled by shapes controller');
         }
       }
-    }
 
     LogUtil.Debug('U.KeyboardUtil: Key down handling complete');
   }
