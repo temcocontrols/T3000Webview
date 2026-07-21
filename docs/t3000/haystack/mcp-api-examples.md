@@ -298,9 +298,9 @@ Read the current (last synced) value of any point from the database. Returns the
 
 </div>
 
-### `point_write` — Write a value to a point
+### `point_write` — Write to any point field
 
-Write a new value to an output or variable point. **Safety:** requires `confirm: true` for OUTPUT and VARIABLE points (INPUT points are read-only and will be rejected). Writes go through the C++ FFI layer to the actual device.
+Write to any writable field on a point. Defaults to `value` (fValue). Also supports: `label`, `description`, `range`, `auto_manual`, `digital_analog`. All other fields are preserved from the current device state. **Safety:** requires `confirm: true` for OUTPUT and VARIABLE points. Writes go through the C++ FFI layer to the actual device.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -313,6 +313,24 @@ Write a new value to an output or variable point. **Safety:** requires `confirm:
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Turn on output 7 on device 237219**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Rename input 2 on device 240488 to "ZoneTemp"**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Change description of output 3 to "Main Fan Speed"**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Set the range of variable 0 on device 233626 to 100**
 
 </div>
 
@@ -340,13 +358,19 @@ Read values for multiple points in a single call. Points can span different devi
 
 ### `point_write_batch` — Write multiple points at once
 
-Write values to multiple points atomically. All writes must succeed or none are applied. Requires `confirm: true`. Points can span different devices.
+Write values to multiple points in a single call. Each point can specify an optional `field` (defaults to `value`). Failures are reported per-point; partial success is supported. Requires `confirm: true`. Points can span different devices.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Set outputs 0 through 3 on device 237219 to 100**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Set output 1 to 80 and rename it to "PumpSpeed"**
 
 </div>
 
