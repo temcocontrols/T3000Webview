@@ -2,7 +2,7 @@
 
 > ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
-Complete reference of natural-language prompts for all 25 MCP tools across 7 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
+Complete reference of natural-language prompts for all 28 MCP tools across 8 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
 ---
 
@@ -371,6 +371,70 @@ Write values to multiple points in a single call. Each point can specify an opti
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Set output 1 to 80 and rename it to "PumpSpeed"**
+
+</div>
+
+</div>
+
+---
+
+## Device Operations <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
+
+### `trendlog_list` — Discover available trendlogs
+
+List all trendlogs configured for a device. Returns trendlog IDs, labels, logging interval, buffer size, and how many points each trendlog tracks. Use this to discover what historical data is available before querying with `trendlog_query`.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What trendlogs are available on device 240488?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List all logging configurations for device 233626**
+
+</div>
+
+</div>
+
+### `device_refresh` — Force refresh from hardware
+
+Refresh point data directly from the physical device via the C++ FFI layer (Action 17). Updates the database with the latest values from the hardware. Optionally filter by point type to refresh only inputs, outputs, or variables.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Refresh all data from device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Refresh only the inputs on device 233626**
+
+</div>
+
+</div>
+
+### `schedule_list` — List device schedules
+
+List all schedules configured on a device. Returns schedule IDs, daily time settings for each day of the week (Monday–Friday), assigned outputs/variables, holiday settings, and interval configuration.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me the schedules on device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What time-based automation is configured on device 233626?**
 
 </div>
 

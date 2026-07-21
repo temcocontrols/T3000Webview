@@ -15,6 +15,7 @@
 //   Analytics (2): haystack_validate, haystack_export
 //   Rules (2):     rule_toggle, rule_create
 //   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
+//   Device (3):    trendlog_list, device_refresh, schedule_list
 
 use axum::{
     extract::State,
@@ -616,6 +617,56 @@ lazy_static::lazy_static! {
                 }
             },
             "required": ["serial_number", "point_type", "point_index", "start"]
+        }),
+    },
+    // ═══ v4: Device Operations (new) ═══
+    ToolDef {
+        name: "trendlog_list",
+        title: "List Trendlogs",
+        description: "List all trendlogs for a device. Returns trendlog IDs, labels, intervals, buffer sizes, and point counts. Use to discover available trendlogs before querying history.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "device_refresh",
+        title: "Refresh Device Data",
+        description: "Force-refresh point data from the physical device via FFI Action 17 (GET_WEBVIEW_LIST). Updates the database with current values from the hardware. Optionally filter by point type.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                },
+                "point_type": {
+                    "type": "string",
+                    "description": "Optional: refresh only INPUT, OUTPUT, or VARIABLE points (omit for all)"
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "schedule_list",
+        title: "List Schedules",
+        description: "List all schedules for a device. Returns schedule IDs, daily time settings, and assigned outputs/variables.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                }
+            },
+            "required": ["serial_number"]
         }),
     },
     ];
@@ -2171,6 +2222,129 @@ async fn execute_tool(
                 .map_err(|e| format!("Trendlog query failed: {:?}", e))?;
 
             serde_json::to_string_pretty(&result)
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        // ═══ v4: Device Operations ═══
+
+        "trendlog_list" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            let sql = format!(
+                "SELECT tl.Trendlog_ID, tl.Trendlog_Label, tl.Interval_Seconds, tl.Buffer_Size, tl.Auto_Manual, tl.Status,
+                        COUNT(ti.id) as point_count
+                 FROM TRENDLOGS tl
+                 LEFT JOIN TRENDLOG_INPUTS ti ON tl.SerialNumber = ti.SerialNumber AND tl.Trendlog_ID = ti.Trendlog_ID
+                 WHERE tl.SerialNumber = {}
+                 GROUP BY tl.Trendlog_ID
+                 ORDER BY tl.Trendlog_ID",
+                serial
+            );
+            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                .map_err(|e| format!("Trendlog list failed: {}", e))?;
+
+            let results: Vec<Value> = rows.iter().map(|r| json!({
+                "trendlog_id": r.try_get::<String>("", "Trendlog_ID").unwrap_or_default(),
+                "label": r.try_get::<String>("", "Trendlog_Label").ok(),
+                "interval_seconds": r.try_get::<i32>("", "Interval_Seconds").ok(),
+                "buffer_size": r.try_get::<i32>("", "Buffer_Size").ok(),
+                "auto_manual": r.try_get::<String>("", "Auto_Manual").ok(),
+                "status": r.try_get::<String>("", "Status").ok(),
+                "point_count": r.try_get::<i32>("", "point_count").unwrap_or(0),
+            })).collect();
+
+            serde_json::to_string_pretty(&json!({ "trendlogs": results, "total": results.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "device_refresh" => {
+            use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
+            use crate::t3_device::action17_refresh_helper::lookup_action17_target;
+
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+            let point_type_filter = args.get("point_type").and_then(|v| v.as_str());
+
+            let (panel_id, object_instance) = lookup_action17_target(db, serial).await
+                .map_err(|e| format!("{}", e.1))?;
+
+            let mut refreshed = 0;
+            let point_types = match point_type_filter {
+                Some("INPUT") => vec!["INPUT"],
+                Some("OUTPUT") => vec!["OUTPUT"],
+                Some("VARIABLE") => vec!["VARIABLE"],
+                _ => vec!["INPUT", "OUTPUT", "VARIABLE"],
+            };
+
+            for pt in &point_types {
+                let entry_type: i32 = match *pt {
+                    "INPUT" => 1, "OUTPUT" => 0, _ => 2,
+                };
+                let ffi_json = json!({
+                    "action": 17,
+                    "panelId": panel_id,
+                    "serialNumber": serial,
+                    "entryType": entry_type,
+                    "objectInstance": object_instance,
+                });
+                info!("[MCP] device_refresh: Action 17 for {} (entryType={})", pt, entry_type);
+                mcp_log(&format!("Action 17 refresh: serial={} type={}", serial, pt));
+                let ffi_service = T3000FfiApiService::new();
+                match ffi_service.call_ffi(&ffi_json.to_string()).await {
+                    Ok(resp) => {
+                        // Count points refreshed from response
+                        if let Ok(v) = serde_json::from_str::<Value>(&resp) {
+                            if let Some(arr) = v.get("data").and_then(|d| d.get("device_data")).and_then(|dd| dd.as_array()) {
+                                refreshed += arr.len();
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!("[MCP] device_refresh: {} refresh failed: {}", pt, e);
+                    }
+                }
+            }
+
+            Ok(json!({ "refreshed": true, "points_updated": refreshed, "timestamp": Utc::now().to_rfc3339() }).to_string())
+        }
+
+        "schedule_list" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            let sql = format!(
+                "SELECT Schedule_ID, Auto_Manual, Output_Field, Variable_Field, Interval_Field, Schedule_Time,
+                        Monday_Time, Tuesday_Time, Wednesday_Time, Thursday_Time, Friday_Time,
+                        Holiday1, Status1, Holiday2, Status2
+                 FROM SCHEDULES WHERE SerialNumber = {} ORDER BY Schedule_ID",
+                serial
+            );
+            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                .map_err(|e| format!("Schedule list failed: {}", e))?;
+
+            let results: Vec<Value> = rows.iter().map(|r| json!({
+                "schedule_id": r.try_get::<String>("", "Schedule_ID").unwrap_or_default(),
+                "auto_manual": r.try_get::<String>("", "Auto_Manual").ok(),
+                "output_field": r.try_get::<String>("", "Output_Field").ok(),
+                "variable_field": r.try_get::<String>("", "Variable_Field").ok(),
+                "interval": r.try_get::<String>("", "Interval_Field").ok(),
+                "schedule_time": r.try_get::<String>("", "Schedule_Time").ok(),
+                "monday": r.try_get::<String>("", "Monday_Time").ok(),
+                "tuesday": r.try_get::<String>("", "Tuesday_Time").ok(),
+                "wednesday": r.try_get::<String>("", "Wednesday_Time").ok(),
+                "thursday": r.try_get::<String>("", "Thursday_Time").ok(),
+                "friday": r.try_get::<String>("", "Friday_Time").ok(),
+                "holiday1": r.try_get::<String>("", "Holiday1").ok(),
+                "status1": r.try_get::<String>("", "Status1").ok(),
+                "holiday2": r.try_get::<String>("", "Holiday2").ok(),
+                "status2": r.try_get::<String>("", "Status2").ok(),
+            })).collect();
+
+            serde_json::to_string_pretty(&json!({ "schedules": results, "total": results.len() }))
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
