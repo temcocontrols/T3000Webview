@@ -66,6 +66,10 @@ class DrawUtil {
       $(window).unbind('click');
       $(window).unbind('mousemove', EvtUtil.Evt_MouseStampObjectMove);
       T3Gv.opt.WorkAreaHammer.enable(true);
+      // Re-attach dragstart handler we removed in MouseDrawNewShape
+      if (T3Gv.opt.WorkAreaHammer.on) {
+        T3Gv.opt.WorkAreaHammer.on('dragstart', EvtUtil.Evt_WorkAreaHammerDragStart);
+      }
     }
 
     // Reset all stamp-related properties
@@ -352,8 +356,15 @@ class DrawUtil {
       OptCMUtil.SetEditMode(NvConstant.EditState.Stamp, CursorConstant.CursorType.Stamp);
     }
 
-    // Disable WorkAreaHammer to prevent conflicts with stamp operation
+    // Disable WorkAreaHammer to prevent conflicts with stamp operation.
+    // enable(false) blocks NEW gesture detection but in-flight gestures
+    // (already recognized 'dragstart') still fire asynchronously. We must
+    // remove the handler entirely to prevent Evt_WorkAreaHammerDragStart
+    // from calling EndStampSession during stamp.
     T3Gv.opt.WorkAreaHammer.enable(false);
+    if (T3Gv.opt.WorkAreaHammer.off) {
+      T3Gv.opt.WorkAreaHammer.off('dragstart', EvtUtil.Evt_WorkAreaHammerDragStart);
+    }
 
     // Bind mouse event handlers for stamping operation
     $(window).bind('mousemove', EvtUtil.Evt_MouseStampObjectMove);
@@ -501,6 +512,10 @@ class DrawUtil {
       $(window).unbind('click');
       $(window).unbind('mousemove', EvtUtil.Evt_MouseStampObjectMove);
       T3Gv.opt.WorkAreaHammer.enable(true);
+      // Re-attach dragstart handler we removed in MouseDrawNewShape
+      if (T3Gv.opt.WorkAreaHammer.on) {
+        T3Gv.opt.WorkAreaHammer.on('dragstart', EvtUtil.Evt_WorkAreaHammerDragStart);
+      }
 
       // Build selection list
       if (!isTextOnlyObject) {

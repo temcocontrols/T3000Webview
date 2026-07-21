@@ -19,15 +19,11 @@ let isInitialized = false;
 export function initializeReactApp() {
   // Check if current route should be handled by React
   if (!isReactRoute()) {
-    //console.log('📘 Vue route detected - skipping React initialization');
     return;
   }
 
-  //console.log('⚛️ React route detected - initializing React app...');
-
   // Prevent multiple initializations
   if (isInitialized) {
-    //console.log('⚠️ React already initialized, skipping...');
     return;
   }
 

@@ -7,7 +7,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Hvac from '@/lib/t3-hvac';
 import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
-import UIUtil from '@/lib/t3-hvac/Opt/UI/UIUtil';
 import {
   Spinner,
   Text,
@@ -85,17 +84,11 @@ export const HvacDesignerPage: React.FC = () => {
   // Initialize HVAC UI system once when page mounts
   useEffect(() => {
     try {
-      // Clear any residual SVGs from Strict Mode remount
+      // Clear residual SVG from Strict Mode remount.
+      // replaceChildren() is atomic — no individual removals that trigger
+      // SVG.js internal setTimeout callbacks referencing already-deleted nodes.
       const svgArea = document.getElementById('svg-area');
-      if (svgArea) {
-        while (svgArea.firstChild) {
-          svgArea.removeChild(svgArea.firstChild);
-        }
-      }
-      // Reset svgDoc so InitSvgArea creates a fresh SVG
-      if (T3Gv?.docUtil) {
-        (T3Gv.docUtil as any).svgDoc = null;
-      }
+      svgArea?.replaceChildren();
 
       Hvac.UI.Initialize(null);
 

@@ -32,7 +32,6 @@ const toolOpt = EvtOpt.toolOpt;
 // Map tool names to the library's ToolOpt methods (exact shapeType numbers from EvtOpt.ts)
 const handleToolActivate = (tool: any) => {
   const name = tool.name;
-  console.log('[ToolsPanel] 🔧 Tool selected:', name);
 
   selectedTool.value = { ...tool, type: 'default' };
 

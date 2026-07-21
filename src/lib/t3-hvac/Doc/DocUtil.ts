@@ -648,6 +648,10 @@ class DocUtil {
    * @returns void
    */
   HandleScrollEvent(): void {
+    if (!this.svgDoc) {
+      LogUtil.Debug("= U.DocUtil: HandleScrollEvent - SKIP (svgDoc is null, not yet initialized)");
+      return;
+    }
     LogUtil.Debug("= U.DocUtil: HandleScrollEvent - Input: Handling scroll event");
 
     // Get initial work area to access current scroll positions
