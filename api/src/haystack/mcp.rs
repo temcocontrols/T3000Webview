@@ -27,6 +27,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sea_orm::ConnectionTrait;
 use chrono::Utc;
+use std::io::Write;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -37,6 +38,16 @@ use crate::haystack::auto_tagging_service as ats;
 use crate::haystack::tags_service as ts;
 use crate::t3_device::services::T3DeviceService;
 use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest};
+
+// ═══ MCP API Logger (writes to t3-webview-api-dll.log in runtime folder) ═══
+
+fn mcp_log(message: &str) {
+    let log_line = format!("[{}] {}\n", Utc::now().format("%Y-%m-%d %H:%M:%S UTC"), message);
+    if let Ok(path) = crate::logger::create_structured_log_path("t3-webview-api-dll") {
+        let _ = std::fs::OpenOptions::new().create(true).append(true).open(&path)
+            .and_then(|mut f| f.write_all(log_line.as_bytes()));
+    }
+}
 
 // ═══ JSON-RPC Types ═══
 
@@ -258,7 +269,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "device_get_points",
         title: "Get Device Points",
-        description: "Return all points for a device, optionally filtered by point type (INPUT, OUTPUT, VARIABLE).",
+        description: "Return all points for a device with labels, engineering units, range, digital/analog type, description, Haystack tags, and Brick classes. Optionally filter by point type (INPUT, OUTPUT, VARIABLE).",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -934,7 +945,8 @@ async fn execute_tool(
     args: &Value,
     db: &sea_orm::DatabaseConnection,
 ) -> Result<String, String> {
-    match name {
+    mcp_log(&format!("-> {} {}", name, serde_json::to_string(args).unwrap_or_default()));
+    let result = match name {
         "haystack_list_tags" => {
             let filter = args.get("filter")
                 .and_then(|v| v.as_str())
@@ -1221,6 +1233,66 @@ async fn execute_tool(
                 })
                 .collect();
 
+            // ── Device point metadata (label, units, range, digital/analog, description, value) ──
+            let meta_sql: String;
+            if let Some(pt_filter) = point_type_filter {
+                let (table, idx_col) = match pt_filter {
+                    "INPUT" => ("INPUTS", "Input_Index"),
+                    "OUTPUT" => ("OUTPUTS", "Output_Index"),
+                    "VARIABLE" => ("VARIABLES", "Variable_Index"),
+                    _ => ("INPUTS", "Input_Index"),
+                };
+                meta_sql = format!(
+                    "SELECT '{}' as point_type, {} as point_index, Label, Units as engineering_units, \
+                     Range_Field as range_field, Digital_Analog as digital_analog, Full_Label as description, \
+                     fValue as current_value \
+                     FROM {} WHERE SerialNumber = {}",
+                    pt_filter, idx_col, table, serial
+                );
+            } else {
+                meta_sql = format!(
+                    "SELECT 'INPUT' as point_type, Input_Index as point_index, Label, Units as engineering_units, \
+                     Range_Field as range_field, Digital_Analog as digital_analog, Full_Label as description, \
+                     fValue as current_value \
+                     FROM INPUTS WHERE SerialNumber = {0} \
+                     UNION ALL SELECT 'OUTPUT', Output_Index, Label, Units, Range_Field, Digital_Analog, Full_Label, fValue \
+                     FROM OUTPUTS WHERE SerialNumber = {0} \
+                     UNION ALL SELECT 'VARIABLE', Variable_Index, Label, Units, Range_Field, Digital_Analog, Full_Label, fValue \
+                     FROM VARIABLES WHERE SerialNumber = {0}",
+                    serial
+                );
+            }
+
+            let meta_rows = db
+                .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &meta_sql))
+                .await
+                .map_err(|e| format!("Metadata query failed: {}", e))?;
+
+            struct PointMeta {
+                label: Option<String>,
+                engineering_units: Option<String>,
+                range_field: Option<String>,
+                digital_analog: Option<String>,
+                description: Option<String>,
+                current_value: Option<String>,
+            }
+            let mut meta_map: std::collections::HashMap<String, PointMeta> = std::collections::HashMap::new();
+            for row in &meta_rows {
+                let pt: String = row.try_get("", "point_type").unwrap_or_default();
+                let idx_str: String = row.try_get("", "point_index").unwrap_or_default();
+                if !idx_str.is_empty() {
+                    let key = format!("{}:{}", pt, idx_str);
+                    meta_map.insert(key, PointMeta {
+                        label: row.try_get("", "Label").ok(),
+                        engineering_units: row.try_get("", "engineering_units").ok(),
+                        range_field: row.try_get("", "range_field").ok(),
+                        digital_analog: row.try_get("", "digital_analog").ok(),
+                        description: row.try_get("", "description").ok(),
+                        current_value: row.try_get("", "current_value").ok(),
+                    });
+                }
+            }
+
             let mut tag_map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
             for entry in &tag_entries {
                 let key = format!("{}:{}", entry.point_type, entry.point_index);
@@ -1233,10 +1305,17 @@ async fn execute_tool(
                 if seen.insert(key.clone()) {
                     let tags = tag_map.get(&key).cloned().unwrap_or_default();
                     let brick_class = brick_map.get(&key).cloned();
+                    let meta = meta_map.get(&key);
                     results.push(json!({
                         "point_type": entry.point_type,
                         "point_index": entry.point_index,
                         "point_id": entry.point_id,
+                        "label": meta.and_then(|m| m.label.clone()),
+                        "engineering_units": meta.and_then(|m| m.engineering_units.clone()),
+                        "range_field": meta.and_then(|m| m.range_field.clone()),
+                        "digital_analog": meta.and_then(|m| m.digital_analog.clone()),
+                        "description": meta.and_then(|m| m.description.clone()),
+                        "current_value": meta.and_then(|m| m.current_value.clone()),
                         "haystack_tags": tags,
                         "brick_class": brick_class,
                     }));
@@ -2000,5 +2079,10 @@ async fn execute_tool(
         }
 
         _ => Err(format!("Unknown tool: {}", name)),
+    };
+    match &result {
+        Ok(_) => mcp_log(&format!("<- {} OK", name)),
+        Err(e) => mcp_log(&format!("<- {} FAILED: {}", name, e)),
     }
+    result
 }
