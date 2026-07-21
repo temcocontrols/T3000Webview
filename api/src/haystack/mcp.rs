@@ -966,7 +966,7 @@ async fn point_write_ffi(
     // Step 1: Query current row from DB
     let sql = format!(
         "SELECT Label, Full_Label, fValue, Range_Field, Auto_Manual, Filter_Field, \
-                Digital_Analog, Calibration_Sign, Calibration_H, Calibration_L, Control \
+                Digital_Analog, Calibration_Sign, Calibration_H, Calibration_L, Control, Panel \
          FROM {} WHERE SerialNumber = {} AND {} = '{}'",
         table, serial, idx_col, point_index
     );
@@ -987,23 +987,29 @@ async fn point_write_ffi(
     let cur_cal_h: String = row.try_get::<String>("", "Calibration_H").unwrap_or_else(|_| "0".into());
     let cur_cal_l: String = row.try_get::<String>("", "Calibration_L").unwrap_or_else(|_| "0".into());
     let cur_control: String = row.try_get::<String>("", "Control").unwrap_or_else(|_| "0".into());
+    let cur_panel: String = row.try_get::<String>("", "Panel").unwrap_or_default();
 
-    // Step 2: Get panel_id
-    let dev_sql = format!("SELECT PanelId FROM DEVICES WHERE SerialNumber = {}", serial);
-    let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dev_sql)).await
-        .map_err(|e| format!("Device lookup failed: {}", e))?;
-    let panel_id: i32 = dev_rows.first().and_then(|r| r.try_get::<i32>("", "PanelId").ok()).unwrap_or(0);
+    // Step 2: Get panel_id — prefer point's Panel, then DEVICES.Panel_Number, then 1
+    let panel_id: i32 = if !cur_panel.is_empty() {
+        cur_panel.parse::<i32>().unwrap_or(1)
+    } else {
+        let dev_sql = format!("SELECT Panel_Number FROM DEVICES WHERE SerialNumber = {}", serial);
+        let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dev_sql)).await
+            .map_err(|e| format!("Device lookup failed: {}", e))?;
+        dev_rows.first().and_then(|r| r.try_get::<i32>("", "Panel_Number").ok()).unwrap_or(1)
+    };
     info!("[MCP] point_write_ffi: panel_id={}, merging field='{}' val='{}'", panel_id, target_field, new_value_str);
 
-    // Step 3: Merge
+    // Step 3: Merge — DB stores fValue as raw integer (×1000), FFI expects display value (/1000)
     let pf32 = |s: &str| s.parse::<f32>().unwrap_or(0.0);
     let pi32 = |s: &str| s.parse::<i32>().unwrap_or(0);
+    let cur_fvalue_display = pf32(&cur_fvalue) / 1000.0; // DB raw → display (e.g., 72500 → 72.5)
     let (ffi_value, ffi_label, ffi_description, ffi_range, ffi_auto_manual, ffi_digital_analog) = match target_field {
-        "label" => (pf32(&cur_fvalue), new_value_str.to_string(), cur_full_label, pi32(&cur_range), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
-        "description" => (pf32(&cur_fvalue), cur_label, new_value_str.to_string(), pi32(&cur_range), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
-        "range" => (pf32(&cur_fvalue), cur_label, cur_full_label, pi32(new_value_str), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
-        "auto_manual" => (pf32(&cur_fvalue), cur_label, cur_full_label, pi32(&cur_range), pi32(new_value_str), pi32(&cur_digital_analog)),
-        "digital_analog" => (pf32(&cur_fvalue), cur_label, cur_full_label, pi32(&cur_range), pi32(&cur_auto_manual), pi32(new_value_str)),
+        "label" => (cur_fvalue_display, new_value_str.to_string(), cur_full_label, pi32(&cur_range), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
+        "description" => (cur_fvalue_display, cur_label, new_value_str.to_string(), pi32(&cur_range), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
+        "range" => (cur_fvalue_display, cur_label, cur_full_label, pi32(new_value_str), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
+        "auto_manual" => (cur_fvalue_display, cur_label, cur_full_label, pi32(&cur_range), pi32(new_value_str), pi32(&cur_digital_analog)),
+        "digital_analog" => (cur_fvalue_display, cur_label, cur_full_label, pi32(&cur_range), pi32(&cur_auto_manual), pi32(new_value_str)),
         _ => (pf32(new_value_str), cur_label, cur_full_label, pi32(&cur_range), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
     };
 
@@ -1026,14 +1032,17 @@ async fn point_write_ffi(
     ffi_service.call_ffi(&ffi_str).await
         .map_err(|e| format!("Device write failed (FFI error): {}", e))?;
 
-    // Step 6: Update DB
-    let db_col = match target_field {
-        "label" => "Label", "description" => "Full_Label", "range" => "Range_Field",
-        "auto_manual" => "Auto_Manual", "digital_analog" => "Digital_Analog",
-        _ => "fValue",
+    // Step 6: Update DB — fValue is stored as raw int (×1000), other fields as-is
+    let (db_col, db_val) = match target_field {
+        "label" => ("Label", new_value_str.to_string()),
+        "description" => ("Full_Label", new_value_str.to_string()),
+        "range" => ("Range_Field", new_value_str.to_string()),
+        "auto_manual" => ("Auto_Manual", new_value_str.to_string()),
+        "digital_analog" => ("Digital_Analog", new_value_str.to_string()),
+        _ => ("fValue", (pf32(new_value_str) * 1000.0).to_string()), // scale: display → DB raw
     };
     let update_sql = format!("UPDATE {} SET {} = '{}' WHERE SerialNumber = {} AND {} = '{}'",
-        table, db_col, new_value_str, serial, idx_col, point_index);
+        table, db_col, db_val, serial, idx_col, point_index);
     db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &update_sql)).await
         .map_err(|e| format!("DB update failed (device was updated): {}", e))?;
 
