@@ -191,8 +191,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .nest("/api/develop", crate::t3_develop::create_develop_routes())
         // Flow log routes
         .merge(crate::logging::flow_api::flow_routes())
-        // Haystack API routes
-        .merge(crate::t3_device::haystack_routes::create_haystack_routes())
+        // Haystack Tags API routes (v2)
+        .merge(crate::t3_device::haystack_tags_routes::create_haystack_tags_routes())
         // Point Sets API routes (DB-backed)
         .merge(crate::t3_device::point_sets_routes::create_point_sets_routes())
         // Server local-time endpoint (for client timezone alignment)

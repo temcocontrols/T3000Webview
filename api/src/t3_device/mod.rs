@@ -59,6 +59,6 @@ pub mod users_refresh_routes;   // ✅ T3000 Users Refresh API Routes using GET_
 pub mod custom_units_refresh_routes; // ✅ T3000 Custom Units Refresh API Routes using GET_WEBVIEW_LIST (Action 17)
 pub mod email_settings_routes;  // ✅ T3000 Email Settings API Routes (DB-backed + FFI refresh stub entryType=50)
 pub mod expansion_io_routes;    // ✅ T3000 Expansion IO API Routes (DB-backed + FFI refresh stub entryType=51)
-pub mod haystack_service;       // ✅ Haystack entity mapper and query service
-pub mod haystack_routes;        // ✅ Haystack API routes (/api/haystack/*)
+pub mod haystack_tags_service;   // ✅ Haystack Tags v2 — service layer
+pub mod haystack_tags_routes;    // ✅ Haystack Tags v2 — API routes
 pub mod point_sets_routes;      // ✅ Point Sets API routes (/api/point-sets/*)
