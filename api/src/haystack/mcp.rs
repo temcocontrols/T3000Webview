@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sea_orm::ConnectionTrait;
 use chrono::Utc;
-use std::io::Write;
+use tracing::{info, error};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -39,14 +39,10 @@ use crate::haystack::tags_service as ts;
 use crate::t3_device::services::T3DeviceService;
 use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest};
 
-// ═══ MCP API Logger (writes to t3-webview-api-dll.log in runtime folder) ═══
+// ═══ MCP API Logger — console + t3-webview-api-dll.log (gated by debug_log=1 in setting.ini) ═══
 
-fn mcp_log(message: &str) {
-    let log_line = format!("[{}] {}\n", Utc::now().format("%Y-%m-%d %H:%M:%S UTC"), message);
-    if let Ok(path) = crate::logger::create_structured_log_path("t3-webview-api-dll") {
-        let _ = std::fs::OpenOptions::new().create(true).append(true).open(&path)
-            .and_then(|mut f| f.write_all(log_line.as_bytes()));
-    }
+fn mcp_log(msg: &str) {
+    crate::server::debug_log(&format!("[MCP] {}", msg));
 }
 
 // ═══ JSON-RPC Types ═══
@@ -364,7 +360,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "point_write",
         title: "Write Point Value",
-        description: "Write a value to a point. Requires confirm:true for OUTPUT/VARIABLE points as a safety measure.",
+        description: "Write to a point field. Defaults to 'value' (fValue). Also supports: label, description, range, auto_manual, digital_analog. All other fields are preserved from the current device state. Requires confirm:true for OUTPUT/VARIABLE points as a safety measure.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -381,7 +377,11 @@ lazy_static::lazy_static! {
                     "description": "Zero-based point index"
                 },
                 "value": {
-                    "description": "Value to write (number or boolean)"
+                    "description": "Value to write (number, boolean, or string)"
+                },
+                "field": {
+                    "type": "string",
+                    "description": "Target field: value (default), label, description, range, auto_manual, digital_analog"
                 },
                 "confirm": {
                     "type": "boolean",
@@ -418,7 +418,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "point_write_batch",
         title: "Batch Write Points",
-        description: "Write values to multiple points in a single call. Requires confirm:true.",
+        description: "Write values to multiple points in a single call. Each point may specify an optional 'field' (defaults to 'value'). Requires confirm:true.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -430,7 +430,8 @@ lazy_static::lazy_static! {
                             "serial_number": { "type": "integer" },
                             "point_type": { "type": "string" },
                             "point_index": { "type": "integer" },
-                            "value": {}
+                            "value": {},
+                            "field": { "type": "string", "description": "Target field: value (default), label, description, range, auto_manual, digital_analog" }
                         },
                         "required": ["serial_number", "point_type", "point_index", "value"]
                     },
@@ -940,11 +941,113 @@ async fn handle_tools_call(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnectio
     }
 }
 
+// ═══ Point Write via FFI (Action 16) ═══
+
+async fn point_write_ffi(
+    db: &sea_orm::DatabaseConnection,
+    serial: i32,
+    point_type: &str,
+    point_index: i32,
+    target_field: &str,
+    new_value_str: &str,
+) -> Result<String, String> {
+    use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
+
+    let (table, idx_col) = match point_type {
+        "INPUT" => ("INPUTS", "Input_Index"),
+        "OUTPUT" => ("OUTPUTS", "Output_Index"),
+        "VARIABLE" => ("VARIABLES", "Variable_Index"),
+        _ => return Err(format!("Invalid point_type: {}", point_type)),
+    };
+    let entry_type: i32 = match point_type {
+        "INPUT" => 1, "OUTPUT" => 0, "VARIABLE" => 2, _ => unreachable!(),
+    };
+
+    // Step 1: Query current row from DB
+    let sql = format!(
+        "SELECT Label, Full_Label, fValue, Range_Field, Auto_Manual, Filter_Field, \
+                Digital_Analog, Calibration_Sign, Calibration_H, Calibration_L, Control \
+         FROM {} WHERE SerialNumber = {} AND {} = '{}'",
+        table, serial, idx_col, point_index
+    );
+    info!("[MCP] point_write_ffi: reading row from {} SerialNumber={} {}={}", table, serial, idx_col, point_index);
+    let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+        .map_err(|e| format!("Read current row failed: {}", e))?;
+    let row = rows.first()
+        .ok_or_else(|| format!("Point not found: {} index {} on device {}", point_type, point_index, serial))?;
+
+    let cur_label: String = row.try_get::<String>("", "Label").unwrap_or_default();
+    let cur_full_label: String = row.try_get::<String>("", "Full_Label").unwrap_or_default();
+    let cur_fvalue: String = row.try_get::<String>("", "fValue").unwrap_or_else(|_| "0".into());
+    let cur_range: String = row.try_get::<String>("", "Range_Field").unwrap_or_else(|_| "0".into());
+    let cur_auto_manual: String = row.try_get::<String>("", "Auto_Manual").unwrap_or_else(|_| "0".into());
+    let cur_filter: String = row.try_get::<String>("", "Filter_Field").unwrap_or_else(|_| "0".into());
+    let cur_digital_analog: String = row.try_get::<String>("", "Digital_Analog").unwrap_or_else(|_| "0".into());
+    let cur_cal_sign: String = row.try_get::<String>("", "Calibration_Sign").unwrap_or_else(|_| "0".into());
+    let cur_cal_h: String = row.try_get::<String>("", "Calibration_H").unwrap_or_else(|_| "0".into());
+    let cur_cal_l: String = row.try_get::<String>("", "Calibration_L").unwrap_or_else(|_| "0".into());
+    let cur_control: String = row.try_get::<String>("", "Control").unwrap_or_else(|_| "0".into());
+
+    // Step 2: Get panel_id
+    let dev_sql = format!("SELECT PanelId FROM DEVICES WHERE SerialNumber = {}", serial);
+    let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dev_sql)).await
+        .map_err(|e| format!("Device lookup failed: {}", e))?;
+    let panel_id: i32 = dev_rows.first().and_then(|r| r.try_get::<i32>("", "PanelId").ok()).unwrap_or(0);
+    info!("[MCP] point_write_ffi: panel_id={}, merging field='{}' val='{}'", panel_id, target_field, new_value_str);
+
+    // Step 3: Merge
+    let pf32 = |s: &str| s.parse::<f32>().unwrap_or(0.0);
+    let pi32 = |s: &str| s.parse::<i32>().unwrap_or(0);
+    let (ffi_value, ffi_label, ffi_description, ffi_range, ffi_auto_manual, ffi_digital_analog) = match target_field {
+        "label" => (pf32(&cur_fvalue), new_value_str.to_string(), cur_full_label, pi32(&cur_range), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
+        "description" => (pf32(&cur_fvalue), cur_label, new_value_str.to_string(), pi32(&cur_range), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
+        "range" => (pf32(&cur_fvalue), cur_label, cur_full_label, pi32(new_value_str), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
+        "auto_manual" => (pf32(&cur_fvalue), cur_label, cur_full_label, pi32(&cur_range), pi32(new_value_str), pi32(&cur_digital_analog)),
+        "digital_analog" => (pf32(&cur_fvalue), cur_label, cur_full_label, pi32(&cur_range), pi32(&cur_auto_manual), pi32(new_value_str)),
+        _ => (pf32(new_value_str), cur_label, cur_full_label, pi32(&cur_range), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
+    };
+
+    // Step 4: Build Action 16 JSON
+    let ffi_json = json!({
+        "action": 16, "panelId": panel_id, "serialNumber": serial,
+        "entryType": entry_type, "entryIndex": point_index,
+        "control": pi32(&cur_control), "value": ffi_value,
+        "description": ffi_description, "label": ffi_label, "range": ffi_range,
+        "auto_manual": ffi_auto_manual, "filter": pi32(&cur_filter),
+        "digital_analog": ffi_digital_analog, "calibration_sign": pi32(&cur_cal_sign),
+        "calibration_h": pi32(&cur_cal_h), "calibration_l": pi32(&cur_cal_l), "decom": 0,
+    });
+    let ffi_str = ffi_json.to_string();
+    mcp_log(&format!("FFI Action 16: {}", ffi_str));
+    info!("[MCP] point_write_ffi: calling C++ FFI Action 16...");
+
+    // Step 5: Call FFI
+    let ffi_service = T3000FfiApiService::new();
+    ffi_service.call_ffi(&ffi_str).await
+        .map_err(|e| format!("Device write failed (FFI error): {}", e))?;
+
+    // Step 6: Update DB
+    let db_col = match target_field {
+        "label" => "Label", "description" => "Full_Label", "range" => "Range_Field",
+        "auto_manual" => "Auto_Manual", "digital_analog" => "Digital_Analog",
+        _ => "fValue",
+    };
+    let update_sql = format!("UPDATE {} SET {} = '{}' WHERE SerialNumber = {} AND {} = '{}'",
+        table, db_col, new_value_str, serial, idx_col, point_index);
+    db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &update_sql)).await
+        .map_err(|e| format!("DB update failed (device was updated): {}", e))?;
+
+    info!("[MCP] point_write OK: dev={} {}[{}] field={} val={}", serial, point_type, point_index, target_field, new_value_str);
+    mcp_log(&format!("OK: dev={} {}[{}] field={} val={}", serial, point_type, point_index, target_field, new_value_str));
+    Ok(json!({"success": true, "written_field": target_field, "written_value": new_value_str, "timestamp": Utc::now().to_rfc3339()}).to_string())
+}
+
 async fn execute_tool(
     name: &str,
     args: &Value,
     db: &sea_orm::DatabaseConnection,
 ) -> Result<String, String> {
+    info!("[MCP] -> {} args={}", name, serde_json::to_string(args).unwrap_or_default());
     mcp_log(&format!("-> {} {}", name, serde_json::to_string(args).unwrap_or_default()));
     let result = match name {
         "haystack_list_tags" => {
@@ -1519,6 +1622,12 @@ async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;
             let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            let field = args.get("field").and_then(|v| v.as_str()).unwrap_or("value");
+
+            let valid_fields = ["value", "label", "description", "range", "auto_manual", "digital_analog"];
+            if !valid_fields.contains(&field) {
+                return Err(format!("Invalid field '{}'. Valid fields: {}", field, valid_fields.join(", ")));
+            }
 
             if point_type != "INPUT" && !confirm {
                 return Err(format!(
@@ -1535,27 +1644,9 @@ async fn execute_tool(
                 _ => return Err("value must be number, boolean, or string".to_string()),
             };
 
-            let (table, value_col, index_col) = match point_type {
-                "INPUT" => ("INPUTS", "fValue", "Input_Index"),
-                "OUTPUT" => ("OUTPUTS", "fValue", "Output_Index"),
-                "VARIABLE" => ("VARIABLES", "fValue", "Variable_Index"),
-                _ => return Err(format!("Invalid point_type: {}", point_type)),
-            };
-
-            let sql = format!(
-                "UPDATE {} SET {} = '{}' WHERE SerialNumber = {} AND {} = '{}'",
-                table, value_col, value_str, serial, index_col, point_index
-            );
-            db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
-                .await
-                .map_err(|e| format!("Write failed: {}", e))?;
-
-            Ok(json!({
-                "success": true,
-                "written_value": value_str,
-                "timestamp": Utc::now().to_rfc3339(),
-                "note": "Value written to database. Live device sync requires FFI refresh."
-            }).to_string())
+            info!("[MCP] point_write: serial={} type={} idx={} field={} val={}",
+                serial, point_type, point_index, field, value_str);
+            point_write_ffi(db, serial, point_type, point_index, field, &value_str).await
         }
 
         "point_read_batch" => {
@@ -1625,11 +1716,13 @@ async fn execute_tool(
             }
 
             let mut updated = 0;
+            let mut errors: Vec<String> = Vec::new();
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let pt = point.get("point_type").and_then(|v| v.as_str());
                 let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let val = point.get("value");
+                let field = point.get("field").and_then(|v| v.as_str()).unwrap_or("value");
                 if let (Some(sn), Some(pt), Some(idx), Some(val)) = (sn, pt, idx, val) {
                     let value_str = match val {
                         Value::Number(n) => n.to_string(),
@@ -1637,28 +1730,20 @@ async fn execute_tool(
                         Value::String(s) => s.clone(),
                         _ => continue,
                     };
-                    let (table, value_col, index_col) = match pt {
-                        "INPUT" => ("INPUTS", "fValue", "Input_Index"),
-                        "OUTPUT" => ("OUTPUTS", "fValue", "Output_Index"),
-                        "VARIABLE" => ("VARIABLES", "fValue", "Variable_Index"),
-                        _ => continue,
-                    };
-                    let sql = format!(
-                        "UPDATE {} SET {} = '{}' WHERE SerialNumber = {} AND {} = '{}'",
-                        table, value_col, value_str, sn, index_col, idx
-                    );
-                    if db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await.is_ok() {
-                        updated += 1;
+                    match point_write_ffi(db, sn, pt, idx, field, &value_str).await {
+                        Ok(_) => updated += 1,
+                        Err(e) => errors.push(format!("dev{} {}[{}]: {}", sn, pt, idx, e)),
                     }
                 }
             }
 
-            Ok(json!({
-                "success": true,
+            let result = json!({
+                "success": errors.is_empty(),
                 "count": updated,
+                "errors": errors,
                 "timestamp": Utc::now().to_rfc3339(),
-                "note": "Values written to database. Live device sync requires FFI refresh."
-            }).to_string())
+            });
+            Ok(result.to_string())
         }
 
         // ═══ v4: Analytics ═══
@@ -2083,8 +2168,8 @@ async fn execute_tool(
         _ => Err(format!("Unknown tool: {}", name)),
     };
     match &result {
-        Ok(_) => mcp_log(&format!("<- {} OK", name)),
-        Err(e) => mcp_log(&format!("<- {} FAILED: {}", name, e)),
+        Ok(_) => { info!("[MCP] <- {} OK", name); mcp_log(&format!("<- {} OK", name)); },
+        Err(e) => { error!("[MCP] <- {} FAILED: {}", name, e); mcp_log(&format!("<- {} FAILED: {}", name, e)); },
     }
     result
 }
