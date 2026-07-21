@@ -2,7 +2,7 @@
 
 > ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
-Complete reference of natural-language prompts for all 30 MCP tools across 9 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
+Complete reference of natural-language prompts for all 31 MCP tools across 9 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
 ---
 
@@ -378,7 +378,7 @@ Write values to multiple points in a single call. Each point can specify an opti
 
 ---
 
-## Device Operations <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
+## Device Operations <span style="font-weight:400;font-size:12px;color:#888">4 tools</span>
 
 ### `trendlog_list` — Discover available trendlogs
 
@@ -395,6 +395,26 @@ List all trendlogs configured for a device. Returns trendlog IDs, labels, loggin
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **List all logging configurations for device 233626**
+
+</div>
+
+</div>
+
+### `trendlog_export` — Export trendlog history as CSV/JSON
+
+Export all historical data from a trendlog in one call. Queries every point in the trendlog and returns timestamped values. Use after `trendlog_list` to discover trendlog IDs. Defaults to CSV format with columns: timestamp, point_type, point_index, point_id, value, units, range, digital_analog.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Export trendlog 1 from device 240488 as CSV for the last 24 hours**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Export all trendlog data from device 233626 trendlog 0 as JSON since 2026-01-01**
 
 </div>
 

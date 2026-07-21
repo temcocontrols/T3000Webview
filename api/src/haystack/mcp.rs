@@ -15,7 +15,7 @@
 //   Analytics (2): haystack_validate, haystack_export
 //   Rules (2):     rule_toggle, rule_create
 //   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
-//   Device (3):    trendlog_list, device_refresh, schedule_list
+//   Device (4):    trendlog_list, trendlog_export, device_refresh, schedule_list
 
 use axum::{
     extract::State,
@@ -38,7 +38,7 @@ use crate::app_state::T3AppState;
 use crate::haystack::auto_tagging_service as ats;
 use crate::haystack::tags_service as ts;
 use crate::t3_device::services::T3DeviceService;
-use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest};
+use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest, SpecificPoint};
 
 // ═══ MCP API Logger — console + t3-webview-api-dll.log (gated by debug_log=1 in setting.ini) ═══
 
@@ -658,6 +658,41 @@ lazy_static::lazy_static! {
                 }
             },
             "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "trendlog_export",
+        title: "Export Trendlog",
+        description: "Export all historical data from a trendlog as CSV or JSON. Queries all points in the trendlog in one call and returns timestamped values. Use after trendlog_list to pick a trendlog ID.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                },
+                "trendlog_id": {
+                    "type": "string",
+                    "description": "Trendlog ID (from trendlog_list)"
+                },
+                "start": {
+                    "type": "string",
+                    "description": "Start time in ISO 8601 format"
+                },
+                "end": {
+                    "type": "string",
+                    "description": "Optional: end time in ISO 8601 format (default: now)"
+                },
+                "format": {
+                    "type": "string",
+                    "description": "Output format: csv (default) or json"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Optional: max data points to return (default: 10000)"
+                }
+            },
+            "required": ["serial_number", "trendlog_id", "start"]
         }),
     },
     ToolDef {
@@ -2447,6 +2482,110 @@ async fn execute_tool(
 
             serde_json::to_string_pretty(&json!({ "trendlogs": results, "total": results.len() }))
                 .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "trendlog_export" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+            let trendlog_id = args.get("trendlog_id").and_then(|v| v.as_str())
+                .ok_or_else(|| "trendlog_id required".to_string())?;
+            let start = args.get("start").and_then(|v| v.as_str()).map(String::from)
+                .ok_or_else(|| "start time required".to_string())?;
+            let end = args.get("end").and_then(|v| v.as_str()).map(String::from);
+            let format = args.get("format").and_then(|v| v.as_str()).unwrap_or("csv");
+            let limit: u64 = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(10000);
+
+            // Step 1: Look up trendlog to get panel_id
+            let tl_sql = format!(
+                "SELECT PanelId FROM TRENDLOGS WHERE SerialNumber = {} AND Trendlog_ID = '{}'",
+                serial, trendlog_id
+            );
+            let tl_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &tl_sql)).await
+                .map_err(|e| format!("Trendlog lookup failed: {}", e))?;
+            let panel_id: i32 = tl_rows.first()
+                .and_then(|r| r.try_get::<i32>("", "PanelId").ok())
+                .ok_or_else(|| format!("Trendlog '{}' not found on device {}", trendlog_id, serial))?;
+
+            // Step 2: Look up all points in this trendlog
+            let pts_sql = format!(
+                "SELECT Point_Type, Point_Index FROM TRENDLOG_INPUTS
+                 WHERE SerialNumber = {} AND Trendlog_ID = '{}'",
+                serial, trendlog_id
+            );
+            let pt_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &pts_sql)).await
+                .map_err(|e| format!("Point lookup failed: {}", e))?;
+
+            let specific_points: Vec<SpecificPoint> = pt_rows.iter()
+                .filter_map(|r| {
+                    let pt: String = r.try_get("", "Point_Type").unwrap_or_default();
+                    let idx: i32 = r.try_get("", "Point_Index").unwrap_or(0);
+                    let pt_abbr = match pt.as_str() { "INPUT" => "in", "OUTPUT" => "out", _ => "var" };
+                    Some(SpecificPoint {
+                        point_id: format!("dev{}.{}{}", serial, pt_abbr, idx),
+                        point_type: pt,
+                        point_index: idx,
+                        panel_id,
+                    })
+                })
+                .collect();
+
+            if specific_points.is_empty() {
+                return Ok(json!({"error": "No points found in trendlog", "trendlog_id": trendlog_id}).to_string());
+            }
+
+            let point_count = specific_points.len();
+
+            // Step 3: Query history for all points via specific_points
+            let request = TrendlogHistoryRequest {
+                serial_number: serial,
+                panel_id,
+                trendlog_id: trendlog_id.to_string(),
+                start_time: Some(start),
+                end_time: end,
+                limit: Some(limit),
+                point_types: None,
+                specific_points: Some(specific_points),
+            };
+
+            let result = T3TrendlogDataService::get_trendlog_history(db, request)
+                .await
+                .map_err(|e| format!("Trendlog export failed: {:?}", e))?;
+
+            // Step 4: Format output
+            match format {
+                "csv" => {
+                    let data = result.get("data").and_then(|d| d.as_array()).cloned().unwrap_or_default();
+                    let mut csv = String::from("timestamp,point_type,point_index,point_id,value,units,range,digital_analog\n");
+                    for row in &data {
+                        let ts = row.get("logging_time_fmt").or_else(|| row.get("logging_time"))
+                            .and_then(|v| v.as_str()).unwrap_or("");
+                        let pt = row.get("point_type").and_then(|v| v.as_str()).unwrap_or("");
+                        let idx = row.get("point_index").and_then(|v| v.as_i64()).map(|n| n.to_string()).unwrap_or_default();
+                        let pid = row.get("point_id").and_then(|v| v.as_str()).unwrap_or("");
+                        let val = row.get("value").and_then(|v| v.as_str()).unwrap_or("");
+                        let units = row.get("units").and_then(|v| v.as_str()).unwrap_or("");
+                        let range = row.get("range_field").and_then(|v| v.as_str()).unwrap_or("");
+                        let da = row.get("digital_analog").and_then(|v| v.as_str()).unwrap_or("");
+                        csv.push_str(&format!("{},{},{},{},{},{},{},{}\n",
+                            ts, pt, idx, pid, val, units, range, da));
+                    }
+                    Ok(json!({
+                        "format": "csv",
+                        "content": csv,
+                        "total_rows": data.len(),
+                        "total_points": point_count,
+                    }).to_string())
+                }
+                _ => {
+                    serde_json::to_string_pretty(&json!({
+                        "format": "json",
+                        "data": result,
+                        "total_points": point_count,
+                    }))
+                    .map_err(|e| format!("Serialize error: {}", e))
+                }
+            }
         }
 
         "device_refresh" => {
