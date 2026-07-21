@@ -255,7 +255,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "device_list",
         title: "List Devices",
-        description: "Enumerate all devices with serial numbers, names, types, point counts, and online status.",
+        description: "Enumerate all devices with serial numbers, names, types, point counts, building, floor, and room.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -288,7 +288,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "point_get_metadata",
         title: "Get Point Metadata",
-        description: "Get complete metadata for one point: label, engineering units, range, description, Haystack tags, and Brick class.",
+        description: "Get complete metadata for one point: label, engineering units, range, digital/analog type, description, current value, Haystack tags, and Brick class.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -311,7 +311,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "metadata_search",
         title: "Search Metadata",
-        description: "Search points across devices by label text, tag, or Brick class.",
+        description: "Search points across devices by label text. Optionally filter by device serials or point types.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -418,7 +418,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "point_write_batch",
         title: "Batch Write Points",
-        description: "Write values to multiple points atomically. Requires confirm:true.",
+        description: "Write values to multiple points in a single call. Requires confirm:true.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -448,7 +448,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "haystack_validate",
         title: "Validate Tagging",
-        description: "Validate Haystack/Brick tagging against ontology rules. Returns warnings and errors for: missing required tags, conflicting tag combinations, invalid Brick class assignments, orphaned tag references.",
+        description: "Validate Haystack/Brick tagging against ontology rules. Checks: sensor tag must be on INPUT points, cmd tag must be on OUTPUT points, air tag requires a disambiguator (temp/humidity/pressure/flow/quality).",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -1378,7 +1378,7 @@ async fn execute_tool(
                 "INPUT" => "Input_Index", "OUTPUT" => "Output_Index", _ => "Variable_Index"
             };
             let pt_sql = format!(
-                "SELECT Label, Units, Range_Field, Digital_Analog, Full_Label
+                "SELECT Label, Units, Range_Field, Digital_Analog, Full_Label, fValue
                  FROM {} WHERE SerialNumber = {} AND {} = '{}'",
                 table_name, serial, idx_col, point_index
             );
@@ -1387,16 +1387,17 @@ async fn execute_tool(
                 .await
                 .map_err(|e| format!("Point query failed: {}", e))?;
 
-            let (label, units, range_field, digital_analog, description) = if let Some(row) = pt_rows.first() {
+            let (label, units, range_field, digital_analog, description, current_value) = if let Some(row) = pt_rows.first() {
                 (
                     row.try_get::<String>("", "Label").ok(),
                     row.try_get::<String>("", "Units").ok(),
                     row.try_get::<String>("", "Range_Field").ok(),
                     row.try_get::<String>("", "Digital_Analog").ok(),
                     row.try_get::<String>("", "Full_Label").ok(),
+                    row.try_get::<String>("", "fValue").ok(),
                 )
             } else {
-                (None, None, None, None, None)
+                (None, None, None, None, None, None)
             };
 
             let point_id = format!("dev{}.{}{}",
@@ -1415,6 +1416,7 @@ async fn execute_tool(
                 "range_field": range_field,
                 "digital_analog": digital_analog,
                 "description": description,
+                "current_value": current_value,
                 "haystack_tags": tags,
                 "brick_class": brick_class,
             }))
