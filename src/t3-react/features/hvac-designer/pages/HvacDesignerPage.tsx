@@ -85,8 +85,6 @@ export const HvacDesignerPage: React.FC = () => {
   useEffect(() => {
     try {
       // Clear residual SVG from Strict Mode remount.
-      // replaceChildren() is atomic — no individual removals that trigger
-      // SVG.js internal setTimeout callbacks referencing already-deleted nodes.
       const svgArea = document.getElementById('svg-area');
       svgArea?.replaceChildren();
 
