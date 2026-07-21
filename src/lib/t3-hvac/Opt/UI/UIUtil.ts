@@ -402,6 +402,16 @@ class UIUtil {
     T3Gv.opt.workAreaElement = document.getElementById('svg-area');
     T3Gv.opt.documentElement = document.getElementById('document-area');
 
+    // Dispose old Hammer instances before creating new ones (Strict Mode remount)
+    if (T3Gv.opt.WorkAreaHammer) {
+      T3Gv.opt.WorkAreaHammer.dispose();
+      T3Gv.opt.WorkAreaHammer = null;
+    }
+    if (T3Gv.opt.documentElementHammer) {
+      T3Gv.opt.documentElementHammer.dispose();
+      T3Gv.opt.documentElementHammer = null;
+    }
+
     // Initialize Hammer.js for touch/gesture events
     T3Gv.opt.WorkAreaHammer = new Hammer(T3Gv.opt.workAreaElement);
     T3Gv.opt.documentElementHammer = new Hammer(T3Gv.opt.documentElement);

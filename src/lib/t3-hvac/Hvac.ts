@@ -10,6 +10,7 @@ import QuasarUtil from "./Opt/Quasar/QuasarUtil";
 import LsOpt from "./Opt/Common/LsOpt";
 import DocUtil from "./Doc/DocUtil";
 import IdxPage2 from "./Opt/Common/IdxPage2";
+import IdxPageReact from "./Opt/Common/IdxPageReact";
 import IdxUtils from "./Opt/Common/IdxUtils";
 
 const Hvac = {
@@ -25,6 +26,7 @@ const Hvac = {
   WebClient: null as any, // Will be initialized after module loading
   IdxUtils: IdxUtils, // Static class reference
   IdxPage2: new IdxPage2(),
+  IdxPageReact: new IdxPageReact(),
 }
 
 // Inject dependencies into WebSocketClient to break circular dependency

@@ -20,6 +20,9 @@ export { default as PIDLoopsPage } from '../../features/pidloops/pages/PIDLoopsP
 export { default as SchedulesPage } from '../../features/schedules/pages/SchedulesPage';
 export { HolidaysPage } from '../../features/schedules/pages/HolidaysPage';
 
+// Haystack
+export { HaystackTagsPage } from '../../features/haystack/pages/HaystackTagsPage';
+
 // Monitoring
 export { TrendLogsPage } from '../../features/trendlogs/pages/TrendlogsPage';
 export { TrendChartPage } from '../../features/trendlogs/pages/TrendChartPage';
