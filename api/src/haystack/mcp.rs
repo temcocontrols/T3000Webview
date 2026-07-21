@@ -334,6 +334,31 @@ lazy_static::lazy_static! {
             "required": ["query"]
         }),
     },
+    // ═══ v4: Semantic Search ═══
+    ToolDef {
+        name: "point_search",
+        title: "Semantic Point Search",
+        description: "Search points across devices using natural language. Matches against labels, haystack tags, brick classes, and descriptions. Returns the best matching points ranked by relevance. Use when the user says 'find the temperature sensor in the lobby' or 'show me all fan speed outputs'.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Natural language query, e.g. 'lobby temperature sensor' or 'basement fan speed'"
+                },
+                "serial_numbers": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "description": "Optional: restrict search to these devices"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Optional: max results (default 10)"
+                }
+            },
+            "required": ["query"]
+        }),
+    },
     // ═══ v4: Operational ═══
     ToolDef {
         name: "point_read",
@@ -465,7 +490,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "haystack_export",
         title: "Export Semantic Model",
-        description: "Export the full semantic model for devices. Supports haystack-json (Project Haystack), brick-ttl (Turtle RDF), and brick-jsonld (JSON-LD) formats.",
+        description: "Export the full semantic model for devices. Supports haystack-json (Project Haystack), brick-ttl (Turtle RDF), brick-jsonld (JSON-LD), and csv-flat (flat table of all points with values, units, tags, brick class).",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -476,7 +501,7 @@ lazy_static::lazy_static! {
                 },
                 "format": {
                     "type": "string",
-                    "description": "Export format: haystack-json, brick-ttl, or brick-jsonld"
+                    "description": "Export format: haystack-json, brick-ttl, brick-jsonld, or csv-flat"
                 }
             },
             "required": ["serial_numbers", "format"]
@@ -1621,6 +1646,93 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
+        // ═══ v4: Semantic Search ═══
+
+        "point_search" => {
+            let query = args.get("query").and_then(|v| v.as_str())
+                .ok_or_else(|| "query required".to_string())?;
+            let serial_filter: Option<Vec<i32>> = args.get("serial_numbers")
+                .and_then(|v| v.as_array())
+                .map(|a| a.iter().filter_map(|v| v.as_i64().map(|n| n as i32)).collect());
+            let limit: usize = args.get("limit").and_then(|v| v.as_u64()).map(|n| n as usize).unwrap_or(10);
+
+            let query_lower = query.to_lowercase();
+            let query_words: Vec<&str> = query_lower.split_whitespace().collect();
+
+            // Collect all points with their full metadata for scoring
+            let all_serials: Vec<i32> = if let Some(ref sf) = serial_filter { sf.clone() } else {
+                let dev_sql = "SELECT SerialNumber FROM DEVICES";
+                db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, dev_sql)).await
+                    .map_err(|e| format!("Device list failed: {}", e))?
+                    .iter()
+                    .filter_map(|r| r.try_get::<i32>("", "SerialNumber").ok())
+                    .collect()
+            };
+
+            let mut scored: Vec<(i32, Value)> = Vec::new();
+            for sn in &all_serials {
+                let sn_filter = vec![*sn];
+                let tag_entries = ts::get_point_tags(db, &sn_filter, None).await.unwrap_or_default();
+                if tag_entries.is_empty() { continue; }
+
+                let pt_sql = format!(
+                    "SELECT 'INPUT' as point_type, Input_Index as point_index, Label, Units, Full_Label, fValue \
+                     FROM INPUTS WHERE SerialNumber = {0} \
+                     UNION ALL SELECT 'OUTPUT', Output_Index, Label, Units, Full_Label, fValue \
+                     FROM OUTPUTS WHERE SerialNumber = {0} \
+                     UNION ALL SELECT 'VARIABLE', Variable_Index, Label, Units, Full_Label, fValue \
+                     FROM VARIABLES WHERE SerialNumber = {0}", sn
+                );
+                let pt_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &pt_sql)).await.unwrap_or_default();
+
+                let mut tag_map: HashMap<String, Vec<String>> = HashMap::new();
+                for e in &tag_entries {
+                    tag_map.entry(format!("{}:{}", e.point_type, e.point_index)).or_default().push(e.tag_name.clone());
+                }
+
+                for row in &pt_rows {
+                    let pt: String = row.try_get("", "point_type").unwrap_or_default();
+                    let idx: String = row.try_get("", "point_index").unwrap_or_default();
+                    let label: String = row.try_get("", "Label").unwrap_or_default();
+                    let units: String = row.try_get("", "Units").unwrap_or_default();
+                    let desc: String = row.try_get("", "Full_Label").unwrap_or_default();
+                    let fval: String = row.try_get("", "fValue").unwrap_or_default();
+
+                    let key = format!("{}:{}", pt, idx);
+                    let tags = tag_map.get(&key).cloned().unwrap_or_default();
+                    let label_lower = label.to_lowercase();
+                    let desc_lower = desc.to_lowercase();
+                    let pt_lower = pt.to_lowercase();
+                    let units_lower = units.to_lowercase();
+
+                    // Score: word matches in label (×3), description (×2), tags (×2), point_type, units
+                    let mut score: i32 = 0;
+                    for w in &query_words {
+                        if label_lower.contains(w) { score += 3; }
+                        if desc_lower.contains(w) { score += 2; }
+                        if pt_lower.contains(w) { score += 1; }
+                        if units_lower.contains(w) { score += 1; }
+                        for t in &tags { if t.to_lowercase().contains(w) { score += 2; } }
+                    }
+                    if score > 0 {
+                        let display_val: Option<f64> = if pt == "INPUT" && !fval.is_empty() {
+                            fval.parse::<f64>().ok().map(|v| v / 1000.0)
+                        } else { fval.parse::<f64>().ok() };
+                        scored.push((score, json!({
+                            "serial_number": sn, "point_type": pt, "point_index": idx,
+                            "label": label, "description": desc, "units": units,
+                            "current_value": display_val, "haystack_tags": tags,
+                            "score": score
+                        })));
+                    }
+                }
+            }
+            scored.sort_by(|a, b| b.0.cmp(&a.0));
+            let results: Vec<Value> = scored.into_iter().take(limit).map(|(_, v)| v).collect();
+            serde_json::to_string_pretty(&json!({"results": results, "total": results.len()}))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
         // ═══ v4: Operational ═══
 
         "point_read" => {
@@ -2026,7 +2138,85 @@ async fn execute_tool(
                     .map_err(|e| format!("Serialize error: {}", e))
                 }
 
-                _ => Err(format!("Unknown export format: {}. Use haystack-json, brick-ttl, or brick-jsonld", format)),
+                "csv-flat" => {
+                    // Flat CSV: every point as a row with label, type, index, value, units, tags, brick class
+                    let sn_list2 = serials.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(",");
+                    let pts_sql = format!(
+                        "SELECT pt.serial_number, pt.point_type, pt.point_index, pt.point_id,
+                                pt.tag_name, bc.brick_class
+                         FROM HAYSTACK_POINT_TAGS pt
+                         LEFT JOIN HAYSTACK_POINT_BRICK_CLASS bc
+                           ON pt.serial_number = bc.serial_number
+                           AND pt.point_type = bc.point_type
+                           AND CAST(pt.point_index AS INTEGER) = bc.point_index
+                         WHERE pt.serial_number IN ({})
+                         ORDER BY pt.serial_number, pt.point_type, pt.point_index",
+                        sn_list2
+                    );
+                    let tag_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &pts_sql))
+                        .await.unwrap_or_default();
+
+                    // Build per-point tag/brick maps
+                    let mut point_tags: HashMap<String, Vec<String>> = HashMap::new();
+                    let mut point_brick: HashMap<String, String> = HashMap::new();
+                    for r in &tag_rows {
+                        let key = format!("{}:{}:{}",
+                            r.try_get::<i32>("", "serial_number").unwrap_or(0),
+                            r.try_get::<String>("", "point_type").unwrap_or_default(),
+                            r.try_get::<String>("", "point_index").unwrap_or_default());
+                        if let Ok(t) = r.try_get::<String>("", "tag_name") { point_tags.entry(key.clone()).or_default().push(t); }
+                        if let Ok(bc) = r.try_get::<String>("", "brick_class") { point_brick.entry(key).or_insert(bc); }
+                    }
+
+                    // Collect all points from INPUTS/OUTPUTS/VARIABLES
+                    struct FlatRow { sn: i32, pt: String, idx: String, label: String, desc: String, units: String, fval: String, da: String, range: String }
+                    let mut all_rows: Vec<FlatRow> = Vec::new();
+                    for sn in &serials {
+                        let sq = format!(
+                            "SELECT 'INPUT' as pt, Input_Index as idx, Label, Full_Label, Units, fValue, Digital_Analog, Input_Range FROM INPUTS WHERE SerialNumber={0}
+                             UNION ALL SELECT 'OUTPUT', Output_Index, Label, Full_Label, Units, fValue, Digital_Analog, Output_Range FROM OUTPUTS WHERE SerialNumber={0}
+                             UNION ALL SELECT 'VARIABLE', Variable_Index, Label, Full_Label, Units, fValue, Digital_Analog, '' FROM VARIABLES WHERE SerialNumber={0}", sn
+                        );
+                        if let Ok(rows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sq)).await {
+                            for r in &rows {
+                                all_rows.push(FlatRow {
+                                    sn: *sn,
+                                    pt: r.try_get("", "pt").unwrap_or_default(),
+                                    idx: r.try_get("", "idx").unwrap_or_default(),
+                                    label: r.try_get("", "Label").unwrap_or_default(),
+                                    desc: r.try_get("", "Full_Label").unwrap_or_default(),
+                                    units: r.try_get("", "Units").unwrap_or_default(),
+                                    fval: r.try_get("", "fValue").unwrap_or_default(),
+                                    da: r.try_get("", "Digital_Analog").unwrap_or_default(),
+                                    range: r.try_get("", if sq.contains("INPUT") { "Input_Range" } else { "Output_Range" }).unwrap_or_default(),
+                                });
+                            }
+                        }
+                    }
+
+                    let mut csv = String::from("serial_number,point_type,point_index,label,description,value,units,range,digital_analog,tags,brick_class\n");
+                    for row in &all_rows {
+                        let key = format!("{}:{}:{}", row.sn, row.pt, row.idx);
+                        let tags = point_tags.get(&key).map(|t| t.join("; ")).unwrap_or_default();
+                        let bc = point_brick.get(&key).map(|s| s.as_str()).unwrap_or("");
+                        let display_val: String = if row.pt == "INPUT" && !row.fval.is_empty() {
+                            row.fval.parse::<f64>().map(|v| format!("{:.3}", v / 1000.0)).unwrap_or(row.fval.clone())
+                        } else { row.fval.clone() };
+                        let escaped_label = row.label.replace('"', "\"\"");
+                        let escaped_desc = row.desc.replace('"', "\"\"");
+                        csv.push_str(&format!("{},{},{},\"{}\",\"{}\",{},{},{},{},{},{}\n",
+                            row.sn, row.pt, row.idx, escaped_label, escaped_desc, display_val,
+                            row.units, row.range, row.da, tags, bc));
+                    }
+
+                    Ok(json!({
+                        "format": "csv-flat",
+                        "content": csv,
+                        "total": all_rows.len(),
+                    }).to_string())
+                }
+
+                _ => Err(format!("Unknown export format: {}. Use haystack-json, brick-ttl, brick-jsonld, or csv-flat", format))
             }
         }
 

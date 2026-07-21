@@ -2,7 +2,7 @@
 
 > ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
-Complete reference of natural-language prompts for all 28 MCP tools across 8 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
+Complete reference of natural-language prompts for all 30 MCP tools across 9 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
 ---
 
@@ -530,7 +530,7 @@ Run ontology validation rules against tagged points. Checks for: sensor tags on 
 
 ### `haystack_export` — Export semantic model
 
-Export the full semantic model for devices in standard formats. **haystack-json**: Project Haystack tagged entity format. **brick-ttl**: Brick ontology in Turtle RDF (W3C standard). **brick-jsonld**: Brick ontology in JSON-LD (linked data). Use for integration with other building systems or semantic analysis tools.
+Export the full semantic model for devices in standard formats. **haystack-json**: Project Haystack tagged entity format. **brick-ttl**: Brick ontology in Turtle RDF (W3C standard). **brick-jsonld**: Brick ontology in JSON-LD (linked data). **csv-flat**: Flat CSV table of all points with serial_number, point_type, point_index, label, description, current value, units, range, digital/analog, Haystack tags, and Brick class. Use for integration with other building systems or semantic analysis tools.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -549,6 +549,12 @@ Export the full semantic model for devices in standard formats. **haystack-json*
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Export device 240488 as Brick JSON-LD**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Export device 233626 as a flat CSV spreadsheet**
 
 </div>
 
