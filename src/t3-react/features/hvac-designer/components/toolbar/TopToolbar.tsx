@@ -353,19 +353,19 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 1: Selection */}
       <div className={styles.group}>
-        <div className={styles.toolItem} onClick={() => toolOpt.SelectAct(noopEvent)}>
+        <div className={styles.toolItem} title="Select shape(s)" onClick={() => toolOpt.SelectAct(noopEvent)}>
           <CursorRegular className={styles.toolIcon} />
           <span>Select</span>
         </div>
-        <div className={styles.toolItem} onClick={handleLock}>
+        <div className={styles.toolItem} title="Lock selected shape(s)" onClick={handleLock}>
           <LockClosedRegular className={styles.toolIcon} />
           <span>Lock</span>
         </div>
-        <div className={styles.toolItem} onClick={() => toolOpt.SelectAllObjects()}>
+        <div className={styles.toolItem} title="Select all shape(s)" onClick={() => toolOpt.SelectAllObjects()}>
           <SelectAllOnRegular className={styles.toolIcon} />
           <span>Select All</span>
         </div>
-        <div className={styles.toolItem} onClick={handleUnlock}>
+        <div className={styles.toolItem} title="Unlock selected shape(s)" onClick={handleUnlock}>
           <LockOpenRegular className={styles.toolIcon} />
           <span>Unlock</span>
         </div>
@@ -375,27 +375,27 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 2: Clipboard */}
       <div className={styles.group}>
-        <div className={styles.toolItem} onClick={handlePaste}>
+        <div className={styles.toolItem} title="Paste copied shape(s)" onClick={handlePaste}>
           <ClipboardPasteRegular className={styles.toolIcon} />
           <span>Paste</span>
         </div>
-        <div className={styles.toolItem} onClick={handleCopy}>
+        <div className={styles.toolItem} title="Copy selected shape(s)" onClick={handleCopy}>
           <CopyRegular className={styles.toolIcon} />
           <span>Copy</span>
         </div>
-        <div className={styles.toolItem} onClick={handleCut}>
+        <div className={styles.toolItem} title="Cut selected shape(s)" onClick={handleCut}>
           <CutRegular className={styles.toolIcon} />
           <span>Cut</span>
         </div>
-        <div className={styles.toolItem} onClick={handleDelete}>
+        <div className={styles.toolItem} title="Delete selected shape(s)" onClick={handleDelete}>
           <DeleteRegular className={styles.toolIcon} />
           <span>Delete</span>
         </div>
-        <div className={styles.toolItem} onClick={handleDuplicate}>
+        <div className={styles.toolItem} title="Duplicate selected shape(s)" onClick={handleDuplicate}>
           <AddRegular className={styles.toolIcon} />
           <span>Duplicate</span>
         </div>
-        <div className={styles.toolItem} onClick={handleInsert}>
+        <div className={styles.toolItem} title="Insert shape" onClick={handleInsert}>
           <ImageAddRegular className={styles.toolIcon} />
           <span>Insert</span>
         </div>
@@ -405,19 +405,19 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 3: History & Save */}
       <div className={styles.group}>
-        <div className={styles.toolItem} onClick={handleUndo}>
+        <div className={styles.toolItem} title="Undo last action" onClick={handleUndo}>
           <ArrowUndoRegular className={styles.toolIcon} />
           <span>Undo</span>
         </div>
-        <div className={styles.toolItem} onClick={handleRedo}>
+        <div className={styles.toolItem} title="Redo last undone action" onClick={handleRedo}>
           <ArrowRedoRegular className={styles.toolIcon} />
           <span>Redo</span>
         </div>
-        <div className={styles.toolItem} onClick={handleSave}>
+        <div className={styles.toolItem} title="Save data" onClick={handleSave}>
           <SaveRegular className={styles.toolIcon} />
           <span>Save</span>
         </div>
-        <div className={styles.toolItem} onClick={() => toolOpt.ClearAct()}>
+        <div className={styles.toolItem} title="Clear draw area data" onClick={() => toolOpt.ClearAct()}>
           <EraserRegular className={styles.toolIcon} />
           <span>Clear</span>
         </div>
@@ -500,19 +500,19 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 5: Arrange */}
       <div className={styles.group}>
-        <div className={styles.toolItem} onClick={handleGroup}>
+        <div className={styles.toolItem} title="Group selected shape(s)" onClick={handleGroup}>
           <GroupRegular className={styles.toolIcon} />
           <span>Group</span>
         </div>
-        <div className={styles.toolItem} onClick={handleBringToFront}>
+        <div className={styles.toolItem} title="Bring to front" onClick={handleBringToFront}>
           <ArrowUpRegular className={styles.toolIcon} />
           <span>Bring to Front</span>
         </div>
-        <div className={styles.toolItem} onClick={handleUngroup}>
+        <div className={styles.toolItem} title="Ungroup selected shapes(s)" onClick={handleUngroup}>
           <GroupDismissRegular className={styles.toolIcon} />
           <span>Ungroup</span>
         </div>
-        <div className={styles.toolItem} onClick={handleSendToBack}>
+        <div className={styles.toolItem} title="Send to back" onClick={handleSendToBack}>
           <ArrowDownRegular className={styles.toolIcon} />
           <span>Send to Back</span>
         </div>
@@ -522,11 +522,11 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 6: Library */}
       <div className={styles.group}>
-        <div className={styles.toolItem} onClick={() => toolOpt.AddToLibraryAct()}>
+        <div className={styles.toolItem} title="Add selected shape(s) to library" onClick={() => toolOpt.AddToLibraryAct()}>
           <AddRegular className={styles.toolIcon} />
           <span>Add to Library</span>
         </div>
-        <div className={styles.toolItem} onClick={() => toolOpt.LoadLibraryAct()}>
+        <div className={styles.toolItem} title="Load library" onClick={() => toolOpt.LoadLibraryAct()}>
           <FolderOpenRegular className={styles.toolIcon} />
           <span>Load Library</span>
         </div>
@@ -553,16 +553,16 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
             </MenuList>
           </MenuPopover>
         </Menu>
-        <div className={styles.toolItem} onClick={handleRulersToggle}>
+        <div className={styles.toolItem} title="Toggle rulers visibility" onClick={handleRulersToggle}>
           {rulersOn ? <RulerFilled className={styles.toolIcon} /> : <RulerRegular className={styles.toolIcon} />}
           <span>Rulers</span>
         </div>
-        <div className={styles.toolItem} onClick={handleGridToggle}>
+        <div className={styles.toolItem} title="Toggle grid visibility" onClick={handleGridToggle}>
           {gridOn ? <GridFilled className={styles.toolIcon} /> : <GridRegular className={styles.toolIcon} />}
           <span>Grid</span>
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '2px 4px' }}>
-          <div className={styles.toolItem} onClick={zoomOut} style={{ padding: '2px 4px' }}>
+          <div className={styles.toolItem} title="Zoom out" onClick={zoomOut} style={{ padding: '2px 4px' }}>
             <ZoomOutRegular className={styles.toolIcon} />
           </div>
           <input
@@ -581,11 +581,11 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
             }}
           />
           <span style={{ fontSize: '11px', color: '#323130' }}>%</span>
-          <div className={styles.toolItem} onClick={zoomIn} style={{ padding: '2px 4px' }}>
+          <div className={styles.toolItem} title="Zoom in" onClick={zoomIn} style={{ padding: '2px 4px' }}>
             <ZoomInRegular className={styles.toolIcon} />
           </div>
         </div>
-        <div className={styles.toolItem} onClick={handleResetZoom}>
+        <div className={styles.toolItem} title="Reset view to default" onClick={handleResetZoom}>
           <ArrowResetRegular className={styles.toolIcon} />
           <span>Reset Zoom</span>
         </div>
