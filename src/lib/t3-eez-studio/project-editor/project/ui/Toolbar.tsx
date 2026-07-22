@@ -38,6 +38,7 @@ import { closest } from "eez-studio-shared/dom";
 import { Icon } from "./fluent-toolbar";
 import { dockerBuildState } from "project-editor/lvgl/docker-build/docker-build-state";
 import { transformToDeviceJson } from "project-editor/build/firmware-export";
+import { deviceClient } from "project-editor/build/device-rest-client";
 import { writeTextFile } from "project-editor/build/build";
 import { makeFolder } from "eez-studio-shared/util-electron";
 import * as notification from "eez-studio-ui/notification";
@@ -888,6 +889,7 @@ const RunEditSwitchControls = observer(
             const baseFolder = filePath.replace(/[\\/][^\\/]+$/, "");
 
             try {
+                // 1. Save to local device-config/ folder
                 const deviceConfigDir = baseFolder + "\\device-config";
                 await makeFolder(deviceConfigDir);
 
@@ -904,10 +906,19 @@ const RunEditSwitchControls = observer(
                     count++;
                 }
 
-                notification.success(
-                    `Deployed ${count} screen${count > 1 ? "s" : ""} to device-config\\`,
-                    { autoClose: 3000 }
-                );
+                // 2. Also push to device via DeviceRestClient (mock or real)
+                try {
+                    const result = await deviceClient.deployAllScreens(project as any);
+                    notification.success(
+                        `Deployed ${count} screen${count > 1 ? "s" : ""} to device-config\\${result ? ` (${result.deployed} pushed to device)` : ""}`,
+                        { autoClose: 3000 }
+                    );
+                } catch (apiErr: any) {
+                    notification.warning(
+                        `Saved ${count} screen${count > 1 ? "s" : ""} locally (device push failed: ${apiErr.message})`,
+                        { autoClose: 4000 }
+                    );
+                }
             } catch (err: any) {
                 notification.error(
                     `Deploy failed: ${err?.message || err}`

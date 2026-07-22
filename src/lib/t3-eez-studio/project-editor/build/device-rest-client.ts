@@ -94,11 +94,9 @@ const REACHABILITY_TIMEOUT_MS = 2000;
 const REQUEST_TIMEOUT_MS = 30000;
 
 /** Resolve the REST base URL depending on mock/real mode */
-function restUrl(path: string, deviceIp?: string, serialNumber?: number): string {
+function restUrl(path: string, deviceIp?: string): string {
     if (USE_MOCK) {
-        const sep = path.includes("?") ? "&" : "?";
-        const sn = serialNumber ? `${sep}serial_number=${serialNumber}` : "";
-        return `${MOCK_BASE}/${path}${sn}`;
+        return `${MOCK_BASE}/${path}`;
     }
     return `http://${deviceIp}:${REST_PORT}${REST_BASE}/${path}`;
 }
@@ -188,7 +186,7 @@ export class DeviceRestClient {
 
     private async restLoadAll(): Promise<LoadAllResponse> {
         const response = await fetch(
-            restUrl("screens", this.deviceIp, this.serialNumber),
+            restUrl("screens", this.deviceIp),
             { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
         );
         if (!response.ok) {
@@ -239,7 +237,7 @@ export class DeviceRestClient {
         screens: { name: string; json: DeviceScreen }[]
     ): Promise<DeployAllResponse> {
         const response = await fetch(
-            restUrl("screens", this.deviceIp, this.serialNumber),
+            restUrl("screens", this.deviceIp),
             {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -287,7 +285,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            restUrl(`screens/${encodeURIComponent(name)}`, this.deviceIp, this.serialNumber),
+            restUrl(`screens/${encodeURIComponent(name)}`, this.deviceIp),
             { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
         );
         if (!response.ok) {
@@ -307,7 +305,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            restUrl(`screens/${encodeURIComponent(name)}`, this.deviceIp, this.serialNumber),
+            restUrl(`screens/${encodeURIComponent(name)}`, this.deviceIp),
             {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -335,7 +333,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            restUrl(`screens/${encodeURIComponent(name)}`, this.deviceIp, this.serialNumber),
+            restUrl(`screens/${encodeURIComponent(name)}`, this.deviceIp),
             {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -363,7 +361,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            restUrl(`screens/${encodeURIComponent(screenName)}/widgets/${encodeURIComponent(widgetId)}`, this.deviceIp, this.serialNumber),
+            restUrl(`screens/${encodeURIComponent(screenName)}/widgets/${encodeURIComponent(widgetId)}`, this.deviceIp),
             {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
