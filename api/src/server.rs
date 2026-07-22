@@ -128,7 +128,7 @@ fn routes_wasm() -> Router {
     Router::new().nest_service(
         "/",
         get_service(ServeDir::new(
-            crate::t3_eez_studio::data_root().join("resources").join("eez-studio-wasm")
+            crate::eez_studio::data_root().join("resources").join("eez-studio-wasm")
         )).handle_error(|_| async move {
             (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         }),
@@ -139,7 +139,7 @@ fn routes_assets() -> Router {
     Router::new().nest_service(
         "/",
         get_service(ServeDir::new(
-            crate::t3_eez_studio::data_root().join("resources").join("eez-studio-assets")
+            crate::eez_studio::data_root().join("resources").join("eez-studio-assets")
         )).handle_error(|_| async move {
             (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         }),
@@ -205,7 +205,7 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         // Bridge API for EEZ Studio web frontend file operations
         // MUST register specific /api/bridge/* routes BEFORE the /api nest,
         // otherwise the nest greedily catches all /api/* and returns 404.
-        .merge(crate::t3_eez_studio::bridge_routes())
+        .merge(crate::eez_studio::bridge_routes())
         .nest(
             "/api",
             // Original routes with original AppState

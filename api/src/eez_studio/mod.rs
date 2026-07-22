@@ -2,6 +2,7 @@
 //! Replaces Node.js `fs` in the browser by routing through the Rust backend.
 
 pub mod font_extract;
+pub mod bacnet_api_mock;
 
 use axum::{
     extract::Query,
@@ -1179,5 +1180,8 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/proxy-fetch-binary", get(proxy_fetch_binary))
         .route("/api/eez-studio/extract-font", post(extract_font))
         .route("/api/eez-studio/store", post(store_handler))
+        // Mock BACnet device API — simulates FFI→BACnet→ESP32 screen push/pull
+        .route("/api/eez/screens/push/:panelId", post(bacnet_api_mock::push_screens))
+        .route("/api/eez/screens/pull/:panelId", post(bacnet_api_mock::pull_screens))
         .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)) // 50 MB — catalog JSON ~6 MB
 }

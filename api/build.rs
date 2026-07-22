@@ -4,7 +4,7 @@ use std::path::Path;
 ///
 /// Source paths are resolved relative to `CARGO_MANIFEST_DIR` (the `api/`
 /// crate root).  The destination is `target/<profile>/T3Web/t3-eez/resources/`
-/// — this matches `data_root()` at runtime (see `api/src/t3_eez_studio/mod.rs`).
+/// — this matches `data_root()` at runtime (see `api/src/eez_studio/mod.rs`).
 ///
 /// **Adding new static resources for release packaging:**
 ///   1. Add another `copy_resource_dir(…)` call below.
