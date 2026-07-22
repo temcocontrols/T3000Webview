@@ -49,6 +49,8 @@ const useStyles = makeStyles({
     flex: 1,
     overflow: 'hidden',
     backgroundColor: '#f5f5f5',
+    display: 'flex',
+    flexDirection: 'column',
   },
   messageBar: {
     borderTop: '1px solid #e1e1e1',
@@ -123,6 +125,20 @@ export const HvacDesignerPage: React.FC = () => {
     };
   }, []);
 
+  // Recalculate layout when left panel toggles
+  useEffect(() => {
+    setTimeout(() => {
+      try {
+        const svgDoc = T3Gv?.docUtil?.svgDoc;
+        if (svgDoc && svgDoc.docInfo) {
+          svgDoc.CalcWorkArea();
+          svgDoc.ApplyDocumentTransform();
+          if (T3Gv.docUtil) T3Gv.docUtil.HandleResizeEvent();
+        }
+      } catch { /* ignore */ }
+    }, 50);
+  }, [isLeftPanelCollapsed]);
+
   useEffect(() => {
     if (graphicId) {
       loadDrawingFromDB(graphicId).catch((err) => {
@@ -168,20 +184,20 @@ export const HvacDesignerPage: React.FC = () => {
             </div>
           )}
 
-          {/* Right Workspace - Drawing Area */}
+          {/* Right Workspace - Drawing Area + Message Bar */}
           <div id="work-area" className={styles.drawingArea}>
-            <HvacDrawingArea />
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <HvacDrawingArea />
+            </div>
+            {showMessageBar && (
+              <div className={styles.messageBar}>
+                <MessageBar intent="info">
+                  <MessageBarBody>{message}</MessageBarBody>
+                </MessageBar>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Bottom Message Bar */}
-        {showMessageBar && (
-          <div className={styles.messageBar}>
-            <MessageBar intent="info">
-              <MessageBarBody>{message}</MessageBarBody>
-            </MessageBar>
-          </div>
-        )}
       </div>
     </div>
   );

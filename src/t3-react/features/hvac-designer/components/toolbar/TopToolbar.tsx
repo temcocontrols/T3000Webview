@@ -68,7 +68,7 @@ const useStyles = makeStyles({
     flexDirection: 'row',
     flexWrap: 'nowrap',
     backgroundColor: '#f5f5f5',
-    margin: '0px 2px',
+    margin: '0',
     height: '60px',
     borderBottom: '1px solid #e1e1e1',
     alignItems: 'center',
