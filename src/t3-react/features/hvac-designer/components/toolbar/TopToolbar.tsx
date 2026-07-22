@@ -101,8 +101,11 @@ const useStyles = makeStyles({
     height: '100%',
   },
   toolItem: {
-    display: 'inline-flex',
+    display: 'flex',
+    flex: 1,
+    minWidth: 'fit-content',
     alignItems: 'center',
+    justifyContent: 'flex-start',
     gap: '4px',
     color: '#323130',
     fontSize: '11px',
@@ -122,6 +125,10 @@ const useStyles = makeStyles({
   },
   toolIcon: {
     fontSize: '14px',
+    width: '16px',
+    flexShrink: 0,
+    display: 'inline-flex',
+    justifyContent: 'center',
   },
   leftSection: {
     display: 'flex',
@@ -375,25 +382,25 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 2: Clipboard */}
       <div className={styles.group}>
-        <div className={styles.toolItem} title="Paste copied shape(s)" onClick={handlePaste}>
-          <ClipboardPasteRegular className={styles.toolIcon} />
-          <span>Paste</span>
+        <div className={styles.toolItem} title="Cut selected shape(s)" onClick={handleCut}>
+          <CutRegular className={styles.toolIcon} />
+          <span>Cut</span>
         </div>
         <div className={styles.toolItem} title="Copy selected shape(s)" onClick={handleCopy}>
           <CopyRegular className={styles.toolIcon} />
           <span>Copy</span>
         </div>
-        <div className={styles.toolItem} title="Cut selected shape(s)" onClick={handleCut}>
-          <CutRegular className={styles.toolIcon} />
-          <span>Cut</span>
+        <div className={styles.toolItem} title="Duplicate selected shape(s)" onClick={handleDuplicate}>
+          <AddRegular className={styles.toolIcon} />
+          <span>Duplicate</span>
+        </div>
+        <div className={styles.toolItem} title="Paste copied shape(s)" onClick={handlePaste}>
+          <ClipboardPasteRegular className={styles.toolIcon} />
+          <span>Paste</span>
         </div>
         <div className={styles.toolItem} title="Delete selected shape(s)" onClick={handleDelete}>
           <DeleteRegular className={styles.toolIcon} />
           <span>Delete</span>
-        </div>
-        <div className={styles.toolItem} title="Duplicate selected shape(s)" onClick={handleDuplicate}>
-          <AddRegular className={styles.toolIcon} />
-          <span>Duplicate</span>
         </div>
         <div className={styles.toolItem} title="Insert shape" onClick={handleInsert}>
           <ImageAddRegular className={styles.toolIcon} />
@@ -409,13 +416,13 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
           <ArrowUndoRegular className={styles.toolIcon} />
           <span>Undo</span>
         </div>
-        <div className={styles.toolItem} title="Redo last undone action" onClick={handleRedo}>
-          <ArrowRedoRegular className={styles.toolIcon} />
-          <span>Redo</span>
-        </div>
         <div className={styles.toolItem} title="Save data" onClick={handleSave}>
           <SaveRegular className={styles.toolIcon} />
           <span>Save</span>
+        </div>
+        <div className={styles.toolItem} title="Redo last undone action" onClick={handleRedo}>
+          <ArrowRedoRegular className={styles.toolIcon} />
+          <span>Redo</span>
         </div>
         <div className={styles.toolItem} title="Clear draw area data" onClick={() => toolOpt.ClearAct()}>
           <EraserRegular className={styles.toolIcon} />
@@ -499,7 +506,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
       <div className={styles.divider} />
 
       {/* Group 5: Arrange */}
-      <div className={styles.group}>
+      <div className={styles.group} style={{ maxWidth: '210px' }}>
         <div className={styles.toolItem} title="Group selected shape(s)" onClick={handleGroup}>
           <GroupRegular className={styles.toolIcon} />
           <span>Group</span>
@@ -521,7 +528,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
       <div className={styles.divider} />
 
       {/* Group 6: Library */}
-      <div className={styles.group}>
+      <div className={styles.group} style={{ maxWidth: '180px' }}>
         <div className={styles.toolItem} title="Add selected shape(s) to library" onClick={() => toolOpt.AddToLibraryAct()}>
           <AddRegular className={styles.toolIcon} />
           <span>Add to Library</span>
