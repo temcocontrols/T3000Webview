@@ -594,58 +594,7 @@ class DeviceImportStore {
         });
     }
 
-    // ── Mock: load screens from local disk instead of device REST API ──
-    // TODO: Remove this mock once real device REST APIs are complete.
-    //       Replace with the real DeviceRestClient.connect() + loadAllScreens().
-
-    /** Relative path (under T3Web/t3-eez) to example device-config folder */
-    static readonly MOCK_DEVICE_CONFIG_PATH =
-        "project/examples/Smart Home (LVGL 9.x)/device-config";
-
-    /**
-     * Read all JSON screen files from the mock device-config folder.
-     */
-    async mockLoadAllScreens(): Promise<LoadAllResponse> {
-        const listResp = await fetch(
-            `/api/eez-studio/list-files-detailed?path=${encodeURIComponent(DeviceImportStore.MOCK_DEVICE_CONFIG_PATH)}`
-        );
-        if (!listResp.ok) {
-            throw new Error(`Mock: cannot read device-config folder (${listResp.status})`);
-        }
-        const listing = await listResp.json();
-        const entries: { name: string; is_directory: boolean }[] = listing.entries || [];
-
-        const screens: any[] = [];
-
-        for (const entry of entries) {
-            if (entry.is_directory || !entry.name.endsWith(".json")) continue;
-
-            const filePath = `${DeviceImportStore.MOCK_DEVICE_CONFIG_PATH}/${entry.name}`;
-            const fileResp = await fetch(
-                `/api/eez-studio/read-text-file?path=${encodeURIComponent(filePath)}`
-            );
-            if (!fileResp.ok) {
-                this.appendLog(`   ⚠️ Skipping ${entry.name}: read error ${fileResp.status}`);
-                continue;
-            }
-            const text = await fileResp.text();
-            const raw = JSON.parse(text);
-            for (const [screenName, screenData] of Object.entries(raw)) {
-                screens.push({
-                    name: screenName,
-                    json: screenData as any,
-                });
-            }
-        }
-
-        return {
-            screens,
-            meta: {
-                panel_name: "Smart Home (Mock)",
-                serial_number: 0,
-            },
-        };
-    }
+    // ── Load screens via DeviceRestClient (mock or real, controlled by USE_MOCK constant) ──
 
     async startImport() {
         if (this.selectedDeviceId == null) return;
@@ -673,31 +622,20 @@ class DeviceImportStore {
             });
             this.appendLog("✅ Step 0 — Project folder ready");
 
-            // ── USE_MOCK when device has no IP (real REST APIs not yet ready) ──
-            const USE_MOCK = !device.panel_ipaddress;
+            // Step 1 — Connect via DeviceRestClient (handles mock/real internally)
+            this.appendLog("⏳ Step 1 — Connecting to device...");
+            const { DeviceRestClient } = await import("project-editor/build/device-rest-client");
+            const client = new DeviceRestClient();
+            const conn = await client.connect(
+                device.panel_ipaddress || "mock",
+                device.panel_id,
+                device.panel_serial_number
+            );
+            this.appendLog(`✅ Step 1 — Connected via ${conn.mode.toUpperCase()}`);
 
-            let result: LoadAllResponse;
-
-            if (USE_MOCK) {
-                // Step 1+2 (mock) — Read from local disk
-                this.appendLog("⏳ Step 1 — [MOCK] Reading from local device-config...");
-                result = await this.mockLoadAllScreens();
-                this.appendLog(`✅ Step 1 — [MOCK] Loaded ${result.screens.length} screens from disk`);
-            } else {
-                // Step 1 — Connect via REST (real device)
-                this.appendLog("⏳ Step 1 — Connecting to device...");
-                const { DeviceRestClient } = await import("project-editor/build/device-rest-client");
-                const client = new DeviceRestClient();
-                const conn = await client.connect(device.panel_ipaddress);
-                this.appendLog(`✅ Step 1 — Connected via ${conn.mode.toUpperCase()}`);
-                if (conn.error) {
-                    throw new Error(conn.error);
-                }
-
-                // Step 2 — Fetch all screens
-                this.appendLog("⏳ Step 2 — Fetching screens...");
-                result = await client.loadAllScreens();
-            }
+            // Step 2 — Fetch all screens
+            this.appendLog("⏳ Step 2 — Fetching screens...");
+            const result = await client.loadAllScreens();
 
             const stagingScreens: { name: string; json: any }[] = [];
 
@@ -711,7 +649,7 @@ class DeviceImportStore {
                 const kb = Math.round(JSON.stringify(screen.json).length / 1024);
                 this.appendLog(`   ${screen.name} — ${kb}KB ✓`);
             }
-            this.appendLog(`✅ Step ${USE_MOCK ? "2" : "2"} — Fetched ${stagingScreens.length} screens`);
+            this.appendLog(`✅ Step 2 — Fetched ${stagingScreens.length} screens`);
 
             // Step 3 — Build .eez-project
             this.appendLog("⏳ Step 3 — Building project...");
