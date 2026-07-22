@@ -2,7 +2,7 @@
 
 > ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
-Complete reference of natural-language prompts for all 40 MCP tools across 10 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
+Complete reference of natural-language prompts for all 43 MCP tools across 11 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
 ---
 
@@ -663,6 +663,70 @@ Get a one-shot dashboard of the entire building automation system. Returns total
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Are there any active alarms in the system?**
+
+</div>
+
+</div>
+
+---
+
+## Diagnostics <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
+
+### `alarm_settings_read` — Read alarm thresholds
+
+Read alarm threshold configuration for a device. Returns alarm rules: which points are monitored, the comparison condition, low/high/normal/way-low/way-high threshold values, and time delays. This is alarm configuration — use `alarm_list` for active alarms.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Read alarm threshold settings for device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What alarm rules are configured on device 233626?**
+
+</div>
+
+</div>
+
+### `users_list` — List device users
+
+List all users configured on a device. Returns user IDs, names, access levels (View/Full/Graphic/Routine), rights, default panel/group assignments, and status.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List all users on device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Who has access to device 233626?**
+
+</div>
+
+</div>
+
+### `graphics_list` — List graphic screens
+
+List all graphic/HMI screens available on a device. Returns graphic IDs, labels, descriptions, picture files, total points per screen, and switch nodes.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List graphic screens on device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What HMI screens are available on device 233626?**
 
 </div>
 

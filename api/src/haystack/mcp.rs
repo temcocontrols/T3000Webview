@@ -15,6 +15,7 @@
 //   Analytics (2): haystack_validate, haystack_export
 //   Rules (2):     rule_toggle, rule_create
 //   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
+//   Diagnostics (3): alarm_settings_read, users_list, graphics_list
 //   Device (12):   trendlog_list, trendlog_export, device_refresh, schedule_list, settings_read, settings_write, device_control,
 //                   program_list, program_read, pid_list, holiday_list, building_summary
 
@@ -857,6 +858,51 @@ lazy_static::lazy_static! {
                 }
             },
             "required": ["serial_number", "program_id"]
+        }),
+    },
+    ToolDef {
+        name: "alarm_settings_read",
+        title: "Read Alarm Settings",
+        description: "Read alarm threshold configuration for a device. Returns alarm rules: monitored points, conditions, low/high/normal/way-low/way-high thresholds, and time delays. This is alarm configuration, not the active alarm list (use alarm_list for that).",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "users_list",
+        title: "List Users",
+        description: "List all users configured on a device. Returns user IDs, names, access levels (View/Full/Graphic/Routine), rights, default panel/group, and status.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "graphics_list",
+        title: "List Graphic Screens",
+        description: "List all graphic/HMI screens available on a device. Returns graphic IDs, labels, descriptions, picture files, total points, and switch nodes.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                }
+            },
+            "required": ["serial_number"]
         }),
     },
     ToolDef {
@@ -3165,6 +3211,100 @@ async fn execute_tool(
                 "switch_node": row.try_get::<String>("", "Switch_Node").ok(),
             }))
             .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        // ═══ v4: Diagnostics ═══
+
+        "alarm_settings_read" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            let sql = format!(
+                "SELECT Alarm_Setting_ID, Point, Point_Type, Point_Panel, Point1, Point1_Type, Point1_Panel,
+                        Condition, Way_Low, Low, Normal, High, Way_High, Time_Field, Time_1, Time_2, Message_Count
+                 FROM ALARM_SETTINGS WHERE SerialNumber = {} ORDER BY Alarm_Setting_ID",
+                serial
+            );
+            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                .map_err(|e| format!("Alarm settings read failed: {}", e))?;
+
+            let results: Vec<Value> = rows.iter().map(|r| json!({
+                "alarm_setting_id": r.try_get::<i32>("", "Alarm_Setting_ID").ok(),
+                "point": r.try_get::<i32>("", "Point").ok(),
+                "point_type": r.try_get::<i32>("", "Point_Type").ok(),
+                "point_panel": r.try_get::<i32>("", "Point_Panel").ok(),
+                "point1": r.try_get::<i32>("", "Point1").ok(),
+                "point1_type": r.try_get::<i32>("", "Point1_Type").ok(),
+                "point1_panel": r.try_get::<i32>("", "Point1_Panel").ok(),
+                "condition": r.try_get::<i32>("", "Condition").ok(),
+                "way_low": r.try_get::<i32>("", "Way_Low").ok(),
+                "low": r.try_get::<i32>("", "Low").ok(),
+                "normal": r.try_get::<i32>("", "Normal").ok(),
+                "high": r.try_get::<i32>("", "High").ok(),
+                "way_high": r.try_get::<i32>("", "Way_High").ok(),
+                "time_field": r.try_get::<i32>("", "Time_Field").ok(),
+                "time_1": r.try_get::<i32>("", "Time_1").ok(),
+                "time_2": r.try_get::<i32>("", "Time_2").ok(),
+                "message_count": r.try_get::<i32>("", "Message_Count").ok(),
+            })).collect();
+
+            serde_json::to_string_pretty(&json!({ "alarm_settings": results, "total": results.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "users_list" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            let sql = format!(
+                "SELECT User_ID, User_Index, Name, Access_Level, Rights_Access, Default_Panel, Default_Group, Status
+                 FROM USERS WHERE SerialNumber = {} ORDER BY User_ID",
+                serial
+            );
+            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                .map_err(|e| format!("Users list failed: {}", e))?;
+
+            let results: Vec<Value> = rows.iter().map(|r| json!({
+                "user_id": r.try_get::<String>("", "User_ID").unwrap_or_default(),
+                "user_index": r.try_get::<String>("", "User_Index").ok(),
+                "name": r.try_get::<String>("", "Name").ok(),
+                "access_level": r.try_get::<i32>("", "Access_Level").ok(),
+                "rights_access": r.try_get::<i32>("", "Rights_Access").ok(),
+                "default_panel": r.try_get::<i32>("", "Default_Panel").ok(),
+                "default_group": r.try_get::<i32>("", "Default_Group").ok(),
+                "status": r.try_get::<String>("", "Status").ok(),
+            })).collect();
+
+            serde_json::to_string_pretty(&json!({ "users": results, "total": results.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "graphics_list" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            let sql = format!(
+                "SELECT Graphic_ID, Graphic_Label, Graphic_Full_Label, Graphic_Picture_File, Graphic_Total_Point, Switch_Node
+                 FROM GRAPHICS WHERE SerialNumber = {} ORDER BY Graphic_ID",
+                serial
+            );
+            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                .map_err(|e| format!("Graphics list failed: {}", e))?;
+
+            let results: Vec<Value> = rows.iter().map(|r| json!({
+                "graphic_id": r.try_get::<String>("", "Graphic_ID").unwrap_or_default(),
+                "label": r.try_get::<String>("", "Graphic_Label").ok(),
+                "full_label": r.try_get::<String>("", "Graphic_Full_Label").ok(),
+                "picture_file": r.try_get::<String>("", "Graphic_Picture_File").ok(),
+                "total_point": r.try_get::<String>("", "Graphic_Total_Point").ok(),
+                "switch_node": r.try_get::<String>("", "Switch_Node").ok(),
+            })).collect();
+
+            serde_json::to_string_pretty(&json!({ "graphics": results, "total": results.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
         }
 
         "pid_list" => {
