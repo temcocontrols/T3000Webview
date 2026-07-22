@@ -22,7 +22,7 @@
  *   - `GET  /api/eez-studio/health`         → `{"status":"ok"}`
  *   - `GET  /api/eez-studio/read-file?path=`
  *   - `POST /api/eez-studio/write-file?path=`
- *   - … (see `api/src/t3_eez_studio/mod.rs`)
+ *   - … (see `api/src/eez_studio/mod.rs`)
  *
  * @module eez-studio-api
  */

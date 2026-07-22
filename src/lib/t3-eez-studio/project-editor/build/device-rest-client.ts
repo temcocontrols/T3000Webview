@@ -160,7 +160,7 @@ export class DeviceRestClient {
     /**
      * Load ALL screens from the device.
      * REST path: GET /api/v1/screens
-     * BACnet path: POST /api/devices/:id/read-firmware (T3000)
+     * BACnet path: POST /api/eez/screens/pull/:id (T3000)
      */
     async loadAllScreens(): Promise<LoadAllResponse> {
         if (this.mode === "rest") {
@@ -182,7 +182,7 @@ export class DeviceRestClient {
 
     private async bacnetLoadAll(): Promise<LoadAllResponse> {
         const response = await fetch(
-            `/api/devices/${this.panelId}/read-firmware`,
+            `/api/eez/screens/pull/${this.panelId}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -201,7 +201,7 @@ export class DeviceRestClient {
     /**
      * Deploy ALL screens to the device.
      * REST path: PUT /api/v1/screens
-     * BACnet path: POST /api/devices/:id/deploy-firmware (T3000)
+     * BACnet path: POST /api/eez/screens/push/:id (T3000 mock)
      *
      * @param projectJson  The raw .eez-project JSON (parsed object)
      */
@@ -240,7 +240,7 @@ export class DeviceRestClient {
         screens: { name: string; json: DeviceScreen }[]
     ): Promise<DeployAllResponse> {
         const response = await fetch(
-            `/api/devices/${this.panelId}/deploy-firmware`,
+            `/api/eez/screens/push/${this.panelId}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
