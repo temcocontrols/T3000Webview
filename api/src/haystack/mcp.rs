@@ -15,7 +15,8 @@
 //   Analytics (2): haystack_validate, haystack_export
 //   Rules (2):     rule_toggle, rule_create
 //   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
-//   Device (7):    trendlog_list, trendlog_export, device_refresh, schedule_list, settings_read, settings_write, device_control
+//   Device (12):   trendlog_list, trendlog_export, device_refresh, schedule_list, settings_read, settings_write, device_control,
+//                   program_list, program_read, pid_list, holiday_list, building_summary
 
 use axum::{
     extract::State,
@@ -797,6 +798,80 @@ lazy_static::lazy_static! {
                 }
             },
             "required": ["serial_number", "command", "confirm"]
+        }),
+    },
+    // ═══ v4: Control Logic ═══
+    ToolDef {
+        name: "program_list",
+        title: "List Programs",
+        description: "List all PLC programs on a device. Returns program IDs, labels, status (running/stopped), auto/manual mode, program size, and switch node. Use to discover what control logic exists before reading a specific program.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "program_read",
+        title: "Read Program Source",
+        description: "Read a specific PLC program's full details: source code (program_list), label, status, auto/manual mode, size, and switch node. The source code is truncated to 2000 characters in the response.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                },
+                "program_id": {
+                    "type": "string",
+                    "description": "Program ID (from program_list)"
+                }
+            },
+            "required": ["serial_number", "program_id"]
+        }),
+    },
+    ToolDef {
+        name: "pid_list",
+        title: "List PID Loops",
+        description: "List all PID control loops on a device. Returns loop IDs, setpoint, process variable (input value), output value, proportional/reset/rate parameters, action type, auto/manual mode, and status.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "holiday_list",
+        title: "List Holiday Schedules",
+        description: "List all holiday exceptions configured on a device. Returns holiday IDs, dates (month/day/year), holiday values, auto/manual mode, and status. Holidays override normal weekly schedules.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "building_summary",
+        title: "Building System Summary",
+        description: "Get a one-shot overview of the entire building automation system. Returns total device count, online/offline breakdown, active alarm count, total trendlogs, schedules, programs, and PID loops across all devices. Use for 'How is the building doing?' queries.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {}
         }),
     },
     ];
@@ -2929,6 +3004,193 @@ async fn execute_tool(
                 }
                 _ => Err(format!("Unknown command: {}. Valid: reboot, reset_defaults", command)),
             }
+        }
+
+        // ═══ v4: Control Logic ═══
+
+        "program_list" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            let sql = format!(
+                "SELECT Program_ID, Program_Label, Program_Status, Auto_Manual, Program_Size, Switch_Node, Program_Pointer
+                 FROM PROGRAMS WHERE SerialNumber = {} ORDER BY Program_ID",
+                serial
+            );
+            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                .map_err(|e| format!("Program list failed: {}", e))?;
+
+            let results: Vec<Value> = rows.iter().map(|r| json!({
+                "program_id": r.try_get::<String>("", "Program_ID").unwrap_or_default(),
+                "label": r.try_get::<String>("", "Program_Label").ok(),
+                "status": r.try_get::<String>("", "Program_Status").ok(),
+                "auto_manual": r.try_get::<String>("", "Auto_Manual").ok(),
+                "size": r.try_get::<String>("", "Program_Size").ok(),
+                "switch_node": r.try_get::<String>("", "Switch_Node").ok(),
+                "pointer": r.try_get::<String>("", "Program_Pointer").ok(),
+            })).collect();
+
+            serde_json::to_string_pretty(&json!({ "programs": results, "total": results.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "program_read" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+            let prog_id = args.get("program_id").and_then(|v| v.as_str())
+                .ok_or_else(|| "program_id required".to_string())?;
+
+            let sql = format!(
+                "SELECT Program_ID, Program_Label, Program_List, Program_Status, Auto_Manual,
+                        Program_Size, Switch_Node, Program_Pointer
+                 FROM PROGRAMS WHERE SerialNumber = {} AND Program_ID = '{}'",
+                serial, prog_id.replace('\'', "''")
+            );
+            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                .map_err(|e| format!("Program read failed: {}", e))?;
+
+            let row = rows.first()
+                .ok_or_else(|| format!("Program '{}' not found on device {}", prog_id, serial))?;
+
+            let source: String = row.try_get("", "Program_List").unwrap_or_default();
+            let truncated = if source.len() > 2000 {
+                format!("{}... (truncated, {} chars total)", &source[..2000], source.len())
+            } else { source.clone() };
+
+            serde_json::to_string_pretty(&json!({
+                "program_id": row.try_get::<String>("", "Program_ID").unwrap_or_default(),
+                "label": row.try_get::<String>("", "Program_Label").ok(),
+                "source": truncated,
+                "source_length": source.len(),
+                "status": row.try_get::<String>("", "Program_Status").ok(),
+                "auto_manual": row.try_get::<String>("", "Auto_Manual").ok(),
+                "size": row.try_get::<String>("", "Program_Size").ok(),
+                "switch_node": row.try_get::<String>("", "Switch_Node").ok(),
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "pid_list" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            let sql = format!(
+                "SELECT Loop_Field, Input_Field, Input_Value, Output_Field, Output_Value, Set_Value,
+                        Proportional, Reset_Field, Rate, Bias, Auto_Manual, Status, Units,
+                        Action_Field, Type_Field, Setpoint_High, Setpoint_Low, Switch_Node
+                 FROM PID_TABLE WHERE SerialNumber = {} ORDER BY Loop_Field",
+                serial
+            );
+            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                .map_err(|e| format!("PID list failed: {}", e))?;
+
+            let results: Vec<Value> = rows.iter().map(|r| json!({
+                "loop_field": r.try_get::<String>("", "Loop_Field").ok(),
+                "input_field": r.try_get::<String>("", "Input_Field").ok(),
+                "input_value": r.try_get::<String>("", "Input_Value").ok(),
+                "output_field": r.try_get::<String>("", "Output_Field").ok(),
+                "output_value": r.try_get::<String>("", "Output_Value").ok(),
+                "set_value": r.try_get::<String>("", "Set_Value").ok(),
+                "proportional": r.try_get::<String>("", "Proportional").ok(),
+                "reset_field": r.try_get::<String>("", "Reset_Field").ok(),
+                "rate": r.try_get::<String>("", "Rate").ok(),
+                "bias": r.try_get::<String>("", "Bias").ok(),
+                "auto_manual": r.try_get::<String>("", "Auto_Manual").ok(),
+                "status": r.try_get::<String>("", "Status").ok(),
+                "units": r.try_get::<String>("", "Units").ok(),
+                "action": r.try_get::<String>("", "Action_Field").ok(),
+                "type_field": r.try_get::<String>("", "Type_Field").ok(),
+                "setpoint_high": r.try_get::<String>("", "Setpoint_High").ok(),
+                "setpoint_low": r.try_get::<String>("", "Setpoint_Low").ok(),
+                "switch_node": r.try_get::<String>("", "Switch_Node").ok(),
+            })).collect();
+
+            serde_json::to_string_pretty(&json!({ "pid_loops": results, "total": results.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "holiday_list" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            let sql = format!(
+                "SELECT Holiday_ID, Month_Field, Day_Field, Year_Field, Holiday_Value, Auto_Manual, Status
+                 FROM HOLIDAYS WHERE SerialNumber = {} ORDER BY Holiday_ID",
+                serial
+            );
+            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                .map_err(|e| format!("Holiday list failed: {}", e))?;
+
+            let results: Vec<Value> = rows.iter().map(|r| json!({
+                "holiday_id": r.try_get::<String>("", "Holiday_ID").unwrap_or_default(),
+                "month": r.try_get::<String>("", "Month_Field").ok(),
+                "day": r.try_get::<String>("", "Day_Field").ok(),
+                "year": r.try_get::<String>("", "Year_Field").ok(),
+                "value": r.try_get::<String>("", "Holiday_Value").ok(),
+                "auto_manual": r.try_get::<String>("", "Auto_Manual").ok(),
+                "status": r.try_get::<String>("", "Status").ok(),
+            })).collect();
+
+            serde_json::to_string_pretty(&json!({ "holidays": results, "total": results.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "building_summary" => {
+            // Total devices
+            let dev_sql = "SELECT COUNT(*) as cnt FROM DEVICES";
+            let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, dev_sql)).await
+                .map_err(|e| format!("Device count failed: {}", e))?;
+            let device_count: i64 = dev_rows.first().and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
+
+            // Active alarms
+            let alarm_sql = "SELECT COUNT(*) as cnt FROM ALARMS WHERE (Acknowledged IS NULL OR Acknowledged = '' OR Acknowledged = '0')";
+            let alarm_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, alarm_sql)).await.unwrap_or_default();
+            let active_alarms: i64 = alarm_rows.first().and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
+
+            // Trendlogs
+            let tl_sql = "SELECT COUNT(*) as cnt FROM TRENDLOGS";
+            let tl_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, tl_sql)).await.unwrap_or_default();
+            let total_trendlogs: i64 = tl_rows.first().and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
+
+            // Schedules
+            let sch_sql = "SELECT COUNT(*) as cnt FROM SCHEDULES";
+            let sch_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sch_sql)).await.unwrap_or_default();
+            let total_schedules: i64 = sch_rows.first().and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
+
+            // Programs
+            let prog_sql = "SELECT COUNT(*) as cnt FROM PROGRAMS";
+            let prog_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, prog_sql)).await.unwrap_or_default();
+            let total_programs: i64 = prog_rows.first().and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
+
+            // PID loops
+            let pid_sql = "SELECT COUNT(*) as cnt FROM PID_TABLE";
+            let pid_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, pid_sql)).await.unwrap_or_default();
+            let total_pid_loops: i64 = pid_rows.first().and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
+
+            // Device list with names
+            let dev_list_sql = "SELECT SerialNumber, Product_Name FROM DEVICES ORDER BY SerialNumber";
+            let dev_list_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, dev_list_sql)).await.unwrap_or_default();
+            let devices: Vec<Value> = dev_list_rows.iter().map(|r| json!({
+                "serial": r.try_get::<i32>("", "SerialNumber").unwrap_or(0),
+                "name": r.try_get::<String>("", "Product_Name").ok(),
+            })).collect();
+
+            serde_json::to_string_pretty(&json!({
+                "device_count": device_count,
+                "devices": devices,
+                "active_alarms": active_alarms,
+                "total_trendlogs": total_trendlogs,
+                "total_schedules": total_schedules,
+                "total_programs": total_programs,
+                "total_pid_loops": total_pid_loops,
+                "health": if active_alarms == 0 { "good" } else if active_alarms < 5 { "warning" } else { "critical" },
+                "timestamp": Utc::now().to_rfc3339(),
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
         }
 
         _ => Err(format!("Unknown tool: {}", name)),

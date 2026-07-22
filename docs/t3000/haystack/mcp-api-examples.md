@@ -2,7 +2,7 @@
 
 > ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
-Complete reference of natural-language prompts for all 34 MCP tools across 9 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
+Complete reference of natural-language prompts for all 39 MCP tools across 10 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
 ---
 
@@ -378,7 +378,7 @@ Write values to multiple points in a single call. Each point can specify an opti
 
 ---
 
-## Device Operations <span style="font-weight:400;font-size:12px;color:#888">7 tools</span>
+## Device Operations <span style="font-weight:400;font-size:12px;color:#888">12 tools</span>
 
 ### `trendlog_list` — Discover available trendlogs
 
@@ -530,8 +530,121 @@ Send control commands to a device: reboot (restart the controller) or reset_defa
 
 </div>
 
+---
+
+## Control Logic <span style="font-weight:400;font-size:12px;color:#888">5 tools</span>
+
+### `program_list` — List PLC programs
+
+List all control logic programs running on a device. Returns program IDs, labels, status (running/stopped), auto/manual mode, program size, and switch node. Use before `program_read` to find which programs exist.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List all programs on device 240488**
+
 </div>
 
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What control logic is running on device 233626?**
+
+</div>
+
+</div>
+
+### `program_read` — Read program source code
+
+Read a specific PLC program's full details including source code (truncated to 2000 chars), label, status, auto/manual mode, size, and switch node. The full source length is included in the response.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me the source code of program 1 on device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What does program 'MAIN_LOOP' on device 233626 do?**
+
+</div>
+
+</div>
+
+### `pid_list` — List PID control loops
+
+List all PID control loops on a device. Returns loop IDs, current setpoint, process variable (input value), output value, P/I/D tuning parameters (proportional, reset, rate), bias, action type, auto/manual mode, setpoint limits, and status. Essential for HVAC diagnostics.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List all PID loops on device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me the tuning parameters for the PID loops on device 233626**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Which PID loops are in manual mode?**
+
+</div>
+
+</div>
+
+### `holiday_list` — List holiday exceptions
+
+List all holiday schedule exceptions on a device. Returns holiday IDs, dates (month/day/year), holiday output values, auto/manual mode, and status. Holidays override the normal weekly schedule on their designated dates.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List holiday schedules on device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What holiday exceptions are configured on device 233626?**
+
+</div>
+
+</div>
+
+### `building_summary` — System-wide overview
+
+Get a one-shot dashboard of the entire building automation system. Returns total device count with names, active alarm count, total trendlogs, schedules, programs, and PID loops across all devices. Includes a health indicator (good/warning/critical based on alarm count). Perfect for "How's the building?" queries.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**How is the building doing right now?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Give me a system overview**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Are there any active alarms in the system?**
+
+</div>
+
+</div>
 ---
 
 ## Core <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
