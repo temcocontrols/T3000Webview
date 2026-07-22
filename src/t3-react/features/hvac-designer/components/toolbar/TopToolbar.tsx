@@ -25,7 +25,9 @@ import {
   ZoomInRegular,
   ZoomOutRegular,
   GridRegular,
+  GridFilled,
   RulerRegular,
+  RulerFilled,
   LockClosedRegular,
   LockOpenRegular,
   SelectAllOnRegular,
@@ -54,6 +56,7 @@ import {
 } from '@fluentui/react-icons';
 import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
 import EvtOpt from '@/lib/t3-hvac/Event/EvtOpt';
+import DataOpt from '@/lib/t3-hvac/Opt/Data/DataOpt';
 
 const toolOpt = EvtOpt.toolOpt;
 // Synthetic event for ToolOpt methods that expect a DOM event
@@ -174,11 +177,40 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
   const getZoomPct = () => Math.round((T3Gv.docUtil?.GetZoomFactor() ?? 1) * 100);
   const [zoomValue, setZoomValue] = useState(() => getZoomPct());
 
-  // Poll library zoom on mouse-wheel / keyboard zoom (bypasses React state).
+  const [rulersOn, setRulersOn] = useState(false);
+  const [gridOn, setGridOn] = useState(false);
+
+  // Poll library state for zoom + rulers/grid (bypasses React state / async init).
   useEffect(() => {
-    const id = setInterval(() => setZoomValue(getZoomPct()), 300);
+    const id = setInterval(() => {
+      setZoomValue(getZoomPct());
+      const dc = T3Gv.docUtil?.docConfig;
+      if (dc) {
+        setRulersOn(dc.showRulers);
+        setGridOn(dc.showGrid);
+      }
+    }, 300);
     return () => clearInterval(id);
   }, []);
+
+  const handleRulersToggle = () => {
+    const dc = T3Gv.docUtil?.docConfig;
+    if (dc) {
+      dc.showRulers = !dc.showRulers;
+      setRulersOn(dc.showRulers);
+      T3Gv.docUtil?.UpdateRulerVisibility();
+      DataOpt.SaveToLocalStorage();
+    }
+  };
+  const handleGridToggle = () => {
+    const dc = T3Gv.docUtil?.docConfig;
+    if (dc) {
+      dc.showGrid = !dc.showGrid;
+      setGridOn(dc.showGrid);
+      T3Gv.docUtil?.UpdateGridVisibility();
+      DataOpt.SaveToLocalStorage();
+    }
+  };
 
   const zoomIn = () => {
     const pct = getZoomPct() + 10;
@@ -521,18 +553,12 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
             </MenuList>
           </MenuPopover>
         </Menu>
-        <div className={styles.toolItem} onClick={() => {
-          const dc = T3Gv.docUtil?.docConfig;
-          if (dc) { dc.showRulers = !dc.showRulers; T3Gv.docUtil?.UpdateRulerVisibility(); }
-        }}>
-          <RulerRegular className={styles.toolIcon} />
+        <div className={styles.toolItem} onClick={handleRulersToggle}>
+          {rulersOn ? <RulerFilled className={styles.toolIcon} /> : <RulerRegular className={styles.toolIcon} />}
           <span>Rulers</span>
         </div>
-        <div className={styles.toolItem} onClick={() => {
-          const dc = T3Gv.docUtil?.docConfig;
-          if (dc) { dc.showGrid = !dc.showGrid; T3Gv.docUtil?.UpdateGrid(); }
-        }}>
-          <GridRegular className={styles.toolIcon} />
+        <div className={styles.toolItem} onClick={handleGridToggle}>
+          {gridOn ? <GridFilled className={styles.toolIcon} /> : <GridRegular className={styles.toolIcon} />}
           <span>Grid</span>
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '2px 4px' }}>
