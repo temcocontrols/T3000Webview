@@ -3,7 +3,7 @@
  * Main toolbar with drawing tools and actions (2 rows layout)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Menu,
   MenuTrigger,
@@ -169,15 +169,32 @@ interface TopToolbarProps {
 export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNavigateBack }) => {
   const styles = useStyles();
 
-  // Use existing Hvac library for zoom operations
-  const zoomIn = () => T3Gv.docUtil?.SetZoomLevel((T3Gv.docUtil?.GetZoomFactor() ?? 100) + 10);
-  const zoomOut = () => T3Gv.docUtil?.SetZoomLevel((T3Gv.docUtil?.GetZoomFactor() ?? 100) - 10);
+  // Use existing Hvac library for zoom operations.
+  // GetZoomFactor() returns a RATIO (1.0 = 100%), SetZoomLevel takes PERCENTAGE.
+  const getZoomPct = () => Math.round((T3Gv.docUtil?.GetZoomFactor() ?? 1) * 100);
+  const [zoomValue, setZoomValue] = useState(() => getZoomPct());
+
+  // Poll library zoom on mouse-wheel / keyboard zoom (bypasses React state).
+  useEffect(() => {
+    const id = setInterval(() => setZoomValue(getZoomPct()), 300);
+    return () => clearInterval(id);
+  }, []);
+
+  const zoomIn = () => {
+    const pct = getZoomPct() + 10;
+    setZoomValue(pct);
+    T3Gv.docUtil?.SetZoomLevel(pct);
+  };
+  const zoomOut = () => {
+    const pct = getZoomPct() - 10;
+    setZoomValue(pct);
+    T3Gv.docUtil?.SetZoomLevel(pct);
+  };
   const [showRotateMenu, setShowRotateMenu] = useState(false);
   const [showAlignMenu, setShowAlignMenu] = useState(false);
   const [showFlipMenu, setShowFlipMenu] = useState(false);
   const [showMakeSameMenu, setShowMakeSameMenu] = useState(false);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
-  const [zoomValue, setZoomValue] = useState(100);
 
   const handleSave = async () => {
     toolOpt.SaveAct();
@@ -256,7 +273,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
   const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value) || 100;
     setZoomValue(value);
-    T3Gv.docUtil?.SetZoomLevel(value);
+    if (value > 0) T3Gv.docUtil?.SetZoomLevel(value);
   };
 
   const handleLock = () => {
@@ -268,8 +285,8 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
   };
 
   const handleResetZoom = () => {
-    toolOpt.ResetScaleAct(noopEvent);
     setZoomValue(100);
+    toolOpt.ResetScaleAct(noopEvent);
   };
 
   const handleInsert = () => {
@@ -525,6 +542,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
           <input
             type="number"
             value={zoomValue}
+            onFocus={() => setZoomValue(getZoomPct())}
             onChange={handleZoomChange}
             style={{
               width: '50px',
