@@ -11,7 +11,7 @@
 //                   preview_tags, list_rules, get_brick_class
 //   Core (3):      ping, get_version, describe_tool
 //   Data (4):      device_list, device_get_points, point_get_metadata, metadata_search
-//   Operational(4): point_read, point_write, point_read_batch, point_write_batch
+//   Operational(5): point_read, point_write, point_read_batch, point_write_batch, point_batch_metadata
 //   Analytics (2): haystack_validate, haystack_export
 //   Rules (2):     rule_toggle, rule_create
 //   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
@@ -470,6 +470,30 @@ lazy_static::lazy_static! {
                 }
             },
             "required": ["points", "confirm"]
+        }),
+    },
+    ToolDef {
+        name: "point_batch_metadata",
+        title: "Batch Point Metadata",
+        description: "Get full metadata for multiple points in one call. Returns label, units, range, digital/analog, description, current value, Haystack tags, and Brick class for each point. Much more efficient than calling point_get_metadata N times.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "points": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "serial_number": { "type": "integer" },
+                            "point_type": { "type": "string" },
+                            "point_index": { "type": "integer" }
+                        },
+                        "required": ["serial_number", "point_type", "point_index"]
+                    },
+                    "description": "Array of point references"
+                }
+            },
+            "required": ["points"]
         }),
     },
     // ═══ v4: Analytics ═══
@@ -2096,6 +2120,77 @@ async fn execute_tool(
                 "timestamp": Utc::now().to_rfc3339(),
             });
             Ok(result.to_string())
+        }
+
+        "point_batch_metadata" => {
+            let points: Vec<Value> = args.get("points")
+                .and_then(|v| v.as_array())
+                .map(|a| a.to_vec())
+                .unwrap_or_default();
+
+            let mut results: Vec<Value> = Vec::new();
+            for point in &points {
+                let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
+                let pt = point.get("point_type").and_then(|v| v.as_str());
+                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
+                if let (Some(sn), Some(pt_str), Some(idx)) = (sn, pt, idx) {
+                    let (table, idx_col) = match pt_str {
+                        "INPUT" => ("INPUTS", "Input_Index"),
+                        "OUTPUT" => ("OUTPUTS", "Output_Index"),
+                        "VARIABLE" => ("VARIABLES", "Variable_Index"),
+                        _ => continue,
+                    };
+                    let sql = format!(
+                        "SELECT Label, Units, Range_Field, Digital_Analog, Full_Label, fValue
+                         FROM {} WHERE SerialNumber = {} AND {} = '{}'",
+                        table, sn, idx_col, idx
+                    );
+                    if let Ok(rows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await {
+                        if let Some(row) = rows.first() {
+                            let label: Option<String> = row.try_get("", "Label").ok();
+                            let units: Option<String> = row.try_get("", "Units").ok();
+                            let range: Option<String> = row.try_get("", "Range_Field").ok();
+                            let da: Option<String> = row.try_get("", "Digital_Analog").ok();
+                            let desc: Option<String> = row.try_get("", "Full_Label").ok();
+                            let fval: Option<String> = row.try_get("", "fValue").ok();
+                            let display_val = fval.as_ref().and_then(|v| {
+                                if pt_str == "INPUT" { v.parse::<f64>().ok().map(|x| x / 1000.0) }
+                                else { v.parse::<f64>().ok() }
+                            });
+
+                            // Get tags
+                            let sn_filter = vec![sn];
+                            let tag_entries = ts::get_point_tags(db, &sn_filter, Some(pt_str)).await.unwrap_or_default();
+                            let tags: Vec<String> = tag_entries.iter()
+                                .filter(|e| e.point_index == idx.to_string())
+                                .map(|e| e.tag_name.clone())
+                                .collect();
+
+                            // Get brick class
+                            let bc_sql = format!(
+                                "SELECT brick_class FROM HAYSTACK_POINT_BRICK_CLASS
+                                 WHERE serial_number = {} AND point_type = '{}' AND point_index = {}",
+                                sn, pt_str, idx
+                            );
+                            let bc = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &bc_sql)).await
+                                .ok().and_then(|r| r.first().and_then(|r2| r2.try_get::<String>("", "brick_class").ok()));
+
+                            results.push(json!({
+                                "serial_number": sn, "point_type": pt_str, "point_index": idx,
+                                "label": label, "engineering_units": units, "range_field": range,
+                                "digital_analog": da, "description": desc, "current_value": display_val,
+                                "haystack_tags": tags, "brick_class": bc,
+                            }));
+                        }
+                    }
+                }
+            }
+
+            serde_json::to_string_pretty(&json!({
+                "results": results, "requested": points.len(), "returned": results.len(),
+                "timestamp": Utc::now().to_rfc3339(),
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
         }
 
         // ═══ v4: Analytics ═══

@@ -2,7 +2,7 @@
 
 > ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
-Complete reference of natural-language prompts for all 39 MCP tools across 10 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
+Complete reference of natural-language prompts for all 40 MCP tools across 10 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
 ---
 
@@ -270,7 +270,7 @@ Search point labels across all devices by keyword. Matches against point labels,
 
 ---
 
-## Operational — Read/Write <span style="font-weight:400;font-size:12px;color:#888">4 tools</span>
+## Operational — Read/Write <span style="font-weight:400;font-size:12px;color:#888">5 tools</span>
 
 ### `point_read` — Read a single point value
 
@@ -371,6 +371,26 @@ Write values to multiple points in a single call. Each point can specify an opti
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Set output 1 to 80 and rename it to "PumpSpeed"**
+
+</div>
+
+</div>
+
+### `point_batch_metadata` — Get full metadata for multiple points
+
+Get complete metadata for multiple points in a single call. Returns label, engineering units, range, digital/analog type, description, current value, Haystack tags, and Brick class for each point. Much more efficient than calling `point_get_metadata` N times — use when you need full context on several points at once.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Give me full metadata for inputs 0 through 4 on device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What are the tags, units, and ranges for output 0 of device 233626 and input 1 of device 237219?**
 
 </div>
 
@@ -530,6 +550,8 @@ Send control commands to a device: reboot (restart the controller) or reset_defa
 
 </div>
 
+</div>
+
 ---
 
 ## Control Logic <span style="font-weight:400;font-size:12px;color:#888">5 tools</span>
@@ -645,6 +667,7 @@ Get a one-shot dashboard of the entire building automation system. Returns total
 </div>
 
 </div>
+
 ---
 
 ## Core <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
