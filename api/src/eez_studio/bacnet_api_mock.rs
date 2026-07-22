@@ -222,7 +222,7 @@ pub async fn get_screen(
     let k = key(0, q.serial_number.unwrap_or(0));
     let store = STORE.lock().map_err(|e| { error!("get_screen: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
     match store.get(&k).and_then(|d| d.screens.iter().find(|s| s.name == name)) {
-        Some(s) => Ok(Json(s.json.clone())),
+        Some(s) => Ok(Json(serde_json::json!({ "name": s.name, "json": s.json }))),
         None => { error!("get_screen: '{}' not found", name); Err(StatusCode::NOT_FOUND) }
     }
 }
@@ -465,7 +465,7 @@ pub async fn delete_image(
 pub struct MockDeviceInfo {
     pub serial_number: i32,
     pub panel_name: String,
-    pub ip_address: String,
+    pub ip: String,
     pub panel_id: i32,
     pub connection_type: String,
     pub screen_count: usize,
@@ -478,7 +478,7 @@ pub async fn list_devices() -> Json<Vec<MockDeviceInfo>> {
         MockDeviceInfo {
             serial_number: *serial,
             panel_name: data.meta.panel_name.clone(),
-            ip_address: format!("192.168.1.{}", serial % 254 + 1),
+            ip: format!("192.168.1.{}", serial % 254 + 1),
             panel_id: *panel_id,
             connection_type: "BACnet".into(),
             screen_count: data.screens.len(),
@@ -490,7 +490,7 @@ pub async fn list_devices() -> Json<Vec<MockDeviceInfo>> {
         devices.push(MockDeviceInfo {
             serial_number: 12345,
             panel_name: "T3-ESP-Mock".into(),
-            ip_address: "192.168.1.100".into(),
+            ip: "192.168.1.100".into(),
             panel_id: 0,
             connection_type: "BACnet".into(),
             screen_count: 0,
