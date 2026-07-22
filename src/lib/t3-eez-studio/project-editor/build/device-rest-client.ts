@@ -85,7 +85,7 @@ export interface ConnectionResult {
 const USE_MOCK = true;
 
 /** Mock device base (hits Rust backend at localhost:9103) */
-const MOCK_BASE = "/api/eez";
+const MOCK_BASE = "/api/eez-device";
 
 /** Real ESP32 REST API */
 const REST_BASE = "/api/v1";
@@ -175,7 +175,7 @@ export class DeviceRestClient {
     /**
      * Load ALL screens from the device.
      * REST path: GET /api/v1/screens
-     * BACnet path: POST /api/eez/screens/pull/:id (T3000)
+     * BACnet path: POST /api/eez-device/screens/pull/:id (T3000)
      */
     async loadAllScreens(): Promise<LoadAllResponse> {
         if (this.mode === "rest") {
@@ -197,7 +197,7 @@ export class DeviceRestClient {
 
     private async bacnetLoadAll(): Promise<LoadAllResponse> {
         const response = await fetch(
-            `/api/eez/screens/pull/${this.panelId}`,
+            `/api/eez-device/screens/pull/${this.panelId}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -216,7 +216,7 @@ export class DeviceRestClient {
     /**
      * Deploy ALL screens to the device.
      * REST path: PUT /api/v1/screens
-     * BACnet path: POST /api/eez/screens/push/:id (T3000 mock)
+     * BACnet path: POST /api/eez-device/screens/push/:id (T3000 mock)
      *
      * @param projectJson  The raw .eez-project JSON (parsed object)
      */
@@ -255,7 +255,7 @@ export class DeviceRestClient {
         screens: { name: string; json: DeviceScreen }[]
     ): Promise<DeployAllResponse> {
         const response = await fetch(
-            `/api/eez/screens/push/${this.panelId}`,
+            `/api/eez-device/screens/push/${this.panelId}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

@@ -1,19 +1,23 @@
 //! Mock BACnet/ESP32 device API — full REST surface for testing.
 //!
-//! Simulates the ESP32 REST API at `/api/eez/screens` so the EEZ Studio
+//! Simulates the ESP32 REST API at `/api/eez-device/screens` so the EEZ Studio
 //! frontend can do full load→edit→push round-trips without real hardware.
 //!
 //! ## Endpoints (mirror ESP32's `GET/PUT/PATCH /api/v1/screens`)
-//!   GET    /api/eez/screens                        — load all screens
-//!   PUT    /api/eez/screens                        — deploy all screens
-//!   GET    /api/eez/screens/:name                  — load single screen
-//!   PUT    /api/eez/screens/:name                  — deploy single screen
-//!   PATCH  /api/eez/screens/:name                  — delta update
-//!   PATCH  /api/eez/screens/:name/widgets/:widgetId — widget delta
+//!   GET    /api/eez-device/screens                        — load all screens
+//!   PUT    /api/eez-device/screens                        — deploy all screens
+//!   GET    /api/eez-device/screens/:name                  — load single screen
+//!   PUT    /api/eez-device/screens/:name                  — deploy single screen
+//!   PATCH  /api/eez-device/screens/:name                  — delta update
+//!   PATCH  /api/eez-device/screens/:name/widgets/:widgetId — widget delta
+//!   GET    /api/eez-device/devices                        — list mock devices
+//!   POST   /api/eez-device/images/push/:panelId           — upload image
+//!   GET    /api/eez-device/images/pull/:panelId/:name     — download image
+//!   DELETE /api/eez-device/images/:panelId/:name          — delete image
 //!
 //! ## BACnet-style (used by DeviceRestClient BACnet fallback)
-//!   POST /api/eez/screens/push/:panelId            — store screens
-//!   POST /api/eez/screens/pull/:panelId            — retrieve screens
+//!   POST /api/eez-device/screens/push/:panelId            — store screens
+//!   POST /api/eez-device/screens/pull/:panelId            — retrieve screens
 //!
 //! ## Switching to real device: change USE_MOCK in device-rest-client.ts
 
@@ -152,7 +156,7 @@ pub struct LoadAllResponse {
 // REST handlers (mirror ESP32 /api/v1/screens)
 // ═══════════════════════════════════════════════════════════════════
 
-/// GET /api/eez/screens
+/// GET /api/eez-device/screens
 pub async fn get_screens(
     Query(q): Query<ScreenQuery>,
 ) -> Result<Json<LoadAllResponse>, StatusCode> {
@@ -176,7 +180,7 @@ pub async fn get_screens(
     }
 }
 
-/// PUT /api/eez/screens
+/// PUT /api/eez-device/screens
 pub async fn put_screens(
     Query(q): Query<ScreenQuery>,
     Json(body): Json<DeployAllBody>,
@@ -210,7 +214,7 @@ pub async fn put_screens(
     }))
 }
 
-/// GET /api/eez/screens/:name
+/// GET /api/eez-device/screens/:name
 pub async fn get_screen(
     Path(name): Path<String>,
     Query(q): Query<ScreenQuery>,
@@ -223,7 +227,7 @@ pub async fn get_screen(
     }
 }
 
-/// PUT /api/eez/screens/:name
+/// PUT /api/eez-device/screens/:name
 pub async fn put_screen(
     Path(name): Path<String>,
     Query(q): Query<ScreenQuery>,
@@ -246,7 +250,7 @@ pub async fn put_screen(
     Ok(Json(DeploySingleResponse { name, status: "ok".into(), error: None }))
 }
 
-/// PATCH /api/eez/screens/:name
+/// PATCH /api/eez-device/screens/:name
 pub async fn patch_screen(
     Path(name): Path<String>,
     Query(q): Query<ScreenQuery>,
@@ -288,7 +292,7 @@ pub async fn patch_screen(
     }))
 }
 
-/// PATCH /api/eez/screens/:name/widgets/:widgetId
+/// PATCH /api/eez-device/screens/:name/widgets/:widgetId
 pub async fn patch_widget(
     Path((name, widget_id)): Path<(String, String)>,
     Query(q): Query<ScreenQuery>,
@@ -415,7 +419,7 @@ pub struct PullImageResponse {
     pub data_base64: String,
 }
 
-/// POST /api/eez/images/push/:panelId — upload a bitmap to mock device
+/// POST /api/eez-device/images/push/:panelId — upload a bitmap to mock device
 pub async fn push_image(
     Path(panel_id): Path<i32>,
     Json(body): Json<PushImageBody>,
@@ -429,7 +433,7 @@ pub async fn push_image(
     Ok(Json(PushImageResponse { name: body.name, status: "ok".into() }))
 }
 
-/// GET /api/eez/images/pull/:panelId/:name — download a bitmap from mock device
+/// GET /api/eez-device/images/pull/:panelId/:name — download a bitmap from mock device
 pub async fn pull_image(
     Path((panel_id, name)): Path<(i32, String)>,
 ) -> Result<Json<PullImageResponse>, StatusCode> {
@@ -443,7 +447,7 @@ pub async fn pull_image(
     }
 }
 
-/// DELETE /api/eez/images/:panelId/:name — remove a bitmap from mock device
+/// DELETE /api/eez-device/images/:panelId/:name — remove a bitmap from mock device
 pub async fn delete_image(
     Path((panel_id, name)): Path<(i32, String)>,
 ) -> StatusCode {
@@ -467,7 +471,7 @@ pub struct MockDeviceInfo {
     pub screen_count: usize,
 }
 
-/// GET /api/eez/devices — list available mock devices
+/// GET /api/eez-device/devices — list available mock devices
 pub async fn list_devices() -> Json<Vec<MockDeviceInfo>> {
     let store = STORE.lock().unwrap_or_else(|e| e.into_inner());
     let mut devices: Vec<MockDeviceInfo> = store.iter().map(|((panel_id, serial), data)| {
