@@ -42,6 +42,7 @@ import {
   AlignCenterVerticalRegular,
   AlignBottomRegular,
   AddRegular,
+  EraserRegular,
   CursorRegular,
   ImageAddRegular,
   ResizeImageRegular,
@@ -242,41 +243,37 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
     setShowFlipMenu(false);
   };
 
-  const handleMakeSame = (type: string) => {
+  const handleMakeSame = (type: number) => {
     toolOpt.MakeSameSizeAct(noopEvent, type);
     setShowMakeSameMenu(false);
   };
 
   const handleBackground = (color: string) => {
-    // TODO: Implement background change
-    console.log('Background:', color);
+    toolOpt.LibSetBackgroundColorAct(color);
     setShowBackgroundMenu(false);
   };
 
   const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value) || 100;
     setZoomValue(value);
-    // TODO: Apply zoom
+    T3Gv.docUtil?.SetZoomLevel(value);
   };
 
   const handleLock = () => {
-    // TODO: Implement lock
-    console.log('Lock');
+    toolOpt.LibLockAct(false);
   };
 
   const handleUnlock = () => {
-    // TODO: Implement unlock
-    console.log('Unlock');
-  };
-
-  const handleInsert = () => {
-    // TODO: Implement insert
-    console.log('Insert');
+    toolOpt.LibUnlockAct(false);
   };
 
   const handleResetZoom = () => {
+    toolOpt.ResetScaleAct(noopEvent);
     setZoomValue(100);
-    // TODO: Reset zoom to 100%
+  };
+
+  const handleInsert = () => {
+    // Insert is disabled in both React and Vue
   };
 
   return (
@@ -363,13 +360,17 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
           <ArrowUndoRegular className={styles.toolIcon} />
           <span>Undo</span>
         </div>
+        <div className={styles.toolItem} onClick={handleRedo}>
+          <ArrowRedoRegular className={styles.toolIcon} />
+          <span>Redo</span>
+        </div>
         <div className={styles.toolItem} onClick={handleSave}>
           <SaveRegular className={styles.toolIcon} />
           <span>Save</span>
         </div>
-        <div className={styles.toolItem} onClick={handleRedo}>
-          <ArrowRedoRegular className={styles.toolIcon} />
-          <span>Redo</span>
+        <div className={styles.toolItem} onClick={() => toolOpt.ClearAct()}>
+          <EraserRegular className={styles.toolIcon} />
+          <span>Clear</span>
         </div>
       </div>
 
@@ -404,12 +405,12 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem className={styles.menuItem} icon={<AlignLeftRegular />} onClick={() => handleAlign('left')}>Align Left</MenuItem>
-              <MenuItem className={styles.menuItem} icon={<AlignCenterHorizontalRegular />} onClick={() => handleAlign('center-h')}>Align Center H</MenuItem>
-              <MenuItem className={styles.menuItem} icon={<AlignRightRegular />} onClick={() => handleAlign('right')}>Align Right</MenuItem>
-              <MenuItem className={styles.menuItem} icon={<AlignTopRegular />} onClick={() => handleAlign('top')}>Align Top</MenuItem>
-              <MenuItem className={styles.menuItem} icon={<AlignCenterVerticalRegular />} onClick={() => handleAlign('center-v')}>Align Center V</MenuItem>
-              <MenuItem className={styles.menuItem} icon={<AlignBottomRegular />} onClick={() => handleAlign('bottom')}>Align Bottom</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleAlign('lefts')}>Align Left</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignCenterHorizontalRegular />} onClick={() => handleAlign('centers')}>Align Center H</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignRightRegular />} onClick={() => handleAlign('rights')}>Align Right</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignTopRegular />} onClick={() => handleAlign('tops')}>Align Top</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignCenterVerticalRegular />} onClick={() => handleAlign('middles')}>Align Center V</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignBottomRegular />} onClick={() => handleAlign('bottoms')}>Align Bottom</MenuItem>
             </MenuList>
           </MenuPopover>
         </Menu>
@@ -438,9 +439,9 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame('width')}>Same Width</MenuItem>
-              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame('height')}>Same Height</MenuItem>
-              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame('size')}>Same Size</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame(2)}>Same Width</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame(1)}>Same Height</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame(3)}>Same Size</MenuItem>
             </MenuList>
           </MenuPopover>
         </Menu>
@@ -472,11 +473,11 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
 
       {/* Group 6: Library */}
       <div className={styles.group}>
-        <div className={styles.toolItem}>
+        <div className={styles.toolItem} onClick={() => toolOpt.AddToLibraryAct()}>
           <AddRegular className={styles.toolIcon} />
           <span>Add to Library</span>
         </div>
-        <div className={styles.toolItem}>
+        <div className={styles.toolItem} onClick={() => toolOpt.LoadLibraryAct()}>
           <FolderOpenRegular className={styles.toolIcon} />
           <span>Load Library</span>
         </div>
