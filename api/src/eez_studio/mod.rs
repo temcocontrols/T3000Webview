@@ -7,7 +7,7 @@ pub mod bacnet_api_mock;
 use axum::{
     extract::Query,
     http::StatusCode,
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post, put},
     Json, Router,
 };
 use rusqlite::OptionalExtension;
@@ -1180,8 +1180,21 @@ pub fn bridge_routes() -> Router<T3AppState> {
         .route("/api/eez-studio/proxy-fetch-binary", get(proxy_fetch_binary))
         .route("/api/eez-studio/extract-font", post(extract_font))
         .route("/api/eez-studio/store", post(store_handler))
-        // Mock BACnet device API — simulates FFI→BACnet→ESP32 screen push/pull
-        .route("/api/eez/screens/push/:panelId", post(bacnet_api_mock::push_screens))
-        .route("/api/eez/screens/pull/:panelId", post(bacnet_api_mock::pull_screens))
+        // Mock BACnet device API — simulates ESP32 REST + BACnet fallback
+        // Device list (for "Import from Device" UI)
+        .route("/api/eez/devices", get(bacnet_api_mock::list_devices))
+        // Image/bitmap transfer (images sent separately from screen JSON)
+        .route("/api/eez/images/push/:panelId", post(bacnet_api_mock::push_image))
+        .route("/api/eez/images/pull/:panelId/:name", get(bacnet_api_mock::pull_image))
+        .route("/api/eez/images/:panelId/:name", delete(bacnet_api_mock::delete_image))
+        // Specific routes (push/pull) must register before wildcard (:name)
+        .route("/api/eez/screens/push/:panelId", post(bacnet_api_mock::push_screens_bacnet))
+        .route("/api/eez/screens/pull/:panelId", post(bacnet_api_mock::pull_screens_bacnet))
+        .route("/api/eez/screens", get(bacnet_api_mock::get_screens))
+        .route("/api/eez/screens", put(bacnet_api_mock::put_screens))
+        .route("/api/eez/screens/:name", get(bacnet_api_mock::get_screen))
+        .route("/api/eez/screens/:name", put(bacnet_api_mock::put_screen))
+        .route("/api/eez/screens/:name", patch(bacnet_api_mock::patch_screen))
+        .route("/api/eez/screens/:name/widgets/:widgetId", patch(bacnet_api_mock::patch_widget))
         .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)) // 50 MB — catalog JSON ~6 MB
 }

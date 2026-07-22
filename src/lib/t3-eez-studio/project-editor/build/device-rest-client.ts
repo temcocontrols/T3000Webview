@@ -81,10 +81,25 @@ export interface ConnectionResult {
 // Constants
 // ═══════════════════════════════════════════════════════════════════
 
+/** Toggle: true = use Rust mock at localhost:9103, false = real ESP32 */
+const USE_MOCK = true;
+
+/** Mock device base (hits Rust backend at localhost:9103) */
+const MOCK_BASE = "/api/eez";
+
+/** Real ESP32 REST API */
 const REST_BASE = "/api/v1";
-const REST_PORT = 8000; // ESP32 device REST API port
-const REACHABILITY_TIMEOUT_MS = 2000; // short timeout for probing
-const REQUEST_TIMEOUT_MS = 30000; // normal request timeout
+const REST_PORT = 8000;
+const REACHABILITY_TIMEOUT_MS = 2000;
+const REQUEST_TIMEOUT_MS = 30000;
+
+/** Resolve the REST base URL depending on mock/real mode */
+function restUrl(path: string, deviceIp?: string): string {
+    if (USE_MOCK) {
+        return `${MOCK_BASE}/${path}`;
+    }
+    return `http://${deviceIp}:${REST_PORT}${REST_BASE}/${path}`;
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // DeviceRestClient
@@ -136,10 +151,10 @@ export class DeviceRestClient {
      * Uses a short timeout so the UI doesn't hang on unreachable devices.
      */
     async isReachable(deviceIp: string): Promise<boolean> {
+        if (USE_MOCK) return true; // mock always reachable
         try {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), REACHABILITY_TIMEOUT_MS);
-
             const response = await fetch(
                 `http://${deviceIp}:${REST_PORT}${REST_BASE}/screens`,
                 { method: "HEAD", signal: controller.signal }
@@ -171,7 +186,7 @@ export class DeviceRestClient {
 
     private async restLoadAll(): Promise<LoadAllResponse> {
         const response = await fetch(
-            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens`,
+            restUrl("screens", this.deviceIp),
             { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
         );
         if (!response.ok) {
@@ -222,7 +237,7 @@ export class DeviceRestClient {
         screens: { name: string; json: DeviceScreen }[]
     ): Promise<DeployAllResponse> {
         const response = await fetch(
-            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens`,
+            restUrl("screens", this.deviceIp),
             {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -270,7 +285,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens/${encodeURIComponent(name)}`,
+            restUrl(`screens/${encodeURIComponent(name)}`, this.deviceIp),
             { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
         );
         if (!response.ok) {
@@ -290,7 +305,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens/${encodeURIComponent(name)}`,
+            restUrl(`screens/${encodeURIComponent(name)}`, this.deviceIp),
             {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -318,7 +333,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens/${encodeURIComponent(name)}`,
+            restUrl(`screens/${encodeURIComponent(name)}`, this.deviceIp),
             {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -346,7 +361,7 @@ export class DeviceRestClient {
         }
 
         const response = await fetch(
-            `http://${this.deviceIp}:${REST_PORT}${REST_BASE}/screens/${encodeURIComponent(screenName)}/widgets/${encodeURIComponent(widgetId)}`,
+            restUrl(`screens/${encodeURIComponent(screenName)}/widgets/${encodeURIComponent(widgetId)}`, this.deviceIp),
             {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
