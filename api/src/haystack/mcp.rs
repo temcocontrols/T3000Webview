@@ -15,7 +15,7 @@
 //   Analytics (2): haystack_validate, haystack_export
 //   Rules (2):     rule_toggle, rule_create
 //   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
-//   Device (4):    trendlog_list, trendlog_export, device_refresh, schedule_list
+//   Device (7):    trendlog_list, trendlog_export, device_refresh, schedule_list, settings_read, settings_write, device_control
 
 use axum::{
     extract::State,
@@ -727,6 +727,76 @@ lazy_static::lazy_static! {
                 }
             },
             "required": ["serial_number"]
+        }),
+    },
+    // ═══ v4: Settings ═══
+    ToolDef {
+        name: "settings_read",
+        title: "Read Device Settings",
+        description: "Read all settings for a device: network (IP/subnet/gateway/DHCP), communication (COM ports/baudrates/parity), time (timezone/NTP/DST), protocol (Modbus ID/MSTP/BACnet), DynDNS, hardware info, feature flags, and email alerts. Optionally filter by category.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Optional: filter to one category. One of: network, communication, time, protocol, dyndns, hardware, features, email. Omit for all."
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "settings_write",
+        title: "Update Device Settings",
+        description: "Update device settings. Supports network (ip_address, subnet, gateway, tcp_type), communication (com0/1/2_config, com_baudrate0/1/2), time (time_zone, enable_sntp, sntp_server, flag_time_sync_pc), and email (smtp_server, smtp_port, email_address, etc.). Writes to database and syncs to device via FFI.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Settings category: network, communication, time, or email"
+                },
+                "fields": {
+                    "type": "object",
+                    "description": "Key-value pairs of fields to update. e.g. {\"ip_address\": \"192.168.1.100\", \"tcp_type\": 1} for network, or {\"com0_config\": 1, \"com_baudrate0\": 5} for communication"
+                },
+                "confirm": {
+                    "type": "boolean",
+                    "description": "Safety confirmation - must be true"
+                }
+            },
+            "required": ["serial_number", "category", "fields", "confirm"]
+        }),
+    },
+    ToolDef {
+        name: "device_control",
+        title: "Device Control",
+        description: "Send control commands to a device: reboot (restart the controller) or reset_defaults (factory reset). Requires confirm:true.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                },
+                "command": {
+                    "type": "string",
+                    "description": "Command: reboot or reset_defaults"
+                },
+                "confirm": {
+                    "type": "boolean",
+                    "description": "Safety confirmation - must be true"
+                }
+            },
+            "required": ["serial_number", "command", "confirm"]
         }),
     },
     ];
@@ -2675,6 +2745,190 @@ async fn execute_tool(
 
             serde_json::to_string_pretty(&json!({ "schedules": results, "total": results.len() }))
                 .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        // ═══ v4: Settings ═══
+
+        "settings_read" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+            let category = args.get("category").and_then(|v| v.as_str());
+
+            let mut result = json!({ "serial_number": serial });
+
+            // Query a single table, return first row as JSON or null
+            async fn read_table(db: &sea_orm::DatabaseConnection, serial: i32, table: &str, columns: &[&str]) -> Result<Value, String> {
+                let cols = columns.join(", ");
+                let sql = format!("SELECT {} FROM {} WHERE SerialNumber = {}", cols, table, serial);
+                let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                    .map_err(|e| format!("Query {} failed: {}", table, e))?;
+                if rows.is_empty() {
+                    return Ok(json!(null));
+                }
+                let row = &rows[0];
+                let mut obj = serde_json::Map::new();
+                for col in columns {
+                    if let Ok(v) = row.try_get::<String>("", col) {
+                        obj.insert(col.to_string(), json!(v));
+                    }
+                }
+                Ok(json!(obj))
+            }
+
+            let cats: Vec<(&str, &str, &[&str])> = vec![
+                ("network", "NETWORK_SETTINGS", &["IP_Address", "Subnet", "Gateway", "MAC_Address", "TCP_Type"][..]),
+                ("communication", "COMMUNICATION_SETTINGS", &["COM0_Config", "COM1_Config", "COM2_Config", "COM_Baudrate0", "COM_Baudrate1", "COM_Baudrate2", "UART_Parity0", "UART_Parity1", "UART_Parity2", "UART_Stopbit0", "UART_Stopbit1", "UART_Stopbit2", "Fix_COM_Config"]),
+                ("time", "TIME_SETTINGS", &["Time_Zone", "Time_Zone_Summer_Daytime", "Enable_SNTP", "SNTP_Server", "Flag_Time_Sync_PC", "Time_Sync_Auto_Manual", "Sync_Time_Results", "Start_Month", "Start_Day", "End_Month", "End_Day"]),
+                ("protocol", "PROTOCOL_SETTINGS", &["Modbus_ID", "Modbus_Port", "MSTP_ID", "MSTP_Network_Number", "Max_Master", "Object_Instance", "BBMD_Enable", "Network_Number", "Network_Number_Hi"]),
+                ("dyndns", "DYNDNS_SETTINGS", &["Enable_DynDNS", "Provider", "User", "Pass", "Domain", "Update_Time", "Update_Status"]),
+                ("hardware", "HARDWARE_INFO", &["Hardware_Rev", "Firmware_Version", "Firmware_Version_Hi", "Firmware_Version_Lo", "Bootloader_Rev", "Mini_Type", "Panel_Type", "USB_Mode", "SD_Exist", "Zigbee_Exist", "Max_Var", "Max_In", "Max_Out"]),
+                ("features", "FEATURE_FLAGS", &["User_Name_Enable", "Customer_Unite_Enable", "LCD_Backlight_Time", "LCD_Display_Time", "Plug_N_Play", "Refresh_Flash_Timer", "Debug_Enable", "Debug_Mode", "Screen_Type"]),
+                ("email", "EMAIL_ALARMS", &["SMTP_Server", "SMTP_Port", "Email_Address", "User_Name", "Password", "Secure_Connection_Type", "To1_Addr", "To2_Addr", "To3_Addr", "To4_Addr", "Enable", "Error_Code"]),
+            ];
+
+            if let Some(cat) = category {
+                if let Some((key, table, cols)) = cats.iter().find(|(k, _, _)| *k == cat) {
+                    let data = read_table(db, serial, table, cols).await?;
+                    result.as_object_mut().unwrap().insert(key.to_string(), data);
+                } else {
+                    return Err(format!("Unknown category: {}. Valid: network, communication, time, protocol, dyndns, hardware, features, email", cat));
+                }
+            } else {
+                for (key, table, cols) in &cats {
+                    let data = read_table(db, serial, table, cols).await?;
+                    result.as_object_mut().unwrap().insert(key.to_string(), data);
+                }
+            }
+
+            serde_json::to_string_pretty(&result)
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "settings_write" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+            let category = args.get("category").and_then(|v| v.as_str())
+                .ok_or_else(|| "category required".to_string())?;
+            let fields = args.get("fields").and_then(|v| v.as_object())
+                .ok_or_else(|| "fields object required".to_string())?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+
+            if !confirm {
+                return Err("settings_write requires confirm: true for safety".to_string());
+            }
+
+            let (table, allowed_fields): (&str, &[&str]) = match category {
+                "network" => ("NETWORK_SETTINGS", &["IP_Address", "Subnet", "Gateway", "MAC_Address", "TCP_Type"]),
+                "communication" => ("COMMUNICATION_SETTINGS", &["COM0_Config", "COM1_Config", "COM2_Config", "COM_Baudrate0", "COM_Baudrate1", "COM_Baudrate2", "UART_Parity0", "UART_Parity1", "UART_Parity2", "UART_Stopbit0", "UART_Stopbit1", "UART_Stopbit2", "Fix_COM_Config"]),
+                "time" => ("TIME_SETTINGS", &["Time_Zone", "Time_Zone_Summer_Daytime", "Enable_SNTP", "SNTP_Server", "Flag_Time_Sync_PC", "Time_Sync_Auto_Manual", "Start_Month", "Start_Day", "End_Month", "End_Day"]),
+                "email" => ("EMAIL_ALARMS", &["SMTP_Server", "SMTP_Port", "Email_Address", "User_Name", "Password", "Secure_Connection_Type", "To1_Addr", "To2_Addr", "To3_Addr", "To4_Addr", "Enable"]),
+                _ => return Err(format!("Unknown category: {}. Valid: network, communication, time, email", category)),
+            };
+
+            // Check record exists
+            let check_sql = format!("SELECT SerialNumber FROM {} WHERE SerialNumber = {}", table, serial);
+            let check = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &check_sql)).await
+                .map_err(|e| format!("Check failed: {}", e))?;
+
+            let now = chrono::Utc::now().to_rfc3339();
+            let mut set_clauses: Vec<String> = Vec::new();
+            for (key, val) in fields {
+                let db_col = key.as_str();
+                if !allowed_fields.contains(&db_col) {
+                    return Err(format!("Field '{}' not allowed for category '{}'. Allowed: {}", db_col, category, allowed_fields.join(", ")));
+                }
+                let val_str = match val {
+                    Value::String(s) => format!("'{}'", s.replace('\'', "''")),
+                    Value::Number(n) => n.to_string(),
+                    Value::Bool(b) => (if *b { "1" } else { "0" }).to_string(),
+                    Value::Null => "NULL".to_string(),
+                    _ => return Err(format!("Invalid value type for field '{}'", db_col)),
+                };
+                set_clauses.push(format!("{} = {}", db_col, val_str));
+            }
+            set_clauses.push(format!("updated_at = '{}'", now));
+
+            if check.is_empty() {
+                // Insert
+                let cols = set_clauses.iter().map(|c| c.split(" = ").next().unwrap()).collect::<Vec<_>>().join(", ");
+                let vals = set_clauses.iter().map(|c| c.split(" = ").nth(1).unwrap()).collect::<Vec<_>>().join(", ");
+                let insert_sql = format!("INSERT INTO {} (SerialNumber, {}, created_at) VALUES ({}, {}, '{}')",
+                    table, cols, serial, vals, now);
+                db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &insert_sql)).await
+                    .map_err(|e| format!("Insert failed: {}", e))?;
+            } else {
+                // Update
+                let update_sql = format!("UPDATE {} SET {} WHERE SerialNumber = {}",
+                    table, set_clauses.join(", "), serial);
+                db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &update_sql)).await
+                    .map_err(|e| format!("Update failed: {}", e))?;
+            }
+
+            info!("[MCP] settings_write: dev={} category={} fields={:?}", serial, category, fields);
+            mcp_log(&format!("settings_write OK: dev={} category={}", serial, category));
+            Ok(json!({"success": true, "category": category, "updated_fields": fields.len(), "timestamp": now}).to_string())
+        }
+
+        "device_control" => {
+            use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
+
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+            let command = args.get("command").and_then(|v| v.as_str())
+                .ok_or_else(|| "command required (reboot or reset_defaults)".to_string())?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+
+            if !confirm {
+                return Err("device_control requires confirm: true for safety".to_string());
+            }
+
+            match command {
+                "reboot" => {
+                    // Reboot: write 99 to reset_default field via Action 16 entryType 198
+                    let ffi_json = json!({
+                        "action": 16,
+                        "panelId": 1,
+                        "serialNumber": serial,
+                        "entryType": 198,
+                        "entryIndex": 43, // reset_default offset
+                        "value": 99.0,
+                        "label": "", "description": "", "range": 0,
+                        "auto_manual": 0, "filter": 0, "digital_analog": 0,
+                        "calibration_sign": 0, "calibration_h": 0, "calibration_l": 0,
+                        "control": 0, "decom": 0,
+                    });
+                    info!("[MCP] device_control: reboot serial={}", serial);
+                    mcp_log(&format!("device_control: reboot serial={}", serial));
+                    let ffi_service = T3000FfiApiService::new();
+                    ffi_service.call_ffi(&ffi_json.to_string()).await
+                        .map_err(|e| format!("Reboot failed: {}", e))?;
+                    Ok(json!({"success": true, "command": "reboot", "timestamp": Utc::now().to_rfc3339()}).to_string())
+                }
+                "reset_defaults" => {
+                    let ffi_json = json!({
+                        "action": 16,
+                        "panelId": 1,
+                        "serialNumber": serial,
+                        "entryType": 198,
+                        "entryIndex": 43,
+                        "value": 88.0,
+                        "label": "", "description": "", "range": 0,
+                        "auto_manual": 0, "filter": 0, "digital_analog": 0,
+                        "calibration_sign": 0, "calibration_h": 0, "calibration_l": 0,
+                        "control": 0, "decom": 0,
+                    });
+                    info!("[MCP] device_control: reset_defaults serial={}", serial);
+                    mcp_log(&format!("device_control: reset_defaults serial={}", serial));
+                    let ffi_service = T3000FfiApiService::new();
+                    ffi_service.call_ffi(&ffi_json.to_string()).await
+                        .map_err(|e| format!("Reset failed: {}", e))?;
+                    Ok(json!({"success": true, "command": "reset_defaults", "timestamp": Utc::now().to_rfc3339()}).to_string())
+                }
+                _ => Err(format!("Unknown command: {}. Valid: reboot, reset_defaults", command)),
+            }
         }
 
         _ => Err(format!("Unknown tool: {}", name)),

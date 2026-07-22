@@ -2,7 +2,7 @@
 
 > ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
-Complete reference of natural-language prompts for all 31 MCP tools across 9 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
+Complete reference of natural-language prompts for all 34 MCP tools across 9 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
 ---
 
@@ -378,7 +378,7 @@ Write values to multiple points in a single call. Each point can specify an opti
 
 ---
 
-## Device Operations <span style="font-weight:400;font-size:12px;color:#888">4 tools</span>
+## Device Operations <span style="font-weight:400;font-size:12px;color:#888">7 tools</span>
 
 ### `trendlog_list` — Discover available trendlogs
 
@@ -455,6 +455,78 @@ List all schedules configured on a device. Returns schedule IDs, daily time sett
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **What time-based automation is configured on device 233626?**
+
+</div>
+
+</div>
+
+### `settings_read` — Read device settings
+
+Read all device configuration from the database. Returns 8 categories: network (IP/subnet/gateway/DHCP), communication (COM ports/baudrates/parity/stopbits), time (timezone/NTP/DST), protocol (Modbus ID/MSTP/BACnet), DynDNS, hardware info, feature flags, and email settings. Optionally filter to a single category.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Read all settings for device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me the network configuration of device 233626**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What are the communication settings for device 240488?**
+
+</div>
+
+</div>
+
+### `settings_write` — Update device settings
+
+Update device configuration fields. Supports network (ip_address, subnet, gateway, tcp_type), communication (com0/1/2_config, com_baudrate0/1/2), time (time_zone, enable_sntp, sntp_server), and email (smtp_server, email_address, etc.). Requires confirm:true.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Set device 240488 to use DHCP**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Change the NTP server on device 233626 to pool.ntp.org**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Configure COM1 on device 240488 as Modbus Slave at 19200 baud**
+
+</div>
+
+</div>
+
+### `device_control` — Reboot or factory reset
+
+Send control commands to a device: reboot (restart the controller) or reset_defaults (factory reset to default settings). Requires confirm:true for safety.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Reboot device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Factory reset device 233626**
 
 </div>
 
