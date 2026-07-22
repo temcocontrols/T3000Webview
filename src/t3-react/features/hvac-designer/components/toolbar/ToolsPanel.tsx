@@ -21,6 +21,14 @@ import {
 } from '@fluentui/react-components';
 import {
   CursorRegular,
+  SquareRegular,
+  TextFontRegular,
+  EmojiRegular,
+  ToggleLeftRegular,
+  TopSpeedRegular,
+  SplitHorizontalRegular,
+  NumberSymbolRegular,
+  AppsRegular,
 } from '@fluentui/react-icons';
 import { useHvacDesignerStore } from '../../store/designerStore';
 import { NewTool, toolsCategories, selectedTool } from '@/lib/t3-hvac';
@@ -140,8 +148,20 @@ const ToolIcon: React.FC<{ iconDef: string }> = ({ iconDef }) => {
   );
 };
 
-// Map tool names to Fluent UI icons (fallback for non-svguse icons)
+// Fluent UI icons for Basic category tools (no sprite equivalents)
+const basicIcons: Record<string, React.ReactNode> = {
+  Box: <SquareRegular />,
+  Text: <TextFontRegular />,
+  IconBasic: <EmojiRegular />,
+  Switch: <ToggleLeftRegular />,
+  Gauge: <TopSpeedRegular />,
+  Dial: <SplitHorizontalRegular />,
+  Value: <NumberSymbolRegular />,
+  Icon: <AppsRegular />,
+};
+
 const getToolIcon = (tool: any) => {
+  if (basicIcons[tool.name]) return basicIcons[tool.name];
   if (tool.icon && tool.icon.startsWith('svguse:')) {
     return <ToolIcon iconDef={tool.icon} />;
   }
