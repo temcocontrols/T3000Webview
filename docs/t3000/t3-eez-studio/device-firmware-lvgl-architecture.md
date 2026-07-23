@@ -465,4 +465,360 @@ To support EEZ Studio JSON on the ESP32:
 6. **Expression engine** — resolve `variables.temp` to Modbus register values
 7. **Action engine** — handle `changeScreen`, `setVariable` actions
 8. **Image loader** — convert base64 bitmaps to LVGL image descriptors
-9. **REST server** (optional) — lightweight HTTP on port 8000 for direct access
+9. **REST server** — lightweight HTTP on port 8000 for direct access
+
+---
+
+### 3.1 Building BACnet/REST API on the ESP32
+
+The device needs two API surfaces to receive and serve screen definitions.
+
+#### 3.1.1 BACnet Private Data API
+
+The ESP32's existing BACnet stack (`temco_bacnet`) is extended with Private Data object handlers:
+
+**Commands implemented on the device:**
+
+| Command | Direction | Handler | Purpose |
+|---------|-----------|---------|---------|
+| `WRITE_JSON_SCREEN` | Client → Device | `bacnet_json_screen_write()` | Receive screen metadata (name, compressed size) |
+| `WRITE_JSON_ITEM` | Client → Device | `bacnet_json_item_write()` | Receive 200-byte compressed chunk |
+| `READ_JSON_SCREEN` | Client → Device | `bacnet_json_screen_read()` | Return screen metadata |
+| `READ_JSON_ITEM` | Client → Device | `bacnet_json_item_read()` | Return 200-byte chunk |
+| `WRITE_SETTING_COMMAND` | Client → Device | (existing handler) | Set `webview_json_flash = 2` |
+
+**Deploy sequence (per screen):**
+1. `WRITE_SETTING_COMMAND` → set `webview_json_flash = 2`
+2. `WRITE_JSON_SCREEN` → device allocates buffer, stores `{ name, total_chunks, zip_size }`
+3. `WRITE_JSON_ITEM` × N → device appends 200-byte chunks to buffer
+4. Device verifies CRC, decompresses with zlib, parses JSON with cJSON
+5. Device calls widget factory to create/destroy LVGL objects
+6. Device calls `lv_scr_load()` if this is the active screen
+
+**Read sequence:**
+1. `READ_JSON_SCREEN` → device returns screen names + metadata from NVS
+2. `READ_JSON_ITEM` × N → device reads 200-byte chunks from NVS, returns them
+
+**Files to create:** `main/bacnet_json.c/h`, `main/screen_store.c/h`
+
+#### 3.1.2 REST API (HTTP on ESP32)
+
+The ESP32 runs a lightweight HTTP server on port 8000 using ESP-IDF's `esp_http_server`:
+
+```
+ESP32 Boot → rest_api_init()
+  ├─ GET    /api/v1/screens                        → load all screens
+  ├─ PUT    /api/v1/screens                        → deploy all screens
+  ├─ GET    /api/v1/screens/:name                  → load single screen
+  ├─ PUT    /api/v1/screens/:name                  → deploy single screen
+  ├─ PATCH  /api/v1/screens/:name                  → delta update
+  ├─ PATCH  /api/v1/screens/:name/widgets/:id      → widget-level delta
+  ├─ POST   /api/v1/images                         → upload bitmap image
+  ├─ GET    /api/v1/images/:name                   → download bitmap image
+  └─ DELETE /api/v1/images/:name                   → remove bitmap image
+```
+
+**Handler details:**
+
+| Handler | Action |
+|---------|--------|
+| `rest_get_screens()` | Read all screens from NVS, return `{ screens: [...], meta: {...} }` |
+| `rest_put_screens()` | Parse body with cJSON, iterate screens, store each in NVS, return `{ deployed, failed, status }` |
+| `rest_get_screen()` | Read single screen by name from NVS, return `{ name, json }` |
+| `rest_put_screen()` | Store single screen to NVS, return `{ name, status }` |
+| `rest_patch_screen()` | Load screen from NVS, apply dot-path changes (`widgets.btn.text`), save back |
+| `rest_patch_widget()` | Load screen, navigate to `widgets.<id>.<path>`, apply change |
+| `rest_push_image()` | Receive `{ name, data_base64 }`, decode base64, convert to LVGL format with `lv_img_conv`, store in NVS |
+| `rest_pull_image()` | Read image from NVS, encode as base64, return |
+| `rest_delete_image()` | Remove image from NVS |
+
+**Key ESP-IDF APIs used:**
+- `httpd_start()` / `httpd_register_uri_handler()` — HTTP server
+- `nvs_open()` / `nvs_set_str()` / `nvs_get_str()` / `nvs_commit()` — NVS storage
+- `cJSON_Parse()` / `cJSON_Print()` / `cJSON_GetObjectItem()` — JSON parsing
+
+**Files to create:** `main/rest_api.c/h`, `components/cJSON/cJSON.c/h`
+
+#### 3.1.3 NVS Storage Layout
+
+```
+NVS Namespace: "screens"
+  Key: "index"      → JSON array of screen names ["Home", "Settings", ...]
+  Key: "Home"       → full firmware JSON string for this screen
+  Key: "Settings"   → full firmware JSON string for this screen
+  ...
+
+NVS Namespace: "images"
+  Key: "bg_home"    → base64-encoded image data
+  Key: "btn_heat"   → base64-encoded image data
+  ...
+
+NVS Namespace: "storage"
+  Key: "WEBWIEW_JASON" → uint8 flag (0 = legacy, 2 = EEZ Studio)
+```
+
+Maximum NVS string size: ~4000 bytes per entry (ESP32 NVS limit). For larger screens, the BACnet path uses chunked transfer with zlib compression.
+
+**Flash budget (ESP32 32MB, partition `storage` at 0x760000):**
+
+| Item | Size |
+|------|------|
+| `storage` partition | 128 KB (0x20000) |
+| Existing NVS usage (settings, WiFi, SNTP, etc.) | ~5 KB |
+| Free for screen JSON | ~120 KB |
+| Per-screen JSON (uncompressed) | ~30 KB |
+| Per-screen JSON (zlib compressed, typical) | 5–10 KB |
+| 11 screens compressed | 55–110 KB |
+| **Fits?** | ✅ Yes (tight for all 11; ~10 KB overhead remaining) |
+
+For projects larger than ~120 KB compressed, chunk the screens across multiple BACnet deploys or increase the `storage` partition size.
+
+**NVS entry size limit:** ESP32 NVS has a ~4000-byte-per-entry limit. Screens larger than 4 KB compressed must be split across multiple NVS keys (e.g., `"Home_0"`, `"Home_1"`, ...) and reassembled on read. The BACnet chunked path (WRITE_JSON_ITEM) already handles this — the REST API should follow the same pattern for large screens.
+
+**Storage recommendations:**
+
+| Concern | Suggestion |
+|---------|------------|
+| Including images (36 bitmaps × 3KB = ~108KB) | Bump `storage` partition to 384KB (`0x60000`). ESP32 has 32MB flash — plenty of room. |
+| NVS 4KB-per-entry limit on images | Use SPIFFS or LittleFS partition for images instead of NVS. No per-entry size limit, better for binary blobs. |
+| Partition layout (proposed) | Add a `spiffs` partition for images at ~0x7C0000, 256KB. Keep JSON screens in NVS `storage`. |
+
+#### 3.1.4 Device Lifecycle Flow
+
+**First boot (factory state):**
+
+```
+Device powers on
+  ├─ NVS "WEBWIEW_JASON" = 0 (legacy mode, or not set)
+  ├─ No JSON in NVS namespace "screens"
+  ├─ Load legacy SquareLine screens (compiled C code)
+  └─ Display legacy UI
+```
+
+**After first deploy (via BACnet or REST):**
+
+```
+Browser → Deploy screens
+  ├─ WRITE_SETTING_COMMAND → webview_json_flash = 2
+  ├─ WRITE_JSON_SCREEN + WRITE_JSON_ITEM × N → compressed JSON
+  ├─ Device decompresses, parses JSON
+  ├─ Device stores JSON in NVS "screens" namespace (survives reboot)
+  ├─ Device sets webview_json_flash = 2 in NVS
+  ├─ screen_manager_load_all() → creates LVGL screens from JSON
+  └─ Display EEZ Studio UI
+```
+
+**Normal boot (JSON already stored):**
+
+```
+Device powers on
+  ├─ NVS "WEBWIEW_JASON" = 2
+  ├─ Read screen index from NVS "screens"/"index"
+  ├─ For each screen:
+  │    ├─ Read JSON string from NVS
+  │    ├─ Parse with cJSON
+  │    ├─ Create LVGL screen (lv_obj_create)
+  │    └─ widget_factory_create() → populate with widgets
+  ├─ Load first screen: lv_scr_load(g_screens[0].screen)
+  └─ Display EEZ Studio UI
+```
+
+**Screen update (deploy after boot):**
+
+```
+Browser → Deploy updated screens
+  ├─ Device receives JSON via BACnet/REST
+  ├─ For each updated screen:
+  │    ├─ Destroy existing LVGL objects for that screen
+  │    ├─ Parse new JSON
+  │    ├─ Store new JSON in NVS (overwrite)
+  │    └─ widget_factory_create() → rebuild LVGL objects
+  ├─ If updated screen is the active screen:
+  │    └─ lv_scr_load() to refresh display
+  └─ Response: { deployed: N, failed: 0, status: "ok" }
+```
+
+**Fallback to legacy (if JSON is corrupted or missing):**
+
+```
+Device powers on
+  ├─ NVS "WEBWIEW_JASON" = 2
+  ├─ Failed to read/parse JSON from NVS
+  ├─ Set webview_json_flash = 0 (revert to legacy)
+  ├─ Load legacy SquareLine screens
+  └─ Display legacy UI
+```
+
+**Key design decisions:**
+
+| Decision | Rationale |
+|----------|-----------|
+| JSON stored in NVS, not RAM | Survives power loss and reboots |
+| `webview_json_flash` flag | Fast check at boot: skip JSON loading if in legacy mode |
+| Widgets recreated on every boot | No need to serialize LVGL object state — JSON is the source of truth |
+| Fallback to legacy on parse error | Device always shows something, even if JSON is corrupt |
+| Screen update destroys + recreates | Simplifies code — no incremental widget state tracking needed |
+
+---
+
+### 3.2 Dynamic LVGL Rendering from Firmware JSON
+
+The device parses firmware JSON at runtime and creates LVGL widgets dynamically — no recompilation needed.
+
+#### 3.2.1 Widget Factory
+
+Mapping from firmware `sub_type` to LVGL create functions:
+
+```c
+// main/widget_factory.c
+void widget_factory_create(lv_obj_t *parent, cJSON *widget_json) {
+    const char *sub_type = cJSON_GetObjectItem(widget_json, "sub_type")->valuestring;
+    lv_obj_t *obj = NULL;
+
+    if      (strcmp(sub_type, "label") == 0)    { obj = lv_label_create(parent); }
+    else if (strcmp(sub_type, "button") == 0)   { obj = lv_btn_create(parent); }
+    else if (strcmp(sub_type, "arc") == 0)      { obj = lv_arc_create(parent); }
+    else if (strcmp(sub_type, "bar") == 0)      { obj = lv_bar_create(parent); }
+    else if (strcmp(sub_type, "image") == 0)    { obj = lv_image_create(parent); }
+    else if (strcmp(sub_type, "switch") == 0)   { obj = lv_switch_create(parent); }
+    else if (strcmp(sub_type, "slider") == 0)   { obj = lv_slider_create(parent); }
+    else if (strcmp(sub_type, "dropdown") == 0) { obj = lv_dropdown_create(parent); }
+    else if (strcmp(sub_type, "panel") == 0)    { obj = lv_obj_create(parent); }
+
+    if (obj) {
+        widget_factory_apply_position(obj, widget_json);    // x_pos, y_pos, width, height
+        widget_factory_apply_style(obj, widget_json);       // style definition
+        widget_factory_apply_events(obj, widget_json);      // CLICKED → LV_EVENT_CLICKED
+        widget_factory_apply_state_flags(obj, widget_json); // hidden, disabled
+        widget_factory_apply_properties(obj, widget_json);  // type-specific props
+        widget_factory_apply_children(obj, widget_json);    // recursive
+    }
+}
+```
+
+**Sub-type properties:**
+
+| `sub_type` | LVGL create | Properties applied |
+|-----------|------------|-------------------|
+| `label` | `lv_label_create()` | `obj_text`, `long_mode`, `recolor` |
+| `button` | `lv_btn_create()` | `obj_text` (inner label), `inner_align`, `checked` |
+| `arc` | `lv_arc_create()` | `min`, `max`, `value`, `mode` |
+| `bar` | `lv_bar_create()` | `min`, `max`, `value`, `mode` |
+| `image` | `lv_image_create()` | `src`, `rotation`, `pivot_x/y` |
+| `switch` | `lv_switch_create()` | `checked` |
+| `slider` | `lv_slider_create()` | `min`, `max`, `value`, `mode` |
+| `dropdown` | `lv_dropdown_create()` | `options[]`, `selected` |
+| `panel` | `lv_obj_create()` | `children` (container only) |
+
+#### 3.2.2 Expression Engine
+
+Resolves dynamic expressions to Modbus register values:
+
+```c
+// main/expression.c
+float expression_eval(const char *expr) {
+    if (strncmp(expr, "variables.", 10) == 0)
+        return modbus_read_variable(expr + 10);
+    if (strncmp(expr, "zones[", 6) == 0)
+        return modbus_read_zone(expr);
+    return (float)atof(expr);
+}
+```
+
+| Pattern | Example | Resolution |
+|---------|---------|------------|
+| `variables.<name>` | `variables.temp` | Modbus register lookup |
+| `zones[N].<field>` | `zones[0].setpoint` | Array + field access |
+
+#### 3.2.3 Screen Manager
+
+```c
+// main/screen_manager.c
+typedef struct { char name[32]; lv_obj_t *screen; cJSON *json; } device_screen_t;
+device_screen_t g_screens[MAX_SCREENS];
+int g_screen_count = 0;
+
+void screen_manager_load_all(void) {
+    // Read screen index from NVS, load each screen JSON, create LVGL objects
+}
+void screen_manager_switch(const char *name) {
+    // lv_scr_load_anim(g_screens[i].screen, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, false);
+}
+void screen_manager_reload(const char *name) {
+    // After BACnet deploy: destroy old screen, re-parse JSON, recreate widgets
+}
+```
+
+#### 3.2.4 Action Engine
+
+```c
+// main/action_engine.c
+void action_engine_execute(cJSON *actions) {
+    cJSON *action; cJSON_ArrayForEach(action, actions) {
+        const char *type = cJSON_GetObjectItem(action, "action")->valuestring;
+        if (strcmp(type, "changeScreen") == 0)
+            screen_manager_switch(cJSON_GetObjectItem(action, "screen")->valuestring);
+        else if (strcmp(type, "setVariable") == 0)
+            modbus_write_variable(cJSON_GetObjectItem(action, "variable")->valuestring,
+                                  cJSON_GetObjectItem(action, "value")->valuedouble);
+    }
+}
+```
+
+**Files to create:** `main/widget_factory.c/h`, `main/expression.c/h`, `main/screen_manager.c/h`, `main/action_engine.c/h`
+
+---
+
+### 3.3 Export Current Device Interface to JSON
+
+The current firmware has 11 SquareLine Studio screens compiled as C code. They need to be exported to firmware JSON format so the frontend can load and render them.
+
+#### 3.3.1 Export Approach
+
+SquareLine screens are C code — recreate each screen in EEZ Studio manually, then deploy:
+
+```
+SquareLine .sls project → .c/.h files (in firmware)
+       ↓ manually recreate in EEZ Studio
+EEZ Studio .eez-project
+       ↓ Deploy to Device (firmware-export.ts → firmware JSON)
+firmware JSON per screen → NVS storage → Frontend can Import
+```
+
+#### 3.3.2 Screen Mapping
+
+| SquareLine Screen | Firmware JSON | Widgets |
+|-------------------|--------------|---------|
+| `ui_HomeScreen` | `home` | Temperature, humidity, fan/mode buttons, WiFi icon |
+| `ui_MainMenu` | `main_menu` | Navigation buttons to sub-screens |
+| `ui_WifiConfig` | `wifi_config` | SSID, password, scan, IP fields |
+| `ui_NetworkConfig` | `network_config` | IP, subnet, BACnet port |
+| `ui_Protocols` | `protocols` | Protocol toggles |
+| `ui_Parameters` | `parameters` | Read-only labels |
+| `ui_Time` | `time` | Clock, timezone |
+| `ui_ScheduleScreen` | `schedule` | Program list |
+| `ui_ScheduleEditScreen` | `schedule_edit` | Day/time/temp editor |
+| `ui_HolidayCalenderScreen` | `holidays` | Holiday picker |
+| `ui_StartUpScreen` | `startup` | Logo |
+
+#### 3.3.3 Widget Conversion Example
+
+```c
+// SquareLine C code:
+ui_TemperatureVal = lv_label_create(ui_HomeScreen);
+lv_label_set_text(ui_TemperatureVal, "22.5");
+lv_obj_set_pos(ui_TemperatureVal, 80, 20);
+lv_obj_set_style_text_font(ui_TemperatureVal, &ui_font_Arial80, LV_PART_MAIN);
+```
+
+```json
+{
+  "sub_type": "label", "x_pos": 80, "y_pos": 20,
+  "obj_text": "22.5", "text_type": "literal",
+  "style": { "DEFAULT": { "text_font": "Arial80" } }
+}
+```
+
+#### 3.3.4 Image Assets
+
+SquareLine embeds images as C arrays (`ui_img_fan_auto_new_png.c`). The `lv_img_conv_v9` tool converts them to LVGL format. Image data is sent separately via `/api/v1/images` (REST) or `/api/eez-device/images/push/:panelId` (BACnet) and referenced by name in screen JSON. Bitmap names in the firmware JSON match the SquareLine asset names.
