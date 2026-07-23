@@ -18,6 +18,7 @@ import { CheckmarkCircle16Regular } from '@fluentui/react-icons';
 import { TopToolbar } from '../components/toolbar/TopToolbar';
 import { ToolsPanel } from '../components/toolbar/ToolsPanel';
 import { HvacDrawingArea } from '../components/HvacDrawingArea';
+import { T3ContextMenu } from '../components/T3ContextMenu';
 import { useDrawing } from '../hooks/useDrawing';
 
 const useStyles = makeStyles({
@@ -231,6 +232,9 @@ export const HvacDesignerPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Right-click context menu — watches ctxMenuConfig from the core library */}
+      <T3ContextMenu />
     </div>
   );
 };
