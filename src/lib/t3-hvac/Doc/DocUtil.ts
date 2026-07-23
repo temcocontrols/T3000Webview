@@ -115,6 +115,10 @@ class DocUtil {
   public printHandler: any = null;
   public inZoomIdle: boolean = false;
 
+  // Debounce timer for resize events (prevents firing on every pixel)
+  private _resizeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private static readonly RESIZE_DEBOUNCE_MS = 100;
+
   constructor() {
     this.InitDocConfig();
     this.rulerConfig = new RulerConfig();
@@ -647,14 +651,20 @@ class DocUtil {
   }
 
   /**
-   * Handles window resize events by updating the work area layout
-   * Ensures the document display adjusts correctly when browser window is resized
+   * Handles window resize events with debouncing.
+   * Debounced at 100ms to avoid expensive UpdateWorkArea() recalculation
+   * on every pixel during drag-resize. Fires once after resizing stops.
    * @returns void
    */
   HandleResizeEvent(): void {
-    // Update work area dimensions and layout
-    this.UpdateWorkArea();
-    LogUtil.Debug("= u.DocUtil: HandleResizeEvent/ - Input/Output: Work area updated");
+    if (this._resizeDebounceTimer !== null) {
+      clearTimeout(this._resizeDebounceTimer);
+    }
+    this._resizeDebounceTimer = setTimeout(() => {
+      this._resizeDebounceTimer = null;
+      this.UpdateWorkArea();
+      LogUtil.Debug("= u.DocUtil: HandleResizeEvent/ - Input/Output: Work area updated (debounced)");
+    }, DocUtil.RESIZE_DEBOUNCE_MS);
   }
 
   /**

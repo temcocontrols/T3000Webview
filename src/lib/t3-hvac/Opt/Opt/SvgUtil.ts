@@ -274,39 +274,35 @@ class SvgUtil {
       }
 
       if (shapeContainer !== null) {
-        if (renderCallback) {
-          let domElement = shapeContainer.DOMElement();
-          let hammerInstance = new Hammer(domElement);
+        let domElement = shapeContainer.DOMElement();
+        let hammerInstance = new Hammer(domElement);
 
-          let shapeTapHandler = EvtUtil.Evt_ShapeTapFactory(drawingData);
-          hammerInstance.on('tap', shapeTapHandler);
+        let shapeTapHandler = EvtUtil.Evt_ShapeTapFactory(drawingData);
+        hammerInstance.on('tap', shapeTapHandler);
 
-          if (!T3Gv.docUtil.IsReadOnly()) {
-            T3Gv.Evt_ShapeDragStart = EvtUtil.Evt_ShapeDragStartFactory(drawingData);
-            hammerInstance.on('dragstart', T3Gv.Evt_ShapeDragStart);
+        if (!T3Gv.docUtil.IsReadOnly()) {
+          T3Gv.Evt_ShapeDragStart = EvtUtil.Evt_ShapeDragStartFactory(drawingData);
+          hammerInstance.on('dragstart', T3Gv.Evt_ShapeDragStart);
 
-            if (drawingData.AllowTextEdit() || drawingData.AllowDoubleClick()) {
-              T3Gv.Evt_LMShapeDoubleTap = EvtUtil.Evt_ShapeDoubleTapFactory(drawingData);
-              hammerInstance.on('doubletap', T3Gv.Evt_LMShapeDoubleTap);
-            }
-
-            shapeContainer.SetEventProxy(hammerInstance);
+          if (drawingData.AllowTextEdit() || drawingData.AllowDoubleClick()) {
+            T3Gv.Evt_LMShapeDoubleTap = EvtUtil.Evt_ShapeDoubleTapFactory(drawingData);
+            hammerInstance.on('doubletap', T3Gv.Evt_LMShapeDoubleTap);
           }
 
-          if (!T3Gv.docUtil.IsReadOnly()) {
-            shapeContainer.svgObj.mouseover(function (event) {
-              let elementId = this.SDGObj.GetID();
-              let drawingObj = ObjectUtil.GetObjectPtr(elementId, false);
-              if (drawingObj) {
-                drawingObj.SetRolloverActions(svgDocument, shapeContainer, event);
-              }
-            });
-          }
-
-          drawingData.RegisterForDataDrop(shapeContainer);
-        } else {
-          shapeContainer.SetEventBehavior(OptConstant.EventBehavior.None);
+          shapeContainer.SetEventProxy(hammerInstance);
         }
+
+        if (!T3Gv.docUtil.IsReadOnly()) {
+          shapeContainer.svgObj.mouseover(function (event) {
+            let elementId = this.SDGObj.GetID();
+            let drawingObj = ObjectUtil.GetObjectPtr(elementId, false);
+            if (drawingObj) {
+              drawingObj.SetRolloverActions(svgDocument, shapeContainer, event);
+            }
+          });
+        }
+
+        drawingData.RegisterForDataDrop(shapeContainer);
       }
     }
 
