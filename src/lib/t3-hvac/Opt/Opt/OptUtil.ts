@@ -50,7 +50,6 @@ import Style from '../../Basic/B.Element.Style';
 import ImageRecord from '../../Model/ImageRecord';
 import Hvac from '../../Hvac';
 import LogUtil from '../../Util/LogUtil';
-import ToolAct2Util from './ToolAct2Util';
 import ShapeUtil from '../Shape/ShapeUtil';
 import DataOpt from '../Data/DataOpt';
 
@@ -8078,7 +8077,7 @@ class OptUtil {
 
         // Create a new group for the shapes if there are multiple shapes and we're not skipping regrouping
         if (shapeCount > 1 && !skipRegrouping) {
-          nativeGroupId = ToolAct2Util.GroupSelectedShapes(true, ungroupData.selectedList, false);
+          nativeGroupId = ToolActUtil.GroupSelectedShapes(true, ungroupData.selectedList, false);
           newGroupObject = ObjectUtil.GetObjectPtr(nativeGroupId, false);
 
           resultObjects.push(nativeGroupId);
