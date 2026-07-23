@@ -17,6 +17,7 @@ const SUB_TYPE_MAP: Record<string, string> = {
     dropdown: "LVGLDropdownWidget",
     panel: "LVGLPanelWidget",
     user_widget: "LVGLUserWidgetWidget",
+    action: "LVGLActionComponent",
 };
 
 interface FirmwareWidget {
@@ -59,6 +60,8 @@ interface FirmwareWidget {
     selected?: string;
     // user widget
     widget?: string;
+    // action
+    actions?: { action: string; screen?: string; variable?: string; value?: any }[];
     // state flags
     disabled?: string;
     disabledState?: string;
@@ -129,12 +132,77 @@ export function firmwareToProject(
             serialNumber: device.serial_number,
             importedAt: new Date().toISOString(),
         },
-        userPages: screens.map(s => ({
-            name: s.name,
-            components: Object.entries(s.json.widgets || {}).map(
-                ([id, w]) => firmwareWidgetToComponent(id, w)
-            ),
-        })),
+        userPages: screens.map(s => {
+            const widgetComponents: Record<string, any>[] = [];
+            const actionComponents: Record<string, any>[] = [];
+            const connectionLines: Record<string, any>[] = [];
+
+            // Generate unique IDs for this screen
+            let compIdx = 0;
+            const genId = () => `imp_${s.name}_${compIdx++}_${Date.now().toString(36)}`;
+
+            for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
+                const comp = firmwareWidgetToComponent(widgetId, w);
+
+                if (comp.type === "LVGLActionComponent") {
+                    comp.objID = genId();
+                    actionComponents.push(comp);
+                } else {
+                    comp.objID = genId();
+                    widgetComponents.push(comp);
+
+                    // If this widget has events with actions, create connectionLines to action components
+                    const events = w.events;
+                    if (events) {
+                        for (const [evtName, evtData] of Object.entries(events)) {
+                            const actions = (evtData as any).actions;
+                            if (actions?.length) {
+                                // Create an action component for this event's actions
+                                const actionComp: Record<string, any> = {
+                                    objID: genId(),
+                                    type: "LVGLActionComponent",
+                                    left: (w.x_pos ?? 0) + (w.width ?? 0) + 20,
+                                    top: w.y_pos ?? 0,
+                                    width: 354,
+                                    height: 54,
+                                    customInputs: [],
+                                    customOutputs: [],
+                                    actions: actions.map((a: any) => ({
+                                        action: a.action || "?",
+                                        screen: a.screen || "",
+                                        screenType: "literal",
+                                        fadeMode: "FADE_IN",
+                                        fadeModeType: "literal",
+                                        speed: 200,
+                                        speedType: "literal",
+                                        delay: 0,
+                                        delayType: "literal",
+                                        useStack: true,
+                                        useStackType: "literal",
+                                    })),
+                                };
+                                actionComponents.push(actionComp);
+
+                                // Create connection line: widget event → action
+                                connectionLines.push({
+                                    source: comp.objID,
+                                    output: evtName,
+                                    target: actionComp.objID,
+                                    input: "@seqin",
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            return {
+                name: s.name,
+                components: [...widgetComponents, ...actionComponents],
+                connectionLines,
+                localVariables: [],
+            };
+        }),
         fonts: allFonts.map(f => ({
             name: f.name,
             source: { size: f.size },
@@ -233,6 +301,24 @@ function firmwareWidgetToComponent(
     // ── User Widget ──
     if (lvglType === "LVGLUserWidgetWidget" && w.widget) {
         comp.userWidgetPageName = w.widget;
+    }
+
+    // ── Action component ──
+    if (lvglType === "LVGLActionComponent") {
+        comp.type = "LVGLActionComponent";
+        comp.actions = (w.actions || []).map((a: any) => ({
+            action: a.action || "?",
+            screen: a.screen || "",
+            screenType: "literal",
+            fadeMode: "FADE_IN",
+            fadeModeType: "literal",
+            speed: 200,
+            speedType: "literal",
+            delay: 0,
+            delayType: "literal",
+            useStack: true,
+            useStackType: "literal",
+        }));
     }
 
     // ── Style ──

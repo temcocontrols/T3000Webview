@@ -908,6 +908,8 @@ const RunEditSwitchControls = observer(
 
                 // 2. Also push to device via DeviceRestClient (mock or real)
                 try {
+                    // connect() sets mode — mock mode returns instantly, real probes device
+                    await deviceClient.connect("", 0, 0);
                     const result = await deviceClient.deployAllScreens(project as any);
                     notification.success(
                         `Deployed ${count} screen${count > 1 ? "s" : ""} to device-config\\${result ? ` (${result.deployed} pushed to device)` : ""}`,

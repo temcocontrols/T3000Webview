@@ -158,7 +158,7 @@ Each page is a full-screen container with widgets:
 {
   "userPages": [
     {
-      "name": "Main",                       // page name (used by gotoPage)
+      "name": "Main",                       // page name (used by changeScreen action)
       "left": 0,                             // page X offset
       "top": 0,                              // page Y offset
       "width": 800,                          // page width (usually matches display)
@@ -265,9 +265,9 @@ To set a background image:
   "style": { "useStyle": "label_style" },
   "eventHandlers": [
     {
-      "trigger": "CLICKED",
-      "action": "gotoPage",
-      "page": "Details"
+      "eventName": "CLICKED",
+      "handlerType": "flow",
+      "userData": 0
     }
   ]
 }
@@ -638,17 +638,77 @@ Each widget can have inline style overrides:
 
 ---
 
-## 7. Event Handlers
+## 7. Event Handlers & Flow Actions
 
-Events connect widget interactions to actions:
+### In `.eez-project` (editor format)
+
+Flow actions are stored as separate `LVGLActionComponent` components, connected to widgets via `connectionLines`:
+
+```json
+// Widget with flow event
+{
+  "type": "LVGLButtonWidget",
+  "objID": "f6315498-...",
+  "eventHandlers": [{
+    "eventName": "CLICKED",
+    "handlerType": "flow",
+    "userData": 0
+  }]
+}
+
+// Action component (separate, in page components)
+{
+  "type": "LVGLActionComponent",
+  "objID": "850d8d9f-...",
+  "actions": [{
+    "action": "changeScreen",
+    "screen": "security_screen",
+    "fadeMode": "FADE_IN",
+    "speed": 200,
+    "useStack": true
+  }]
+}
+
+// Connection line (in page.connectionLines)
+{
+  "source": "f6315498-...",   // button's objID
+  "output": "CLICKED",
+  "target": "850d8d9f-...",   // action's objID
+  "input": "@seqin"
+}
+```
+
+### In firmware JSON (device format)
+
+During export, `connectionLines` are resolved and actions are attached directly to widget events. Action components are stripped from the output:
 
 ```json
 {
-  "trigger": "CLICKED",
-  "action": "gotoPage",
-  "page": "Settings"
+  "events": {
+    "CLICKED": {
+      "actions": [
+        {
+          "action": "changeScreen",
+          "screen": "security_screen",
+          "fadeMode": "FADE_IN",
+          "speed": 200,
+          "useStack": true
+        }
+      ]
+    }
+  }
 }
 ```
+
+### Supported Action Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `action` | string | `"changeScreen"` |
+| `screen` | string | Target screen name |
+| `fadeMode` | string | `"FADE_IN"`, `"FADE_OUT"`, `"FADE_ON"`, `"NONE"` |
+| `speed` | number | Animation speed in ms |
+| `useStack` | bool | Push to navigation stack |
 
 ### Trigger Types
 
@@ -672,7 +732,7 @@ Events connect widget interactions to actions:
 
 | Action | Description | Parameters |
 |---|---|---|
-| `gotoPage` | Navigate to another page | `page: "PageName"` |
+| `changeScreen` | Navigate to another page | `screen: "PageName"`, `fadeMode`, `speed`, `useStack` |
 | `setVariable` | Set a variable value | `variable, value` |
 | `toggleVariable` | Toggle a boolean variable | `variable` |
 | `incrementVariable` | Increment a numeric variable | `variable, value` |
@@ -1114,18 +1174,57 @@ The project defines 4 global variables with struct-backed array types:
 
 ### 12.6 Navigation
 
-Page switching is defined through `gotoPage` events on widgets. Example from a button on `heating_screen`:
+Page switching uses `LVGLActionComponent` + `connectionLines`. Example from a button on `heating_screen`:
+
+```json
+// Button on heating screen
+{
+  "type": "LVGLButtonWidget",
+  "objID": "btn_heat_1",
+  "eventHandlers": [
+    {
+      "eventName": "CLICKED",
+      "handlerType": "flow",
+      "userData": 0
+    }
+  ]
+}
+
+// Action component (separate, linked by connectionLine)
+{
+  "type": "LVGLActionComponent",
+  "objID": "act_nav_sec",
+  "actions": [
+    {
+      "action": "changeScreen",
+      "screen": "security_screen",
+      "fadeMode": "FADE_IN",
+      "speed": 200,
+      "useStack": true
+    }
+  ]
+}
+
+// Connection line (in page.connectionLines)
+{
+  "source": "btn_heat_1",
+  "output": "CLICKED",
+  "target": "act_nav_sec",
+  "input": "@seqin"
+}
+```
+
+**Firmware JSON (exported):** Actions are resolved and attached directly to widget events:
 
 ```json
 {
-  "type": "LVGLButtonWidget",
-  "eventHandlers": [
-    {
-      "trigger": "CLICKED",
-      "action": "gotoPage",
-      "page": "security_screen"
+  "events": {
+    "CLICKED": {
+      "actions": [
+        { "action": "changeScreen", "screen": "security_screen" }
+      ]
     }
-  ]
+  }
 }
 ```
 

@@ -23,7 +23,6 @@ const TYPE_MAP: Record<string, string> = {
 
 // ── Component types that are flow/action logic, not UI widgets ──
 const SKIP_TYPES = new Set([
-    "LVGLActionComponent",
     "SetVariableActionComponent",
     "WatchVariableActionComponent",
     "OutputActionComponent",
@@ -69,6 +68,28 @@ function transformComponent(c: any): Record<string, any> | null {
     }
 
     const mapped = TYPE_MAP[t];
+
+    // ── Action component (flow logic — changeScreen, setVariable, etc.) ──
+    if (t === "LVGLActionComponent" && c.actions?.length) {
+        const ident = c.objID?.slice(0, 8) || ("act_" + Math.random().toString(36).slice(2, 8));
+        return { [ident]: {
+            type: "Widget",
+            sub_type: "action",
+            x_pos: c.left ?? 0,
+            y_pos: c.top ?? 0,
+            width: 0,
+            height: 0,
+            obj_text: "",
+            text_type: "literal",
+            actions: c.actions.map((a: any) => ({
+                action: a.action || "?",
+                ...(a.screen ? { screen: a.screen } : {}),
+                ...(a.variableName ? { variable: a.variableName } : {}),
+                ...(a.value ? { value: a.value } : {}),
+            })),
+        }};
+    }
+
     if (!mapped) return null;
 
     // Widget name = identifier, falling back to objID prefix
@@ -233,13 +254,49 @@ export function transformToDeviceJson(
     for (const page of project.userPages || []) {
         const screenName: string = page.name || "unknown";
 
-        const widgets: Record<string, any> = {};
+        // Build objID → identifier map from all components (including actions)
+        const objIdToIdent: Record<string, string> = {};
+        const actionWidgets: Record<string, any> = {};
+        const allWidgets: Record<string, any> = {};
+
         for (const comp of page.components || []) {
             const r = transformComponent(comp);
-            if (r) Object.assign(widgets, r);
+            if (r) {
+                const entry = Object.entries(r)[0];
+                if (entry) {
+                    const [ident, widget] = entry;
+                    allWidgets[ident] = widget;
+                    if (comp.objID) objIdToIdent[comp.objID] = ident;
+                    if (widget.sub_type === "action") actionWidgets[ident] = widget;
+                }
+            }
         }
 
-        result[screenName] = { fonts, bitmaps, widgets };
+        // Resolve connectionLines: attach actions to widget events
+        for (const line of page.connectionLines || []) {
+            const sourceIdent = objIdToIdent[line.source];
+            const targetIdent = objIdToIdent[line.target];
+            const sourceWidget = sourceIdent ? allWidgets[sourceIdent] : null;
+            const targetAction = targetIdent ? actionWidgets[targetIdent] : null;
+
+            if (sourceWidget && targetAction && line.output) {
+                const evtName = line.output;
+                if (!sourceWidget.events) sourceWidget.events = {};
+                if (!sourceWidget.events[evtName]) {
+                    sourceWidget.events[evtName] = { actions: [] };
+                }
+                if (targetAction.actions) {
+                    sourceWidget.events[evtName].actions.push(...targetAction.actions);
+                }
+            }
+        }
+
+        // Remove standalone action widgets from final output (actions now live in events)
+        for (const ident of Object.keys(actionWidgets)) {
+            delete allWidgets[ident];
+        }
+
+        result[screenName] = { fonts, bitmaps, widgets: allWidgets };
     }
 
     return result;
