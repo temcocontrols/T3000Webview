@@ -230,19 +230,17 @@ class T3Clipboard {
   }
 
   /**
-   * Determines if the browser supports the asynchronous clipboard API
-   * This function checks if the current browser is compatible with the newer
-   * asynchronous clipboard API (navigator.clipboard). Returns false for Internet Explorer,
-   * Firefox, and Safari which have limited or no support for this API.
+   * Determines if the browser supports the asynchronous clipboard API.
+   * Uses feature detection instead of browser sniffing — checks for
+   * navigator.clipboard.write() and the ClipboardItem constructor.
    *
    * @returns {boolean} True if the browser supports the async clipboard API, false otherwise
    */
   static CanUseAsyncClipboard() {
-    // Return false for browsers that don't fully support the async clipboard API
-    return !(
-      T3Clipboard.isInternetExplorer ||
-      T3Clipboard.isFirefox ||
-      T3Clipboard.isSafariBrowser
+    return !!(
+      navigator.clipboard &&
+      typeof navigator.clipboard.write === 'function' &&
+      typeof ClipboardItem === 'function'
     );
   }
 

@@ -698,7 +698,7 @@ class Formatter {
   }
 
   CalcTextWrap(maxWidth: number) {
-    LogUtil.Debug("B.Text.Formatter: CalcTextWrap input:", maxWidth);
+    // LogUtil.Debug("B.Text.Formatter: CalcTextWrap input:", maxWidth);
 
     let options = { maxWidth: 0 };
     if (maxWidth) {
@@ -721,12 +721,12 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: CalcTextWrap output:", wrapPoints);
+    // LogUtil.Debug("B.Text.Formatter: CalcTextWrap output:", wrapPoints);
     return wrapPoints;
   }
 
   CalcFormatChange(formatChange) {
-    LogUtil.Debug("B.Text.Formatter: CalcFormatChange input:", formatChange);
+    // LogUtil.Debug("B.Text.Formatter: CalcFormatChange input:", formatChange);
 
     let updatedRuntimeData = Utils1.CopyObj(this.rtData);
     let paragraphStyles = [];
@@ -763,12 +763,12 @@ class Formatter {
       height: formattedText.height
     };
 
-    LogUtil.Debug("B.Text.Formatter: CalcFormatChange output:", result);
+    // LogUtil.Debug("B.Text.Formatter: CalcFormatChange output:", result);
     return result;
   }
 
   GetHitInfo(point) {
-    LogUtil.Debug("B.Text.Formatter: GetHitInfo input:", point);
+    // LogUtil.Debug("B.Text.Formatter: GetHitInfo input:", point);
 
     let x = point.x;
     let y = point.y;
@@ -787,7 +787,7 @@ class Formatter {
     };
 
     if (y < 0) {
-      LogUtil.Debug("B.Text.Formatter: GetHitInfo output:", hitInfo);
+      // LogUtil.Debug("B.Text.Formatter: GetHitInfo output:", hitInfo);
       return hitInfo;
     }
 
@@ -795,7 +795,7 @@ class Formatter {
       hitInfo.index = this.fmtText.text.length;
       hitInfo.rLine = this.renderedLines.length;
       hitInfo.fPara = this.fmtText.paragraphs.length;
-      LogUtil.Debug("B.Text.Formatter: GetHitInfo output:", hitInfo);
+      // LogUtil.Debug("B.Text.Formatter: GetHitInfo output:", hitInfo);
       return hitInfo;
     }
 
@@ -815,7 +815,7 @@ class Formatter {
     }
 
     if (lineIndex < 0) {
-      LogUtil.Debug("B.Text.Formatter: GetHitInfo output:", hitInfo);
+      // LogUtil.Debug("B.Text.Formatter: GetHitInfo output:", hitInfo);
       return hitInfo;
     }
 
@@ -839,7 +839,7 @@ class Formatter {
         hitInfo.inDataField = true;
         hitInfo.dataFieldInfo = this.GetDataField(hitInfo.index);
       }
-      LogUtil.Debug("B.Text.Formatter: GetHitInfo output:", hitInfo);
+      // LogUtil.Debug("B.Text.Formatter: GetHitInfo output:", hitInfo);
       return hitInfo;
     }
 
@@ -867,12 +867,12 @@ class Formatter {
       hitInfo.index = charIndex;
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetHitInfo output:", hitInfo);
+    // LogUtil.Debug("B.Text.Formatter: GetHitInfo output:", hitInfo);
     return hitInfo;
   }
 
   GetAdjacentChar(index: number, line: number, direction: string, event: KeyboardEvent) {
-    LogUtil.Debug("B.Text.Formatter: GetAdjacentChar input:", { index, line, direction, event });
+    // LogUtil.Debug("B.Text.Formatter: GetAdjacentChar input:", { index, line, direction, event });
 
     let currentIndex = index;
     let currentLine = line;
@@ -1050,12 +1050,12 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetAdjacentChar output:", result);
+    // LogUtil.Debug("B.Text.Formatter: GetAdjacentChar output:", result);
     return result;
   }
 
   GetRenderedCharInfo(charIndex: number, lineIndex?: number) {
-    LogUtil.Debug("B.Text.Formatter: GetRenderedCharInfo input:", { charIndex, lineIndex });
+    // LogUtil.Debug("B.Text.Formatter: GetRenderedCharInfo input:", { charIndex, lineIndex });
 
     let renderedLine, lineRec, runRec, run, charPos;
     const textSize = this.GetTextFormatSize();
@@ -1099,7 +1099,7 @@ class Formatter {
     if (charIndex < 0) {
       result.left = Math.max(0, Math.min(textSize.width, renderedLine.left));
       result.right = Math.max(0, Math.min(textSize.width, renderedLine.right));
-      LogUtil.Debug("B.Text.Formatter: GetRenderedCharInfo output:", result);
+      // LogUtil.Debug("B.Text.Formatter: GetRenderedCharInfo output:", result);
       return result;
     }
 
@@ -1144,12 +1144,12 @@ class Formatter {
     result.left = Math.max(0, Math.min(textSize.width, result.left));
     result.right = Math.max(0, Math.min(textSize.width, result.right));
 
-    LogUtil.Debug("B.Text.Formatter: GetRenderedCharInfo output:", result);
+    // LogUtil.Debug("B.Text.Formatter: GetRenderedCharInfo output:", result);
     return result;
   }
 
   GetRenderedRange(startIndex: number, endIndex: number) {
-    LogUtil.Debug("B.Text.Formatter: GetRenderedRange input:", { startIndex, endIndex });
+    // LogUtil.Debug("B.Text.Formatter: GetRenderedRange input:", { startIndex, endIndex });
 
     let renderedRanges = [];
     if (startIndex > endIndex || startIndex < 0 || endIndex < 0) {
@@ -1198,12 +1198,12 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetRenderedRange output:", renderedRanges);
+    // LogUtil.Debug("B.Text.Formatter: GetRenderedRange output:", renderedRanges);
     return renderedRanges;
   }
 
   BuildRuntimeCharPos(line, run) {
-    LogUtil.Debug("B.Text.Formatter: BuildRuntimeCharPos input:", { line, run });
+    // LogUtil.Debug("B.Text.Formatter: BuildRuntimeCharPos input:", { line, run });
 
     let charPos = [];
     let currentPos = run.left;
@@ -1236,11 +1236,11 @@ class Formatter {
 
     run.charPos = charPos;
 
-    LogUtil.Debug("B.Text.Formatter: BuildRuntimeCharPos output:", run.charPos);
+    // LogUtil.Debug("B.Text.Formatter: BuildRuntimeCharPos output:", run.charPos);
   }
 
   GetWordAtIndex(index: number) {
-    LogUtil.Debug("B.Text.Formatter: GetWordAtIndex input:", index);
+    // LogUtil.Debug("B.Text.Formatter: GetWordAtIndex input:", index);
 
     let wordList = this.GetWordList();
     let result = { start: index, end: index };
@@ -1253,16 +1253,16 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetWordAtIndex output:", result);
+    // LogUtil.Debug("B.Text.Formatter: GetWordAtIndex output:", result);
     return result;
   }
 
   GetWordList() {
-    LogUtil.Debug("B.Text.Formatter: GetWordList input");
+    // LogUtil.Debug("B.Text.Formatter: GetWordList input");
 
     let previousWordList;
     if (this.wordList && this.wordList.sessionID === this.GetContentVersion()) {
-      LogUtil.Debug("B.Text.Formatter: GetWordList output:", this.wordList);
+      // LogUtil.Debug("B.Text.Formatter: GetWordList output:", this.wordList);
       return this.wordList;
     }
 
@@ -1273,12 +1273,12 @@ class Formatter {
       this.MergeWordLists(previousWordList, this.wordList);
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetWordList output:", this.wordList);
+    // LogUtil.Debug("B.Text.Formatter: GetWordList output:", this.wordList);
     return this.wordList;
   }
 
   MergeWordLists(newWordList, currentWordList) {
-    LogUtil.Debug("B.Text.Formatter: MergeWordLists input:", { newWordList, currentWordList });
+    // LogUtil.Debug("B.Text.Formatter: MergeWordLists input:", { newWordList, currentWordList });
 
     for (let i = 0; i < newWordList.list.length; i++) {
       const newWord = newWordList.list[i];
@@ -1294,11 +1294,11 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: MergeWordLists output:", currentWordList);
+    // LogUtil.Debug("B.Text.Formatter: MergeWordLists output:", currentWordList);
   }
 
   BuildWordList() {
-    LogUtil.Debug("B.Text.Formatter: BuildWordList input");
+    // LogUtil.Debug("B.Text.Formatter: BuildWordList input");
 
     let match;
     const wordList = {
@@ -1322,12 +1322,12 @@ class Formatter {
       });
     }
 
-    LogUtil.Debug("B.Text.Formatter: BuildWordList output:", wordList);
+    // LogUtil.Debug("B.Text.Formatter: BuildWordList output:", wordList);
     return wordList;
   }
 
   SetFormat(format, start?, length?, skipCallback?) {
-    LogUtil.Debug("B.Text.Formatter: SetFormat input:", { format, start, length, skipCallback });
+    // LogUtil.Debug("B.Text.Formatter: SetFormat input:", { format, start, length, skipCallback });
 
     let styleIndex = -1;
     let formatChanged = false;
@@ -1355,7 +1355,7 @@ class Formatter {
         this.rtData.styles = [style];
         styleIndex = 0;
       }
-      LogUtil.Debug("B.Text.Formatter: SetFormat output:", styleIndex);
+      // LogUtil.Debug("B.Text.Formatter: SetFormat output:", styleIndex);
       return styleIndex;
     }
 
@@ -1367,7 +1367,7 @@ class Formatter {
     }
 
     if (skipCallback || !formatChanged) {
-      LogUtil.Debug("B.Text.Formatter: SetFormat output: No format change");
+      // LogUtil.Debug("B.Text.Formatter: SetFormat output: No format change");
       return -1;
     }
 
@@ -1398,12 +1398,12 @@ class Formatter {
     this.fmtText = this.CalcFromRuntime(this.rtData, this.limits);
     this.parent.CallEditCallback('select');
 
-    LogUtil.Debug("B.Text.Formatter: SetFormat output:", -1);
+    // LogUtil.Debug("B.Text.Formatter: SetFormat output:", -1);
     return -1;
   }
 
   GetFormatAtOffset(offset: number, runtimeData?: any) {
-    LogUtil.Debug("B.Text.Formatter: GetFormatAtOffset input:", { offset, runtimeData });
+    // LogUtil.Debug("B.Text.Formatter: GetFormatAtOffset input:", { offset, runtimeData });
 
     let styleIndex = 0;
     let style = new DefaultStyle();
@@ -1430,24 +1430,24 @@ class Formatter {
       style: style
     };
 
-    LogUtil.Debug("B.Text.Formatter: GetFormatAtOffset output:", result);
+    // LogUtil.Debug("B.Text.Formatter: GetFormatAtOffset output:", result);
     return result;
   }
 
   GetFormatByID(formatId: number) {
-    LogUtil.Debug("B.Text.Formatter: GetFormatByID input:", formatId);
+    // LogUtil.Debug("B.Text.Formatter: GetFormatByID input:", formatId);
 
     let style = new DefaultStyle();
     if (formatId >= 0 && formatId < this.rtData.styles.length) {
       style = this.rtData.styles[formatId];
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetFormatByID output:", style);
+    // LogUtil.Debug("B.Text.Formatter: GetFormatByID output:", style);
     return style;
   }
 
   SetParagraphStyle(paragraphStyle, startOffset, length) {
-    LogUtil.Debug("B.Text.Formatter: SetParagraphStyle input:", { paragraphStyle, startOffset, length });
+    // LogUtil.Debug("B.Text.Formatter: SetParagraphStyle input:", { paragraphStyle, startOffset, length });
 
     let startParagraph, endParagraph;
 
@@ -1497,11 +1497,11 @@ class Formatter {
       this.fmtText = this.CalcFromRuntime(this.rtData, this.limits);
     }
 
-    LogUtil.Debug("B.Text.Formatter: SetParagraphStyle output:", this.fmtText);
+    // LogUtil.Debug("B.Text.Formatter: SetParagraphStyle output:", this.fmtText);
   }
 
   GetParagraphStyle(offset: number) {
-    LogUtil.Debug("B.Text.Formatter: GetParagraphStyle input:", offset);
+    // LogUtil.Debug("B.Text.Formatter: GetParagraphStyle input:", offset);
 
     let paragraphStyle = this.DefaultPStyle();
     const paragraphIndex = this.GetParagraphAtOffset(offset);
@@ -1510,45 +1510,45 @@ class Formatter {
       paragraphStyle = Utils1.CopyObj(this.rtData.styleRuns[paragraphIndex].pStyle);
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetParagraphStyle output:", paragraphStyle);
+    // LogUtil.Debug("B.Text.Formatter: GetParagraphStyle output:", paragraphStyle);
     return paragraphStyle;
   }
 
   GetParagraphAtOffset(offset: number) {
-    LogUtil.Debug("B.Text.Formatter: GetParagraphAtOffset input:", offset);
+    // LogUtil.Debug("B.Text.Formatter: GetParagraphAtOffset input:", offset);
 
     for (let i = 0; i < this.rtData.styleRuns.length; i++) {
       if (offset < this.rtData.styleRuns[i].start + this.rtData.styleRuns[i].nChars) {
-        LogUtil.Debug("B.Text.Formatter: GetParagraphAtOffset output:", i);
+        // LogUtil.Debug("B.Text.Formatter: GetParagraphAtOffset output:", i);
         return i;
       }
     }
 
     const result = this.rtData.styleRuns.length - 1;
-    LogUtil.Debug("B.Text.Formatter: GetParagraphAtOffset output:", result);
+    // LogUtil.Debug("B.Text.Formatter: GetParagraphAtOffset output:", result);
     return result;
   }
 
   GetParagraphCount() {
-    LogUtil.Debug("B.Text.Formatter: GetParagraphCount input");
+    // LogUtil.Debug("B.Text.Formatter: GetParagraphCount input");
 
     const paragraphCount = this.rtData.styleRuns.length;
 
-    LogUtil.Debug("B.Text.Formatter: GetParagraphCount output:", paragraphCount);
+    // LogUtil.Debug("B.Text.Formatter: GetParagraphCount output:", paragraphCount);
     return paragraphCount;
   }
 
   GetParagraphPosition(paragraphIndex: number): number {
-    LogUtil.Debug("B.Text.Formatter: GetParagraphPosition input:", paragraphIndex);
+    // LogUtil.Debug("B.Text.Formatter: GetParagraphPosition input:", paragraphIndex);
 
     const position = paragraphIndex < this.rtData.styleRuns.length ? this.rtData.styleRuns[paragraphIndex].start : -1;
 
-    LogUtil.Debug("B.Text.Formatter: GetParagraphPosition output:", position);
+    // LogUtil.Debug("B.Text.Formatter: GetParagraphPosition output:", position);
     return position;
   }
 
   GetCommonFormatForRange(startIndex: number, length: number) {
-    LogUtil.Debug("B.Text.Formatter: GetCommonFormatForRange input:", { startIndex, length });
+    // LogUtil.Debug("B.Text.Formatter: GetCommonFormatForRange input:", { startIndex, length });
 
     let commonFormat = {};
     let currentStyleIndex, charStyleIndex;
@@ -1575,12 +1575,12 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetCommonFormatForRange output:", commonFormat);
+    // LogUtil.Debug("B.Text.Formatter: GetCommonFormatForRange output:", commonFormat);
     return commonFormat;
   }
 
   GetFormatRangeAtIndex(format, index) {
-    LogUtil.Debug("B.Text.Formatter: GetFormatRangeAtIndex input:", { format, index });
+    // LogUtil.Debug("B.Text.Formatter: GetFormatRangeAtIndex input:", { format, index });
 
     let start = index;
     let end = index;
@@ -1588,7 +1588,7 @@ class Formatter {
     const totalChars = this.rtData.charStyles.length;
 
     if (!this.IsFormatAtIndex(format, index)) {
-      LogUtil.Debug("B.Text.Formatter: GetFormatRangeAtIndex output:", { start: -1, end: -1 });
+      // LogUtil.Debug("B.Text.Formatter: GetFormatRangeAtIndex output:", { start: -1, end: -1 });
       return { start: -1, end: -1 };
     }
 
@@ -1608,34 +1608,34 @@ class Formatter {
     }
 
     const result = { start, end };
-    LogUtil.Debug("B.Text.Formatter: GetFormatRangeAtIndex output:", result);
+    // LogUtil.Debug("B.Text.Formatter: GetFormatRangeAtIndex output:", result);
     return result;
   }
 
   IsFormatAtIndex(format: any, index: number): boolean {
-    LogUtil.Debug("B.Text.Formatter: IsFormatAtIndex input:", { format, index });
+    // LogUtil.Debug("B.Text.Formatter: IsFormatAtIndex input:", { format, index });
 
     const formatAtOffset = this.GetFormatAtOffset(index);
     const result = this.MatchPartialStyles(formatAtOffset.style, format);
 
-    LogUtil.Debug("B.Text.Formatter: IsFormatAtIndex output:", result);
+    // LogUtil.Debug("B.Text.Formatter: IsFormatAtIndex output:", result);
     return result;
   }
 
   GetFormatTextMinDimensions() {
-    LogUtil.Debug("B.Text.Formatter: GetFormatTextMinDimensions input");
+    // LogUtil.Debug("B.Text.Formatter: GetFormatTextMinDimensions input");
 
     const width = this.fmtText.width;
     const height = this.fmtText.height;
 
     const result = { width: width, height: height };
 
-    LogUtil.Debug("B.Text.Formatter: GetFormatTextMinDimensions output:", result);
+    // LogUtil.Debug("B.Text.Formatter: GetFormatTextMinDimensions output:", result);
     return result;
   }
 
   SetHyperlink(url: string, startOffset: number, length: number) {
-    LogUtil.Debug("B.Text.Formatter: SetHyperlink input:", { url, startOffset, length });
+    // LogUtil.Debug("B.Text.Formatter: SetHyperlink input:", { url, startOffset, length });
 
     let hyperlinkRange, formatRange, currentHyperlink, endOffset, isExtended = false;
 
@@ -1687,11 +1687,11 @@ class Formatter {
     length = endOffset - startOffset;
     this.SetFormat({ hyperlink: hyperlinkId }, startOffset, length);
 
-    LogUtil.Debug("B.Text.Formatter: SetHyperlink output:", { url, startOffset, length });
+    // LogUtil.Debug("B.Text.Formatter: SetHyperlink output:", { url, startOffset, length });
   }
 
   GetHyperlinkAtOffset(offset: number) {
-    LogUtil.Debug("B.Text.Formatter: GetHyperlinkAtOffset input:", offset);
+    // LogUtil.Debug("B.Text.Formatter: GetHyperlinkAtOffset input:", offset);
 
     const format = this.GetFormatAtOffset(offset).style;
     let result = null;
@@ -1703,17 +1703,17 @@ class Formatter {
       };
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetHyperlinkAtOffset output:", result);
+    // LogUtil.Debug("B.Text.Formatter: GetHyperlinkAtOffset output:", result);
     return result;
   }
 
   GetHyperlinkAtPoint(point) {
-    LogUtil.Debug("B.Text.Formatter: GetHyperlinkAtPoint input:", point);
+    // LogUtil.Debug("B.Text.Formatter: GetHyperlinkAtPoint input:", point);
 
     let lineIndex, runIndex, styleIndex = -1;
 
     if (point.y < 0 || point.y > this.fmtText.height) {
-      LogUtil.Debug("B.Text.Formatter: GetHyperlinkAtPoint output:", null);
+      // LogUtil.Debug("B.Text.Formatter: GetHyperlinkAtPoint output:", null);
       return null;
     }
 
@@ -1743,12 +1743,12 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetHyperlinkAtPoint output:", result);
+    // LogUtil.Debug("B.Text.Formatter: GetHyperlinkAtPoint output:", result);
     return result;
   }
 
   ClearHyperlink(offset: number) {
-    LogUtil.Debug("B.Text.Formatter: ClearHyperlink input:", offset);
+    // LogUtil.Debug("B.Text.Formatter: ClearHyperlink input:", offset);
 
     const hyperlink = this.GetHyperlinkAtOffset(offset);
     if (hyperlink) {
@@ -1756,11 +1756,11 @@ class Formatter {
       this.fmtText = this.CalcFromRuntime(this.rtData, this.limits);
     }
 
-    LogUtil.Debug("B.Text.Formatter: ClearHyperlink output:", this.fmtText);
+    // LogUtil.Debug("B.Text.Formatter: ClearHyperlink output:", this.fmtText);
   }
 
   RemoveHyperlink(hyperlinkIndex: number) {
-    LogUtil.Debug("B.Text.Formatter: RemoveHyperlink input:", hyperlinkIndex);
+    // LogUtil.Debug("B.Text.Formatter: RemoveHyperlink input:", hyperlinkIndex);
 
     if (hyperlinkIndex >= 0 && hyperlinkIndex < this.rtData.hyperlinks.length) {
       this.rtData.hyperlinks.splice(hyperlinkIndex, 1);
@@ -1774,11 +1774,11 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: RemoveHyperlink output:", this.rtData.hyperlinks);
+    // LogUtil.Debug("B.Text.Formatter: RemoveHyperlink output:", this.rtData.hyperlinks);
   }
 
   SetHyperlinkCursor() {
-    LogUtil.Debug("B.Text.Formatter: SetHyperlinkCursor input");
+    // LogUtil.Debug("B.Text.Formatter: SetHyperlinkCursor input");
 
     let lineIndex, runIndex, styleIndex, element;
 
@@ -1794,7 +1794,7 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: SetHyperlinkCursor output");
+    // LogUtil.Debug("B.Text.Formatter: SetHyperlinkCursor output");
   }
 
   /**
@@ -1803,7 +1803,7 @@ class Formatter {
    * @param formattingLayer - The layer where underlines, spell errors, and other formatting will be rendered
    */
   RenderFormattedText(textContainer, formattingLayer) {
-    LogUtil.Debug("B.Text.Formatter: RenderFormattedText input:", { textContainer, formattingLayer });
+    // LogUtil.Debug("B.Text.Formatter: RenderFormattedText input:", { textContainer, formattingLayer });
 
     let style, text, horizontalOffset, lineWidth, formattingInfo, lineElement;
     let bulletInfo, renderInfo, run, textElement, styleCache, linkColor;
@@ -1992,11 +1992,11 @@ class Formatter {
       parentContainer.add(textContainer, containerPosition);
     }
 
-    LogUtil.Debug("B.Text.Formatter: RenderFormattedText output:", this.renderedLines);
+    // LogUtil.Debug("B.Text.Formatter: RenderFormattedText output:", this.renderedLines);
   }
 
   AttachHyperlinkToRun(element, style) {
-    LogUtil.Debug("B.Text.Formatter: AttachHyperlinkToRun input:", { element, style });
+    // LogUtil.Debug("B.Text.Formatter: AttachHyperlinkToRun input:", { element, style });
 
     if (style.hyperlink !== undefined && style.hyperlink >= 0 && style.hyperlink < this.fmtText.hyperlinks.length) {
       const hyperlink = this.fmtText.hyperlinks[style.hyperlink];
@@ -2006,17 +2006,17 @@ class Formatter {
       if (actualHyperlink) {
         element.node.setAttribute('_explink_', actualHyperlink);
         Instance.Basic.Element.SetTooltipOnElement(element, resolvedHyperlink);
-        LogUtil.Debug("B.Text.Formatter: AttachHyperlinkToRun output:", true);
+        // LogUtil.Debug("B.Text.Formatter: AttachHyperlinkToRun output:", true);
         return true;
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: AttachHyperlinkToRun output:", false);
+    // LogUtil.Debug("B.Text.Formatter: AttachHyperlinkToRun output:", false);
     return false;
   }
 
   RenderUnderline(underline, formattingLayer) {
-    LogUtil.Debug("B.Text.Formatter: RenderUnderline input:", { underline, formattingLayer });
+    // LogUtil.Debug("B.Text.Formatter: RenderUnderline input:", { underline, formattingLayer });
 
     const path = new T3Svg.Path();
     const startX = Utils1.RoundCoord(underline.x);
@@ -2030,11 +2030,11 @@ class Formatter {
 
     formattingLayer.add(path);
 
-    LogUtil.Debug("B.Text.Formatter: RenderUnderline output");
+    // LogUtil.Debug("B.Text.Formatter: RenderUnderline output");
   }
 
   RenderSpellError(spellError, formattingLayer) {
-    LogUtil.Debug("B.Text.Formatter: RenderSpellError input:", { spellError, formattingLayer });
+    // LogUtil.Debug("B.Text.Formatter: RenderSpellError input:", { spellError, formattingLayer });
 
     const path = new T3Svg.Path();
     let x = spellError.x;
@@ -2055,11 +2055,11 @@ class Formatter {
     path.node.setAttribute('no-export', '1');
     formattingLayer.add(path);
 
-    LogUtil.Debug("B.Text.Formatter: RenderSpellError output");
+    // LogUtil.Debug("B.Text.Formatter: RenderSpellError output");
   }
 
   RenderDataFieldHilites(formattingLayer) {
-    LogUtil.Debug("B.Text.Formatter: RenderDataFieldHilites input:", formattingLayer);
+    // LogUtil.Debug("B.Text.Formatter: RenderDataFieldHilites input:", formattingLayer);
 
     let dataField, tooltipText, rectElement;
 
@@ -2082,11 +2082,11 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: RenderDataFieldHilites output");
+    // LogUtil.Debug("B.Text.Formatter: RenderDataFieldHilites output");
   }
 
   ClearDataFieldHilites(formattingLayer) {
-    LogUtil.Debug("B.Text.Formatter: ClearDataFieldHilites input:", formattingLayer);
+    // LogUtil.Debug("B.Text.Formatter: ClearDataFieldHilites input:", formattingLayer);
 
     if (this.renderedDataFields) {
       for (let i = 0; i < this.renderedDataFields.length; i++) {
@@ -2098,11 +2098,11 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: ClearDataFieldHilites output");
+    // LogUtil.Debug("B.Text.Formatter: ClearDataFieldHilites output");
   }
 
   RenderBullet(bulletInfo, formattingLayer) {
-    LogUtil.Debug("B.Text.Formatter: RenderBullet input:", { bulletInfo, formattingLayer });
+    // LogUtil.Debug("B.Text.Formatter: RenderBullet input:", { bulletInfo, formattingLayer });
 
     let shape, path, size, color, isFilled = false, isStroked = false;
     const halfIndent = Math.max(4, bulletInfo.indent / 2);
@@ -2170,11 +2170,11 @@ class Formatter {
       formattingLayer.add(shape.svgObj);
     }
 
-    LogUtil.Debug("B.Text.Formatter: RenderBullet output");
+    // LogUtil.Debug("B.Text.Formatter: RenderBullet output");
   }
 
   SetRuntimeCharFormat(charIndex: number, format: any, apply: boolean): number {
-    LogUtil.Debug("B.Text.Formatter: SetRuntimeCharFormat input:", { charIndex, format, apply });
+    // LogUtil.Debug("B.Text.Formatter: SetRuntimeCharFormat input:", { charIndex, format, apply });
 
     let currentStyle = this.GetFormatAtOffset(charIndex).style;
     let mergedStyle = this.MergeStyles(format, currentStyle);
@@ -2184,12 +2184,12 @@ class Formatter {
       this.rtData.charStyles[charIndex] = styleIndex;
     }
 
-    LogUtil.Debug("B.Text.Formatter: SetRuntimeCharFormat output:", styleIndex);
+    // LogUtil.Debug("B.Text.Formatter: SetRuntimeCharFormat output:", styleIndex);
     return styleIndex;
   }
 
   CalcFromRuntime(runtimeData, limits) {
-    LogUtil.Debug("B.Text.Formatter: CalcFromRuntime input:", { runtimeData, limits });
+    // LogUtil.Debug("B.Text.Formatter: CalcFromRuntime input:", { runtimeData, limits });
 
     let formattedText = new DefaultFmtText();
     let maxWidth = limits ? limits.maxWidth : 0;
@@ -2372,12 +2372,12 @@ class Formatter {
       this.deferredRenderNeeded = true;
     }
 
-    LogUtil.Debug("B.Text.Formatter: CalcFromRuntime output:", formattedText);
+    // LogUtil.Debug("B.Text.Formatter: CalcFromRuntime output:", formattedText);
     return formattedText;
   }
 
   BuildLineForDisplay(paragraphRunMetrics, availableWidth, nextRunInfo, paragraphStyle) {
-    LogUtil.Debug("B.Text.Formatter: BuildLineForDisplay input:", { paragraphRunMetrics, availableWidth, nextRunInfo, paragraphStyle });
+    // LogUtil.Debug("B.Text.Formatter: BuildLineForDisplay input:", { paragraphRunMetrics, availableWidth, nextRunInfo, paragraphStyle });
 
     let currentRunIndex = 0;
     let currentCharIndex = 0;
@@ -2618,12 +2618,12 @@ class Formatter {
 
     line.nextRunInfo = nextRunInfo;
 
-    LogUtil.Debug("B.Text.Formatter: BuildLineForDisplay output:", line);
+    // LogUtil.Debug("B.Text.Formatter: BuildLineForDisplay output:", line);
     return line;
   }
 
   CalcParagraphRunMetrics(runtimeData, styleRun, formattingLayer, docFormattingLayer) {
-    LogUtil.Debug("B.Text.Formatter: CalcParagraphRunMetrics input:", { runtimeData, styleRun, formattingLayer, docFormattingLayer });
+    // LogUtil.Debug("B.Text.Formatter: CalcParagraphRunMetrics input:", { runtimeData, styleRun, formattingLayer, docFormattingLayer });
 
     const whitespaceRegex = /(\s+)/g;
     const tabRegex = /(\t+)/g;
@@ -2786,12 +2786,12 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: CalcParagraphRunMetrics output:", paragraphRunMetrics);
+    // LogUtil.Debug("B.Text.Formatter: CalcParagraphRunMetrics output:", paragraphRunMetrics);
     return paragraphRunMetrics;
   }
 
   GetTextParagraphCount(text: string): number {
-    LogUtil.Debug("B.Text.Formatter: GetTextParagraphCount input:", text);
+    // LogUtil.Debug("B.Text.Formatter: GetTextParagraphCount input:", text);
 
     let paragraphCount = 1;
     const newLineMatches = text.match(/\n/g);
@@ -2800,12 +2800,12 @@ class Formatter {
       paragraphCount += newLineMatches.length;
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetTextParagraphCount output:", paragraphCount);
+    // LogUtil.Debug("B.Text.Formatter: GetTextParagraphCount output:", paragraphCount);
     return paragraphCount;
   }
 
   MergeParagraphInfo(paragraphStyles, startOffset, length) {
-    LogUtil.Debug("B.Text.Formatter: MergeParagraphInfo input:", { paragraphStyles, startOffset, length });
+    // LogUtil.Debug("B.Text.Formatter: MergeParagraphInfo input:", { paragraphStyles, startOffset, length });
 
     let startParagraphIndex = this.GetParagraphAtOffset(startOffset);
     let endParagraphIndex = this.GetParagraphAtOffset(startOffset + length);
@@ -2852,12 +2852,12 @@ class Formatter {
       });
     }
 
-    LogUtil.Debug("B.Text.Formatter: MergeParagraphInfo output:", mergedParagraphStyles);
+    // LogUtil.Debug("B.Text.Formatter: MergeParagraphInfo output:", mergedParagraphStyles);
     return mergedParagraphStyles;
   }
 
   BuildRuntimeRuns(runtimeData, paragraphStyles) {
-    LogUtil.Debug("B.Text.Formatter: BuildRuntimeRuns input:", { runtimeData, paragraphStyles });
+    // LogUtil.Debug("B.Text.Formatter: BuildRuntimeRuns input:", { runtimeData, paragraphStyles });
 
     let paragraphStartIndices = [];
     let defaultParagraphStyle = this.DefaultPStyle();
@@ -2958,11 +2958,11 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: BuildRuntimeRuns output:", runtimeData.styleRuns);
+    // LogUtil.Debug("B.Text.Formatter: BuildRuntimeRuns output:", runtimeData.styleRuns);
   }
 
   GetBulletPIndex() {
-    LogUtil.Debug("B.Text.Formatter: GetBulletPIndex input");
+    // LogUtil.Debug("B.Text.Formatter: GetBulletPIndex input");
 
     let paragraphIndex = 0;
 
@@ -2976,12 +2976,12 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetBulletPIndex output:", paragraphIndex);
+    // LogUtil.Debug("B.Text.Formatter: GetBulletPIndex output:", paragraphIndex);
     return paragraphIndex;
   }
 
   GetBulletIndent() {
-    LogUtil.Debug("B.Text.Formatter: GetBulletIndent input");
+    // LogUtil.Debug("B.Text.Formatter: GetBulletIndent input");
 
     let bulletIndent = 0;
     const bulletParagraphIndex = this.GetBulletPIndex();
@@ -2993,12 +2993,12 @@ class Formatter {
       bulletIndent = this.rtData.styleRuns[bulletParagraphIndex].runs[0].metrics.ascent;
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetBulletIndent output:", bulletIndent);
+    // LogUtil.Debug("B.Text.Formatter: GetBulletIndent output:", bulletIndent);
     return bulletIndent;
   }
 
   GetBulletStyle(paragraphIndex) {
-    LogUtil.Debug("B.Text.Formatter: GetBulletStyle input:", paragraphIndex);
+    // LogUtil.Debug("B.Text.Formatter: GetBulletStyle input:", paragraphIndex);
 
     let bulletStyle = new DefaultStyle();
 
@@ -3011,18 +3011,18 @@ class Formatter {
       bulletStyle = this.rtData.styles[styleIndex];
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetBulletStyle output:", bulletStyle);
+    // LogUtil.Debug("B.Text.Formatter: GetBulletStyle output:", bulletStyle);
     return bulletStyle;
   }
 
   FindAddStyle(style, skipAdd?) {
-    LogUtil.Debug("B.Text.Formatter: FindAddStyle input:", { style, skipAdd });
+    // LogUtil.Debug("B.Text.Formatter: FindAddStyle input:", { style, skipAdd });
 
     let styleIndex = -1;
     const totalStyles = this.rtData.styles.length;
 
     if (!style) {
-      LogUtil.Debug("B.Text.Formatter: FindAddStyle output:", 0);
+      // LogUtil.Debug("B.Text.Formatter: FindAddStyle output:", 0);
       return 0;
     }
 
@@ -3038,12 +3038,12 @@ class Formatter {
       styleIndex = totalStyles;
     }
 
-    LogUtil.Debug("B.Text.Formatter: FindAddStyle output:", styleIndex);
+    // LogUtil.Debug("B.Text.Formatter: FindAddStyle output:", styleIndex);
     return styleIndex;
   }
 
   TrimUnusedStyles(formattedText) {
-    LogUtil.Debug("B.Text.Formatter: TrimUnusedStyles input:", formattedText);
+    // LogUtil.Debug("B.Text.Formatter: TrimUnusedStyles input:", formattedText);
 
     let charStyleUsage = [];
     let newStyles = [];
@@ -3077,11 +3077,11 @@ class Formatter {
       formattedText.styles = newStyles;
     }
 
-    LogUtil.Debug("B.Text.Formatter: TrimUnusedStyles output:", formattedText);
+    // LogUtil.Debug("B.Text.Formatter: TrimUnusedStyles output:", formattedText);
   }
 
   MergeStyles(newStyle, baseStyle) {
-    LogUtil.Debug("B.Text.Formatter: MergeStyles input:", { newStyle, baseStyle });
+    // LogUtil.Debug("B.Text.Formatter: MergeStyles input:", { newStyle, baseStyle });
 
     const mergedStyle = {
       font: newStyle.font !== undefined ? newStyle.font : baseStyle.font,
@@ -3098,12 +3098,12 @@ class Formatter {
       hyperlink: newStyle.hyperlink !== undefined ? newStyle.hyperlink : baseStyle.hyperlink
     };
 
-    LogUtil.Debug("B.Text.Formatter: MergeStyles output:", mergedStyle);
+    // LogUtil.Debug("B.Text.Formatter: MergeStyles output:", mergedStyle);
     return mergedStyle;
   }
 
   AndStyles(style1, style2) {
-    LogUtil.Debug("B.Text.Formatter: AndStyles input:", { style1, style2 });
+    // LogUtil.Debug("B.Text.Formatter: AndStyles input:", { style1, style2 });
 
     const result = {
       font: style1.font === style2.font ? style1.font : undefined,
@@ -3120,12 +3120,12 @@ class Formatter {
       hyperlink: style1.hyperlink === style2.hyperlink ? style1.hyperlink : undefined
     };
 
-    LogUtil.Debug("B.Text.Formatter: AndStyles output:", result);
+    // LogUtil.Debug("B.Text.Formatter: AndStyles output:", result);
     return result;
   }
 
   MatchStyles(style1, style2) {
-    LogUtil.Debug("B.Text.Formatter: MatchStyles input:", { style1, style2 });
+    // LogUtil.Debug("B.Text.Formatter: MatchStyles input:", { style1, style2 });
 
     const result = style1.font === style2.font &&
       style1.type === style2.type &&
@@ -3140,12 +3140,12 @@ class Formatter {
       style1.dataField === style2.dataField &&
       style1.hyperlink === style2.hyperlink;
 
-    LogUtil.Debug("B.Text.Formatter: MatchStyles output:", result);
+    // LogUtil.Debug("B.Text.Formatter: MatchStyles output:", result);
     return result;
   }
 
   MatchStylesNoSpell(style1, style2) {
-    LogUtil.Debug("B.Text.Formatter: MatchStylesNoSpell input:", { style1, style2 });
+    // LogUtil.Debug("B.Text.Formatter: MatchStylesNoSpell input:", { style1, style2 });
 
     const result = style1.font === style2.font &&
       style1.type === style2.type &&
@@ -3159,12 +3159,12 @@ class Formatter {
       style1.dataField === style2.dataField &&
       style1.hyperlink === style2.hyperlink;
 
-    LogUtil.Debug("B.Text.Formatter: MatchStylesNoSpell output:", result);
+    // LogUtil.Debug("B.Text.Formatter: MatchStylesNoSpell output:", result);
     return result;
   }
 
   MatchPartialStyles(style1, style2) {
-    LogUtil.Debug("B.Text.Formatter: MatchPartialStyles input:", { style1, style2 });
+    // LogUtil.Debug("B.Text.Formatter: MatchPartialStyles input:", { style1, style2 });
 
     const result = !(
       (style1.font !== undefined && style2.font !== undefined && style1.font !== style2.font) ||
@@ -3181,7 +3181,7 @@ class Formatter {
       (style1.hyperlink !== undefined && style2.hyperlink !== undefined && style1.hyperlink !== style2.hyperlink)
     );
 
-    LogUtil.Debug("B.Text.Formatter: MatchPartialStyles output:", result);
+    // LogUtil.Debug("B.Text.Formatter: MatchPartialStyles output:", result);
     return result;
   }
 
@@ -3198,25 +3198,25 @@ class Formatter {
   }
 
   SetDataNameDisplay(isEnabled: boolean) {
-    LogUtil.Debug("B.Text.Formatter: SetDataNameDisplay input:", isEnabled);
+    // LogUtil.Debug("B.Text.Formatter: SetDataNameDisplay input:", isEnabled);
     this.dataNameEnabled = isEnabled;
-    LogUtil.Debug("B.Text.Formatter: SetDataNameDisplay output:", this.dataNameEnabled);
+    // LogUtil.Debug("B.Text.Formatter: SetDataNameDisplay output:", this.dataNameEnabled);
   }
 
   GetDataNameDisplay() {
-    LogUtil.Debug("B.Text.Formatter: GetDataNameDisplay input");
+    // LogUtil.Debug("B.Text.Formatter: GetDataNameDisplay input");
 
     const dataNameEnabled = this.dataNameEnabled;
 
-    LogUtil.Debug("B.Text.Formatter: GetDataNameDisplay output:", dataNameEnabled);
+    // LogUtil.Debug("B.Text.Formatter: GetDataNameDisplay output:", dataNameEnabled);
     return dataNameEnabled;
   }
 
   GetDataField(position: number) {
-    LogUtil.Debug("B.Text.Formatter: GetDataField input:", position);
+    // LogUtil.Debug("B.Text.Formatter: GetDataField input:", position);
 
     if (!this.HasDataFields() || !this.IsDataFieldAtPos(position)) {
-      LogUtil.Debug("B.Text.Formatter: GetDataField output:", null);
+      // LogUtil.Debug("B.Text.Formatter: GetDataField output:", null);
       return null;
     }
 
@@ -3235,69 +3235,69 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetDataField output:", dataFieldInfo);
+    // LogUtil.Debug("B.Text.Formatter: GetDataField output:", dataFieldInfo);
     return dataFieldInfo;
   }
 
   IsDataFieldAtPos(position: number): boolean {
-    LogUtil.Debug("B.Text.Formatter: IsDataFieldAtPos input:", position);
+    // LogUtil.Debug("B.Text.Formatter: IsDataFieldAtPos input:", position);
 
     const hasDataField = !!this.GetFormatAtOffset(position).style.dataField;
 
-    LogUtil.Debug("B.Text.Formatter: IsDataFieldAtPos output:", hasDataField);
+    // LogUtil.Debug("B.Text.Formatter: IsDataFieldAtPos output:", hasDataField);
     return hasDataField;
   }
 
   IsDataFieldInRange(startIndex: number, endIndex: number): boolean {
-    LogUtil.Debug("B.Text.Formatter: IsDataFieldInRange input:", { startIndex, endIndex });
+    // LogUtil.Debug("B.Text.Formatter: IsDataFieldInRange input:", { startIndex, endIndex });
 
     if (!this.HasDataFields()) {
-      LogUtil.Debug("B.Text.Formatter: IsDataFieldInRange output:", false);
+      // LogUtil.Debug("B.Text.Formatter: IsDataFieldInRange output:", false);
       return false;
     }
 
     for (let i = startIndex; i <= endIndex; i++) {
       if (this.IsDataFieldAtPos(i)) {
-        LogUtil.Debug("B.Text.Formatter: IsDataFieldInRange output:", true);
+        // LogUtil.Debug("B.Text.Formatter: IsDataFieldInRange output:", true);
         return true;
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: IsDataFieldInRange output:", false);
+    // LogUtil.Debug("B.Text.Formatter: IsDataFieldInRange output:", false);
     return false;
   }
 
   HasDataFields() {
-    LogUtil.Debug("B.Text.Formatter: HasDataFields input");
+    // LogUtil.Debug("B.Text.Formatter: HasDataFields input");
 
     const hasDataFields = this.rtData.dataFields && this.rtData.dataFields.length > 0;
 
-    LogUtil.Debug("B.Text.Formatter: HasDataFields output:", hasDataFields);
+    // LogUtil.Debug("B.Text.Formatter: HasDataFields output:", hasDataFields);
     return hasDataFields;
   }
 
   HasDataField(fieldID: string): boolean {
-    LogUtil.Debug("B.Text.Formatter: HasDataField input:", fieldID);
+    // LogUtil.Debug("B.Text.Formatter: HasDataField input:", fieldID);
 
     if (!this.HasDataFields()) {
-      LogUtil.Debug("B.Text.Formatter: HasDataField output:", false);
+      // LogUtil.Debug("B.Text.Formatter: HasDataField output:", false);
       return false;
     }
 
     const formattedFieldID = Formatter.FormatDataFieldID(fieldID, false);
     for (let i = 0; i < this.rtData.dataFields.length; i++) {
       if (Formatter.FormatDataFieldID(this.rtData.dataFields[i].fieldID, false) === formattedFieldID) {
-        LogUtil.Debug("B.Text.Formatter: HasDataField output:", true);
+        // LogUtil.Debug("B.Text.Formatter: HasDataField output:", true);
         return true;
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: HasDataField output:", false);
+    // LogUtil.Debug("B.Text.Formatter: HasDataField output:", false);
     return false;
   }
 
   ClearDataFieldRun(fieldID: string) {
-    LogUtil.Debug("B.Text.Formatter: ClearDataFieldRun input:", fieldID);
+    // LogUtil.Debug("B.Text.Formatter: ClearDataFieldRun input:", fieldID);
 
     if (this.HasDataFields()) {
       if (fieldID) {
@@ -3313,11 +3313,11 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: ClearDataFieldRun output");
+    // LogUtil.Debug("B.Text.Formatter: ClearDataFieldRun output");
   }
 
   RebuildFromData() {
-    LogUtil.Debug("B.Text.Formatter: RebuildFromData input");
+    // LogUtil.Debug("B.Text.Formatter: RebuildFromData input");
 
     if (this.HasDataFields()) {
       const dataFieldsCopy = Utils1.CopyObj(this.rtData.dataFields);
@@ -3333,11 +3333,11 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: RebuildFromData output");
+    // LogUtil.Debug("B.Text.Formatter: RebuildFromData output");
   }
 
   RemapDataFields(mapping) {
-    LogUtil.Debug("B.Text.Formatter: RemapDataFields input:", mapping);
+    // LogUtil.Debug("B.Text.Formatter: RemapDataFields input:", mapping);
 
     if (this.HasDataFields()) {
       const remapFieldID = (fieldID) => {
@@ -3389,11 +3389,11 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: RemapDataFields output");
+    // LogUtil.Debug("B.Text.Formatter: RemapDataFields output");
   }
 
   static CreateTextRunElem(text: string, style: any, doc: any, linksDisabled: boolean, fieldStyleOverride: any) {
-    LogUtil.Debug("B.Text.Formatter: CreateTextRunElem input:", { text, style, doc, linksDisabled, fieldStyleOverride });
+    // LogUtil.Debug("B.Text.Formatter: CreateTextRunElem input:", { text, style, doc, linksDisabled, fieldStyleOverride });
 
     let fontSizeMultiplier = 1;
     const tspanElement = new T3Svg.Container(T3Svg.create('tspan'));
@@ -3486,12 +3486,12 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: CreateTextRunElem output:", tspanElement);
+    // LogUtil.Debug("B.Text.Formatter: CreateTextRunElem output:", tspanElement);
     return tspanElement;
   }
 
   static GetRunPositionForChar(element, charIndex?, isStart?, cache?, offset?) {
-    LogUtil.Debug("B.Text.Formatter: GetRunPositionForChar input:", { element, charIndex, isStart, cache, offset });
+    // LogUtil.Debug("B.Text.Formatter: GetRunPositionForChar input:", { element, charIndex, isStart, cache, offset });
 
     if (charIndex < 0) return -1;
 
@@ -3516,12 +3516,12 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: GetRunPositionForChar output:", position);
+    // LogUtil.Debug("B.Text.Formatter: GetRunPositionForChar output:", position);
     return position;
   }
 
   static CalcStyleMetrics(style, doc) {
-    LogUtil.Debug("B.Text.Formatter: CalcStyleMetrics input:", { style, doc });
+    // LogUtil.Debug("B.Text.Formatter: CalcStyleMetrics input:", { style, doc });
 
     let tempStyle = null;
     const metrics = { height: 0, width: 0, ascent: 0, descent: 0, extraYOffset: 0 };
@@ -3580,21 +3580,21 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: CalcStyleMetrics output:", metrics);
+    // LogUtil.Debug("B.Text.Formatter: CalcStyleMetrics output:", metrics);
     return metrics;
   }
 
   static MakeIDFromStyle(style) {
-    LogUtil.Debug("B.Text.Formatter: MakeIDFromStyle input:", style);
+    // LogUtil.Debug("B.Text.Formatter: MakeIDFromStyle input:", style);
 
     const id = (style.font + '_' + style.size + '_' + style.weight + '_' + style.style + '_' + style.baseOffset).replace(/ /g, '');
 
-    LogUtil.Debug("B.Text.Formatter: MakeIDFromStyle output:", id);
+    // LogUtil.Debug("B.Text.Formatter: MakeIDFromStyle output:", id);
     return id;
   }
 
   static FindPrevNextWord(text: string, position: number, isPrevious: boolean): number {
-    LogUtil.Debug("B.Text.Formatter: FindPrevNextWord input:", { text, position, isPrevious });
+    // LogUtil.Debug("B.Text.Formatter: FindPrevNextWord input:", { text, position, isPrevious });
 
     const length = text.length;
     const whitespace = /[ \f\t\v\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]/;
@@ -3634,12 +3634,12 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: FindPrevNextWord output:", position);
+    // LogUtil.Debug("B.Text.Formatter: FindPrevNextWord output:", position);
     return position;
   }
 
   static FormatDataFieldID(fieldID, generateUnique) {
-    LogUtil.Debug("B.Text.Formatter: FormatDataFieldID input:", { fieldID, generateUnique });
+    // LogUtil.Debug("B.Text.Formatter: FormatDataFieldID input:", { fieldID, generateUnique });
 
     let formattedID = fieldID;
     const hasUnderscore = formattedID.indexOf('_') > 0;
@@ -3654,7 +3654,7 @@ class Formatter {
       }
     }
 
-    LogUtil.Debug("B.Text.Formatter: FormatDataFieldID output:", formattedID);
+    // LogUtil.Debug("B.Text.Formatter: FormatDataFieldID output:", formattedID);
     return formattedID;
   }
 }

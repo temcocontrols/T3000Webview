@@ -167,89 +167,106 @@ class DocUtil {
   }
 
   /**
-   * Initializes the document work area with SVG components and rulers
-   * Sets up event handlers, creates layers, and configures initial display settings
+   * Initializes the document work area with SVG components and rulers.
+   * Sets up event handlers, creates layers, and configures initial display settings.
+   * Wrapped in try/catch to surface initialization failures to the caller.
+   *
    * @param workAreaConfig - Configuration object for the work area
-   * @returns void
+   * @param isReInitialize - Whether this is a re-initialization (skips SVG doc creation)
+   * @throws {Error} If required DOM elements are missing or SVG initialization fails
    */
   InitializeWorkArea(workAreaConfig: any, isReInitialize = false): void {
     LogUtil.Info("= u.DocUtil: InitializeWorkArea - Input:", workAreaConfig);
 
-    // Use provided configuration or defaults
-    workAreaConfig = workAreaConfig || {};
+    try {
+      // Use provided configuration or defaults
+      workAreaConfig = workAreaConfig || {};
 
-    // Set up DOM element IDs with provided values or defaults
-    this.workAreaId = workAreaConfig.workAreaId || '#document-area';
-    this.svgAreaId = workAreaConfig.svgAreaId || '#svg-area';
-    this.hRulerAreaId = workAreaConfig.hRulerAreaId || '#h-ruler';
-    this.vRulerAreaId = workAreaConfig.vRulerAreaId || '#v-ruler';
-    this.cRulerAreaId = workAreaConfig.cRulerAreaId || '#c-ruler';
+      // Set up DOM element IDs with provided values or defaults
+      this.workAreaId = workAreaConfig.workAreaId || '#document-area';
+      this.svgAreaId = workAreaConfig.svgAreaId || '#svg-area';
+      this.hRulerAreaId = workAreaConfig.hRulerAreaId || '#h-ruler';
+      this.vRulerAreaId = workAreaConfig.vRulerAreaId || '#v-ruler';
+      this.cRulerAreaId = workAreaConfig.cRulerAreaId || '#c-ruler';
 
-    // Initialize document-related properties
+      // Validate that the SVG area element exists before proceeding
+      const svgElement = document.querySelector(this.svgAreaId);
+      if (!svgElement) {
+        throw new Error(
+          `InitializeWorkArea: SVG area element not found. ` +
+          `Expected selector "${this.svgAreaId}". ` +
+          `Ensure the DOM element exists before calling InitializeWorkArea.`
+        );
+      }
 
-    if (!isReInitialize) {
-      this.svgDoc = null;
-      this.hRulerDoc = null;
-      this.vRulerDoc = null;
+      // Initialize document-related properties
+      if (!isReInitialize) {
+        this.svgDoc = null;
+        this.hRulerDoc = null;
+        this.vRulerDoc = null;
+      }
+
+      this.rulerVis = true;
+      this.gridVis = true;
+      this.gridLayer = '_doc_grid';
+      this.pageDividerLayer = '_doc_page_divider';
+      this.backgroundLayer = '_background';
+      this.backgroundElem = null;
+      this.scaleToFit = false;
+      this.scaleToPage = false;
+      this.scrollWidth = 0;
+      this.printHandler = null;
+
+      // Bind window resize event handler
+      $(window).bind('resize', this, function (event) {
+        event.data.HandleResizeEvent();
+      });
+
+      // Bind scroll event handler to SVG area
+      $(this.svgAreaId).bind('scroll', this, function (event) {
+        event.data.HandleScrollEvent();
+      });
+
+      // Initialize ruler configuration
+      this.rulerConfig = new RulerConfig();
+      this.rulerConfig.denom = RulerUtil.GetFractionDenominator();
+      this.UpdateRulerVisibility();
+
+      // Bind mouse move event handler
+      $(window).bind('mousemove', EvtUtil.Evt_MouseMove);
+
+      if (!isReInitialize) {
+        // Initialize SVG area with the configuration
+        this.InitSvgArea(workAreaConfig);
+      }
+
+      // Initialize UI components visibility and content
+      this.UpdateGridVisibility();
+
+      if (!isReInitialize) {
+        this.SetUpRulers();
+      }
+
+      this.UpdateGrid();
+      this.UpdatePageDivider();
+      this.UpdateWorkArea();
+
+      LogUtil.Debug("= U.DocUtil: InitializeWorkArea - Output:", {
+        workAreaId: this.workAreaId,
+        svgAreaId: this.svgAreaId,
+        hRulerAreaId: this.hRulerAreaId,
+        vRulerAreaId: this.vRulerAreaId,
+        cRulerAreaId: this.cRulerAreaId,
+        gridLayer: this.gridLayer,
+        pageDividerLayer: this.pageDividerLayer,
+        backgroundLayer: this.backgroundLayer,
+        scaleToFit: this.scaleToFit,
+        scaleToPage: this.scaleToPage
+      });
+    } catch (error) {
+      LogUtil.Error("= U.DocUtil: InitializeWorkArea - FAILED:", error);
+      throw error;
     }
-
-    this.rulerVis = true;
-    this.gridVis = true;
-    this.gridLayer = '_doc_grid';
-    this.pageDividerLayer = '_doc_page_divider';
-    this.backgroundLayer = '_background';
-    this.backgroundElem = null;
-    this.scaleToFit = false;
-    this.scaleToPage = false;
-    this.scrollWidth = 0;
-    this.printHandler = null;
-
-    // Bind window resize event handler
-    $(window).bind('resize', this, function (event) {
-      event.data.HandleResizeEvent();
-    });
-
-    // Bind scroll event handler to SVG area
-    $(this.svgAreaId).bind('scroll', this, function (event) {
-      event.data.HandleScrollEvent();
-    });
-
-    // Initialize ruler configuration
-    this.rulerConfig = new RulerConfig();
-    this.rulerConfig.denom = RulerUtil.GetFractionDenominator();
-    this.UpdateRulerVisibility();
-
-    // Bind mouse move event handler
-    $(window).bind('mousemove', EvtUtil.Evt_MouseMove);
-
-    if (!isReInitialize) {
-      // Initialize SVG area with the configuration
-      this.InitSvgArea(workAreaConfig);
-    }
-
-    // Initialize UI components visibility and content
-    this.UpdateGridVisibility();
-
-    if (!isReInitialize) {
-      this.SetUpRulers();
-    }
-
-    this.UpdateGrid();
-    this.UpdatePageDivider();
-    this.UpdateWorkArea();
-
-    LogUtil.Debug("= U.DocUtil: InitializeWorkArea - Output:", {
-      workAreaId: this.workAreaId,
-      svgAreaId: this.svgAreaId,
-      hRulerAreaId: this.hRulerAreaId,
-      vRulerAreaId: this.vRulerAreaId,
-      cRulerAreaId: this.cRulerAreaId,
-      gridLayer: this.gridLayer,
-      pageDividerLayer: this.pageDividerLayer,
-      backgroundLayer: this.backgroundLayer,
-      scaleToFit: this.scaleToFit,
-      scaleToPage: this.scaleToPage
-    });
   }
 
   /**
