@@ -2,7 +2,7 @@
 
 > ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
-Complete reference of natural-language prompts for all 43 MCP tools across 11 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
+Complete reference of natural-language prompts for all 45 MCP tools across 12 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
 ---
 
@@ -727,6 +727,56 @@ List all graphic/HMI screens available on a device. Returns graphic IDs, labels,
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **What HMI screens are available on device 233626?**
+
+</div>
+
+</div>
+
+---
+
+## Documentation <span style="font-weight:400;font-size:12px;color:#888">2 tools</span>
+
+### `doc_list` — List documentation topics
+
+List all T3000 documentation topics organized by section: Quick Start, Architecture, Device Management, Data Points, Features, API Reference, Guides, Building Platform, and Haystack & MCP. Use to discover what docs exist before reading a specific one.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What documentation is available?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me the API reference docs**
+
+</div>
+
+</div>
+
+### `doc_read` — Read a documentation page
+
+Read the full markdown content of a T3000 documentation page. Pass the path from `doc_list` (e.g. `quick-start/overview` or `haystack/mcp-api-examples`). Fetches from local filesystem in dev mode, falls back to GitHub raw in production.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me the MCP API examples documentation**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Read the quick start guide**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What does the troubleshooting guide say about connection issues?**
 
 </div>
 

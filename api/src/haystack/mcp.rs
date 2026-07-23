@@ -15,7 +15,8 @@
 //   Analytics (2): haystack_validate, haystack_export
 //   Rules (2):     rule_toggle, rule_create
 //   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
-//   Diagnostics (3): alarm_settings_read, users_list, graphics_list
+//   Docs (2):      doc_list, doc_read
+//   Docs (2):      doc_list, doc_read
 //   Device (12):   trendlog_list, trendlog_export, device_refresh, schedule_list, settings_read, settings_write, device_control,
 //                   program_list, program_read, pid_list, holiday_list, building_summary
 
@@ -903,6 +904,31 @@ lazy_static::lazy_static! {
                 }
             },
             "required": ["serial_number"]
+        }),
+    },
+    // ═══ v4: Documentation ═══
+    ToolDef {
+        name: "doc_list",
+        title: "List Documentation Topics",
+        description: "List all available T3000 documentation topics organized by section: Quick Start, Architecture, Device Management, Data Points, Features, API Reference, Guides, Building Platform, Haystack & MCP. Use to discover what docs exist before reading a specific one.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {}
+        }),
+    },
+    ToolDef {
+        name: "doc_read",
+        title: "Read Documentation",
+        description: "Read the full content of a T3000 documentation page by path (from doc_list). Returns the markdown content. Fetches from local filesystem in dev mode, falls back to GitHub raw in production.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Documentation path from doc_list, e.g. 'quick-start/overview' or 'haystack/mcp-api-examples'"
+                }
+            },
+            "required": ["path"]
         }),
     },
     ToolDef {
@@ -3305,6 +3331,74 @@ async fn execute_tool(
 
             serde_json::to_string_pretty(&json!({ "graphics": results, "total": results.len() }))
                 .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        // ═══ v4: Documentation ═══
+
+        "doc_list" => {
+            let sections: Vec<Value> = vec![
+                ("Quick Start", &[("Overview", "quick-start/overview"), ("Installation", "quick-start/installation"), ("Configuration", "quick-start/configuration")][..]),
+                ("Shared DB", &[("Shared Center DB Summary", "shared-db/shared-center-db-summary"), ("SQL Server Express Setup", "shared-db/sql-server-express-setup"), ("T3000 Center DB Config", "shared-db/t3000-center-db-config")]),
+                ("Architecture", &[("System Overview", "architecture/system-overview"), ("Device Loading", "architecture/device-loading")]),
+                ("Device Management", &[("Connecting Devices", "device-management/connecting-devices"), ("Device Configuration", "device-management/device-configuration"), ("Device Monitoring", "device-management/device-monitoring"), ("Troubleshooting", "device-management/device-troubleshooting")]),
+                ("Data Points", &[("Inputs", "data-points/inputs"), ("Outputs", "data-points/outputs"), ("Variables", "data-points/variables"), ("Programs", "data-points/programs"), ("PID Loops", "data-points/pid-loops")]),
+                ("Features", &[("Schedules", "features/schedules"), ("Holidays", "features/holidays"), ("Graphics", "features/graphics"), ("Trend Logs", "features/trendlogs"), ("Alarms", "features/alarms")]),
+                ("API Reference", &[("Overview", "api-reference/overview"), ("Device Management", "api-reference/device-management"), ("Data Points", "api-reference/data-points"), ("Control & Automation", "api-reference/control-automation"), ("Trend Logging", "api-reference/trendlogs"), ("Generic Tables", "api-reference/generic-tables"), ("Database Management", "api-reference/database-management"), ("Developer Tools", "api-reference/developer-tools"), ("System & Utilities", "api-reference/system-utilities")]),
+                ("Guides", &[("Best Practices", "guides/best-practices"), ("Troubleshooting", "guides/troubleshooting"), ("Performance Tuning", "guides/performance-tuning"), ("FAQ", "guides/faq")]),
+                ("Building Platform", &[("Overview", "building-platform/overview"), ("Control Messages", "building-platform/control-messages/message-index"), ("BACnet Commands", "building-platform/bacnet-commands"), ("Data Structures", "building-platform/data-structures"), ("Device Settings Structure", "building-platform/device-settings-structure")]),
+                ("Haystack & MCP", &[("Claude Desktop Setup", "haystack/mcp-claude-desktop"), ("VS Code Copilot Setup", "haystack/mcp-vscode-copilot"), ("MCP API Examples", "haystack/mcp-api-examples")]),
+            ].into_iter().map(|(title, items)| {
+                let items: Vec<Value> = items.iter().map(|(t, p)| json!({"title": t, "path": p})).collect();
+                json!({"section": title, "items": items, "count": items.len()})
+            }).collect();
+
+            serde_json::to_string_pretty(&json!({"sections": sections, "total_sections": sections.len()}))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "doc_read" => {
+            let doc_path = args.get("path").and_then(|v| v.as_str())
+                .ok_or_else(|| "path required".to_string())?;
+            // Sanitize: prevent directory traversal
+            let safe_path = doc_path.replace("..", "").replace("\\", "/").trim_matches('/').to_string();
+            let md_filename = format!("{}.md", safe_path);
+
+            // Try local filesystem first (dev mode)
+            let docs_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("docs").join("t3000");
+            let local_path = docs_dir.join(&md_filename);
+            let content = if local_path.exists() {
+                std::fs::read_to_string(&local_path)
+                    .map_err(|e| format!("Failed to read {}: {}", local_path.display(), e))?
+            } else {
+                // Fallback: GitHub raw
+                let github_url = format!(
+                    "https://raw.githubusercontent.com/temcocontrols/T3000Webview/main/docs/t3000/{}",
+                    md_filename
+                );
+                let client = reqwest::Client::new();
+                let resp = client.get(&github_url)
+                    .header("User-Agent", "T3000-MCP/1.0")
+                    .send().await
+                    .map_err(|e| format!("Failed to fetch doc: {}", e))?;
+                if !resp.status().is_success() {
+                    return Err(format!("Doc not found: {} (HTTP {})", doc_path, resp.status().as_u16()));
+                }
+                resp.text().await
+                    .map_err(|e| format!("Failed to read response: {}", e))?
+            };
+
+            // Extract title from first # heading
+            let title = content.lines()
+                .find(|l| l.starts_with("# "))
+                .map(|l| l.trim_start_matches("# ").to_string())
+                .unwrap_or_else(|| doc_path.to_string());
+
+            serde_json::to_string_pretty(&json!({
+                "path": doc_path,
+                "title": title,
+                "content": content,
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
         }
 
         "pid_list" => {
