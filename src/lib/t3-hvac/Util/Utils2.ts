@@ -65,7 +65,10 @@ class Utils2 {
    * @param sourceRect - The rectangle to copy from
    */
   static CopyRect(targetRect: any, sourceRect: any): void {
-    Object.assign(targetRect, DOMRect.fromRect(sourceRect));
+    targetRect.x = sourceRect.x;
+    targetRect.y = sourceRect.y;
+    targetRect.width = sourceRect.width;
+    targetRect.height = sourceRect.height;
   }
 
   /**
@@ -160,11 +163,11 @@ class Utils2 {
    * @param swapAxes - Whether to swap horizontal and vertical axes
    * @returns A DOMRect with x, y, width, and height
    */
-  static CRect2Rect(cRect: any, swapAxes: boolean): DOMRect {
+  static CRect2Rect(cRect: any, swapAxes: boolean): { x: number; y: number; width: number; height: number } {
     if (swapAxes) {
-      return new DOMRect(cRect.v, cRect.h, cRect.vdist, cRect.hdist);
+      return { x: cRect.v, y: cRect.h, width: cRect.vdist, height: cRect.hdist };
     }
-    return new DOMRect(cRect.h, cRect.v, cRect.hdist, cRect.vdist);
+    return { x: cRect.h, y: cRect.v, width: cRect.hdist, height: cRect.vdist };
   }
 
   /**
@@ -173,7 +176,7 @@ class Utils2 {
    * @param point2 - The second point with x and y coordinates
    * @returns A DOMRect containing both points, or null if either point is null
    */
-  static Pt2Rect(point1: { x: number; y: number }, point2: { x: number; y: number }): DOMRect | null {
+  static Pt2Rect(point1: { x: number; y: number }, point2: { x: number; y: number }): { x: number; y: number; width: number; height: number } | null {
     if (point1 == null || point2 == null) {
       return null;
     }
@@ -183,7 +186,7 @@ class Utils2 {
     const maxX = Math.max(point1.x, point2.x);
     const maxY = Math.max(point1.y, point2.y);
 
-    return new DOMRect(minX, minY, maxX - minX, maxY - minY);
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }
 
   /**
