@@ -201,11 +201,6 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
                 .map(|n| n.replace("ui_", "").replace("uic_", ""))
                 .unwrap_or_else(|| format!("w_{}", widgets.len()));
 
-            // Skip if this line is inside a function call argument (not an assignment)
-            if !line.contains('=') && sub_type == "button" {
-                continue; // lv_btn_create used as arg, skip
-            }
-
             let is_panel = line.contains("lv_obj_create") && !CREATE_PATTERNS.iter().any(|(f, _)| line.contains(f) && *f != "lv_obj_create");
 
             widgets.push(FirmwareWidget {

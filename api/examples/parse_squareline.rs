@@ -15,7 +15,7 @@ use t3_webview_api::eez_studio::parse_squareline;
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut input = PathBuf::from("../../T3-programmable-controller-on-ESP32/main/TemcoScreen");
-    let mut output = PathBuf::from("device-json");
+    let mut output = PathBuf::from("device-import");
 
     let mut i = 1;
     while i < args.len() {
