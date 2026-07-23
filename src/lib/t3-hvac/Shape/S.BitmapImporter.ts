@@ -2,7 +2,6 @@
 
 import T3Gv from '../Data/T3Gv'
 import LogUtil from '../Util/LogUtil';
-import T3Util from '../Util/T3Util';
 
 /**
  * A utility class for importing and processing bitmap images with specified dimensions and resolution.

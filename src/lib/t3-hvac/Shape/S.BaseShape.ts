@@ -26,7 +26,7 @@ import KeyboardConstant from '../Opt/Keyboard/KeyboardConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import TextConstant from '../Data/Constant/TextConstant';
 import StyleConstant from '../Data/Constant/StyleConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import LayerUtil from '../Opt/Opt/LayerUtil';
@@ -43,7 +43,6 @@ import RightClickMd from '../Model/RightClickMd';
 import TextUtil from '../Opt/Opt/TextUtil';
 import DynamicUtil from '../Opt/Opt/DynamicUtil';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
-import LogUtil from '../Util/LogUtil';
 
 /**
  * BaseShape is the foundation class for all shape types in the T3000 HVAC drawing system.

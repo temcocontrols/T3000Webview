@@ -4,10 +4,9 @@ import $ from 'jquery'
 import T3Gv from '../../Data/T3Gv'
 import base64js from 'base64-js'
 import T3Constant from '../../Data/Constant/T3Constant'
-import T3Util from '../../Util/T3Util'
+import LogUtil from '../../Util/LogUtil'
 import ObjectUtil from '../Data/ObjectUtil'
 import ToolActUtil from '../Opt/ToolActUtil'
-import LogUtil from '../../Util/LogUtil'
 
 /**
  * A utility class for handling clipboard operations with cross-browser and cross-platform support.

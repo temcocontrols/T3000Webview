@@ -9,11 +9,10 @@ import $ from 'jquery'
 import NvConstant from '../Data/Constant/NvConstant'
 import PolygonConstant from '../Opt/Polygon/PolygonConstant';
 import OptConstant from '../Data/Constant/OptConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import Instance from '../Data/Instance/Instance';
 import PolyUtil from '../Opt/Opt/PolyUtil';
-import LogUtil from '../Util/LogUtil';
 import Utils1 from '../Util/Utils1';
 
 

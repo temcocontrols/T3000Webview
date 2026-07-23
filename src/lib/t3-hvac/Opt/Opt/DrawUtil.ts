@@ -10,7 +10,7 @@ import T3Gv from '../../Data/T3Gv';
 import EvtUtil from "../../Event/EvtUtil";
 import DynamicGuides from "../../Model/DynamicGuides";
 import SelectionAttr from "../../Model/SelectionAttr";
-import T3Util from "../../Util/T3Util";
+import LogUtil from "../../Util/LogUtil";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import ObjectUtil from "../Data/ObjectUtil";
@@ -31,7 +31,6 @@ import T3Clipboard from '../Clipboard/T3Clipboard';
 import QuasarUtil from '../Quasar/QuasarUtil';
 import EvtOpt from '../../Event/EvtOpt';
 import '../../Util/T3Hammer';
-import LogUtil from '../../Util/LogUtil';
 
 class DrawUtil {
 

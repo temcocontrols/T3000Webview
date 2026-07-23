@@ -8,7 +8,6 @@ import Instance from "../Data/Instance/Instance"
 import BConstant from "./B.Constant"
 import BBoxModel from "../Model/BBoxModel"
 import TextConstant from "../Data/Constant/TextConstant"
-import T3Util from "../Util/T3Util"
 import LogUtil from "../Util/LogUtil"
 
 /**
@@ -49,7 +48,7 @@ import LogUtil from "../Util/LogUtil"
  * parentElement.appendChild(myElement.DOMElement());
  *
  * @remarks
- * This class depends on several utility modules (e.g., Utils1, T3Util, T3Svg) and constants (e.g., BConstant, TextConstant)
+ * This class depends on several utility modules (e.g., Utils1, LogUtil, T3Svg) and constants (e.g., BConstant, TextConstant)
  * that need to be present in the execution environment. The methods provided handle both direct attribute manipulation
  * on the underlying SVG element and more complex tasks such as calculating transformed bounding boxes and updating patterns.
  */

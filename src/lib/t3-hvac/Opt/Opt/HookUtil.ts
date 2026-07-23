@@ -10,7 +10,6 @@ import Point from '../../Model/Point';
 import Rectangle from "../../Model/Rectangle";
 import LogUtil from '../../Util/LogUtil';
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
 import Utils2 from "../../Util/Utils2";
 import ObjectUtil from "../Data/ObjectUtil";
 import DSConstant from "../DS/DSConstant";

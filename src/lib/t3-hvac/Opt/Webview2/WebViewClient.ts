@@ -13,7 +13,6 @@ import {
 
 } from "../../Data/T3Data"
 import Utils1 from "../../Util/Utils1"
-import T3Util from "../../Util/T3Util"
 import LogUtil from "../../Util/LogUtil"
 
 
@@ -93,7 +92,7 @@ class WebViewClient {
     try {
       this.processMessageData(data);
     } catch (error) {
-      T3Util.Error('= wv2: handleMessage failed to parse | process data:', error);
+      LogUtil.Error('= wv2: handleMessage failed to parse | process data:', error);
     }
   }
 

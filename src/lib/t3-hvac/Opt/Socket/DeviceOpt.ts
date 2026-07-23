@@ -8,7 +8,6 @@ import DeviceItem from "./DeviceItem"
 import { T3Data } from '../../Data/T3Data'
 import { appState, emptyProject, deviceAppState, deviceModel, rulersGridVisible } from '../../Data/T3Data'
 import LsOpt from "../Common/LsOpt"
-import T3Util from "../../Util/T3Util"
 import LogUtil from "../../Util/LogUtil"
 
 class DeviceOpt {

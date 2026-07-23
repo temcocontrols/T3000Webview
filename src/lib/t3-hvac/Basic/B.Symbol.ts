@@ -5,12 +5,11 @@ import Element from './B.Element'
 import BConstant from './B.Constant'
 import Instance from '../Data/Instance/Instance'
 import $ from 'jquery'
-import T3Util from "../Util/T3Util"
+import LogUtil from "../Util/LogUtil"
 import ToolSvgData from "../Opt/Tool/ToolSvgData"
 // import { TouchSwipe } from "quasar"
 // Placeholder: Quasar TouchSwipe not used in React
 const TouchSwipe: any = {};
-import LogUtil from "../Util/LogUtil"
 
 /**
  * Represents an SVG symbol element that supports dynamic modification and placeholder replacement.
@@ -464,7 +463,7 @@ class Symbol extends Element {
       }
     }
     catch (e) {
-      T3Util.Error("= b.Symbol: GetPlaceholders/ Error getting placeholders:", e);
+      LogUtil.Error("= b.Symbol: GetPlaceholders/ Error getting placeholders:", e);
     }
 
     return placeholders;

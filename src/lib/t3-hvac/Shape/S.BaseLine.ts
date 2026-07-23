@@ -21,7 +21,7 @@ import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import TextConstant from '../Data/Constant/TextConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import ObjectUtil from "../Opt/Data/ObjectUtil";
 import RightClickMd from "../Model/RightClickMd";
 import UIUtil from "../Opt/UI/UIUtil";
@@ -36,7 +36,6 @@ import SelectUtil from "../Opt/Opt/SelectUtil";
 import ToolActUtil from "../Opt/Opt/ToolActUtil";
 import PolyUtil from "../Opt/Opt/PolyUtil";
 import TextUtil from "../Opt/Opt/TextUtil";
-import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a base line object in the T3000 drawing system.
@@ -1862,7 +1861,7 @@ class BaseLine extends BaseDrawObject {
 
       LogUtil.Debug("= S.BaseLine: LMActionClick setup completed for blockID:", blockID);
     } catch (error) {
-      T3Util.Error("= s.BaseLine: LMActionClick encountered an error:", error);
+      LogUtil.Error("= s.BaseLine: LMActionClick encountered an error:", error);
       this.LMActionClickExpCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
@@ -3106,7 +3105,7 @@ class BaseLine extends BaseDrawObject {
       OptCMUtil.CancelOperation();
       this.LMDrawClickExceptionCleanup(error);
       T3Gv.opt.ExceptionCleanup(error);
-      T3Util.Error("= s.BaseLine: LMDrawRelease encountered error:", error);
+      LogUtil.Error("= s.BaseLine: LMDrawRelease encountered error:", error);
       throw error;
     }
   }

@@ -5,7 +5,7 @@ import { ctxMenuConfig, globalMsgShow, /*currentObject,*/ objectConfigShow } fro
 import { NewTool, appStateV2, globalMsg, linkT3EntryDialogV2, localSettings } from "../../Data/T3Data";
 import T3Gv from "../../Data/T3Gv";
 import GlobalMsgModel from "../../Model/GlobalMsgModel";
-import T3Util from "../../Util/T3Util";
+import LogUtil from "../../Util/LogUtil";
 import IdxUtils from "../Common/IdxUtils";
 // import { toRaw } from "vue";
 // Placeholder: Vue toRaw - returns raw object
@@ -16,7 +16,6 @@ import DataOpt from "../Data/DataOpt";
 import DrawUtil from "../Opt/DrawUtil";
 import SvgUtil from "../Opt/SvgUtil";
 import OptConstant from "../../Data/Constant/OptConstant";
-import LogUtil from "../../Util/LogUtil";
 
 class QuasarUtil {
 

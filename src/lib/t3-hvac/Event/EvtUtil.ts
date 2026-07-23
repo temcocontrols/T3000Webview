@@ -8,7 +8,7 @@ import RightClickMd from '../Model/RightClickMd'
 import T3Constant from '../Data/Constant/T3Constant';
 import DocUtil from '../Doc/DocUtil';
 import OptConstant from '../Data/Constant/OptConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import MouseUtil from './MouseUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
@@ -18,7 +18,6 @@ import TextUtil from '../Opt/Opt/TextUtil';
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
-import LogUtil from '../Util/LogUtil';
 
 /**
  * Utility class for handling various user interaction events on an SVG document.

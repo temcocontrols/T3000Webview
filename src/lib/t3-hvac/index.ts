@@ -8,7 +8,7 @@
  *
  * Usage:
  *   import Hvac from '@/lib/t3-hvac'
- *   import { LogUtil, T3Util } from '@/lib/t3-hvac'
+ *   import { LogUtil } from '@/lib/t3-hvac'
  */
 
 // Main HVAC singleton - primary export
@@ -17,7 +17,6 @@ export { default as Hvac } from './Hvac';
 
 // Commonly used utilities
 export { default as LogUtil } from './Util/LogUtil';
-export { default as T3Util } from './Util/T3Util';
 export { default as T3DeviceApi } from './Util/T3DeviceApi';
 export { t3DeviceApi } from './Util/T3DeviceApi';
 

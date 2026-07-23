@@ -13,7 +13,7 @@ import Rectangle from "../../Model/Rectangle";
 import TextObject from "../../Model/TextObject";
 import TextParams from "../../Model/TextParams";
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
+import LogUtil from "../../Util/LogUtil";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import ObjectUtil from "../Data/ObjectUtil";
@@ -27,7 +27,6 @@ import PolyUtil from './PolyUtil';
 import UIUtil from '../UI/UIUtil';
 import HookUtil from './HookUtil';
 import ToolActUtil from './ToolActUtil';
-import LogUtil from '../../Util/LogUtil';
 
 class TextUtil {
 

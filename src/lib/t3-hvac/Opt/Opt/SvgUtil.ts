@@ -7,7 +7,6 @@ import T3Opt from '../../Doc/T3Opt';
 import EvtUtil from "../../Event/EvtUtil";
 import LogUtil from '../../Util/LogUtil';
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
 import ObjectUtil from "../Data/ObjectUtil";
 import UIUtil from "../UI/UIUtil";
 import ActionUtil from "./ActionUtil";

@@ -10,9 +10,8 @@ import DefaultStyle from "../Model/DefaultStyle";
 import Instance from "../Data/Instance/Instance";
 import OptConstant from "../Data/Constant/OptConstant";
 import CursorConstant from "../Data/Constant/CursorConstant";
-import T3Util from "../Util/T3Util";
-import BConstant from "./B.Constant";
 import LogUtil from "../Util/LogUtil";
+import BConstant from "./B.Constant";
 
 /**
  * The Formatter class is responsible for managing text content, formatting styles,

@@ -8,11 +8,10 @@ import $ from "jquery"
 import T3Constant from "../../Data/Constant/T3Constant"
 import DocUtil from "../../Doc/DocUtil"
 import KeyboardUtil from "./KeyboardUtil"
-import T3Util from "../../Util/T3Util"
+import LogUtil from "../../Util/LogUtil"
 import SvgUtil from "../Opt/SvgUtil"
 import T3Clipboard from "../Clipboard/T3Clipboard"
 import ArrowKeyOpt from "../Tool/ArrowKeyOpt"
-import LogUtil from "../../Util/LogUtil"
 
 /**
  * Class that manages keyboard commands and event handling for the T3000 HVAC application.
@@ -164,7 +163,7 @@ class KeyboardOpt {
     try {
       KeyboardOpt.HandleKeyDown(event, keyCode, modifierKeys);
     } catch (error) {
-      T3Util.Error('= o.KeyboardOpt: OnKeyDown/ Error in key down handler', error);
+      LogUtil.Error('= o.KeyboardOpt: OnKeyDown/ Error in key down handler', error);
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
     }
@@ -342,7 +341,7 @@ class KeyboardOpt {
       LogUtil.Debug('U.KeyboardUtil: Delegating key press handling to MainController', { charCode });
       KeyboardOpt.HandleKeyPress(event, charCode);
     } catch (error) {
-      T3Util.Error('= o.KeyboardOpt: OnKeyPress/ Error in key press handler', error);
+      LogUtil.Error('= o.KeyboardOpt: OnKeyPress/ Error in key press handler', error);
       throw error;
     }
   }

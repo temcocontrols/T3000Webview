@@ -14,7 +14,7 @@ import Instance from '../Data/Instance/Instance';
 import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import T3Timer from '../Util/T3Timer';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import RulerUtil from '../Opt/UI/RulerUtil';
@@ -23,7 +23,6 @@ import DrawUtil from '../Opt/Opt/DrawUtil';
 import PolyUtil from '../Opt/Opt/PolyUtil';
 import ToolActUtil from '../Opt/Opt/ToolActUtil';
 import TextUtil from '../Opt/Opt/TextUtil';
-import LogUtil from '../Util/LogUtil';
 
 
 /**

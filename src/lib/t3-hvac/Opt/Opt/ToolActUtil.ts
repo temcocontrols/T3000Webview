@@ -9,7 +9,7 @@ import StateConstant from "../../Data/State/StateConstant";
 import T3Gv from '../../Data/T3Gv';
 import Point from '../../Model/Point';
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
+import LogUtil from "../../Util/LogUtil";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import Utils3 from "../../Util/Utils3";
@@ -27,7 +27,6 @@ import SvgUtil from "./SvgUtil";
 import TextUtil from "./TextUtil";
 import ToolAct2Util from './ToolAct2Util';
 import T3Clipboard from '../Clipboard/T3Clipboard';
-import LogUtil from '../../Util/LogUtil';
 
 class ToolActUtil {
 

@@ -14,7 +14,7 @@ const toRaw = (val: any) => val;
 // Placeholder: Replace with React API client when ready
 const liveApi: any = null;
 import DataOpt from "../Data/DataOpt";
-import T3Util from "../../Util/T3Util";
+import LogUtil from "../../Util/LogUtil";
 import AntdUtil from "../UI/AntdUtil";
 
 import {
@@ -28,7 +28,6 @@ import { NewTool as tools } from "../../Data/T3Data";
 const demoDeviceData: any = null;
 
 import { insertT3EntryDialog } from "../../Data/Data";
-import LogUtil from "../../Util/LogUtil";
 
 //  let lastAction = null; // Store the last action performed
 
