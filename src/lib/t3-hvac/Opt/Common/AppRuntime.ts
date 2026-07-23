@@ -31,7 +31,7 @@ import { insertT3EntryDialog } from "../../Data/Data";
 
 //  let lastAction = null; // Store the last action performed
 
-class IdxPage2 {
+class AppRuntime {
 
   private webview = (window as any).chrome?.webview;
 
@@ -2436,4 +2436,4 @@ class IdxPage2 {
   }
 }
 
-export default IdxPage2;
+export default AppRuntime;

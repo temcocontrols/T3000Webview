@@ -7269,7 +7269,7 @@ class OptUtil {
     });
 
     // save new library to t3
-    Hvac.IdxPage2.addToNewLibrary();
+    Hvac.AppRuntime.addToNewLibrary();
     return libraryItems;
   }
 
