@@ -1,27 +1,21 @@
-//! CLI tool: Parse SquareLine Studio C screens → firmware JSON.
-//!
-//! Reads the firmware project's TemcoScreen/*.c files and outputs
-//! firmware JSON compatible with the /api/eez-device/screens mock API.
+//! SquareLine C → per-screen firmware JSON.
 //!
 //! Usage:
-//!   cargo run --example parse_squareline -- \
+//!   cargo run --release --example parse_squareline -- \
 //!     --input ../../T3-programmable-controller-on-ESP32/main/TemcoScreen \
-//!     --output firmware-screens.json
+//!     --output device-json
 //!
-//! Then push to mock:
-//!   curl -X PUT http://localhost:9103/api/eez-device/screens \
-//!     -H "Content-Type: application/json" -d @firmware-screens.json
-
-//! cargo run --release --example parse_squareline -- --input ../../T3-programmable-controller-on-ESP32/main/TemcoScreen --output firmware-screens.json
+//! Output: one .json file per screen, matching device-import format.
 
 use std::env;
+use std::fs;
 use std::path::PathBuf;
 use t3_webview_api::eez_studio::parse_squareline;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut input = PathBuf::from("../../T3-programmable-controller-on-ESP32/main/TemcoScreen");
-    let mut output = PathBuf::from("firmware-screens.json");
+    let mut output = PathBuf::from("device-json");
 
     let mut i = 1;
     while i < args.len() {
@@ -34,13 +28,26 @@ fn main() {
     }
 
     match parse_squareline::parse_screens(&input) {
-        Ok(json) => {
-            let content = serde_json::to_string_pretty(&json).unwrap();
-            std::fs::write(&output, &content).unwrap_or_else(|e| {
-                eprintln!("Failed to write {}: {}", output.display(), e);
-            });
-            println!("Done → {}", output.display());
-            println!("Push: curl -X PUT http://localhost:9103/api/eez-device/screens -H \"Content-Type: application/json\" -d @{}", output.display());
+        Ok(screens) => {
+            fs::create_dir_all(&output).ok();
+
+            let mut count = 0;
+            for screen in &screens {
+                let filename = output.join(format!("{}.json", screen.name));
+                let content = serde_json::to_string_pretty(&serde_json::json!({
+                    &screen.name: {
+                        "fonts": screen.fonts,
+                        "bitmaps": screen.bitmaps,
+                        "widgets": screen.widgets_map,
+                    }
+                })).unwrap();
+
+                fs::write(&filename, &content).ok();
+                let kb = content.len() / 1024;
+                println!("  {}.json — {} KB", screen.name, kb);
+                count += 1;
+            }
+            println!("\nDone. {} screens → {}", count, output.display());
         }
         Err(e) => {
             eprintln!("Error: {}", e);

@@ -46,6 +46,7 @@ pub struct ParsedScreen {
     pub widgets: Vec<FirmwareWidget>,
     pub fonts: Vec<(String, i32)>,
     pub bitmaps: Vec<String>,
+    pub widgets_map: serde_json::Map<String, Value>,
 }
 
 // ── Widget type detection from LVGL create calls ─────────────────────
@@ -346,22 +347,32 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         }
     }
 
+    let widgets_map: serde_json::Map<String, Value> = widgets.iter().map(|w| {
+        let mut obj = json!({
+            "type": "Widget", "sub_type": w.sub_type,
+            "x_pos": w.x_pos, "y_pos": w.y_pos,
+            "width": w.width, "height": w.height,
+            "obj_text": w.obj_text, "text_type": w.text_type,
+        });
+        if let Some(ref s) = w.style { obj.as_object_mut().unwrap().insert("style".into(), s.clone()); }
+        if let Some(ref e) = w.events { obj.as_object_mut().unwrap().insert("events".into(), e.clone()); }
+        for (k, v) in &w.extra { obj.as_object_mut().unwrap().insert(k.clone(), v.clone()); }
+        (w.id.clone(), obj)
+    }).collect();
+
     Ok(ParsedScreen {
         name: screen_name,
         widgets,
         fonts: fonts.into_iter().collect(),
         bitmaps,
+        widgets_map,
     })
 }
 
 // ── Parse all screens in a directory ─────────────────────────────────
 
-pub fn parse_screens(dir: &Path) -> Result<Value, String> {
+pub fn parse_screens(dir: &Path) -> Result<Vec<ParsedScreen>, String> {
     let mut screens = Vec::new();
-    let mut all_fonts: Vec<(String, i32)> = Vec::new();
-    let mut all_bitmaps: Vec<String> = Vec::new();
-    let mut seen_fonts = HashSet::new();
-    let mut seen_bitmaps = HashSet::new();
 
     let entries = fs::read_dir(dir).map_err(|e| format!("{}: {}", dir.display(), e))?;
 
@@ -376,65 +387,8 @@ pub fn parse_screens(dir: &Path) -> Result<Value, String> {
 
         let screen = parse_screen_file(&path)?;
         info!("  {} → {}: {} widgets", name, screen.name, screen.widgets.len());
-
-        for (name, size) in &screen.fonts {
-            if seen_fonts.insert(name.clone()) {
-                all_fonts.push((name.clone(), *size));
-            }
-        }
-        for name in &screen.bitmaps {
-            if seen_bitmaps.insert(name.clone()) {
-                all_bitmaps.push(name.clone());
-            }
-        }
-
         screens.push(screen);
     }
 
-    let screen_entries: Vec<Value> = screens
-        .iter()
-        .map(|s| {
-            let widgets_map: HashMap<String, Value> = s
-                .widgets
-                .iter()
-                .map(|w| {
-                    let mut obj = json!({
-                        "type": "Widget",
-                        "sub_type": w.sub_type,
-                        "x_pos": w.x_pos,
-                        "y_pos": w.y_pos,
-                        "width": w.width,
-                        "height": w.height,
-                        "obj_text": w.obj_text,
-                        "text_type": w.text_type,
-                    });
-                    if let Some(ref style) = w.style {
-                        obj["style"] = style.clone();
-                    }
-                    if let Some(ref events) = w.events {
-                        obj["events"] = events.clone();
-                    }
-                    for (k, v) in &w.extra {
-                        obj[k] = v.clone();
-                    }
-                    (w.id.clone(), obj)
-                })
-                .collect();
-
-            json!({
-                "name": s.name,
-                "json": {
-                    "fonts": s.fonts.iter().map(|(n, sz)| json!({"name": n, "size": sz})).collect::<Vec<_>>(),
-                    "bitmaps": s.bitmaps,
-                    "widgets": widgets_map,
-                }
-            })
-        })
-        .collect();
-
-    Ok(json!({
-        "screens": screen_entries,
-        "fonts": all_fonts.iter().map(|(n, sz)| json!({"name": n, "size": sz})).collect::<Vec<_>>(),
-        "bitmaps": all_bitmaps,
-    }))
+    Ok(screens)
 }
