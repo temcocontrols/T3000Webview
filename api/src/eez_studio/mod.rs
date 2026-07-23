@@ -3,6 +3,7 @@
 
 pub mod font_extract;
 pub mod bacnet_api_mock;
+pub mod parse_squareline;
 
 use axum::{
     extract::Query,
