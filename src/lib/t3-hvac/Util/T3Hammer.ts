@@ -1,3 +1,9 @@
+/**
+ * Touch gesture recognition via Hammer.js v1.1.3.
+ *
+ * Includes custom scrollbar detection (inWksBar)
+ * to prevent drawing gestures when interacting with work area scrollbars.
+ */
 (function (event, undefined) {
 
   /**
