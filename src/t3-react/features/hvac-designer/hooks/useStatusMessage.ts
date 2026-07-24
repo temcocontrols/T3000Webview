@@ -8,7 +8,7 @@ function fmt() {
   return {
     name: sbName,
     coords: hasPos
-      ? `X:${pad(sbX)}   Y:${pad(sbY)}   R:${pad(sbR)}   B:${pad(sbB)}   |   W:${pad(sbWidth)}   H:${pad(sbHeight)}`
+      ? `X:${pad(sbX)}\u00A0\u00A0\u00A0 Y:${pad(sbY)}\u00A0\u00A0\u00A0 R:${pad(sbR)}\u00A0\u00A0\u00A0 B:${pad(sbB)}\u00A0\u00A0\u00A0 |\u00A0\u00A0\u00A0 W:${pad(sbWidth)}\u00A0\u00A0\u00A0 H:${pad(sbHeight)}`
       : '',
   };
 }

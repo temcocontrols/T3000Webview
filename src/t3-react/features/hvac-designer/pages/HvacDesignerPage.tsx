@@ -12,12 +12,16 @@ import {
   Text,
   makeStyles
 } from '@fluentui/react-components';
+import { CheckmarkCircle16Regular } from '@fluentui/react-icons';
 import { TopToolbar } from '../components/toolbar/TopToolbar';
 import { ToolsPanel } from '../components/toolbar/ToolsPanel';
 import { HvacDrawingArea } from '../components/HvacDrawingArea';
 import { T3ContextMenu } from '../components/T3ContextMenu';
 import { useDrawing } from '../hooks/useDrawing';
 import { useStatusMessage } from '../hooks/useStatusMessage';
+import SelectUtil from '@/lib/t3-hvac/Opt/Opt/SelectUtil';
+import ObjectUtil from '@/lib/t3-hvac/Opt/Data/ObjectUtil';
+import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 
 const useStyles = makeStyles({
   mainApp: {
@@ -113,6 +117,21 @@ export const HvacDesignerPage: React.FC = () => {
       };
       setTimeout(refreshLayout, 150);
       setTimeout(refreshLayout, 400);
+
+      // Show status bar for default-selected shape after init
+      setTimeout(() => {
+        try {
+          const selId = SelectUtil.GetTargetSelect();
+          if (selId >= 0) {
+            const obj = ObjectUtil.GetObjectPtr(selId, false);
+            if (obj?.Frame) {
+              const f = obj.Frame;
+              setStatusName(obj.ShapeType || 'Shape');
+              setStatusPos(f.x, f.y, f.x + f.width, f.y + f.height, f.width, f.height);
+            }
+          }
+        } catch { /* ignore */ }
+      }, 500);
     } catch (err) {
       console.error('[HvacDesigner] Init failed:', err);
     }
@@ -202,6 +221,7 @@ export const HvacDesignerPage: React.FC = () => {
                     {coords}
                   </span>
                   <span style={{ color: '#bbb', margin: '0 8px', flexShrink: 0 }}>|</span>
+                  <CheckmarkCircle16Regular style={{ marginRight: 6, fontSize: 14, flexShrink: 0 }} />
                   <span style={{ flex: 1 }}>{msg}</span>
                 </div>
               </div>
