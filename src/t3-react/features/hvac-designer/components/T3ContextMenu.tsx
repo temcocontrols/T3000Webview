@@ -27,7 +27,7 @@
  * `ConvertDocToWindowCoords`). Click-outside and Escape close the menu.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import {
   MenuItem,
   MenuDivider,
@@ -310,6 +310,19 @@ export const T3ContextMenu: React.FC = () => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const lastConfig = useRef<ICtxMenuConfig>({ isShow: false, from: '', type: '' });
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Adjust position so menu doesn't overflow viewport (direct DOM to avoid render loop)
+  useLayoutEffect(() => {
+    if (!visible || !menuRef.current) return;
+    const el = menuRef.current;
+    const rect = el.getBoundingClientRect();
+    if (rect.bottom > window.innerHeight) {
+      el.style.top = `${Math.max(0, position.y - rect.height)}px`;
+    }
+    if (rect.right > window.innerWidth) {
+      el.style.left = `${Math.max(0, position.x - rect.width)}px`;
+    }
+  }, [visible, position, menuItems]);
 
   // Poll ctxMenuConfig for show/hide signals from the core library.
   useEffect(() => {
