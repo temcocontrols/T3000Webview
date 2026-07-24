@@ -1067,26 +1067,26 @@ class CtxMenuUtil {
         break;
       case 'cut':
         EvtOpt.toolOpt.CutAct(event);
-        break;
+break;
       case 'copy':
         EvtOpt.toolOpt.CopyAct(event);
-        break;
+break;
       case 'paste':
         T3Gv.opt.header.ClipboardType = T3Constant.ClipboardType.LM;
         EvtOpt.toolOpt.PasteActRightClickAct(event);
-        break;
+break;
       case 'delete':
         EvtOpt.toolOpt.DeleteAct(event);
-        break;
+break;
       case 'undo':
         EvtOpt.toolOpt.UndoAct(event);
-        break;
+break;
       case 'redo':
         EvtOpt.toolOpt.RedoAct(event);
-        break;
+break;
       case 'duplicate':
         EvtOpt.toolOpt.DuplicateAct(event);
-        break;
+break;
       case 'save':
         EvtOpt.toolOpt.SaveAct();
         break;
@@ -1120,73 +1120,73 @@ class CtxMenuUtil {
         break;
       case 'flip-horizontal':
         EvtOpt.toolOpt.ShapeFlipHorizontalAct(event);
-        break;
+break;
       case 'flip-vertical':
         EvtOpt.toolOpt.ShapeFlipVerticalAct(event);
-        break;
+break;
       case 'make-same-width':
         EvtOpt.toolOpt.MakeSameSizeAct(event, 2);
-        break;
+break;
       case 'make-same-height':
         EvtOpt.toolOpt.MakeSameSizeAct(event, 1);
-        break;
+break;
       case 'make-same-both':
         EvtOpt.toolOpt.MakeSameSizeAct(event, 3);
-        break;
+break;
       case 'rotate-0':
         EvtOpt.toolOpt.RotateAct(event, 0);
-        break;
+break;
       case 'rotate-45':
         EvtOpt.toolOpt.RotateAct(event, 45);
-        break;
+break;
       case 'rotate-90':
         EvtOpt.toolOpt.RotateAct(event, 90);
-        break;
+break;
       case 'rotate-135':
         EvtOpt.toolOpt.RotateAct(event, 135);
-        break;
+break;
       case 'rotate-180':
         EvtOpt.toolOpt.RotateAct(event, 180);
-        break;
+break;
       case 'rotate-225':
         EvtOpt.toolOpt.RotateAct(event, 225);
-        break;
+break;
       case 'rotate-270':
         EvtOpt.toolOpt.RotateAct(event, 270);
-        break;
+break;
       case 'rotate-360':
         EvtOpt.toolOpt.RotateAct(event, 360);
-        break;
+break;
       case 'align-left':
         EvtOpt.toolOpt.ShapeAlignAct("lefts");
-        break;
+break;
       case 'align-center':
         EvtOpt.toolOpt.ShapeAlignAct("centers");
-        break;
+break;
       case 'align-right':
         EvtOpt.toolOpt.ShapeAlignAct("rights");
-        break;
+break;
       case 'align-top':
         EvtOpt.toolOpt.ShapeAlignAct("tops");
-        break;
+break;
       case 'align-middle':
         EvtOpt.toolOpt.ShapeAlignAct("middles");
-        break;
+break;
       case 'align-bottom':
         EvtOpt.toolOpt.ShapeAlignAct("bottoms");
-        break;
+break;
       case 'group':
         EvtOpt.toolOpt.GroupAct(event);
-        break;
+break;
       case 'ungroup':
         EvtOpt.toolOpt.UnGroupAct(event);
-        break;
+break;
       case 'bring-to-front':
         EvtOpt.toolOpt.ShapeBringToFrontAct(event);
-        break;
+break;
       case 'send-to-back':
         EvtOpt.toolOpt.ShapeSendToBackAct(event);
-        break;
+break;
       case 'zoom-in':
         T3Gv.docUtil.ZoomIn();
         break;

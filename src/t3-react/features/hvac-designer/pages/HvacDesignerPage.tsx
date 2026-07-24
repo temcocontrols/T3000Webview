@@ -20,6 +20,7 @@ import { ToolsPanel } from '../components/toolbar/ToolsPanel';
 import { HvacDrawingArea } from '../components/HvacDrawingArea';
 import { T3ContextMenu } from '../components/T3ContextMenu';
 import { useDrawing } from '../hooks/useDrawing';
+import { useStatusMessage } from '../hooks/useStatusMessage';
 
 const useStyles = makeStyles({
   mainApp: {
@@ -71,6 +72,8 @@ const useStyles = makeStyles({
       backgroundColor: 'transparent',
     },
     '& .fui-MessageBarBody': {
+      display: 'flex',
+      alignItems: 'center',
       fontSize: '11px',
       padding: '0',
       gap: '0',
@@ -81,73 +84,43 @@ const useStyles = makeStyles({
   },
 });
 
-const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
-
 export const HvacDesignerPage: React.FC = () => {
   const styles = useStyles();
   const navigate = useNavigate();
   const { graphicId } = useParams<{ graphicId?: string }>();
   const { loadDrawing: loadDrawingFromDB, createNew, isLoading, error } = useDrawing();
   const [showMessageBar, setShowMessageBar] = useState(true);
-  const [message, setMessage] = useState('Drawing editor initialized. Select a tool or shape to get started.');
+  const { message, info } = useStatusMessage();
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
 
   // Initialize HVAC UI system once when page mounts
   useEffect(() => {
-    let cancelled = false;
+    try {
+      document.getElementById('svg-area')?.replaceChildren();
+      document.getElementById('h-ruler')?.replaceChildren();
+      document.getElementById('v-ruler')?.replaceChildren();
 
-    const init = async () => {
-      try {
-        setMessage('Initializing...');
-        await delay(0); // yield to render
+      Hvac.UI.Initialize(null);
+      Hvac.IdxPageReact.initQuasar(null);
+      Hvac.IdxPageReact.initPageReact();
 
-        // Clear residual SVG from Strict Mode remount — must clear ALL
-        // SVG containers: #svg-area AND the ruler divs. SetUpRulers
-        // creates new SVG elements inside h-ruler/v-ruler on each mount.
-        document.getElementById('svg-area')?.replaceChildren();
-        document.getElementById('h-ruler')?.replaceChildren();
-        document.getElementById('v-ruler')?.replaceChildren();
-
-        if (cancelled) return;
-        setMessage('Loading HVAC engine...');
-        await delay(0);
-        Hvac.UI.Initialize(null);
-
-        if (cancelled) return;
-        setMessage('Starting page...');
-        await delay(0);
-        Hvac.IdxPageReact.initQuasar(null);
-        Hvac.IdxPageReact.initPageReact();
-
-        if (cancelled) return;
-        setMessage('Rendering layout...');
-        await delay(0);
-
-        const refreshLayout = () => {
-          try {
-            const svgDoc = T3Gv?.docUtil?.svgDoc;
-            if (svgDoc && svgDoc.docInfo) {
-              svgDoc.CalcWorkArea();
-              svgDoc.ApplyDocumentTransform();
-              if (T3Gv.docUtil) T3Gv.docUtil.HandleResizeEvent();
-            }
-          } catch (e) { /* ignore */ }
-        };
-        setTimeout(refreshLayout, 150);
-        setTimeout(refreshLayout, 400);
-
-        if (cancelled) return;
-        setMessage('Drawing editor initialized. Select a tool or shape to get started.');
-      } catch (err) {
-        console.error('[HvacDesigner] Init failed:', err);
-        setMessage(`Init error: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    };
-
-    init();
+      const refreshLayout = () => {
+        try {
+          const svgDoc = T3Gv?.docUtil?.svgDoc;
+          if (svgDoc && svgDoc.docInfo) {
+            svgDoc.CalcWorkArea();
+            svgDoc.ApplyDocumentTransform();
+            if (T3Gv.docUtil) T3Gv.docUtil.HandleResizeEvent();
+          }
+        } catch (e) { /* ignore */ }
+      };
+      setTimeout(refreshLayout, 150);
+      setTimeout(refreshLayout, 400);
+    } catch (err) {
+      console.error('[HvacDesigner] Init failed:', err);
+    }
 
     return () => {
-      cancelled = true;
       try {
         Hvac.IdxPageReact.clearAutoSaveInterval();
         Hvac.IdxPageReact.clearIdx();
@@ -173,7 +146,6 @@ export const HvacDesignerPage: React.FC = () => {
     if (graphicId) {
       loadDrawingFromDB(graphicId).catch((err) => {
         console.error('Failed to load drawing:', err);
-        setMessage('Failed to load drawing');
       });
     } else {
       createNew();
@@ -223,8 +195,21 @@ export const HvacDesignerPage: React.FC = () => {
               <div className={styles.messageBar}>
                 <MessageBar intent="success">
                   <MessageBarBody>
+                    <span style={{
+                      width: 290,
+                      flexShrink: 0,
+                      fontSize: 11,
+                      color: '#444',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                    }}>
+                      {info}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#bbb', margin: '0 10px', flexShrink: 0 }}>
+                      |
+                    </span>
                     <CheckmarkCircle16Regular style={{ marginRight: 6, fontSize: 14, flexShrink: 0, alignSelf: 'center' }} />
-                    {message}
+                    <span style={{ flex: 1 }}>{message}</span>
                   </MessageBarBody>
                 </MessageBar>
               </div>
