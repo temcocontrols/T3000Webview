@@ -1038,11 +1038,11 @@ class BaseShape extends BaseDrawObject {
     // Update container flag if needed
     if (
       properties.Container != null &&
-      properties.Container !== ((this.moreflags & OptConstant.ObjMoreFlags.SED_MF_Container) > 0)
+      properties.Container !== ((this.moreflags & OptConstant.ObjMoreFlags.Container) > 0)
     ) {
       this.moreflags = Utils2.SetFlag(
         this.moreflags,
-        OptConstant.ObjMoreFlags.SED_MF_Container,
+        OptConstant.ObjMoreFlags.Container,
         properties.Container
       );
       changed = true;
@@ -1267,7 +1267,7 @@ class BaseShape extends BaseDrawObject {
         polyList.segs.push(seg);
         seg = new PolySeg(lineTypes.ARCSEGLINE, this.inside.width - 2 * cornerSize, this.inside.height);
         polyList.segs.push(seg);
-        seg.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
+        seg.ShortRef = OptConstant.ArcQuad.PLA_BR;
         seg = new PolySeg(lineTypes.LINE, 0, this.inside.height);
         polyList.segs.push(seg);
         seg = new PolySeg(lineTypes.ARCSEGLINE, -cornerSize, this.inside.height - cornerSize);
@@ -1288,7 +1288,7 @@ class BaseShape extends BaseDrawObject {
         polyList.segs.push(seg);
         seg = new PolySeg(lineTypes.ARCSEGLINE, this.inside.width / 2, this.inside.height / 2);
         polyList.segs.push(seg);
-        seg.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
+        seg.ShortRef = OptConstant.ArcQuad.PLA_BR;
         seg.param = -Math.PI / 2;
         seg = new PolySeg(lineTypes.ARCSEGLINE, 0, this.inside.height);
         seg.ShortRef = OptConstant.ArcQuad.PLA_BL;
@@ -1335,7 +1335,7 @@ class BaseShape extends BaseDrawObject {
           polyList.segs.push(seg);
           seg = new PolySeg(lineTypes.ARCSEGLINE, this.inside.width - 2 * cornerSize, this.inside.height);
           polyList.segs.push(seg);
-          seg.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
+          seg.ShortRef = OptConstant.ArcQuad.PLA_BR;
           seg = new PolySeg(lineTypes.LINE, 0, this.inside.height);
           polyList.segs.push(seg);
           seg = new PolySeg(lineTypes.ARCSEGLINE, -cornerSize, this.inside.height - cornerSize);
@@ -1357,7 +1357,7 @@ class BaseShape extends BaseDrawObject {
           polyList.segs.push(seg);
           seg = new PolySeg(lineTypes.ARCSEGLINE, this.inside.width - 2 * cornerSize, this.inside.height);
           polyList.segs.push(seg);
-          seg.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
+          seg.ShortRef = OptConstant.ArcQuad.PLA_BR;
           seg = new PolySeg(lineTypes.ARCSEGLINE, -cornerSize, this.inside.height - cornerSize);
           seg.ShortRef = OptConstant.ArcQuad.PLA_BL;
           seg.param = Math.PI / 2;
@@ -1410,7 +1410,7 @@ class BaseShape extends BaseDrawObject {
         polyList.segs.push(seg);
         seg = new PolySeg(lineTypes.ARCSEGLINE, this.inside.width - cornerSize, this.inside.height);
         polyList.segs.push(seg);
-        seg.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
+        seg.ShortRef = OptConstant.ArcQuad.PLA_BR;
         seg = new PolySeg(lineTypes.LINE, 0, this.inside.height);
         polyList.segs.push(seg);
         seg = new PolySeg(lineTypes.LINE, 0, 0);
@@ -1430,7 +1430,7 @@ class BaseShape extends BaseDrawObject {
         polyList.segs.push(seg);
         seg = new PolySeg(lineTypes.ARCSEGLINE, this.inside.width - 2 * cornerSize, this.inside.height);
         polyList.segs.push(seg);
-        seg.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
+        seg.ShortRef = OptConstant.ArcQuad.PLA_BR;
         seg = new PolySeg(lineTypes.LINE, 0, this.inside.height);
         polyList.segs.push(seg);
         seg = new PolySeg(lineTypes.LINE, -cornerSize, this.inside.height / 2);
@@ -1466,7 +1466,7 @@ class BaseShape extends BaseDrawObject {
   GetListOfEnclosedObjects(isRecursive: boolean) {
     LogUtil.Debug("= S.BaseShape - GetListOfEnclosedObjects input:", { isRecursive });
     let enclosedObjects: number[] = [];
-    const containerFlag = OptConstant.ObjMoreFlags.SED_MF_Container;
+    const containerFlag = OptConstant.ObjMoreFlags.Container;
 
     // Process only if this object is a container.
     if (this.moreflags & containerFlag) {
@@ -5931,7 +5931,7 @@ class BaseShape extends BaseDrawObject {
 
     // If extra flags indicate no rotation, do not rotate.
     if (this.extraflags & OptConstant.ExtraFlags.NoRotate) {
-      LogUtil.Debug("= S.BaseShape: NoRotate output: true (extraflags SEDE_NoRotate set)");
+      LogUtil.Debug("= S.BaseShape: NoRotate output: true (extraflags NoRotate set)");
       return true;
     }
 

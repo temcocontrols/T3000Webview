@@ -408,7 +408,7 @@ class ToolActUtil {
 
   /**
    * Flips selected shapes based on the specified flip type.
-   * @param flipType - The type of flip to apply. Should be one of the constant flags, e.g., SEDE_FlipVert or SEDE_FlipHoriz.
+   * @param flipType - The type of flip to apply. Should be one of OptConstant.ExtraFlags.FlipVert or FlipHoriz.
    * @returns void
    */
   static FlipShapes(flipType: number): void {

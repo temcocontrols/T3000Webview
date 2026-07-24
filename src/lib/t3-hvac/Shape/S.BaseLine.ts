@@ -5367,17 +5367,17 @@ class BaseLine extends BaseDrawObject {
         if (endPoint.notclockwise) {
           result.ShortRef = OptConstant.ArcQuad.PLA_TR;
           result.param = NvConstant.Geometry.PI / 2;
-          LogUtil.Debug("= S.BaseLine: endPoint.notclockwise is true, setting result.ShortRef to SD_PLA_TR and result.param to PI/2");
+          LogUtil.Debug("= S.BaseLine: endPoint.notclockwise is true, setting result.ShortRef to PLA_TR and result.param to PI/2");
         }
       }
     } else {
       if (rotatedEnd.y > rotatedStart.y) {
-        result.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
+        result.ShortRef = OptConstant.ArcQuad.PLA_BR;
         LogUtil.Debug("= S.BaseLine: Condition: rotatedEnd.x <= rotatedStart.x and rotatedEnd.y > rotatedStart.y");
         if (endPoint.notclockwise) {
           result.ShortRef = OptConstant.ArcQuad.PLA_BL;
           result.param = NvConstant.Geometry.PI / 2;
-          LogUtil.Debug("= S.BaseLine: endPoint.notclockwise is true, setting result.ShortRef to SD_PLA_BL and result.param to PI/2");
+          LogUtil.Debug("= S.BaseLine: endPoint.notclockwise is true, setting result.ShortRef to PLA_BL and result.param to PI/2");
         }
       } else {
         result.param = -NvConstant.Geometry.PI / 2;

@@ -4250,7 +4250,7 @@ class PolyLine extends BaseLine {
       }
     } else {
       if (secondPoint.y > firstPoint.y) {
-        result.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
+        result.ShortRef = OptConstant.ArcQuad.PLA_BR;
         if (endPoint.notclockwise) {
           result.ShortRef = OptConstant.ArcQuad.PLA_BL;
           result.param = NvConstant.Geometry.PI / 2;
