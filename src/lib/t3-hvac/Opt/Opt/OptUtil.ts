@@ -5780,14 +5780,13 @@ class OptUtil {
     if (objectCount > 0) {
       const bbox = T3Gv.opt.dragBBoxList?.[0];
       const obj = ObjectUtil.GetObjectPtr(T3Gv.opt.moveList?.[0], false);
-      if (bbox && obj) {
+      if (bbox && obj?.Frame) {
+        const x = bbox.x + T3Gv.opt.dragDeltaX;
+        const y = bbox.y + T3Gv.opt.dragDeltaY;
+        const w = obj.Frame.width || 0;
+        const h = obj.Frame.height || 0;
         setStatusName(obj.ShapeType || 'Shape');
-        setStatusPos(
-          bbox.x + T3Gv.opt.dragDeltaX,
-          bbox.y + T3Gv.opt.dragDeltaY,
-          bbox.width || 0,
-          bbox.height || 0
-        );
+        setStatusPos(x, y, x + w, y + h, w, h);
       }
     }
 

@@ -192,14 +192,13 @@ export const HvacDesignerPage: React.FC = () => {
               <div className={styles.messageBar}>
                 <div style={{
                   display: 'flex', alignItems: 'center', padding: '0 12px',
-                  height: 28, background: '#f1f8f1', borderTop: '1px solid #d0e5d0',
-                  fontSize: 11, fontFamily: 'monospace',
+                  height: 28, fontSize: 11
                 }}>
-                  <span style={{ width: 100, flexShrink: 0, color: '#444', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                  <span style={{ flexShrink: 0, color: '#444', whiteSpace: 'nowrap', marginRight: 8 }}>
                     {name}
                   </span>
                   <span style={{ color: '#bbb', margin: '0 8px', flexShrink: 0 }}>|</span>
-                  <span style={{ width: 180, flexShrink: 0, color: '#444', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                  <span style={{ flexShrink: 0, color: '#444', whiteSpace: 'nowrap' }}>
                     {coords}
                   </span>
                   <span style={{ color: '#bbb', margin: '0 8px', flexShrink: 0 }}>|</span>

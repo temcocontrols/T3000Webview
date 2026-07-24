@@ -209,11 +209,11 @@ class SelectUtil {
       const obj = ObjectUtil.GetObjectPtr(selectedIndex, true);
       if (obj?.Frame) {
         setStatusName(obj.ShapeType || 'Shape');
-        setStatusPos(obj.Frame.x, obj.Frame.y, obj.Frame.width, obj.Frame.height);
+        setStatusPos(obj.Frame.x, obj.Frame.y, obj.Frame.x + obj.Frame.width, obj.Frame.y + obj.Frame.height, obj.Frame.width, obj.Frame.height);
       }
     } else {
       setStatusName('');
-      setStatusPos(0, 0, 0, 0);
+      setStatusPos(0, 0, 0, 0, 0, 0);
     }
     return selectedIndex;
   }

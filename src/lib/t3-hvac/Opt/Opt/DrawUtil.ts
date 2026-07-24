@@ -88,11 +88,11 @@ class DrawUtil {
       const selObj = ObjectUtil.GetObjectPtr(selId, true);
       if (selObj?.Frame) {
         setStatusName(selObj.ShapeType || 'Shape');
-        setStatusPos(selObj.Frame.x, selObj.Frame.y, selObj.Frame.width, selObj.Frame.height);
+        setStatusPos(selObj.Frame.x, selObj.Frame.y, selObj.Frame.x + selObj.Frame.width, selObj.Frame.y + selObj.Frame.height, selObj.Frame.width, selObj.Frame.height);
       }
     } else {
       setStatusName('');
-      setStatusPos(0, 0, 0, 0);
+      setStatusPos(0, 0, 0, 0, 0, 0);
     }
 
     LogUtil.Debug("O.Opt CancelObjectStamp - Output: Object stamp canceled");
@@ -1167,7 +1167,7 @@ class DrawUtil {
     if (drawingObject) {
       const dims = drawingObject.GetDimensionsForDisplay();
       setStatusName(T3Gv.opt.drawShape?.ShapeType || drawingObject.ShapeType || '');
-      setStatusPos(dims.x, dims.y, dims.w ?? dims.width, dims.h ?? dims.height);
+      setStatusPos(dims.x, dims.y, dims.x + (dims.w ?? dims.width), dims.y + (dims.h ?? dims.height), dims.w ?? dims.width, dims.h ?? dims.height);
     }
 
     LogUtil.Debug("O.Opt StampObjectMoveCommon - Output: Object positioned at", currentPosition);
@@ -2439,7 +2439,7 @@ class DrawUtil {
     if (objCoords) {
       const selObj = ObjectUtil.GetObjectPtr(SelectUtil.GetTargetSelect(), false);
       if (selObj?.ShapeType) setStatusName(selObj.ShapeType);
-      setStatusPos(objCoords.x, objCoords.y, objCoords.w, objCoords.h);
+      setStatusPos(objCoords.x, objCoords.y, objCoords.x + objCoords.width, objCoords.y + objCoords.height, objCoords.width, objCoords.height);
     }
     EvtOpt.toolOpt.SaveAct();
 

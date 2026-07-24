@@ -19,13 +19,16 @@ export const commonMsg = ref<string>("");
 // ── Status bar ──
 
 export let sbName = '';
-export let sbX = 0, sbY = 0, sbW = 0, sbH = 0;
+export let sbX = 0, sbY = 0, sbR = 0, sbB = 0;   // edges from origin
+export let sbWidth = 0, sbHeight = 0;               // object dimensions
 
-export function setStatusPos(x: number, y: number, w: number, h: number) {
+export function setStatusPos(x: number, y: number, r: number, b: number, w: number, h: number) {
   sbX = Math.round(x);
   sbY = Math.round(y);
-  sbW = Math.round(w);
-  sbH = Math.round(h);
+  sbR = Math.round(r);
+  sbB = Math.round(b);
+  sbWidth = Math.round(w);
+  sbHeight = Math.round(h);
 }
 
 export function setStatusName(name: string) {

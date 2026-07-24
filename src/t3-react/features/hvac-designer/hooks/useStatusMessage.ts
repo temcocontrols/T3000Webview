@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { sbName, sbX, sbY, sbW, sbH } from '@/lib/t3-hvac/Data/Constant/RefConstant';
+import { sbName, sbX, sbY, sbR, sbB, sbWidth, sbHeight } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 
-const pad = (n: number) => String(n).padStart(4);
+const pad = (n: number) => String(n).padStart(5);
 
 function fmt() {
+  const hasPos = sbX || sbY || sbR || sbB;
   return {
     name: sbName,
-    coords: sbX || sbY || sbW || sbH
-      ? `X:${pad(sbX)}  Y:${pad(sbY)}  W:${pad(sbW)}  H:${pad(sbH)}`
+    coords: hasPos
+      ? `X:${pad(sbX)}   Y:${pad(sbY)}   R:${pad(sbR)}   B:${pad(sbB)}   |   W:${pad(sbWidth)}   H:${pad(sbHeight)}`
       : '',
   };
 }
@@ -19,7 +20,7 @@ export function useStatusMessage() {
   useEffect(() => {
     let raf = 0;
     const tick = () => {
-      const cur = sbName + '|' + sbX + ',' + sbY + ',' + sbW + ',' + sbH;
+      const cur = `${sbName}|${sbX},${sbY},${sbR},${sbB},${sbWidth},${sbHeight}`;
       if (cur !== prev.current) {
         prev.current = cur;
         setSt(fmt());
