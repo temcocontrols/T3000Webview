@@ -10,11 +10,8 @@ import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
 import {
   Spinner,
   Text,
-  MessageBar,
-  MessageBarBody,
   makeStyles
 } from '@fluentui/react-components';
-import { CheckmarkCircle16Regular } from '@fluentui/react-icons';
 import { TopToolbar } from '../components/toolbar/TopToolbar';
 import { ToolsPanel } from '../components/toolbar/ToolsPanel';
 import { HvacDrawingArea } from '../components/HvacDrawingArea';
@@ -90,7 +87,7 @@ export const HvacDesignerPage: React.FC = () => {
   const { graphicId } = useParams<{ graphicId?: string }>();
   const { loadDrawing: loadDrawingFromDB, createNew, isLoading, error } = useDrawing();
   const [showMessageBar, setShowMessageBar] = useState(true);
-  const { message, info } = useStatusMessage();
+  const { name, coords, msg } = useStatusMessage();
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
 
   // Initialize HVAC UI system once when page mounts
@@ -193,25 +190,21 @@ export const HvacDesignerPage: React.FC = () => {
             </div>
             {showMessageBar && (
               <div className={styles.messageBar}>
-                <MessageBar intent="success">
-                  <MessageBarBody>
-                    <span style={{
-                      width: 290,
-                      flexShrink: 0,
-                      fontSize: 11,
-                      color: '#444',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                    }}>
-                      {info}
-                    </span>
-                    <span style={{ fontSize: 11, color: '#bbb', margin: '0 10px', flexShrink: 0 }}>
-                      |
-                    </span>
-                    <CheckmarkCircle16Regular style={{ marginRight: 6, fontSize: 14, flexShrink: 0, alignSelf: 'center' }} />
-                    <span style={{ flex: 1 }}>{message}</span>
-                  </MessageBarBody>
-                </MessageBar>
+                <div style={{
+                  display: 'flex', alignItems: 'center', padding: '0 12px',
+                  height: 28, background: '#f1f8f1', borderTop: '1px solid #d0e5d0',
+                  fontSize: 11, fontFamily: 'monospace',
+                }}>
+                  <span style={{ width: 100, flexShrink: 0, color: '#444', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                    {name}
+                  </span>
+                  <span style={{ color: '#bbb', margin: '0 8px', flexShrink: 0 }}>|</span>
+                  <span style={{ width: 180, flexShrink: 0, color: '#444', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                    {coords}
+                  </span>
+                  <span style={{ color: '#bbb', margin: '0 8px', flexShrink: 0 }}>|</span>
+                  <span style={{ flex: 1 }}>{msg}</span>
+                </div>
               </div>
             )}
           </div>

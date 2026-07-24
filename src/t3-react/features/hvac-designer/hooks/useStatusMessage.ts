@@ -1,71 +1,34 @@
-/**
- * useStatusMessage — returns message + coordinate info for split status bar.
- *
- * Left (fixed width): coordinates + selection count/type
- * Right (flexible): contextual message
- */
+import { useState, useEffect, useRef } from 'react';
+import { sbName, sbX, sbY, sbW, sbH } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 
-import { useState, useEffect } from 'react';
-import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
-import ObjectUtil from '@/lib/t3-hvac/Opt/Data/ObjectUtil';
-import { selectedTool } from '@/lib/t3-hvac/Data/Constant/RefConstant';
+const pad = (n: number) => String(n).padStart(4);
 
-const DEFAULT_MSG = 'Drawing editor initialized. Select a tool or shape to get started.';
-const POLL_MS = 150;
-
-function getShapeTypeName(obj: any): string {
-  if (!obj?.ShapeType) return '';
-  return obj.ShapeType; // Already a string like 'Rect', 'Oval', 'GroupSymbol'
+function fmt() {
+  return {
+    name: sbName,
+    coords: sbX || sbY || sbW || sbH
+      ? `X:${pad(sbX)}  Y:${pad(sbY)}  W:${pad(sbW)}  H:${pad(sbH)}`
+      : '',
+  };
 }
 
 export function useStatusMessage() {
-  const [message, setMessage] = useState(DEFAULT_MSG);
-  const [info, setInfo] = useState('X: 0  Y: 0  W: 0  H: 0');
+  const [st, setSt] = useState(fmt);
+  const prev = useRef('');
 
   useEffect(() => {
-    const id = setInterval(() => {
-      try {
-        const sel = T3Gv.opt?.selectionState;
-        const tool = selectedTool?.value?.name;
-
-        // Right: message
-        if (tool && tool !== 'Pointer') {
-          setMessage(`Tool: ${tool}`);
-        } else {
-          setMessage(DEFAULT_MSG);
-        }
-
-        // Left: coordinates + selection info
-        if (sel?.nselect) {
-          const x = Math.round(sel.left ?? 0);
-          const y = Math.round(sel.top ?? 0);
-          const w = Math.round(sel.width ?? 0);
-          const h = Math.round(sel.height ?? 0);
-
-          // Get type name from tselect
-          let typeName = '';
-          if (sel.tselect >= 0) {
-            const obj = ObjectUtil.GetObjectPtr(sel.tselect, false);
-            typeName = getShapeTypeName(obj) || 'Shape';
-          }
-
-          let label = `${typeName}  `;
-          if (sel.nselect > 1) label = `${sel.nselect}\u00D7 ${typeName}  `;
-
-          let prefix = '';
-          if (sel.nselect > 1) prefix = `${sel.nselect}\u00D7 `;
-          setInfo(`${prefix}${typeName || 'Shape'}  |  X: ${x}    Y: ${y}    W: ${w}    H: ${h}`);
-        } else {
-          setInfo('X: 0    Y: 0    W: 0    H: 0');
-        }
-      } catch {
-        setMessage(DEFAULT_MSG);
-        setInfo('X: 0  Y: 0  W: 0  H: 0');
+    let raf = 0;
+    const tick = () => {
+      const cur = sbName + '|' + sbX + ',' + sbY + ',' + sbW + ',' + sbH;
+      if (cur !== prev.current) {
+        prev.current = cur;
+        setSt(fmt());
       }
-    }, POLL_MS);
-
-    return () => clearInterval(id);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, []);
 
-  return { message, info };
+  return { name: st.name, coords: st.coords, msg: 'Drawing editor initialized. Select a tool or shape to get started.' };
 }

@@ -16,6 +16,22 @@ export const objectConfigShow = ref<boolean>(false);
 export const globalMsgShow = ref<boolean>(false);
 export const commonMsg = ref<string>("");
 
+// ── Status bar ──
+
+export let sbName = '';
+export let sbX = 0, sbY = 0, sbW = 0, sbH = 0;
+
+export function setStatusPos(x: number, y: number, w: number, h: number) {
+  sbX = Math.round(x);
+  sbY = Math.round(y);
+  sbW = Math.round(w);
+  sbH = Math.round(h);
+}
+
+export function setStatusName(name: string) {
+  sbName = name;
+}
+
 // Index page 2
 
 // State variables for drawing and transformations

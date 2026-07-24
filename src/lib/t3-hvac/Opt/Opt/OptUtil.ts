@@ -52,6 +52,7 @@ import Hvac from '../../Hvac';
 import LogUtil from '../../Util/LogUtil';
 import ShapeUtil from '../Shape/ShapeUtil';
 import DataOpt from '../Data/DataOpt';
+import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 
 /**
  * Utility class for managing SVG optimization and editor functionality in the T3000 application.
@@ -5772,6 +5773,21 @@ class OptUtil {
           width: objectRect.width,
           height: objectRect.height
         };
+      }
+    }
+
+    // Update status bar with live position during drag
+    if (objectCount > 0) {
+      const bbox = T3Gv.opt.dragBBoxList?.[0];
+      const obj = ObjectUtil.GetObjectPtr(T3Gv.opt.moveList?.[0], false);
+      if (bbox && obj) {
+        setStatusName(obj.ShapeType || 'Shape');
+        setStatusPos(
+          bbox.x + T3Gv.opt.dragDeltaX,
+          bbox.y + T3Gv.opt.dragDeltaY,
+          bbox.width || 0,
+          bbox.height || 0
+        );
       }
     }
 

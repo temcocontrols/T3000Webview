@@ -28,6 +28,7 @@ import ToolActUtil from "./ToolActUtil";
 import TextUtil from './TextUtil';
 import DynamicUtil from './DynamicUtil';
 import T3Clipboard from '../Clipboard/T3Clipboard';
+import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 import QuasarUtil from '../Quasar/QuasarUtil';
 import EvtOpt from '../../Event/EvtOpt';
 import '../../Util/T3Hammer';
@@ -80,6 +81,19 @@ class DrawUtil {
     T3Gv.opt.stampHCenter = false;
     T3Gv.opt.stampVCenter = false;
     T3Gv.opt.stampSticky = false;
+
+    // Restore or clear status bar after stamp cancellation
+    const selId = SelectUtil.GetTargetSelect();
+    if (selId >= 0) {
+      const selObj = ObjectUtil.GetObjectPtr(selId, true);
+      if (selObj?.Frame) {
+        setStatusName(selObj.ShapeType || 'Shape');
+        setStatusPos(selObj.Frame.x, selObj.Frame.y, selObj.Frame.width, selObj.Frame.height);
+      }
+    } else {
+      setStatusName('');
+      setStatusPos(0, 0, 0, 0);
+    }
 
     LogUtil.Debug("O.Opt CancelObjectStamp - Output: Object stamp canceled");
   }
@@ -1147,6 +1161,13 @@ class DrawUtil {
           DynamicUtil.DynamicSnapsUpdateGuides(dynamicGuides, snapTargetId, positionedRect);
         }
       }
+    }
+
+    // Update status bar with live x,y,w,h during stamp
+    if (drawingObject) {
+      const dims = drawingObject.GetDimensionsForDisplay();
+      setStatusName(T3Gv.opt.drawShape?.ShapeType || drawingObject.ShapeType || '');
+      setStatusPos(dims.x, dims.y, dims.w ?? dims.width, dims.h ?? dims.height);
     }
 
     LogUtil.Debug("O.Opt StampObjectMoveCommon - Output: Object positioned at", currentPosition);
@@ -2415,6 +2436,11 @@ class DrawUtil {
     }
 
     QuasarUtil.UpdateCurrentObjectPos(objCoords);
+    if (objCoords) {
+      const selObj = ObjectUtil.GetObjectPtr(SelectUtil.GetTargetSelect(), false);
+      if (selObj?.ShapeType) setStatusName(selObj.ShapeType);
+      setStatusPos(objCoords.x, objCoords.y, objCoords.w, objCoords.h);
+    }
     EvtOpt.toolOpt.SaveAct();
 
     LogUtil.Debug('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, objCoords, objCoords.x, objCoords.y, objCoords.width, objCoords.height);

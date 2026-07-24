@@ -26,6 +26,7 @@ import SvgUtil from "./SvgUtil";
 import HookUtil from './HookUtil';
 import ToolActUtil from './ToolActUtil';
 import TextUtil from './TextUtil';
+import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 
 class SelectUtil {
 
@@ -203,6 +204,17 @@ class SelectUtil {
     }
 
     LogUtil.Debug("O.Opt SelectObjects - Output:", { selectedIndex, selectedCount: objectsToSelect?.length || 0 });
+    // Update status bar on selection
+    if (selectedIndex >= 0) {
+      const obj = ObjectUtil.GetObjectPtr(selectedIndex, true);
+      if (obj?.Frame) {
+        setStatusName(obj.ShapeType || 'Shape');
+        setStatusPos(obj.Frame.x, obj.Frame.y, obj.Frame.width, obj.Frame.height);
+      }
+    } else {
+      setStatusName('');
+      setStatusPos(0, 0, 0, 0);
+    }
     return selectedIndex;
   }
 
