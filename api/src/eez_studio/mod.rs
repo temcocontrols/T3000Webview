@@ -1153,9 +1153,9 @@ fn value_to_json(v: rusqlite::types::Value) -> serde_json::Value {
 // Router
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn bridge_routes() -> Router<T3AppState> {
+pub fn bridge_routes(router: Router<T3AppState>) -> Router<T3AppState> {
     info!("bridge_api: registering /api/eez-studio/* routes");
-    Router::new()
+    router
         .route("/api/eez-studio/health", get(health))
         .route("/api/eez-studio/exec", post(exec_command))
         .route("/api/eez-studio/detect-python", get(detect_python))
