@@ -257,9 +257,9 @@ function firmwareWidgetToComponent(
     let heightVal = w.height ?? 0;
 
     if (isCentered) {
-        // Center the widget on screen
-        leftVal = Math.round((displayW - widthVal) / 2);
-        topVal = Math.round((displayH - heightVal) / 2);
+        // Center the widget on screen, then add x/y offsets (LVGL preserves x/y as offsets from aligned position)
+        leftVal = Math.round((displayW - widthVal) / 2) + (w.x_pos ?? 0);
+        topVal = Math.round((displayH - heightVal) / 2) + (w.y_pos ?? 0);
     }
 
     // Estimate size for content-sized labels based on text length

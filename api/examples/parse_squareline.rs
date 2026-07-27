@@ -34,13 +34,17 @@ fn main() {
             let mut count = 0;
             for screen in &screens {
                 let filename = output.join(format!("{}.json", screen.name));
-                let content = serde_json::to_string_pretty(&serde_json::json!({
+                let mut obj = serde_json::json!({
                     &screen.name: {
                         "fonts": screen.fonts,
                         "bitmaps": screen.bitmaps,
                         "widgets": screen.widgets_map,
                     }
-                })).unwrap();
+                });
+                if let Some(ref bg) = screen.bg_color {
+                    obj[&screen.name]["bg_color"] = serde_json::json!(bg);
+                }
+                let content = serde_json::to_string_pretty(&obj).unwrap();
 
                 fs::write(&filename, &content).ok();
                 let kb = content.len() / 1024;

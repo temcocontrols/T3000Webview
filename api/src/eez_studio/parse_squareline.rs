@@ -324,11 +324,10 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         }
 
         // Alignment: lv_obj_set_align(obj, LV_ALIGN_CENTER) → store as extra
-        // Also set x/y to 0 when centered (frontend will compute actual position)
+        // x/y are OFFSETS from the aligned position, so DON'T overwrite them
         if line.contains("lv_obj_set_align") {
             if line.contains("LV_ALIGN_CENTER") {
                 w.extra.insert("align".into(), serde_json::json!("center"));
-                w.x_pos = 0; w.y_pos = 0;
             } else if line.contains("LV_ALIGN_TOP_LEFT") {
                 w.extra.insert("align".into(), serde_json::json!("top_left"));
             } else if line.contains("LV_ALIGN_TOP_MID") {
