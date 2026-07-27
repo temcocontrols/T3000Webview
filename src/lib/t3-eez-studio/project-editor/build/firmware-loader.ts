@@ -15,6 +15,7 @@ const SUB_TYPE_MAP: Record<string, string> = {
     switch: "LVGLSwitchWidget",
     slider: "LVGLSliderWidget",
     dropdown: "LVGLDropdownWidget",
+    textarea: "LVGLTextareaWidget",
     panel: "LVGLPanelWidget",
     user_widget: "LVGLUserWidgetWidget",
     action: "LVGLActionComponent",
@@ -211,7 +212,7 @@ export function firmwareToProject(
             name: b,
             image: "",
         })),
-        lvglStyles: [],
+        lvglStyles: { allStyles: [] },
         lvglGroups: [],
         variables: {
             globalVariables: [],

@@ -87,7 +87,7 @@ fn parse_firmware_screens() -> Result<Vec<StoredScreen>, String> {
 
     let mut parsed = crate::eez_studio::parse_squareline::parse_screens(&dir)?;
 
-    // Sort by ui_init() order from ui.c so home_screen comes first, etc.
+    // Sort by ui_init() order from ui.c
     let init_order = read_init_order(&dir);
     parsed.sort_by_key(|s| {
         init_order.iter().position(|n| n == &s.name).unwrap_or(usize::MAX)
@@ -355,13 +355,14 @@ pub async fn get_device_info() -> Result<Json<DeviceInfoResponse>, StatusCode> {
     let dir = resolve_firmware_dir()
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
-    let parsed = crate::eez_studio::parse_squareline::parse_screens(&dir)
+    // Use parse_firmware_screens() to get screens in ui_init() order
+    let screens = parse_firmware_screens()
         .map_err(|e| {
             error!("get_device_info: parse failed: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    let screen_names: Vec<String> = parsed.iter().map(|s| s.name.clone()).collect();
+    let screen_names: Vec<String> = screens.iter().map(|s| s.name.clone()).collect();
     let (image_count, font_count, display_width, display_height) =
         count_firmware_assets(&dir);
 
