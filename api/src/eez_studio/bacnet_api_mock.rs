@@ -80,11 +80,18 @@ fn resolve_firmware_dir() -> Option<std::path::PathBuf> {
 
 /// Dynamically parse the ESP32 firmware C files into StoredScreen list.
 /// Called on every read request — no caching, always reflects latest firmware edits.
+/// Screens are sorted by `ui_init()` order (the natural device page sequence).
 fn parse_firmware_screens() -> Result<Vec<StoredScreen>, String> {
     let dir = resolve_firmware_dir()
         .ok_or_else(|| "firmware TemcoScreen directory not found".to_string())?;
 
-    let parsed = crate::eez_studio::parse_squareline::parse_screens(&dir)?;
+    let mut parsed = crate::eez_studio::parse_squareline::parse_screens(&dir)?;
+
+    // Sort by ui_init() order from ui.c so home_screen comes first, etc.
+    let init_order = read_init_order(&dir);
+    parsed.sort_by_key(|s| {
+        init_order.iter().position(|n| n == &s.name).unwrap_or(usize::MAX)
+    });
 
     Ok(parsed.iter().map(|s| {
         StoredScreen {
@@ -98,6 +105,43 @@ fn parse_firmware_screens() -> Result<Vec<StoredScreen>, String> {
             }),
         }
     }).collect())
+}
+
+/// Read the screen init order from `ui.c`'s `ui_init()` function.
+/// Returns screen names in firmware page sequence (e.g. start_up_screen first, home_screen second).
+fn read_init_order(dir: &std::path::Path) -> Vec<String> {
+    let mut order = Vec::new();
+    let ui_c = dir.join("ui.c");
+    if let Ok(content) = std::fs::read_to_string(&ui_c) {
+        for line in content.lines() {
+            // Pattern: ui_StartUpScreen_screen_init();
+            if let Some(start) = line.find("ui_") {
+                if let Some(end) = line[start..].find("_screen_init") {
+                    let raw = &line[start + 3..start + end]; // skip "ui_"
+                    let name = screen_name_from_pascal(raw);
+                    if !name.is_empty() {
+                        order.push(name);
+                    }
+                }
+            }
+        }
+    }
+    order
+}
+
+/// Convert PascalCase screen name from firmware to snake_case (matching parse_squareline output).
+/// e.g. "StartUpScreen" → "start_up_screen", "HomeScreen" → "home_screen"
+fn screen_name_from_pascal(pascal: &str) -> String {
+    let mut result = String::new();
+    for (i, c) in pascal.chars().enumerate() {
+        if c.is_uppercase() {
+            if i > 0 { result.push('_'); }
+            result.push(c.to_ascii_lowercase());
+        } else {
+            result.push(c);
+        }
+    }
+    result
 }
 
 // ═══════════════════════════════════════════════════════════════════
