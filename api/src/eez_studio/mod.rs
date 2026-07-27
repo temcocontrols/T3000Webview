@@ -1182,6 +1182,8 @@ pub fn bridge_routes(router: Router<T3AppState>) -> Router<T3AppState> {
         .route("/api/eez-studio/extract-font", post(extract_font))
         .route("/api/eez-studio/store", post(store_handler))
         // Mock BACnet device API — simulates ESP32 REST + BACnet fallback
+        // Device info summary (lightweight metadata before fetching screens)
+        .route("/api/eez-device/device/info", get(bacnet_api_mock::get_device_info))
         // Device list (for "Import from Device" UI)
         .route("/api/eez-device/devices", get(bacnet_api_mock::list_devices))
         // Image/bitmap transfer (images sent separately from screen JSON)

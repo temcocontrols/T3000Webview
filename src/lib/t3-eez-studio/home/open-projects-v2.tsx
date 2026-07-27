@@ -633,14 +633,18 @@ class DeviceImportStore {
             );
             this.appendLog(`✅ Step 1 — Connected via ${conn.mode.toUpperCase()}`);
 
-            // Step 2 — Fetch all screens
-            this.appendLog("⏳ Step 2 — Fetching screens...");
-            const result = await client.loadAllScreens();
+            // Step 2 — Get device summary (screen names, counts, etc.)
+            this.appendLog("⏳ Step 2 — Fetching device info...");
+            const info = await client.getDeviceInfo();
+            this.appendLog(`✅ Step 2 — ${info.screen_count} screens, ${info.image_count} images, ${info.screen_size.width}x${info.screen_size.height}`);
 
+            // Step 3 — Load each screen individually by name
+            this.appendLog(`⏳ Step 3 — Loading ${info.screen_count} screens...`);
             const stagingScreens: { name: string; json: any }[] = [];
 
-            for (const screen of result.screens) {
-                const screenPath = `${stagingDir}/${screen.name}.json`;
+            for (const screenName of info.screens) {
+                const screen = await client.loadScreen(screenName);
+                const screenPath = `${stagingDir}/${screenName}.json`;
                 await fetch(
                     `/api/eez-studio/write-file?path=${encodeURIComponent(screenPath)}`,
                     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(screen.json) }
@@ -649,10 +653,10 @@ class DeviceImportStore {
                 const kb = Math.round(JSON.stringify(screen.json).length / 1024);
                 this.appendLog(`   ${screen.name} — ${kb}KB ✓`);
             }
-            this.appendLog(`✅ Step 2 — Fetched ${stagingScreens.length} screens`);
+            this.appendLog(`✅ Step 3 — Loaded ${stagingScreens.length} screens`);
 
-            // Step 3 — Build .eez-project
-            this.appendLog("⏳ Step 3 — Building project...");
+            // Step 4 — Build .eez-project
+            this.appendLog("⏳ Step 4 — Building project...");
             const { firmwareToProject } = await import(
                 "project-editor/build/firmware-loader"
             );
@@ -661,7 +665,7 @@ class DeviceImportStore {
                 serial_number: device.panel_serial_number,
             });
 
-            // Step 4 — Save to disk
+            // Step 5 — Save to disk
             const projectPath = `project/${device.panel_name}/${device.panel_name}.eez-project`;
             const jsonStr = JSON.stringify(project, null, 2);
             const saveResp = await fetch(
@@ -669,7 +673,7 @@ class DeviceImportStore {
                 { method: "POST", body: jsonStr }
             );
             if (!saveResp.ok) throw new Error("Failed to save project");
-            this.appendLog(`✅ Step 4 — Project saved`);
+            this.appendLog(`✅ Step 5 — Project saved`);
 
             // Track imported project for badge display
             try {
@@ -682,8 +686,8 @@ class DeviceImportStore {
                 }
             } catch {}
 
-            // Step 5 — Add to MRU and open in editor
-            this.appendLog("⏳ Step 5 — Opening editor...");
+            // Step 6 — Add to MRU and open in editor
+            this.appendLog("⏳ Step 6 — Opening editor...");
 
             // Add to MRU so it appears in the recent projects list
             const mruEntry: IMruItem = {

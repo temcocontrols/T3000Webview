@@ -63,6 +63,43 @@ lazy_static::lazy_static! {
 
 fn key(panel_id: i32, serial: i32) -> DeviceKey { (panel_id, serial) }
 
+/// Resolve the ESP32 firmware TemcoScreen directory relative to CWD.
+/// From the runtime dir (T3000 Output\Debug), firmware is at:
+///   ..\..\..\T3-programmable-controller-on-ESP32\main\TemcoScreen
+fn resolve_firmware_dir() -> Option<std::path::PathBuf> {
+    let path = std::env::current_dir()
+        .unwrap_or_default()
+        .join("..").join("..").join("..")
+        .join("T3-programmable-controller-on-ESP32")
+        .join("main").join("TemcoScreen");
+    if path.exists() {
+        return Some(path);
+    }
+    None
+}
+
+/// Dynamically parse the ESP32 firmware C files into StoredScreen list.
+/// Called on every read request — no caching, always reflects latest firmware edits.
+fn parse_firmware_screens() -> Result<Vec<StoredScreen>, String> {
+    let dir = resolve_firmware_dir()
+        .ok_or_else(|| "firmware TemcoScreen directory not found".to_string())?;
+
+    let parsed = crate::eez_studio::parse_squareline::parse_screens(&dir)?;
+
+    Ok(parsed.iter().map(|s| {
+        StoredScreen {
+            name: s.name.clone(),
+            json: serde_json::json!({
+                "fonts": s.fonts.iter().map(|(name, size)| {
+                    serde_json::json!({"name": name, "size": size})
+                }).collect::<Vec<_>>(),
+                "bitmaps": &s.bitmaps,
+                "widgets": &s.widgets_map,
+            }),
+        }
+    }).collect())
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // Request / Response types
 // ═══════════════════════════════════════════════════════════════════
@@ -152,29 +189,58 @@ pub struct LoadAllResponse {
     pub meta: Option<DeviceMeta>,
 }
 
+/// Response for GET /api/eez-device/device/info — lightweight summary
+/// before fetching full screen data.
+#[derive(Debug, Serialize)]
+pub struct DeviceInfoResponse {
+    pub panel_name: String,
+    pub serial_number: i32,
+    pub screen_size: ScreenSize,
+    pub screen_count: usize,
+    pub screens: Vec<String>,
+    pub image_count: usize,
+    pub font_count: usize,
+    pub firmware_version: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ScreenSize {
+    pub width: u32,
+    pub height: u32,
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // REST handlers (mirror ESP32 /api/v1/screens)
 // ═══════════════════════════════════════════════════════════════════
 
-/// GET /api/eez-device/screens
+/// GET /api/eez-device/screens — load all screens dynamically from firmware
+///
+/// Ignores serial_number — always parses the ESP32 firmware C files on-the-fly.
+/// This mirrors the real device behavior: the device reads its internal screen
+/// definitions and returns them. Here we read from the firmware source instead.
 pub async fn get_screens(
     Query(q): Query<ScreenQuery>,
 ) -> Result<Json<LoadAllResponse>, StatusCode> {
-    let k = key(0, q.serial_number.unwrap_or(0));
-    let store = STORE.lock().map_err(|e| {
-        error!("get_screens: mutex: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-    match store.get(&k) {
-        Some(d) => {
-            info!("get_screens: {} screens", d.screens.len());
-            Ok(Json(LoadAllResponse { screens: d.screens.clone(), meta: Some(d.meta.clone()) }))
+    match parse_firmware_screens() {
+        Ok(screens) => {
+            let count = screens.len();
+            info!("get_screens: dynamically parsed {} screens from firmware", count);
+            Ok(Json(LoadAllResponse {
+                screens,
+                meta: Some(DeviceMeta {
+                    panel_name: "T3-ESP32-Firmware".into(),
+                    serial_number: q.serial_number.unwrap_or(0),
+                }),
+            }))
         }
-        None => {
-            info!("get_screens: empty, serial={}", q.serial_number.unwrap_or(0));
+        Err(e) => {
+            error!("get_screens: failed to parse firmware: {}", e);
             Ok(Json(LoadAllResponse {
                 screens: vec![],
-                meta: Some(DeviceMeta { panel_name: "T3-ESP-Mock".into(), serial_number: q.serial_number.unwrap_or(0) }),
+                meta: Some(DeviceMeta {
+                    panel_name: "T3-ESP32-Firmware".into(),
+                    serial_number: q.serial_number.unwrap_or(0),
+                }),
             }))
         }
     }
@@ -214,17 +280,98 @@ pub async fn put_screens(
     }))
 }
 
-/// GET /api/eez-device/screens/:name
+/// GET /api/eez-device/screens/:name — load a single screen dynamically from firmware
 pub async fn get_screen(
     Path(name): Path<String>,
-    Query(q): Query<ScreenQuery>,
+    _q: Query<ScreenQuery>,
 ) -> Result<Json<Value>, StatusCode> {
-    let k = key(0, q.serial_number.unwrap_or(0));
-    let store = STORE.lock().map_err(|e| { error!("get_screen: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-    match store.get(&k).and_then(|d| d.screens.iter().find(|s| s.name == name)) {
-        Some(s) => Ok(Json(serde_json::json!({ "name": s.name, "json": s.json }))),
-        None => { error!("get_screen: '{}' not found", name); Err(StatusCode::NOT_FOUND) }
+    match parse_firmware_screens() {
+        Ok(screens) => {
+            match screens.iter().find(|s| s.name == name) {
+                Some(s) => Ok(Json(serde_json::json!({ "name": s.name, "json": s.json }))),
+                None => {
+                    error!("get_screen: '{}' not found in firmware", name);
+                    Err(StatusCode::NOT_FOUND)
+                }
+            }
+        }
+        Err(e) => {
+            error!("get_screen: parse failed: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
+}
+
+/// GET /api/eez-device/device/info — lightweight summary before fetching screens
+///
+/// Returns device metadata (panel name, screen size, screen list, counts)
+/// without the heavy widget JSON. The frontend calls this first to know
+/// what screens are available, then fetches individual or all screens.
+pub async fn get_device_info() -> Result<Json<DeviceInfoResponse>, StatusCode> {
+    let dir = resolve_firmware_dir()
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let parsed = crate::eez_studio::parse_squareline::parse_screens(&dir)
+        .map_err(|e| {
+            error!("get_device_info: parse failed: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let screen_names: Vec<String> = parsed.iter().map(|s| s.name.clone()).collect();
+    let (image_count, font_count, display_width, display_height) =
+        count_firmware_assets(&dir);
+
+    info!("get_device_info: {} screens, {} images, {} fonts, {}x{}",
+        screen_names.len(), image_count, font_count, display_width, display_height);
+
+    Ok(Json(DeviceInfoResponse {
+        panel_name: "T3-BB".into(),
+        serial_number: 0,
+        screen_size: ScreenSize { width: display_width, height: display_height },
+        screen_count: screen_names.len(),
+        screens: screen_names,
+        image_count,
+        font_count,
+        firmware_version: "5.1.0".into(),
+    }))
+}
+
+/// Scan firmware directory for ui_img_*.c and ui_font_*.c to count assets,
+/// and try to read display resolution from the first screen's set_size calls.
+fn count_firmware_assets(dir: &std::path::Path) -> (usize, usize, u32, u32) {
+    let mut images = 0usize;
+    let mut fonts = 0usize;
+    let mut width: u32 = 480;  // TFT_HOR_RES from lcd_drv.h (ILI9341 landscape)
+    let mut height: u32 = 320; // TFT_VER_RES from lcd_drv.h
+
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with("ui_img_") { images += 1; }
+            if name.starts_with("ui_font_") { fonts += 1; }
+        }
+    }
+
+    let ui_c = dir.join("ui.c");
+    if let Ok(content) = std::fs::read_to_string(&ui_c) {
+        for line in content.lines() {
+            if line.contains("lv_obj_set_size") {
+                if let Some(args) = line.split('(').nth(1).and_then(|s| s.split(')').next()) {
+                    let nums: Vec<u32> = args.split(',')
+                        .filter_map(|s| s.trim().parse().ok())
+                        .collect();
+                    if nums.len() >= 2 {
+                        width = nums[nums.len() - 2];
+                        height = nums[nums.len() - 1];
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    (images, fonts, width, height)
 }
 
 /// PUT /api/eez-device/screens/:name
@@ -472,32 +619,24 @@ pub struct MockDeviceInfo {
 }
 
 /// GET /api/eez-device/devices — list available mock devices
+///
+/// Dynamically parses firmware to report screen count so the UI shows
+/// accurate info (e.g. "12 screens found").
 pub async fn list_devices() -> Json<Vec<MockDeviceInfo>> {
-    let store = STORE.lock().unwrap_or_else(|e| e.into_inner());
-    let mut devices: Vec<MockDeviceInfo> = store.iter().map(|((panel_id, serial), data)| {
-        MockDeviceInfo {
-            serial_number: *serial,
-            panel_name: data.meta.panel_name.clone(),
-            ip: format!("192.168.1.{}", serial % 254 + 1),
-            panel_id: *panel_id,
-            connection_type: "BACnet".into(),
-            screen_count: data.screens.len(),
-        }
-    }).collect();
+    let screen_count = parse_firmware_screens()
+        .map(|s| s.len())
+        .unwrap_or(0);
 
-    // Always include a default device so the list is never empty
-    if devices.is_empty() {
-        devices.push(MockDeviceInfo {
-            serial_number: 12345,
-            panel_name: "T3-ESP-Mock".into(),
-            ip: "192.168.1.100".into(),
-            panel_id: 0,
-            connection_type: "BACnet".into(),
-            screen_count: 0,
-        });
-    }
+    let devices = vec![MockDeviceInfo {
+        serial_number: 12345,
+        panel_name: "T3-ESP32-Firmware".into(),
+        ip: "192.168.1.100".into(),
+        panel_id: 0,
+        connection_type: "BACnet".into(),
+        screen_count,
+    }];
 
-    info!("list_devices: {} devices", devices.len());
+    info!("list_devices: 1 device, {} screens", screen_count);
     Json(devices)
 }
 

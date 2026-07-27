@@ -65,6 +65,18 @@ export interface LoadAllResponse {
     };
 }
 
+/** Response from GET /api/v1/device/info (summary). */
+export interface DeviceInfoResponse {
+    panel_name: string;
+    serial_number: number;
+    screen_size: { width: number; height: number };
+    screen_count: number;
+    screens: string[];
+    image_count: number;
+    font_count: number;
+    firmware_version: string;
+}
+
 /** Connection mode determined at connect time. */
 export type ConnectionMode = "rest" | "bacnet";
 
@@ -168,6 +180,37 @@ export class DeviceRestClient {
 
     get connectionMode(): ConnectionMode {
         return this.mode;
+    }
+
+    // ── Device Info (Summary) ────────────────────────────────────
+
+    /**
+     * Get lightweight device metadata before fetching screens.
+     * REST path: GET /api/v1/device/info
+     */
+    async getDeviceInfo(): Promise<DeviceInfoResponse> {
+        if (this.mode === "rest") {
+            const response = await fetch(
+                restUrl("device/info", this.deviceIp),
+                { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
+            );
+            if (!response.ok) {
+                throw new Error(`Device returned ${response.status}`);
+            }
+            return response.json();
+        }
+        // BACnet fallback: load all screens and derive summary
+        const all = await this.bacnetLoadAll();
+        return {
+            panel_name: all.meta?.panel_name ?? "Unknown",
+            serial_number: all.meta?.serial_number ?? 0,
+            screen_size: { width: 480, height: 320 },
+            screen_count: all.screens.length,
+            screens: all.screens.map(s => s.name),
+            image_count: 0,
+            font_count: 0,
+            firmware_version: all.meta?.firmware_version ?? "0.0.0",
+        };
     }
 
     // ── Full Sync: Load All ───────────────────────────────────────
