@@ -701,7 +701,7 @@ class DeviceImportStore {
             const project = firmwareToProject(stagingScreens, {
                 panel_name: device.panel_name,
                 serial_number: device.panel_serial_number,
-            });
+            }, { width: info.screen_size.width, height: info.screen_size.height });
 
             // Step 5 — Save to disk
             const projectPath = `project/${device.panel_name}/${device.panel_name}.eez-project`;

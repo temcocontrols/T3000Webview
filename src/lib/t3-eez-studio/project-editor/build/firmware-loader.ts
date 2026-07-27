@@ -89,7 +89,8 @@ interface DeviceMeta {
 
 export function firmwareToProject(
     screens: FirmwareScreen[],
-    device: DeviceMeta
+    device: DeviceMeta,
+    displaySize?: { width: number; height: number }
 ) {
     const allFonts: { name: string; size: number }[] = [];
     const allBitmaps: string[] = [];
@@ -112,11 +113,21 @@ export function firmwareToProject(
     }
 
     return {
+        themesVersion: "v3",
+        objID: `proj_${device.serial_number}_${Date.now().toString(36)}`,
         settings: {
             general: {
-                projectType: "LVGL",
+                objID: `proj_${device.panel_name}_${Date.now().toString(36)}`,
+                projectVersion: "v3",
+                projectType: "lvgl",
                 lvglVersion: "9.5.0",
-                hasFlowSupport: true,
+                flowSupport: true,
+                displayWidth: displaySize?.width ?? 480,
+                displayHeight: displaySize?.height ?? 320,
+                displayBorderRadius: 0,
+                colorFormat: "RGB",
+                extensions: [],
+                imports: [],
             },
             build: {
                 configurations: [
@@ -197,11 +208,20 @@ export function firmwareToProject(
                 }
             }
 
+            const pageId = `page_${s.name}_${Date.now().toString(36)}`;
             return {
+                objID: pageId,
                 name: s.name,
                 components: [...widgetComponents, ...actionComponents],
                 connectionLines,
                 localVariables: [],
+                userProperties: [],
+                left: 0,
+                top: 0,
+                width: displaySize?.width ?? 800,
+                height: displaySize?.height ?? 480,
+                createAtStart: true,
+                deleteOnScreenUnload: false,
             };
         }),
         fonts: allFonts.map(f => ({
@@ -219,6 +239,8 @@ export function firmwareToProject(
         },
         actions: [],
         userWidgets: [],
+        colors: [],
+        themes: [],
     };
 }
 
@@ -235,6 +257,8 @@ function firmwareWidgetToComponent(
         top: w.y_pos ?? 0,
         width: w.width ?? 0,
         height: w.height ?? 0,
+        customInputs: [],
+        customOutputs: [],
     };
 
     // ── Text ──
