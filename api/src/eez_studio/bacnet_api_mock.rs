@@ -94,15 +94,19 @@ fn parse_firmware_screens() -> Result<Vec<StoredScreen>, String> {
     });
 
     Ok(parsed.iter().map(|s| {
+        let mut json = serde_json::json!({
+            "fonts": s.fonts.iter().map(|(name, size)| {
+                serde_json::json!({"name": name, "size": size})
+            }).collect::<Vec<_>>(),
+            "bitmaps": &s.bitmaps,
+            "widgets": &s.widgets_map,
+        });
+        if let Some(ref bg) = s.bg_color {
+            json["bg_color"] = serde_json::json!(bg);
+        }
         StoredScreen {
             name: s.name.clone(),
-            json: serde_json::json!({
-                "fonts": s.fonts.iter().map(|(name, size)| {
-                    serde_json::json!({"name": name, "size": size})
-                }).collect::<Vec<_>>(),
-                "bitmaps": &s.bitmaps,
-                "widgets": &s.widgets_map,
-            }),
+            json,
         }
     }).collect())
 }

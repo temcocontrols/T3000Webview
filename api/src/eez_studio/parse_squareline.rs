@@ -47,6 +47,8 @@ pub struct ParsedScreen {
     pub fonts: Vec<(String, i32)>,
     pub bitmaps: Vec<String>,
     pub widgets_map: serde_json::Map<String, Value>,
+    /// Screen bg_color from root lv_obj_create(NULL), e.g. "#000000"
+    pub bg_color: Option<String>,
 }
 
 // ── Widget type detection from LVGL create calls ─────────────────────
@@ -129,8 +131,22 @@ fn extract_font_ref(line: &str) -> Option<String> {
         if let Some(start) = line.find("&lv_font_") {
             let rest = &line[start + 1..];
             let end = rest.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(rest.len());
-            let name = &rest[..end]; // keep full name e.g. "lv_font_montserrat_40"
-            return Some(name.to_string());
+            return Some(rest[..end].to_string());
+        }
+    }
+    None
+}
+
+/// Extract font size from font name like "lv_font_montserrat_40" → 40
+fn extract_font_size(line: &str) -> Option<i32> {
+    if !line.contains("lv_obj_set_style_text_font") { return None; }
+    if let Some(start) = line.find("&lv_font_") {
+        let rest = &line[start + 1..];
+        let end = rest.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(rest.len());
+        let name = &rest[..end];
+        // Extract trailing digits: "lv_font_montserrat_40" → 40
+        if let Some(last_underscore) = name.rfind('_') {
+            return name[last_underscore + 1..].parse::<i32>().ok();
         }
     }
     None
@@ -215,10 +231,29 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
     let mut widgets: Vec<FirmwareWidget> = Vec::new();
     let mut fonts = Vec::new();
     let mut bitmaps = Vec::new();
+    let mut screen_bg_color: Option<String> = None;
     let mut current_idx: Option<usize> = None;
+    let mut skip_root_screen = false;
 
     for line in &lines {
         let line = line.trim();
+
+        // Skip root screen: lv_obj_create(NULL) — capture bg_color, don't create widget
+        if line.contains("lv_obj_create(NULL)") || line.contains("lv_obj_create( NULL )") {
+            skip_root_screen = true;
+            continue;
+        }
+        // Capture bg_color on root screen lines (before any widget is created)
+        if skip_root_screen && line.contains("lv_obj_set_style_bg_color") {
+            if let Some(hex) = extract_hex_color(line) {
+                screen_bg_color = Some(format!("#{:06X}", hex));
+            }
+            continue;
+        }
+        if skip_root_screen && (line.contains("lv_obj_remove_flag") || line.contains("lv_obj_set_style_bg_opa")) {
+            continue;
+        }
+        skip_root_screen = false;
 
         // Detect widget creation
         if let Some(sub_type) = detect_sub_type(line) {
@@ -279,23 +314,21 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         if line.contains("lv_obj_set_width") {
             let ints = extract_ints(line, "lv_obj_set_width");
             if let Some(&v) = ints.last() { w.width = v; }
-            // LV_SIZE_CONTENT fallback: parse /// comment for size hint
-            else if line.contains("LV_SIZE_CONTENT") {
-                if let Some(hint) = parse_size_comment(line) { w.width = hint; }
-            }
+            // LV_SIZE_CONTENT → output 0 so frontend can use "content" unit
+            else if line.contains("LV_SIZE_CONTENT") { w.width = 0; }
         }
         if line.contains("lv_obj_set_height") {
             let ints = extract_ints(line, "lv_obj_set_height");
             if let Some(&v) = ints.last() { w.height = v; }
-            else if line.contains("LV_SIZE_CONTENT") {
-                if let Some(hint) = parse_size_comment(line) { w.height = hint; }
-            }
+            else if line.contains("LV_SIZE_CONTENT") { w.height = 0; }
         }
 
         // Alignment: lv_obj_set_align(obj, LV_ALIGN_CENTER) → store as extra
+        // Also set x/y to 0 when centered (frontend will compute actual position)
         if line.contains("lv_obj_set_align") {
             if line.contains("LV_ALIGN_CENTER") {
                 w.extra.insert("align".into(), serde_json::json!("center"));
+                w.x_pos = 0; w.y_pos = 0;
             } else if line.contains("LV_ALIGN_TOP_LEFT") {
                 w.extra.insert("align".into(), serde_json::json!("top_left"));
             } else if line.contains("LV_ALIGN_TOP_MID") {
@@ -422,8 +455,9 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             } else {
                 *style = json!({ "DEFAULT": { "text_font": font_name } });
             }
+            let font_size = extract_font_size(line).unwrap_or(0);
             if !fonts.iter().any(|(n, _)| n == &font_name) {
-                fonts.push((font_name, 0));
+                fonts.push((font_name, font_size));
             }
         }
 
@@ -493,6 +527,7 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         fonts: fonts.into_iter().collect(),
         bitmaps,
         widgets_map,
+        bg_color: screen_bg_color,
     })
 }
 

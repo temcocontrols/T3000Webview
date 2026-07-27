@@ -146,8 +146,6 @@ export function firmwareToProject(
         },
         userPages: screens.map(s => {
             const widgetComponents: Record<string, any>[] = [];
-            const actionComponents: Record<string, any>[] = [];
-            const connectionLines: Record<string, any>[] = [];
 
             // Generate unique IDs for this screen
             let compIdx = 0;
@@ -155,65 +153,16 @@ export function firmwareToProject(
 
             for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
                 const comp = firmwareWidgetToComponent(widgetId, w);
-
-                if (comp.type === "LVGLActionComponent") {
-                    comp.objID = genId();
-                    actionComponents.push(comp);
-                } else {
-                    comp.objID = genId();
-                    widgetComponents.push(comp);
-
-                    // If this widget has events with actions, create connectionLines to action components
-                    const events = w.events;
-                    if (events) {
-                        for (const [evtName, evtData] of Object.entries(events)) {
-                            const actions = (evtData as any).actions;
-                            if (actions?.length) {
-                                // Create an action component for this event's actions
-                                const actionComp: Record<string, any> = {
-                                    objID: genId(),
-                                    type: "LVGLActionComponent",
-                                    left: (w.x_pos ?? 0) + (w.width ?? 0) + 20,
-                                    top: w.y_pos ?? 0,
-                                    width: 354,
-                                    height: 54,
-                                    customInputs: [],
-                                    customOutputs: [],
-                                    actions: actions.map((a: any) => ({
-                                        action: a.action || "?",
-                                        screen: a.screen || "",
-                                        screenType: "literal",
-                                        fadeMode: "FADE_IN",
-                                        fadeModeType: "literal",
-                                        speed: 200,
-                                        speedType: "literal",
-                                        delay: 0,
-                                        delayType: "literal",
-                                        useStack: true,
-                                        useStackType: "literal",
-                                    })),
-                                };
-                                actionComponents.push(actionComp);
-
-                                // Create connection line: widget event → action
-                                connectionLines.push({
-                                    source: comp.objID,
-                                    output: evtName,
-                                    target: actionComp.objID,
-                                    input: "@seqin",
-                                });
-                            }
-                        }
-                    }
-                }
+                comp.objID = genId();
+                widgetComponents.push(comp);
             }
 
             const pageId = `page_${s.name}_${Date.now().toString(36)}`;
             return {
                 objID: pageId,
                 name: s.name,
-                components: [...widgetComponents, ...actionComponents],
-                connectionLines,
+                components: widgetComponents,
+                connectionLines: [],
                 localVariables: [],
                 userProperties: [],
                 left: 0,
@@ -222,6 +171,13 @@ export function firmwareToProject(
                 height: displaySize?.height ?? 480,
                 createAtStart: true,
                 deleteOnScreenUnload: false,
+                // Apply firmware bg_color as page background via localStyles
+                localStyles: (s.json as any).bg_color ? {
+                    objID: `${pageId}_pagestyle_${Date.now().toString(36)}`,
+                    definition: {
+                        MAIN: { DEFAULT: { bg_color: (s.json as any).bg_color } },
+                    },
+                } : undefined,
             };
         }),
         fonts: allFonts.map(f => ({
@@ -233,7 +189,7 @@ export function firmwareToProject(
             image: "",
         })),
         lvglStyles: { allStyles: [] },
-        lvglGroups: [],
+        lvglGroups: { groups: [] },
         variables: {
             globalVariables: [],
         },
@@ -250,15 +206,49 @@ function firmwareWidgetToComponent(
 ): Record<string, any> {
     const lvglType = SUB_TYPE_MAP[w.sub_type] || "LVGLPanelWidget";
 
+    // Detect LV_SIZE_CONTENT: width/height = 0 (set by parse_squareline for LV_SIZE_CONTENT)
+    const isSizeContent = w.width === 0 || w.height === 0;
+    // Detect centered widget (LV_ALIGN_CENTER in firmware)
+    const isCentered = (w as any).align === "center";
+
+    // Estimate size for content-sized labels based on text length
+    let estW = w.width ?? 0;
+    let estH = w.height ?? 0;
+    if (isSizeContent && (w.obj_text || "")) {
+        estW = Math.max((w.obj_text || "").length * 10, 40);
+        estH = 24;
+    }
+
     const comp: Record<string, any> = {
         objID: id,
         type: lvglType,
-        left: w.x_pos ?? 0,
-        top: w.y_pos ?? 0,
-        width: w.width ?? 0,
-        height: w.height ?? 0,
+        left: isCentered ? 50 : (w.x_pos ?? 0),
+        top: isCentered ? 50 : (w.y_pos ?? 0),
+        width: estW,
+        height: estH,
         customInputs: [],
         customOutputs: [],
+
+        // ── Required LVGLWidget base properties ──
+        leftUnit: isCentered ? "%" : "px",
+        topUnit: isCentered ? "%" : "px",
+        widthUnit: isSizeContent ? "content" : "px",
+        heightUnit: isSizeContent ? "content" : "px",
+        hiddenFlagType: "literal",
+        clickableFlag: true,
+        clickableFlagType: "literal",
+        checkedStateType: "literal",
+        disabledStateType: "literal",
+        widgetFlags: "CLICKABLE|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
+        states: "",
+        useStyle: "default",
+        localStyles: {
+            objID: `${id}_style_${Date.now().toString(36)}`,
+        },
+        groupIndex: 0,
+        eventHandlers: [],
+        timeline: "",
+        children: "",
     };
 
     // ── Text ──
