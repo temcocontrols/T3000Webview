@@ -61,6 +61,7 @@ const CREATE_PATTERNS: &[(&str, &str)] = &[
     ("lv_switch_create", "switch"),
     ("lv_slider_create", "slider"),
     ("lv_dropdown_create", "dropdown"),
+    ("lv_textarea_create", "textarea"),
 ];
 
 fn detect_sub_type(line: &str) -> Option<&'static str> {
@@ -159,6 +160,14 @@ fn extract_event_cb(line: &str) -> Option<(String, String)> {
     Some((handler, event.to_uppercase()))
 }
 
+/// Extract hex color from `lv_color_hex(0xRRGGBB)` pattern
+fn extract_hex_color(line: &str) -> Option<u32> {
+    let start = line.find("lv_color_hex(0x")?;
+    let hex_str = &line[start + "lv_color_hex(0x".len()..];
+    let end = hex_str.find(|c: char| !c.is_ascii_hexdigit()).unwrap_or(hex_str.len());
+    u32::from_str_radix(&hex_str[..end], 16).ok()
+}
+
 fn screen_name_from_file(path: &Path) -> String {
     path.file_stem()
         .unwrap_or_default()
@@ -226,13 +235,21 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         };
         let w = &mut widgets[idx];
 
-        // Position: lv_obj_set_pos(obj, x, y)
+        // Position: lv_obj_set_pos(obj, x, y) or lv_obj_set_x / lv_obj_set_y
         if line.contains("lv_obj_set_pos") {
             let ints = extract_ints(line, "lv_obj_set_pos");
             if ints.len() >= 2 {
                 w.x_pos = ints[ints.len() - 2];
                 w.y_pos = ints[ints.len() - 1];
             }
+        }
+        if line.contains("lv_obj_set_x(") {
+            let ints = extract_ints(line, "lv_obj_set_x");
+            if let Some(&v) = ints.last() { w.x_pos = v; }
+        }
+        if line.contains("lv_obj_set_y(") {
+            let ints = extract_ints(line, "lv_obj_set_y");
+            if let Some(&v) = ints.last() { w.y_pos = v; }
         }
 
         // Size: lv_obj_set_size(obj, w, h) or lv_obj_set_width/height
@@ -247,11 +264,104 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             let ints = extract_ints(line, "lv_obj_set_width");
             if let Some(&v) = ints.last() { w.width = v; }
         }
+        if line.contains("lv_obj_set_height") {
+            // LV_SIZE_CONTENT is a macro, not a plain int — skip if no int found
+            let ints = extract_ints(line, "lv_obj_set_height");
+            if let Some(&v) = ints.last() { w.height = v; }
+        }
 
-        // Label text: lv_label_set_text(obj, "text")
-        if w.sub_type == "label" || w.sub_type == "button" {
+        // Alignment: lv_obj_set_align(obj, LV_ALIGN_CENTER) → store as extra
+        if line.contains("lv_obj_set_align") {
+            if line.contains("LV_ALIGN_CENTER") {
+                w.extra.insert("align".into(), serde_json::json!("center"));
+            } else if line.contains("LV_ALIGN_TOP_LEFT") {
+                w.extra.insert("align".into(), serde_json::json!("top_left"));
+            } else if line.contains("LV_ALIGN_TOP_MID") {
+                w.extra.insert("align".into(), serde_json::json!("top_mid"));
+            } else if line.contains("LV_ALIGN_TOP_RIGHT") {
+                w.extra.insert("align".into(), serde_json::json!("top_right"));
+            } else if line.contains("LV_ALIGN_BOTTOM_LEFT") {
+                w.extra.insert("align".into(), serde_json::json!("bottom_left"));
+            } else if line.contains("LV_ALIGN_BOTTOM_MID") {
+                w.extra.insert("align".into(), serde_json::json!("bottom_mid"));
+            } else if line.contains("LV_ALIGN_BOTTOM_RIGHT") {
+                w.extra.insert("align".into(), serde_json::json!("bottom_right"));
+            } else if line.contains("LV_ALIGN_LEFT_MID") {
+                w.extra.insert("align".into(), serde_json::json!("left_mid"));
+            } else if line.contains("LV_ALIGN_RIGHT_MID") {
+                w.extra.insert("align".into(), serde_json::json!("right_mid"));
+            }
+        }
+
+        // ── Style extraction ──────────────────────────────────────
+
+        // Background color: lv_obj_set_style_bg_color(obj, lv_color_hex(0xRRGGBB), ...)
+        if line.contains("lv_obj_set_style_bg_color") {
+            if let Some(hex) = extract_hex_color(line) {
+                let style = w.style.get_or_insert(serde_json::json!({}));
+                style["DEFAULT"] = serde_json::json!({"bg_color": format!("#{:06X}", hex)});
+            }
+        }
+        // Text color: lv_obj_set_style_text_color(obj, lv_color_hex(0xRRGGBB), ...)
+        if line.contains("lv_obj_set_style_text_color") {
+            if let Some(hex) = extract_hex_color(line) {
+                let style = w.style.get_or_insert(serde_json::json!({}));
+                if let Some(def) = style.get_mut("DEFAULT") {
+                    def["text_color"] = serde_json::json!(format!("#{:06X}", hex));
+                } else {
+                    *style = serde_json::json!({"DEFAULT": {"text_color": format!("#{:06X}", hex)}});
+                }
+            }
+        }
+        // Arc color: lv_obj_set_style_arc_color(obj, lv_color_hex(0xRRGGBB), ...)
+        if line.contains("lv_obj_set_style_arc_color") {
+            if let Some(hex) = extract_hex_color(line) {
+                let style = w.style.get_or_insert(serde_json::json!({}));
+                let part = if line.contains("LV_PART_INDICATOR") { "INDICATOR" } else { "DEFAULT" };
+                if let Some(def) = style.get_mut(part) {
+                    def["arc_color"] = serde_json::json!(format!("#{:06X}", hex));
+                } else {
+                    *style = serde_json::json!({part: {"arc_color": format!("#{:06X}", hex)}});
+                }
+            }
+        }
+        // Arc width: lv_obj_set_style_arc_width(obj, w, ...)
+        if line.contains("lv_obj_set_style_arc_width") {
+            let ints = extract_ints(line, "lv_obj_set_style_arc_width");
+            if let Some(&v) = ints.last() {
+                let style = w.style.get_or_insert(serde_json::json!({}));
+                let part = if line.contains("LV_PART_INDICATOR") { "INDICATOR" } else { "DEFAULT" };
+                if let Some(def) = style.get_mut(part) {
+                    def["arc_width"] = serde_json::json!(v);
+                } else {
+                    *style = serde_json::json!({part: {"arc_width": v}});
+                }
+            }
+        }
+        // Border side: lv_obj_set_style_border_side(obj, LV_BORDER_SIDE_NONE, ...)
+        if line.contains("lv_obj_set_style_border_side") {
+            let side = if line.contains("LV_BORDER_SIDE_NONE") { "none" }
+                else if line.contains("LV_BORDER_SIDE_FULL") { "full" }
+                else { "none" };
+            let style = w.style.get_or_insert(serde_json::json!({}));
+            if let Some(def) = style.get_mut("DEFAULT") {
+                def["border_side"] = serde_json::json!(side);
+            } else {
+                *style = serde_json::json!({"DEFAULT": {"border_side": side}});
+            }
+        }
+
+        // Label text: lv_label_set_text(obj, "text"), also lv_textarea_set_text
+        if w.sub_type == "label" || w.sub_type == "button" || w.sub_type == "textarea" {
             if line.contains("lv_label_set_text") {
                 if let Some(text) = extract_string(line, "lv_label_set_text", '"') {
+                    if !text.is_empty() {
+                        w.obj_text = text;
+                    }
+                }
+            }
+            if line.contains("lv_textarea_set_text") {
+                if let Some(text) = extract_string(line, "lv_textarea_set_text", '"') {
                     if !text.is_empty() {
                         w.obj_text = text;
                     }
