@@ -221,6 +221,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .nest("/api/t3_device", t3_device_routes())
         // T3000 FFI API routes with T3AppState
         .merge(crate::t3_device::t3_ffi_api_service::create_ffi_api_routes())
+        // Bridge API for EEZ Studio web frontend file operations
+        .merge(crate::eez_studio::bridge_routes(Router::<T3AppState>::new()))
         // Database Management routes with T3AppState
         .merge(crate::database_management::endpoints::database_management_routes())
         // Application Configuration API routes
@@ -229,8 +231,6 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::database_management::db_backend_routes::db_backend_routes())
         // Server DB Status route (server/client mode)
         .merge(crate::web_routing::server_db_routes())
-        // Bridge API for EEZ Studio web frontend file operations
-        .merge(crate::eez_studio::bridge_routes(Router::<T3AppState>::new()))
         // Server/Client Registry routes (heartbeat + listing)
         .merge(crate::database_management::registry_service::registry_routes())
         // Sync Health + Event Log routes
