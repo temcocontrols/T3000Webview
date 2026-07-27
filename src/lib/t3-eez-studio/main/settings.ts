@@ -231,9 +231,9 @@ ipcMain.on("getMRU", function (event: Electron.IpcMainEvent) {
     event.returnValue = mru;
 });
 
-ipcMain.on("setMRU", function (event: any, mru: IMruItem[]) {
+ipcMain.on("setMRU", function (_event: any, mru: IMruItem[]) {
     function isMruChanged(mru1: IMruItem[], mru2: IMruItem[]) {
-        if (!!mru1 != !!mru) {
+        if (!!mru1 != !!mru2) {
             return true;
         }
         if (mru1.length != mru2.length) {

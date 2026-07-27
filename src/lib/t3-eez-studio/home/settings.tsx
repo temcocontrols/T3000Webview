@@ -89,9 +89,9 @@ const setMRU = function (value: IMruItem[]) {
     ipcRenderer.send("setMRU", toJS(value));
 };
 
-ipcRenderer.on("mru-changed", async (sender: any, mru: IMruItem[]) => {
+ipcRenderer.on("mru-changed", async (_sender: any, mru: IMruItem[]) => {
     function isMruChanged(mru1: IMruItem[], mru2: IMruItem[]) {
-        if (!!mru1 != !!mru) {
+        if (!!mru1 != !!mru2) {
             return true;
         }
 
@@ -290,7 +290,12 @@ class SettingsController {
     }
 
     removeItemFromMRU(mruItem: IMruItem) {
-        const i = this.mru.indexOf(mruItem);
+        // Use findIndex by filePath instead of indexOf (reference equality).
+        // When mru-changed fires, the array is replaced with new objects from
+        // JSON.parse(localStorage), so reference comparison (===) can fail.
+        const i = this.mru.findIndex(
+            (item: IMruItem) => item.filePath === mruItem.filePath
+        );
         if (i != -1) {
             this.mru.splice(i, 1);
             setMRU(this.mru);
