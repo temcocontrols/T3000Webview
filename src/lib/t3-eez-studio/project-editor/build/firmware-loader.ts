@@ -99,9 +99,11 @@ export function firmwareToProject(
 
     for (const screen of screens) {
         for (const f of screen.json.fonts || []) {
-            if (!seenFonts.has(f.name)) {
-                seenFonts.add(f.name);
-                allFonts.push(f);
+            // Strip lv_font_ prefix for cleaner naming (e.g. "lv_font_montserrat_40" → "montserrat_40")
+            const cleanName = f.name.replace(/^lv_font_/, "");
+            if (!seenFonts.has(cleanName)) {
+                seenFonts.add(cleanName);
+                allFonts.push({ name: cleanName, size: f.size });
             }
         }
         for (const b of screen.json.bitmaps || []) {
@@ -151,13 +153,54 @@ export function firmwareToProject(
             let compIdx = 0;
             const genId = () => `imp_${s.name}_${compIdx++}_${Date.now().toString(36)}`;
 
+            const pageId = `page_${s.name}_${Date.now().toString(36)}`;
+            const displayW = displaySize?.width ?? 800;
+            const displayH = displaySize?.height ?? 480;
+
+            // ── Background panel (full-screen, replaces page-level localStyles) ──
+            const bgColor = (s.json as any).bg_color;
+            if (bgColor) {
+                const bgId = `bg_${s.name}_${Date.now().toString(36)}`;
+                widgetComponents.push({
+                    objID: genId(),
+                    type: "LVGLPanelWidget",
+                    left: 0,
+                    top: 0,
+                    width: displayW,
+                    height: displayH,
+                    leftUnit: "px",
+                    topUnit: "px",
+                    widthUnit: "px",
+                    heightUnit: "px",
+                    customInputs: [],
+                    customOutputs: [],
+                    hiddenFlagType: "literal",
+                    clickableFlag: false,
+                    clickableFlagType: "literal",
+                    checkedStateType: "literal",
+                    disabledStateType: "literal",
+                    widgetFlags: "ADV_HITTEST|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
+                    states: "",
+                    useStyle: "default",
+                    localStyles: {
+                        objID: `${bgId}_style_${Date.now().toString(36)}`,
+                        definition: {
+                            MAIN: { DEFAULT: { bg_color: bgColor } },
+                        },
+                    },
+                    groupIndex: 0,
+                    eventHandlers: [],
+                    timeline: "",
+                    children: "",
+                });
+            }
+
             for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
-                const comp = firmwareWidgetToComponent(widgetId, w);
+                const comp = firmwareWidgetToComponent(widgetId, w, displayW, displayH);
                 comp.objID = genId();
                 widgetComponents.push(comp);
             }
 
-            const pageId = `page_${s.name}_${Date.now().toString(36)}`;
             return {
                 objID: pageId,
                 name: s.name,
@@ -167,17 +210,10 @@ export function firmwareToProject(
                 userProperties: [],
                 left: 0,
                 top: 0,
-                width: displaySize?.width ?? 800,
-                height: displaySize?.height ?? 480,
+                width: displayW,
+                height: displayH,
                 createAtStart: true,
                 deleteOnScreenUnload: false,
-                // Apply firmware bg_color as page background via localStyles
-                localStyles: (s.json as any).bg_color ? {
-                    objID: `${pageId}_pagestyle_${Date.now().toString(36)}`,
-                    definition: {
-                        MAIN: { DEFAULT: { bg_color: (s.json as any).bg_color } },
-                    },
-                } : undefined,
             };
         }),
         fonts: allFonts.map(f => ({
@@ -202,38 +238,53 @@ export function firmwareToProject(
 
 function firmwareWidgetToComponent(
     id: string,
-    w: FirmwareWidget
+    w: FirmwareWidget,
+    displayW: number = 800,
+    displayH: number = 480
 ): Record<string, any> {
     const lvglType = SUB_TYPE_MAP[w.sub_type] || "LVGLPanelWidget";
 
     // Detect LV_SIZE_CONTENT: width/height = 0 (set by parse_squareline for LV_SIZE_CONTENT)
-    const isSizeContent = w.width === 0 || w.height === 0;
+    const isSizeContentW = w.width === 0;
+    const isSizeContentH = w.height === 0;
     // Detect centered widget (LV_ALIGN_CENTER in firmware)
     const isCentered = (w as any).align === "center";
 
+    // Compute pixel position for centered widgets
+    let leftVal = w.x_pos ?? 0;
+    let topVal = w.y_pos ?? 0;
+    let widthVal = w.width ?? 0;
+    let heightVal = w.height ?? 0;
+
+    if (isCentered) {
+        // Center the widget on screen
+        leftVal = Math.round((displayW - widthVal) / 2);
+        topVal = Math.round((displayH - heightVal) / 2);
+    }
+
     // Estimate size for content-sized labels based on text length
-    let estW = w.width ?? 0;
-    let estH = w.height ?? 0;
-    if (isSizeContent && (w.obj_text || "")) {
-        estW = Math.max((w.obj_text || "").length * 10, 40);
-        estH = 24;
+    if (isSizeContentW && (w.obj_text || "")) {
+        widthVal = Math.max((w.obj_text || "").length * 10, 40);
+    }
+    if (isSizeContentH && (w.obj_text || "")) {
+        heightVal = 24;
     }
 
     const comp: Record<string, any> = {
         objID: id,
         type: lvglType,
-        left: isCentered ? 50 : (w.x_pos ?? 0),
-        top: isCentered ? 50 : (w.y_pos ?? 0),
-        width: estW,
-        height: estH,
+        left: leftVal,
+        top: topVal,
+        width: widthVal,
+        height: heightVal,
         customInputs: [],
         customOutputs: [],
 
         // ── Required LVGLWidget base properties ──
-        leftUnit: isCentered ? "%" : "px",
-        topUnit: isCentered ? "%" : "px",
-        widthUnit: isSizeContent ? "content" : "px",
-        heightUnit: isSizeContent ? "content" : "px",
+        leftUnit: "px",
+        topUnit: "px",
+        widthUnit: isSizeContentW ? "content" : "px",
+        heightUnit: isSizeContentH ? "content" : "px",
         hiddenFlagType: "literal",
         clickableFlag: true,
         clickableFlagType: "literal",
@@ -337,8 +388,25 @@ function firmwareWidgetToComponent(
     }
 
     // ── Style ──
+    // w.style is { STATE: { PROP: VALUE } } from parser (e.g. { DEFAULT: { bg_color: "#000" } })
+    // Wrap in MAIN part since components only have MAIN as LVGL part
     if (w.style) {
-        comp.localStyles = { definition: w.style };
+        // Clean font names: lv_font_montserrat_40 → montserrat_40
+        const cleanedStyle: Record<string, Record<string, any>> = {};
+        for (const [state, props] of Object.entries(w.style as Record<string, Record<string, any>>)) {
+            cleanedStyle[state] = {};
+            for (const [prop, value] of Object.entries(props)) {
+                if (prop === "text_font" && typeof value === "string") {
+                    cleanedStyle[state][prop] = value.replace(/^lv_font_/, "");
+                } else {
+                    cleanedStyle[state][prop] = value;
+                }
+            }
+        }
+        comp.localStyles = {
+            objID: `${comp.objID}_style_${Date.now().toString(36)}`,
+            definition: { MAIN: cleanedStyle },
+        };
     }
 
     // ── Events ──

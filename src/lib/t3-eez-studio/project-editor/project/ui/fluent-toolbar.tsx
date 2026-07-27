@@ -21,6 +21,14 @@ import {
     CheckboxUncheckedRegular,
     ChevronLeftRegular,
     ChevronRightRegular,
+    SettingsRegular,
+    CodeRegular,
+    BookOpenRegular,
+    ImageRegular,
+    FontIncreaseRegular,
+    ColorFillRegular,
+    AppGenericRegular,
+    DocumentBulletListRegular,
 } from "@fluentui/react-icons";
 
 // ── material icon name → Fluent icon component ───────────────────────
@@ -55,6 +63,14 @@ const MATERIAL_TO_FLUENT: Record<string, React.ReactElement> = {
     ),
     "material:navigate_before": <ChevronLeftRegular />,
     "material:navigate_next": <ChevronRightRegular />,
+    "material:settings": <SettingsRegular />,
+    "material:code": <CodeRegular />,
+    "material:book_open": <BookOpenRegular />,
+    "material:image": <ImageRegular />,
+    "material:font_download": <FontIncreaseRegular />,
+    "material:format_color_fill": <ColorFillRegular />,
+    "material:extension": <AppGenericRegular />,
+    "material:playlist_play": <DocumentBulletListRegular />,
 };
 
 function resolveIcon(icon: string | React.ReactNode, size?: number): React.ReactElement | undefined {
