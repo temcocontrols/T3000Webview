@@ -580,7 +580,28 @@ export async function fetchUrlOrReadFromCache(
     url: string,
     resultType: "json" | "buffer"
 ): Promise<any> {
-    const response = await fetch(url, { cache: "reload" });
+    if (!url || url === "undefined") {
+        console.error(
+            "[fetchUrlOrReadFromCache] Invalid URL:",
+            url,
+            "resultType:",
+            resultType,
+            "\nStack trace:",
+            new Error().stack
+        );
+        throw new Error(`Invalid URL: ${url}`);
+    }
+
+    // Route external URLs through the Rust backend proxy to avoid CORS
+    let fetchUrl = url;
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+        fetchUrl = `/api/eez-studio/proxy-fetch?url=${encodeURIComponent(url)}`;
+        if (resultType === "buffer") {
+            fetchUrl = `/api/eez-studio/proxy-fetch-binary?url=${encodeURIComponent(url)}`;
+        }
+    }
+
+    const response = await fetch(fetchUrl, { cache: "reload" });
     if (resultType == "json") {
         return await response.json();
     } else {

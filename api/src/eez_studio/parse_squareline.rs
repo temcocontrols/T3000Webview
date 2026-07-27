@@ -117,11 +117,19 @@ fn extract_string(line: &str, func: &str, quote: char) -> Option<String> {
 
 fn extract_font_ref(line: &str) -> Option<String> {
     // lv_obj_set_style_text_font(obj, &ui_font_Arial80, ...)
-    if line.contains("lv_obj_set_style_text_font") || line.contains("lv_obj_set_style_text_font") {
+    if line.contains("lv_obj_set_style_text_font") {
+        // Custom font: &ui_font_Arial80
         if let Some(start) = line.find("&ui_font_") {
             let rest = &line[start + 1..]; // skip &
             let end = rest.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(rest.len());
             let name = &rest[..end].replace("ui_font_", "");
+            return Some(name.to_string());
+        }
+        // System font: &lv_font_montserrat_40
+        if let Some(start) = line.find("&lv_font_") {
+            let rest = &line[start + 1..];
+            let end = rest.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(rest.len());
+            let name = &rest[..end]; // keep full name e.g. "lv_font_montserrat_40"
             return Some(name.to_string());
         }
     }
@@ -166,6 +174,14 @@ fn extract_hex_color(line: &str) -> Option<u32> {
     let hex_str = &line[start + "lv_color_hex(0x".len()..];
     let end = hex_str.find(|c: char| !c.is_ascii_hexdigit()).unwrap_or(hex_str.len());
     u32::from_str_radix(&hex_str[..end], 16).ok()
+}
+
+/// Parse the size hint from SquareLine's `/// <number>` comment after LV_SIZE_CONTENT.
+/// e.g. `lv_obj_set_width(obj, LV_SIZE_CONTENT);   /// 1` → Some(1)
+fn parse_size_comment(line: &str) -> Option<i32> {
+    let comment = line.find("///")?;
+    let rest = &line[comment + 3..];
+    rest.trim().parse::<i32>().ok()
 }
 
 fn screen_name_from_file(path: &Path) -> String {
@@ -263,11 +279,17 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         if line.contains("lv_obj_set_width") {
             let ints = extract_ints(line, "lv_obj_set_width");
             if let Some(&v) = ints.last() { w.width = v; }
+            // LV_SIZE_CONTENT fallback: parse /// comment for size hint
+            else if line.contains("LV_SIZE_CONTENT") {
+                if let Some(hint) = parse_size_comment(line) { w.width = hint; }
+            }
         }
         if line.contains("lv_obj_set_height") {
-            // LV_SIZE_CONTENT is a macro, not a plain int — skip if no int found
             let ints = extract_ints(line, "lv_obj_set_height");
             if let Some(&v) = ints.last() { w.height = v; }
+            else if line.contains("LV_SIZE_CONTENT") {
+                if let Some(hint) = parse_size_comment(line) { w.height = hint; }
+            }
         }
 
         // Alignment: lv_obj_set_align(obj, LV_ALIGN_CENTER) → store as extra

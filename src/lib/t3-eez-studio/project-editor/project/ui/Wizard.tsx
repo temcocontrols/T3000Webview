@@ -1027,6 +1027,7 @@ export class WizardModel {
         if (this.section == "templates") {
             const urlDef = this.selectedProjectType?.projectFileUrl;
             if (!urlDef) {
+                console.error("[loadEezProject] no projectFileUrl for type:", this.type, "selectedProjectType:", this.selectedProjectType);
                 throw "Can't load EEZ-PROJECT file: no URL specified";
             }
 
@@ -1037,12 +1038,28 @@ export class WizardModel {
                     projectFilePath = urlDef[this.commandsProtocol];
                 } else {
                     projectFilePath = urlDef[this.lvglVersion];
+                    if (!projectFilePath) {
+                        console.error(
+                            "[loadEezProject] lvglVersion", this.lvglVersion,
+                            "not found in urlDef keys:", Object.keys(urlDef),
+                            "type:", this.type
+                        );
+                        // Fall back to first available version
+                        const keys = Object.keys(urlDef);
+                        if (keys.length > 0) {
+                            projectFilePath = urlDef[keys[0]];
+                            console.log("[loadEezProject] falling back to version:", keys[0]);
+                        }
+                    }
                 }
             }
         } else {
             projectFilePath = this.type!;
         }
 
+        console.log("[loadEezProject] projectFilePath:", projectFilePath,
+            "section:", this.section, "type:", this.type,
+            "lvglVersion:", this.lvglVersion);
         return await loadTemplateFile(projectFilePath, "json");
     }
 
