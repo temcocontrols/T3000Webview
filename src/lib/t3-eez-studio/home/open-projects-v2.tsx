@@ -24,6 +24,9 @@ import {
     makeStyles,
     tokens,
     mergeClasses,
+    Popover,
+    PopoverTrigger,
+    PopoverSurface,
 } from "@fluentui/react-components";
 import {
     FolderOpenRegular,
@@ -370,6 +373,7 @@ class OpenProjectsStore {
     selectedProjectInfo: ProjectInfo | undefined;
     searchText: string = "";
     sortAlphabetically: boolean = false;
+    removeDialogOpen: boolean = false;
 
     constructor() {
         this.sortAlphabetically =
@@ -382,12 +386,15 @@ class OpenProjectsStore {
             selectedProjectInfo: observable,
             searchText: observable,
             sortAlphabetically: observable,
+            removeDialogOpen: observable,
             mru: computed,
             mruAlpha: computed,
             allMruItems: computed,
             toggleSort: action,
             onSearchChange: action,
-            removeFromList: action
+            removeFromList: action,
+            confirmRemove: action,
+            cancelRemove: action
         });
 
         autorun(async () => {
@@ -506,12 +513,43 @@ class OpenProjectsStore {
     };
 
     removeFromList = () => {
+        // Open confirmation dialog instead of immediately removing
         if (openProjectsStore.selectedMruItem) {
-            settingsController.removeItemFromMRU(
-                openProjectsStore.selectedMruItem
-            );
-            openProjectsStore.selectedMruItem = undefined;
+            runInAction(() => {
+                this.removeDialogOpen = true;
+            });
         }
+    };
+
+    confirmRemove = async () => {
+        const item = this.selectedMruItem;
+        if (!item) return;
+
+        // Delete the project folder from disk via backend
+        const projectDir = path.dirname(item.filePath);
+        try {
+            await fetch(
+                `/api/eez-studio/delete-recursive?path=${encodeURIComponent(projectDir)}`,
+                { method: "DELETE" }
+            );
+        } catch (err) {
+            console.error("Failed to delete project folder:", err);
+        }
+
+        // Remove from MRU list
+        settingsController.removeItemFromMRU(item);
+
+        runInAction(() => {
+            this.removeDialogOpen = false;
+            this.selectedMruItem = undefined;
+            this.selectedProjectInfo = undefined;
+        });
+    };
+
+    cancelRemove = () => {
+        runInAction(() => {
+            this.removeDialogOpen = false;
+        });
     };
 }
 
@@ -798,6 +836,7 @@ const ProjectListItem: React.FC<{
                         appearance="tint"
                         icon={<PlugDisconnectedRegular />}
                         size="small"
+                        style={{ fontSize: "10px", padding: "0 6px", height: "18px", gap: "2px" ,width:"90px"}}
                     >
                         Imported
                     </Badge>
@@ -980,21 +1019,51 @@ const RecentProjectsColumn: React.FC = observer(() => {
                                     Run Project
                                 </Button>
                             )}
-                            <Button
-                                appearance="secondary"
-                                icon={<DeleteRegular fontSize={18} />}
-                                onClick={openProjectsStore.removeFromList}
-                                style={{
-                                    justifyContent: "flex-start",
-                                    fontWeight: 400,
-                                    color: "#fff",
-                                    fontSize: "12px",
-                                    backgroundColor: "#d32f2f",
-                                    borderColor: "#d32f2f",
+                            <Popover
+                                open={openProjectsStore.removeDialogOpen}
+                                onOpenChange={(_, data) => {
+                                    if (!data.open) openProjectsStore.cancelRemove();
                                 }}
                             >
-                                Remove From List
-                            </Button>
+                                <PopoverTrigger disableButtonEnhancement>
+                                    <Button
+                                        appearance="secondary"
+                                        icon={<DeleteRegular fontSize={18} />}
+                                        onClick={openProjectsStore.removeFromList}
+                                        style={{
+                                            justifyContent: "flex-start",
+                                            fontWeight: 400,
+                                            color: "#fff",
+                                            fontSize: "12px",
+                                            backgroundColor: "#d32f2f",
+                                            borderColor: "#d32f2f",
+                                        }}
+                                    >
+                                        Remove From List
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverSurface style={{ maxWidth: "260px", padding: 16, background: "#fff", boxShadow: "0 4px 16px rgba(0,0,0,0.15)", borderRadius: 8, border: "1px solid #e0e0e0" }}>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                                        <Text weight="semibold" size={300}>Remove project?</Text>
+                                        <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+                                            This will also permanently delete the project folder from disk.
+                                        </Text>
+                                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                                            <Button size="small" appearance="outline" onClick={openProjectsStore.cancelRemove}>
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                appearance="primary"
+                                                style={{ backgroundColor: "#d32f2f", color: "#fff" }}
+                                                onClick={openProjectsStore.confirmRemove}
+                                            >
+                                                Delete
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </PopoverSurface>
+                            </Popover>
                         </div>
                     </div>
                 )}
