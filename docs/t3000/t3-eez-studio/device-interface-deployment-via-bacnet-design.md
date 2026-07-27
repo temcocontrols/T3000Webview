@@ -396,15 +396,22 @@ BEFORE (BACnet-only):                          AFTER (REST API primary):
 
 The primary design is full sync — send all, load all. Delta is an optimization layered on top.
 
+**Import flow (two-step):**
+
 | Step | Endpoint | Purpose |
 |------|----------|---------|
-| **Load from device** | `GET /api/v1/screens` | Pull ALL screens from device → populate EEZ Editor |
+| **Device summary** | `GET /api/v1/device/info` | Lightweight metadata: panel name, screen size, screen list, image count |
+| **Load all screens** | `GET /api/v1/screens` | Pull ALL screens with full widget JSON |
 | **Deploy to device** | `PUT /api/v1/screens` | Push ALL screens to device in one request |
 
 ```
 First connect / Import:
+  Browser ── GET /api/v1/device/info ──→ Device
+  Browser ←── {panel_name, screen_size:{width,height}, screen_count,
+               screens:["Home","Settings",...], image_count, ...} ── Device
+
   Browser ── GET /api/v1/screens ──→ Device
-  Browser ←── {screens: [{name:"Home", json:{...}}, ...]} ── Device
+  Browser ←── {screens: [{name:"Home", json:{widgets:{...},fonts:[...],...}}, ...]} ── Device
 
 First deploy:
   Browser ── PUT /api/v1/screens {screens: [...]} ──→ Device
@@ -415,6 +422,7 @@ First deploy:
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
+| `GET` | `/api/v1/device/info` | **Device summary** — panel name, screen size, screen list, image/font counts (no widget JSON) |
 | `GET` | `/api/v1/screens` | **Load all** — full JSON for every screen |
 | `PUT` | `/api/v1/screens` | **Deploy all** — full JSON for every screen (body: `{screens: [...]}`) |
 | `GET` | `/api/v1/screens/:name` | Load single screen |
@@ -422,6 +430,33 @@ First deploy:
 | `PATCH` | `/api/v1/screens/:name` | Delta update — only changed keys (optimization, see §6.5) |
 | `PATCH` | `/api/v1/screens/:name/widgets/:id` | Delta single widget (optimization) |
 | `POST` | `/api/v1/screens/:name/actions` | Execute action (button press, setpoint change, etc.) |
+
+#### 6.4.1. Device Info Response (`GET /api/v1/device/info`)
+
+```json
+{
+    "panel_name": "T3-BB",
+    "serial_number": 0,
+    "screen_size": { "width": 480, "height": 320 },
+    "screen_count": 11,
+    "screens": [
+        "start_up_screen",
+        "home_screen",
+        "main_menu",
+        "schedule_screen",
+        "schedule_edit_screen",
+        "holiday_calender_screen",
+        "network_config",
+        "protocols",
+        "parameters",
+        "time",
+        "wifi_config"
+    ],
+    "image_count": 16,
+    "font_count": 1,
+    "firmware_version": "5.1.0"
+}
+```
 
 ### 6.5. Delta Update Protocol (`PATCH` — Optimization)
 
