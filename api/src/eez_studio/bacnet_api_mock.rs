@@ -390,8 +390,8 @@ pub async fn get_device_info() -> Result<Json<DeviceInfoResponse>, StatusCode> {
 fn count_firmware_assets(dir: &std::path::Path) -> (usize, usize, u32, u32) {
     let mut images = 0usize;
     let mut fonts = 0usize;
-    let mut width: u32 = 480;  // TFT_HOR_RES from lcd_drv.h (ILI9341 landscape)
-    let mut height: u32 = 320; // TFT_VER_RES from lcd_drv.h
+    let mut width: u32 = 320;  // ILI9341 display resolution (portrait)
+    let mut height: u32 = 240;
 
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {

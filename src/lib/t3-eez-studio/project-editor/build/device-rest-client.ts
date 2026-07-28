@@ -204,7 +204,7 @@ export class DeviceRestClient {
         return {
             panel_name: all.meta?.panel_name ?? "Unknown",
             serial_number: all.meta?.serial_number ?? 0,
-            screen_size: { width: 480, height: 320 },
+            screen_size: { width: 320, height: 240 },
             screen_count: all.screens.length,
             screens: all.screens.map(s => s.name),
             image_count: 0,

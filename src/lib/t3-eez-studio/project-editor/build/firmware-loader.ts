@@ -99,8 +99,9 @@ export function firmwareToProject(
 
     for (const screen of screens) {
         for (const f of screen.json.fonts || []) {
-            // Strip lv_font_ prefix for cleaner naming (e.g. "lv_font_montserrat_40" → "montserrat_40")
-            const cleanName = f.name.replace(/^lv_font_/, "");
+            // Strip lv_font_ prefix and UPPERCASE for cleaner naming
+            // (e.g. "lv_font_montserrat_40" → "MONTSERRAT_40" matching BUILT_IN_FONTS)
+            const cleanName = f.name.replace(/^lv_font_/, "").toUpperCase();
             if (!seenFonts.has(cleanName)) {
                 seenFonts.add(cleanName);
                 allFonts.push({ name: cleanName, size: f.size });
@@ -124,8 +125,8 @@ export function firmwareToProject(
                 projectType: "lvgl",
                 lvglVersion: "9.5.0",
                 flowSupport: true,
-                displayWidth: displaySize?.width ?? 480,
-                displayHeight: displaySize?.height ?? 320,
+                displayWidth: displaySize?.width ?? 320,
+                displayHeight: displaySize?.height ?? 240,
                 displayBorderRadius: 0,
                 colorFormat: "RGB",
                 extensions: [],
@@ -154,8 +155,8 @@ export function firmwareToProject(
             const genId = () => `imp_${s.name}_${compIdx++}_${Date.now().toString(36)}`;
 
             const pageId = `page_${s.name}_${Date.now().toString(36)}`;
-            const displayW = displaySize?.width ?? 800;
-            const displayH = displaySize?.height ?? 480;
+            const displayW = displaySize?.width ?? 320;
+            const displayH = displaySize?.height ?? 240;
 
             // ── Background panel (full-screen, replaces page-level localStyles) ──
             const bgColor = (s.json as any).bg_color;
@@ -256,18 +257,32 @@ function firmwareWidgetToComponent(
     let widthVal = w.width ?? 0;
     let heightVal = w.height ?? 0;
 
+    // Estimate size for content-sized labels BEFORE computing centered position.
+    // Extract font size from text_font style (e.g. "MONTSERRAT_40" → 40) for better estimates.
+    const fontName: string | undefined =
+        (w.style as any)?.DEFAULT?.text_font || undefined;
+    const fontSize: number = (() => {
+        if (!fontName) return 16; // default LVGL font size
+        const match = fontName.match(/[Mm][Oo][Nn][Tt][Ss][Ee][Rr][Rr][Aa][Tt]_(\d+)/);
+        if (match) return parseInt(match[1], 10);
+        // Try generic: any name ending in _<number>
+        const genericMatch = fontName.match(/_(\d+)$/);
+        if (genericMatch) return parseInt(genericMatch[1], 10);
+        return 16;
+    })();
+
+    if (isSizeContentW && (w.obj_text || "")) {
+        // Rough proportional estimate: average char width ≈ fontSize * 0.58
+        widthVal = Math.max(Math.round((w.obj_text || "").length * fontSize * 0.58), 20);
+    }
+    if (isSizeContentH && (w.obj_text || "")) {
+        heightVal = Math.max(fontSize + 4, 20);
+    }
+
     if (isCentered) {
         // Center the widget on screen, then add x/y offsets (LVGL preserves x/y as offsets from aligned position)
         leftVal = Math.round((displayW - widthVal) / 2) + (w.x_pos ?? 0);
         topVal = Math.round((displayH - heightVal) / 2) + (w.y_pos ?? 0);
-    }
-
-    // Estimate size for content-sized labels based on text length
-    if (isSizeContentW && (w.obj_text || "")) {
-        widthVal = Math.max((w.obj_text || "").length * 10, 40);
-    }
-    if (isSizeContentH && (w.obj_text || "")) {
-        heightVal = 24;
     }
 
     const comp: Record<string, any> = {
@@ -391,13 +406,13 @@ function firmwareWidgetToComponent(
     // w.style is { STATE: { PROP: VALUE } } from parser (e.g. { DEFAULT: { bg_color: "#000" } })
     // Wrap in MAIN part since components only have MAIN as LVGL part
     if (w.style) {
-        // Clean font names: lv_font_montserrat_40 → montserrat_40
+        // Clean font names: lv_font_montserrat_40 → MONTSERRAT_40 (uppercase for BUILT_IN_FONTS)
         const cleanedStyle: Record<string, Record<string, any>> = {};
         for (const [state, props] of Object.entries(w.style as Record<string, Record<string, any>>)) {
             cleanedStyle[state] = {};
             for (const [prop, value] of Object.entries(props)) {
                 if (prop === "text_font" && typeof value === "string") {
-                    cleanedStyle[state][prop] = value.replace(/^lv_font_/, "");
+                    cleanedStyle[state][prop] = value.replace(/^lv_font_/, "").toUpperCase();
                 } else {
                     cleanedStyle[state][prop] = value;
                 }
