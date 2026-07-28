@@ -300,17 +300,24 @@ function firmwareWidgetToComponent(
         const fontName: string | undefined =
             (w.style as any)?.DEFAULT?.text_font || undefined;
         const fontSize = (() => {
-            const m = fontName?.match(/_(\d+)$/);
-            return m ? parseInt(m[1], 10) : 16;
+            if (!fontName) return 16;
+            const m = fontName.match(/_(\d+)$/);
+            if (m) return parseInt(m[1], 10);
+            // Custom font: "Arial80" → 80, "lv_font_montserrat_40" → 40
+            const digits = fontName.match(/(\d+)/);
+            return digits ? parseInt(digits[1], 10) : 16;
         })();
-        widthVal = Math.round((w.obj_text || "").length * fontSize * 0.48);
+        widthVal = Math.max((w.obj_text || "").length * fontSize * 0.48, 80);
     }
     if (isSizeContentH && (w.obj_text || "")) {
         const fontName: string | undefined =
             (w.style as any)?.DEFAULT?.text_font || undefined;
         const fontSize = (() => {
-            const m = fontName?.match(/_(\d+)$/);
-            return m ? parseInt(m[1], 10) : 16;
+            if (!fontName) return 16;
+            const m = fontName.match(/_(\d+)$/);
+            if (m) return parseInt(m[1], 10);
+            const digits = fontName.match(/(\d+)/);
+            return digits ? parseInt(digits[1], 10) : 16;
         })();
         heightVal = Math.max(fontSize + 6, 24);
     }
@@ -513,6 +520,35 @@ function firmwareWidgetToComponent(
                 left_mid: "LEFT_MID", right_mid: "RIGHT_MID",
             };
             defaultState["align"] = alignMap[firmwareAlign.toLowerCase()] || firmwareAlign.toUpperCase();
+        }
+
+        // Map custom fonts (e.g. "Arial80") to closest built-in MONTSERRAT
+        if (cleanedStyle["DEFAULT"]?.text_font) {
+            const font = cleanedStyle["DEFAULT"].text_font;
+            // Custom font names that aren't MONTSERRAT_* → find closest match
+            if (!/^MONTSERRAT_\d+$/.test(font)) {
+                const digits = font.match(/(\d+)/);
+                if (digits) {
+                    const targetSize = parseInt(digits[1], 10);
+                    const available = [8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48];
+                    const closest = available.reduce((prev, curr) =>
+                        Math.abs(curr - targetSize) < Math.abs(prev - targetSize) ? curr : prev
+                    );
+                    cleanedStyle["DEFAULT"].text_font = `MONTSERRAT_${closest}`;
+                }
+            }
+        }
+
+        // Button with child labels: zero out padding so text isn't clipped
+        if (lvglType === "LVGLButtonWidget" && w.children) {
+            const hasLabel = Object.values(w.children).some(c => c.sub_type === "label");
+            if (hasLabel) {
+                const defaultState = cleanedStyle["DEFAULT"] || (cleanedStyle["DEFAULT"] = {});
+                defaultState["pad_left"] = 0;
+                defaultState["pad_right"] = 0;
+                defaultState["pad_top"] = 0;
+                defaultState["pad_bottom"] = 0;
+            }
         }
 
         comp.localStyles = {

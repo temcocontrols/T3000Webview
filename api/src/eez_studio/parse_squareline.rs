@@ -158,15 +158,26 @@ fn extract_font_ref(line: &str) -> Option<String> {
 }
 
 /// Extract font size from font name like "lv_font_montserrat_40" → 40
+/// Also handles custom fonts: "Arial80" → 80
 fn extract_font_size(line: &str) -> Option<i32> {
     if !line.contains("lv_obj_set_style_text_font") { return None; }
+    // System font: &lv_font_montserrat_40
     if let Some(start) = line.find("&lv_font_") {
         let rest = &line[start + 1..];
         let end = rest.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(rest.len());
         let name = &rest[..end];
-        // Extract trailing digits: "lv_font_montserrat_40" → 40
         if let Some(last_underscore) = name.rfind('_') {
             return name[last_underscore + 1..].parse::<i32>().ok();
+        }
+    }
+    // Custom font: &ui_font_Arial80 → extract "80"
+    if let Some(start) = line.find("&ui_font_") {
+        let rest = &line[start + 1..];
+        let end = rest.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(rest.len());
+        let name = &rest[..end].replace("ui_font_", "");
+        // Extract trailing digits (e.g. "Arial80" → 80)
+        if let Some(digit_start) = name.find(|c: char| c.is_ascii_digit()) {
+            return name[digit_start..].parse::<i32>().ok();
         }
     }
     None
