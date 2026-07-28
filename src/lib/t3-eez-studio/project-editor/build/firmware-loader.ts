@@ -41,6 +41,9 @@ interface FirmwareWidget {
     value_left?: string;
     value_left_type?: string;
     mode?: string;
+    // arc-specific (from lv_arc_set_bg_angles / lv_arc_set_rotation)
+    bg_start_angle?: number;
+    bg_end_angle?: number;
     // image
     src?: string;
     rotation?: number;
@@ -227,7 +230,7 @@ export function firmwareToProject(
             }
 
             for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
-                const comp = firmwareWidgetToComponent(widgetId, w, displayW, displayH);
+                const comp = firmwareWidgetToComponent(widgetId, w);
                 comp.objID = genId();
                 widgetComponents.push(comp);
             }
@@ -269,50 +272,47 @@ export function firmwareToProject(
 
 function firmwareWidgetToComponent(
     id: string,
-    w: FirmwareWidget,
-    displayW: number = 800,
-    displayH: number = 480
+    w: FirmwareWidget
 ): Record<string, any> {
     const lvglType = SUB_TYPE_MAP[w.sub_type] || "LVGLPanelWidget";
 
     // Detect LV_SIZE_CONTENT: width/height = 0 (set by parse_squareline for LV_SIZE_CONTENT)
     const isSizeContentW = w.width === 0;
     const isSizeContentH = w.height === 0;
-    // Detect centered widget (LV_ALIGN_CENTER in firmware)
-    const isCentered = (w as any).align === "center";
+    // Detect alignment from firmware (e.g. LV_ALIGN_CENTER → "CENTER")
+    const firmwareAlign = (w as any).align as string | undefined;
 
-    // Compute pixel position for centered widgets
-    let leftVal = w.x_pos ?? 0;
-    let topVal = w.y_pos ?? 0;
+    // In LVGL, x/y are OFFSETS from the aligned position when align is set.
+    // EEZ Studio supports the `align` property natively, so we pass it through
+    // instead of computing absolute pixel positions.
+    const leftVal = w.x_pos ?? 0;
+    const topVal = w.y_pos ?? 0;
     let widthVal = w.width ?? 0;
     let heightVal = w.height ?? 0;
 
-    // Estimate size for content-sized labels BEFORE computing centered position.
-    // Extract font size from text_font style (e.g. "MONTSERRAT_40" → 40) for better estimates.
-    const fontName: string | undefined =
-        (w.style as any)?.DEFAULT?.text_font || undefined;
-    const fontSize: number = (() => {
-        if (!fontName) return 16; // default LVGL font size
-        const match = fontName.match(/[Mm][Oo][Nn][Tt][Ss][Ee][Rr][Rr][Aa][Tt]_(\d+)/);
-        if (match) return parseInt(match[1], 10);
-        // Try generic: any name ending in _<number>
-        const genericMatch = fontName.match(/_(\d+)$/);
-        if (genericMatch) return parseInt(genericMatch[1], 10);
-        return 16;
-    })();
-
+    // For content-sized labels, provide generous estimates so LVGL never
+    // clips the text. Exact sizing is handled at runtime by widthUnit/heightUnit
+    // "content" + the align property. Over-estimating is safe — the editor box
+    // is slightly wider than the text, but LVGL renders at the exact glyph size.
     if (isSizeContentW && (w.obj_text || "")) {
-        // Rough proportional estimate: average char width ≈ fontSize * 0.58
-        widthVal = Math.max(Math.round((w.obj_text || "").length * fontSize * 0.58), 20);
+        const fontName: string | undefined =
+            (w.style as any)?.DEFAULT?.text_font || undefined;
+        const fontSize = (() => {
+            const m = fontName?.match(/_(\d+)$/);
+            return m ? parseInt(m[1], 10) : 16;
+        })();
+        // Upper bound: char count × font size (generous, never clips)
+        widthVal = Math.max((w.obj_text || "").length * fontSize, 80);
     }
     if (isSizeContentH && (w.obj_text || "")) {
-        heightVal = Math.max(fontSize + 4, 20);
-    }
-
-    if (isCentered) {
-        // Center the widget on screen, then add x/y offsets (LVGL preserves x/y as offsets from aligned position)
-        leftVal = Math.round((displayW - widthVal) / 2) + (w.x_pos ?? 0);
-        topVal = Math.round((displayH - heightVal) / 2) + (w.y_pos ?? 0);
+        const fontName: string | undefined =
+            (w.style as any)?.DEFAULT?.text_font || undefined;
+        const fontSize = (() => {
+            const m = fontName?.match(/_(\d+)$/);
+            return m ? parseInt(m[1], 10) : 16;
+        })();
+        // Font size + padding for ascender/descender
+        heightVal = fontSize + 8;
     }
 
     const comp: Record<string, any> = {
@@ -372,6 +372,23 @@ function firmwareWidgetToComponent(
             comp.valueLeftType = w.value_left_type || "expression";
         }
         if (w.mode) comp.mode = w.mode;
+    }
+
+    // ── Arc-specific ──
+    if (lvglType === "LVGLArcWidget") {
+        if (w.bg_start_angle != null) {
+            comp.bgStartAngle = w.bg_start_angle;
+            comp.bgStartAngleType = "literal";
+        }
+        if (w.bg_end_angle != null) {
+            comp.bgEndAngle = w.bg_end_angle;
+            comp.bgEndAngleType = "literal";
+        }
+        // Arc rotation from lv_arc_set_rotation
+        if (w.rotation != null) {
+            comp.rotation = w.rotation;
+            comp.rotationType = "literal";
+        }
     }
 
     // ── Image ──
@@ -435,19 +452,38 @@ function firmwareWidgetToComponent(
     // ── Style ──
     // w.style is { STATE: { PROP: VALUE } } from parser (e.g. { DEFAULT: { bg_color: "#000" } })
     // Wrap in MAIN part since components only have MAIN as LVGL part
-    if (w.style) {
-        // Clean font names: lv_font_montserrat_40 → MONTSERRAT_40 (uppercase for BUILT_IN_FONTS)
+    const hasStyle = !!(w.style && Object.keys(w.style).length > 0);
+    const hasAlign = !!firmwareAlign;
+    if (hasStyle || hasAlign) {
         const cleanedStyle: Record<string, Record<string, any>> = {};
-        for (const [state, props] of Object.entries(w.style as Record<string, Record<string, any>>)) {
-            cleanedStyle[state] = {};
-            for (const [prop, value] of Object.entries(props)) {
-                if (prop === "text_font" && typeof value === "string") {
-                    cleanedStyle[state][prop] = value.replace(/^lv_font_/, "").toUpperCase();
-                } else {
-                    cleanedStyle[state][prop] = value;
+
+        // Copy firmware style properties (font, color, etc.)
+        if (w.style) {
+            for (const [state, props] of Object.entries(w.style as Record<string, Record<string, any>>)) {
+                cleanedStyle[state] = {};
+                for (const [prop, value] of Object.entries(props)) {
+                    if (prop === "text_font" && typeof value === "string") {
+                        cleanedStyle[state][prop] = value.replace(/^lv_font_/, "").toUpperCase();
+                    } else {
+                        cleanedStyle[state][prop] = value;
+                    }
                 }
             }
         }
+
+        // Add alignment if firmware set it (e.g. LV_ALIGN_CENTER → "CENTER")
+        if (hasAlign) {
+            const defaultState = cleanedStyle["DEFAULT"] || (cleanedStyle["DEFAULT"] = {});
+            // Map firmware align names to EEZ Studio align enum values
+            const alignMap: Record<string, string> = {
+                center: "CENTER",
+                top_left: "TOP_LEFT", top_mid: "TOP_MID", top_right: "TOP_RIGHT",
+                bottom_left: "BOTTOM_LEFT", bottom_mid: "BOTTOM_MID", bottom_right: "BOTTOM_RIGHT",
+                left_mid: "LEFT_MID", right_mid: "RIGHT_MID",
+            };
+            defaultState["align"] = alignMap[firmwareAlign.toLowerCase()] || firmwareAlign.toUpperCase();
+        }
+
         comp.localStyles = {
             objID: `${comp.objID}_style_${Date.now().toString(36)}`,
             definition: { MAIN: cleanedStyle },

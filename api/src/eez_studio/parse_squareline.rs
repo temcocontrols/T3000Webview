@@ -438,6 +438,23 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             }
         }
 
+        // Arc background angles: lv_arc_set_bg_angles(obj, start, end)
+        if line.contains("lv_arc_set_bg_angles") {
+            let ints = extract_ints(line, "lv_arc_set_bg_angles");
+            if ints.len() >= 2 {
+                w.extra.insert("bg_start_angle".into(), json!(ints[ints.len() - 2]));
+                w.extra.insert("bg_end_angle".into(), json!(ints[ints.len() - 1]));
+            }
+        }
+
+        // Arc rotation: lv_arc_set_rotation(obj, degrees)
+        if line.contains("lv_arc_set_rotation") {
+            let ints = extract_ints(line, "lv_arc_set_rotation");
+            if let Some(&v) = ints.last() {
+                w.extra.insert("rotation".into(), json!(v));
+            }
+        }
+
         // Switch/Slider value: lv_arc_set_value / lv_bar_set_value
         if line.contains("lv_arc_set_value") || line.contains("lv_bar_set_value") || line.contains("lv_slider_set_value") {
             let ints = extract_ints(line, &line[..line.find('(').unwrap_or(0)].trim().to_string());
