@@ -192,6 +192,74 @@ fn extract_hex_color(line: &str) -> Option<u32> {
     u32::from_str_radix(&hex_str[..end], 16).ok()
 }
 
+/// Generic parser for ANY `lv_obj_set_style_<prop>(obj, <value>, <selector>)` call.
+/// Returns (prop_name, json_value, part, state) or None if not a style line.
+fn parse_style_property(line: &str) -> Option<(String, Value, String, String)> {
+    let prefix = "lv_obj_set_style_";
+    let start = line.find(prefix)?;
+    let after_prefix = &line[start + prefix.len()..];
+
+    // Extract property name (up to the opening paren)
+    let paren = after_prefix.find('(')?;
+    let prop_name = after_prefix[..paren].trim().to_string();
+    if prop_name.is_empty() { return None; }
+
+    // Extract value — second argument after first comma
+    let args_str = &after_prefix[paren + 1..];
+    let first_comma = args_str.find(',')?;
+    let value_str = args_str[first_comma + 1..]
+        .split(',')
+        .next()?
+        .trim();
+
+    // Parse value: hex color, integer, or LVGL constant
+    let value: Value = if let Some(hex) = extract_hex_color(line) {
+        json!(format!("#{:06X}", hex))
+    } else if let Ok(num) = value_str.parse::<i32>() {
+        json!(num)
+    } else {
+        // LVGL constant like LV_OPA_COVER, LV_BORDER_SIDE_NONE, etc.
+        let cleaned = value_str
+            .trim_start_matches("LV_OPA_")  // LV_OPA_COVER → COVER
+            .trim_start_matches("LV_BORDER_SIDE_")  // LV_BORDER_SIDE_NONE → NONE
+            .trim_start_matches("LV_GRAD_DIR_")
+            .trim_start_matches("LV_TEXT_ALIGN_")
+            .trim_start_matches("LV_TEXT_DECOR_")
+            .trim_start_matches("LV_DIR_")
+            .to_lowercase();
+        json!(cleaned)
+    };
+
+    // Extract part and state from selector (third argument)
+    let selector_str = args_str
+        .split(',')
+        .nth(2)
+        .unwrap_or("")
+        .split(')')
+        .next()
+        .unwrap_or("")
+        .trim();
+
+    let part = if selector_str.contains("LV_PART_INDICATOR") { "INDICATOR" }
+        else if selector_str.contains("LV_PART_KNOB") { "KNOB" }
+        else if selector_str.contains("LV_PART_MAIN") { "MAIN" }
+        else if selector_str.contains("LV_PART_ITEMS") { "ITEMS" }
+        else if selector_str.contains("LV_PART_SELECTED") { "SELECTED" }
+        else if selector_str.contains("LV_PART_SCROLLBAR") { "SCROLLBAR" }
+        else if selector_str.contains("LV_PART_CURSOR") { "CURSOR" }
+        else if selector_str.contains("LV_PART_TEXTAREA_PLACEHOLDER") { "TEXTAREA_PLACEHOLDER" }
+        else { "DEFAULT" };
+
+    let state = if selector_str.contains("LV_STATE_CHECKED") { "CHECKED" }
+        else if selector_str.contains("LV_STATE_PRESSED") { "PRESSED" }
+        else if selector_str.contains("LV_STATE_FOCUSED") { "FOCUSED" }
+        else if selector_str.contains("LV_STATE_DISABLED") { "DISABLED" }
+        else if selector_str.contains("LV_STATE_SCROLLED") { "SCROLLED" }
+        else { "DEFAULT" };
+
+    Some((prop_name, value, part.to_string(), state.to_string()))
+}
+
 /// Parse the size hint from SquareLine's `/// <number>` comment after LV_SIZE_CONTENT.
 /// e.g. `lv_obj_set_width(obj, LV_SIZE_CONTENT);   /// 1` → Some(1)
 fn parse_size_comment(line: &str) -> Option<i32> {
@@ -347,61 +415,16 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             }
         }
 
-        // ── Style extraction ──────────────────────────────────────
-
-        // Background color: lv_obj_set_style_bg_color(obj, lv_color_hex(0xRRGGBB), ...)
-        if line.contains("lv_obj_set_style_bg_color") {
-            if let Some(hex) = extract_hex_color(line) {
+        // ── Style extraction (generic: handles ALL lv_obj_set_style_* calls) ──
+        if line.contains("lv_obj_set_style_") && !line.contains("lv_obj_set_style_text_font") {
+            if let Some((prop_name, value, _part, state)) = parse_style_property(line) {
+                let state_key = if state == "DEFAULT" && _part == "DEFAULT" { "DEFAULT".to_string() } else { state.to_string() };
                 let style = w.style.get_or_insert(serde_json::json!({}));
-                style["DEFAULT"] = serde_json::json!({"bg_color": format!("#{:06X}", hex)});
-            }
-        }
-        // Text color: lv_obj_set_style_text_color(obj, lv_color_hex(0xRRGGBB), ...)
-        if line.contains("lv_obj_set_style_text_color") {
-            if let Some(hex) = extract_hex_color(line) {
-                let style = w.style.get_or_insert(serde_json::json!({}));
-                if let Some(def) = style.get_mut("DEFAULT") {
-                    def["text_color"] = serde_json::json!(format!("#{:06X}", hex));
+                if let Some(existing) = style.get_mut(&state_key) {
+                    existing[&prop_name] = value;
                 } else {
-                    *style = serde_json::json!({"DEFAULT": {"text_color": format!("#{:06X}", hex)}});
+                    style[&state_key] = serde_json::json!({&prop_name: value});
                 }
-            }
-        }
-        // Arc color: lv_obj_set_style_arc_color(obj, lv_color_hex(0xRRGGBB), ...)
-        if line.contains("lv_obj_set_style_arc_color") {
-            if let Some(hex) = extract_hex_color(line) {
-                let style = w.style.get_or_insert(serde_json::json!({}));
-                let part = if line.contains("LV_PART_INDICATOR") { "INDICATOR" } else { "DEFAULT" };
-                if let Some(def) = style.get_mut(part) {
-                    def["arc_color"] = serde_json::json!(format!("#{:06X}", hex));
-                } else {
-                    *style = serde_json::json!({part: {"arc_color": format!("#{:06X}", hex)}});
-                }
-            }
-        }
-        // Arc width: lv_obj_set_style_arc_width(obj, w, ...)
-        if line.contains("lv_obj_set_style_arc_width") {
-            let ints = extract_ints(line, "lv_obj_set_style_arc_width");
-            if let Some(&v) = ints.last() {
-                let style = w.style.get_or_insert(serde_json::json!({}));
-                let part = if line.contains("LV_PART_INDICATOR") { "INDICATOR" } else { "DEFAULT" };
-                if let Some(def) = style.get_mut(part) {
-                    def["arc_width"] = serde_json::json!(v);
-                } else {
-                    *style = serde_json::json!({part: {"arc_width": v}});
-                }
-            }
-        }
-        // Border side: lv_obj_set_style_border_side(obj, LV_BORDER_SIDE_NONE, ...)
-        if line.contains("lv_obj_set_style_border_side") {
-            let side = if line.contains("LV_BORDER_SIDE_NONE") { "none" }
-                else if line.contains("LV_BORDER_SIDE_FULL") { "full" }
-                else { "none" };
-            let style = w.style.get_or_insert(serde_json::json!({}));
-            if let Some(def) = style.get_mut("DEFAULT") {
-                def["border_side"] = serde_json::json!(side);
-            } else {
-                *style = serde_json::json!({"DEFAULT": {"border_side": side}});
             }
         }
 

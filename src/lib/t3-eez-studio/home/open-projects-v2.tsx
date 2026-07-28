@@ -525,6 +525,16 @@ class OpenProjectsStore {
         const item = this.selectedMruItem;
         if (!item) return;
 
+        // Clear selection IMMEDIATELY so no observer re-reads the deleted file
+        runInAction(() => {
+            this.removeDialogOpen = false;
+            this.selectedMruItem = undefined;
+            this.selectedProjectInfo = undefined;
+        });
+
+        // Remove from MRU list before deleting disk to prevent stale reads
+        settingsController.removeItemFromMRU(item);
+
         // Delete the project folder from disk via backend
         const projectDir = path.dirname(item.filePath);
         try {
@@ -535,15 +545,6 @@ class OpenProjectsStore {
         } catch (err) {
             console.error("Failed to delete project folder:", err);
         }
-
-        // Remove from MRU list
-        settingsController.removeItemFromMRU(item);
-
-        runInAction(() => {
-            this.removeDialogOpen = false;
-            this.selectedMruItem = undefined;
-            this.selectedProjectInfo = undefined;
-        });
     };
 
     cancelRemove = () => {

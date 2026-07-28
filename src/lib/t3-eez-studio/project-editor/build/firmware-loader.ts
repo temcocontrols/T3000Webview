@@ -290,10 +290,8 @@ function firmwareWidgetToComponent(
     let widthVal = w.width ?? 0;
     let heightVal = w.height ?? 0;
 
-    // For content-sized labels, provide generous estimates so LVGL never
-    // clips the text. Exact sizing is handled at runtime by widthUnit/heightUnit
-    // "content" + the align property. Over-estimating is safe — the editor box
-    // is slightly wider than the text, but LVGL renders at the exact glyph size.
+    // For content-sized labels, estimate width/height from font size.
+    // The "align: CENTER" style (set below) handles positioning natively in LVGL.
     if (isSizeContentW && (w.obj_text || "")) {
         const fontName: string | undefined =
             (w.style as any)?.DEFAULT?.text_font || undefined;
@@ -301,8 +299,7 @@ function firmwareWidgetToComponent(
             const m = fontName?.match(/_(\d+)$/);
             return m ? parseInt(m[1], 10) : 16;
         })();
-        // Upper bound: char count × font size (generous, never clips)
-        widthVal = Math.max((w.obj_text || "").length * fontSize, 80);
+        widthVal = Math.round((w.obj_text || "").length * fontSize * 0.48);
     }
     if (isSizeContentH && (w.obj_text || "")) {
         const fontName: string | undefined =
@@ -311,8 +308,7 @@ function firmwareWidgetToComponent(
             const m = fontName?.match(/_(\d+)$/);
             return m ? parseInt(m[1], 10) : 16;
         })();
-        // Font size + padding for ascender/descender
-        heightVal = fontSize + 8;
+        heightVal = Math.max(fontSize + 6, 24);
     }
 
     const comp: Record<string, any> = {
@@ -328,8 +324,8 @@ function firmwareWidgetToComponent(
         // ── Required LVGLWidget base properties ──
         leftUnit: "px",
         topUnit: "px",
-        widthUnit: isSizeContentW ? "content" : "px",
-        heightUnit: isSizeContentH ? "content" : "px",
+        widthUnit: "px",
+        heightUnit: "px",
         hiddenFlagType: "literal",
         clickableFlag: true,
         clickableFlagType: "literal",
@@ -361,15 +357,23 @@ function firmwareWidgetToComponent(
         lvglType === "LVGLBarWidget" ||
         lvglType === "LVGLSliderWidget"
     ) {
-        comp.min = w.min ?? 0;
-        comp.max = w.max ?? 100;
+        // EEZ uses rangeMin/rangeMax for arc, min/max for bar/slider
+        if (lvglType === "LVGLArcWidget") {
+            comp.rangeMin = w.min ?? 0;
+            comp.rangeMinType = "literal";
+            comp.rangeMax = w.max ?? 100;
+            comp.rangeMaxType = "literal";
+        } else {
+            comp.min = w.min ?? 0;
+            comp.max = w.max ?? 100;
+        }
         if (w.value != null) {
             comp.value = w.value;
-            comp.valueType = w.value_type || "expression";
+            comp.valueType = w.value_type || "literal";
         }
         if (w.value_left != null) {
             comp.valueLeft = w.value_left;
-            comp.valueLeftType = w.value_left_type || "expression";
+            comp.valueLeftType = w.value_left_type || "literal";
         }
         if (w.mode) comp.mode = w.mode;
     }
