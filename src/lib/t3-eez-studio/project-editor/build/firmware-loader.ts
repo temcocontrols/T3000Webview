@@ -62,8 +62,9 @@ interface FirmwareWidget {
     // switch
     checkedState?: string;
     checkedStateType?: string;
-    // dropdown
+    // dropdown / roller
     options?: string[];
+    optionsType?: string;
     selected?: string;
     // user widget
     widget?: string;
@@ -442,6 +443,20 @@ function firmwareWidgetToComponent(
         if (w.selected != null) comp.selected = w.selected;
     }
 
+    // ── Roller ──
+    if (lvglType === "LVGLRollerWidget") {
+        if (w.options?.length) {
+            comp.options = w.options.map(o =>
+                typeof o === "string" ? o : (o as any).label || (o as any).text || "?"
+            );
+        }
+        // Default options so roller doesn't crash on empty
+        if (!comp.options || comp.options.length === 0) {
+            comp.options = ["--"];
+        }
+        comp.optionsType = "literal";
+    }
+
     // ── User Widget ──
     if (lvglType === "LVGLUserWidgetWidget" && w.widget) {
         comp.userWidgetPageName = w.widget;
@@ -530,9 +545,9 @@ function firmwareWidgetToComponent(
         comp.clickableFlag = false;
     }
 
-    // ── Children (panel / dropdown) ──
+    // ── Children (panel / button / dropdown) ──
     if (w.children) {
-        comp.components = Object.entries(w.children).map(([cid, cw]) =>
+        comp.children = Object.entries(w.children).map(([cid, cw]) =>
             firmwareWidgetToComponent(cid, cw)
         );
     }
