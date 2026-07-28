@@ -58,6 +58,7 @@ const CREATE_PATTERNS: &[(&str, &str)] = &[
     ("lv_label_create", "label"),
     ("lv_button_create", "button"),
     ("lv_btn_create", "button"),
+    ("lv_imagebutton_create", "imagebutton"),
     ("lv_arc_create", "arc"),
     ("lv_bar_create", "bar"),
     ("lv_img_create", "image"),
@@ -66,6 +67,7 @@ const CREATE_PATTERNS: &[(&str, &str)] = &[
     ("lv_slider_create", "slider"),
     ("lv_dropdown_create", "dropdown"),
     ("lv_textarea_create", "textarea"),
+    ("lv_roller_create", "roller"),
 ];
 
 fn detect_sub_type(line: &str) -> Option<&'static str> {
@@ -345,19 +347,21 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         }
         skip_root_screen = false;
 
-        // Detect widget creation
-        if let Some(sub_type) = detect_sub_type(line) {
+        // Detect widget creation (panels use lv_obj_create, not in CREATE_PATTERNS)
+        let detected = detect_sub_type(line);
+        let is_panel = !detected.is_some() && line.contains("lv_obj_create")
+            && !line.contains("lv_obj_create(NULL)") && !line.contains("lv_obj_create( NULL )");
+        if detected.is_some() || is_panel {
+            let sub_type = detected.unwrap_or("panel");
             let id = extract_var_name(line)
                 .map(|n| n.replace("ui_", "").replace("uic_", ""))
                 .unwrap_or_else(|| format!("w_{}", widgets.len()));
 
             let parent = extract_parent_name(line);
 
-            let is_panel = line.contains("lv_obj_create") && !CREATE_PATTERNS.iter().any(|(f, _)| line.contains(f) && *f != "lv_obj_create");
-
             widgets.push(FirmwareWidget {
                 id,
-                sub_type: if is_panel { "panel".to_string() } else { sub_type.to_string() },
+                sub_type: sub_type.to_string(),
                 parent,
                 x_pos: 0,
                 y_pos: 0,
@@ -565,6 +569,29 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         if w.sub_type == "dropdown" {
             if line.contains("lv_dropdown_set_options") {
                 if let Some(opts) = extract_string(line, "lv_dropdown_set_options", '"') {
+                    let items: Vec<Value> = opts.split("\\n").map(|s| json!(s)).collect();
+                    w.extra.insert("options".into(), json!(items));
+                }
+            }
+        }
+
+        // Textarea placeholder: lv_textarea_set_placeholder_text(obj, "...")
+        if w.sub_type == "textarea" {
+            if line.contains("lv_textarea_set_placeholder_text") {
+                if let Some(ph) = extract_string(line, "lv_textarea_set_placeholder_text", '"') {
+                    w.extra.insert("placeholder".into(), json!(ph));
+                }
+            }
+            // One-line mode
+            if line.contains("lv_textarea_set_one_line") && line.contains("true") {
+                w.extra.insert("one_line".into(), json!(true));
+            }
+        }
+
+        // Roller options: lv_roller_set_options(obj, "a\nb\nc", mode)
+        if w.sub_type == "roller" {
+            if line.contains("lv_roller_set_options") {
+                if let Some(opts) = extract_string(line, "lv_roller_set_options", '"') {
                     let items: Vec<Value> = opts.split("\\n").map(|s| json!(s)).collect();
                     w.extra.insert("options".into(), json!(items));
                 }

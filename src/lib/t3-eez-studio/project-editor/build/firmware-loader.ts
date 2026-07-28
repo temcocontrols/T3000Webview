@@ -9,6 +9,7 @@
 const SUB_TYPE_MAP: Record<string, string> = {
     label: "LVGLLabelWidget",
     button: "LVGLButtonWidget",
+    imagebutton: "LVGLImgbuttonWidget",
     arc: "LVGLArcWidget",
     bar: "LVGLBarWidget",
     image: "LVGLImageWidget",
@@ -16,6 +17,7 @@ const SUB_TYPE_MAP: Record<string, string> = {
     slider: "LVGLSliderWidget",
     dropdown: "LVGLDropdownWidget",
     textarea: "LVGLTextareaWidget",
+    roller: "LVGLRollerWidget",
     panel: "LVGLPanelWidget",
     user_widget: "LVGLUserWidgetWidget",
     action: "LVGLActionComponent",
@@ -311,6 +313,10 @@ function firmwareWidgetToComponent(
         })();
         heightVal = Math.max(fontSize + 6, 24);
     }
+    // Textarea needs extra height for cursor + border
+    if (isSizeContentH && lvglType === "LVGLTextareaWidget" && heightVal < 40) {
+        heightVal = 40;
+    }
 
     const comp: Record<string, any> = {
         objID: id,
@@ -345,11 +351,16 @@ function firmwareWidgetToComponent(
     };
 
     // ── Text ──
-    if (lvglType === "LVGLLabelWidget" || lvglType === "LVGLButtonWidget") {
+    if (lvglType === "LVGLLabelWidget" || lvglType === "LVGLButtonWidget" || lvglType === "LVGLTextareaWidget") {
         comp.text = w.obj_text || "";
         comp.textType = w.text_type || "literal";
         if (w.long_mode) comp.longMode = w.long_mode;
         if (w.recolor) comp.recolor = true;
+        // Textarea-specific
+        if (lvglType === "LVGLTextareaWidget") {
+            if ((w as any).placeholder) comp.placeholder = (w as any).placeholder;
+            if ((w as any).one_line) comp.oneLineMode = true;
+        }
     }
 
     // ── Arc / Bar / Slider ──
