@@ -249,6 +249,12 @@ pub struct DeviceInfoResponse {
     pub image_count: usize,
     pub font_count: usize,
     pub firmware_version: String,
+    /// LVGL version detected from firmware C files (e.g. "9.1.0")
+    pub lvgl_version: String,
+    /// Whether the firmware uses a dark theme (dark bg, light text)
+    pub dark_theme: bool,
+    /// Color format: "RGB" (16-bit RGB565) or "ARGB8888" (32-bit)
+    pub color_format: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -367,11 +373,12 @@ pub async fn get_device_info() -> Result<Json<DeviceInfoResponse>, StatusCode> {
         })?;
 
     let screen_names: Vec<String> = screens.iter().map(|s| s.name.clone()).collect();
-    let (image_count, font_count, display_width, display_height) =
-        count_firmware_assets(&dir);
+    let (image_count, font_count, display_width, display_height, lvgl_version, dark_theme, color_format) =
+        scan_firmware_metadata(&dir);
 
-    info!("get_device_info: {} screens, {} images, {} fonts, {}x{}",
-        screen_names.len(), image_count, font_count, display_width, display_height);
+    info!("get_device_info: {} screens, {} images, {} fonts, {}x{}, lvgl={}, dark={}, fmt={}",
+        screen_names.len(), image_count, font_count, display_width, display_height,
+        lvgl_version, dark_theme, color_format);
 
     Ok(Json(DeviceInfoResponse {
         panel_name: "T3-BB".into(),
@@ -382,16 +389,21 @@ pub async fn get_device_info() -> Result<Json<DeviceInfoResponse>, StatusCode> {
         image_count,
         font_count,
         firmware_version: "5.1.0".into(),
+        lvgl_version,
+        dark_theme,
+        color_format,
     }))
 }
 
-/// Scan firmware directory for ui_img_*.c and ui_font_*.c to count assets,
-/// and try to read display resolution from the first screen's set_size calls.
-fn count_firmware_assets(dir: &std::path::Path) -> (usize, usize, u32, u32) {
+/// Scan firmware directory for metadata: assets, display size, LVGL version, theme, color format.
+fn scan_firmware_metadata(dir: &std::path::Path) -> (usize, usize, u32, u32, String, bool, String) {
     let mut images = 0usize;
     let mut fonts = 0usize;
-    let mut width: u32 = 320;  // ILI9341 display resolution (portrait)
-    let mut height: u32 = 240;
+    let mut width: u32 = 480;  // SquareLine Studio canvas (see project settings)
+    let mut height: u32 = 320;
+    let mut lvgl_version = String::from("9.5.0");
+    let mut dark_theme = true;
+    let mut color_format = String::from("RGB");
 
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -399,9 +411,33 @@ fn count_firmware_assets(dir: &std::path::Path) -> (usize, usize, u32, u32) {
             let name = name.to_string_lossy();
             if name.starts_with("ui_img_") { images += 1; }
             if name.starts_with("ui_font_") { fonts += 1; }
+
+            // Scan .c files for metadata comments
+            if name.starts_with("ui_") && name.ends_with(".c")
+                && !name.starts_with("ui_img_") && !name.starts_with("ui_font_")
+            {
+                if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                    for line in content.lines() {
+                        // Extract LVGL version from SquareLine header: // LVGL version: 9.1.0
+                        if line.starts_with("// LVGL version:") {
+                            let ver = line.trim_start_matches("// LVGL version:").trim();
+                            if !ver.is_empty() { lvgl_version = ver.to_string(); }
+                        }
+                        // Detect color depth from preprocessor: #if LV_COLOR_DEPTH != 16
+                        if line.contains("LV_COLOR_DEPTH") {
+                            if line.contains("32") {
+                                color_format = "ARGB8888".into();
+                            } else if line.contains("16") {
+                                color_format = "RGB".into();
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
+    // Try to read display size from ui.c's lv_obj_set_size calls
     let ui_c = dir.join("ui.c");
     if let Ok(content) = std::fs::read_to_string(&ui_c) {
         for line in content.lines() {
@@ -420,7 +456,7 @@ fn count_firmware_assets(dir: &std::path::Path) -> (usize, usize, u32, u32) {
         }
     }
 
-    (images, fonts, width, height)
+    (images, fonts, width, height, lvgl_version, dark_theme, color_format)
 }
 
 /// PUT /api/eez-device/screens/:name

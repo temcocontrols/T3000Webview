@@ -75,6 +75,9 @@ export interface DeviceInfoResponse {
     image_count: number;
     font_count: number;
     firmware_version: string;
+    lvgl_version: string;
+    dark_theme: boolean;
+    color_format: string;
 }
 
 /** Connection mode determined at connect time. */
@@ -204,12 +207,15 @@ export class DeviceRestClient {
         return {
             panel_name: all.meta?.panel_name ?? "Unknown",
             serial_number: all.meta?.serial_number ?? 0,
-            screen_size: { width: 320, height: 240 },
+            screen_size: { width: 480, height: 320 },
             screen_count: all.screens.length,
             screens: all.screens.map(s => s.name),
             image_count: 0,
             font_count: 0,
             firmware_version: all.meta?.firmware_version ?? "0.0.0",
+            lvgl_version: "9.5.0",
+            dark_theme: true,
+            color_format: "RGB",
         };
     }
 

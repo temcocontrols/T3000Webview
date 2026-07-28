@@ -87,10 +87,39 @@ interface DeviceMeta {
     serial_number: number;
 }
 
+/** Metadata detected from firmware — sourced from /device/info API. */
+export interface FirmwareMetadata {
+    displaySize?: { width: number; height: number };
+    lvglVersion?: string;
+    darkTheme?: boolean;
+    colorFormat?: string;
+}
+
+/**
+ * Normalize an LVGL version string to one supported by the WASM runtime.
+ * Available WASM runtimes: 8.4.0, 9.2.2, 9.3.0, 9.4.0, 9.5.0
+ * Unsupported versions (e.g. "9.1.0" from SquareLine) map to nearest available.
+ */
+const AVAILABLE_WASM_VERSIONS = ["9.5.0", "9.4.0", "9.3.0", "9.2.2", "8.4.0"];
+const DEFAULT_LVGL_VERSION = "9.5.0";
+
+function normalizeLvglVersion(raw?: string): string {
+    if (!raw) return DEFAULT_LVGL_VERSION;
+    // Exact match
+    if (AVAILABLE_WASM_VERSIONS.includes(raw)) return raw;
+    // Fuzzy: match major.minor prefix (e.g. "9.1.0" → closest 9.x)
+    const [major, minor] = raw.split(".").map(Number);
+    for (const v of AVAILABLE_WASM_VERSIONS) {
+        const [vm, vn] = v.split(".").map(Number);
+        if (vm === major && vn >= (minor || 0)) return v;
+    }
+    return DEFAULT_LVGL_VERSION;
+}
+
 export function firmwareToProject(
     screens: FirmwareScreen[],
     device: DeviceMeta,
-    displaySize?: { width: number; height: number }
+    meta?: FirmwareMetadata
 ) {
     const allFonts: { name: string; size: number }[] = [];
     const allBitmaps: string[] = [];
@@ -123,12 +152,13 @@ export function firmwareToProject(
                 objID: `proj_${device.panel_name}_${Date.now().toString(36)}`,
                 projectVersion: "v3",
                 projectType: "lvgl",
-                lvglVersion: "9.5.0",
+                lvglVersion: normalizeLvglVersion(meta?.lvglVersion),
                 flowSupport: true,
-                displayWidth: displaySize?.width ?? 320,
-                displayHeight: displaySize?.height ?? 240,
+                displayWidth: meta?.displaySize?.width ?? 480,
+                displayHeight: meta?.displaySize?.height ?? 320,
                 displayBorderRadius: 0,
-                colorFormat: "RGB",
+                colorFormat: meta?.colorFormat || "RGB",
+                darkTheme: meta?.darkTheme ?? true,
                 extensions: [],
                 imports: [],
             },
@@ -155,8 +185,8 @@ export function firmwareToProject(
             const genId = () => `imp_${s.name}_${compIdx++}_${Date.now().toString(36)}`;
 
             const pageId = `page_${s.name}_${Date.now().toString(36)}`;
-            const displayW = displaySize?.width ?? 320;
-            const displayH = displaySize?.height ?? 240;
+            const displayW = meta?.displaySize?.width ?? 480;
+            const displayH = meta?.displaySize?.height ?? 320;
 
             // ── Background panel (full-screen, replaces page-level localStyles) ──
             const bgColor = (s.json as any).bg_color;
