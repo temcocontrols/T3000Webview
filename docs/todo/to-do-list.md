@@ -93,3 +93,9 @@ Make all grid columns draggable and resizable
 EEZ‑Studio
 
 Haystack tags — new design
+
+## 2026-07-28 
+
+1. Add a color picker for the EEZ project’s control attribute settings.
+2. Change tstate → tstat (remove the “e”).
+3. Scheduler → Monday to Friday, loop event, similar to how the T3000 scheduler works.
