@@ -24,6 +24,7 @@ const SUB_TYPE_MAP: Record<string, string> = {
 interface FirmwareWidget {
     type?: string;
     sub_type: string;
+    parent?: string;
     x_pos: number;
     y_pos: number;
     width: number;

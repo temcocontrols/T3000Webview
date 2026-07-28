@@ -28,6 +28,7 @@ use tracing::info;
 pub struct FirmwareWidget {
     pub id: String,
     pub sub_type: String,
+    pub parent: Option<String>,
     pub x_pos: i32,
     pub y_pos: i32,
     pub width: i32,
@@ -55,6 +56,7 @@ pub struct ParsedScreen {
 
 const CREATE_PATTERNS: &[(&str, &str)] = &[
     ("lv_label_create", "label"),
+    ("lv_button_create", "button"),
     ("lv_btn_create", "button"),
     ("lv_arc_create", "arc"),
     ("lv_bar_create", "bar"),
@@ -84,6 +86,22 @@ fn extract_var_name(line: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Extract the parent widget name from a create call:
+/// `lv_label_create(ui_TemperatureContainer)` → Some("TemperatureContainer")
+/// `lv_obj_create(NULL)` → None (root screen)
+fn extract_parent_name(line: &str) -> Option<String> {
+    // Find opening paren after create function name
+    let paren = line.find('(')?;
+    let after_paren = &line[paren + 1..];
+    // Get first argument
+    let arg = after_paren.split(|c| c == ',' || c == ')').next()?.trim();
+    if arg == "NULL" || arg.is_empty() { return None; }
+    // Strip "ui_" prefix and "uic_" prefix
+    let clean = arg.trim_start_matches("ui_").trim_start_matches("uic_");
+    if clean.is_empty() { return None; }
+    Some(clean.to_string())
 }
 
 fn extract_ints(line: &str, func: &str) -> Vec<i32> {
@@ -302,6 +320,7 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
     let mut screen_bg_color: Option<String> = None;
     let mut current_idx: Option<usize> = None;
     let mut skip_root_screen = false;
+    let mut root_screen_id: Option<String> = None; // e.g. "HomeScreen"
 
     for line in &lines {
         let line = line.trim();
@@ -309,6 +328,9 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         // Skip root screen: lv_obj_create(NULL) — capture bg_color, don't create widget
         if line.contains("lv_obj_create(NULL)") || line.contains("lv_obj_create( NULL )") {
             skip_root_screen = true;
+            // Capture root screen variable name for parent matching
+            root_screen_id = extract_var_name(line)
+                .map(|n| n.replace("ui_", "").replace("uic_", ""));
             continue;
         }
         // Capture bg_color on root screen lines (before any widget is created)
@@ -329,11 +351,14 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
                 .map(|n| n.replace("ui_", "").replace("uic_", ""))
                 .unwrap_or_else(|| format!("w_{}", widgets.len()));
 
+            let parent = extract_parent_name(line);
+
             let is_panel = line.contains("lv_obj_create") && !CREATE_PATTERNS.iter().any(|(f, _)| line.contains(f) && *f != "lv_obj_create");
 
             widgets.push(FirmwareWidget {
                 id,
                 sub_type: if is_panel { "panel".to_string() } else { sub_type.to_string() },
+                parent,
                 x_pos: 0,
                 y_pos: 0,
                 width: 0,
@@ -547,18 +572,68 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         }
     }
 
-    let widgets_map: serde_json::Map<String, Value> = widgets.iter().map(|w| {
-        let mut obj = json!({
-            "type": "Widget", "sub_type": w.sub_type,
-            "x_pos": w.x_pos, "y_pos": w.y_pos,
-            "width": w.width, "height": w.height,
-            "obj_text": w.obj_text, "text_type": w.text_type,
-        });
-        if let Some(ref s) = w.style { obj.as_object_mut().unwrap().insert("style".into(), s.clone()); }
-        if let Some(ref e) = w.events { obj.as_object_mut().unwrap().insert("events".into(), e.clone()); }
-        for (k, v) in &w.extra { obj.as_object_mut().unwrap().insert(k.clone(), v.clone()); }
-        (w.id.clone(), obj)
-    }).collect();
+    // Build parent→children index for widget tree
+    let mut children_map: HashMap<String, Vec<String>> = HashMap::new();
+    for w in &widgets {
+        if let Some(ref parent) = w.parent {
+            children_map.entry(parent.clone()).or_default().push(w.id.clone());
+        }
+    }
+
+    let widgets_map: serde_json::Map<String, Value> = widgets.iter()
+        .filter(|w| w.parent.is_none() || w.parent.as_deref() == root_screen_id.as_deref())
+        .map(|w| {
+            let mut obj = json!({
+                "type": "Widget", "sub_type": w.sub_type,
+                "x_pos": w.x_pos, "y_pos": w.y_pos,
+                "width": w.width, "height": w.height,
+                "obj_text": w.obj_text, "text_type": w.text_type,
+            });
+            if let Some(ref s) = w.style { obj.as_object_mut().unwrap().insert("style".into(), s.clone()); }
+            if let Some(ref e) = w.events { obj.as_object_mut().unwrap().insert("events".into(), e.clone()); }
+            for (k, v) in &w.extra { obj.as_object_mut().unwrap().insert(k.clone(), v.clone()); }
+            // Include nested children
+            if let Some(child_ids) = children_map.get(&w.id) {
+                let children: serde_json::Map<String, Value> = child_ids.iter()
+                    .filter_map(|cid| widgets.iter().find(|cw| cw.id == *cid))
+                    .map(|cw| {
+                        let mut child_obj = json!({
+                            "type": "Widget", "sub_type": cw.sub_type,
+                            "x_pos": cw.x_pos, "y_pos": cw.y_pos,
+                            "width": cw.width, "height": cw.height,
+                            "obj_text": cw.obj_text, "text_type": cw.text_type,
+                        });
+                        if let Some(ref s) = cw.style { child_obj.as_object_mut().unwrap().insert("style".into(), s.clone()); }
+                        if let Some(ref e) = cw.events { child_obj.as_object_mut().unwrap().insert("events".into(), e.clone()); }
+                        for (k, v) in &cw.extra { child_obj.as_object_mut().unwrap().insert(k.clone(), v.clone()); }
+                        // Recursively include grandchildren
+                        if let Some(grandchild_ids) = children_map.get(&cw.id) {
+                            let grandchildren: serde_json::Map<String, Value> = grandchild_ids.iter()
+                                .filter_map(|gid| widgets.iter().find(|gw| gw.id == *gid))
+                                .map(|gw| {
+                                    let mut gobj = json!({
+                                        "type": "Widget", "sub_type": gw.sub_type,
+                                        "x_pos": gw.x_pos, "y_pos": gw.y_pos,
+                                        "width": gw.width, "height": gw.height,
+                                        "obj_text": gw.obj_text, "text_type": gw.text_type,
+                                    });
+                                    if let Some(ref s) = gw.style { gobj.as_object_mut().unwrap().insert("style".into(), s.clone()); }
+                                    if let Some(ref e) = gw.events { gobj.as_object_mut().unwrap().insert("events".into(), e.clone()); }
+                                    for (k, v) in &gw.extra { gobj.as_object_mut().unwrap().insert(k.clone(), v.clone()); }
+                                    (gw.id.clone(), gobj)
+                                }).collect();
+                            if !grandchildren.is_empty() {
+                                child_obj.as_object_mut().unwrap().insert("children".into(), json!(grandchildren));
+                            }
+                        }
+                        (cw.id.clone(), child_obj)
+                    }).collect();
+                if !children.is_empty() {
+                    obj.as_object_mut().unwrap().insert("children".into(), json!(children));
+                }
+            }
+            (w.id.clone(), obj)
+        }).collect();
 
     Ok(ParsedScreen {
         name: screen_name,
