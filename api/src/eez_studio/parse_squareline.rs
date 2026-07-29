@@ -469,6 +469,41 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             w.extra.insert("hidden".into(), serde_json::json!(true));
         }
 
+        // ── Flex layout detection ──
+        if line.contains("lv_obj_set_flex_flow") {
+            let flow = if line.contains("LV_FLEX_FLOW_COLUMN") { "column" }
+                else if line.contains("LV_FLEX_FLOW_ROW") { "row" }
+                else if line.contains("LV_FLEX_FLOW_COLUMN_WRAP") { "column_wrap" }
+                else if line.contains("LV_FLEX_FLOW_ROW_WRAP") { "row_wrap" }
+                else if line.contains("LV_FLEX_FLOW_ROW_REVERSE") { "row_reverse" }
+                else if line.contains("LV_FLEX_FLOW_COLUMN_REVERSE") { "column_reverse" }
+                else { "column" };
+            w.extra.insert("flex_flow".into(), serde_json::json!(flow));
+        }
+        if line.contains("lv_obj_set_flex_align") {
+            // Extract align keywords: LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, etc.
+            let extract_align = |s: &str| -> &str {
+                if s.contains("LV_FLEX_ALIGN_CENTER") { "center" }
+                else if s.contains("LV_FLEX_ALIGN_END") { "end" }
+                else if s.contains("LV_FLEX_ALIGN_START") { "start" }
+                else if s.contains("LV_FLEX_ALIGN_SPACE_EVENLY") { "space_evenly" }
+                else if s.contains("LV_FLEX_ALIGN_SPACE_AROUND") { "space_around" }
+                else if s.contains("LV_FLEX_ALIGN_SPACE_BETWEEN") { "space_between" }
+                else { "start" }
+            };
+            // Get all args after the function name
+            if let Some(paren) = line.find("lv_obj_set_flex_align(") {
+                let args_str = &line[paren + "lv_obj_set_flex_align(".len()..];
+                let parts: Vec<&str> = args_str.split(',').collect();
+                let main = if parts.len() > 1 { extract_align(parts[1]) } else { "start" };
+                let cross = if parts.len() > 2 { extract_align(parts[2]) } else { "start" };
+                let track = if parts.len() > 3 { extract_align(parts[3]) } else { "start" };
+                w.extra.insert("flex_main".into(), serde_json::json!(main));
+                w.extra.insert("flex_cross".into(), serde_json::json!(cross));
+                w.extra.insert("flex_track".into(), serde_json::json!(track));
+            }
+        }
+
         // ── Style extraction (generic: handles ALL lv_obj_set_style_* calls) ──
         // Output structure: { PART: { STATE: { prop: value } } }
         // e.g. { "MAIN": { "DEFAULT": { "arc_color": "#62B7FF" } }, "KNOB": { "DEFAULT": { "bg_color": "#C6DFD9" } } }

@@ -630,5 +630,59 @@ function firmwareWidgetToComponent(
         );
     }
 
+    // ── Flex layout: stack children vertically/horizontally ──
+    // LVGL flex properties (lv_obj_set_flex_flow / lv_obj_set_flex_align)
+    const flexFlow = (w as any).flex_flow as string | undefined;
+    if (flexFlow && comp.children && Array.isArray(comp.children) && comp.children.length > 0) {
+        const flexMain = ((w as any).flex_main as string) || "start";
+        const padTop = Number(((w.style as any)?.MAIN?.DEFAULT?.pad_top) ?? 0);
+        const padLeft = Number(((w.style as any)?.MAIN?.DEFAULT?.pad_left) ?? 0);
+
+        const isColumn = flexFlow === "column" || flexFlow === "column_wrap";
+        const isRow = flexFlow === "row" || flexFlow === "row_wrap";
+        const gap = 2; // fixed small gap between flex children
+
+        if (isColumn) {
+            let yOff = padTop;
+            for (const child of comp.children) {
+                if (!(child as any).hiddenFlag) {
+                    (child as any).top = yOff;
+                    (child as any).left = padLeft;
+                    // Strip align from child's style — flex positions override it
+                    const childStyles = (child as any).localStyles?.definition;
+                    if (childStyles) {
+                        for (const part of Object.values(childStyles) as any[]) {
+                            for (const state of Object.values(part || {}) as any[]) {
+                                if (state && typeof state === "object") {
+                                    delete state.align;
+                                }
+                            }
+                        }
+                    }
+                    yOff += ((child as any).height || 30) + gap;
+                }
+            }
+        } else if (isRow) {
+            let xOff = padLeft;
+            for (const child of comp.children) {
+                if (!(child as any).hiddenFlag) {
+                    (child as any).left = xOff;
+                    (child as any).top = padTop;
+                    const childStyles = (child as any).localStyles?.definition;
+                    if (childStyles) {
+                        for (const part of Object.values(childStyles) as any[]) {
+                            for (const state of Object.values(part || {}) as any[]) {
+                                if (state && typeof state === "object") {
+                                    delete state.align;
+                                }
+                            }
+                        }
+                    }
+                    xOff += ((child as any).width || 30) + gap;
+                }
+            }
+        }
+    }
+
     return comp;
 }
