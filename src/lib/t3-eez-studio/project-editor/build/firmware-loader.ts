@@ -302,7 +302,7 @@ function firmwareWidgetToComponent(
     // The "align: CENTER" style (set below) handles positioning natively in LVGL.
     if (isSizeContentW && (w.obj_text || "")) {
         const fontName: string | undefined =
-            (w.style as any)?.DEFAULT?.text_font || undefined;
+            (w.style as any)?.MAIN?.DEFAULT?.text_font || (w.style as any)?.DEFAULT?.text_font || undefined;
         const fontSize = (() => {
             if (!fontName) return 16;
             const m = fontName.match(/_(\d+)$/);
@@ -315,7 +315,7 @@ function firmwareWidgetToComponent(
     }
     if (isSizeContentH && (w.obj_text || "")) {
         const fontName: string | undefined =
-            (w.style as any)?.DEFAULT?.text_font || undefined;
+            (w.style as any)?.MAIN?.DEFAULT?.text_font || (w.style as any)?.DEFAULT?.text_font || undefined;
         const fontSize = (() => {
             if (!fontName) return 16;
             const m = fontName.match(/_(\d+)$/);
@@ -503,44 +503,65 @@ function firmwareWidgetToComponent(
     }
 
     // ── Style ──
-    // w.style is { STATE: { PROP: VALUE } } from parser (e.g. { DEFAULT: { bg_color: "#000" } })
-    // Wrap in MAIN part since components only have MAIN as LVGL part
+    // w.style is now { PART: { STATE: { PROP: VALUE } } } from parser
+    // e.g. { "MAIN": { "DEFAULT": { "arc_color": "#62B7FF" } }, "KNOB": { "DEFAULT": { "bg_color": "#C6DFD9" } } }
     const hasStyle = !!(w.style && Object.keys(w.style).length > 0);
     const hasAlign = !!firmwareAlign;
-    if (hasStyle || hasAlign) {
-        const cleanedStyle: Record<string, Record<string, any>> = {};
+    const hasNoDefault = !!(w as any).no_default_style;
+    if (hasStyle || hasAlign || hasNoDefault) {
+        const cleanedStyle: Record<string, Record<string, Record<string, any>>> = {};
 
-        // Copy firmware style properties (font, color, etc.)
+        // Copy firmware style properties: PART → STATE → props
         if (w.style) {
-            for (const [state, props] of Object.entries(w.style as Record<string, Record<string, any>>)) {
-                cleanedStyle[state] = {};
-                for (const [prop, value] of Object.entries(props)) {
-                    if (prop === "text_font" && typeof value === "string") {
-                        cleanedStyle[state][prop] = value.replace(/^lv_font_/, "").toUpperCase();
-                    } else {
-                        cleanedStyle[state][prop] = value;
+            for (const [part, states] of Object.entries(w.style as Record<string, Record<string, any>>)) {
+                cleanedStyle[part] = {};
+                for (const [state, props] of Object.entries(states)) {
+                    cleanedStyle[part][state] = {};
+                    for (const [prop, value] of Object.entries(props)) {
+                        if (prop === "text_font" && typeof value === "string") {
+                            cleanedStyle[part][state][prop] = value.replace(/^lv_font_/, "").toUpperCase();
+                        } else {
+                            cleanedStyle[part][state][prop] = value;
+                        }
                     }
                 }
             }
         }
 
+        // Ensure MAIN.DEFAULT exists for alignment / no_default_style / font overrides
+        const mainDefault = () => {
+            if (!cleanedStyle["MAIN"]) cleanedStyle["MAIN"] = {};
+            if (!cleanedStyle["MAIN"]["DEFAULT"]) cleanedStyle["MAIN"]["DEFAULT"] = {};
+            return cleanedStyle["MAIN"]["DEFAULT"];
+        };
+
         // Add alignment if firmware set it (e.g. LV_ALIGN_CENTER → "CENTER")
         if (hasAlign) {
-            const defaultState = cleanedStyle["DEFAULT"] || (cleanedStyle["DEFAULT"] = {});
-            // Map firmware align names to EEZ Studio align enum values
+            const ds = mainDefault();
             const alignMap: Record<string, string> = {
                 center: "CENTER",
                 top_left: "TOP_LEFT", top_mid: "TOP_MID", top_right: "TOP_RIGHT",
                 bottom_left: "BOTTOM_LEFT", bottom_mid: "BOTTOM_MID", bottom_right: "BOTTOM_RIGHT",
                 left_mid: "LEFT_MID", right_mid: "RIGHT_MID",
             };
-            defaultState["align"] = alignMap[firmwareAlign.toLowerCase()] || firmwareAlign.toUpperCase();
+            ds["align"] = alignMap[firmwareAlign.toLowerCase()] || firmwareAlign.toUpperCase();
+        }
+
+        // lv_obj_remove_style_all → transparent panel with no borders/padding
+        if (hasNoDefault) {
+            const ds = mainDefault();
+            ds["bg_opa"] = 0;
+            ds["border_width"] = 0;
+            ds["pad_left"] = 0;
+            ds["pad_right"] = 0;
+            ds["pad_top"] = 0;
+            ds["pad_bottom"] = 0;
+            ds["radius"] = 0;
         }
 
         // Map custom fonts (e.g. "Arial80") to closest built-in MONTSERRAT
-        if (cleanedStyle["DEFAULT"]?.text_font) {
-            const font = cleanedStyle["DEFAULT"].text_font;
-            // Custom font names that aren't MONTSERRAT_* → find closest match
+        if (cleanedStyle["MAIN"]?.["DEFAULT"]?.text_font) {
+            const font = cleanedStyle["MAIN"]["DEFAULT"].text_font;
             if (!/^MONTSERRAT_\d+$/.test(font)) {
                 const digits = font.match(/(\d+)/);
                 if (digits) {
@@ -549,7 +570,7 @@ function firmwareWidgetToComponent(
                     const closest = available.reduce((prev, curr) =>
                         Math.abs(curr - targetSize) < Math.abs(prev - targetSize) ? curr : prev
                     );
-                    cleanedStyle["DEFAULT"].text_font = `MONTSERRAT_${closest}`;
+                    cleanedStyle["MAIN"]["DEFAULT"].text_font = `MONTSERRAT_${closest}`;
                 }
             }
         }
@@ -558,17 +579,17 @@ function firmwareWidgetToComponent(
         if (lvglType === "LVGLButtonWidget" && w.children) {
             const hasLabel = Object.values(w.children).some(c => c.sub_type === "label");
             if (hasLabel) {
-                const defaultState = cleanedStyle["DEFAULT"] || (cleanedStyle["DEFAULT"] = {});
-                defaultState["pad_left"] = 0;
-                defaultState["pad_right"] = 0;
-                defaultState["pad_top"] = 0;
-                defaultState["pad_bottom"] = 0;
+                const ds = mainDefault();
+                ds["pad_left"] = 0;
+                ds["pad_right"] = 0;
+                ds["pad_top"] = 0;
+                ds["pad_bottom"] = 0;
             }
         }
 
         comp.localStyles = {
             objID: `${comp.objID}_style_${Date.now().toString(36)}`,
-            definition: { MAIN: cleanedStyle },
+            definition: cleanedStyle as any,
         };
     }
 

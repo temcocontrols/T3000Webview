@@ -459,15 +459,27 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             }
         }
 
+        // ── Detect lv_obj_remove_style_all → transparent panel ──
+        if line.contains("lv_obj_remove_style_all") {
+            w.extra.insert("no_default_style".into(), serde_json::json!(true));
+        }
+
         // ── Style extraction (generic: handles ALL lv_obj_set_style_* calls) ──
+        // Output structure: { PART: { STATE: { prop: value } } }
+        // e.g. { "MAIN": { "DEFAULT": { "arc_color": "#62B7FF" } }, "KNOB": { "DEFAULT": { "bg_color": "#C6DFD9" } } }
         if line.contains("lv_obj_set_style_") && !line.contains("lv_obj_set_style_text_font") {
-            if let Some((prop_name, value, _part, state)) = parse_style_property(line) {
-                let state_key = if state == "DEFAULT" && _part == "DEFAULT" { "DEFAULT".to_string() } else { state.to_string() };
+            if let Some((prop_name, value, part, state)) = parse_style_property(line) {
                 let style = w.style.get_or_insert(serde_json::json!({}));
-                if let Some(existing) = style.get_mut(&state_key) {
+                let part_obj = if let Some(existing) = style.get_mut(&part) {
+                    existing
+                } else {
+                    style[&part] = serde_json::json!({});
+                    style.get_mut(&part).unwrap()
+                };
+                if let Some(existing) = part_obj.get_mut(&state) {
                     existing[&prop_name] = value;
                 } else {
-                    style[&state_key] = serde_json::json!({&prop_name: value});
+                    part_obj[&state] = serde_json::json!({&prop_name: value});
                 }
             }
         }
