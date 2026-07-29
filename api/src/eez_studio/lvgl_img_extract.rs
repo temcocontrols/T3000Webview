@@ -39,21 +39,33 @@ pub fn extract_image(file_path: &Path) -> Result<LvglImage, String> {
         .ok_or_else(|| format!("{}: missing height", name))?;
 
     // Parse the hex data array (the long uint8_t array)
-    let raw_bytes = parse_hex_array(&content, "ui_img_")?;
+    // Extract variable name from descriptor: "const lv_image_dsc_t ui_img_fan_small_png = {"
+    let var_name = extract_var_name(&content)
+        .unwrap_or_else(|| name.clone());
+    let raw_bytes = parse_hex_array(&content, &var_name)?;
 
     let pixel_count = (width * height) as usize;
     let rgb565_size = pixel_count * 2;
     let alpha_size = pixel_count;
 
     if raw_bytes.len() < rgb565_size + alpha_size {
-        return Err(format!(
-            "{}: data too short ({} bytes, need {} for {}x{})",
-            name, raw_bytes.len(), rgb565_size + alpha_size, width, height
-        ));
+        // Sometimes the array is 1-2 bytes short due to trailing whitespace in C.
+        // Pad alpha with 0xFF (fully opaque) if needed.
+        if raw_bytes.len() >= rgb565_size {
+            let short = rgb565_size + alpha_size - raw_bytes.len();
+            tracing::warn!("{}: data {} bytes short ({} vs {}), padding alpha",
+                name, short, raw_bytes.len(), rgb565_size + alpha_size);
+        } else {
+            return Err(format!(
+                "{}: data too short ({} bytes, need at least {} for {}x{})",
+                name, raw_bytes.len(), rgb565_size, width, height
+            ));
+        }
     }
 
     let rgb565_data = &raw_bytes[..rgb565_size];
-    let alpha_data = &raw_bytes[rgb565_size..rgb565_size + alpha_size];
+    let alpha_end = std::cmp::min(rgb565_size + alpha_size, raw_bytes.len());
+    let alpha_data = &raw_bytes[rgb565_size..alpha_end];
 
     // Convert to RGBA PNG
     let png_bytes = rgb565_alpha_to_png(rgb565_data, alpha_data, width, height)?;
@@ -74,17 +86,29 @@ fn rgb565_alpha_to_png(
     width: u32,
     height: u32,
 ) -> Result<Vec<u8>, String> {
-    let mut rgba: Vec<u8> = Vec::with_capacity((width * height * 4) as usize);
+    let w = width as usize;
+    let h = height as usize;
+    let pixel_count = w.checked_mul(h)
+        .ok_or_else(|| format!("image too large: {}x{}", width, height))?;
+    let rgba_len = pixel_count.checked_mul(4)
+        .ok_or_else(|| format!("rgba buffer too large: {} pixels", pixel_count))?;
+    let mut rgba: Vec<u8> = Vec::with_capacity(rgba_len);
 
-    for i in 0..(width * height) as usize {
+    for i in 0..pixel_count {
         let idx = i * 2;
+        if idx + 1 >= rgb565.len() { break; }
         let pixel = u16::from_le_bytes([rgb565[idx], rgb565[idx + 1]]);
-        // RGB565: RRRRRGGGGGGBBBBB
-        let r = (((pixel >> 11) & 0x1F) as u8 * 255 / 31) as u8;
-        let g = (((pixel >> 5) & 0x3F) as u8 * 255 / 63) as u8;
-        let b = ((pixel & 0x1F) as u8 * 255 / 31) as u8;
+        // RGB565: RRRRRGGGGGGBBBBB — cast to u32 before multiplying to avoid overflow
+        let r = (((pixel >> 11) & 0x1F) as u32 * 255 / 31) as u8;
+        let g = (((pixel >> 5) & 0x3F) as u32 * 255 / 63) as u8;
+        let b = ((pixel & 0x1F) as u32 * 255 / 31) as u8;
         let a = alpha.get(i).copied().unwrap_or(255);
         rgba.extend_from_slice(&[r, g, b, a]);
+    }
+
+    // Pad remaining pixels if data was short
+    while rgba.len() < rgba_len {
+        rgba.extend_from_slice(&[0, 0, 0, 0]);
     }
 
     // Write PNG using the png crate
@@ -104,7 +128,7 @@ fn rgb565_alpha_to_png(
 }
 
 /// Extract a numeric field from the C descriptor, e.g. `.header.w = 35`
-fn extract_descriptor_int(content: &str, field: &str) -> Option<u32> {
+pub fn extract_descriptor_int(content: &str, field: &str) -> Option<u32> {
     for line in content.lines() {
         if line.contains(field) && line.contains('=') {
             // ".header.w = 35,"
@@ -119,14 +143,32 @@ fn extract_descriptor_int(content: &str, field: &str) -> Option<u32> {
     None
 }
 
+/// Extract variable name from "const lv_image_dsc_t ui_img_fan_small_png = {"
+fn extract_var_name(content: &str) -> Option<String> {
+    for line in content.lines() {
+        if line.contains("lv_image_dsc_t") && line.contains('=') {
+            // "const lv_image_dsc_t ui_img_fan_small_png = {"
+            let parts: Vec<&str> = line.split("lv_image_dsc_t").collect();
+            if parts.len() >= 2 {
+                let after = parts[1].trim();
+                let name = after.split('=').next()?.trim();
+                if !name.is_empty() {
+                    return Some(name.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Parse a uint8_t hex array declaration from C source.
-/// Pattern: `const ... uint8_t ui_img_xxx_data[] = { 0x00, 0x00, ... };`
-fn parse_hex_array(content: &str, prefix: &str) -> Result<Vec<u8>, String> {
-    // Find the array start: "ui_img_xxx_data[]  = {"
-    let pattern = format!("{}_data[]", prefix);
+/// Pattern: `const ... uint8_t <var_name>_data[] = { 0x00, 0x00, ... };`
+fn parse_hex_array(content: &str, var_name: &str) -> Result<Vec<u8>, String> {
+    // Find the array start: "<var_name>_data[]  = {"
+    let pattern = format!("{}_data[]", var_name);
     let array_start = content
         .find(&pattern)
-        .ok_or_else(|| "array declaration not found".to_string())?;
+        .ok_or_else(|| format!("array '{}_data[]' not found in file", var_name))?;
     let after_decl = &content[array_start + pattern.len()..];
     let brace = after_decl
         .find('{')
