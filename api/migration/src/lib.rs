@@ -18,6 +18,7 @@ mod m20260716_add_point_brick_class_table;
 mod m20260717_add_range_rules;
 mod m20260718_add_extended_brick_rules;
 mod m20260719_add_brick_class_auto_assigned;
+mod m20260729_add_plain_english_rules;
 
 /// Migrator for webview_database.db (users, files, app config, LCD options)
 pub struct Migrator;
@@ -55,6 +56,7 @@ impl MigratorTrait for T3DeviceMigrator {
             Box::new(m20260717_add_range_rules::Migration),
             Box::new(m20260718_add_extended_brick_rules::Migration),
             Box::new(m20260719_add_brick_class_auto_assigned::Migration),
+            Box::new(m20260729_add_plain_english_rules::Migration),
         ]
     }
 }
