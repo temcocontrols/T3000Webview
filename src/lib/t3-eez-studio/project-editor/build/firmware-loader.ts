@@ -52,6 +52,10 @@ interface FirmwareWidget {
     rotation?: number;
     pivot_x?: number;
     pivot_y?: number;
+    // imagebutton
+    img_released?: string;
+    img_pressed?: string;
+    img_disabled?: string;
     // label
     long_mode?: string;
     recolor?: boolean;
@@ -418,6 +422,17 @@ function firmwareWidgetToComponent(
     // ── Image ──
     if (lvglType === "LVGLImageWidget" && w.src) {
         comp.image = w.src;
+    }
+
+    // ── Imagebutton ──
+    if (lvglType === "LVGLImgbuttonWidget") {
+        // Firmware uses lv_imagebutton_set_src(obj, STATE, NULL, &img, NULL)
+        if ((w as any).img_released) comp.imageReleased = (w as any).img_released;
+        if ((w as any).img_pressed) comp.imagePressed = (w as any).img_pressed;
+        if ((w as any).img_disabled) comp.imageDisabled = (w as any).img_disabled;
+        // Fallback: if only released is set, use it for all states
+        if (comp.imageReleased && !comp.imagePressed) comp.imagePressed = comp.imageReleased;
+        if (comp.imageReleased && !comp.imageDisabled) comp.imageDisabled = comp.imageReleased;
     }
     if (w.rotation != null) comp.rotation = w.rotation;
     if (w.pivot_x != null) comp.pivotX = w.pivot_x;

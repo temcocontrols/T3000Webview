@@ -25,6 +25,7 @@ pub fn extract_image(file_path: &Path) -> Result<LvglImage, String> {
         .map_err(|e| format!("{}: {}", file_path.display(), e))?;
 
     // Extract image name from filename: ui_img_fan_small_png.c → fan_small
+    // Also handles numeric: ui_img_1679221590.c → 1679221590
     let name = file_path
         .file_stem()
         .unwrap_or_default()

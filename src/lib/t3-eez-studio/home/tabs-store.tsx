@@ -917,7 +917,9 @@ export class ProjectEditorTab implements IHomeTab {
         if (this.projectStore) {
             if (await this.projectStore.closeWindow()) {
                 this.tabs.removeTab(this);
-                this.projectStore.unmount();
+                try {
+                    this.projectStore.unmount();
+                } catch { /* store may have been cleaned up already */ }
                 runInAction(() => {
                     this.projectStore = undefined;
                 });

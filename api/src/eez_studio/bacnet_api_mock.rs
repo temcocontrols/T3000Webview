@@ -681,20 +681,26 @@ pub async fn pull_image(
         }
     }
 
-    // Try extracting from firmware .c files
+    // Try extracting from firmware .c files — try multiple naming patterns
     if let Some(dir) = resolve_firmware_dir() {
-        let c_file = dir.join(format!("ui_img_{}_png.c", name));
-        if c_file.exists() {
-            match crate::eez_studio::lvgl_img_extract::extract_image(&c_file) {
-                Ok(img) => {
-                    info!("pull_image: extracted '{}' from firmware ({}x{})", name, img.width, img.height);
-                    return Ok(Json(PullImageResponse {
-                        name: img.name,
-                        data_base64: img.png_base64,
-                    }));
-                }
-                Err(e) => {
-                    error!("pull_image: extraction failed for '{}': {}", name, e);
+        // Try: ui_img_<name>_png.c (descriptive), ui_img_<name>.c (numeric)
+        let candidates = vec![
+            dir.join(format!("ui_img_{}_png.c", name)),
+            dir.join(format!("ui_img_{}.c", name)),
+        ];
+        for c_file in &candidates {
+            if c_file.exists() {
+                match crate::eez_studio::lvgl_img_extract::extract_image(c_file) {
+                    Ok(img) => {
+                        info!("pull_image: extracted '{}' from firmware ({}x{})", name, img.width, img.height);
+                        return Ok(Json(PullImageResponse {
+                            name: img.name,
+                            data_base64: img.png_base64,
+                        }));
+                    }
+                    Err(e) => {
+                        error!("pull_image: extraction failed for '{}': {}", name, e);
+                    }
                 }
             }
         }

@@ -565,6 +565,23 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             }
         }
 
+        // Imagebutton source: lv_imagebutton_set_src(obj, STATE, NULL, &img, NULL)
+        if w.sub_type == "imagebutton" && line.contains("lv_imagebutton_set_src") {
+            if let Some(src) = extract_image_ref(line) {
+                let state = if line.contains("LV_IMAGEBUTTON_STATE_RELEASED") { "released" }
+                    else if line.contains("LV_IMAGEBUTTON_STATE_PRESSED") { "pressed" }
+                    else if line.contains("LV_IMAGEBUTTON_STATE_DISABLED") { "disabled" }
+                    else if line.contains("LV_IMAGEBUTTON_STATE_CHECKED_RELEASED") { "checked_released" }
+                    else if line.contains("LV_IMAGEBUTTON_STATE_CHECKED_PRESSED") { "checked_pressed" }
+                    else if line.contains("LV_IMAGEBUTTON_STATE_CHECKED_DISABLED") { "checked_disabled" }
+                    else { "released" };
+                w.extra.insert(format!("img_{}", state).into(), json!(src));
+                if !bitmaps.contains(&src) {
+                    bitmaps.push(src);
+                }
+            }
+        }
+
         // Event handler
         if let Some((handler, event)) = extract_event_cb(line) {
             let events = w.events.get_or_insert(json!({}));

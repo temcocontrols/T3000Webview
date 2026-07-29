@@ -709,9 +709,16 @@ class DeviceImportStore {
                 colorFormat: info.color_format,
             });
 
-            // Step 4.5 — Load bitmap images from device
+            // Step 4.5 — Load bitmap images: pull PNGs from device/mock API,
+            // save to device-import/imgs/ folder, and embed as base64 in project.
             if (project.bitmaps?.length) {
-                this.appendLog(`⏳ Step 4.5 — Loading ${project.bitmaps.length} images...`);
+                const imgDir = `${stagingDir}/imgs`;
+                await fetch(`/api/eez-studio/make-folder`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ path: imgDir }),
+                });
+                this.appendLog(`⏳ Step 4.5 — Extracting ${project.bitmaps.length} images...`);
                 let loaded = 0;
                 for (const bmp of project.bitmaps) {
                     if (!bmp.name) continue;
@@ -722,13 +729,25 @@ class DeviceImportStore {
                         if (resp.ok) {
                             const data = await resp.json();
                             if (data.data_base64) {
+                                // Save raw PNG to runtime folder
+                                const imgPath = `${imgDir}/${bmp.name}.png`;
+                                const binaryStr = atob(data.data_base64);
+                                const pngBytes = new Uint8Array(binaryStr.length);
+                                for (let i = 0; i < binaryStr.length; i++) {
+                                    pngBytes[i] = binaryStr.charCodeAt(i);
+                                }
+                                await fetch(
+                                    `/api/eez-studio/write-file?path=${encodeURIComponent(imgPath)}`,
+                                    { method: "POST", body: pngBytes }
+                                );
+                                // Embed in project as base64 data URL
                                 bmp.image = `data:image/png;base64,${data.data_base64}`;
                                 loaded++;
                             }
                         }
                     } catch { /* skip images not in firmware */ }
                 }
-                this.appendLog(`   ${loaded}/${project.bitmaps.length} images loaded ✓`);
+                this.appendLog(`   ${loaded}/${project.bitmaps.length} images saved to ${imgDir} ✓`);
             }
 
             // Step 5 — Save to disk
