@@ -525,23 +525,36 @@ class OpenProjectsStore {
         const item = this.selectedMruItem;
         if (!item) return;
 
-        // Clear selection IMMEDIATELY so no observer re-reads the deleted file
+        // Close any open tabs for this project FIRST — prevents editor
+        // from re-adding to MRU when the tab closes during delete.
+        const { tabs } = await import("home/tabs-store");
+        const openTab = tabs.tabs.find(
+            (t: any) => t.projectStore?.filePath === item.filePath
+        );
+        if (openTab) {
+            await openTab.close(); // async — waits for editor save+unmount
+        }
+
+        // Clear selection so no observer re-reads the deleted file
         runInAction(() => {
             this.removeDialogOpen = false;
             this.selectedMruItem = undefined;
             this.selectedProjectInfo = undefined;
         });
 
-        // Remove from MRU list before deleting disk to prevent stale reads
+        // Remove from MRU list
         settingsController.removeItemFromMRU(item);
 
         // Delete the project folder from disk via backend
         const projectDir = path.dirname(item.filePath);
         try {
-            await fetch(
-                `/api/eez-studio/delete-recursive?path=${encodeURIComponent(projectDir)}`,
+            const resp = await fetch(
+                `/api/eez-studio/delete-recursive?path=${encodeURIComponent(projectDir)}&force=true`,
                 { method: "DELETE" }
             );
+            if (!resp.ok) {
+                console.error("Delete returned", resp.status);
+            }
         } catch (err) {
             console.error("Failed to delete project folder:", err);
         }
