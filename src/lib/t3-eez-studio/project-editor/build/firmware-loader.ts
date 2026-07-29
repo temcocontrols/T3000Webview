@@ -200,8 +200,9 @@ export function firmwareToProject(
             const displayH = meta?.displaySize?.height ?? 320;
 
             // ── Background panel (full-screen, replaces page-level localStyles) ──
-            const bgColor = (s.json as any).bg_color;
-            if (bgColor) {
+            // Default to #000000 for dark theme screens that don't set explicit bg_color
+            const isDark = meta?.darkTheme ?? true;
+            const bgColor = (s.json as any).bg_color || (isDark ? "#000000" : "#FFFFFF");
                 const bgId = `bg_${s.name}_${Date.now().toString(36)}`;
                 widgetComponents.push({
                     objID: genId(),
@@ -235,7 +236,6 @@ export function firmwareToProject(
                     timeline: "",
                     children: "",
                 });
-            }
 
             for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
                 const comp = firmwareWidgetToComponent(widgetId, w);
@@ -461,6 +461,9 @@ function firmwareWidgetToComponent(
             comp.options = w.options.map(o =>
                 typeof o === "string" ? o : (o as any).label || (o as any).text || "?"
             );
+        } else {
+            // Ensure options is never undefined (prevents unescapeCString crash)
+            comp.options = ["--"];
         }
         if (w.selected != null) comp.selected = w.selected;
     }

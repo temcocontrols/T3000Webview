@@ -638,12 +638,58 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         }
 
         // Dropdown options: lv_dropdown_set_options(obj, "a\nb\nc")
+        // Also handles split-line case: function on one line, string on next
         if w.sub_type == "dropdown" {
             if line.contains("lv_dropdown_set_options") {
                 if let Some(opts) = extract_string(line, "lv_dropdown_set_options", '"') {
                     let items: Vec<Value> = opts.split("\\n").map(|s| json!(s)).collect();
                     w.extra.insert("options".into(), json!(items));
+                } else {
+                    // Function call and string are on separate lines:
+                    //   lv_dropdown_set_options(obj,
+                    //       "options\nhere");
+                    // Mark this widget for options extraction on next line
+                    w.extra.insert("_pending_dropdown_opts".into(), json!(true));
                 }
+            }
+            // Continuation line for split dropdown options: starts with quote
+            if w.extra.get("_pending_dropdown_opts").and_then(|v| v.as_bool()).unwrap_or(false)
+                && line.starts_with('"')
+            {
+                // Extract string between first and last quote on this line
+                if let Some(end_quote) = line.rfind('"') {
+                    if end_quote > 0 {
+                        let opts = &line[1..end_quote];
+                        let items: Vec<Value> = opts.split("\\n").map(|s| json!(s)).collect();
+                        w.extra.insert("options".into(), json!(items));
+                    }
+                }
+                w.extra.remove("_pending_dropdown_opts");
+            }
+        }
+
+        // Roller options: lv_roller_set_options(obj, "a\nb\nc")
+        // Same split-line handling as dropdown
+        if w.sub_type == "roller" {
+            if line.contains("lv_roller_set_options") {
+                if let Some(opts) = extract_string(line, "lv_roller_set_options", '"') {
+                    let items: Vec<Value> = opts.split("\\n").map(|s| json!(s)).collect();
+                    w.extra.insert("options".into(), json!(items));
+                } else {
+                    w.extra.insert("_pending_roller_opts".into(), json!(true));
+                }
+            }
+            if w.extra.get("_pending_roller_opts").and_then(|v| v.as_bool()).unwrap_or(false)
+                && line.starts_with('"')
+            {
+                if let Some(end_quote) = line.rfind('"') {
+                    if end_quote > 0 {
+                        let opts = &line[1..end_quote];
+                        let items: Vec<Value> = opts.split("\\n").map(|s| json!(s)).collect();
+                        w.extra.insert("options".into(), json!(items));
+                    }
+                }
+                w.extra.remove("_pending_roller_opts");
             }
         }
 
