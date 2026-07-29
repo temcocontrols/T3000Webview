@@ -464,6 +464,11 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             w.extra.insert("no_default_style".into(), serde_json::json!(true));
         }
 
+        // ── Detect lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN) → hidden widget ──
+        if line.contains("lv_obj_add_flag") && line.contains("LV_OBJ_FLAG_HIDDEN") {
+            w.extra.insert("hidden".into(), serde_json::json!(true));
+        }
+
         // ── Style extraction (generic: handles ALL lv_obj_set_style_* calls) ──
         // Output structure: { PART: { STATE: { prop: value } } }
         // e.g. { "MAIN": { "DEFAULT": { "arc_color": "#62B7FF" } }, "KNOB": { "DEFAULT": { "bg_color": "#C6DFD9" } } }

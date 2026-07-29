@@ -612,6 +612,9 @@ function firmwareWidgetToComponent(
     if (hidden && (w.hiddenFlagType === "expression" || typeof hidden === "string")) {
         comp.hiddenFlag = hidden;
         comp.hiddenFlagType = "expression";
+    } else if (hidden === true || hidden === "true" || hidden === "1") {
+        comp.hiddenFlag = "true";
+        comp.hiddenFlagType = "literal";
     }
     if (w.clickable === false) {
         comp.clickableFlag = false;
