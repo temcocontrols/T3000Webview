@@ -542,13 +542,25 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             }
         }
 
-        // Style: font
+        // Style: font (placed in correct PART→STATE hierarchy like other styles)
         if let Some(font_name) = extract_font_ref(line) {
+            // Use parse_style_property to get the correct PART and STATE
+            let (part, state) = if let Some((_prop, _val, p, s)) = parse_style_property(line) {
+                (p, s)
+            } else {
+                ("MAIN".to_string(), "DEFAULT".to_string())
+            };
             let style = w.style.get_or_insert(json!({}));
-            if let Some(def) = style.get_mut("DEFAULT") {
+            let part_obj = if let Some(existing) = style.get_mut(&part) {
+                existing
+            } else {
+                style[&part] = serde_json::json!({});
+                style.get_mut(&part).unwrap()
+            };
+            if let Some(def) = part_obj.get_mut(&state) {
                 def["text_font"] = json!(font_name);
             } else {
-                *style = json!({ "DEFAULT": { "text_font": font_name } });
+                part_obj[&state] = serde_json::json!({ "text_font": font_name });
             }
             let font_size = extract_font_size(line).unwrap_or(0);
             if !fonts.iter().any(|(n, _)| n == &font_name) {
@@ -559,11 +571,22 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         // Style: background image
         if let Some(img_name) = extract_image_ref(line) {
             if line.contains("bg_img") || line.contains("background") {
+                let (part, state) = if let Some((_prop, _val, p, s)) = parse_style_property(line) {
+                    (p, s)
+                } else {
+                    ("MAIN".to_string(), "DEFAULT".to_string())
+                };
                 let style = w.style.get_or_insert(json!({}));
-                if let Some(def) = style.get_mut("DEFAULT") {
+                let part_obj = if let Some(existing) = style.get_mut(&part) {
+                    existing
+                } else {
+                    style[&part] = serde_json::json!({});
+                    style.get_mut(&part).unwrap()
+                };
+                if let Some(def) = part_obj.get_mut(&state) {
                     def["bg_img_src"] = json!(img_name);
                 } else {
-                    *style = json!({ "DEFAULT": { "bg_img_src": img_name } });
+                    part_obj[&state] = serde_json::json!({ "bg_img_src": img_name });
                 }
             }
             if !bitmaps.contains(&img_name) {
