@@ -59,6 +59,7 @@ const CREATE_PATTERNS: &[(&str, &str)] = &[
     ("lv_button_create", "button"),
     ("lv_btn_create", "button"),
     ("lv_imagebutton_create", "imagebutton"),
+    ("lv_checkbox_create", "checkbox"),
     ("lv_arc_create", "arc"),
     ("lv_bar_create", "bar"),
     ("lv_img_create", "image"),
@@ -68,6 +69,9 @@ const CREATE_PATTERNS: &[(&str, &str)] = &[
     ("lv_dropdown_create", "dropdown"),
     ("lv_textarea_create", "textarea"),
     ("lv_roller_create", "roller"),
+    ("lv_calendar_create", "calendar"),
+    ("lv_keyboard_create", "keyboard"),
+    ("lv_spinbox_create", "spinbox"),
 ];
 
 fn detect_sub_type(line: &str) -> Option<&'static str> {
@@ -616,13 +620,36 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             }
         }
 
-        // Roller options: lv_roller_set_options(obj, "a\nb\nc", mode)
-        if w.sub_type == "roller" {
-            if line.contains("lv_roller_set_options") {
-                if let Some(opts) = extract_string(line, "lv_roller_set_options", '"') {
-                    let items: Vec<Value> = opts.split("\\n").map(|s| json!(s)).collect();
-                    w.extra.insert("options".into(), json!(items));
+        // Roller: lv_roller_set_selected / lv_dropdown_set_selected
+        if (w.sub_type == "roller" || w.sub_type == "dropdown")
+            && line.contains("_set_selected")
+        {
+            if let Some(start) = line.find("_set_selected(") {
+                let after = &line[start + "_set_selected(".len()..];
+                if let Some(end) = after.find(')') {
+                    if let Ok(v) = after[..end].trim().parse::<i32>() {
+                        w.extra.insert("selected".into(), json!(v));
+                    }
                 }
+            }
+        }
+
+        // Label long mode: lv_label_set_long_mode(obj, LV_LABEL_LONG_WRAP)
+        if w.sub_type == "label" && line.contains("lv_label_set_long_mode") {
+            let mode = if line.contains("LV_LABEL_LONG_WRAP") { "WRAP" }
+                else if line.contains("LV_LABEL_LONG_DOT") { "DOT" }
+                else if line.contains("LV_LABEL_LONG_SCROLL") { "SCROLL" }
+                else if line.contains("LV_LABEL_LONG_SCROLL_CIRCULAR") { "SCROLL_CIRCULAR" }
+                else if line.contains("LV_LABEL_LONG_CLIP") { "CLIP" }
+                else { "WRAP" };
+            w.extra.insert("long_mode".into(), json!(mode));
+        }
+
+        // Image rotation: lv_image_set_rotation(obj, angle)
+        if w.sub_type == "image" && line.contains("lv_image_set_rotation") {
+            let ints = extract_ints(line, "lv_image_set_rotation");
+            if let Some(&v) = ints.last() {
+                w.extra.insert("rotation".into(), json!(v));
             }
         }
     }
