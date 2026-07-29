@@ -287,16 +287,20 @@ function firmwareWidgetToComponent(
     // Detect LV_SIZE_CONTENT: width/height = 0 (set by parse_squareline for LV_SIZE_CONTENT)
     const isSizeContentW = w.width === 0;
     const isSizeContentH = w.height === 0;
-    // Detect alignment from firmware (e.g. LV_ALIGN_CENTER → "CENTER")
-    const firmwareAlign = (w as any).align as string | undefined;
-
-    // In LVGL, x/y are OFFSETS from the aligned position when align is set.
-    // EEZ Studio supports the `align` property natively, so we pass it through
-    // instead of computing absolute pixel positions.
-    const leftVal = w.x_pos ?? 0;
-    const topVal = w.y_pos ?? 0;
     let widthVal = w.width ?? 0;
     let heightVal = w.height ?? 0;
+
+    // Detect alignment from firmware (e.g. LV_ALIGN_CENTER → "CENTER")
+    // Panels wider than the display with center align get pushed off-screen.
+    // Strip the align so they render at their raw x/y position instead.
+    const firmwareAlign = (w as any).align as string | undefined;
+    const effectiveAlign = (firmwareAlign === "center" && widthVal > 480) ? undefined : firmwareAlign;
+
+    // In LVGL, x/y are OFFSETS from the aligned position when align is set.
+    // When we strip center align from wide panels, the offset was meant for
+    // scrollable centering — reset to 0 so the panel starts at parent's top-left.
+    const leftVal = effectiveAlign ? (w.x_pos ?? 0) : 0;
+    const topVal = effectiveAlign ? (w.y_pos ?? 0) : 0;
 
     // For content-sized labels, estimate width/height from font size.
     // The "align: CENTER" style (set below) handles positioning natively in LVGL.
@@ -328,6 +332,27 @@ function firmwareWidgetToComponent(
     // Textarea needs extra height for cursor + border
     if (isSizeContentH && lvglType === "LVGLTextareaWidget" && heightVal < 40) {
         heightVal = 40;
+    }
+
+    // Flex panels with content-sized width/height: estimate from children
+    const ff = (w as any).flex_flow as string | undefined;
+    if (ff && w.children) {
+        if (isSizeContentW) {
+            const childWidths = Object.values(w.children).map((c: any) => (c.width || 90));
+            if (ff === "row" || ff === "row_wrap") {
+                widthVal = childWidths.reduce((a: number, b: number) => a + b, 0) + 20;
+            } else {
+                widthVal = Math.max(...childWidths, 100);
+            }
+        }
+        if (isSizeContentH) {
+            const childHeights = Object.values(w.children).map((c: any) => (c.height || 30));
+            if (ff === "column" || ff === "column_wrap") {
+                heightVal = childHeights.reduce((a: number, b: number) => a + b, 0) + 20;
+            } else {
+                heightVal = Math.max(...childHeights, 30);
+            }
+        }
     }
 
     const comp: Record<string, any> = {
@@ -509,7 +534,7 @@ function firmwareWidgetToComponent(
     // w.style is now { PART: { STATE: { PROP: VALUE } } } from parser
     // e.g. { "MAIN": { "DEFAULT": { "arc_color": "#62B7FF" } }, "KNOB": { "DEFAULT": { "bg_color": "#C6DFD9" } } }
     const hasStyle = !!(w.style && Object.keys(w.style).length > 0);
-    const hasAlign = !!firmwareAlign;
+    const hasAlign = !!effectiveAlign;
     const hasNoDefault = !!(w as any).no_default_style;
     if (hasStyle || hasAlign || hasNoDefault) {
         const cleanedStyle: Record<string, Record<string, Record<string, any>>> = {};
@@ -547,7 +572,7 @@ function firmwareWidgetToComponent(
                 bottom_left: "BOTTOM_LEFT", bottom_mid: "BOTTOM_MID", bottom_right: "BOTTOM_RIGHT",
                 left_mid: "LEFT_MID", right_mid: "RIGHT_MID",
             };
-            ds["align"] = alignMap[firmwareAlign.toLowerCase()] || firmwareAlign.toUpperCase();
+            ds["align"] = alignMap[effectiveAlign.toLowerCase()] || effectiveAlign.toUpperCase();
         }
 
         // lv_obj_remove_style_all → transparent panel with no borders/padding
@@ -576,6 +601,13 @@ function firmwareWidgetToComponent(
                     cleanedStyle["MAIN"]["DEFAULT"].text_font = `MONTSERRAT_${closest}`;
                 }
             }
+        }
+
+        // Default text color to white for labels/textareas on dark theme firmware
+        const isTextWidget = lvglType === "LVGLLabelWidget" || lvglType === "LVGLTextareaWidget" || lvglType === "LVGLButtonWidget";
+        if (isTextWidget) {
+            const ds = mainDefault();
+            if (!ds["text_color"]) ds["text_color"] = "#FFFFFF";
         }
 
         // Button with child labels: zero out padding so text isn't clipped
@@ -630,55 +662,36 @@ function firmwareWidgetToComponent(
         );
     }
 
-    // ── Flex layout: stack children vertically/horizontally ──
-    // LVGL flex properties (lv_obj_set_flex_flow / lv_obj_set_flex_align)
+    // ── Flex layout: position children sequentially ──
     const flexFlow = (w as any).flex_flow as string | undefined;
     if (flexFlow && comp.children && Array.isArray(comp.children) && comp.children.length > 0) {
-        const flexMain = ((w as any).flex_main as string) || "start";
         const padTop = Number(((w.style as any)?.MAIN?.DEFAULT?.pad_top) ?? 0);
         const padLeft = Number(((w.style as any)?.MAIN?.DEFAULT?.pad_left) ?? 0);
-
         const isColumn = flexFlow === "column" || flexFlow === "column_wrap";
         const isRow = flexFlow === "row" || flexFlow === "row_wrap";
-        const gap = 2; // fixed small gap between flex children
 
+        // Strip align from all descendants (flex handles positioning)
+        // Position direct children based on flex direction
         if (isColumn) {
             let yOff = padTop;
             for (const child of comp.children) {
                 if (!(child as any).hiddenFlag) {
-                    (child as any).top = yOff;
-                    (child as any).left = padLeft;
-                    // Strip align from child's style — flex positions override it
-                    const childStyles = (child as any).localStyles?.definition;
-                    if (childStyles) {
-                        for (const part of Object.values(childStyles) as any[]) {
-                            for (const state of Object.values(part || {}) as any[]) {
-                                if (state && typeof state === "object") {
-                                    delete state.align;
-                                }
-                            }
-                        }
-                    }
-                    yOff += ((child as any).height || 30) + gap;
+                    child.top = yOff;
+                    child.left = padLeft;
+                    const cs = (child as any).localStyles?.definition;
+                    if (cs) for (const p of Object.values(cs) as any[]) for (const s of Object.values(p||{}) as any[]) if (s&&typeof s==="object") delete s.align;
+                    yOff += (child.height || 30) + 2;
                 }
             }
         } else if (isRow) {
             let xOff = padLeft;
             for (const child of comp.children) {
                 if (!(child as any).hiddenFlag) {
-                    (child as any).left = xOff;
-                    (child as any).top = padTop;
-                    const childStyles = (child as any).localStyles?.definition;
-                    if (childStyles) {
-                        for (const part of Object.values(childStyles) as any[]) {
-                            for (const state of Object.values(part || {}) as any[]) {
-                                if (state && typeof state === "object") {
-                                    delete state.align;
-                                }
-                            }
-                        }
-                    }
-                    xOff += ((child as any).width || 30) + gap;
+                    child.left = xOff;
+                    child.top = padTop;
+                    const cs = (child as any).localStyles?.definition;
+                    if (cs) for (const p of Object.values(cs) as any[]) for (const s of Object.values(p||{}) as any[]) if (s&&typeof s==="object") delete s.align;
+                    xOff += (child.width || 30) + 2;
                 }
             }
         }
