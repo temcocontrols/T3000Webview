@@ -748,60 +748,39 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         }
     }
 
+    // Recursively build a widget's JSON, including all descendants
+    fn build_widget_json(
+        w: &FirmwareWidget,
+        children_map: &HashMap<String, Vec<String>>,
+        widgets: &[FirmwareWidget],
+    ) -> Value {
+        let mut obj = json!({
+            "type": "Widget", "sub_type": w.sub_type,
+            "x_pos": w.x_pos, "y_pos": w.y_pos,
+            "width": w.width, "height": w.height,
+            "obj_text": w.obj_text, "text_type": w.text_type,
+        });
+        if let Some(ref s) = w.style { obj.as_object_mut().unwrap().insert("style".into(), s.clone()); }
+        if let Some(ref e) = w.events { obj.as_object_mut().unwrap().insert("events".into(), e.clone()); }
+        for (k, v) in &w.extra { obj.as_object_mut().unwrap().insert(k.clone(), v.clone()); }
+
+        // Recursively include all descendants
+        if let Some(child_ids) = children_map.get(&w.id) {
+            let children: serde_json::Map<String, Value> = child_ids.iter()
+                .filter_map(|cid| widgets.iter().find(|cw| cw.id == *cid))
+                .map(|cw| (cw.id.clone(), build_widget_json(cw, children_map, widgets)))
+                .collect();
+            if !children.is_empty() {
+                obj.as_object_mut().unwrap().insert("children".into(), json!(children));
+            }
+        }
+        obj
+    }
+
     let widgets_map: serde_json::Map<String, Value> = widgets.iter()
         .filter(|w| w.parent.is_none() || w.parent.as_deref() == root_screen_id.as_deref())
-        .map(|w| {
-            let mut obj = json!({
-                "type": "Widget", "sub_type": w.sub_type,
-                "x_pos": w.x_pos, "y_pos": w.y_pos,
-                "width": w.width, "height": w.height,
-                "obj_text": w.obj_text, "text_type": w.text_type,
-            });
-            if let Some(ref s) = w.style { obj.as_object_mut().unwrap().insert("style".into(), s.clone()); }
-            if let Some(ref e) = w.events { obj.as_object_mut().unwrap().insert("events".into(), e.clone()); }
-            for (k, v) in &w.extra { obj.as_object_mut().unwrap().insert(k.clone(), v.clone()); }
-            // Include nested children
-            if let Some(child_ids) = children_map.get(&w.id) {
-                let children: serde_json::Map<String, Value> = child_ids.iter()
-                    .filter_map(|cid| widgets.iter().find(|cw| cw.id == *cid))
-                    .map(|cw| {
-                        let mut child_obj = json!({
-                            "type": "Widget", "sub_type": cw.sub_type,
-                            "x_pos": cw.x_pos, "y_pos": cw.y_pos,
-                            "width": cw.width, "height": cw.height,
-                            "obj_text": cw.obj_text, "text_type": cw.text_type,
-                        });
-                        if let Some(ref s) = cw.style { child_obj.as_object_mut().unwrap().insert("style".into(), s.clone()); }
-                        if let Some(ref e) = cw.events { child_obj.as_object_mut().unwrap().insert("events".into(), e.clone()); }
-                        for (k, v) in &cw.extra { child_obj.as_object_mut().unwrap().insert(k.clone(), v.clone()); }
-                        // Recursively include grandchildren
-                        if let Some(grandchild_ids) = children_map.get(&cw.id) {
-                            let grandchildren: serde_json::Map<String, Value> = grandchild_ids.iter()
-                                .filter_map(|gid| widgets.iter().find(|gw| gw.id == *gid))
-                                .map(|gw| {
-                                    let mut gobj = json!({
-                                        "type": "Widget", "sub_type": gw.sub_type,
-                                        "x_pos": gw.x_pos, "y_pos": gw.y_pos,
-                                        "width": gw.width, "height": gw.height,
-                                        "obj_text": gw.obj_text, "text_type": gw.text_type,
-                                    });
-                                    if let Some(ref s) = gw.style { gobj.as_object_mut().unwrap().insert("style".into(), s.clone()); }
-                                    if let Some(ref e) = gw.events { gobj.as_object_mut().unwrap().insert("events".into(), e.clone()); }
-                                    for (k, v) in &gw.extra { gobj.as_object_mut().unwrap().insert(k.clone(), v.clone()); }
-                                    (gw.id.clone(), gobj)
-                                }).collect();
-                            if !grandchildren.is_empty() {
-                                child_obj.as_object_mut().unwrap().insert("children".into(), json!(grandchildren));
-                            }
-                        }
-                        (cw.id.clone(), child_obj)
-                    }).collect();
-                if !children.is_empty() {
-                    obj.as_object_mut().unwrap().insert("children".into(), json!(children));
-                }
-            }
-            (w.id.clone(), obj)
-        }).collect();
+        .map(|w| (w.id.clone(), build_widget_json(w, &children_map, &widgets)))
+        .collect();
 
     Ok(ParsedScreen {
         name: screen_name,
