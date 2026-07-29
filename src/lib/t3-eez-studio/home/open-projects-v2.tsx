@@ -709,6 +709,28 @@ class DeviceImportStore {
                 colorFormat: info.color_format,
             });
 
+            // Step 4.5 — Load bitmap images from device
+            if (project.bitmaps?.length) {
+                this.appendLog(`⏳ Step 4.5 — Loading ${project.bitmaps.length} images...`);
+                let loaded = 0;
+                for (const bmp of project.bitmaps) {
+                    if (!bmp.name) continue;
+                    try {
+                        const resp = await fetch(
+                            `/api/eez-device/images/pull/0/${encodeURIComponent(bmp.name)}`
+                        );
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            if (data.data_base64) {
+                                bmp.image = `data:image/png;base64,${data.data_base64}`;
+                                loaded++;
+                            }
+                        }
+                    } catch { /* skip images not in firmware */ }
+                }
+                this.appendLog(`   ${loaded}/${project.bitmaps.length} images loaded ✓`);
+            }
+
             // Step 5 — Save to disk
             const projectPath = `project/${device.panel_name}/${device.panel_name}.eez-project`;
             const jsonStr = JSON.stringify(project, null, 2);

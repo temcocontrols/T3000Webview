@@ -4,6 +4,7 @@
 pub mod font_extract;
 pub mod bacnet_api_mock;
 pub mod parse_squareline;
+pub mod lvgl_img_extract;
 
 use axum::{
     extract::Query,

@@ -665,18 +665,43 @@ pub async fn push_image(
     Ok(Json(PushImageResponse { name: body.name, status: "ok".into() }))
 }
 
-/// GET /api/eez-device/images/pull/:panelId/:name — download a bitmap from mock device
+/// GET /api/eez-device/images/pull/:panelId/:name — download a bitmap from mock device.
+/// Tries in-memory store first, then falls back to extracting from firmware .c files.
 pub async fn pull_image(
     Path((panel_id, name)): Path<(i32, String)>,
 ) -> Result<Json<PullImageResponse>, StatusCode> {
-    let store = IMG_STORE.lock().map_err(|e| { error!("pull_image: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-    match store.get(&(panel_id, name.clone())) {
-        Some(data) => Ok(Json(PullImageResponse {
-            name,
-            data_base64: String::from_utf8_lossy(data).to_string(),
-        })),
-        None => { error!("pull_image: '{}' not found", name); Err(StatusCode::NOT_FOUND) }
+    // Check in-memory store first
+    {
+        let store = IMG_STORE.lock().map_err(|e| { error!("pull_image: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
+        if let Some(data) = store.get(&(panel_id, name.clone())) {
+            return Ok(Json(PullImageResponse {
+                name,
+                data_base64: String::from_utf8_lossy(data).to_string(),
+            }));
+        }
     }
+
+    // Try extracting from firmware .c files
+    if let Some(dir) = resolve_firmware_dir() {
+        let c_file = dir.join(format!("ui_img_{}_png.c", name));
+        if c_file.exists() {
+            match crate::eez_studio::lvgl_img_extract::extract_image(&c_file) {
+                Ok(img) => {
+                    info!("pull_image: extracted '{}' from firmware ({}x{})", name, img.width, img.height);
+                    return Ok(Json(PullImageResponse {
+                        name: img.name,
+                        data_base64: img.png_base64,
+                    }));
+                }
+                Err(e) => {
+                    error!("pull_image: extraction failed for '{}': {}", name, e);
+                }
+            }
+        }
+    }
+
+    error!("pull_image: '{}' not found", name);
+    Err(StatusCode::NOT_FOUND)
 }
 
 /// DELETE /api/eez-device/images/:panelId/:name — remove a bitmap from mock device

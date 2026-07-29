@@ -60,6 +60,7 @@ bb8-tiberius = "0.15"
 tokio-util = { version = "0.7", features = ["compat"] }
 aes-gcm = "0.10"
 base64 = "0.22"
+png = "0.17"
 hostname = "0.4"
 reqwest = { version = "0.12", features = ["json"] }
 
