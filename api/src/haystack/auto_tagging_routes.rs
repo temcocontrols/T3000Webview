@@ -25,6 +25,8 @@ async fn get_db(state: &T3AppState) -> Result<sea_orm::DatabaseConnection, (Stat
 #[serde(rename_all = "camelCase")]
 struct RunRequest {
     serial_numbers: Vec<i32>,
+    #[serde(default)]
+    rule_ids: Option<Vec<i64>>,
 }
 
 // ── Routes ──
@@ -47,7 +49,7 @@ async fn run_auto_tagging(
     Json(payload): Json<RunRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let db = get_db(&state).await?;
-    let (count, matches) = ats::run_auto_tagging(&db, &payload.serial_numbers)
+    let (count, matches) = ats::run_auto_tagging(&db, &payload.serial_numbers, payload.rule_ids.as_deref())
         .await
         .map_err(|e| {
             tracing::error!("run_auto_tagging failed: {}", e);

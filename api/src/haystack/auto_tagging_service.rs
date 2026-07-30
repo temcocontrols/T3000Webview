@@ -52,6 +52,8 @@ pub struct TagMatch {
 #[serde(rename_all = "camelCase")]
 pub struct AutoTagRequest {
     pub serial_numbers: Vec<i32>,
+    #[serde(default)]
+    pub rule_ids: Option<Vec<i64>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -216,14 +218,21 @@ pub async fn delete_rule(db: &impl ConnectionTrait, id: i64) -> Result<(), Strin
 pub async fn run_auto_tagging(
     db: &impl ConnectionTrait,
     serial_numbers: &[i32],
+    rule_ids: Option<&[i64]>,
 ) -> Result<(usize, Vec<TagMatch>), String> {
     if serial_numbers.is_empty() {
         return Ok((0, Vec::new()));
     }
 
-    // Load all enabled rules
-    let rules = list_enabled_rules(db).await
+    // Load all enabled rules (optionally filtered by rule_ids)
+    let mut rules = list_enabled_rules(db).await
         .map_err(|e| format!("Failed to load rules: {}", e))?;
+
+    // If specific rule IDs are provided, filter to only those
+    if let Some(ids) = rule_ids {
+        let id_set: std::collections::HashSet<i64> = ids.iter().copied().collect();
+        rules.retain(|r| id_set.contains(&r.id));
+    }
 
     // Load range rules (metadata-based)
     let range_rules = load_range_rules(db).await
@@ -521,15 +530,14 @@ fn eval_rules<'a>(
                 continue; // rule requires units but point has none
             }
         }
-        // Check object type filter
+        // Check object type filter — only filter if point has an object_type
         if !rule.object_types_filter.is_empty() {
             if let Some(ref ot) = ot_lower {
                 if !rule.object_types_filter.contains(ot) {
                     continue;
                 }
-            } else {
-                continue; // rule requires object_type but point has none
             }
+            // If point has no object_type, let the rule apply (BACnet types may not be set)
         }
         return Some(rule);
     }

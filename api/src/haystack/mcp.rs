@@ -1488,7 +1488,7 @@ async fn execute_tool(
                 return Ok(json!({"error": "No serial numbers provided"}).to_string());
             }
 
-            let (count, _matches) = ats::run_auto_tagging(db, &serial_numbers).await?;
+            let (count, _matches) = ats::run_auto_tagging(db, &serial_numbers, None).await?;
             Ok(json!({
                 "success": true,
                 "message": "Auto-tagging completed",
