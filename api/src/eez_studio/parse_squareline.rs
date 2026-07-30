@@ -281,8 +281,12 @@ fn parse_callback_actions(content: &str) -> HashMap<String, HashMap<String, Vec<
                         let anim = parts.get(1).map(|s| {
                             if s.contains("MOVE_LEFT") { "MOVE_LEFT" }
                             else if s.contains("MOVE_RIGHT") { "MOVE_RIGHT" }
-                            else { "FADE_ON" }
-                        }).unwrap_or("FADE_ON");
+                            else if s.contains("MOVE_TOP") { "MOVE_TOP" }
+                            else if s.contains("MOVE_BOTTOM") { "MOVE_BOTTOM" }
+                            else if s.contains("FADE_OUT") { "FADE_OUT" }
+                            // LV_SCR_LOAD_ANIM_FADE_ON (LVGL 9.x code 9) = EEZ FADE_IN
+                            else { "FADE_IN" }
+                        }).unwrap_or("FADE_IN");
                         let speed: i32 = parts.get(2).and_then(|s| s.trim().parse().ok()).unwrap_or(200);
                         let delay: i32 = parts.get(3).and_then(|s| s.trim().parse().ok()).unwrap_or(0);
                         event_actions.entry(current_event.clone()).or_default().push(json!({

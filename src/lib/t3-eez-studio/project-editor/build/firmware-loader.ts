@@ -5,6 +5,14 @@
  * Reverse of firmware-export.ts.
  */
 
+/** Convert PascalCase or camelCase to snake_case (matching EEZ's identifier convention). */
+function toSnakeCase(name: string): string {
+    return name
+        .replace(/([A-Z])/g, "_$1")
+        .toLowerCase()
+        .replace(/^_/, "");
+}
+
 // ── Widget type mapping (firmware sub_type → LVGL component type) ──
 const SUB_TYPE_MAP: Record<string, string> = {
     label: "LVGLLabelWidget",
@@ -259,6 +267,9 @@ export function firmwareToProject(
                     }
                     const comp = firmwareWidgetToComponent(widgetId, w);
                     comp.objID = genId();
+                    // Set identifier in EEZ's snake_case convention so the build
+                    // index (getWidgetObjectIndexByName) can find this widget
+                    comp.identifier = toSnakeCase(widgetId);
                     fwObjIds[widgetId] = comp.objID;
                     widgetComponents.push(comp);
                 }
@@ -303,7 +314,7 @@ export function firmwareToProject(
                                         actions: [{
                                             objID: genId(), action: "changeScreen",
                                             screen: action.screen || "", screenType: "literal",
-                                            fadeMode: action.anim === "MOVE_LEFT" ? "MOVE_LEFT" : action.anim === "MOVE_RIGHT" ? "MOVE_RIGHT" : "FADE_ON", fadeModeType: "literal",
+                                            fadeMode: action.anim === "MOVE_LEFT" ? "MOVE_LEFT" : action.anim === "MOVE_RIGHT" ? "MOVE_RIGHT" : action.anim === "MOVE_TOP" ? "MOVE_TOP" : action.anim === "MOVE_BOTTOM" ? "MOVE_BOTTOM" : action.anim === "FADE_OUT" ? "FADE_OUT" : "FADE_IN", fadeModeType: "literal",
                                             speed: action.speed || 200, speedType: "literal",
                                             delay: action.delay || 0, delayType: "literal",
                                             useStack: true, useStackType: "literal",
@@ -312,18 +323,19 @@ export function firmwareToProject(
                                     actionYOffset += 60;
                                     connectionLines.push({ objID: genId(), source: sourceObjId, output: eezevtName, target: aid, input: "@seqin" });
                                 } else if (action.action === "flag_modify") {
-                                    const targetWidgetId = fwObjIds[action.target || ""];
-                                    if (!targetWidgetId) continue;
+                                    // Use snake_case identifier (matching EEZ build convention)
+                                    const targetName = toSnakeCase(action.target || "");
+                                    // Guard: skip if target not found in tree
+                                    if (!targetName || !fwObjIds[action.target || ""]) continue;
                                     const hiddenVal = action.mode === "remove" ? false : true;
                                     const aid = genId();
-                                    // EEZ uses LVGLActionComponent with nested actions array
                                     widgetComponents.push({
                                         objID: aid, type: "LVGLActionComponent",
                                         left: 20, top: actionYOffset, width: 350, height: 50,
                                         customInputs: [], customOutputs: [],
                                         actions: [{
                                             objID: genId(), action: "objSetFlagHidden",
-                                            object: targetWidgetId, objectType: "literal",
+                                            object: targetName, objectType: "literal",
                                             hidden: hiddenVal, hiddenType: "literal",
                                         }],
                                     });
