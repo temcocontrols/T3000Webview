@@ -255,26 +255,48 @@ export function firmwareToProject(
             const fwObjIds: Record<string, string> = {};
 
             // Recursively collect all non-screen widgets from the widget tree.
-            // The root of each screen's widget tree is a "screen" widget (e.g. StartUpScreen)
-            // whose children are the actual display widgets. We must skip the screen
-            // container itself but process ALL descendants.
+            // Only immediate children of the screen widget become top-level
+            // components. Deeper descendants stay nested inside their parent
+            // via firmwareWidgetToComponent's comp.children — this is essential
+            // for correct LVGL relative positioning.
             function collectWidgets(widgets: Record<string, FirmwareWidget>) {
                 for (const [widgetId, w] of Object.entries(widgets)) {
                     if (w.sub_type === "screen") {
-                        // Screen container: skip the container, process its children
                         if (w.children) collectWidgets(w.children);
                         continue;
                     }
                     const comp = firmwareWidgetToComponent(widgetId, w);
                     comp.objID = genId();
-                    // Set identifier in EEZ's snake_case convention so the build
-                    // index (getWidgetObjectIndexByName) can find this widget
                     comp.identifier = toSnakeCase(widgetId);
                     fwObjIds[widgetId] = comp.objID;
                     widgetComponents.push(comp);
                 }
             }
             collectWidgets(s.json.widgets || {});
+
+            // Walk the nested component tree to assign unique objIDs to all
+            // descendants and register them in fwObjIds. Nested children
+            // are created by firmwareWidgetToComponent with the firmware
+            // widget name as a placeholder objID — we replace it with a
+            // generated unique ID so connectionLines can reference them.
+            function registerNestedIds(comps: Record<string, any>[]) {
+                for (const comp of comps) {
+                    const fwKey = (comp as any)._fwKey as string | undefined;
+                    if (fwKey && !fwObjIds[fwKey]) {
+                        // Generate unique ID and replace placeholder
+                        const uid = genId();
+                        comp.objID = uid;
+                        // Also update style objIDs that reference the old ID
+                        if (comp.style?.objID) comp.style.objID = `${uid}_style_ref_${Date.now().toString(36)}`;
+                        if (comp.localStyles?.objID) comp.localStyles.objID = `${uid}_style_${Date.now().toString(36)}`;
+                        fwObjIds[fwKey] = uid;
+                    }
+                    if (comp.children && Array.isArray(comp.children)) {
+                        registerNestedIds(comp.children);
+                    }
+                }
+            }
+            registerNestedIds(widgetComponents);
 
             // ── Build flow: action components + connectionLines ──
             const connectionLines: any[] = [];
@@ -429,6 +451,8 @@ function firmwareWidgetToComponent(
     w: FirmwareWidget
 ): Record<string, any> {
     const lvglType = SUB_TYPE_MAP[w.sub_type] || "LVGLPanelWidget";
+    // Store firmware key on every component (including nested children)
+    // so registerNestedIds can map fwObjIds correctly after tree is built.
 
     // Detect LV_SIZE_CONTENT: width/height = 0 (set by parse_squareline for LV_SIZE_CONTENT)
     const isSizeContentW = w.width === 0;
@@ -508,6 +532,7 @@ function firmwareWidgetToComponent(
         top: topVal,
         width: widthVal,
         height: heightVal,
+        _fwKey: id, // firmware widget name for fwObjIds registration
         customInputs: [],
         customOutputs: [],
 
@@ -846,7 +871,6 @@ function firmwareWidgetToComponent(
         const isRow = flexFlow === "row" || flexFlow === "row_wrap";
 
         // Strip align from all descendants (flex handles positioning)
-        // Position direct children based on flex direction
         if (isColumn) {
             let yOff = padTop;
             for (const child of comp.children) {
