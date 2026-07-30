@@ -279,6 +279,7 @@ export function firmwareToProject(
             };
 
             // Recursively process widget events and create connectionLines
+            let actionYOffset = displayH + 40; // stack action components below the screen
             const processWidgetEvents = (
                 widgetId: string,
                 w: FirmwareWidget,
@@ -289,20 +290,44 @@ export function firmwareToProject(
                     const sourceObjId = isScreen ? bgId : (fwObjIds[widgetId] || undefined);
                     if (sourceObjId) {
                         for (const [eventName, eventData] of Object.entries(events)) {
-                            const actions = (eventData as any).actions || [];
+                            const evtActions = (eventData as any).actions || [];
                             const eezevtName = mapEventName(eventName, w.sub_type);
-                            for (const action of actions) {
+                            for (const action of evtActions) {
                                 if (action.action === "screen_change") {
                                     const aid = genId();
-                                    widgetComponents.push({ objID: aid, type: "ChangePageAction", page: action.screen || "", pageType: "literal", fadeMode: action.anim === "MOVE_LEFT" ? "MOVE_LEFT" : action.anim === "MOVE_RIGHT" ? "MOVE_RIGHT" : "FADE_ON", fadeModeType: "literal", speed: action.speed || 200, speedType: "literal", delay: action.delay || 0, delayType: "literal", useStack: true, useStackType: "literal" });
+                                    // EEZ uses LVGLActionComponent with nested actions array
+                                    widgetComponents.push({
+                                        objID: aid, type: "LVGLActionComponent",
+                                        left: 20, top: actionYOffset, width: 350, height: 50,
+                                        customInputs: [], customOutputs: [],
+                                        actions: [{
+                                            objID: genId(), action: "changeScreen",
+                                            screen: action.screen || "", screenType: "literal",
+                                            fadeMode: action.anim === "MOVE_LEFT" ? "MOVE_LEFT" : action.anim === "MOVE_RIGHT" ? "MOVE_RIGHT" : "FADE_ON", fadeModeType: "literal",
+                                            speed: action.speed || 200, speedType: "literal",
+                                            delay: action.delay || 0, delayType: "literal",
+                                            useStack: true, useStackType: "literal",
+                                        }],
+                                    });
+                                    actionYOffset += 60;
                                     connectionLines.push({ objID: genId(), source: sourceObjId, output: eezevtName, target: aid, input: "@seqin" });
                                 } else if (action.action === "flag_modify") {
-                                    // Map flag_modify to LvglObjSetFlagHiddenAction
                                     const targetWidgetId = fwObjIds[action.target || ""];
                                     if (!targetWidgetId) continue;
                                     const hiddenVal = action.mode === "remove" ? false : true;
                                     const aid = genId();
-                                    widgetComponents.push({ objID: aid, type: "LvglObjSetFlagHiddenAction", object: targetWidgetId, objectType: "literal", hidden: hiddenVal, hiddenType: "literal" });
+                                    // EEZ uses LVGLActionComponent with nested actions array
+                                    widgetComponents.push({
+                                        objID: aid, type: "LVGLActionComponent",
+                                        left: 20, top: actionYOffset, width: 350, height: 50,
+                                        customInputs: [], customOutputs: [],
+                                        actions: [{
+                                            objID: genId(), action: "objSetFlagHidden",
+                                            object: targetWidgetId, objectType: "literal",
+                                            hidden: hiddenVal, hiddenType: "literal",
+                                        }],
+                                    });
+                                    actionYOffset += 60;
                                     connectionLines.push({ objID: genId(), source: sourceObjId, output: eezevtName, target: aid, input: "@seqin" });
                                 }
                             }
