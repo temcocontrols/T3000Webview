@@ -230,17 +230,31 @@ fn extract_first_arg(line: &str) -> Option<String> {
 }
 
 /// Parse all callback function bodies from a screen C file.
-/// Returns map of callback_name → Vec<action_json>.
-fn parse_callback_actions(content: &str) -> HashMap<String, Vec<Value>> {
-    let mut result: HashMap<String, Vec<Value>> = HashMap::new();
+/// Returns map of callback_name → event_code → Vec<action_json>.
+/// Event codes are extracted from `if (event_code == LV_EVENT_XXX)` conditions.
+/// Actions without a preceding event condition default to "ALL".
+fn parse_callback_actions(content: &str) -> HashMap<String, HashMap<String, Vec<Value>>> {
+    let mut result: HashMap<String, HashMap<String, Vec<Value>>> = HashMap::new();
     let lines: Vec<&str> = content.lines().collect();
     let mut i = 0;
+    // Regex-like extraction: LV_EVENT_XXX → XXX
+    let extract_event_code = |s: &str| -> Option<String> {
+        if let Some(start) = s.find("LV_EVENT_") {
+            let rest = &s[start + "LV_EVENT_".len()..];
+            let end = rest.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(rest.len());
+            Some(rest[..end].to_string())
+        } else {
+            None
+        }
+    };
     while i < lines.len() {
         let line = lines[i].trim();
         if line.starts_with("void ") && line.contains("(lv_event_t") {
             let func_name = line.trim_start_matches("void ").split('(').next().unwrap_or("").trim().to_string();
             if func_name.is_empty() { i += 1; continue; }
-            let mut actions: Vec<Value> = Vec::new();
+            // event_code → actions
+            let mut event_actions: HashMap<String, Vec<Value>> = HashMap::new();
+            let mut current_event = "ALL".to_string();  // default when no event condition
             i += 1;
             let mut brace_depth = 0;
             while i < lines.len() {
@@ -251,6 +265,12 @@ fn parse_callback_actions(content: &str) -> HashMap<String, Vec<Value>> {
                     if brace_depth == 0 { break; }
                     brace_depth = brace_depth.saturating_sub(close_count);
                     if brace_depth == 0 { break; }
+                }
+                // Track event code from `if (event_code == LV_EVENT_XXX)`
+                if bline.contains("event_code") && bline.contains("LV_EVENT_") {
+                    if let Some(evt) = extract_event_code(bline) {
+                        current_event = evt;
+                    }
                 }
                 // Screen change
                 if bline.contains("_ui_screen_change") {
@@ -265,7 +285,7 @@ fn parse_callback_actions(content: &str) -> HashMap<String, Vec<Value>> {
                         }).unwrap_or("FADE_ON");
                         let speed: i32 = parts.get(2).and_then(|s| s.trim().parse().ok()).unwrap_or(200);
                         let delay: i32 = parts.get(3).and_then(|s| s.trim().parse().ok()).unwrap_or(0);
-                        actions.push(json!({
+                        event_actions.entry(current_event.clone()).or_default().push(json!({
                             "action": "screen_change",
                             "screen": screen_name_from_str(&screen),
                             "anim": anim,
@@ -283,7 +303,7 @@ fn parse_callback_actions(content: &str) -> HashMap<String, Vec<Value>> {
                         let mode = if bline.contains("_UI_MODIFY_FLAG_TOGGLE") { "toggle" }
                             else if bline.contains("_UI_MODIFY_FLAG_REMOVE") { "remove" }
                             else { "add" };
-                        actions.push(json!({
+                        event_actions.entry(current_event.clone()).or_default().push(json!({
                             "action": "flag_modify",
                             "target": target,
                             "flag": "hidden",
@@ -293,8 +313,8 @@ fn parse_callback_actions(content: &str) -> HashMap<String, Vec<Value>> {
                 }
                 i += 1;
             }
-            if !actions.is_empty() {
-                result.insert(func_name, actions);
+            if !event_actions.is_empty() {
+                result.insert(func_name, event_actions);
             }
         }
         i += 1;
@@ -909,6 +929,7 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
     }
 
     // ── Resolve callback actions: replace placeholder callbacks with real actions ──
+    // callback_actions is now: callback_name → event_code → Vec<action>
     let callback_actions = parse_callback_actions(&content);
     if !callback_actions.is_empty() {
         for w in &mut widgets {
@@ -918,12 +939,33 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
                 for (event_name, event_val) in events_obj.iter() {
                     let actions_arr = event_val.get("actions").and_then(|a| a.as_array());
                     if let Some(actions) = actions_arr {
-                        let new_actions: Vec<Value> = actions.iter().filter_map(|a| {
+                        // For each placeholder action (callback name), look up the resolved
+                        // event-specific actions. Merge actions by event code.
+                        let mut merged: HashMap<String, Vec<Value>> = HashMap::new();
+                        for a in actions {
                             let cb_name = a.get("action").and_then(|v| v.as_str()).unwrap_or("");
-                            callback_actions.get(cb_name).cloned()
-                        }).flatten().collect();
-                        if !new_actions.is_empty() {
-                            resolved.insert(event_name.clone(), json!({ "actions": new_actions }));
+                            if let Some(event_actions) = callback_actions.get(cb_name) {
+                                for (evt_code, evt_actions) in event_actions {
+                                    merged.entry(evt_code.clone()).or_default().extend(evt_actions.clone());
+                                }
+                            }
+                        }
+                        // If merged events exist, use them (replacing "ALL" with specific events)
+                        // Otherwise, keep the original event_name
+                        if !merged.is_empty() {
+                            for (evt_code, evt_actions) in merged {
+                                resolved.insert(evt_code.clone(), json!({ "actions": evt_actions }));
+                            }
+                        } else {
+                            // No callback found — keep the original (could be a direct action)
+                            // Drop placeholder-only events
+                            let has_non_placeholder = actions.iter().any(|a| {
+                                let name = a.get("action").and_then(|v| v.as_str()).unwrap_or("");
+                                !callback_actions.contains_key(name)
+                            });
+                            if has_non_placeholder {
+                                resolved.insert(event_name.clone(), json!({ "actions": actions }));
+                            }
                         }
                     }
                 }

@@ -204,9 +204,9 @@ export function firmwareToProject(
             // Default to #000000 for dark theme screens that don't set explicit bg_color
             const isDark = meta?.darkTheme ?? true;
             const bgColor = (s.json as any).bg_color || (isDark ? "#000000" : "#FFFFFF");
-                const bgId = `bg_${s.name}_${Date.now().toString(36)}`;
+                const bgId = genId();
                 widgetComponents.push({
-                    objID: genId(),
+                    objID: bgId,
                     type: "LVGLPanelWidget",
                     left: 0,
                     top: 0,
@@ -267,24 +267,87 @@ export function firmwareToProject(
 
             // ── Build flow: action components + connectionLines ──
             const connectionLines: any[] = [];
+            // bgId is the background panel's objID — screen-level events route through it
+
+            // Map firmware event names to EEZ event names (same logic as firmwareWidgetToComponent)
+            const mapEventName = (evtName: string, subType: string) => {
+                if (evtName !== "ALL") return evtName;
+                const interactive = ["button", "imagebutton", "arc", "bar", "switch", "slider", "dropdown", "roller"];
+                if (subType === "arc" || subType === "bar" || subType === "slider") return "VALUE_CHANGED";
+                if (interactive.includes(subType)) return "CLICKED";
+                return evtName;
+            };
+
+            // Recursively process widget events and create connectionLines
+            const processWidgetEvents = (
+                widgetId: string,
+                w: FirmwareWidget,
+                isScreen: boolean
+            ) => {
+                const events = w.events as Record<string, any> | undefined;
+                if (events) {
+                    const sourceObjId = isScreen ? bgId : (fwObjIds[widgetId] || undefined);
+                    if (sourceObjId) {
+                        for (const [eventName, eventData] of Object.entries(events)) {
+                            const actions = (eventData as any).actions || [];
+                            const eezevtName = mapEventName(eventName, w.sub_type);
+                            for (const action of actions) {
+                                if (action.action === "screen_change") {
+                                    const aid = genId();
+                                    widgetComponents.push({ objID: aid, type: "ChangePageAction", page: action.screen || "", pageType: "literal", fadeMode: action.anim === "MOVE_LEFT" ? "MOVE_LEFT" : action.anim === "MOVE_RIGHT" ? "MOVE_RIGHT" : "FADE_ON", fadeModeType: "literal", speed: action.speed || 200, speedType: "literal", delay: action.delay || 0, delayType: "literal", useStack: true, useStackType: "literal" });
+                                    connectionLines.push({ objID: genId(), source: sourceObjId, output: eezevtName, target: aid, input: "@seqin" });
+                                } else if (action.action === "flag_modify") {
+                                    // Map flag_modify to LvglObjSetFlagHiddenAction
+                                    const targetWidgetId = fwObjIds[action.target || ""];
+                                    if (!targetWidgetId) continue;
+                                    const hiddenVal = action.mode === "remove" ? false : true;
+                                    const aid = genId();
+                                    widgetComponents.push({ objID: aid, type: "LvglObjSetFlagHiddenAction", object: targetWidgetId, objectType: "literal", hidden: hiddenVal, hiddenType: "literal" });
+                                    connectionLines.push({ objID: genId(), source: sourceObjId, output: eezevtName, target: aid, input: "@seqin" });
+                                }
+                            }
+                        }
+                    }
+                }
+                // Recurse into children
+                if (w.children) {
+                    for (const [childId, childW] of Object.entries(w.children)) {
+                        processWidgetEvents(childId, childW as FirmwareWidget, false);
+                    }
+                }
+            };
 
             for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
-                const events = w.events;
-                if (!events) continue;
                 const isScreen = w.sub_type === "screen";
-                // Screen events: skip for now (no LVGLScreenWidget to host them)
-                if (isScreen) continue;
-                const sourceObjId = fwObjIds[widgetId];
-                if (!sourceObjId) continue;
+                processWidgetEvents(widgetId, w, isScreen);
+            }
 
-                for (const [eventName, eventData] of Object.entries(events)) {
-                    const actions = (eventData as any).actions || [];
-                    for (const action of actions) {
-                        if (action.action === "screen_change") {
-                            const aid = genId();
-                            widgetComponents.push({ objID: aid, type: "ChangePageAction", page: action.screen || "", pageType: "literal", fadeMode: action.anim === "MOVE_LEFT" ? "MOVE_LEFT" : action.anim === "MOVE_RIGHT" ? "MOVE_RIGHT" : "FADE_ON", fadeModeType: "literal", speed: action.speed || 200, speedType: "literal", delay: action.delay || 0, delayType: "literal", useStack: true, useStackType: "literal" });
-                            connectionLines.push({ objID: genId(), source: sourceObjId, output: eventName, target: aid, input: "@seqin" });
+            // ── Update background panel eventHandlers for screen-level events ──
+            // Screen events (SCREEN_LOADED, CLICKED on background, GESTURE, etc.)
+            // are routed through the background panel. Populate its eventHandlers.
+            const screenWidget = Object.entries(s.json.widgets || {}).find(
+                ([, w]) => w.sub_type === "screen"
+            );
+            if (screenWidget) {
+                const [, screenW] = screenWidget;
+                const screenEvents = screenW.events;
+                if (screenEvents && Object.keys(screenEvents).length > 0) {
+                    const bgPanel = widgetComponents.find(c => c.objID === bgId);
+                    if (bgPanel) {
+                        const bgEventNames = new Set<string>();
+                        for (const evtName of Object.keys(screenEvents)) {
+                            bgEventNames.add(mapEventName(evtName, screenW.sub_type));
                         }
+                        // Merge with existing eventHandlers (e.g. from screen_change connections)
+                        const existing = bgPanel.eventHandlers || [];
+                        const existingNames = new Set(existing.map((e: any) => e.eventName));
+                        for (const name of bgEventNames) {
+                            if (!existingNames.has(name)) {
+                                existing.push({ eventName: name, handlerType: "flow" });
+                            }
+                        }
+                        bgPanel.eventHandlers = existing;
+                        bgPanel.clickableFlag = true;
                     }
                 }
             }
@@ -688,11 +751,32 @@ function firmwareWidgetToComponent(
     }
 
     // ── Events ──
-    // Events are parsed correctly into the JSON (screen_change/flag_modify actions)
-    // but converting to EEZ's internal eventHandler format needs more research.
-    // The EEZ flow system uses a different structure than what LVGL events map to.
-    // Skip for now — screens render correctly without event handlers.
-    comp.eventHandlers = [];
+    // Firmware JSON events: { "ALL" | "CLICKED" | ...: { actions: [...] } }
+    // Map to EEZ eventHandlers format: [ { eventName, handlerType:"flow" } ]
+    // The flow section creates connectionLines from these event outputs.
+    if (w.events && Object.keys(w.events).length > 0) {
+        const isInteractive = [
+            "LVGLButtonWidget", "LVGLImgbuttonWidget",
+            "LVGLArcWidget", "LVGLBarWidget", "LVGLSwitchWidget",
+            "LVGLSliderWidget", "LVGLDropdownWidget", "LVGLRollerWidget",
+        ].includes(lvglType);
+
+        comp.eventHandlers = Object.keys(w.events).map(evtName => {
+            // Map firmware "ALL" (from LV_EVENT_ALL) to meaningful event names
+            // Most interactive widgets use CLICKED or VALUE_CHANGED as primary triggers
+            let mappedName = evtName;
+            if (mappedName === "ALL") {
+                if (lvglType === "LVGLArcWidget" || lvglType === "LVGLBarWidget" || lvglType === "LVGLSliderWidget") {
+                    mappedName = "VALUE_CHANGED";
+                } else if (isInteractive) {
+                    mappedName = "CLICKED";
+                }
+            }
+            return { eventName: mappedName, handlerType: "flow" };
+        });
+    } else {
+        comp.eventHandlers = [];
+    }
 
     // ── State flags ──
     const disabled = w.disabled || w.disabledState;
