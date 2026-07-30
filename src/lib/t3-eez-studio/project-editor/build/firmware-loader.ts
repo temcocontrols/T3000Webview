@@ -244,11 +244,82 @@ export function firmwareToProject(
                 widgetComponents.push(comp);
             }
 
+            // ── Build flow: create action components + connectionLines from events ──
+            const connectionLines: any[] = [];
+            const widgetObjIds: Record<string, string> = {};
+            for (const c of widgetComponents) {
+                if (c.objID && (c as any)._firmwareWidgetId) {
+                    widgetObjIds[(c as any)._firmwareWidgetId] = c.objID;
+                }
+            }
+            // Re-scan widgets to build objID map from the parsed widget IDs
+            for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
+                const comp = widgetComponents.find(c => (c as any)._firmwareWidgetId === widgetId);
+                if (comp) widgetObjIds[widgetId] = comp.objID;
+            }
+
+            for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
+                const events = w.events;
+                if (!events) continue;
+                const sourceObjId = widgetObjIds[widgetId];
+                if (!sourceObjId) continue;
+
+                for (const [eventName, eventData] of Object.entries(events)) {
+                    const actions = (eventData as any).actions || [];
+                    for (const action of actions) {
+                        if (action.action === "screen_change") {
+                            const actionCompId = genId();
+                            widgetComponents.push({
+                                objID: actionCompId,
+                                type: "ChangePageAction",
+                                page: action.screen || "",
+                                pageType: "literal",
+                                fadeMode: action.anim === "MOVE_LEFT" ? "MOVE_LEFT"
+                                    : action.anim === "MOVE_RIGHT" ? "MOVE_RIGHT" : "FADE_ON",
+                                fadeModeType: "literal",
+                                speed: action.speed || 200,
+                                speedType: "literal",
+                                delay: action.delay || 0,
+                                delayType: "literal",
+                                useStack: true,
+                                useStackType: "literal",
+                            });
+                            connectionLines.push({
+                                objID: genId(),
+                                source: sourceObjId,
+                                output: eventName,
+                                target: actionCompId,
+                                input: "@seqin",
+                            });
+                        } else if (action.action === "flag_modify") {
+                            const targetObjId = widgetObjIds[action.target];
+                            const actionCompId = genId();
+                            widgetComponents.push({
+                                objID: actionCompId,
+                                type: "SetVariableActionComponent",
+                                variableName: `${action.target}_hidden`,
+                                variableNameType: "literal",
+                                assignedValue: action.mode === "toggle" ? "!toggle" 
+                                    : action.mode === "add" ? "1" : "0",
+                                assignedValueType: "literal",
+                            });
+                            connectionLines.push({
+                                objID: genId(),
+                                source: sourceObjId,
+                                output: eventName,
+                                target: actionCompId,
+                                input: "@seqin",
+                            });
+                        }
+                    }
+                }
+            }
+
             return {
                 objID: pageId,
                 name: s.name,
                 components: widgetComponents,
-                connectionLines: [],
+                connectionLines,
                 localVariables: [],
                 userProperties: [],
                 left: 0,
@@ -638,13 +709,11 @@ function firmwareWidgetToComponent(
     }
 
     // ── Events ──
-    if (w.events) {
-        comp.eventHandlers = Object.entries(w.events).map(([name, e]) => ({
-            eventName: name,
-            handlerType: (e as any).action || "action",
-            userData: (e as any).user_data ?? 0,
-        }));
-    }
+    // Events are parsed correctly into the JSON (screen_change/flag_modify actions)
+    // but converting to EEZ's internal eventHandler format needs more research.
+    // The EEZ flow system uses a different structure than what LVGL events map to.
+    // Skip for now — screens render correctly without event handlers.
+    comp.eventHandlers = [];
 
     // ── State flags ──
     const disabled = w.disabled || w.disabledState;
@@ -656,7 +725,7 @@ function firmwareWidgetToComponent(
     if (hidden && (w.hiddenFlagType === "expression" || typeof hidden === "string")) {
         comp.hiddenFlag = hidden;
         comp.hiddenFlagType = "expression";
-    } else if (hidden === true || hidden === "true" || hidden === "1") {
+    } else if (hidden && (hidden === "true" || hidden === "1" || String(hidden) === "true")) {
         comp.hiddenFlag = "true";
         comp.hiddenFlagType = "literal";
     }

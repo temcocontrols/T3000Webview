@@ -219,6 +219,98 @@ fn extract_event_cb(line: &str) -> Option<(String, String)> {
     Some((handler, event.to_uppercase()))
 }
 
+/// Extract the first argument (widget reference) from a function call.
+/// lv_obj_add_event_cb(ui_RightBtn, ...) → Some("RightBtn")
+fn extract_first_arg(line: &str) -> Option<String> {
+    let paren = line.find('(')?;
+    let after = &line[paren+1..];
+    let arg = after.split(',').next()?.trim();
+    if arg.is_empty() || arg == "NULL" { return None; }
+    Some(arg.replace("ui_", "").replace("uic_", ""))
+}
+
+/// Parse all callback function bodies from a screen C file.
+/// Returns map of callback_name → Vec<action_json>.
+fn parse_callback_actions(content: &str) -> HashMap<String, Vec<Value>> {
+    let mut result: HashMap<String, Vec<Value>> = HashMap::new();
+    let lines: Vec<&str> = content.lines().collect();
+    let mut i = 0;
+    while i < lines.len() {
+        let line = lines[i].trim();
+        if line.starts_with("void ") && line.contains("(lv_event_t") {
+            let func_name = line.trim_start_matches("void ").split('(').next().unwrap_or("").trim().to_string();
+            if func_name.is_empty() { i += 1; continue; }
+            let mut actions: Vec<Value> = Vec::new();
+            i += 1;
+            let mut brace_depth = 0;
+            while i < lines.len() {
+                let bline = lines[i].trim();
+                if bline.contains('{') { brace_depth += bline.matches('{').count(); }
+                if bline.contains('}') {
+                    let close_count = bline.matches('}').count();
+                    if brace_depth == 0 { break; }
+                    brace_depth = brace_depth.saturating_sub(close_count);
+                    if brace_depth == 0 { break; }
+                }
+                // Screen change
+                if bline.contains("_ui_screen_change") {
+                    if let Some(paren) = bline.find('(') {
+                        let args_str = &bline[paren+1..];
+                        let parts: Vec<&str> = args_str.split(',').collect();
+                        let screen = parts.get(0).map(|s| s.trim().trim_start_matches('&').replace("ui_", "")).unwrap_or_default();
+                        let anim = parts.get(1).map(|s| {
+                            if s.contains("MOVE_LEFT") { "MOVE_LEFT" }
+                            else if s.contains("MOVE_RIGHT") { "MOVE_RIGHT" }
+                            else { "FADE_ON" }
+                        }).unwrap_or("FADE_ON");
+                        let speed: i32 = parts.get(2).and_then(|s| s.trim().parse().ok()).unwrap_or(200);
+                        let delay: i32 = parts.get(3).and_then(|s| s.trim().parse().ok()).unwrap_or(0);
+                        actions.push(json!({
+                            "action": "screen_change",
+                            "screen": screen_name_from_str(&screen),
+                            "anim": anim,
+                            "speed": speed,
+                            "delay": delay
+                        }));
+                    }
+                }
+                // Flag modify (hidden toggle)
+                if bline.contains("_ui_flag_modify") && bline.contains("LV_OBJ_FLAG_HIDDEN") {
+                    if let Some(paren) = bline.find('(') {
+                        let args_str = &bline[paren+1..];
+                        let parts: Vec<&str> = args_str.split(',').collect();
+                        let target = parts.get(0).map(|s| s.trim().trim_start_matches('&').replace("ui_", "").replace("uic_", "")).unwrap_or_default();
+                        let mode = if bline.contains("_UI_MODIFY_FLAG_TOGGLE") { "toggle" }
+                            else if bline.contains("_UI_MODIFY_FLAG_REMOVE") { "remove" }
+                            else { "add" };
+                        actions.push(json!({
+                            "action": "flag_modify",
+                            "target": target,
+                            "flag": "hidden",
+                            "mode": mode
+                        }));
+                    }
+                }
+                i += 1;
+            }
+            if !actions.is_empty() {
+                result.insert(func_name, actions);
+            }
+        }
+        i += 1;
+    }
+    result
+}
+
+fn screen_name_from_str(name: &str) -> String {
+    let mut result = String::new();
+    for (i, c) in name.chars().enumerate() {
+        if c.is_uppercase() && i > 0 { result.push('_'); }
+        result.push(c.to_ascii_lowercase());
+    }
+    result
+}
+
 /// Extract hex color from `lv_color_hex(0xRRGGBB)` pattern
 fn extract_hex_color(line: &str) -> Option<u32> {
     let start = line.find("lv_color_hex(0x")?;
@@ -661,15 +753,11 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             }
         }
 
-        // Event handler
-        if let Some((handler, event)) = extract_event_cb(line) {
-            let events = w.events.get_or_insert(json!({}));
-            events[&event] = json!({
-                "actions": [{
-                    "action": handler.replace("Event_Cb_", ""),
-                    "note": format!("SquareLine callback: {}", handler)
-                }]
-            });
+        // Event handler — skip during main loop (applied after loop)
+        // NOTE: lv_obj_add_event_cb lines after the build function attach
+        // to the wrong widget due to current_idx. Events are resolved later.
+        if line.contains("lv_obj_add_event_cb") {
+            // Skip for now — events are handled separately
         }
 
         // Dropdown options: lv_dropdown_set_options(obj, "a\nb\nc")
@@ -788,6 +876,55 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             let ints = extract_ints(line, "lv_image_set_rotation");
             if let Some(&v) = ints.last() {
                 w.extra.insert("rotation".into(), json!(v));
+            }
+        }
+    }
+
+    // ── Second pass: attach event registrations to correct widgets ──
+    for line in &lines {
+        let line = line.trim();
+        if let Some((handler, event)) = extract_event_cb(line) {
+            let target = extract_first_arg(line)
+                .map(|n| n.replace("ui_", "").replace("uic_", ""));
+            let found = target.as_ref().and_then(|name| {
+                widgets.iter().position(|w| w.id == *name)
+            });
+            if let Some(idx) = found {
+                let events = widgets[idx].events.get_or_insert(json!({}));
+                events[&event] = json!({
+                    "actions": [{
+                        "action": handler.clone(),
+                        "note": format!("SquareLine callback: {}", handler)
+                    }]
+                });
+            }
+        }
+    }
+
+    // ── Resolve callback actions: replace placeholder callbacks with real actions ──
+    let callback_actions = parse_callback_actions(&content);
+    if !callback_actions.is_empty() {
+        for w in &mut widgets {
+            if let Some(ref mut events) = w.events {
+                let events_obj = events.as_object_mut().unwrap();
+                let mut resolved: serde_json::Map<String, Value> = serde_json::Map::new();
+                for (event_name, event_val) in events_obj.iter() {
+                    let actions_arr = event_val.get("actions").and_then(|a| a.as_array());
+                    if let Some(actions) = actions_arr {
+                        let new_actions: Vec<Value> = actions.iter().filter_map(|a| {
+                            let cb_name = a.get("action").and_then(|v| v.as_str()).unwrap_or("");
+                            callback_actions.get(cb_name).cloned()
+                        }).flatten().collect();
+                        if !new_actions.is_empty() {
+                            resolved.insert(event_name.clone(), json!({ "actions": new_actions }));
+                        }
+                    }
+                }
+                if resolved.is_empty() {
+                    w.events = None; // Remove events that had no resolvable actions
+                } else {
+                    *events = json!(resolved);
+                }
             }
         }
     }
