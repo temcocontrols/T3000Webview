@@ -957,13 +957,15 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
                                 resolved.insert(evt_code.clone(), json!({ "actions": evt_actions }));
                             }
                         } else {
-                            // No callback found — keep the original (could be a direct action)
-                            // Drop placeholder-only events
-                            let has_non_placeholder = actions.iter().any(|a| {
+                            // No callback actions resolved — check if any action is a "real"
+                            // action (screen_change, flag_modify) rather than a placeholder
+                            // callback name. Drop events that are only placeholder callbacks
+                            // with no parsable firmware actions.
+                            let has_real_action = actions.iter().any(|a| {
                                 let name = a.get("action").and_then(|v| v.as_str()).unwrap_or("");
-                                !callback_actions.contains_key(name)
+                                name == "screen_change" || name == "flag_modify"
                             });
-                            if has_non_placeholder {
+                            if has_real_action {
                                 resolved.insert(event_name.clone(), json!({ "actions": actions }));
                             }
                         }

@@ -272,10 +272,10 @@ export function firmwareToProject(
             // Map firmware event names to EEZ event names (same logic as firmwareWidgetToComponent)
             const mapEventName = (evtName: string, subType: string) => {
                 if (evtName !== "ALL") return evtName;
-                const interactive = ["button", "imagebutton", "arc", "bar", "switch", "slider", "dropdown", "roller"];
                 if (subType === "arc" || subType === "bar" || subType === "slider") return "VALUE_CHANGED";
-                if (interactive.includes(subType)) return "CLICKED";
-                return evtName;
+                // ALL other types (button, imagebutton, switch, dropdown, roller, panel, screen, etc.)
+                // default to CLICKED. "ALL" is NOT a valid EEZ LVGL event name.
+                return "CLICKED";
             };
 
             // Recursively process widget events and create connectionLines
@@ -755,20 +755,17 @@ function firmwareWidgetToComponent(
     // Map to EEZ eventHandlers format: [ { eventName, handlerType:"flow" } ]
     // The flow section creates connectionLines from these event outputs.
     if (w.events && Object.keys(w.events).length > 0) {
-        const isInteractive = [
-            "LVGLButtonWidget", "LVGLImgbuttonWidget",
-            "LVGLArcWidget", "LVGLBarWidget", "LVGLSwitchWidget",
-            "LVGLSliderWidget", "LVGLDropdownWidget", "LVGLRollerWidget",
-        ].includes(lvglType);
-
         comp.eventHandlers = Object.keys(w.events).map(evtName => {
-            // Map firmware "ALL" (from LV_EVENT_ALL) to meaningful event names
-            // Most interactive widgets use CLICKED or VALUE_CHANGED as primary triggers
+            // Map firmware "ALL" (from LV_EVENT_ALL) to meaningful event names.
+            // "ALL" is NOT a valid EEZ LVGL event — it must be mapped or the
+            // build check crashes with "getWidgetEvents(...)[this.eventName] is undefined".
             let mappedName = evtName;
             if (mappedName === "ALL") {
                 if (lvglType === "LVGLArcWidget" || lvglType === "LVGLBarWidget" || lvglType === "LVGLSliderWidget") {
                     mappedName = "VALUE_CHANGED";
-                } else if (isInteractive) {
+                } else {
+                    // Buttons, imagebuttons, switches, dropdowns, rollers,
+                    // panels, screens, and all other types: default to CLICKED
                     mappedName = "CLICKED";
                 }
             }
