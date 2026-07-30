@@ -283,9 +283,12 @@ export function firmwareToProject(
                 for (const comp of comps) {
                     const fwKey = (comp as any)._fwKey as string | undefined;
                     if (fwKey && !fwObjIds[fwKey]) {
-                        // Generate unique ID and replace placeholder
+                        // Generate unique ID, set identifier for EEZ build index,
+                        // and register in fwObjIds so flag_modify actions can
+                        // reference this widget by its snake_case name.
                         const uid = genId();
                         comp.objID = uid;
+                        comp.identifier = toSnakeCase(fwKey);
                         // Also update style objIDs that reference the old ID
                         if (comp.style?.objID) comp.style.objID = `${uid}_style_ref_${Date.now().toString(36)}`;
                         if (comp.localStyles?.objID) comp.localStyles.objID = `${uid}_style_${Date.now().toString(36)}`;
