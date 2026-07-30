@@ -225,7 +225,12 @@ export function firmwareToProject(
                     disabledStateType: "literal",
                     widgetFlags: "ADV_HITTEST|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
                     states: "",
-                    useStyle: "default",
+                    style: {
+                        objID: genId(),
+                        useStyle: "default",
+                        conditionalStyles: [],
+                        childStyles: [],
+                    },
                     localStyles: {
                         objID: `${bgId}_style_${Date.now().toString(36)}`,
                         definition: {
@@ -418,7 +423,12 @@ function firmwareWidgetToComponent(
         disabledStateType: "literal",
         widgetFlags: "CLICKABLE|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
         states: "",
-        useStyle: "default",
+        style: {
+            objID: `${id}_style_ref_${Date.now().toString(36)}`,
+            useStyle: "default",
+            conditionalStyles: [],
+            childStyles: [],
+        },
         localStyles: {
             objID: `${id}_style_${Date.now().toString(36)}`,
         },
