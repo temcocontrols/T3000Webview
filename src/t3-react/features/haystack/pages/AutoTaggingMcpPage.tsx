@@ -363,6 +363,10 @@ const RunTab: React.FC = () => {
   const [resetOpen, setResetOpen] = useState(false);
   const [runConfirmOpen, setRunConfirmOpen] = useState(false);
   const [rulesCount, setRulesCount] = useState(0);
+  const [rules, setRules] = useState<AutoTaggingRule[]>([]);
+  const [selectedRuleIds, setSelectedRuleIds] = useState<number[]>([]); // empty = nothing selected
+  const [ruleSelectorOpen, setRuleSelectorOpen] = useState(false);
+  const [ruleCategoryFilter, setRuleCategoryFilter] = useState('all'); // all | haystack | brick | range
 
   const allDevices = devices.filter(d => d.productName && d.productName !== 'Unknown' && d.productName !== '(Unknown)');
   const allSerials = allDevices.map(d => String(d.serialNumber));
@@ -373,9 +377,11 @@ const RunTab: React.FC = () => {
     if (serials.length === 0) { setError('No devices available'); return; }
     setRunning(true); setError(null); setPreviewData(null); setResult(null);
     try {
+      const body: any = { serialNumbers: serials };
+      if (selectedRuleIds.length < enabledRules.length) body.ruleIds = selectedRuleIds;
       const res = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/preview`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumbers: serials }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -388,9 +394,11 @@ const RunTab: React.FC = () => {
     if (serials.length === 0) { setError('No devices available'); return; }
     setRunning(true); setError(null); setPreviewData(null); setResult(null);
     try {
+      const body: any = { serialNumbers: serials };
+      if (selectedRuleIds.length < enabledRules.length) body.ruleIds = selectedRuleIds;
       const res = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/run`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumbers: serials }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -417,9 +425,45 @@ const RunTab: React.FC = () => {
   useEffect(() => { handlePreview(); }, []);
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/haystack/auto-tagging/rules`)
-      .then(r => r.json()).then(d => setRulesCount((d.rules || []).filter((r: AutoTaggingRule) => r.enabled).length))
+      .then(r => r.json()).then(d => {
+        const all: AutoTaggingRule[] = d.rules || [];
+        setRules(all);
+        const enabled = all.filter((r: AutoTaggingRule) => r.enabled);
+        setRulesCount(enabled.length);
+        if (selectedRuleIds.length === 0) setSelectedRuleIds(enabled.map(r => r.id));
+      })
       .catch(() => {});
   }, []);
+
+  const enabledRules = rules.filter(r => r.enabled);
+  const filteredRules = ruleCategoryFilter === 'all'
+    ? enabledRules
+    : enabledRules.filter(r => r.category === ruleCategoryFilter);
+  const haystackCount = enabledRules.filter(r => r.category === 'haystack').length;
+  const brickCount = enabledRules.filter(r => r.category === 'brick').length;
+  const rangeCount = enabledRules.filter(r => r.category === 'range').length;
+  const ruleCount = selectedRuleIds.length;
+  const filteredSelectedCount = filteredRules.filter(r => selectedRuleIds.includes(r.id)).length;
+  const isAllFilteredSelected = filteredRules.length > 0 && filteredRules.every(r => selectedRuleIds.includes(r.id));
+
+  const toggleAllRules = () => {
+    const catIds = new Set(filteredRules.map(r => r.id));
+    if (isAllFilteredSelected) {
+      setSelectedRuleIds(prev => prev.filter(id => !catIds.has(id)));
+    } else {
+      setSelectedRuleIds(prev => {
+        const s = new Set(prev);
+        catIds.forEach(id => s.add(id));
+        return Array.from(s);
+      });
+    }
+  };
+
+  const toggleRule = (id: number) => {
+    setSelectedRuleIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
 
   const getDeviceName = (sn: number) => {
     const d = allDevices.find(d => d.serialNumber === sn);
@@ -451,6 +495,107 @@ const RunTab: React.FC = () => {
             </Option>
           ))}
         </Dropdown>
+
+        {/* ── Rule Selector Button ── */}
+        <Button size="small" icon={<SettingsRegular style={{ fontSize: 14 }} />}
+          style={{ minHeight: 28, height: 28 }}
+          onClick={() => setRuleSelectorOpen(true)}>
+          {ruleCount} of {enabledRules.length} rules
+        </Button>
+
+        {/* ── Rule Selector Drawer (custom) ── */}
+        {ruleSelectorOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              onClick={() => setRuleSelectorOpen(false)}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 1000,
+                background: 'rgba(0,0,0,0.3)',
+              }}
+            />
+            {/* Side Panel */}
+            <div style={{
+              position: 'fixed', top: 0, right: 0, bottom: 0,
+              width: 400, maxWidth: '90vw', zIndex: 1001,
+              background: 'var(--colorNeutralBackground1, #fff)',
+              boxShadow: '-4px 0 16px rgba(0,0,0,0.15)',
+              display: 'flex', flexDirection: 'column',
+            }}>
+              {/* Header */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                padding: '14px 16px 8px',
+                borderBottom: '1px solid var(--colorNeutralStroke2)',
+                flexShrink: 0,
+              }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>Select Rules to Apply</div>
+                  <div style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)', marginTop: 2 }}>
+                    {filteredSelectedCount} of {filteredRules.length} selected
+                  </div>
+                </div>
+                <Button size="small" appearance="transparent" icon={<DismissRegular />}
+                  onClick={() => setRuleSelectorOpen(false)} />
+              </div>
+
+              {/* Category Tabs */}
+              <TabList
+                selectedValue={ruleCategoryFilter}
+                onTabSelect={(_, d) => setRuleCategoryFilter(d.value as string)}
+                style={{ padding: '6px 12px 0', borderBottom: '1px solid var(--colorNeutralStroke2)', flexShrink: 0 }}
+              >
+                <Tab value="all" style={{ fontSize: 12 }}>All ({enabledRules.length})</Tab>
+                <Tab value="haystack" style={{ fontSize: 12 }}>Haystack ({haystackCount})</Tab>
+                <Tab value="brick" style={{ fontSize: 12 }}>Brick ({brickCount})</Tab>
+                <Tab value="range" style={{ fontSize: 12 }}>Range ({rangeCount})</Tab>
+              </TabList>
+
+              {/* Select All / Deselect All */}
+              <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--colorNeutralStroke2)', flexShrink: 0 }}>
+                <Button size="small" appearance="transparent"
+                  onClick={toggleAllRules}
+                  style={{ fontSize: 11, minHeight: 22, height: 22, color: '#0078d4' }}>
+                  {isAllFilteredSelected
+                    ? `Deselect ${ruleCategoryFilter === 'all' ? 'All' : `All ${ruleCategoryFilter}`}`
+                    : `Select ${ruleCategoryFilter === 'all' ? 'All' : `All ${ruleCategoryFilter}`}`}
+                </Button>
+              </div>
+
+              {/* Rule Checklist */}
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {filteredRules.length === 0 ? (
+                  <div style={{ padding: '16px', fontSize: 12, color: 'var(--colorNeutralForeground3)', textAlign: 'center' }}>
+                    No {ruleCategoryFilter !== 'all' ? ruleCategoryFilter : 'enabled'} rules.
+                  </div>
+                ) : (
+                  filteredRules.map(r => {
+                    const checked = selectedRuleIds.includes(r.id);
+                    return (
+                      <label key={r.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px',
+                        cursor: 'pointer', fontSize: 12,
+                        background: checked ? 'var(--colorNeutralBackground2)' : 'transparent',
+                        borderBottom: '1px solid var(--colorNeutralStroke2)',
+                      }}
+                        onMouseDown={(e) => { e.preventDefault(); toggleRule(r.id); }}
+                      >
+                        <input type="checkbox" checked={checked} onChange={() => {}} style={{ margin: 0, accentColor: '#0078d4', flexShrink: 0 }} />
+                        <Badge appearance="filled"
+                          color={r.category === 'brick' ? 'important' : r.category === 'range' ? 'severe' : 'informative'}
+                          size="small" style={{ fontSize: 10, flexShrink: 0 }}>
+                          {r.category}
+                        </Badge>
+                        <span style={{ flex: 1 }}>{r.rule_name}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
       <div className={styles.runActions}>
         <Button icon={<EyeRegular style={{ fontSize: 14 }} />} onClick={handlePreview} disabled={running} size="small" appearance="primary">Preview</Button>
         <Popover open={runConfirmOpen} onOpenChange={(_, d) => setRunConfirmOpen(d.open)} withArrow>
@@ -461,7 +606,7 @@ const RunTab: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12 }}>
               <InfoRegular style={{ color: '#0078d4', fontSize: 16, marginTop: 1, flexShrink: 0 }} />
               <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-                <strong>Run auto-tagging</strong> using {rulesCount} active rule{rulesCount !== 1 ? 's' : ''} on{' '}
+                <strong>Run auto-tagging</strong> using {ruleCount} of {enabledRules.length} rule{ruleCount !== 1 ? 's' : ''} on{' '}
                 {serials.length === 1 ? (
                   <><strong>{getDeviceName(serials[0]) || `Device ${serials[0]}`}</strong></>
                 ) : (
