@@ -238,78 +238,47 @@ export function firmwareToProject(
                     children: "",
                 });
 
-            for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
-                const comp = firmwareWidgetToComponent(widgetId, w);
-                comp.objID = genId();
-                widgetComponents.push(comp);
-            }
+            // Firmware widgets as direct page components (no LVGLScreenWidget wrapper)
+            const fwObjIds: Record<string, string> = {};
 
-            // ── Build flow: create action components + connectionLines from events ──
-            const connectionLines: any[] = [];
-            const widgetObjIds: Record<string, string> = {};
-            for (const c of widgetComponents) {
-                if (c.objID && (c as any)._firmwareWidgetId) {
-                    widgetObjIds[(c as any)._firmwareWidgetId] = c.objID;
+            // Recursively collect all non-screen widgets from the widget tree.
+            // The root of each screen's widget tree is a "screen" widget (e.g. StartUpScreen)
+            // whose children are the actual display widgets. We must skip the screen
+            // container itself but process ALL descendants.
+            function collectWidgets(widgets: Record<string, FirmwareWidget>) {
+                for (const [widgetId, w] of Object.entries(widgets)) {
+                    if (w.sub_type === "screen") {
+                        // Screen container: skip the container, process its children
+                        if (w.children) collectWidgets(w.children);
+                        continue;
+                    }
+                    const comp = firmwareWidgetToComponent(widgetId, w);
+                    comp.objID = genId();
+                    fwObjIds[widgetId] = comp.objID;
+                    widgetComponents.push(comp);
                 }
             }
-            // Re-scan widgets to build objID map from the parsed widget IDs
-            for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
-                const comp = widgetComponents.find(c => (c as any)._firmwareWidgetId === widgetId);
-                if (comp) widgetObjIds[widgetId] = comp.objID;
-            }
+            collectWidgets(s.json.widgets || {});
+
+            // ── Build flow: action components + connectionLines ──
+            const connectionLines: any[] = [];
 
             for (const [widgetId, w] of Object.entries(s.json.widgets || {})) {
                 const events = w.events;
                 if (!events) continue;
-                const sourceObjId = widgetObjIds[widgetId];
+                const isScreen = w.sub_type === "screen";
+                // Screen events: skip for now (no LVGLScreenWidget to host them)
+                if (isScreen) continue;
+                const sourceObjId = fwObjIds[widgetId];
                 if (!sourceObjId) continue;
 
                 for (const [eventName, eventData] of Object.entries(events)) {
                     const actions = (eventData as any).actions || [];
                     for (const action of actions) {
                         if (action.action === "screen_change") {
-                            const actionCompId = genId();
-                            widgetComponents.push({
-                                objID: actionCompId,
-                                type: "ChangePageAction",
-                                page: action.screen || "",
-                                pageType: "literal",
-                                fadeMode: action.anim === "MOVE_LEFT" ? "MOVE_LEFT"
-                                    : action.anim === "MOVE_RIGHT" ? "MOVE_RIGHT" : "FADE_ON",
-                                fadeModeType: "literal",
-                                speed: action.speed || 200,
-                                speedType: "literal",
-                                delay: action.delay || 0,
-                                delayType: "literal",
-                                useStack: true,
-                                useStackType: "literal",
-                            });
-                            connectionLines.push({
-                                objID: genId(),
-                                source: sourceObjId,
-                                output: eventName,
-                                target: actionCompId,
-                                input: "@seqin",
-                            });
-                        } else if (action.action === "flag_modify") {
-                            const targetObjId = widgetObjIds[action.target];
-                            const actionCompId = genId();
-                            widgetComponents.push({
-                                objID: actionCompId,
-                                type: "SetVariableActionComponent",
-                                variableName: `${action.target}_hidden`,
-                                variableNameType: "literal",
-                                assignedValue: action.mode === "toggle" ? "!toggle" 
-                                    : action.mode === "add" ? "1" : "0",
-                                assignedValueType: "literal",
-                            });
-                            connectionLines.push({
-                                objID: genId(),
-                                source: sourceObjId,
-                                output: eventName,
-                                target: actionCompId,
-                                input: "@seqin",
-                            });
+                            const aid = genId();
+                            widgetComponents.push({ objID: aid, type: "ChangePageAction", page: action.screen || "", pageType: "literal", fadeMode: action.anim === "MOVE_LEFT" ? "MOVE_LEFT" : action.anim === "MOVE_RIGHT" ? "MOVE_RIGHT" : "FADE_ON", fadeModeType: "literal", speed: action.speed || 200, speedType: "literal", delay: action.delay || 0, delayType: "literal", useStack: true, useStackType: "literal" });
+                            connectionLines.push({ objID: genId(), source: sourceObjId, output: eventName, target: aid, input: "@seqin" });
                         }
                     }
                 }

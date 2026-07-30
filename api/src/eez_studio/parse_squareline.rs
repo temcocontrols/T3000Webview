@@ -434,12 +434,19 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
     for line in &lines {
         let line = line.trim();
 
-        // Skip root screen: lv_obj_create(NULL) — capture bg_color, don't create widget
+        // Capture root screen as widget (needed for events), capture bg_color
         if line.contains("lv_obj_create(NULL)") || line.contains("lv_obj_create( NULL )") {
             skip_root_screen = true;
-            // Capture root screen variable name for parent matching
             root_screen_id = extract_var_name(line)
                 .map(|n| n.replace("ui_", "").replace("uic_", ""));
+            let id = root_screen_id.clone().unwrap_or_else(|| format!("root_{}", widgets.len()));
+            widgets.push(FirmwareWidget {
+                id, sub_type: "screen".to_string(), parent: None,
+                x_pos: 0, y_pos: 0, width: 0, height: 0,
+                obj_text: String::new(), text_type: "literal".to_string(),
+                style: None, events: None, extra: HashMap::new(),
+            });
+            current_idx = Some(widgets.len() - 1);
             continue;
         }
         // Capture bg_color on root screen lines (before any widget is created)
@@ -967,7 +974,7 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
     }
 
     let widgets_map: serde_json::Map<String, Value> = widgets.iter()
-        .filter(|w| w.parent.is_none() || w.parent.as_deref() == root_screen_id.as_deref())
+        .filter(|w| w.parent.is_none())
         .map(|w| (w.id.clone(), build_widget_json(w, &children_map, &widgets)))
         .collect();
 
