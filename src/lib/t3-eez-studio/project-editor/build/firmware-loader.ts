@@ -19,6 +19,7 @@ const SUB_TYPE_MAP: Record<string, string> = {
     textarea: "LVGLTextareaWidget",
     roller: "LVGLRollerWidget",
     panel: "LVGLPanelWidget",
+    calendar: "LVGLCalendarWidget",
     user_widget: "LVGLUserWidgetWidget",
     action: "LVGLActionComponent",
 };
@@ -505,6 +506,14 @@ function firmwareWidgetToComponent(
             comp.options = ["--"];
         }
         comp.optionsType = "literal";
+    }
+
+    // ── Calendar ──
+    if (lvglType === "LVGLCalendarWidget") {
+        if ((w as any).today_year != null) comp.todayYear = (w as any).today_year;
+        if ((w as any).today_month != null) comp.todayMonth = (w as any).today_month;
+        if ((w as any).today_day != null) comp.todayDay = (w as any).today_day;
+        if ((w as any).header) comp.header = (w as any).header;
     }
 
     // ── User Widget ──

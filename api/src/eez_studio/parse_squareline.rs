@@ -755,6 +755,23 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
             }
         }
 
+        // Calendar: lv_calendar_set_today_date / lv_calendar_set_showed_date
+        if w.sub_type == "calendar" {
+            if line.contains("lv_calendar_set_today_date") {
+                let ints = extract_ints(line, "lv_calendar_set_today_date");
+                if ints.len() >= 3 {
+                    w.extra.insert("today_year".into(), json!(ints[ints.len()-3]));
+                    w.extra.insert("today_month".into(), json!(ints[ints.len()-2]));
+                    w.extra.insert("today_day".into(), json!(ints[ints.len()-1]));
+                }
+            }
+            if line.contains("lv_calendar_header_arrow_create") {
+                w.extra.insert("header".into(), json!("Arrow"));
+            } else if line.contains("lv_calendar_header_dropdown_create") {
+                w.extra.insert("header".into(), json!("Dropdown"));
+            }
+        }
+
         // Label long mode: lv_label_set_long_mode(obj, LV_LABEL_LONG_WRAP)
         if w.sub_type == "label" && line.contains("lv_label_set_long_mode") {
             let mode = if line.contains("LV_LABEL_LONG_WRAP") { "WRAP" }
