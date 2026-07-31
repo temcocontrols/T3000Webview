@@ -1,6 +1,6 @@
 # AI Integration — Local LLM Server
 
-> ⬅️ [Back to Docs](/#/t3000/documentation/t3000/haystack) &nbsp;|&nbsp; [Cloud LLM APIs](/#/t3000/documentation/t3000/haystack/ai-llm-api-integration)
+> ⬅️ [Back to Docs](/#/t3000/documentation/t3000/haystack) &nbsp;|&nbsp; [Cloud LLM APIs](/#/t3000/documentation/t3000/haystack/ai-llm-api-integration) &nbsp;|&nbsp; [AI Chat Page Design](/#/t3000/documentation/t3000/haystack/ai-chat-page-design)
 
 How to run a local LLM server on your network and connect T3000 to it. No cloud API keys needed — all processing stays inside your building.
 
@@ -9,18 +9,34 @@ How to run a local LLM server on your network and connect T3000 to it. No cloud 
 ## Architecture
 
 ```
-┌──────────────┐     SSE stream      ┌──────────────┐     OpenAI API    ┌─────────────────┐
-│  T3000 UI    │ ◄────────────────── │  T3000 API    │ ────────────────► │  Local LLM      │
-│  Chat Panel  │                     │  (port 9103)  │                  │  Server         │
-│              │  POST /api/ai/chat  │               │  tool calls      │  (port 11434)   │
-│              │ ──────────────────► │  runs locally │ ◄── results       │                 │
-└──────────────┘                     └──────────────┘                   └─────────────────┘
-                                              │                                  │
-                                              │        all on your LAN           │
-                                              └──────────────────────────────────┘
+                         T3000 API (port 9103)
+                         ............................
+                         .                          .
++----------+     SSE     .  +------------------+    .   OpenAI API    +------------------+
+| T3000 UI |<-------------| POST /api/ai/chat |    . --------------> | Local LLM Server |
+| Chat     |     stream   .  | (SSE handler)   |    .                | (Ollama/vLLM/    |
+| Panel    | ------------> .  |                 |    .  tool_use      |  LM Studio/      |
+|          |     POST      .  |  tool-call loop |<------------------|  llama.cpp)      |
++----------+               .  |        |         |    .                +------------------+
+                         .  |        v         |    .
+                         .  | +--------------+ |    .
+                         .  | | MCP Handler  | |    .
+                         .  | | (25 tools)   | |    .
+                         .  | | runs locally | |    .
+                         .  | +--------------+ |    .
+                         .  +------------------+    .
+                         .         all on your LAN  .
+                         ............................
 ```
 
-T3000 calls your local server via the OpenAI-compatible `/v1/chat/completions` endpoint. No data leaves your network.
+1. Browser sends user message to `POST /api/ai/chat`
+2. T3000 forwards to your local LLM via OpenAI-compatible `/v1/chat/completions`
+3. LLM streams response — text goes straight to browser via SSE
+4. When LLM wants to call a tool, T3000 intercepts the `tool_use` event
+5. Tool is executed **locally** by the MCP handler — never sent to the LLM
+6. Tool result is sent back to the LLM, which continues the stream
+
+No building data leaves your network. No cloud API keys needed.
 
 ---
 

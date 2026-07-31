@@ -1,6 +1,6 @@
 # AI Integration — Cloud LLM APIs
 
-> ⬅️ [Back to Docs](/#/t3000/documentation/t3000/haystack) &nbsp;|&nbsp; [Local LLM Server](/#/t3000/documentation/t3000/haystack/ai-local-llm-server)
+> ⬅️ [Back to Docs](/#/t3000/documentation/t3000/haystack) &nbsp;|&nbsp; [Local LLM Server](/#/t3000/documentation/t3000/haystack/ai-local-llm-server) &nbsp;|&nbsp; [AI Chat Page Design](/#/t3000/documentation/t3000/haystack/ai-chat-page-design)
 
 How T3000 connects to cloud-hosted LLM providers (Anthropic Claude, Google Gemini) for the built-in AI chat panel. The T3000 backend acts as a secure proxy — your API key never leaves the server.
 
@@ -9,13 +9,32 @@ How T3000 connects to cloud-hosted LLM providers (Anthropic Claude, Google Gemin
 ## Architecture
 
 ```
-┌──────────────┐     SSE stream      ┌──────────────┐     HTTPS      ┌─────────────────┐
-│  T3000 UI    │ ◄────────────────── │  T3000 API    │ ────────────── │  Anthropic API   │
-│  Chat Panel  │                     │  (port 9103)  │               │  or Gemini API   │
-│              │  POST /api/ai/chat  │               │  tool calls   │                  │
-│              │ ──────────────────► │  runs locally │ ◄── results    │                  │
-└──────────────┘                     └──────────────┘               └─────────────────┘
+                         T3000 API (port 9103)
+                         ............................
+                         .                          .
++----------+     SSE     .  +------------------+    .     HTTPS       +------------------+
+| T3000 UI |<-------------| POST /api/ai/chat |    . --------------> | Anthropic Claude |
+| Chat     |     stream   .  | (SSE handler)   |    .                | or Google Gemini |
+| Panel    | ------------> .  |                 |    .  tool_use      |                  |
+|          |     POST      .  |  tool-call loop |<------------------|                  |
++----------+               .  |        |         |    .                +------------------+
+                         .  |        v         |    .
+                         .  | +--------------+ |    .
+                         .  | | MCP Handler  | |    .
+                         .  | | (25 tools)   | |    .
+                         .  | | runs locally | |    .
+                         .  | +--------------+ |    .
+                         .  +------------------+    .
+                         .     your building        .
+                         ............................
 ```
+
+1. Browser sends user message to `POST /api/ai/chat`
+2. T3000 forwards to the cloud LLM (Claude or Gemini) over HTTPS
+3. LLM streams response — text chunks go straight to browser via SSE
+4. When LLM wants to call a tool, T3000 intercepts the `tool_use` event
+5. Tool is executed **locally** by the MCP handler — **no building data sent to the cloud provider**
+6. Tool result is sent back to the LLM, which continues the stream
 
 The browser talks only to T3000 via SSE. T3000 forwards to the LLM, intercepts tool calls, executes them against the MCP handler locally, and streams the text response back.
 
