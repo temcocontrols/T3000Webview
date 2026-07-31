@@ -5,6 +5,8 @@
 | Document | Description |
 |---|---|
 | [v4-haystack-mcp-complete.md](./v4-haystack-mcp-complete.md) | **Current (v4)** — Complete 25-tool MCP server: discovery, read/write, alarms, trends, validation, export |
+| [ai-llm-api-integration.md](./ai-llm-api-integration.md) | **AI** — Connect T3000 to cloud LLM APIs (Anthropic Claude, Google Gemini) |
+| [ai-local-llm-server.md](./ai-local-llm-server.md) | **AI** — Run a local LLM server (Ollama, vLLM, LM Studio, llama.cpp) and connect T3000 |
 | [mcp-api-examples.md](./mcp-api-examples.md) | **Examples** — Natural-language prompts for all 25 MCP tools, organized by category |
 | [mcp-vscode-copilot.md](./mcp-vscode-copilot.md) | **Setup** — Connect VS Code Copilot to the T3000 MCP server |
 | [mcp-claude-desktop.md](./mcp-claude-desktop.md) | **Setup** — Connect Claude Desktop (and Cursor, Cline, Continue.dev) to the T3000 MCP server |
