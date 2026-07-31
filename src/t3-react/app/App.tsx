@@ -308,14 +308,6 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="ai-chat"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <AiChatPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
                   path="network"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
@@ -440,8 +432,16 @@ export const App: React.FC = () => {
                 {/* Develop Routes - Special layout with left navigation */}
               </Route>
 
-              {/* HVAC Designer, Documentation & Trend Chart - Minimal layout with just top menu bar */}
+              {/* HVAC Designer, Documentation & AI Chat - Minimal layout with just top menu bar */}
               <Route path="/t3000" element={<MinimalLayout />}>
+                <Route
+                  path="ai-chat"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <AiChatPage />
+                    </React.Suspense>
+                  }
+                />
                 <Route
                   path="trends/chart"
                   element={

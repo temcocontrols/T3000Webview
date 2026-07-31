@@ -16,8 +16,8 @@ export const AiChatPage: React.FC = () => {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
-        overflow: 'hidden',
+        flex: 1,
+        minHeight: 0,
       }}
     >
       <ChatPanel />

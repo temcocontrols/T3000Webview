@@ -751,6 +751,24 @@ const simulatorMenu: MenuItem = {
 };
 
 /**
+ * AI Assistant Menu
+ */
+const aiAssistantMenu: MenuItem = {
+  id: 'ai-assistant',
+  label: 'AI Assistant',
+  type: 'submenu',
+  children: [
+    {
+      id: 'ai-chat',
+      label: 'Open AI Chat',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/ai-chat',
+      icon: 'Chat',
+    },
+  ],
+};
+
+/**
  * Top Menu Configuration
  * Export array of all top-level menus
  */
@@ -765,6 +783,7 @@ export const topMenuConfig: MenuItem[] = [
   developerMenu,
   haystackMenu,
   simulatorMenu,
+  aiAssistantMenu,
 ];
 
 /**
