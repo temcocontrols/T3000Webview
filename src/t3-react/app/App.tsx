@@ -158,6 +158,9 @@ const DatabaseConfigPage = React.lazy(() =>
 const TrendChartPage = React.lazy(() =>
   import('../features/trendlogs/pages/TrendChartPage').then((m) => ({ default: m.TrendChartPage }))
 );
+const AiChatPage = React.lazy(() =>
+  import('../features/ai-chat').then((m) => ({ default: m.AiChatPage }))
+);
 
 /**
  * Protected Route Wrapper
@@ -301,6 +304,14 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <AlarmsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="ai-chat"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <AiChatPage />
                     </React.Suspense>
                   }
                 />

@@ -39,6 +39,7 @@ import {
   SearchRegular,
   BuildingMultipleRegular,
   ArrowClockwiseRegular,
+  ChatRegular,
 } from '@fluentui/react-icons';
 
 /**
@@ -154,6 +155,15 @@ export const toolbarConfig: ToolbarButton[] = [
     windowId: WINDOW_ALARMLOG,
     route: '/t3000/alarms',
     shortcut: 'Alt+A',
+  },
+  {
+    id: 'toolbar-ai-chat',
+    icon: ChatRegular,
+    label: 'AI Chat',
+    tooltip: 'AI Assistant',
+    action: 'openWindow',
+    windowId: 16,
+    route: '/t3000/ai-chat',
   },
   {
     id: 'toolbar-array',
