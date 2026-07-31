@@ -281,8 +281,7 @@ export function firmwareToProject(
             const displayW = meta?.displaySize?.width ?? 480;
             const displayH = meta?.displaySize?.height ?? 320;
 
-            // ── Background panel (full-screen, replaces page-level localStyles) ──
-            // Default to #000000 for dark theme screens that don't set explicit bg_color
+            // ── Background panel (full-screen) ──
             const isDark = meta?.darkTheme ?? true;
             const bgColor = (s.json as any).bg_color || (isDark ? "#000000" : "#FFFFFF");
                 const bgId = genId();
@@ -300,7 +299,7 @@ export function firmwareToProject(
                     customInputs: [],
                     customOutputs: [],
                     hiddenFlagType: "literal",
-                    clickableFlag: false,
+                    clickableFlag: true,
                     clickableFlagType: "literal",
                     checkedStateType: "literal",
                     disabledStateType: "literal",
@@ -388,7 +387,7 @@ export function firmwareToProject(
 
             // ── Build flow: action components + connectionLines ──
             const connectionLines: any[] = [];
-            // bgId is the background panel's objID — screen-level events route through it
+            // bgId is the background panel's objID
 
             // Map firmware event names to EEZ event names (same logic as firmwareWidgetToComponent)
             const mapEventName = (evtName: string, subType: string) => {
@@ -431,7 +430,22 @@ export function firmwareToProject(
                                         }],
                                     });
                                     actionYOffset += 60;
-                                    connectionLines.push({ objID: genId(), source: sourceObjId, output: eezevtName, target: aid, input: "@seqin" });
+                                    // For SCREEN_LOADED events on the screen widget, use a
+                                    // StartActionComponent instead of a widget event connection.
+                                    // SCREEN_LOADED fires on the LVGL screen object which does not
+                                    // map to any child component in the EEZ flow engine.
+                                    if (isScreen && eezevtName === "SCREEN_LOADED") {
+                                        const startId = genId();
+                                        widgetComponents.push({
+                                            objID: startId, type: "StartActionComponent",
+                                            left: 20, top: actionYOffset, width: 100, height: 40,
+                                            customInputs: [], customOutputs: [],
+                                        });
+                                        actionYOffset += 50;
+                                        connectionLines.push({ objID: genId(), source: startId, output: "@seqout", target: aid, input: "@seqin" });
+                                    } else {
+                                        connectionLines.push({ objID: genId(), source: sourceObjId, output: eezevtName, target: aid, input: "@seqin" });
+                                    }
                                 } else if (action.action === "flag_modify") {
                                     // Use snake_case identifier (matching EEZ build convention)
                                     const targetName = toSnakeCase(action.target || "");
@@ -469,9 +483,8 @@ export function firmwareToProject(
                 processWidgetEvents(widgetId, w, isScreen);
             }
 
-            // ── Update background panel eventHandlers for screen-level events ──
-            // Screen events (SCREEN_LOADED, CLICKED on background, GESTURE, etc.)
-            // are routed through the background panel. Populate its eventHandlers.
+            // ── Screen events: skip SCREEN_LOADED (handled by StartActionComponent
+            // above), keep other events (CLICKED, GESTURE, etc.) on the panel ──
             const screenWidget = Object.entries(s.json.widgets || {}).find(
                 ([, w]) => w.sub_type === "screen"
             );
@@ -483,18 +496,22 @@ export function firmwareToProject(
                     if (bgPanel) {
                         const bgEventNames = new Set<string>();
                         for (const evtName of Object.keys(screenEvents)) {
-                            bgEventNames.add(mapEventName(evtName, screenW.sub_type));
+                            const mapped = mapEventName(evtName, screenW.sub_type);
+                            // SCREEN_LOADED is routed through StartActionComponent
+                            if (mapped === "SCREEN_LOADED") continue;
+                            bgEventNames.add(mapped);
                         }
-                        // Merge with existing eventHandlers (e.g. from screen_change connections)
-                        const existing = bgPanel.eventHandlers || [];
-                        const existingNames = new Set(existing.map((e: any) => e.eventName));
-                        for (const name of bgEventNames) {
-                            if (!existingNames.has(name)) {
-                                existing.push({ eventName: name, handlerType: "flow" });
+                        if (bgEventNames.size > 0) {
+                            const existing = bgPanel.eventHandlers || [];
+                            const existingNames = new Set(existing.map((e: any) => e.eventName));
+                            for (const name of bgEventNames) {
+                                if (!existingNames.has(name)) {
+                                    existing.push({ eventName: name, handlerType: "flow" });
+                                }
                             }
+                            bgPanel.eventHandlers = existing;
+                            bgPanel.clickableFlag = true;
                         }
-                        bgPanel.eventHandlers = existing;
-                        bgPanel.clickableFlag = true;
                     }
                 }
             }
