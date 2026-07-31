@@ -713,10 +713,12 @@ function firmwareWidgetToComponent(
     if (lvglType === "LVGLImageWidget" && w.src) {
         comp.image = w.src;
         // Required defaults for EEZ image rendering
+        // LVGLImageWidget uses "zoom" (not "scale") and "angle" (not "rotation")
+        comp.setPivot = true;
         comp.pivotX = w.pivot_x ?? 0;
         comp.pivotY = w.pivot_y ?? 0;
-        comp.scale = 256;
-        comp.rotation = w.rotation ?? 0;
+        comp.zoom = 256;
+        comp.angle = w.rotation ?? 0;
     }
 
     // ── Imagebutton ──
@@ -729,9 +731,9 @@ function firmwareWidgetToComponent(
         if (comp.imageReleased && !comp.imagePressed) comp.imagePressed = comp.imageReleased;
         if (comp.imageReleased && !comp.imageDisabled) comp.imageDisabled = comp.imageReleased;
     }
-    if (w.rotation != null) comp.rotation = w.rotation;
-    if (w.pivot_x != null) comp.pivotX = w.pivot_x;
-    if (w.pivot_y != null) comp.pivotY = w.pivot_y;
+    if (w.rotation != null) comp.angle = w.rotation;
+    if (w.pivot_x != null) { comp.setPivot = true; comp.pivotX = w.pivot_x; }
+    if (w.pivot_y != null) { comp.setPivot = true; comp.pivotY = w.pivot_y; }
 
     // ── Switch ──
     if (lvglType === "LVGLSwitchWidget" && (
