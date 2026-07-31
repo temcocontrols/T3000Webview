@@ -99,7 +99,7 @@ interface FirmwareWidget {
     clickable?: boolean;
 }
 
-interface FirmwareScreen {
+export interface FirmwareScreen {
     name: string;
     json: {
         fonts?: { name: string; size: number }[];
@@ -258,6 +258,11 @@ export function firmwareToProject(
                 generateSourceCodeForEezFramework: false,
                 compressFlowDefinition: false,
                 executionQueueSize: 1000,
+                destinationFolder: "src\\ui",
+                separateFolderForImagesAndFonts: false,
+                imageExportMode: "source",
+                fontExportMode: "source",
+                fileSystemPath: "",
             },
         },
         importedFrom: {
