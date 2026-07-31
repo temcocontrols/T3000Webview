@@ -549,13 +549,20 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
         if line.contains("lv_obj_set_width") {
             let ints = extract_ints(line, "lv_obj_set_width");
             if let Some(&v) = ints.last() { w.width = v; }
-            // LV_SIZE_CONTENT → output 0 so frontend can use "content" unit
-            else if line.contains("LV_SIZE_CONTENT") { w.width = 0; }
+            else if line.contains("LV_SIZE_CONTENT") {
+                // SquareLine size hint: /// 34 (real) vs /// 1 (auto-size marker).
+                // Only apply hints > 1; /// 1 means "auto-size based on content".
+                let hint = parse_size_comment(line).unwrap_or(0);
+                if hint > 1 { w.width = hint; }
+            }
         }
         if line.contains("lv_obj_set_height") {
             let ints = extract_ints(line, "lv_obj_set_height");
             if let Some(&v) = ints.last() { w.height = v; }
-            else if line.contains("LV_SIZE_CONTENT") { w.height = 0; }
+            else if line.contains("LV_SIZE_CONTENT") {
+                let hint = parse_size_comment(line).unwrap_or(0);
+                if hint > 1 { w.height = hint; }
+            }
         }
 
         // Alignment: lv_obj_set_align(obj, LV_ALIGN_CENTER) → store as extra

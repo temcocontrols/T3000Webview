@@ -374,6 +374,18 @@ export function firmwareToProject(
             }
             registerNestedIds(widgetComponents);
 
+            // Clean up internal _fwKey from all components — it's only needed
+            // during registration, must not leak into the saved project JSON.
+            function stripFwKeys(comps: Record<string, any>[]) {
+                for (const comp of comps) {
+                    delete (comp as any)._fwKey;
+                    if (comp.children && Array.isArray(comp.children)) {
+                        stripFwKeys(comp.children);
+                    }
+                }
+            }
+            stripFwKeys(widgetComponents);
+
             // ── Build flow: action components + connectionLines ──
             const connectionLines: any[] = [];
             // bgId is the background panel's objID — screen-level events route through it
@@ -509,6 +521,7 @@ export function firmwareToProject(
         bitmaps: allBitmaps.map(b => ({
             name: b,
             image: "",
+            bpp: 16,
         })),
         lvglStyles: { allStyles: [] },
         lvglGroups: { groups: [] },
@@ -699,6 +712,11 @@ function firmwareWidgetToComponent(
     // ── Image ──
     if (lvglType === "LVGLImageWidget" && w.src) {
         comp.image = w.src;
+        // Required defaults for EEZ image rendering
+        comp.pivotX = w.pivot_x ?? 0;
+        comp.pivotY = w.pivot_y ?? 0;
+        comp.scale = 256;
+        comp.rotation = w.rotation ?? 0;
     }
 
     // ── Imagebutton ──
