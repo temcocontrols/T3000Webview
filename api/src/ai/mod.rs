@@ -1,0 +1,17 @@
+// AI Chat — Module root.
+//
+// Mount all AI routes under /api/ai/* via create_ai_routes().
+// Called from server.rs during app construction.
+
+pub mod providers;
+pub mod routes;
+pub mod session;
+pub mod types;
+
+use axum::Router;
+use crate::app_state::T3AppState;
+
+/// Create the AI route group. Mount at /api via .merge() in server.rs.
+pub fn create_ai_routes() -> Router<T3AppState> {
+    routes::ai_routes()
+}
