@@ -220,6 +220,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::haystack::auto_tagging_routes::create_auto_tagging_routes())
         // MCP Server routes (JSON-RPC over HTTP)
         .merge(crate::haystack::mcp::create_mcp_routes())
+        // AI Chat routes (SSE streaming + tool-call loop)
+        .merge(crate::ai::create_ai_routes())
         // Point Sets API routes (DB-backed)
         .merge(crate::t3_device::point_sets_routes::create_point_sets_routes())
         // Server local-time endpoint (for client timezone alignment)

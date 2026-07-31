@@ -60,8 +60,10 @@ tokio-util = { version = "0.7", features = ["compat"] }
 aes-gcm = "0.10"
 base64 = "0.22"
 hostname = "0.4"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
 regex = "1.10"
+async-trait = "0.1"
+tokio-stream = "0.1"
 
 [dependencies.sea-orm]
 version = "1.0.0"

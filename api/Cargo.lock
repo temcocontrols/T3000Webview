@@ -2433,10 +2433,12 @@ dependencies = [
  "system-configuration",
  "tokio",
  "tokio-native-tls",
+ "tokio-util",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams",
  "web-sys",
  "windows-registry",
 ]
@@ -3406,6 +3408,7 @@ version = "0.8.1"
 dependencies = [
  "aes-gcm",
  "anyhow",
+ "async-trait",
  "axum",
  "base64 0.22.1",
  "bb8",
@@ -3432,6 +3435,7 @@ dependencies = [
  "thiserror",
  "tiberius",
  "tokio",
+ "tokio-stream",
  "tokio-tungstenite 0.21.0",
  "tokio-util",
  "tower",
@@ -4096,6 +4100,19 @@ name = "wasm-bindgen-shared"
 version = "0.2.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65fc09f10666a9f147042251e0dda9c18f166ff7de300607007e96bdebc1068d"
+
+[[package]]
+name = "wasm-streams"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15053d8d85c7eccdbefef60f06769760a563c7f0a9d6902a13d35c7800b0ad65"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
 
 [[package]]
 name = "web-sys"
