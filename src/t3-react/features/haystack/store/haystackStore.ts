@@ -27,6 +27,14 @@ export interface PointTagEntry {
   tag_name: string;
 }
 
+export interface TagPointRef {
+  serial_number: number;
+  point_type: string;
+  point_index: string;
+  point_id: string;
+  label: string;
+}
+
 interface HaystackState {
   tags: TagDefinition[];
   tagTree: TagTreeNode[];
@@ -42,6 +50,8 @@ interface HaystackState {
   createTag: (tagName: string, doc?: string) => Promise<boolean>;
   updateTag: (tagName: string, updates: { doc?: string; deprecated?: boolean }) => Promise<boolean>;
   deleteTag: (tagName: string) => Promise<boolean>;
+  forceDeleteTag: (tagName: string) => Promise<boolean>;
+  fetchTagPoints: (tagName: string) => Promise<TagPointRef[]>;
   replaceTag: (oldTag: string, newTag: string) => Promise<boolean>;
   batchUpdatePointTags: (updates: BatchPointTagUpdate[]) => Promise<boolean>;
   setSelectedTag: (tag: TagDefinition | null) => void;
@@ -141,6 +151,29 @@ export const useHaystackStore = create<HaystackState>((set, get) => ({
       if (res.ok) { get().fetchTags(); get().fetchTagTree(); return true; }
       return false;
     } catch { return false; }
+  },
+
+  forceDeleteTag: async (tagName: string) => {
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/haystack/tags/${encodeURIComponent(tagName)}?force=true`,
+        { method: 'DELETE' },
+      );
+      if (res.ok) { get().fetchTags(); get().fetchTagTree(); return true; }
+      return false;
+    } catch { return false; }
+  },
+
+  fetchTagPoints: async (tagName: string) => {
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/haystack/tags/${encodeURIComponent(tagName)}/points`,
+      );
+      const data = await res.json();
+      return (data.points || []) as TagPointRef[];
+    } catch {
+      return [];
+    }
   },
 
   replaceTag: async (oldTag: string, newTag: string) => {

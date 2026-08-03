@@ -1,11 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Spinner, Button, Input, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions } from '@fluentui/react-components';
-import { SearchRegular, AddRegular, DismissRegular, InfoRegular } from '@fluentui/react-icons';
-import { useHaystackStore } from '../store/haystackStore';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import {
+  Spinner, Button, Input,
+  Popover, PopoverTrigger, PopoverSurface,
+} from '@fluentui/react-components';
+import {
+  SearchRegular, AddRegular, DismissRegular, InfoRegular,
+  ErrorCircleRegular,
+} from '@fluentui/react-icons';
+import { useHaystackStore, TagDefinition, TagPointRef } from '../store/haystackStore';
 import styles from './CustomTagsPage.module.css';
 
 export const CustomTagsPage: React.FC = () => {
-  const { tags, isLoading, error, fetchTags, createTag, updateTag, deleteTag } = useHaystackStore();
+  const { tags, isLoading, error, fetchTags, createTag, updateTag, deleteTag, forceDeleteTag, fetchTagPoints } = useHaystackStore();
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -14,7 +20,10 @@ export const CustomTagsPage: React.FC = () => {
   const [editName, setEditName] = useState('');
   const [editDoc, setEditDoc] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TagDefinition | null>(null);
+  const [tagPoints, setTagPoints] = useState<TagPointRef[]>([]);
+  const [showAllPoints, setShowAllPoints] = useState(false);
+  const [forceDeleting, setForceDeleting] = useState(false);
 
   useEffect(() => { fetchTags(); }, []);
 
@@ -27,14 +36,22 @@ export const CustomTagsPage: React.FC = () => {
   }, [customTags, search]);
 
   const handleAdd = async () => {
-    if (!newName.trim()) { setLocalError('Tag name is required.'); return; }
+    const name = newName.trim();
+    if (!name) { setLocalError('Tag name is required.'); return; }
+    const exists = tags.some(t => t.tag_name.toLowerCase() === name.toLowerCase());
+    if (exists) { setLocalError(`Tag "${name}" already exists.`); return; }
     setLocalError(null);
-    await createTag(newName.trim(), newDoc.trim() || undefined);
+    await createTag(name, newDoc.trim() || undefined);
     setNewName(''); setNewDoc(''); setAdding(false);
   };
 
   const handleSaveEdit = async (oldName: string) => {
-    if (!editName.trim()) { setLocalError('Tag name is required.'); return; }
+    const name = editName.trim();
+    if (!name) { setLocalError('Tag name is required.'); return; }
+    if (name.toLowerCase() !== oldName.toLowerCase()) {
+      const exists = tags.some(t => t.tag_name.toLowerCase() === name.toLowerCase());
+      if (exists) { setLocalError(`Tag "${name}" already exists.`); return; }
+    }
     setLocalError(null);
     await updateTag(oldName, { doc: editDoc.trim() || undefined });
     setEditingName(null);
@@ -42,8 +59,32 @@ export const CustomTagsPage: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (deleteTarget) { await deleteTag(deleteTarget); setDeleteTarget(null); }
+    if (deleteTarget) {
+      await deleteTag(deleteTarget.tag_name);
+      setDeleteTarget(null);
+    }
   };
+
+  const handleForceDelete = async () => {
+    if (!deleteTarget) return;
+    setForceDeleting(true);
+    await forceDeleteTag(deleteTarget.tag_name);
+    setForceDeleting(false);
+    setDeleteTarget(null);
+    setTagPoints([]);
+    setShowAllPoints(false);
+  };
+
+  const handleOpenDeletePopover = useCallback(async (t: TagDefinition) => {
+    setDeleteTarget(t);
+    setShowAllPoints(false);
+    if (t.usage_count > 0) {
+      const points = await fetchTagPoints(t.tag_name);
+      setTagPoints(points);
+    } else {
+      setTagPoints([]);
+    }
+  }, [fetchTagPoints]);
 
   return (
     <div className={styles.container}>
@@ -135,7 +176,103 @@ export const CustomTagsPage: React.FC = () => {
                       <Button size="small" appearance="subtle" onClick={() => {
                         setEditingName(t.tag_name); setEditName(t.tag_name); setEditDoc(t.doc || ''); setAdding(false); setLocalError(null);
                       }}>Edit</Button>
-                      <Button size="small" appearance="subtle" onClick={() => setDeleteTarget(t.tag_name)}>Delete</Button>
+                      <Popover
+                        open={deleteTarget?.tag_name === t.tag_name}
+                        onOpenChange={(_, d) => { if (!d.open) { setDeleteTarget(null); setTagPoints([]); setShowAllPoints(false); } }}
+                        positioning="above-start"
+                      >
+                        <PopoverTrigger disableButtonEnhancement>
+                          <Button
+                            size="small"
+                            appearance="subtle"
+                            onClick={() => handleOpenDeletePopover(t)}
+                          >
+                            Delete
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverSurface style={{ maxWidth: 320, padding: 16 }}>
+                          {t.usage_count === 0 ? (
+                            <>
+                              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                                Delete tag "{t.tag_name}"?
+                              </div>
+                              <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginBottom: 16 }}>
+                                This tag is not used by any points. This action cannot be undone.
+                              </div>
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                <Button size="small" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+                                <Button size="small" appearance="primary" onClick={handleDelete}>Delete</Button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                <ErrorCircleRegular style={{ fontSize: 18, color: '#da3b01' }} />
+                                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                                  Cannot delete "{t.tag_name}"
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginBottom: 4 }}>
+                                This tag is assigned to {t.usage_count} point{t.usage_count !== 1 ? 's' : ''}:
+                              </div>
+
+                              {/* Point list */}
+                              {tagPoints.length > 0 && (
+                                <div style={{
+                                  maxHeight: showAllPoints ? 200 : 100,
+                                  overflowY: 'auto',
+                                  marginBottom: 8,
+                                  border: '1px solid var(--colorNeutralStroke2, #e0e0e0)',
+                                  borderRadius: 4,
+                                  fontSize: 12,
+                                }}>
+                                  {(showAllPoints ? tagPoints : tagPoints.slice(0, 3)).map((p, i) => (
+                                    <div key={i} style={{
+                                      padding: '4px 8px',
+                                      borderBottom: '1px solid var(--colorNeutralStroke2, #f0f0f0)',
+                                      display: 'flex', gap: 6,
+                                    }}>
+                                      <span style={{ color: '#888', minWidth: 48 }}>{p.serial_number}</span>
+                                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {p.label || p.point_id}
+                                      </span>
+                                      <span style={{ color: '#888' }}>{p.point_type} #{p.point_index}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {tagPoints.length > 3 && !showAllPoints && (
+                                <Button
+                                  size="small"
+                                  appearance="transparent"
+                                  onClick={() => setShowAllPoints(true)}
+                                  style={{ fontSize: 12, marginBottom: 8 }}
+                                >
+                                  ...and {tagPoints.length - 3} more — Show all {tagPoints.length}
+                                </Button>
+                              )}
+
+                              <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginBottom: 16 }}>
+                                Force delete will remove this tag from ALL points
+                                listed above. This cannot be undone.
+                              </div>
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                <Button size="small" onClick={() => { setDeleteTarget(null); setTagPoints([]); }}>Close</Button>
+                                <Button
+                                  size="small"
+                                  appearance="primary"
+                                  onClick={handleForceDelete}
+                                  disabled={forceDeleting}
+                                  style={{ background: '#da3b01', borderColor: '#da3b01' }}
+                                >
+                                  {forceDeleting ? 'Deleting…' : 'Force Delete'}
+                                </Button>
+                              </div>
+                            </>
+                          )}
+                        </PopoverSurface>
+                      </Popover>
                     </td>
                   </tr>
                 )
@@ -145,21 +282,6 @@ export const CustomTagsPage: React.FC = () => {
         </table>
       </div>
 
-      {/* ── Delete Confirmation Dialog ── */}
-      <Dialog open={!!deleteTarget} onOpenChange={(_, d) => { if (!d.open) setDeleteTarget(null); }}>
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle style={{ fontSize: 15, fontWeight: 600 }}>Delete Tag</DialogTitle>
-            <DialogContent>
-              Are you sure you want to delete <strong>{deleteTarget}</strong>? This action cannot be undone.
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" size="small" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-              <Button appearance="primary" size="small" onClick={handleDelete}>Delete</Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
     </div>
   );
 };

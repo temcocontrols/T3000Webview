@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
     Router,
 };
 use serde::Deserialize;
@@ -40,12 +40,19 @@ struct RebuildRequest {
     serial_numbers: Vec<i32>,
 }
 
+#[derive(Debug, Deserialize)]
+struct DeleteTagQuery {
+    #[serde(default)]
+    force: bool,
+}
+
 // ── Routes ──
 
 pub fn create_haystack_tags_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/haystack/tags", get(list_tags).post(create_tag))
         .route("/api/haystack/tags/:name", put(update_tag).delete(delete_tag_handler))
+        .route("/api/haystack/tags/:name/points", get(get_tag_points))
         .route("/api/haystack/tag-tree", get(get_tag_tree))
         .route("/api/haystack/point-tags/read", post(read_point_tags))
         .route("/api/haystack/point-tags/write", post(write_point_tags))
@@ -96,12 +103,30 @@ async fn update_tag(
 async fn delete_tag_handler(
     State(state): State<T3AppState>,
     Path(name): Path<String>,
+    Query(query): Query<DeleteTagQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let db = get_haystack_db(&state).await?;
-    haystack_tags_service::delete_tag(&db, &name).await.map_err(|e| {
+    if query.force {
+        haystack_tags_service::force_delete_tag(&db, &name).await.map_err(|e| {
+            (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
+        })?;
+    } else {
+        haystack_tags_service::delete_tag(&db, &name).await.map_err(|e| {
+            (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
+        })?;
+    }
+    Ok(Json(json!({ "message": "Tag deleted", "tag_name": name })))
+}
+
+async fn get_tag_points(
+    State(state): State<T3AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let db = get_haystack_db(&state).await?;
+    let points = haystack_tags_service::get_points_for_tag(&db, &name).await.map_err(|e| {
         (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
     })?;
-    Ok(Json(json!({ "message": "Tag deleted", "tag_name": name })))
+    Ok(Json(json!({ "tag_name": name, "points": points })))
 }
 
 async fn get_tag_tree(

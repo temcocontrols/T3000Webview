@@ -49,6 +49,16 @@ pub struct UpdateTagRequest {
     pub deprecated: Option<bool>,
 }
 
+/// A point that references a tag — returned by get_points_for_tag.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TagPointRef {
+    pub serial_number: i32,
+    pub point_type: String,
+    pub point_index: String,
+    pub point_id: String,
+    pub label: String,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchPointTagUpdate {
@@ -208,6 +218,100 @@ pub async fn replace_tag(db: &impl ConnectionTrait, req: &ReplaceTagRequest) -> 
     ))
     .await
     .map_err(|e| format!("Failed to replace tag: {}", e))?;
+    Ok(())
+}
+
+/// Return all points that use a given tag, with their labels.
+pub async fn get_points_for_tag(
+    db: &impl ConnectionTrait,
+    tag_name: &str,
+) -> Result<Vec<TagPointRef>, String> {
+    let rows = db
+        .query_all(Statement::from_sql_and_values(
+            sea_orm::DatabaseBackend::Sqlite,
+            r#"SELECT pt.serial_number, pt.point_type, pt.point_index, pt.point_id,
+                      COALESCE(i.label, o.label, v.label, pt.point_id) as label
+               FROM haystack_point_tags pt
+               LEFT JOIN t3_input_points i
+                 ON pt.serial_number = i.serial_number
+                AND pt.point_type = 'INPUT'
+                AND CAST(pt.point_index AS INTEGER) = i.point_index
+               LEFT JOIN t3_output_points o
+                 ON pt.serial_number = o.serial_number
+                AND pt.point_type = 'OUTPUT'
+                AND CAST(pt.point_index AS INTEGER) = o.point_index
+               LEFT JOIN t3_variable_points v
+                 ON pt.serial_number = v.serial_number
+                AND pt.point_type = 'VARIABLE'
+                AND CAST(pt.point_index AS INTEGER) = v.point_index
+               WHERE pt.tag_name = ?
+               ORDER BY pt.serial_number, pt.point_type, pt.point_index
+               LIMIT 200"#,
+            vec![tag_name.into()],
+        ))
+        .await
+        .map_err(|e| format!("Query failed: {}", e))?;
+
+    let mut points = Vec::new();
+    for row in rows {
+        let sn: i32 = row.try_get("", "serial_number").unwrap_or(0);
+        let pt: String = row.try_get("", "point_type").unwrap_or_default();
+        let pi: String = row.try_get("", "point_index").unwrap_or_default();
+        let pid: String = row.try_get("", "point_id").unwrap_or_default();
+        let label: String = row.try_get("", "label").unwrap_or_default();
+        points.push(TagPointRef {
+            serial_number: sn,
+            point_type: pt,
+            point_index: pi,
+            point_id: pid,
+            label,
+        });
+    }
+    Ok(points)
+}
+
+/// Force-delete a custom tag, removing all point associations first.
+pub async fn force_delete_tag(
+    db: &impl ConnectionTrait,
+    tag_name: &str,
+) -> Result<(), String> {
+    // Only custom tags can be force-deleted
+    let row = db
+        .query_one(Statement::from_sql_and_values(
+            sea_orm::DatabaseBackend::Sqlite,
+            "SELECT category FROM haystack_tags WHERE tag_name = ?",
+            vec![tag_name.into()],
+        ))
+        .await
+        .map_err(|e| format!("Query failed: {}", e))?;
+
+    if let Some(r) = row {
+        let cat: String = r.try_get("", "category").unwrap_or_default();
+        if cat != "custom" {
+            return Err("Cannot delete standard tags".into());
+        }
+    } else {
+        return Err("Tag not found".into());
+    }
+
+    // Delete point associations first
+    db.execute(Statement::from_sql_and_values(
+        sea_orm::DatabaseBackend::Sqlite,
+        "DELETE FROM haystack_point_tags WHERE tag_name = ?",
+        vec![tag_name.into()],
+    ))
+    .await
+    .map_err(|e| format!("Failed to remove tag from points: {}", e))?;
+
+    // Then delete the tag itself
+    db.execute(Statement::from_sql_and_values(
+        sea_orm::DatabaseBackend::Sqlite,
+        "DELETE FROM haystack_tags WHERE tag_name = ?",
+        vec![tag_name.into()],
+    ))
+    .await
+    .map_err(|e| format!("Failed to delete tag: {}", e))?;
+
     Ok(())
 }
 
