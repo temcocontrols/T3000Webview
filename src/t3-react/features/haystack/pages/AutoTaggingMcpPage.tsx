@@ -1064,7 +1064,7 @@ const McpTab: React.FC = () => {
       {/* ── Available Tools ── */}
       <div className={styles.mcpSection} style={{ marginTop: 20 }}>
         <div className={styles.sectionTitle}>
-          <TagRegular style={{ fontSize: 14 }} /> Available Tools (25 across 7 categories)
+          <TagRegular style={{ fontSize: 14 }} /> Available Tools (44 across 11 categories)
         </div>
         <table className={styles.mcpToolTable}>
           <thead>
@@ -1079,30 +1079,63 @@ const McpTab: React.FC = () => {
             <tr><td><code>haystack_preview_tags</code></td><td>Preview auto-tagging results without writing to DB</td><td>serial_numbers: int[]</td></tr>
             <tr><td><code>haystack_list_rules</code></td><td>List all auto-tagging rules with patterns and priorities</td><td>—</td></tr>
             <tr><td><code>haystack_get_brick_class</code></td><td>Get Brick ontology class for specified points</td><td>serial_numbers: int[]</td></tr>
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🟢 Core</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Core</td></tr>
             <tr><td><code>ping</code></td><td>Health check — returns server status and timestamp</td><td>—</td></tr>
             <tr><td><code>get_version</code></td><td>Server name, version, protocol version, tool count</td><td>—</td></tr>
             <tr><td><code>describe_tool</code></td><td>Get full schema and description for any tool</td><td>tool_name: string</td></tr>
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🟡 Data &amp; Metadata</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Data &amp; Metadata</td></tr>
             <tr><td><code>device_list</code></td><td>List all devices with serial, name, type, point counts</td><td>filter_name?: string</td></tr>
             <tr><td><code>device_get_points</code></td><td>Get all points for a device with tags and Brick class</td><td>serial_number: int<br/>point_type?: INPUT|OUTPUT|VARIABLE</td></tr>
             <tr><td><code>point_get_metadata</code></td><td>Full metadata: label, units, range, tags, Brick class</td><td>serial_number, point_type, point_index</td></tr>
             <tr><td><code>metadata_search</code></td><td>Search points across devices by label text</td><td>query: string<br/>serial_numbers?, point_types?, limit?</td></tr>
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🟠 Operational (Read/Write)</td></tr>
+            <tr><td><code>point_search</code></td><td>Semantic search across points by tag, label, or Brick class</td><td>query: string<br/>serial_numbers?, point_types?, limit?</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Operational</td></tr>
             <tr><td><code>point_read</code></td><td>Read current value of a single point</td><td>serial_number, point_type, point_index</td></tr>
             <tr><td><code>point_write</code></td><td>Write a value to a point (confirm:true required)</td><td>serial_number, point_type, point_index, value, confirm</td></tr>
             <tr><td><code>point_read_batch</code></td><td>Read multiple points in a single call</td><td>points: [&#123;serial_number, point_type, point_index&#125;]</td></tr>
             <tr><td><code>point_write_batch</code></td><td>Write values to multiple points (confirm:true required)</td><td>points: [&#123;...value&#125;], confirm</td></tr>
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔴 Analytics</td></tr>
-            <tr><td><code>haystack_validate</code></td><td>Validate tagging against ontology rules (sensor→INPUT, etc.)</td><td>serial_numbers?: int[]</td></tr>
+            <tr><td><code>point_batch_metadata</code></td><td>Get metadata for multiple points at once</td><td>points: [&#123;serial_number, point_type, point_index&#125;]</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Analytics</td></tr>
+            <tr><td><code>haystack_validate</code></td><td>Validate tagging against ontology rules</td><td>serial_numbers?: int[]</td></tr>
             <tr><td><code>haystack_export</code></td><td>Export semantic model as haystack-json, brick-ttl, or brick-jsonld</td><td>serial_numbers: int[]<br/>format: string</td></tr>
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🟣 Rules Management</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Rules Management</td></tr>
             <tr><td><code>rule_toggle</code></td><td>Enable or disable an auto-tagging rule by ID</td><td>rule_id: int, enabled: boolean</td></tr>
             <tr><td><code>rule_create</code></td><td>Create a new auto-tagging rule with regex pattern</td><td>rule_name, pattern, category<br/>haystack_tags?, brick_class?, etc.</td></tr>
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>⚫ Alarms &amp; Trends</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Alarms &amp; Trends</td></tr>
             <tr><td><code>alarm_list</code></td><td>List alarms, optionally filtered to active-only</td><td>serial_numbers?: int[]<br/>active_only?: boolean</td></tr>
             <tr><td><code>alarm_acknowledge</code></td><td>Acknowledge an alarm by device serial and alarm ID</td><td>serial_number: int<br/>alarm_id: string</td></tr>
             <tr><td><code>trendlog_query</code></td><td>Query historical trend data for a point over a time range</td><td>serial_number, point_type, point_index, start<br/>end?, limit?</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Device Operations</td></tr>
+            <tr><td><code>trendlog_list</code></td><td>List available trend logs for a device</td><td>serial_number: int</td></tr>
+            <tr><td><code>trendlog_export</code></td><td>Export trend log data as CSV/JSON file</td><td>serial_number: int<br/>format?: string</td></tr>
+            <tr><td><code>device_refresh</code></td><td>Refresh device data from the controller</td><td>serial_number: int</td></tr>
+            <tr><td><code>schedule_list</code></td><td>List all schedules for a device</td><td>serial_number: int</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Settings</td></tr>
+            <tr><td><code>settings_read</code></td><td>Read device settings and configuration</td><td>serial_number: int</td></tr>
+            <tr><td><code>settings_write</code></td><td>Write device settings (confirm:true required)</td><td>serial_number: int<br/>settings: object<br/>confirm: boolean</td></tr>
+            <tr><td><code>device_control</code></td><td>Send control commands to a device</td><td>serial_number: int<br/>command: string<br/>params?: object</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Control Logic</td></tr>
+            <tr><td><code>program_list</code></td><td>List PLC programs on a device</td><td>serial_number: int</td></tr>
+            <tr><td><code>program_read</code></td><td>Read a PLC program source code</td><td>serial_number: int<br/>program_id: string</td></tr>
+            <tr><td><code>alarm_settings_read</code></td><td>Read alarm configuration settings for a device</td><td>serial_number: int</td></tr>
+            <tr><td><code>users_list</code></td><td>List users configured on a device</td><td>serial_number: int</td></tr>
+            <tr><td><code>graphics_list</code></td><td>List graphics/visualization screens on a device</td><td>serial_number: int</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Documentation</td></tr>
+            <tr><td><code>doc_list</code></td><td>List available documentation articles</td><td>section?: string</td></tr>
+            <tr><td><code>doc_read</code></td><td>Read a specific documentation article</td><td>path: string</td></tr>
+            <tr><td><code>pid_list</code></td><td>List PID loops on a device</td><td>serial_number: int</td></tr>
+            <tr><td><code>holiday_list</code></td><td>List holiday schedules on a device</td><td>serial_number: int</td></tr>
+            <tr><td><code>building_summary</code></td><td>Get a summary overview of the building system</td><td>serial_numbers?: int[]</td></tr>
           </tbody>
         </table>
       </div>
@@ -1139,19 +1172,28 @@ const promptCategories: PromptCategory[] = [
     ]
   },
   {
-    name: 'Data & Discovery', tools: 4, items: [
+    name: 'Core', tools: 3, items: [
+      { prompt: 'Is the T3000 server running?', tool: 'ping', desc: 'Server health check' },
+      { prompt: 'What version is the T3000 API?', tool: 'get_version', desc: 'Server version and tool count' },
+      { prompt: 'What parameters does point_read accept?', tool: 'describe_tool', desc: 'Get full schema for any tool' },
+    ]
+  },
+  {
+    name: 'Data & Discovery', tools: 5, items: [
       { prompt: 'List all T3000 devices', tool: 'device_list', desc: 'Enumerate all devices with serials and point counts' },
       { prompt: 'Show me the input points for device T3-NB-ESP', tool: 'device_get_points', desc: 'Get all inputs on a device' },
       { prompt: 'Get full metadata for input 0 on device 240488', tool: 'point_get_metadata', desc: 'Label, units, range, tags, Brick class' },
       { prompt: 'Search for points labeled temperature', tool: 'metadata_search', desc: 'Cross-device label search' },
+      { prompt: 'Find all supply air temperature sensors', tool: 'point_search', desc: 'Semantic search by tag or Brick class' },
     ]
   },
   {
-    name: 'Operational', tools: 4, items: [
+    name: 'Operational', tools: 5, items: [
       { prompt: 'Read input point 0 on device 233626', tool: 'point_read', desc: 'Read a single point value' },
       { prompt: 'Set output 5 on device 233626 to 72.5', tool: 'point_write', desc: 'Write a value (requires confirm)' },
       { prompt: 'Read inputs 0, 1, and 2 on device 240488 all at once', tool: 'point_read_batch', desc: 'Batch read multiple points' },
       { prompt: 'Set outputs 0 through 3 on device 237219 to 100', tool: 'point_write_batch', desc: 'Batch write (requires confirm)' },
+      { prompt: 'Get metadata for inputs 0-4 on device 240488', tool: 'point_batch_metadata', desc: 'Batch metadata for multiple points' },
     ]
   },
   {
@@ -1169,7 +1211,41 @@ const promptCategories: PromptCategory[] = [
   {
     name: 'Alarms & Trends', tools: 3, items: [
       { prompt: 'List all active alarms', tool: 'alarm_list', desc: 'Get unacknowledged alarms' },
+      { prompt: 'Acknowledge alarm 42 on device 233626', tool: 'alarm_acknowledge', desc: 'Acknowledge an alarm by ID' },
       { prompt: 'Get trend data for input 8 on device 237219 for the last hour', tool: 'trendlog_query', desc: 'Query historical trend data' },
+    ]
+  },
+  {
+    name: 'Device Operations', tools: 4, items: [
+      { prompt: 'List trend logs on device 233626', tool: 'trendlog_list', desc: 'Enumerate available trend logs' },
+      { prompt: 'Export trend log data from device 240488', tool: 'trendlog_export', desc: 'Export trend data as CSV/JSON' },
+      { prompt: 'Refresh data from device 237219', tool: 'device_refresh', desc: 'Re-sync device data from controller' },
+      { prompt: 'Show me the schedules on device 233626', tool: 'schedule_list', desc: 'List all schedules for a device' },
+    ]
+  },
+  {
+    name: 'Settings', tools: 3, items: [
+      { prompt: 'Read the settings on device 233626', tool: 'settings_read', desc: 'Read device configuration' },
+      { prompt: 'Update the device name on 240488', tool: 'settings_write', desc: 'Write device settings (confirm required)' },
+      { prompt: 'Restart device 237219', tool: 'device_control', desc: 'Send control commands to a device' },
+    ]
+  },
+  {
+    name: 'Control Logic', tools: 5, items: [
+      { prompt: 'List programs on device 233626', tool: 'program_list', desc: 'Enumerate PLC programs' },
+      { prompt: 'Show me the source code for program 3', tool: 'program_read', desc: 'Read a PLC program' },
+      { prompt: 'What alarm thresholds are set on device 240488?', tool: 'alarm_settings_read', desc: 'Read alarm configuration' },
+      { prompt: 'List users on device 233626', tool: 'users_list', desc: 'Show device user accounts' },
+      { prompt: 'Show graphics screens on device 237219', tool: 'graphics_list', desc: 'List visualization screens' },
+    ]
+  },
+  {
+    name: 'Documentation', tools: 5, items: [
+      { prompt: 'What documentation is available?', tool: 'doc_list', desc: 'List all documentation articles' },
+      { prompt: 'Show me the quick start guide', tool: 'doc_read', desc: 'Read a specific doc article' },
+      { prompt: 'List PID loops on device 233626', tool: 'pid_list', desc: 'Enumerate PID controllers' },
+      { prompt: 'Show holiday schedules on device 240488', tool: 'holiday_list', desc: 'List holiday exceptions' },
+      { prompt: 'Give me a summary of the building system', tool: 'building_summary', desc: 'Overview of all devices and points' },
     ]
   },
 ];

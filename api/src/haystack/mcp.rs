@@ -1,5 +1,5 @@
 // MCP (Model Context Protocol) Server — Streamable HTTP transport
-// Exposes 25 tools for LLM agents via POST /api/mcp (JSON-RPC 2.0)
+// Exposes 44 tools for LLM agents via POST /api/mcp (JSON-RPC 2.0)
 // SSE server→client streaming via GET /api/mcp
 // Session termination via DELETE /api/mcp
 //
