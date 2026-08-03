@@ -416,6 +416,89 @@ pub async fn get_brick_classes(
     Ok(entries)
 }
 
+// ── Sync Rules from GitHub ──
+
+const GITHUB_BRICK_URL: &str =
+    "https://raw.githubusercontent.com/Yveshby27/brick-bacnet-mcp/main/src/brick_bacnet_mcp/rules/brick_rules.yaml";
+const GITHUB_HAYSTACK_URL: &str =
+    "https://raw.githubusercontent.com/Yveshby27/brick-bacnet-mcp/main/src/brick_bacnet_mcp/rules/haystack_rules.yaml";
+
+#[derive(Debug, Deserialize)]
+struct YamlRule {
+    id: String,
+    pattern: String,
+    #[serde(default)]
+    units: Vec<String>,
+    #[serde(default)]
+    object_types: Vec<String>,
+    #[serde(default)]
+    brick_class: Option<String>,
+    #[serde(default)]
+    haystack_tags: Option<Vec<String>>,
+    #[serde(default)]
+    haystack_kind: Option<String>,
+    #[serde(default)]
+    haystack_unit: Option<String>,
+}
+
+pub async fn sync_rules_from_github(db: &impl ConnectionTrait) -> Result<serde_json::Value, String> {
+    let mut brick = 0u32;
+    let mut hs = 0u32;
+
+    // Fetch brick rules
+    if let Ok(resp) = reqwest::get(GITHUB_BRICK_URL).await {
+        if let Ok(yaml) = resp.text().await {
+            if let Ok(parsed) = serde_yaml::from_str::<Vec<YamlRule>>(&yaml) {
+                for r in parsed {
+                    let name = if r.id.starts_with("brick:") { r.id } else { format!("brick:{}", r.id) };
+                    let sql = format!(
+                        "INSERT OR REPLACE INTO HAYSTACK_AUTO_TAGGING_RULES (rule_name,category,pattern,units,object_types,brick_class,source,priority) VALUES ('{}','brick','{}',{},{},{},'github',{})",
+                        name.replace('\'', "''"), r.pattern.replace('\'', "''"),
+                        opt_sql_list(&r.units), opt_sql_list(&r.object_types), opt_sql_opt(&r.brick_class), brick,
+                    );
+                    let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await;
+                    brick += 1;
+                }
+            }
+        }
+    }
+
+    // Fetch haystack rules
+    if let Ok(resp) = reqwest::get(GITHUB_HAYSTACK_URL).await {
+        if let Ok(yaml) = resp.text().await {
+            if let Ok(parsed) = serde_yaml::from_str::<Vec<YamlRule>>(&yaml) {
+                for r in parsed {
+                    let name = if r.id.starts_with("hs:") { r.id } else { format!("hs:{}", r.id) };
+                    let tags = r.haystack_tags.map(|t| t.join(","));
+                    let sql = format!(
+                        "INSERT OR REPLACE INTO HAYSTACK_AUTO_TAGGING_RULES (rule_name,category,pattern,units,object_types,haystack_tags,haystack_kind,haystack_unit,source,priority) VALUES ('{}','haystack','{}',{},{},{},{},{},'github',{})",
+                        name.replace('\'', "''"), r.pattern.replace('\'', "''"),
+                        opt_sql_list(&r.units), opt_sql_list(&r.object_types), opt_sql_opt(&tags),
+                        opt_sql_opt(&r.haystack_kind), opt_sql_opt(&r.haystack_unit), hs,
+                    );
+                    let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await;
+                    hs += 1;
+                }
+            }
+        }
+    }
+
+    Ok(serde_json::json!({
+        "brick": brick,
+        "haystack": hs,
+        "total": brick + hs,
+        "message": format!("{} brick + {} haystack rules synced from Brick Official", brick, hs),
+    }))
+}
+
+fn opt_sql_list(v: &Vec<String>) -> String {
+    if v.is_empty() { "NULL".to_string() } else { format!("'{}'", v.join(",").replace('\'', "''")) }
+}
+
+fn opt_sql_opt(v: &Option<String>) -> String {
+    match v { Some(s) if !s.is_empty() => format!("'{}'", s.replace('\'', "''")), _ => "NULL".to_string() }
+}
+
 // ── Internal helpers ──
 
 struct RangeRule {

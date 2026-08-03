@@ -112,6 +112,8 @@ const RulesTab: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [editing, setEditing] = useState<AutoTaggingRule | null>(null);
   const [creating, setCreating] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   const fetchRules = useCallback(async () => {
     setLoading(true);
@@ -147,6 +149,18 @@ const RulesTab: React.FC = () => {
     } catch (e: any) {
       setError(e.message);
     }
+  };
+
+  const handleSyncGithub = async () => {
+    setSyncing(true); setError(null); setSyncMsg(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/sync-github`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setSyncMsg(data.message || `${data.total} rules synced.`);
+      await fetchRules();
+    } catch (e: any) { setError(e.message); }
+    finally { setSyncing(false); }
   };
 
   const filtered = rules.filter(r =>
@@ -217,6 +231,9 @@ const RulesTab: React.FC = () => {
         />
         <Button icon={<ArrowClockwiseRegular style={{ fontSize: 14 }} />} onClick={fetchRules} size="small">Refresh</Button>
         <Button icon={<AddRegular style={{ fontSize: 14 }} />} onClick={() => setCreating(true)} size="small" appearance="primary">New Rule</Button>
+        <Button icon={syncing ? undefined : <ArrowClockwiseRegular style={{ fontSize: 14 }} />} onClick={handleSyncGithub} disabled={syncing} size="small">
+          {syncing ? 'Syncing…' : 'Sync from Brick Official'}
+        </Button>
         <span className={styles.ruleInfo}>
           <InfoRegular />
           Default rules sourced from{' '}
@@ -229,6 +246,7 @@ const RulesTab: React.FC = () => {
       </div>
 
       {error && <div className={styles.errorBanner}><WarningRegular /> {error}</div>}
+      {syncMsg && <div className={styles.successBanner}><CheckmarkCircleRegular /> {syncMsg}</div>}
 
       <div className={styles.rulesBottom}>
         {loading ? (

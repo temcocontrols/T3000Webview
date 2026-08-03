@@ -89,6 +89,32 @@ fn default_rules() -> Vec<RuleSeed> {
         RuleSeed { rule_name: "hs:fcu", category: "haystack", pattern: "(?i)(?<![A-Za-z])(fcu|fan[_ ]?coil[_ ]?unit)(?![A-Za-z])", units: None, object_types: None, haystack_tags: Some("equip,fcu"), brick_class: None, haystack_kind: Some("Marker"), haystack_unit: None },
         RuleSeed { rule_name: "hs:duct_pressure", category: "haystack", pattern: "(?i)(?<![A-Za-z])(duct[_ ]?(static[_ ]?)?pressure|dsp|static[_ ]?pressure)(?![A-Za-z])", units: Some("inWC"), object_types: None, haystack_tags: Some("point,sensor,duct,pressure,static"), brick_class: None, haystack_kind: Some("Number"), haystack_unit: Some("inWC") },
         RuleSeed { rule_name: "hs:generic_temp", category: "haystack", pattern: "(?i)(?<![A-Za-z])(temp(erature)?|tmp)(?![A-Za-z])", units: Some("degF,degC,°F,°C,fahrenheit,celsius"), object_types: None, haystack_tags: Some("point,sensor,air,temp"), brick_class: None, haystack_kind: Some("Number"), haystack_unit: Some("°F") },
+        // Extended + Plain-english rules (from m20260718 + m20260729)
+        RuleSeed { rule_name: "brick:eat", category: "brick", pattern: "(?i)(?<![A-Za-z])(eat|exhaust[_ ]?air[_ ]?temp|ea[_ ]?temp)(?![A-Za-z])", units: Some("degF,degC,°F,°C"), haystack_tags: None, brick_class: Some("Exhaust_Air_Temperature_Sensor"), haystack_kind: None, haystack_unit: None, object_types: None },
+        RuleSeed { rule_name: "brick:ef", category: "brick", pattern: "(?i)(?<![A-Za-z])(ef|exhaust[_ ]?fan|relief[_ ]?fan)(?![A-Za-z])", object_types: Some("binary-input,binary-output,binary-value,multi-state-input,multi-state-output"), brick_class: Some("Exhaust_Fan"), haystack_kind: None, haystack_unit: None, units: None, haystack_tags: None },
+        RuleSeed { rule_name: "brick:economizer", category: "brick", pattern: "(?i)(?<![A-Za-z])(economizer|econ)(?![A-Za-z])", brick_class: Some("Economizer"), haystack_kind: None, haystack_unit: None, units: None, object_types: None, haystack_tags: None },
+        RuleSeed { rule_name: "brick:dewpoint", category: "brick", pattern: "(?i)(?<![A-Za-z])(dew[_ ]?point|dewpoint|dp[_ ]?temp)(?![A-Za-z])", units: Some("degF,degC,°F,°C"), brick_class: Some("Dewpoint_Sensor"), haystack_kind: None, haystack_unit: None, object_types: None, haystack_tags: None },
+        RuleSeed { rule_name: "brick:cooling_valve", category: "brick", pattern: "(?i)(?<![A-Za-z])(cooling[_ ]?(valve|coil[_ ]?valve)|ccv|cw[_ ]?valve[_ ]?pos)(?![A-Za-z])", brick_class: Some("Cooling_Valve"), haystack_kind: None, haystack_unit: None, units: None, object_types: None, haystack_tags: None },
+        RuleSeed { rule_name: "brick:heating_valve", category: "brick", pattern: "(?i)(?<![A-Za-z])(heating[_ ]?(valve|coil[_ ]?valve)|hcv|hw[_ ]?valve[_ ]?pos)(?![A-Za-z])", brick_class: Some("Heating_Valve"), haystack_kind: None, haystack_unit: None, units: None, object_types: None, haystack_tags: None },
+        RuleSeed { rule_name: "brick:fan_vfd", category: "brick", pattern: "(?i)(?<![A-Za-z])(fan[_ ]?(vfd|speed|hz)|vfd[_ ]?(speed|hz)|drive[_ ]?speed)(?![A-Za-z])", brick_class: Some("Fan_VFD"), haystack_kind: None, haystack_unit: None, units: None, object_types: None, haystack_tags: None },
+        RuleSeed { rule_name: "brick:compressor", category: "brick", pattern: "(?i)(?<![A-Za-z])(compressor|comp[_ ]?(status|run|cmd|speed))(?![A-Za-z])", object_types: Some("binary-input,binary-output,binary-value,multi-state-input,multi-state-output"), brick_class: Some("Compressor"), haystack_kind: None, haystack_unit: None, units: None, haystack_tags: None },
+        RuleSeed { rule_name: "hs:eat", category: "haystack", pattern: "(?i)(?<![A-Za-z])(eat|exhaust[_ ]?air[_ ]?temp|ea[_ ]?temp)(?![A-Za-z])", units: Some("degF,degC,°F,°C"), haystack_tags: Some("point,sensor,exhaust,air,temp"), haystack_kind: Some("Number"), haystack_unit: None, brick_class: None, object_types: None },
+        RuleSeed { rule_name: "hs:ef", category: "haystack", pattern: "(?i)(?<![A-Za-z])(ef|exhaust[_ ]?fan|relief[_ ]?fan)(?![A-Za-z])", haystack_tags: Some("point,sensor,exhaust,fan,run"), haystack_kind: Some("Bool"), haystack_unit: None, brick_class: None, units: None, object_types: None },
+        RuleSeed { rule_name: "hs:economizer", category: "haystack", pattern: "(?i)(?<![A-Za-z])(economizer|econ)(?![A-Za-z])", haystack_tags: Some("point,sensor,economizer"), haystack_kind: Some("Bool"), haystack_unit: None, brick_class: None, units: None, object_types: None },
+        RuleSeed { rule_name: "hs:supply_temp_plain", category: "haystack", pattern: "(?i)(supply[_ ]?temp)", haystack_tags: Some("point,sensor,discharge,air,temp,supply"), haystack_kind: Some("Number"), haystack_unit: None, brick_class: None, units: None, object_types: None },
+        RuleSeed { rule_name: "brick:supply_temp_plain", category: "brick", pattern: "(?i)(supply[_ ]?temp)", brick_class: Some("Supply_Air_Temperature_Sensor"), haystack_kind: None, haystack_unit: None, units: None, object_types: None, haystack_tags: None },
+        RuleSeed { rule_name: "hs:return_temp_plain", category: "haystack", pattern: "(?i)(return[_ ]?temp)", haystack_tags: Some("point,sensor,return,air,temp"), haystack_kind: Some("Number"), haystack_unit: None, brick_class: None, units: None, object_types: None },
+        RuleSeed { rule_name: "brick:return_temp_plain", category: "brick", pattern: "(?i)(return[_ ]?temp)", brick_class: Some("Return_Air_Temperature_Sensor"), haystack_kind: None, haystack_unit: None, units: None, object_types: None, haystack_tags: None },
+        RuleSeed { rule_name: "hs:fan_status", category: "haystack", pattern: "(?i)(fan[_ ]?status)", object_types: Some("binary-input,binary-value"), haystack_tags: Some("point,sensor,fan,run,status"), haystack_kind: Some("Bool"), haystack_unit: None, brick_class: None, units: None },
+        RuleSeed { rule_name: "brick:fan_status", category: "brick", pattern: "(?i)(fan[_ ]?status)", object_types: Some("binary-input,binary-value"), brick_class: Some("Fan_Status_Sensor"), haystack_kind: None, haystack_unit: None, units: None, haystack_tags: None },
+        RuleSeed { rule_name: "brick:fan_enable", category: "brick", pattern: "(?i)(fan[_ ]?(enable|cmd|command))", object_types: Some("binary-output,binary-value"), brick_class: Some("Fan_Enable_Command"), haystack_kind: None, haystack_unit: None, units: None, haystack_tags: None },
+        RuleSeed { rule_name: "brick:fan_speed", category: "brick", pattern: "(?i)(fan[_ ]?speed)", brick_class: Some("Fan_Speed_Command"), haystack_kind: None, haystack_unit: None, units: None, object_types: None, haystack_tags: None },
+        RuleSeed { rule_name: "hs:cooling_valve_plain", category: "haystack", pattern: "(?i)(cooling[_ ]?valve)", haystack_tags: Some("point,cmd,valve,cooling,chilledWater"), haystack_kind: Some("Number"), haystack_unit: None, brick_class: None, units: None, object_types: None },
+        RuleSeed { rule_name: "hs:heating_valve_plain", category: "haystack", pattern: "(?i)(heating[_ ]?valve)", haystack_tags: Some("point,cmd,valve,heating,hotWater"), haystack_kind: Some("Number"), haystack_unit: None, brick_class: None, units: None, object_types: None },
+        RuleSeed { rule_name: "brick:cooling_valve_plain", category: "brick", pattern: "(?i)(cooling[_ ]?valve)", brick_class: Some("Cooling_Valve_Command"), haystack_kind: None, haystack_unit: None, units: None, object_types: None, haystack_tags: None },
+        RuleSeed { rule_name: "brick:heating_valve_plain", category: "brick", pattern: "(?i)(heating[_ ]?valve)", brick_class: Some("Heating_Valve_Command"), haystack_kind: None, haystack_unit: None, units: None, object_types: None, haystack_tags: None },
+        RuleSeed { rule_name: "hs:fan_enable", category: "haystack", pattern: "(?i)(fan[_ ]?(enable|cmd|command))", object_types: Some("binary-output,binary-value"), haystack_tags: Some("point,cmd,fan,enable"), haystack_kind: Some("Bool"), haystack_unit: None, brick_class: None, units: None },
+        RuleSeed { rule_name: "hs:fan_speed", category: "haystack", pattern: "(?i)(fan[_ ]?speed)", haystack_tags: Some("point,cmd,fan,speed"), haystack_kind: Some("Number"), haystack_unit: None, brick_class: None, units: None, object_types: None },
     ]
 }
 
@@ -97,23 +123,27 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
 
-        // 1. Create HAYSTACK_AUTO_TAGGING_RULES table
+        // 1. Create HAYSTACK_AUTO_TAGGING_RULES table with full schema
         db.execute_unprepared(
             "CREATE TABLE IF NOT EXISTS HAYSTACK_AUTO_TAGGING_RULES (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                rule_name     TEXT NOT NULL UNIQUE,
-                category      TEXT NOT NULL CHECK(category IN ('haystack','brick')),
-                pattern       TEXT NOT NULL,
-                units         TEXT,
-                object_types  TEXT,
-                haystack_tags TEXT,
-                brick_class   TEXT,
-                haystack_kind TEXT,
-                haystack_unit TEXT,
-                enabled       INTEGER NOT NULL DEFAULT 1,
-                priority      INTEGER NOT NULL DEFAULT 0,
-                created_at    TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at    TEXT DEFAULT CURRENT_TIMESTAMP
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                rule_name      TEXT NOT NULL UNIQUE,
+                category       TEXT NOT NULL CHECK(category IN ('haystack','brick','range')),
+                pattern        TEXT,
+                units          TEXT,
+                object_types   TEXT,
+                haystack_tags  TEXT,
+                brick_class    TEXT,
+                haystack_kind  TEXT,
+                haystack_unit  TEXT,
+                point_type     TEXT,
+                digital_analog INTEGER,
+                range_value    INTEGER,
+                source         TEXT NOT NULL DEFAULT 'migration',
+                enabled        INTEGER NOT NULL DEFAULT 1,
+                priority       INTEGER NOT NULL DEFAULT 0,
+                created_at     TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at     TEXT DEFAULT CURRENT_TIMESTAMP
             )",
         ).await?;
 
@@ -122,10 +152,10 @@ impl MigrationTrait for Migration {
             "ALTER TABLE HAYSTACK_POINT_TAGS ADD COLUMN brick_class TEXT",
         ).await;
 
-        // 3. Seed 68 default rules
+        // 3. Seed regex rules
         for (i, rule) in default_rules().iter().enumerate() {
             let sql = format!(
-                "INSERT OR IGNORE INTO HAYSTACK_AUTO_TAGGING_RULES (rule_name, category, pattern, units, object_types, haystack_tags, brick_class, haystack_kind, haystack_unit, priority) VALUES ('{}', '{}', '{}', {}, {}, {}, {}, {}, {}, {})",
+                "INSERT OR IGNORE INTO HAYSTACK_AUTO_TAGGING_RULES (rule_name, category, pattern, units, object_types, haystack_tags, brick_class, haystack_kind, haystack_unit, source, priority) VALUES ('{}', '{}', '{}', {}, {}, {}, {}, {}, {}, 'migration', {})",
                 rule.rule_name.replace('\'', "''"),
                 rule.category,
                 rule.pattern.replace('\'', "''"),
@@ -140,28 +170,87 @@ impl MigrationTrait for Migration {
             db.execute_unprepared(&sql).await?;
         }
 
+        // 4. Seed range rules (point_type + digital_analog + range_value)
+        let range_sql = r#"
+INSERT OR IGNORE INTO HAYSTACK_AUTO_TAGGING_RULES (rule_name,category,pattern,haystack_tags,brick_class,units,haystack_kind,point_type,digital_analog,range_value,source,priority) VALUES
+('range:in-dig-0','range',NULL,'point,sensor,binary',NULL,NULL,NULL,'INPUT',0,0,'migration',200),
+('range:in-ana-0','range',NULL,'point,sensor,analog',NULL,NULL,NULL,'INPUT',1,0,'migration',201),
+('range:in-ana-1','range',NULL,'point,sensor,air,temp','Temperature_Sensor','Deg.C','Number','INPUT',1,1,'migration',202),
+('range:in-ana-2','range',NULL,'point,sensor,air,temp','Temperature_Sensor','Deg.F','Number','INPUT',1,2,'migration',203),
+('range:in-ana-3','range',NULL,'point,sensor,air,temp','Temperature_Sensor','Deg.C','Number','INPUT',1,3,'migration',204),
+('range:in-ana-4','range',NULL,'point,sensor,air,temp','Temperature_Sensor','Deg.F','Number','INPUT',1,4,'migration',205),
+('range:in-ana-5','range',NULL,'point,sensor,air,temp','Temperature_Sensor','Deg.C','Number','INPUT',1,5,'migration',206),
+('range:in-ana-6','range',NULL,'point,sensor,air,temp','Temperature_Sensor','Deg.F','Number','INPUT',1,6,'migration',207),
+('range:in-ana-7','range',NULL,'point,sensor,air,temp','Temperature_Sensor','Deg.C','Number','INPUT',1,7,'migration',208),
+('range:in-ana-8','range',NULL,'point,sensor,air,temp','Temperature_Sensor','Deg.F','Number','INPUT',1,8,'migration',209),
+('range:in-ana-9','range',NULL,'point,sensor,air,temp','Temperature_Sensor','Deg.C','Number','INPUT',1,9,'migration',210),
+('range:in-ana-10','range',NULL,'point,sensor,air,temp','Temperature_Sensor','Deg.F','Number','INPUT',1,10,'migration',211),
+('range:in-ana-11','range',NULL,'point,sensor,voltage',NULL,'Volts','Number','INPUT',1,11,'migration',212),
+('range:in-ana-12','range',NULL,'point,sensor,current','Current_Sensor','Amps','Number','INPUT',1,12,'migration',213),
+('range:in-ana-14','range',NULL,'point,sensor,pressure','Pressure_Sensor','psi','Number','INPUT',1,14,'migration',214),
+('range:in-ana-16','range',NULL,'point,sensor,percent','Percentage_Sensor','%','Number','INPUT',1,16,'migration',215),
+('range:in-ana-27','range',NULL,'point,sensor,air,humidity','Humidity_Sensor','%','Number','INPUT',1,27,'migration',216),
+('range:in-ana-28','range',NULL,'point,sensor,air,co2,concentration','CO2_Sensor','PPM','Number','INPUT',1,28,'migration',217),
+('range:in-ana-29','range',NULL,'point,sensor,speed',NULL,'RPM','Number','INPUT',1,29,'migration',218),
+('range:out-dig-0','range',NULL,'point,cmd,binary',NULL,NULL,NULL,'OUTPUT',0,0,'migration',300),
+('range:out-ana-0','range',NULL,'point,cmd,analog',NULL,NULL,NULL,'OUTPUT',1,0,'migration',301),
+('range:out-ana-31','range',NULL,'point,cmd,voltage',NULL,'Volts','Number','OUTPUT',1,31,'migration',302),
+('range:out-ana-32','range',NULL,'point,cmd,damper,position','Damper_Position_Actuator','%','Number','OUTPUT',1,32,'migration',303),
+('range:out-ana-34','range',NULL,'point,cmd,percent','Percentage_Command','%','Number','OUTPUT',1,34,'migration',304),
+('range:var-dig-0','range',NULL,'point,sp,binary',NULL,NULL,NULL,'VARIABLE',0,0,'migration',400),
+('range:var-ana-0','range',NULL,'point,sp,analog',NULL,NULL,NULL,'VARIABLE',1,0,'migration',401);
+"#;
+        for line in range_sql.lines() {
+            let trimmed = line.trim();
+            if !trimmed.is_empty() && !trimmed.starts_with("--") && !trimmed.starts_with("INSERT OR IGNORE") {
+                let _ = db.execute_unprepared(trimmed).await;
+            }
+        }
+
+        // 5. Create HAYSTACK_POINT_BRICK_CLASS (from m20260716)
+        db.execute_unprepared(
+            "CREATE TABLE IF NOT EXISTS HAYSTACK_POINT_BRICK_CLASS (
+                serial_number INTEGER NOT NULL,
+                point_type    TEXT NOT NULL,
+                point_index   INTEGER NOT NULL,
+                brick_class   TEXT NOT NULL,
+                PRIMARY KEY (serial_number, point_type, point_index)
+            )",
+        ).await?;
+        db.execute_unprepared(
+            "CREATE INDEX IF NOT EXISTS idx_hpbc_serial ON HAYSTACK_POINT_BRICK_CLASS (serial_number)",
+        ).await?;
+
+        // Migrate existing __brick_class__ marker rows
+        db.execute_unprepared(
+            "INSERT OR IGNORE INTO HAYSTACK_POINT_BRICK_CLASS (serial_number, point_type, point_index, brick_class)
+             SELECT serial_number, point_type, CAST(point_index AS INTEGER), brick_class
+             FROM HAYSTACK_POINT_TAGS WHERE tag_name = '__brick_class__' AND brick_class IS NOT NULL",
+        ).await?;
+        db.execute_unprepared(
+            "DELETE FROM HAYSTACK_POINT_TAGS WHERE tag_name = '__brick_class__'",
+        ).await?;
+
+        // Add auto_assigned to tags table + drop brick_class column
+        let _ = db.execute_unprepared(
+            "ALTER TABLE HAYSTACK_POINT_TAGS ADD COLUMN auto_assigned INTEGER NOT NULL DEFAULT 0",
+        ).await;
+        let _ = db.execute_unprepared(
+            "ALTER TABLE HAYSTACK_POINT_TAGS DROP COLUMN brick_class",
+        ).await;
+
+        // 6. Add auto_assigned to brick class table (from m20260719)
+        let _ = db.execute_unprepared(
+            "ALTER TABLE HAYSTACK_POINT_BRICK_CLASS ADD COLUMN auto_assigned INTEGER NOT NULL DEFAULT 1",
+        ).await;
+
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
-        // Recreate table without brick_class column (SQLite doesn't support DROP COLUMN)
-        db.execute_unprepared(
-            "CREATE TABLE IF NOT EXISTS HAYSTACK_POINT_TAGS_backup AS SELECT serial_number, point_type, point_index, point_id, tag_name FROM HAYSTACK_POINT_TAGS"
-        ).await?;
-        db.execute_unprepared("DROP TABLE IF EXISTS HAYSTACK_POINT_TAGS").await?;
-        db.execute_unprepared(
-            "CREATE TABLE IF NOT EXISTS HAYSTACK_POINT_TAGS (
-                serial_number INTEGER NOT NULL,
-                point_type    TEXT NOT NULL,
-                point_index   TEXT NOT NULL,
-                point_id      TEXT NOT NULL,
-                tag_name      TEXT NOT NULL,
-                PRIMARY KEY (serial_number, point_type, point_index, tag_name)
-            )"
-        ).await?;
-        db.execute_unprepared("INSERT INTO HAYSTACK_POINT_TAGS SELECT * FROM HAYSTACK_POINT_TAGS_backup").await?;
-        db.execute_unprepared("DROP TABLE IF EXISTS HAYSTACK_POINT_TAGS_backup").await?;
+        db.execute_unprepared("DROP TABLE IF EXISTS HAYSTACK_POINT_BRICK_CLASS").await?;
+        let _ = db.execute_unprepared("ALTER TABLE HAYSTACK_POINT_TAGS DROP COLUMN auto_assigned").await;
         db.execute_unprepared("DROP TABLE IF EXISTS HAYSTACK_AUTO_TAGGING_RULES").await?;
         Ok(())
     }
