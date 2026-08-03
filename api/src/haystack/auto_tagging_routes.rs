@@ -40,16 +40,16 @@ pub fn create_auto_tagging_routes() -> Router<T3AppState> {
         .route("/api/haystack/auto-tagging/rules/:id", put(update_rule).delete(delete_rule))
         .route("/api/haystack/auto-tagging/rules/:id/toggle", post(toggle_rule))
         .route("/api/haystack/auto-tagging/brick-classes", post(get_brick_classes))
-        .route("/api/haystack/auto-tagging/sync-github", post(sync_github_rules))
+        .route("/api/haystack/auto-tagging/sync-brick-rules", post(sync_brick_rules))
 }
 
-// ── Sync from GitHub ──
+// ── Sync from Brick Official (GitHub) ──
 
-async fn sync_github_rules(
+async fn sync_brick_rules(
     State(state): State<T3AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let db = get_db(&state).await?;
-    let result = ats::sync_rules_from_github(&db).await.map_err(|e| {
+    let result = ats::sync_brick_rules(&db).await.map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e})))
     })?;
     Ok(Json(result))

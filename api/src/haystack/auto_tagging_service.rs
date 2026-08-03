@@ -416,12 +416,12 @@ pub async fn get_brick_classes(
     Ok(entries)
 }
 
-// ── Sync Rules from GitHub ──
+// ── Sync Rules from Brick Official (GitHub) ──
 
 const GITHUB_BRICK_URL: &str =
-    "https://raw.githubusercontent.com/Yveshby27/brick-bacnet-mcp/main/src/brick_bacnet_mcp/rules/brick_rules.yaml";
+    "https://raw.githubusercontent.com/qnst/brick-bacnet-mcp/main/src/brick_bacnet_mcp/rules/brick_rules.yaml";
 const GITHUB_HAYSTACK_URL: &str =
-    "https://raw.githubusercontent.com/Yveshby27/brick-bacnet-mcp/main/src/brick_bacnet_mcp/rules/haystack_rules.yaml";
+    "https://raw.githubusercontent.com/qnst/brick-bacnet-mcp/main/src/brick_bacnet_mcp/rules/haystack_rules.yaml";
 
 #[derive(Debug, Deserialize)]
 struct YamlRule {
@@ -441,7 +441,8 @@ struct YamlRule {
     haystack_unit: Option<String>,
 }
 
-pub async fn sync_rules_from_github(db: &impl ConnectionTrait) -> Result<serde_json::Value, String> {
+/// Sync Brick/Haystack regex rules from the official brick-bacnet-mcp repo on GitHub.
+pub async fn sync_brick_rules(db: &impl ConnectionTrait) -> Result<serde_json::Value, String> {
     let mut brick = 0u32;
     let mut hs = 0u32;
 

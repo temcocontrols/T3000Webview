@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Spinner, Button, Input, Field, Switch, Tooltip,
   Tab, TabList, Dialog, DialogSurface, DialogBody, DialogTitle,
   DialogContent, DialogActions, Badge, Select,
   DataGrid, DataGridHeader, DataGridRow, DataGridCell, DataGridBody,
-  createTableColumn,
+  createTableColumn, TableColumnDefinition,
   Popover, PopoverSurface, PopoverTrigger,
   Dropdown, Option,
 } from '@fluentui/react-components';
@@ -114,6 +114,14 @@ const RulesTab: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [syncConfirmOpen, setSyncConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (syncMsg) {
+      const t = setTimeout(() => setSyncMsg(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [syncMsg]);
 
   const fetchRules = useCallback(async () => {
     setLoading(true);
@@ -151,10 +159,11 @@ const RulesTab: React.FC = () => {
     }
   };
 
-  const handleSyncGithub = async () => {
+  const handleSyncBrickRules = async () => {
+    setSyncConfirmOpen(false);
     setSyncing(true); setError(null); setSyncMsg(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/sync-github`, { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/sync-brick-rules`, { method: 'POST' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setSyncMsg(data.message || `${data.total} rules synced.`);
@@ -163,13 +172,13 @@ const RulesTab: React.FC = () => {
     finally { setSyncing(false); }
   };
 
-  const filtered = rules.filter(r =>
+  const filtered = useMemo(() => rules.filter(r =>
     (categoryFilter === 'all' || r.category === categoryFilter) &&
     (!filter || r.rule_name.toLowerCase().includes(filter.toLowerCase()) ||
     r.category.includes(filter) || (r.brick_class || '').toLowerCase().includes(filter.toLowerCase()))
-  );
+  ), [rules, categoryFilter, filter]);
 
-  const columns: TableColumnDefinition<AutoTaggingRule>[] = [
+  const columns: TableColumnDefinition<AutoTaggingRule>[] = useMemo(() => [
     createTableColumn({ columnId: 'name', renderHeaderCell: () => 'Rule', renderCell: (r) => (
       <div className={styles.ruleCell}>
         <Badge appearance="filled" color={r.category === 'brick' ? 'important' : r.category === 'range' ? 'severe' : 'informative'} size="small">
@@ -179,9 +188,7 @@ const RulesTab: React.FC = () => {
       </div>
     ) }),
     createTableColumn({ columnId: 'pattern', renderHeaderCell: () => 'Pattern', renderCell: (r) => (
-      <Tooltip content={r.pattern || '(metadata-based)'} relationship="description" positioning="above-end">
         <code className={styles.patternCode}>{r.pattern || '—'}</code>
-      </Tooltip>
     ) }),
     createTableColumn({ columnId: 'brick_class', renderHeaderCell: () => 'Brick Class', renderCell: (r) => (
       <span className={styles.targetCell}>{r.brick_class || r.haystack_tags || '—'}</span>
@@ -205,7 +212,7 @@ const RulesTab: React.FC = () => {
         </PopoverSurface>
       </Popover>
     )}}),
-  ];
+  ], []);
 
   return (
     <div className={styles.rulesLayout}>
@@ -230,10 +237,34 @@ const RulesTab: React.FC = () => {
           className={styles.filterInput}
         />
         <Button icon={<ArrowClockwiseRegular style={{ fontSize: 14 }} />} onClick={fetchRules} size="small">Refresh</Button>
-        <Button icon={<AddRegular style={{ fontSize: 14 }} />} onClick={() => setCreating(true)} size="small" appearance="primary">New Rule</Button>
-        <Button icon={syncing ? undefined : <ArrowClockwiseRegular style={{ fontSize: 14 }} />} onClick={handleSyncGithub} disabled={syncing} size="small">
-          {syncing ? 'Syncing…' : 'Sync from Brick Official'}
-        </Button>
+        <Button icon={<AddRegular style={{ fontSize: 14 }} />} onClick={() => setCreating(true)} size="small">New Rule</Button>
+        <Popover open={syncConfirmOpen} onOpenChange={(_, d) => setSyncConfirmOpen(d.open)} positioning="above-end">
+          <PopoverTrigger disableButtonEnhancement>
+            <Button
+              icon={syncing ? undefined : <ArrowClockwiseRegular style={{ fontSize: 14 }} />}
+              onClick={() => setSyncConfirmOpen(true)}
+              disabled={syncing}
+              size="small"
+              appearance="primary"
+            >
+              {syncing ? 'Syncing…' : 'Sync from Brick Official'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverSurface style={{ padding: 16, maxWidth: 340 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+              Sync from Brick Official?
+            </div>
+            <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5, marginBottom: 16 }}>
+              This will fetch the latest Brick and Haystack regex rules from{' '}
+              <strong>brick-bacnet-mcp</strong> on GitHub.
+              Rules you created manually will not be affected.
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button size="small" onClick={() => setSyncConfirmOpen(false)}>Cancel</Button>
+              <Button size="small" appearance="primary" onClick={handleSyncBrickRules}>Sync</Button>
+            </div>
+          </PopoverSurface>
+        </Popover>
         <span className={styles.ruleInfo}>
           <InfoRegular />
           Default rules sourced from{' '}
@@ -267,14 +298,14 @@ const RulesTab: React.FC = () => {
         )}
       </div>
 
-      {creating && <RuleDialog mode="create" onClose={() => { setCreating(false); fetchRules(); }} />}
+      {creating && <RuleDialog mode="create" onClose={() => setCreating(false)} onSaved={() => { setCreating(false); fetchRules(); }} />}
     </div>
   );
 };
 
 // ── Rule Dialog ──
 
-const RuleDialog: React.FC<{ mode: 'create'; onClose: () => void }> = ({ mode, onClose }) => {
+const RuleDialog: React.FC<{ mode: 'create'; onClose: () => void; onSaved: () => void }> = ({ mode, onClose, onSaved }) => {
   const [form, setForm] = useState({
     rule_name: '', category: 'haystack' as string, pattern: '',
     units: '', object_types: '', haystack_tags: '', brick_class: '',
@@ -297,7 +328,7 @@ const RuleDialog: React.FC<{ mode: 'create'; onClose: () => void }> = ({ mode, o
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      onClose();
+      onSaved();
     } catch (e: any) {
       alert('Failed: ' + e.message);
     } finally {
