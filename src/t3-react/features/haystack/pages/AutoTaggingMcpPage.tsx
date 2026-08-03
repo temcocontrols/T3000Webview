@@ -175,6 +175,21 @@ const RulesTab: React.FC = () => {
     finally { setSyncing(false); }
   };
 
+  const handleClearAllRules = async () => {
+    setSyncConfirmOpen(false);
+    setSyncing(true); setError(null); setSyncMsg(null);
+    try {
+      await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/rules`, { method: 'DELETE' });
+      // Re-sync after clearing
+      const res = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/sync-brick-rules`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setSyncMsg(data.message || 'Rules cleared and re-synced.');
+      await fetchRules();
+    } catch (e: any) { setError(e.message); }
+    finally { setSyncing(false); }
+  };
+
   const handleOpenDeletePopover = async (rule: AutoTaggingRule) => {
     setDeleteTarget(rule);
     setShowAllAffected(false);
@@ -377,29 +392,37 @@ const RulesTab: React.FC = () => {
               {syncing ? 'Syncing…' : 'Sync from Brick Official'}
             </Button>
           </PopoverTrigger>
-          <PopoverSurface style={{ padding: 16, maxWidth: 340 }}>
+          <PopoverSurface style={{ padding: 16, maxWidth: 520 }}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-              Sync from Brick Official?
+              Sync Rules from Brick Official?
             </div>
-            <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5, marginBottom: 16 }}>
-              This will fetch the latest Brick and Haystack regex rules from{' '}
-              <strong>brick-bacnet-mcp</strong> on GitHub.
-              Rules you created manually will not be affected.
+            <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5, marginBottom: 6 }}>
+              Downloads the latest tagging rules from the official{' '}
+              <a href="https://github.com/qnst/brick-bacnet-mcp" target="_blank" rel="noopener noreferrer" style={{ color: '#0078d4', textDecoration: 'none' }}>brick-bacnet-mcp ↗</a>
+              {' '}repo. Deleted rules will be restored. Rules you created or modified yourself are left as-is.
             </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button size="small" onClick={() => setSyncConfirmOpen(false)}>Cancel</Button>
-              <Button size="small" appearance="primary" onClick={handleSyncBrickRules}>Sync</Button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#888', marginBottom: 14 }}>
+              <InfoRegular style={{ fontSize: 13, flexShrink: 0, color: '#888' }} />
+              <span>
+                Default rules sourced from{' '}
+                <a href="https://github.com/qnst/brick-bacnet-mcp" target="_blank" rel="noopener noreferrer" style={{ color: '#0078d4', textDecoration: 'none' }}>brick-bacnet-mcp</a>
+                {' '}(regex patterns) &amp;{' '}
+                <a href="https://github.com/qnst/Brick" target="_blank" rel="noopener noreferrer" style={{ color: '#0078d4', textDecoration: 'none' }}>Brick Schema</a>
+                {' '}(ontology).
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
+              <Button size="small" appearance="subtle" style={{ color: '#d32f2f', fontSize: 11 }}
+                onClick={handleClearAllRules} disabled={syncing}>
+                Clear All &amp; Re-sync
+              </Button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button size="small" onClick={() => setSyncConfirmOpen(false)}>Cancel</Button>
+                <Button size="small" appearance="primary" onClick={handleSyncBrickRules}>Sync</Button>
+              </div>
             </div>
           </PopoverSurface>
         </Popover>
-        <span className={styles.ruleInfo}>
-          <InfoRegular />
-          Default rules sourced from{' '}
-          <a href="https://github.com/qnst/brick-bacnet-mcp" target="_blank" rel="noopener noreferrer">brick-bacnet-mcp ↗</a>
-          {' '}(regex patterns) &amp;{' '}
-          <a href="https://github.com/qnst/Brick" target="_blank" rel="noopener noreferrer">Brick Schema ↗</a>
-          {' '}(ontology).
-        </span>
         <span className={styles.count}>{filtered.length} rules</span>
       </div>
 

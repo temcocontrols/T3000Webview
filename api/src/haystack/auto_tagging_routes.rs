@@ -36,7 +36,7 @@ pub fn create_auto_tagging_routes() -> Router<T3AppState> {
         .route("/api/haystack/auto-tagging/run", post(run_auto_tagging))
         .route("/api/haystack/auto-tagging/preview", post(preview_auto_tagging))
         .route("/api/haystack/auto-tagging/reset", post(reset_auto_tags))
-        .route("/api/haystack/auto-tagging/rules", get(list_rules).post(create_rule))
+        .route("/api/haystack/auto-tagging/rules", get(list_rules).post(create_rule).delete(delete_all_rules))
         .route("/api/haystack/auto-tagging/rules/:id", put(update_rule).delete(delete_rule))
         .route("/api/haystack/auto-tagging/rules/:id/toggle", post(toggle_rule))
         .route("/api/haystack/auto-tagging/rules/:id/affected-points", get(get_affected_points))
@@ -180,6 +180,17 @@ async fn delete_rule(
         (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
     })?;
     Ok(Json(json!({ "message": "Rule deleted", "id": id })))
+}
+
+/// Delete all rules (used before a fresh re-sync).
+async fn delete_all_rules(
+    State(state): State<T3AppState>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let db = get_db(&state).await?;
+    let count = ats::delete_all_rules(&db).await.map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e })))
+    })?;
+    Ok(Json(json!({ "message": "All rules deleted", "count": count })))
 }
 
 /// Get points across all devices that match this rule's pattern.
