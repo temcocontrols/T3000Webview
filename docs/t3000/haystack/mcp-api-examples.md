@@ -8,7 +8,7 @@ Complete reference of natural-language prompts for all 45 MCP tools across 12 ca
 
 ## Haystack Tagging <span style="font-weight:400;font-size:12px;color:#888">7 tools</span>
 
-### `haystack_list_tags` — Discover available tags
+### `t3000_haystack_list_tags` — Discover available tags
 
 Discover the full Haystack tag vocabulary. Tags are organized by category: `haystack` (standard v4 tags like `air`, `sensor`, `temp`), `brick` (Brick ontology classes), and `custom` (user-defined). Returns tag names, descriptions, parent relationships, and how many points use each tag.
 
@@ -34,7 +34,7 @@ Discover the full Haystack tag vocabulary. Tags are organized by category: `hays
 
 </div>
 
-### `haystack_get_point_tags` — Get tags assigned to points
+### `t3000_haystack_get_point_tags` — Get tags assigned to points
 
 Retrieve all Haystack tags assigned to specific device points. Filter by device serial number and optionally by point type (INPUT, OUTPUT, VARIABLE). Returns a flat list of point→tag assignments showing what semantic meaning each point carries.
 
@@ -60,7 +60,7 @@ Retrieve all Haystack tags assigned to specific device points. Filter by device 
 
 </div>
 
-### `haystack_search_points` — Find points by tags
+### `t3000_haystack_search_points` — Find points by tags
 
 Search across all devices for points that have specific combinations of Haystack tags. Points must match ALL specified tags. Use this to find all temperature sensors, all outside air points, all command points, etc. Optionally restrict by device serials or point types.
 
@@ -86,7 +86,7 @@ Search across all devices for points that have specific combinations of Haystack
 
 </div>
 
-### `haystack_auto_tag` — Run auto-tagging
+### `t3000_haystack_auto_tag` — Run auto-tagging
 
 Apply the auto-tagging engine to devices. First applies range-based rules (digital/analog, engineering units, value ranges), then regex rules that match point labels. Assigns Haystack tags AND Brick ontology classes to every point. Returns the count of points tagged.
 
@@ -106,7 +106,7 @@ Apply the auto-tagging engine to devices. First applies range-based rules (digit
 
 </div>
 
-### `haystack_preview_tags` — Preview tags without saving
+### `t3000_haystack_preview_tags` — Preview tags without saving
 
 See exactly what tags and Brick classes would be assigned by auto-tagging BEFORE writing to the database. Essential for testing new rules or verifying tag assignments. Returns full preview with tags, Brick class, and the rule that matched for each point.
 
@@ -126,7 +126,7 @@ See exactly what tags and Brick classes would be assigned by auto-tagging BEFORE
 
 </div>
 
-### `haystack_list_rules` — Show all tagging rules
+### `t3000_haystack_list_rules` — Show all tagging rules
 
 Lists every auto-tagging rule in the system with its regex pattern, target tags, Brick class (if any), category, priority, and enabled/disabled status. Currently 248 rules covering Haystack v4 tags and Brick ontology classes.
 
@@ -146,7 +146,7 @@ Lists every auto-tagging rule in the system with its regex pattern, target tags,
 
 </div>
 
-### `haystack_get_brick_class` — Get Brick ontology classes
+### `t3000_haystack_get_brick_class` — Get Brick ontology classes
 
 Brick is a formal ontology for buildings (brickschema.org). After auto-tagging, each point gets a Brick class like `Supply_Air_Temperature_Sensor` or `Outside_Air_Flow_Sensor`. Use this to check what Brick classes are assigned to your device points.
 
@@ -170,7 +170,7 @@ Brick is a formal ontology for buildings (brickschema.org). After auto-tagging, 
 
 ## Data & Discovery <span style="font-weight:400;font-size:12px;color:#888">4 tools</span>
 
-### `device_list` — Enumerate all devices
+### `t3000_device_list` — Enumerate all devices
 
 Get every T3000 device in the system with serial number, name, device type, building/floor/room, and counts of INPUT, OUTPUT, and VARIABLE points. Optionally filter by device name substring.
 
@@ -196,7 +196,7 @@ Get every T3000 device in the system with serial number, name, device type, buil
 
 </div>
 
-### `device_get_points` — Get all points for a device
+### `t3000_device_get_points` — Get all points for a device
 
 Returns every point on a device — labels, engineering units, Haystack tags, and Brick classes. Optionally filter by point type to get only INPUTs, OUTPUTs, or VARIABLEs.
 
@@ -222,7 +222,7 @@ Returns every point on a device — labels, engineering units, Haystack tags, an
 
 </div>
 
-### `point_get_metadata` — Full metadata for one point
+### `t3000_point_get_metadata` — Full metadata for one point
 
 Deep-dive into a single point: label, full label, engineering units, range (low/high), description, digital vs analog, all Haystack tags, and Brick class. Useful when you need to understand exactly what a point represents.
 
@@ -242,7 +242,7 @@ Deep-dive into a single point: label, full label, engineering units, range (low/
 
 </div>
 
-### `metadata_search` — Cross-device label search
+### `t3000_metadata_search` — Cross-device label search
 
 Search point labels across all devices by keyword. Matches against point labels, full labels, and descriptions. Optionally filter by device serials and point types. Great for finding all points related to "temperature", "flow", "pressure", etc.
 
@@ -272,7 +272,7 @@ Search point labels across all devices by keyword. Matches against point labels,
 
 ## Operational — Read/Write <span style="font-weight:400;font-size:12px;color:#888">5 tools</span>
 
-### `point_read` — Read a single point value
+### `t3000_point_read` — Read a single point value
 
 Read the current (last synced) value of any point from the database. Returns the value, engineering units, label, and timestamp of the last reading.
 
@@ -298,7 +298,7 @@ Read the current (last synced) value of any point from the database. Returns the
 
 </div>
 
-### `point_write` — Write to any point field
+### `t3000_point_write` — Write to any point field
 
 Write to any writable field on a point. Defaults to `value` (fValue). Also supports: `label`, `description`, `range`, `auto_manual`, `digital_analog`. All other fields are preserved from the current device state. **Safety:** requires `confirm: true` for OUTPUT and VARIABLE points. Writes go through the C++ FFI layer to the actual device.
 
@@ -336,9 +336,9 @@ Write to any writable field on a point. Defaults to `value` (fValue). Also suppo
 
 </div>
 
-### `point_read_batch` — Read multiple points at once
+### `t3000_point_read_batch` — Read multiple points at once
 
-Read values for multiple points in a single call. Points can span different devices and point types. Much faster than calling `point_read` repeatedly for bulk operations.
+Read values for multiple points in a single call. Points can span different devices and point types. Much faster than calling `t3000_point_read` repeatedly for bulk operations.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -356,7 +356,7 @@ Read values for multiple points in a single call. Points can span different devi
 
 </div>
 
-### `point_write_batch` — Write multiple points at once
+### `t3000_point_write_batch` — Write multiple points at once
 
 Write values to multiple points in a single call. Each point can specify an optional `field` (defaults to `value`). Failures are reported per-point; partial success is supported. Requires `confirm: true`. Points can span different devices.
 
@@ -376,9 +376,9 @@ Write values to multiple points in a single call. Each point can specify an opti
 
 </div>
 
-### `point_batch_metadata` — Get full metadata for multiple points
+### `t3000_point_batch_metadata` — Get full metadata for multiple points
 
-Get complete metadata for multiple points in a single call. Returns label, engineering units, range, digital/analog type, description, current value, Haystack tags, and Brick class for each point. Much more efficient than calling `point_get_metadata` N times — use when you need full context on several points at once.
+Get complete metadata for multiple points in a single call. Returns label, engineering units, range, digital/analog type, description, current value, Haystack tags, and Brick class for each point. Much more efficient than calling `t3000_point_get_metadata` N times — use when you need full context on several points at once.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -400,9 +400,9 @@ Get complete metadata for multiple points in a single call. Returns label, engin
 
 ## Device Operations <span style="font-weight:400;font-size:12px;color:#888">12 tools</span>
 
-### `trendlog_list` — Discover available trendlogs
+### `t3000_trendlog_list` — Discover available trendlogs
 
-List all trendlogs configured for a device. Returns trendlog IDs, labels, logging interval, buffer size, and how many points each trendlog tracks. Use this to discover what historical data is available before querying with `trendlog_query`.
+List all trendlogs configured for a device. Returns trendlog IDs, labels, logging interval, buffer size, and how many points each trendlog tracks. Use this to discover what historical data is available before querying with `t3000_trendlog_query`.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -420,9 +420,9 @@ List all trendlogs configured for a device. Returns trendlog IDs, labels, loggin
 
 </div>
 
-### `trendlog_export` — Export trendlog history as CSV/JSON
+### `t3000_trendlog_export` — Export trendlog history as CSV/JSON
 
-Export all historical data from a trendlog in one call. Queries every point in the trendlog and returns timestamped values. Use after `trendlog_list` to discover trendlog IDs. Defaults to CSV format with columns: timestamp, point_type, point_index, point_id, value, units, range, digital_analog.
+Export all historical data from a trendlog in one call. Queries every point in the trendlog and returns timestamped values. Use after `t3000_trendlog_list` to discover trendlog IDs. Defaults to CSV format with columns: timestamp, point_type, point_index, point_id, value, units, range, digital_analog.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -440,7 +440,7 @@ Export all historical data from a trendlog in one call. Queries every point in t
 
 </div>
 
-### `device_refresh` — Force refresh from hardware
+### `t3000_device_refresh` — Force refresh from hardware
 
 Refresh point data directly from the physical device via the C++ FFI layer (Action 17). Updates the database with the latest values from the hardware. Optionally filter by point type to refresh only inputs, outputs, or variables.
 
@@ -460,7 +460,7 @@ Refresh point data directly from the physical device via the C++ FFI layer (Acti
 
 </div>
 
-### `schedule_list` — List device schedules
+### `t3000_schedule_list` — List device schedules
 
 List all schedules configured on a device. Returns schedule IDs, daily time settings for each day of the week (Monday–Friday), assigned outputs/variables, holiday settings, and interval configuration.
 
@@ -480,7 +480,7 @@ List all schedules configured on a device. Returns schedule IDs, daily time sett
 
 </div>
 
-### `settings_read` — Read device settings
+### `t3000_settings_read` — Read device settings
 
 Read all device configuration from the database. Returns 8 categories: network (IP/subnet/gateway/DHCP), communication (COM ports/baudrates/parity/stopbits), time (timezone/NTP/DST), protocol (Modbus ID/MSTP/BACnet), DynDNS, hardware info, feature flags, and email settings. Optionally filter to a single category.
 
@@ -506,7 +506,7 @@ Read all device configuration from the database. Returns 8 categories: network (
 
 </div>
 
-### `settings_write` — Update device settings
+### `t3000_settings_write` — Update device settings
 
 Update device configuration fields. Supports network (ip_address, subnet, gateway, tcp_type), communication (com0/1/2_config, com_baudrate0/1/2), time (time_zone, enable_sntp, sntp_server), and email (smtp_server, email_address, etc.). Requires confirm:true.
 
@@ -532,7 +532,7 @@ Update device configuration fields. Supports network (ip_address, subnet, gatewa
 
 </div>
 
-### `device_control` — Reboot or factory reset
+### `t3000_device_control` — Reboot or factory reset
 
 Send control commands to a device: reboot (restart the controller) or reset_defaults (factory reset to default settings). Requires confirm:true for safety.
 
@@ -556,9 +556,9 @@ Send control commands to a device: reboot (restart the controller) or reset_defa
 
 ## Control Logic <span style="font-weight:400;font-size:12px;color:#888">5 tools</span>
 
-### `program_list` — List PLC programs
+### `t3000_program_list` — List PLC programs
 
-List all control logic programs running on a device. Returns program IDs, labels, status (running/stopped), auto/manual mode, program size, and switch node. Use before `program_read` to find which programs exist.
+List all control logic programs running on a device. Returns program IDs, labels, status (running/stopped), auto/manual mode, program size, and switch node. Use before `t3000_program_read` to find which programs exist.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -576,7 +576,7 @@ List all control logic programs running on a device. Returns program IDs, labels
 
 </div>
 
-### `program_read` — Read program source code
+### `t3000_program_read` — Read program source code
 
 Read a specific PLC program's full details including source code (truncated to 2000 chars), label, status, auto/manual mode, size, and switch node. The full source length is included in the response.
 
@@ -596,7 +596,7 @@ Read a specific PLC program's full details including source code (truncated to 2
 
 </div>
 
-### `pid_list` — List PID control loops
+### `t3000_pid_list` — List PID control loops
 
 List all PID control loops on a device. Returns loop IDs, current setpoint, process variable (input value), output value, P/I/D tuning parameters (proportional, reset, rate), bias, action type, auto/manual mode, setpoint limits, and status. Essential for HVAC diagnostics.
 
@@ -622,7 +622,7 @@ List all PID control loops on a device. Returns loop IDs, current setpoint, proc
 
 </div>
 
-### `holiday_list` — List holiday exceptions
+### `t3000_holiday_list` — List holiday exceptions
 
 List all holiday schedule exceptions on a device. Returns holiday IDs, dates (month/day/year), holiday output values, auto/manual mode, and status. Holidays override the normal weekly schedule on their designated dates.
 
@@ -642,7 +642,7 @@ List all holiday schedule exceptions on a device. Returns holiday IDs, dates (mo
 
 </div>
 
-### `building_summary` — System-wide overview
+### `t3000_building_summary` — System-wide overview
 
 Get a one-shot dashboard of the entire building automation system. Returns total device count with names, active alarm count, total trendlogs, schedules, programs, and PID loops across all devices. Includes a health indicator (good/warning/critical based on alarm count). Perfect for "How's the building?" queries.
 
@@ -672,9 +672,9 @@ Get a one-shot dashboard of the entire building automation system. Returns total
 
 ## Diagnostics <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
 
-### `alarm_settings_read` — Read alarm thresholds
+### `t3000_alarm_settings_read` — Read alarm thresholds
 
-Read alarm threshold configuration for a device. Returns alarm rules: which points are monitored, the comparison condition, low/high/normal/way-low/way-high threshold values, and time delays. This is alarm configuration — use `alarm_list` for active alarms.
+Read alarm threshold configuration for a device. Returns alarm rules: which points are monitored, the comparison condition, low/high/normal/way-low/way-high threshold values, and time delays. This is alarm configuration — use `t3000_alarm_list` for active alarms.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -692,7 +692,7 @@ Read alarm threshold configuration for a device. Returns alarm rules: which poin
 
 </div>
 
-### `users_list` — List device users
+### `t3000_users_list` — List device users
 
 List all users configured on a device. Returns user IDs, names, access levels (View/Full/Graphic/Routine), rights, default panel/group assignments, and status.
 
@@ -712,7 +712,7 @@ List all users configured on a device. Returns user IDs, names, access levels (V
 
 </div>
 
-### `graphics_list` — List graphic screens
+### `t3000_graphics_list` — List graphic screens
 
 List all graphic/HMI screens available on a device. Returns graphic IDs, labels, descriptions, picture files, total points per screen, and switch nodes.
 
@@ -736,7 +736,7 @@ List all graphic/HMI screens available on a device. Returns graphic IDs, labels,
 
 ## Documentation <span style="font-weight:400;font-size:12px;color:#888">2 tools</span>
 
-### `doc_list` — List documentation topics
+### `t3000_doc_list` — List documentation topics
 
 List all T3000 documentation topics organized by section: Quick Start, Architecture, Device Management, Data Points, Features, API Reference, Guides, Building Platform, and Haystack & MCP. Use to discover what docs exist before reading a specific one.
 
@@ -756,9 +756,9 @@ List all T3000 documentation topics organized by section: Quick Start, Architect
 
 </div>
 
-### `doc_read` — Read a documentation page
+### `t3000_doc_read` — Read a documentation page
 
-Read the full markdown content of a T3000 documentation page. Pass the path from `doc_list` (e.g. `quick-start/overview` or `haystack/mcp-api-examples`). Fetches from local filesystem in dev mode, falls back to GitHub raw in production.
+Read the full markdown content of a T3000 documentation page. Pass the path from `t3000_doc_list` (e.g. `quick-start/overview` or `haystack/mcp-api-examples`). Fetches from local filesystem in dev mode, falls back to GitHub raw in production.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -786,7 +786,7 @@ Read the full markdown content of a T3000 documentation page. Pass the path from
 
 ## Core <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
 
-### `ping` — Health check
+### `t3000_ping` — Health check
 
 Simple connectivity test. Returns server status, current timestamp, and server name.
 
@@ -806,7 +806,7 @@ Simple connectivity test. Returns server status, current timestamp, and server n
 
 </div>
 
-### `get_version` — Server metadata
+### `t3000_get_version` — Server metadata
 
 Returns server name, version number, MCP protocol version (2025-03-26), and total tool count.
 
@@ -820,7 +820,7 @@ Returns server name, version number, MCP protocol version (2025-03-26), and tota
 
 </div>
 
-### `describe_tool` — Tool documentation
+### `t3000_describe_tool` — Tool documentation
 
 Get the complete input schema, description, and parameter details for any tool by name. Useful for LLM agents to understand tool capabilities before calling.
 
@@ -844,7 +844,7 @@ Get the complete input schema, description, and parameter details for any tool b
 
 ## Analytics & Export <span style="font-weight:400;font-size:12px;color:#888">2 tools</span>
 
-### `haystack_validate` — Validate tagging quality
+### `t3000_haystack_validate` — Validate tagging quality
 
 Run ontology validation rules against tagged points. Checks for: sensor tags on non-INPUT points, command tags on non-OUTPUT points, missing required tags, conflicting tag combinations, invalid Brick class assignments, and orphaned tag references. Returns warnings and errors.
 
@@ -870,7 +870,7 @@ Run ontology validation rules against tagged points. Checks for: sensor tags on 
 
 </div>
 
-### `haystack_export` — Export semantic model
+### `t3000_haystack_export` — Export semantic model
 
 Export the full semantic model for devices in standard formats. **haystack-json**: Project Haystack tagged entity format. **brick-ttl**: Brick ontology in Turtle RDF (W3C standard). **brick-jsonld**: Brick ontology in JSON-LD (linked data). **csv-flat**: Flat CSV table of all points with serial_number, point_type, point_index, label, description, current value, units, range, digital/analog, Haystack tags, and Brick class. Use for integration with other building systems or semantic analysis tools.
 
@@ -906,9 +906,9 @@ Export the full semantic model for devices in standard formats. **haystack-json*
 
 ## Rules Management <span style="font-weight:400;font-size:12px;color:#888">2 tools</span>
 
-### `rule_toggle` — Enable or disable rules
+### `t3000_rule_toggle` — Enable or disable rules
 
-Toggle an auto-tagging rule on or off by its rule ID. Disabled rules are skipped during auto-tagging but remain in the database. Use `haystack_list_rules` to find rule IDs.
+Toggle an auto-tagging rule on or off by its rule ID. Disabled rules are skipped during auto-tagging but remain in the database. Use `t3000_haystack_list_rules` to find rule IDs.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -926,7 +926,7 @@ Toggle an auto-tagging rule on or off by its rule ID. Disabled rules are skipped
 
 </div>
 
-### `rule_create` — Create a new tagging rule
+### `t3000_rule_create` — Create a new tagging rule
 
 Add a custom auto-tagging rule. Specify a regex pattern to match point labels, the Haystack tags to assign, and optionally a Brick class. Rules can target specific point types, engineering units, or object types. Higher priority rules are applied first.
 
@@ -950,7 +950,7 @@ Add a custom auto-tagging rule. Specify a regex pattern to match point labels, t
 
 ## Alarms & Trends <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
 
-### `alarm_list` — List alarms
+### `t3000_alarm_list` — List alarms
 
 Get all alarms in the system with severity, message, timestamp, and acknowledgment status. Filter by device serials or show only unacknowledged (active) alarms.
 
@@ -976,9 +976,9 @@ Get all alarms in the system with severity, message, timestamp, and acknowledgme
 
 </div>
 
-### `alarm_acknowledge` — Acknowledge an alarm
+### `t3000_alarm_acknowledge` — Acknowledge an alarm
 
-Acknowledge a specific alarm by device serial number and alarm ID. Acknowledged alarms are marked with a timestamp. Use `alarm_list` to find alarm IDs.
+Acknowledge a specific alarm by device serial number and alarm ID. Acknowledged alarms are marked with a timestamp. Use `t3000_alarm_list` to find alarm IDs.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -990,7 +990,7 @@ Acknowledge a specific alarm by device serial number and alarm ID. Acknowledged 
 
 </div>
 
-### `trendlog_query` — Query historical trend data
+### `t3000_trendlog_query` — Query historical trend data
 
 Retrieve time-series data for any point over a specified time range. Specify start and optional end time in ISO 8601 format, and limit the number of data points returned. Returns timestamp-value pairs with engineering units and point metadata.
 

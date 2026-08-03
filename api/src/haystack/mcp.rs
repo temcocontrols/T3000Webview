@@ -101,7 +101,7 @@ type SessionStore = Arc<Mutex<HashMap<String, McpSession>>>;
 lazy_static::lazy_static! {
     pub(crate) static ref TOOLS: Vec<ToolDef> = vec![
     ToolDef {
-        name: "haystack_list_tags",
+        name: "t3000_haystack_list_tags",
         title: "List Haystack Tags",
         description: "List all Haystack tags in the system with their categories, documentation, and usage counts. Use to discover available tags.",
         input_schema: json!({
@@ -115,7 +115,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "haystack_get_point_tags",
+        name: "t3000_haystack_get_point_tags",
         title: "Get Point Tags",
         description: "Get all Haystack tags assigned to specific points by serial number and point type.",
         input_schema: json!({
@@ -135,7 +135,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "haystack_search_points",
+        name: "t3000_haystack_search_points",
         title: "Search Points by Tags",
         description: "Search for points that have specific tags. Returns matching point metadata with full tag sets.",
         input_schema: json!({
@@ -161,7 +161,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "haystack_auto_tag",
+        name: "t3000_haystack_auto_tag",
         title: "Auto-Tag Devices",
         description: "Run auto-tagging on specified devices. Applies range rules (based on point_type, digital/analog, range_value) first, then regex rules from labels. Derives Haystack tags and Brick classes. Returns count of points tagged.",
         input_schema: json!({
@@ -177,7 +177,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "haystack_preview_tags",
+        name: "t3000_haystack_preview_tags",
         title: "Preview Auto-Tags",
         description: "Preview what tags and Brick classes would be assigned by auto-tagging without actually writing to the database. Useful for testing rules before applying.",
         input_schema: json!({
@@ -193,7 +193,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "haystack_list_rules",
+        name: "t3000_haystack_list_rules",
         title: "List Tagging Rules",
         description: "List all auto-tagging rules with their patterns, categories, and whether they are enabled.",
         input_schema: json!({
@@ -202,7 +202,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "haystack_get_brick_class",
+        name: "t3000_haystack_get_brick_class",
         title: "Get Brick Class",
         description: "Get the Brick ontology class assigned to specific points. Returns the Brick class name (e.g., Supply_Air_Temperature_Sensor) if one has been auto-tagged.",
         input_schema: json!({
@@ -219,7 +219,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Core / Generic ═══
     ToolDef {
-        name: "ping",
+        name: "t3000_ping",
         title: "Ping Server",
         description: "Health check. Returns server status and timestamp.",
         input_schema: json!({
@@ -228,7 +228,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "get_version",
+        name: "t3000_get_version",
         title: "Server Version",
         description: "Return server name, version, protocol version, and tool count.",
         input_schema: json!({
@@ -237,7 +237,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "describe_tool",
+        name: "t3000_describe_tool",
         title: "Describe Tool",
         description: "Return the full input schema, description, and parameter details for a single tool by name.",
         input_schema: json!({
@@ -253,7 +253,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Data & Metadata ═══
     ToolDef {
-        name: "device_list",
+        name: "t3000_device_list",
         title: "List Devices",
         description: "Enumerate all devices with serial numbers, names, types, point counts, building, floor, and room.",
         input_schema: json!({
@@ -267,7 +267,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "device_get_points",
+        name: "t3000_device_get_points",
         title: "Get Device Points",
         description: "Return all points for a device with labels, engineering units, range, digital/analog type, description, Haystack tags, and Brick classes. Optionally filter by point type (INPUT, OUTPUT, VARIABLE).",
         input_schema: json!({
@@ -286,7 +286,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "point_get_metadata",
+        name: "t3000_point_get_metadata",
         title: "Get Point Metadata",
         description: "Get complete metadata for one point: label, engineering units, range, digital/analog type, description, current value, Haystack tags, and Brick class.",
         input_schema: json!({
@@ -309,7 +309,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "metadata_search",
+        name: "t3000_metadata_search",
         title: "Search Metadata",
         description: "Search points across devices by label text. Optionally filter by device serials or point types.",
         input_schema: json!({
@@ -339,7 +339,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Semantic Search ═══
     ToolDef {
-        name: "point_search",
+        name: "t3000_point_search",
         title: "Semantic Point Search",
         description: "Search points across devices using natural language. Matches against labels, haystack tags, brick classes, and descriptions. Returns the best matching points ranked by relevance. Use when the user says 'find the temperature sensor in the lobby' or 'show me all fan speed outputs'.",
         input_schema: json!({
@@ -364,7 +364,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Operational ═══
     ToolDef {
-        name: "point_read",
+        name: "t3000_point_read",
         title: "Read Point Value",
         description: "Read the current value of a single point from the database (last synced value).",
         input_schema: json!({
@@ -387,7 +387,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "point_write",
+        name: "t3000_point_write",
         title: "Write Point Value",
         description: "Write to a point field. Defaults to 'value' (fValue). Also supports: label, description, range, auto_manual, digital_analog. All other fields are preserved from the current device state. Requires confirm:true for OUTPUT/VARIABLE points as a safety measure.",
         input_schema: json!({
@@ -421,7 +421,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "point_read_batch",
+        name: "t3000_point_read_batch",
         title: "Batch Read Points",
         description: "Read current values for multiple points in a single call from the database.",
         input_schema: json!({
@@ -445,7 +445,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "point_write_batch",
+        name: "t3000_point_write_batch",
         title: "Batch Write Points",
         description: "Write values to multiple points in a single call. Each point may specify an optional 'field' (defaults to 'value'). Requires confirm:true.",
         input_schema: json!({
@@ -475,7 +475,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "point_batch_metadata",
+        name: "t3000_point_batch_metadata",
         title: "Batch Point Metadata",
         description: "Get full metadata for multiple points in one call. Returns label, units, range, digital/analog, description, current value, Haystack tags, and Brick class for each point. Much more efficient than calling point_get_metadata N times.",
         input_schema: json!({
@@ -500,7 +500,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Analytics ═══
     ToolDef {
-        name: "haystack_validate",
+        name: "t3000_haystack_validate",
         title: "Validate Tagging",
         description: "Validate Haystack/Brick tagging against ontology rules. Checks: sensor tag must be on INPUT points, cmd tag must be on OUTPUT points, air tag requires a disambiguator (temp/humidity/pressure/flow/quality).",
         input_schema: json!({
@@ -515,7 +515,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "haystack_export",
+        name: "t3000_haystack_export",
         title: "Export Semantic Model",
         description: "Export the full semantic model for devices. Supports haystack-json (Project Haystack), brick-ttl (Turtle RDF), brick-jsonld (JSON-LD), and csv-flat (flat table of all points with values, units, tags, brick class).",
         input_schema: json!({
@@ -536,7 +536,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Rules Management ═══
     ToolDef {
-        name: "rule_toggle",
+        name: "t3000_rule_toggle",
         title: "Toggle Rule",
         description: "Enable or disable an auto-tagging rule by ID.",
         input_schema: json!({
@@ -555,7 +555,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "rule_create",
+        name: "t3000_rule_create",
         title: "Create Rule",
         description: "Create a new auto-tagging rule with a regex pattern and target tags.",
         input_schema: json!({
@@ -599,7 +599,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Alarms & Trends ═══
     ToolDef {
-        name: "alarm_list",
+        name: "t3000_alarm_list",
         title: "List Alarms",
         description: "List alarms for devices, optionally filtered to active-only.",
         input_schema: json!({
@@ -618,7 +618,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "alarm_acknowledge",
+        name: "t3000_alarm_acknowledge",
         title: "Acknowledge Alarm",
         description: "Acknowledge an alarm by device serial and alarm ID.",
         input_schema: json!({
@@ -637,7 +637,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "trendlog_query",
+        name: "t3000_trendlog_query",
         title: "Query Trend Log",
         description: "Query historical trend data for a point over a time range.",
         input_schema: json!({
@@ -673,7 +673,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Device Operations (new) ═══
     ToolDef {
-        name: "trendlog_list",
+        name: "t3000_trendlog_list",
         title: "List Trendlogs",
         description: "List all trendlogs for a device. Returns trendlog IDs, labels, intervals, buffer sizes, and point counts. Use to discover available trendlogs before querying history.",
         input_schema: json!({
@@ -688,7 +688,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "trendlog_export",
+        name: "t3000_trendlog_export",
         title: "Export Trendlog",
         description: "Export all historical data from a trendlog as CSV or JSON. Queries all points in the trendlog in one call and returns timestamped values. Use after trendlog_list to pick a trendlog ID.",
         input_schema: json!({
@@ -723,7 +723,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "device_refresh",
+        name: "t3000_device_refresh",
         title: "Refresh Device Data",
         description: "Force-refresh point data from the physical device via FFI Action 17 (GET_WEBVIEW_LIST). Updates the database with current values from the hardware. Optionally filter by point type.",
         input_schema: json!({
@@ -742,7 +742,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "schedule_list",
+        name: "t3000_schedule_list",
         title: "List Schedules",
         description: "List all schedules for a device. Returns schedule IDs, daily time settings, and assigned outputs/variables.",
         input_schema: json!({
@@ -758,7 +758,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Settings ═══
     ToolDef {
-        name: "settings_read",
+        name: "t3000_settings_read",
         title: "Read Device Settings",
         description: "Read all settings for a device: network (IP/subnet/gateway/DHCP), communication (COM ports/baudrates/parity), time (timezone/NTP/DST), protocol (Modbus ID/MSTP/BACnet), DynDNS, hardware info, feature flags, and email alerts. Optionally filter by category.",
         input_schema: json!({
@@ -777,7 +777,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "settings_write",
+        name: "t3000_settings_write",
         title: "Update Device Settings",
         description: "Update device settings. Supports network (ip_address, subnet, gateway, tcp_type), communication (com0/1/2_config, com_baudrate0/1/2), time (time_zone, enable_sntp, sntp_server, flag_time_sync_pc), and email (smtp_server, smtp_port, email_address, etc.). Writes to database and syncs to device via FFI.",
         input_schema: json!({
@@ -804,7 +804,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "device_control",
+        name: "t3000_device_control",
         title: "Device Control",
         description: "Send control commands to a device: reboot (restart the controller) or reset_defaults (factory reset). Requires confirm:true.",
         input_schema: json!({
@@ -828,7 +828,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Control Logic ═══
     ToolDef {
-        name: "program_list",
+        name: "t3000_program_list",
         title: "List Programs",
         description: "List all PLC programs on a device. Returns program IDs, labels, status (running/stopped), auto/manual mode, program size, and switch node. Use to discover what control logic exists before reading a specific program.",
         input_schema: json!({
@@ -843,7 +843,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "program_read",
+        name: "t3000_program_read",
         title: "Read Program Source",
         description: "Read a specific PLC program's full details: source code (program_list), label, status, auto/manual mode, size, and switch node. The source code is truncated to 2000 characters in the response.",
         input_schema: json!({
@@ -862,7 +862,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "alarm_settings_read",
+        name: "t3000_alarm_settings_read",
         title: "Read Alarm Settings",
         description: "Read alarm threshold configuration for a device. Returns alarm rules: monitored points, conditions, low/high/normal/way-low/way-high thresholds, and time delays. This is alarm configuration, not the active alarm list (use alarm_list for that).",
         input_schema: json!({
@@ -877,7 +877,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "users_list",
+        name: "t3000_users_list",
         title: "List Users",
         description: "List all users configured on a device. Returns user IDs, names, access levels (View/Full/Graphic/Routine), rights, default panel/group, and status.",
         input_schema: json!({
@@ -892,7 +892,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "graphics_list",
+        name: "t3000_graphics_list",
         title: "List Graphic Screens",
         description: "List all graphic/HMI screens available on a device. Returns graphic IDs, labels, descriptions, picture files, total points, and switch nodes.",
         input_schema: json!({
@@ -908,7 +908,7 @@ lazy_static::lazy_static! {
     },
     // ═══ v4: Documentation ═══
     ToolDef {
-        name: "doc_list",
+        name: "t3000_doc_list",
         title: "List Documentation Topics",
         description: "List all available T3000 documentation topics organized by section: Quick Start, Architecture, Device Management, Data Points, Features, API Reference, Guides, Building Platform, Haystack & MCP. Use to discover what docs exist before reading a specific one.",
         input_schema: json!({
@@ -917,7 +917,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "doc_read",
+        name: "t3000_doc_read",
         title: "Read Documentation",
         description: "Read the full content of a T3000 documentation page by path (from doc_list). Returns the markdown content. Fetches from local filesystem in dev mode, falls back to GitHub raw in production.",
         input_schema: json!({
@@ -932,7 +932,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "pid_list",
+        name: "t3000_pid_list",
         title: "List PID Loops",
         description: "List all PID control loops on a device. Returns loop IDs, setpoint, process variable (input value), output value, proportional/reset/rate parameters, action type, auto/manual mode, and status.",
         input_schema: json!({
@@ -947,7 +947,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "holiday_list",
+        name: "t3000_holiday_list",
         title: "List Holiday Schedules",
         description: "List all holiday exceptions configured on a device. Returns holiday IDs, dates (month/day/year), holiday values, auto/manual mode, and status. Holidays override normal weekly schedules.",
         input_schema: json!({
@@ -962,7 +962,7 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
-        name: "building_summary",
+        name: "t3000_building_summary",
         title: "Building System Summary",
         description: "Get a one-shot overview of the entire building automation system. Returns total device count, online/offline breakdown, active alarm count, total trendlogs, schedules, programs, and PID loops across all devices. Use for 'How is the building doing?' queries.",
         input_schema: json!({
@@ -1176,7 +1176,7 @@ pub async fn mcp_delete_handler(
 pub(crate) async fn handle_request(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnection) -> JsonRpcResponse {
     match req.method.as_str() {
         "initialize" => handle_initialize(req),
-        "ping" => handle_ping(req),
+        "t3000_ping" => handle_ping(req),
         "tools/list" => handle_tools_list(req),
         "tools/call" => handle_tools_call(req, db).await,
         _ => JsonRpcResponse {
@@ -1411,7 +1411,7 @@ async fn execute_tool(
     info!("[MCP] -> {} args={}", name, serde_json::to_string(args).unwrap_or_default());
     mcp_log(&format!("-> {} {}", name, serde_json::to_string(args).unwrap_or_default()));
     let result = match name {
-        "haystack_list_tags" => {
+        "t3000_haystack_list_tags" => {
             let filter = args.get("filter")
                 .and_then(|v| v.as_str())
                 .filter(|s| !s.is_empty());
@@ -1425,7 +1425,7 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "haystack_get_point_tags" => {
+        "t3000_haystack_get_point_tags" => {
             let serial_numbers: Vec<i32> = args
                 .get("serial_numbers")
                 .and_then(|v| v.as_array())
@@ -1444,7 +1444,7 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "haystack_search_points" => {
+        "t3000_haystack_search_points" => {
             let tags: Vec<String> = args
                 .get("tags")
                 .and_then(|v| v.as_array())
@@ -1477,7 +1477,7 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "haystack_auto_tag" => {
+        "t3000_haystack_auto_tag" => {
             let serial_numbers: Vec<i32> = args
                 .get("serial_numbers")
                 .and_then(|v| v.as_array())
@@ -1497,7 +1497,7 @@ async fn execute_tool(
             .to_string())
         }
 
-        "haystack_preview_tags" => {
+        "t3000_haystack_preview_tags" => {
             let serial_numbers: Vec<i32> = args
                 .get("serial_numbers")
                 .and_then(|v| v.as_array())
@@ -1516,7 +1516,7 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "haystack_list_rules" => {
+        "t3000_haystack_list_rules" => {
             let rules = ats::list_rules(db)
                 .await
                 .map_err(|e| format!("Failed to list rules: {}", e))?;
@@ -1527,7 +1527,7 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "haystack_get_brick_class" => {
+        "t3000_haystack_get_brick_class" => {
             let serial_numbers: Vec<i32> = args
                 .get("serial_numbers")
                 .and_then(|v| v.as_array())
@@ -1587,7 +1587,7 @@ async fn execute_tool(
 
         // ═══ v4: Core / Generic ═══
 
-        "ping" => {
+        "t3000_ping" => {
             let now = Utc::now().to_rfc3339();
             Ok(json!({
                 "status": "ok",
@@ -1596,7 +1596,7 @@ async fn execute_tool(
             }).to_string())
         }
 
-        "get_version" => {
+        "t3000_get_version" => {
             Ok(json!({
                 "name": SERVER_NAME,
                 "version": SERVER_VERSION,
@@ -1605,7 +1605,7 @@ async fn execute_tool(
             }).to_string())
         }
 
-        "describe_tool" => {
+        "t3000_describe_tool" => {
             let tool_name = args.get("tool_name").and_then(|v| v.as_str()).unwrap_or("");
             match TOOLS.iter().find(|t| t.name == tool_name) {
                 Some(tool) => {
@@ -1623,7 +1623,7 @@ async fn execute_tool(
 
         // ═══ v4: Data & Metadata ═══
 
-        "device_list" => {
+        "t3000_device_list" => {
             let filter_name = args.get("filter_name").and_then(|v| v.as_str()).map(String::from);
             let devices = T3DeviceService::get_all_devices_with_stats(db)
                 .await
@@ -1663,7 +1663,7 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "device_get_points" => {
+        "t3000_device_get_points" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64())
                 .map(|n| n as i32)
@@ -1793,7 +1793,7 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "point_get_metadata" => {
+        "t3000_point_get_metadata" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -1887,7 +1887,7 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "metadata_search" => {
+        "t3000_metadata_search" => {
             let query = args.get("query").and_then(|v| v.as_str())
                 .ok_or_else(|| "query required".to_string())?;
             let device_serials: Option<Vec<i32>> = args
@@ -1924,7 +1924,7 @@ async fn execute_tool(
 
         // ═══ v4: Semantic Search ═══
 
-        "point_search" => {
+        "t3000_point_search" => {
             let query = args.get("query").and_then(|v| v.as_str())
                 .ok_or_else(|| "query required".to_string())?;
             let serial_filter: Option<Vec<i32>> = args.get("serial_numbers")
@@ -2011,7 +2011,7 @@ async fn execute_tool(
 
         // ═══ v4: Operational ═══
 
-        "point_read" => {
+        "t3000_point_read" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -2060,7 +2060,7 @@ async fn execute_tool(
             }
         }
 
-        "point_write" => {
+        "t3000_point_write" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -2097,7 +2097,7 @@ async fn execute_tool(
             point_write_ffi(db, serial, point_type, point_index, field, &value_str).await
         }
 
-        "point_read_batch" => {
+        "t3000_point_read_batch" => {
             let points: Vec<Value> = args.get("points")
                 .and_then(|v| v.as_array())
                 .map(|a| a.to_vec())
@@ -2152,7 +2152,7 @@ async fn execute_tool(
             }).to_string())
         }
 
-        "point_write_batch" => {
+        "t3000_point_write_batch" => {
             let points: Vec<Value> = args.get("points")
                 .and_then(|v| v.as_array())
                 .map(|a| a.to_vec())
@@ -2194,7 +2194,7 @@ async fn execute_tool(
             Ok(result.to_string())
         }
 
-        "point_batch_metadata" => {
+        "t3000_point_batch_metadata" => {
             let points: Vec<Value> = args.get("points")
                 .and_then(|v| v.as_array())
                 .map(|a| a.to_vec())
@@ -2267,7 +2267,7 @@ async fn execute_tool(
 
         // ═══ v4: Analytics ═══
 
-        "haystack_validate" => {
+        "t3000_haystack_validate" => {
             let serials: Option<Vec<i32>> = args
                 .get("serial_numbers")
                 .and_then(|v| v.as_array())
@@ -2353,7 +2353,7 @@ async fn execute_tool(
             }).to_string())
         }
 
-        "haystack_export" => {
+        "t3000_haystack_export" => {
             let serials: Vec<i32> = args
                 .get("serial_numbers")
                 .and_then(|v| v.as_array())
@@ -2569,7 +2569,7 @@ async fn execute_tool(
 
         // ═══ v4: Rules Management ═══
 
-        "rule_toggle" => {
+        "t3000_rule_toggle" => {
             let rule_id: i64 = args.get("rule_id")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| "rule_id required".to_string())?;
@@ -2582,7 +2582,7 @@ async fn execute_tool(
             }).to_string())
         }
 
-        "rule_create" => {
+        "t3000_rule_create" => {
             let rule_name = args.get("rule_name")
                 .and_then(|v| v.as_str()).map(String::from)
                 .ok_or_else(|| "rule_name required".to_string())?;
@@ -2623,7 +2623,7 @@ async fn execute_tool(
 
         // ═══ v4: Alarms & Trends ═══
 
-        "alarm_list" => {
+        "t3000_alarm_list" => {
             let serials: Option<Vec<i32>> = args
                 .get("serial_numbers")
                 .and_then(|v| v.as_array())
@@ -2683,7 +2683,7 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "alarm_acknowledge" => {
+        "t3000_alarm_acknowledge" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -2706,7 +2706,7 @@ async fn execute_tool(
             }).to_string())
         }
 
-        "trendlog_query" => {
+        "t3000_trendlog_query" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -2764,7 +2764,7 @@ async fn execute_tool(
 
         // ═══ v4: Device Operations ═══
 
-        "trendlog_list" => {
+        "t3000_trendlog_list" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -2796,7 +2796,7 @@ async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "trendlog_export" => {
+        "t3000_trendlog_export" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -2900,7 +2900,7 @@ async fn execute_tool(
             }
         }
 
-        "device_refresh" => {
+        "t3000_device_refresh" => {
             use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
             use crate::t3_device::action17_refresh_helper::lookup_action17_target;
 
@@ -2952,7 +2952,7 @@ async fn execute_tool(
             Ok(json!({ "refreshed": true, "points_updated": refreshed, "timestamp": Utc::now().to_rfc3339() }).to_string())
         }
 
-        "schedule_list" => {
+        "t3000_schedule_list" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -2991,7 +2991,7 @@ async fn execute_tool(
 
         // ═══ v4: Settings ═══
 
-        "settings_read" => {
+        "t3000_settings_read" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -3047,7 +3047,7 @@ async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "settings_write" => {
+        "t3000_settings_write" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -3113,7 +3113,7 @@ async fn execute_tool(
             Ok(json!({"success": true, "category": category, "updated_fields": fields.len(), "timestamp": now}).to_string())
         }
 
-        "device_control" => {
+        "t3000_device_control" => {
             use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
 
             let serial: i32 = args.get("serial_number")
@@ -3175,7 +3175,7 @@ async fn execute_tool(
 
         // ═══ v4: Control Logic ═══
 
-        "program_list" => {
+        "t3000_program_list" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -3202,7 +3202,7 @@ async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "program_read" => {
+        "t3000_program_read" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -3241,7 +3241,7 @@ async fn execute_tool(
 
         // ═══ v4: Diagnostics ═══
 
-        "alarm_settings_read" => {
+        "t3000_alarm_settings_read" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -3279,7 +3279,7 @@ async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "users_list" => {
+        "t3000_users_list" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -3307,7 +3307,7 @@ async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "graphics_list" => {
+        "t3000_graphics_list" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -3335,7 +3335,7 @@ async fn execute_tool(
 
         // ═══ v4: Documentation ═══
 
-        "doc_list" => {
+        "t3000_doc_list" => {
             let sections: Vec<Value> = vec![
                 ("Quick Start", &[("Overview", "quick-start/overview"), ("Installation", "quick-start/installation"), ("Configuration", "quick-start/configuration")][..]),
                 ("Shared DB", &[("Shared Center DB Summary", "shared-db/shared-center-db-summary"), ("SQL Server Express Setup", "shared-db/sql-server-express-setup"), ("T3000 Center DB Config", "shared-db/t3000-center-db-config")]),
@@ -3356,7 +3356,7 @@ async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "doc_read" => {
+        "t3000_doc_read" => {
             let doc_path = args.get("path").and_then(|v| v.as_str())
                 .ok_or_else(|| "path required".to_string())?;
             // Sanitize: prevent directory traversal
@@ -3401,7 +3401,7 @@ async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "pid_list" => {
+        "t3000_pid_list" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -3441,7 +3441,7 @@ async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "holiday_list" => {
+        "t3000_holiday_list" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
@@ -3468,7 +3468,7 @@ async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        "building_summary" => {
+        "t3000_building_summary" => {
             // Total devices
             let dev_sql = "SELECT COUNT(*) as cnt FROM DEVICES";
             let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, dev_sql)).await

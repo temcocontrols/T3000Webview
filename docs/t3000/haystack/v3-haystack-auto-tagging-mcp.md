@@ -329,13 +329,13 @@ All v2 routes remain under `/api/haystack/` — tags CRUD, point-tags read/write
 
 | Tool | Description |
 |---|---|
-| `haystack_list_tags` | List all available Haystack tags |
-| `haystack_get_point_tags` | Get tags for a specific point |
-| `haystack_search_points` | Search points by tag or brick class filter |
-| `haystack_auto_tag` | Trigger auto-tagging on selected devices |
-| `haystack_preview_tags` | Preview auto-tagging results without applying |
-| `haystack_list_rules` | List all auto-tagging rules |
-| `haystack_get_brick_class` | Get brick class for points (queries `HAYSTACK_POINT_BRICK_CLASS`) |
+| `t3000_haystack_list_tags` | List all available Haystack tags |
+| `t3000_haystack_get_point_tags` | Get tags for a specific point |
+| `t3000_haystack_search_points` | Search points by tag or brick class filter |
+| `t3000_haystack_auto_tag` | Trigger auto-tagging on selected devices |
+| `t3000_haystack_preview_tags` | Preview auto-tagging results without applying |
+| `t3000_haystack_list_rules` | List all auto-tagging rules |
+| `t3000_haystack_get_brick_class` | Get brick class for points (queries `HAYSTACK_POINT_BRICK_CLASS`) |
 
 ### 6.3 Tool Output Format
 

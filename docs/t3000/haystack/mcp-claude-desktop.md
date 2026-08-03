@@ -87,8 +87,8 @@ Ask Claude any of these:
 
 | Query | Expected Tool |
 |---|---|
-| *List the Haystack auto-tagging rules* | `haystack_list_rules` |
-| *Show me the input points for device T3-NB-ESP* | `device_get_points` |
+| *List the Haystack auto-tagging rules* | `t3000_haystack_list_rules` |
+| *Show me the input points for device T3-NB-ESP* | `t3000_device_get_points` |
 
 See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-examples) for all 44 tools with prompt text.
 
@@ -119,17 +119,17 @@ See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-ex
 
 | Category | Tools |
 |---|---|
-| **Haystack** | `haystack_list_tags`, `haystack_get_point_tags`, `haystack_search_points`, `haystack_auto_tag`, `haystack_preview_tags`, `haystack_list_rules`, `haystack_get_brick_class` |
-| **Core** | `ping`, `get_version`, `describe_tool` |
-| **Data & Metadata** | `device_list`, `device_get_points`, `point_get_metadata`, `metadata_search`, `point_search` |
-| **Operational** | `point_read`, `point_write`, `point_read_batch`, `point_write_batch`, `point_batch_metadata` |
-| **Analytics** | `haystack_validate`, `haystack_export` |
-| **Rules** | `rule_toggle`, `rule_create` |
-| **Alarms & Trends** | `alarm_list`, `alarm_acknowledge`, `trendlog_query` |
-| **Device Operations** | `trendlog_list`, `trendlog_export`, `device_refresh`, `schedule_list` |
-| **Settings** | `settings_read`, `settings_write`, `device_control` |
-| **Control Logic** | `program_list`, `program_read`, `alarm_settings_read`, `users_list`, `graphics_list` |
-| **Documentation** | `doc_list`, `doc_read`, `pid_list`, `holiday_list`, `building_summary` |
+| **Haystack** | `t3000_haystack_list_tags`, `t3000_haystack_get_point_tags`, `t3000_haystack_search_points`, `t3000_haystack_auto_tag`, `t3000_haystack_preview_tags`, `t3000_haystack_list_rules`, `t3000_haystack_get_brick_class` |
+| **Core** | `t3000_ping`, `t3000_get_version`, `t3000_describe_tool` |
+| **Data & Metadata** | `t3000_device_list`, `t3000_device_get_points`, `t3000_point_get_metadata`, `t3000_metadata_search`, `t3000_point_search` |
+| **Operational** | `t3000_point_read`, `t3000_point_write`, `t3000_point_read_batch`, `t3000_point_write_batch`, `t3000_point_batch_metadata` |
+| **Analytics** | `t3000_haystack_validate`, `t3000_haystack_export` |
+| **Rules** | `t3000_rule_toggle`, `t3000_rule_create` |
+| **Alarms & Trends** | `t3000_alarm_list`, `t3000_alarm_acknowledge`, `t3000_trendlog_query` |
+| **Device Operations** | `t3000_trendlog_list`, `t3000_trendlog_export`, `t3000_device_refresh`, `t3000_schedule_list` |
+| **Settings** | `t3000_settings_read`, `t3000_settings_write`, `t3000_device_control` |
+| **Control Logic** | `t3000_program_list`, `t3000_program_read`, `t3000_alarm_settings_read`, `t3000_users_list`, `t3000_graphics_list` |
+| **Documentation** | `t3000_doc_list`, `t3000_doc_read`, `t3000_pid_list`, `t3000_holiday_list`, `t3000_building_summary` |
 
 
 | | |

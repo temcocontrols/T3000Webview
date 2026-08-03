@@ -273,7 +273,7 @@ POST http://{host}:{port}/v1/chat/completions
     {
       "type": "function",
       "function": {
-        "name": "haystack_search_points",
+        "name": "t3000_haystack_search_points",
         "description": "Search points by Haystack tags.",
         "parameters": {
           "type": "object",
@@ -288,7 +288,7 @@ POST http://{host}:{port}/v1/chat/completions
     {
       "type": "function",
       "function": {
-        "name": "point_read",
+        "name": "t3000_point_read",
         "description": "Read live value of a point.",
         "parameters": {
           "type": "object",
@@ -319,7 +319,7 @@ POST http://{host}:{port}/v1/chat/completions
             "index": 0,
             "id": "call_abc123",
             "function": {
-              "name": "haystack_search_points",
+              "name": "t3000_haystack_search_points",
               "arguments": "{\"tags\":[\"supply\",\"air\",\"temp\"]}"
             }
           }

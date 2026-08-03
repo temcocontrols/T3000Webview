@@ -68,7 +68,7 @@ POST https://api.anthropic.com/v1/messages
   ],
   "tools": [
     {
-      "name": "haystack_search_points",
+      "name": "t3000_haystack_search_points",
       "description": "Search points by Haystack tags.",
       "input_schema": {
         "type": "object",
@@ -80,7 +80,7 @@ POST https://api.anthropic.com/v1/messages
       }
     },
     {
-      "name": "point_read",
+      "name": "t3000_point_read",
       "description": "Read live value of a single point.",
       "input_schema": {
         "type": "object",
@@ -116,7 +116,7 @@ When Claude decides to use a tool, you'll see:
 
 ```
 event: content_block_start
-data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01Axyz...","name":"haystack_search_points","input":{}}}
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01Axyz...","name":"t3000_haystack_search_points","input":{}}}
 
 event: content_block_delta
 data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"tags\":[\"supply\",\"air\",\"temp\"]}"}}
@@ -190,7 +190,7 @@ The API key goes in the URL as a query parameter — not a header.
     {
       "function_declarations": [
         {
-          "name": "haystack_search_points",
+          "name": "t3000_haystack_search_points",
           "description": "Search points by Haystack tags.",
           "parameters": {
             "type": "object",
@@ -202,7 +202,7 @@ The API key goes in the URL as a query parameter — not a header.
           }
         },
         {
-          "name": "point_read",
+          "name": "t3000_point_read",
           "description": "Read live value of a single point.",
           "parameters": {
             "type": "object",
@@ -248,7 +248,7 @@ When Gemini calls a function:
         "parts": [
           {
             "functionCall": {
-              "name": "haystack_search_points",
+              "name": "t3000_haystack_search_points",
               "args": {"tags": ["supply", "air", "temp"]}
             }
           }
@@ -269,14 +269,14 @@ Send the result back as a follow-up content:
     {"role": "user", "parts": [{"text": "What's AHU-1 supply temperature?"}]},
     {
       "role": "model",
-      "parts": [{"functionCall": {"name": "haystack_search_points", "args": {"tags": ["supply", "air", "temp"]}}}]
+      "parts": [{"functionCall": {"name": "t3000_haystack_search_points", "args": {"tags": ["supply", "air", "temp"]}}}]
     },
     {
       "role": "function",
       "parts": [
         {
           "functionResponse": {
-            "name": "haystack_search_points",
+            "name": "t3000_haystack_search_points",
             "response": {"points": [{"label": "AHU-1 Supply Temp", "value": 55.2}]}
           }
         }

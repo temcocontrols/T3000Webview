@@ -54,100 +54,100 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 1 | `haystack_list_tags` | `filter?: "haystack"\|"brick"\|"custom"` | `{ tags: [{ tag_name, category, doc, parents, source, usage_count }], total }` |
-| 2 | `haystack_get_point_tags` | `serial_numbers: int[]`, `point_type?: "INPUT"\|"OUTPUT"\|"VARIABLE"` | `[{ serial_number, point_type, point_index, point_id, tag_name }]` |
-| 3 | `haystack_search_points` | `tags: string[]`, `serial_numbers?: int[]`, `point_types?: string[]` | `{ entries: [{ point_id, serial_number, point_type, point_index, tag_name }] }` |
-| 4 | `haystack_auto_tag` | `serial_numbers: int[]` | `{ tagged_count: int }` |
-| 5 | `haystack_preview_tags` | `serial_numbers: int[]` | `{ preview: [{ point_id, tags: [], brick_class }] }` |
-| 6 | `haystack_list_rules` | — | `{ rules: [{ id, rule_name, category, pattern, haystack_tags, enabled }] }` |
-| 7 | `haystack_get_brick_class` | `serial_numbers: int[]` | `[{ serial_number, point_type, point_index, brick_class }]` |
+| 1 | `t3000_haystack_list_tags` | `filter?: "haystack"\|"brick"\|"custom"` | `{ tags: [{ tag_name, category, doc, parents, source, usage_count }], total }` |
+| 2 | `t3000_haystack_get_point_tags` | `serial_numbers: int[]`, `point_type?: "INPUT"\|"OUTPUT"\|"VARIABLE"` | `[{ serial_number, point_type, point_index, point_id, tag_name }]` |
+| 3 | `t3000_haystack_search_points` | `tags: string[]`, `serial_numbers?: int[]`, `point_types?: string[]` | `{ entries: [{ point_id, serial_number, point_type, point_index, tag_name }] }` |
+| 4 | `t3000_haystack_auto_tag` | `serial_numbers: int[]` | `{ tagged_count: int }` |
+| 5 | `t3000_haystack_preview_tags` | `serial_numbers: int[]` | `{ preview: [{ point_id, tags: [], brick_class }] }` |
+| 6 | `t3000_haystack_list_rules` | — | `{ rules: [{ id, rule_name, category, pattern, haystack_tags, enabled }] }` |
+| 7 | `t3000_haystack_get_brick_class` | `serial_numbers: int[]` | `[{ serial_number, point_type, point_index, brick_class }]` |
 
 ### 3.2 Core — 3 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 8 | `ping` | — | `{ status, timestamp, server }` |
-| 9 | `get_version` | — | `{ name, version, protocolVersion, toolCount }` |
-| 10 | `describe_tool` | `tool_name: string` | `{ name, description, inputSchema }` |
+| 8 | `t3000_ping` | — | `{ status, timestamp, server }` |
+| 9 | `t3000_get_version` | — | `{ name, version, protocolVersion, toolCount }` |
+| 10 | `t3000_describe_tool` | `tool_name: string` | `{ name, description, inputSchema }` |
 
 ### 3.3 Data & Metadata — 5 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 11 | `device_list` | `filter_name?: string` | `[{ serial, name, device_type, input_count, output_count, variable_count, online }]` |
-| 12 | `device_get_points` | `serial_number: int`, `point_type?: "INPUT"\|"OUTPUT"\|"VARIABLE"` | `[{ point_type, point_index, label, engineering_units, haystack_tags, brick_class }]` |
-| 13 | `point_get_metadata` | `serial_number: int`, `point_type: string`, `point_index: int` | `{ serial_number, point_type, point_index, label, engineering_units, range_low, range_high, description, haystack_tags, brick_class, digital_analog }` |
-| 14 | `metadata_search` | `query: string`, `serial_numbers?: int[]`, `point_types?: string[]`, `limit?: int` | `[{ serial_number, point_type, point_index, label, haystack_tags, brick_class }]` |
-| 15 | `point_search` | `query: string`, `serial_numbers?: int[]`, `point_types?: string[]`, `limit?: int` | `[{ serial_number, point_type, point_index, label, haystack_tags, brick_class }]` |
+| 11 | `t3000_device_list` | `filter_name?: string` | `[{ serial, name, device_type, input_count, output_count, variable_count, online }]` |
+| 12 | `t3000_device_get_points` | `serial_number: int`, `point_type?: "INPUT"\|"OUTPUT"\|"VARIABLE"` | `[{ point_type, point_index, label, engineering_units, haystack_tags, brick_class }]` |
+| 13 | `t3000_point_get_metadata` | `serial_number: int`, `point_type: string`, `point_index: int` | `{ serial_number, point_type, point_index, label, engineering_units, range_low, range_high, description, haystack_tags, brick_class, digital_analog }` |
+| 14 | `t3000_metadata_search` | `query: string`, `serial_numbers?: int[]`, `point_types?: string[]`, `limit?: int` | `[{ serial_number, point_type, point_index, label, haystack_tags, brick_class }]` |
+| 15 | `t3000_point_search` | `query: string`, `serial_numbers?: int[]`, `point_types?: string[]`, `limit?: int` | `[{ serial_number, point_type, point_index, label, haystack_tags, brick_class }]` |
 
 ### 3.4 Operational — 5 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 16 | `point_read` | `serial_number: int`, `point_type: string`, `point_index: int` | `{ serial_number, point_type, point_index, label, value, engineering_units, timestamp }` |
-| 17 | `point_write` | `serial_number: int`, `point_type: string`, `point_index: int`, `value: number\|boolean`, `confirm: boolean` | `{ success, written_value, timestamp }` |
-| 18 | `point_read_batch` | `points: [{ serial_number, point_type, point_index }]` | `[{ serial_number, point_type, point_index, label, value, engineering_units, timestamp }]` |
-| 19 | `point_write_batch` | `points: [{ serial_number, point_type, point_index, value }]`, `confirm: boolean` | `{ success, count }` |
-| 20 | `point_batch_metadata` | `points: [{ serial_number, point_type, point_index }]` | `[{ serial_number, point_type, point_index, label, engineering_units, haystack_tags, brick_class }]` |
+| 16 | `t3000_point_read` | `serial_number: int`, `point_type: string`, `point_index: int` | `{ serial_number, point_type, point_index, label, value, engineering_units, timestamp }` |
+| 17 | `t3000_point_write` | `serial_number: int`, `point_type: string`, `point_index: int`, `value: number\|boolean`, `confirm: boolean` | `{ success, written_value, timestamp }` |
+| 18 | `t3000_point_read_batch` | `points: [{ serial_number, point_type, point_index }]` | `[{ serial_number, point_type, point_index, label, value, engineering_units, timestamp }]` |
+| 19 | `t3000_point_write_batch` | `points: [{ serial_number, point_type, point_index, value }]`, `confirm: boolean` | `{ success, count }` |
+| 20 | `t3000_point_batch_metadata` | `points: [{ serial_number, point_type, point_index }]` | `[{ serial_number, point_type, point_index, label, engineering_units, haystack_tags, brick_class }]` |
 
 ### 3.5 Analytics — 2 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 21 | `haystack_validate` | `serial_numbers?: int[]` | `{ passed, warnings: [{ point_id, issue }], errors: [{ point_id, issue }] }` |
-| 22 | `haystack_export` | `serial_numbers: int[]`, `format: "haystack-json"\|"brick-ttl"\|"brick-jsonld"` | Format-specific model dump |
+| 21 | `t3000_haystack_validate` | `serial_numbers?: int[]` | `{ passed, warnings: [{ point_id, issue }], errors: [{ point_id, issue }] }` |
+| 22 | `t3000_haystack_export` | `serial_numbers: int[]`, `format: "haystack-json"\|"brick-ttl"\|"brick-jsonld"` | Format-specific model dump |
 
 ### 3.6 Rules Management — 2 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 23 | `rule_toggle` | `rule_id: int`, `enabled: boolean` | `{ rule_id, rule_name, enabled }` |
-| 24 | `rule_create` | `pattern: string`, `haystack_tags: string[]`, `category: "haystack"\|"brick"`, `priority?: int`, `brick_class?: string`, `units?: string`, `object_types?: string` | `{ rule_id, rule_name, pattern, category, haystack_tags, enabled }` |
+| 23 | `t3000_rule_toggle` | `rule_id: int`, `enabled: boolean` | `{ rule_id, rule_name, enabled }` |
+| 24 | `t3000_rule_create` | `pattern: string`, `haystack_tags: string[]`, `category: "haystack"\|"brick"`, `priority?: int`, `brick_class?: string`, `units?: string`, `object_types?: string` | `{ rule_id, rule_name, pattern, category, haystack_tags, enabled }` |
 
 ### 3.7 Alarms & Trends — 3 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 25 | `alarm_list` | `serial_numbers?: int[]`, `active_only?: boolean` | `[{ alarm_id, serial_number, name, severity, message, timestamp, acknowledged, acknowledged_at }]` |
-| 26 | `alarm_acknowledge` | `serial_number: int`, `alarm_id: int` | `{ success, acknowledged_at }` |
-| 27 | `trendlog_query` | `serial_number: int`, `point_type: string`, `point_index: int`, `start: ISO8601`, `end?: ISO8601`, `limit?: int` | `{ serial_number, point_type, point_index, label, engineering_units, data: [{ timestamp, value }] }` |
+| 25 | `t3000_alarm_list` | `serial_numbers?: int[]`, `active_only?: boolean` | `[{ alarm_id, serial_number, name, severity, message, timestamp, acknowledged, acknowledged_at }]` |
+| 26 | `t3000_alarm_acknowledge` | `serial_number: int`, `alarm_id: int` | `{ success, acknowledged_at }` |
+| 27 | `t3000_trendlog_query` | `serial_number: int`, `point_type: string`, `point_index: int`, `start: ISO8601`, `end?: ISO8601`, `limit?: int` | `{ serial_number, point_type, point_index, label, engineering_units, data: [{ timestamp, value }] }` |
 
 ### 3.8 Device Operations — 4 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 28 | `trendlog_list` | `serial_number: int` | `[{ log_id, point_type, point_index, label, interval }]` |
-| 29 | `trendlog_export` | `serial_number: int`, `format?: string` | `{ filename, data, format }` |
-| 30 | `device_refresh` | `serial_number: int` | `{ success, message }` |
-| 31 | `schedule_list` | `serial_number: int` | `[{ schedule_id, name, days, periods }]` |
+| 28 | `t3000_trendlog_list` | `serial_number: int` | `[{ log_id, point_type, point_index, label, interval }]` |
+| 29 | `t3000_trendlog_export` | `serial_number: int`, `format?: string` | `{ filename, data, format }` |
+| 30 | `t3000_device_refresh` | `serial_number: int` | `{ success, message }` |
+| 31 | `t3000_schedule_list` | `serial_number: int` | `[{ schedule_id, name, days, periods }]` |
 
 ### 3.9 Settings — 3 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 32 | `settings_read` | `serial_number: int` | `{ settings: { name, baud_rate, ... } }` |
-| 33 | `settings_write` | `serial_number: int`, `settings: object`, `confirm: boolean` | `{ success }` |
-| 34 | `device_control` | `serial_number: int`, `command: string`, `params?: object` | `{ success, message }` |
+| 32 | `t3000_settings_read` | `serial_number: int` | `{ settings: { name, baud_rate, ... } }` |
+| 33 | `t3000_settings_write` | `serial_number: int`, `settings: object`, `confirm: boolean` | `{ success }` |
+| 34 | `t3000_device_control` | `serial_number: int`, `command: string`, `params?: object` | `{ success, message }` |
 
 ### 3.10 Control Logic — 5 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 35 | `program_list` | `serial_number: int` | `[{ program_id, name, size }]` |
-| 36 | `program_read` | `serial_number: int`, `program_id: string` | `{ program_id, name, source }` |
-| 37 | `alarm_settings_read` | `serial_number: int` | `[{ alarm_setting_id, point, condition, thresholds }]` |
-| 38 | `users_list` | `serial_number: int` | `[{ user_id, name, access_level }]` |
-| 39 | `graphics_list` | `serial_number: int` | `[{ graphic_id, label, picture_file }]` |
+| 35 | `t3000_program_list` | `serial_number: int` | `[{ program_id, name, size }]` |
+| 36 | `t3000_program_read` | `serial_number: int`, `program_id: string` | `{ program_id, name, source }` |
+| 37 | `t3000_alarm_settings_read` | `serial_number: int` | `[{ alarm_setting_id, point, condition, thresholds }]` |
+| 38 | `t3000_users_list` | `serial_number: int` | `[{ user_id, name, access_level }]` |
+| 39 | `t3000_graphics_list` | `serial_number: int` | `[{ graphic_id, label, picture_file }]` |
 
 ### 3.11 Documentation — 5 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 40 | `doc_list` | `section?: string` | `[{ path, title, section }]` |
-| 41 | `doc_read` | `path: string` | `{ path, title, content }` |
-| 42 | `pid_list` | `serial_number: int` | `[{ pid_id, name, setpoint, kp, ki, kd }]` |
-| 43 | `holiday_list` | `serial_number: int` | `[{ holiday_id, name, start_date, end_date }]` |
-| 44 | `building_summary` | `serial_numbers?: int[]` | `{ devices, points, tags, alarms }` |
+| 40 | `t3000_doc_list` | `section?: string` | `[{ path, title, section }]` |
+| 41 | `t3000_doc_read` | `path: string` | `{ path, title, content }` |
+| 42 | `t3000_pid_list` | `serial_number: int` | `[{ pid_id, name, setpoint, kp, ki, kd }]` |
+| 43 | `t3000_holiday_list` | `serial_number: int` | `[{ holiday_id, name, start_date, end_date }]` |
+| 44 | `t3000_building_summary` | `serial_numbers?: int[]` | `{ devices, points, tags, alarms }` |
 
 ---
 
@@ -191,7 +191,7 @@ Session management via `Mcp-Session-Id` header — returned in every POST respon
 
 ### 5.2 JSON-RPC Methods
 
-Standard methods: `initialize`, `ping`, `tools/list`, `tools/call`.  
+Standard methods: `initialize`, `t3000_ping`, `tools/list`, `tools/call`.  
 Notifications: `notifications/initialized` (accepted, no response).
 
 ```
@@ -221,7 +221,7 @@ Response (protocol error):
 | `initialize` with `protocolVersion`, `serverInfo`, `capabilities` | ✅ `2025-03-26` |
 | `capabilities.tools.listChanged: true` | ✅ |
 | `notifications/initialized` (no response) | ✅ |
-| Protocol-level `ping` | ✅ |
+| Protocol-level `t3000_ping` | ✅ |
 | `tools/list` with `name`, `title`, `description`, `inputSchema` | ✅ |
 | `tools/call` success: `{ content: [{ type: "text", text }] }` | ✅ |
 | `tools/call` error: `{ content: [...], isError: true }` | ✅ |
@@ -232,7 +232,7 @@ Response (protocol error):
 
 ## 6. Safety: Write Confirmation
 
-`point_write` and `point_write_batch` reject writes to OUTPUT/VARIABLE points unless `confirm: true` is set. INPUT points are exempt.
+`t3000_point_write` and `t3000_point_write_batch` reject writes to OUTPUT/VARIABLE points unless `confirm: true` is set. INPUT points are exempt.
 
 | `confirm` | OUTPUT/VARIABLE | INPUT |
 |---|---|---|
@@ -241,7 +241,7 @@ Response (protocol error):
 
 ---
 
-## 7. Validation Rules (`haystack_validate`)
+## 7. Validation Rules (`t3000_haystack_validate`)
 
 | Rule | Condition | Severity |
 |---|---|---|
@@ -253,7 +253,7 @@ Response (protocol error):
 
 ---
 
-## 8. Export Formats (`haystack_export`)
+## 8. Export Formats (`t3000_haystack_export`)
 
 | Format | MIME | Structure |
 |---|---|---|
@@ -270,7 +270,7 @@ Response (protocol error):
 | Section | Change |
 |---|---|
 | `TOOLS` lazy_static | All 44 `ToolDef` entries with `name`, `title`, `description`, `inputSchema` |
-| `handle_request` match | 4 methods: `initialize`, `ping`, `tools/list`, `tools/call` |
+| `handle_request` match | 4 methods: `initialize`, `t3000_ping`, `tools/list`, `tools/call` |
 | `mcp_post_handler` | Session management via `Mcp-Session-Id`, notification handling |
 | `mcp_sse_handler` | GET /api/mcp SSE endpoint |
 | `mcp_delete_handler` | DELETE /api/mcp session termination |
@@ -281,17 +281,17 @@ Response (protocol error):
 
 | Tool | Calls |
 |---|---|
-| `ping`, `get_version`, `describe_tool` | Static / `TOOLS` array |
-| `device_list` | `T3DeviceService` |
-| `device_get_points`, `point_get_metadata` | Point tables + `tags_service` + Brick class query |
-| `metadata_search` | `tags_service::search_points` |
-| `point_read`, `point_read_batch` | Raw SQL SELECT fValue |
-| `point_write`, `point_write_batch` | Raw SQL UPDATE fValue |
-| `haystack_validate` | `HAYSTACK_POINT_TAGS` + `HAYSTACK_POINT_BRICK_CLASS` + point tables |
-| `haystack_export` | All tagged points → serialize |
-| `rule_toggle`, `rule_create` | `auto_tagging_service` |
-| `alarm_list`, `alarm_acknowledge` | Alarm tables |
-| `trendlog_query` | `T3TrendlogDataService` |
+| `t3000_ping`, `t3000_get_version`, `t3000_describe_tool` | Static / `TOOLS` array |
+| `t3000_device_list` | `T3DeviceService` |
+| `t3000_device_get_points`, `t3000_point_get_metadata` | Point tables + `tags_service` + Brick class query |
+| `t3000_metadata_search` | `tags_service::search_points` |
+| `t3000_point_read`, `t3000_point_read_batch` | Raw SQL SELECT fValue |
+| `t3000_point_write`, `t3000_point_write_batch` | Raw SQL UPDATE fValue |
+| `t3000_haystack_validate` | `HAYSTACK_POINT_TAGS` + `HAYSTACK_POINT_BRICK_CLASS` + point tables |
+| `t3000_haystack_export` | All tagged points → serialize |
+| `t3000_rule_toggle`, `t3000_rule_create` | `auto_tagging_service` |
+| `t3000_alarm_list`, `t3000_alarm_acknowledge` | Alarm tables |
+| `t3000_trendlog_query` | `T3TrendlogDataService` |
 
 ### 9.3 Files Not Touched (unchanged from v4.0)
 
@@ -321,12 +321,12 @@ Response (protocol error):
 | Protocol version | `2025-03-26` |
 | Capabilities | `tools.listChanged: true` |
 | `notifications/initialized` | Accepted as JSON-RPC notification (no response) |
-| Protocol `ping` | Added separate from tool `ping` |
+| Protocol `t3000_ping` | Added separate from tool `t3000_ping` |
 | Tool errors | `isError: true` in result (not JSON-RPC error) |
 | Tool `title` | All 44 tools have `title` field |
-| `describe_tool` | Includes `title` in output |
-| `get_version` | Uses `PROTOCOL_VERSION` constant |
-| `point_get_metadata` | `point_type` validated before SQL (security) |
+| `t3000_describe_tool` | Includes `title` in output |
+| `t3000_get_version` | Uses `PROTOCOL_VERSION` constant |
+| `t3000_point_get_metadata` | `point_type` validated before SQL (security) |
 | Bridge | Removed `tools/t3000-mcp-bridge.js` — no longer needed |
 
 ### v4.0 — 2026-07-20

@@ -94,7 +94,7 @@ data: {"event":"text_delta","content":"Let me"}
 
 data: {"event":"text_delta","content":" check the"}
 
-data: {"event":"tool_call","id":"call_01","name":"point_read","args":"{\"serial_number\":233626,\"point_type\":\"INPUT\",\"point_index\":0}"}
+data: {"event":"tool_call","id":"call_01","name":"t3000_point_read","args":"{\"serial_number\":233626,\"point_type\":\"INPUT\",\"point_index\":0}"}
 
 data: {"event":"tool_result","id":"call_01","result":"[{\"label\":\"AHU-1 Supply Temp\",\"value\":55.2,\"units\":\"Deg.C\"}]"}
 
@@ -552,7 +552,7 @@ and receives responses via SSE. No WebSocket overhead needed.
 
 ### 5.3 Why direct MCP handler calls (not JSON-RPC)?
 
-The tool executor could construct a `JsonRpcRequest { method: "point_read", ... }`
+The tool executor could construct a `JsonRpcRequest { method: "t3000_point_read", ... }`
 and call the existing MCP dispatch. But that means:
 - Serialize args to JSON -> parse JSON -> dispatch -> serialize result -> parse result
 - Two unnecessary (de)serialization passes
