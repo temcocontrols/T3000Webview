@@ -21,7 +21,7 @@ How to run a local LLM server on your network and connect T3000 to it. No cloud 
                          .  |        v         |    .
                          .  | +--------------+ |    .
                          .  | | MCP Handler  | |    .
-                         .  | | (25 tools)   | |    .
+                         .  | | (44 tools)   | |    .
                          .  | | runs locally | |    .
                          .  | +--------------+ |    .
                          .  +------------------+    .

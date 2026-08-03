@@ -90,7 +90,7 @@ Ask Claude any of these:
 | *List the Haystack auto-tagging rules* | `haystack_list_rules` |
 | *Show me the input points for device T3-NB-ESP* | `device_get_points` |
 
-See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-examples) for all 25 tools with prompt text.
+See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-examples) for all 44 tools with prompt text.
 
 ---
 
@@ -111,21 +111,25 @@ See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-ex
 | `npx` not found | Install Node.js from <a href="https://nodejs.org/" target="_blank">nodejs.org</a> |
 | Connection refused | Ensure T3000 API is running on port 9103 |
 | Tools not appearing | Check Claude logs: `Help` → `View Logs` |
-| 25 tools expected | Verify you see all categories: Haystack, Core, Data, Operational, Analytics, Rules, Alarms |
+| 44 tools expected | Verify you see all 11 categories: Haystack, Core, Data, Operational, Analytics, Rules, Alarms, Device Ops, Settings, Control Logic, Documentation |
 
 ---
 
-## Available Tools (25)
+## Available Tools (44)
 
 | Category | Tools |
 |---|---|
 | **Haystack** | `haystack_list_tags`, `haystack_get_point_tags`, `haystack_search_points`, `haystack_auto_tag`, `haystack_preview_tags`, `haystack_list_rules`, `haystack_get_brick_class` |
 | **Core** | `ping`, `get_version`, `describe_tool` |
-| **Data** | `device_list`, `device_get_points`, `point_get_metadata`, `metadata_search` |
-| **Operational** | `point_read`, `point_write`, `point_read_batch`, `point_write_batch` |
+| **Data & Metadata** | `device_list`, `device_get_points`, `point_get_metadata`, `metadata_search`, `point_search` |
+| **Operational** | `point_read`, `point_write`, `point_read_batch`, `point_write_batch`, `point_batch_metadata` |
 | **Analytics** | `haystack_validate`, `haystack_export` |
 | **Rules** | `rule_toggle`, `rule_create` |
-| **Alarms** | `alarm_list`, `alarm_acknowledge`, `trendlog_query` |
+| **Alarms & Trends** | `alarm_list`, `alarm_acknowledge`, `trendlog_query` |
+| **Device Operations** | `trendlog_list`, `trendlog_export`, `device_refresh`, `schedule_list` |
+| **Settings** | `settings_read`, `settings_write`, `device_control` |
+| **Control Logic** | `program_list`, `program_read`, `alarm_settings_read`, `users_list`, `graphics_list` |
+| **Documentation** | `doc_list`, `doc_read`, `pid_list`, `holiday_list`, `building_summary` |
 
 
 | | |

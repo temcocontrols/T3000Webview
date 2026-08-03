@@ -29,7 +29,7 @@ Complete integration plan for the built-in AI chat page. Covers backend SSE endp
                          .                     +------------+  .
                          .                     | Existing   |  .
                          .                     | MCP Handler|  .
-                         .                     | (25 tools) |  .
+                         .                     | (44 tools) |  .
                          .                     +------------+  .
                          .......................................
 ```

@@ -4,12 +4,12 @@
 
 ## 1. Scope
 
-v4 extends the MCP server from 7 Haystack-only tools to 25 tools across 7 categories. One file changes: `api/src/haystack/mcp.rs`. New handlers call existing public service functions — no other files touched.
+v4 extends the MCP server from 7 Haystack-only tools to 44 tools across 11 categories. One file changes: `api/src/haystack/mcp.rs`. New handlers call existing public service functions — no other files touched.
 
 | | v3 | v4 |
 |---|---|---|
-| Tools | 7 | 25 |
-| Categories | 1 (haystack) | 7 |
+| Tools | 7 | 44 |
+| Categories | 1 (haystack) | 11 |
 | File changes | — | `mcp.rs` only |
 
 ---
@@ -42,7 +42,7 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
                       │   Streamable HTTP     │
                       │   POST/GET/DELETE     │
                       │   /api/mcp            │
-                      │   25 tools            │
+                      │   44 tools            │
                       └──────────────────────┘
 ```
 
@@ -70,7 +70,7 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
 | 9 | `get_version` | — | `{ name, version, protocolVersion, toolCount }` |
 | 10 | `describe_tool` | `tool_name: string` | `{ name, description, inputSchema }` |
 
-### 3.3 Data & Metadata — 4 tools (new)
+### 3.3 Data & Metadata — 5 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
@@ -78,37 +78,76 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
 | 12 | `device_get_points` | `serial_number: int`, `point_type?: "INPUT"\|"OUTPUT"\|"VARIABLE"` | `[{ point_type, point_index, label, engineering_units, haystack_tags, brick_class }]` |
 | 13 | `point_get_metadata` | `serial_number: int`, `point_type: string`, `point_index: int` | `{ serial_number, point_type, point_index, label, engineering_units, range_low, range_high, description, haystack_tags, brick_class, digital_analog }` |
 | 14 | `metadata_search` | `query: string`, `serial_numbers?: int[]`, `point_types?: string[]`, `limit?: int` | `[{ serial_number, point_type, point_index, label, haystack_tags, brick_class }]` |
+| 15 | `point_search` | `query: string`, `serial_numbers?: int[]`, `point_types?: string[]`, `limit?: int` | `[{ serial_number, point_type, point_index, label, haystack_tags, brick_class }]` |
 
-### 3.4 Operational — 4 tools (new)
+### 3.4 Operational — 5 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 15 | `point_read` | `serial_number: int`, `point_type: string`, `point_index: int` | `{ serial_number, point_type, point_index, label, value, engineering_units, timestamp }` |
-| 16 | `point_write` | `serial_number: int`, `point_type: string`, `point_index: int`, `value: number\|boolean`, `confirm: boolean` | `{ success, written_value, timestamp }` |
-| 17 | `point_read_batch` | `points: [{ serial_number, point_type, point_index }]` | `[{ serial_number, point_type, point_index, label, value, engineering_units, timestamp }]` |
-| 18 | `point_write_batch` | `points: [{ serial_number, point_type, point_index, value }]`, `confirm: boolean` | `{ success, count }` |
+| 16 | `point_read` | `serial_number: int`, `point_type: string`, `point_index: int` | `{ serial_number, point_type, point_index, label, value, engineering_units, timestamp }` |
+| 17 | `point_write` | `serial_number: int`, `point_type: string`, `point_index: int`, `value: number\|boolean`, `confirm: boolean` | `{ success, written_value, timestamp }` |
+| 18 | `point_read_batch` | `points: [{ serial_number, point_type, point_index }]` | `[{ serial_number, point_type, point_index, label, value, engineering_units, timestamp }]` |
+| 19 | `point_write_batch` | `points: [{ serial_number, point_type, point_index, value }]`, `confirm: boolean` | `{ success, count }` |
+| 20 | `point_batch_metadata` | `points: [{ serial_number, point_type, point_index }]` | `[{ serial_number, point_type, point_index, label, engineering_units, haystack_tags, brick_class }]` |
 
 ### 3.5 Analytics — 2 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 19 | `haystack_validate` | `serial_numbers?: int[]` | `{ passed, warnings: [{ point_id, issue }], errors: [{ point_id, issue }] }` |
-| 20 | `haystack_export` | `serial_numbers: int[]`, `format: "haystack-json"\|"brick-ttl"\|"brick-jsonld"` | Format-specific model dump |
+| 21 | `haystack_validate` | `serial_numbers?: int[]` | `{ passed, warnings: [{ point_id, issue }], errors: [{ point_id, issue }] }` |
+| 22 | `haystack_export` | `serial_numbers: int[]`, `format: "haystack-json"\|"brick-ttl"\|"brick-jsonld"` | Format-specific model dump |
 
 ### 3.6 Rules Management — 2 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 21 | `rule_toggle` | `rule_id: int`, `enabled: boolean` | `{ rule_id, rule_name, enabled }` |
-| 22 | `rule_create` | `pattern: string`, `haystack_tags: string[]`, `category: "haystack"\|"brick"`, `priority?: int`, `brick_class?: string`, `units?: string`, `object_types?: string` | `{ rule_id, rule_name, pattern, category, haystack_tags, enabled }` |
+| 23 | `rule_toggle` | `rule_id: int`, `enabled: boolean` | `{ rule_id, rule_name, enabled }` |
+| 24 | `rule_create` | `pattern: string`, `haystack_tags: string[]`, `category: "haystack"\|"brick"`, `priority?: int`, `brick_class?: string`, `units?: string`, `object_types?: string` | `{ rule_id, rule_name, pattern, category, haystack_tags, enabled }` |
 
 ### 3.7 Alarms & Trends — 3 tools (new)
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 23 | `alarm_list` | `serial_numbers?: int[]`, `active_only?: boolean` | `[{ alarm_id, serial_number, name, severity, message, timestamp, acknowledged, acknowledged_at }]` |
-| 24 | `alarm_acknowledge` | `serial_number: int`, `alarm_id: int` | `{ success, acknowledged_at }` |
-| 25 | `trendlog_query` | `serial_number: int`, `point_type: string`, `point_index: int`, `start: ISO8601`, `end?: ISO8601`, `limit?: int` | `{ serial_number, point_type, point_index, label, engineering_units, data: [{ timestamp, value }] }` |
+| 25 | `alarm_list` | `serial_numbers?: int[]`, `active_only?: boolean` | `[{ alarm_id, serial_number, name, severity, message, timestamp, acknowledged, acknowledged_at }]` |
+| 26 | `alarm_acknowledge` | `serial_number: int`, `alarm_id: int` | `{ success, acknowledged_at }` |
+| 27 | `trendlog_query` | `serial_number: int`, `point_type: string`, `point_index: int`, `start: ISO8601`, `end?: ISO8601`, `limit?: int` | `{ serial_number, point_type, point_index, label, engineering_units, data: [{ timestamp, value }] }` |
+
+### 3.8 Device Operations — 4 tools (new)
+
+| # | Tool | Input | Output |
+|---|---|---|---|
+| 28 | `trendlog_list` | `serial_number: int` | `[{ log_id, point_type, point_index, label, interval }]` |
+| 29 | `trendlog_export` | `serial_number: int`, `format?: string` | `{ filename, data, format }` |
+| 30 | `device_refresh` | `serial_number: int` | `{ success, message }` |
+| 31 | `schedule_list` | `serial_number: int` | `[{ schedule_id, name, days, periods }]` |
+
+### 3.9 Settings — 3 tools (new)
+
+| # | Tool | Input | Output |
+|---|---|---|---|
+| 32 | `settings_read` | `serial_number: int` | `{ settings: { name, baud_rate, ... } }` |
+| 33 | `settings_write` | `serial_number: int`, `settings: object`, `confirm: boolean` | `{ success }` |
+| 34 | `device_control` | `serial_number: int`, `command: string`, `params?: object` | `{ success, message }` |
+
+### 3.10 Control Logic — 5 tools (new)
+
+| # | Tool | Input | Output |
+|---|---|---|---|
+| 35 | `program_list` | `serial_number: int` | `[{ program_id, name, size }]` |
+| 36 | `program_read` | `serial_number: int`, `program_id: string` | `{ program_id, name, source }` |
+| 37 | `alarm_settings_read` | `serial_number: int` | `[{ alarm_setting_id, point, condition, thresholds }]` |
+| 38 | `users_list` | `serial_number: int` | `[{ user_id, name, access_level }]` |
+| 39 | `graphics_list` | `serial_number: int` | `[{ graphic_id, label, picture_file }]` |
+
+### 3.11 Documentation — 5 tools (new)
+
+| # | Tool | Input | Output |
+|---|---|---|---|
+| 40 | `doc_list` | `section?: string` | `[{ path, title, section }]` |
+| 41 | `doc_read` | `path: string` | `{ path, title, content }` |
+| 42 | `pid_list` | `serial_number: int` | `[{ pid_id, name, setpoint, kp, ki, kd }]` |
+| 43 | `holiday_list` | `serial_number: int` | `[{ holiday_id, name, start_date, end_date }]` |
+| 44 | `building_summary` | `serial_numbers?: int[]` | `{ devices, points, tags, alarms }` |
 
 ---
 
@@ -118,12 +157,21 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
 |---|---|---|
 | (none) | Server-level | 3 |
 | `haystack_` | Ontology: tags, Brick, auto-tagging, validation, export | 9 |
-| `device_` | Device inventory + points | 3 |
+| `device_` | Device inventory, points, refresh, control | 5 |
 | `point_` | Live values: read, write, batch, metadata | 5 |
 | `rule_` | Auto-tagging rule CRUD | 2 |
 | `metadata_` | Cross-point search | 1 |
-| `alarm_` | Alarm query + acknowledge | 2 |
-| `trendlog_` | Historical data | 1 |
+| `alarm_` | Alarm query, acknowledge, settings | 3 |
+| `trendlog_` | Historical data, listing, export | 3 |
+| `schedule_` | Time-based schedules | 1 |
+| `settings_` | Device configuration | 2 |
+| `program_` | PLC program CRUD | 2 |
+| `users_` | User management | 1 |
+| `graphics_` | Visualization screens | 1 |
+| `doc_` | Documentation articles | 2 |
+| `pid_` | PID loop listing | 1 |
+| `holiday_` | Holiday schedules | 1 |
+| `building_` | System overview | 1 |
 
 ---
 
@@ -221,13 +269,13 @@ Response (protocol error):
 
 | Section | Change |
 |---|---|
-| `TOOLS` lazy_static | All 25 `ToolDef` entries with `name`, `title`, `description`, `inputSchema` |
+| `TOOLS` lazy_static | All 44 `ToolDef` entries with `name`, `title`, `description`, `inputSchema` |
 | `handle_request` match | 4 methods: `initialize`, `ping`, `tools/list`, `tools/call` |
 | `mcp_post_handler` | Session management via `Mcp-Session-Id`, notification handling |
 | `mcp_sse_handler` | GET /api/mcp SSE endpoint |
 | `mcp_delete_handler` | DELETE /api/mcp session termination |
 | `handle_tools_call` | `isError: true` for tool errors (LLM-friendly) |
-| `execute_tool` | 25 tool handlers + input validation |
+| `execute_tool` | 44 tool handlers + input validation |
 
 ### 9.2 Service Dependencies
 
@@ -275,7 +323,7 @@ Response (protocol error):
 | `notifications/initialized` | Accepted as JSON-RPC notification (no response) |
 | Protocol `ping` | Added separate from tool `ping` |
 | Tool errors | `isError: true` in result (not JSON-RPC error) |
-| Tool `title` | All 25 tools have `title` field |
+| Tool `title` | All 44 tools have `title` field |
 | `describe_tool` | Includes `title` in output |
 | `get_version` | Uses `PROTOCOL_VERSION` constant |
 | `point_get_metadata` | `point_type` validated before SQL (security) |
@@ -285,7 +333,7 @@ Response (protocol error):
 
 | Change | Detail |
 |---|---|
-| Tools | Extended from 7 to 25 across 7 categories |
+| Tools | Extended from 7 to 44 across 11 categories |
 | Categories | Haystack, Core, Data, Operational, Analytics, Rules, Alarms |
 | File changes | `mcp.rs` only |
 

@@ -21,7 +21,7 @@ How T3000 connects to cloud-hosted LLM providers (Anthropic Claude, Google Gemin
                          .  |        v         |    .
                          .  | +--------------+ |    .
                          .  | | MCP Handler  | |    .
-                         .  | | (25 tools)   | |    .
+                         .  | | (44 tools)   | |    .
                          .  | | runs locally | |    .
                          .  | +--------------+ |    .
                          .  +------------------+    .
