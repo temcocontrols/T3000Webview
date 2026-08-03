@@ -52,33 +52,33 @@ fn mcp_log(msg: &str) {
 // ═══ JSON-RPC Types ═══
 
 #[derive(Debug, Deserialize)]
-struct JsonRpcRequest {
+pub(crate) struct JsonRpcRequest {
     #[allow(dead_code)]
-    jsonrpc: String,
+    pub(crate) jsonrpc: String,
     #[serde(default)]
-    id: Option<Value>,
-    method: String,
+    pub(crate) id: Option<Value>,
+    pub(crate) method: String,
     #[serde(default)]
-    params: Option<Value>,
+    pub(crate) params: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]
-struct JsonRpcResponse {
-    jsonrpc: String,
+pub(crate) struct JsonRpcResponse {
+    pub(crate) jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<Value>,
+    pub(crate) id: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    result: Option<Value>,
+    pub(crate) result: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<JsonRpcError>,
+    pub(crate) error: Option<JsonRpcError>,
 }
 
 #[derive(Debug, Serialize)]
-struct JsonRpcError {
-    code: i32,
-    message: String,
+pub(crate) struct JsonRpcError {
+    pub(crate) code: i32,
+    pub(crate) message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    data: Option<Value>,
+    pub(crate) data: Option<Value>,
 }
 
 // ═══ Session State ═══
@@ -987,7 +987,7 @@ const SERVER_VERSION: &str = "1.0.0";
 const PROTOCOL_VERSION: &str = "2025-03-26";
 
 /// Helper to get DB from T3AppState
-async fn get_db(state: &T3AppState) -> Result<sea_orm::DatabaseConnection, (StatusCode, Json<Value>)> {
+pub(crate) async fn get_db(state: &T3AppState) -> Result<sea_orm::DatabaseConnection, (StatusCode, Json<Value>)> {
     if let Some(conn) = &state.local_config_conn {
         return Ok(conn.lock().await.clone());
     }
@@ -1173,7 +1173,7 @@ pub async fn mcp_delete_handler(
 
 // ═══ Request Dispatch ═══
 
-async fn handle_request(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnection) -> JsonRpcResponse {
+pub(crate) async fn handle_request(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnection) -> JsonRpcResponse {
     match req.method.as_str() {
         "initialize" => handle_initialize(req),
         "ping" => handle_ping(req),

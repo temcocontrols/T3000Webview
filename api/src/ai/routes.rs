@@ -281,32 +281,13 @@ async fn process_chat(
     ))
 }
 
-/// Execute an MCP tool by name. Wraps the JSON-RPC dispatch for now;
-/// Phase 2 will use direct handler calls after refactoring mcp.rs.
+/// Execute an MCP tool via the existing MCP dispatch machinery.
 async fn execute_mcp_tool(
     name: &str,
     arguments: &str,
-    _state: &T3AppState,
+    state: &T3AppState,
 ) -> Result<Value, String> {
-    // For Phase 1, return a stub that tells the LLM tool calling is available
-    // but not yet wired. Phase 2 replaces this with real execution.
-
-    // Stub: return a helpful message
-    let args: Value = serde_json::from_str(arguments).unwrap_or(Value::Null);
-
-    info!(
-        "[AI] Tool call: {} with args: {}",
-        name,
-        serde_json::to_string(&args).unwrap_or_default()
-    );
-
-    // Phase 2: replace with direct call to MCP handler
-    // For now, tell the LLM that Phase 1 doesn't support tool execution yet
-    Ok(json!({
-        "phase1_notice": "Tool execution will be available in Phase 2. For now, I'll try to answer without live data.",
-        "tool": name,
-        "args": args
-    }))
+    super::tool_executor::execute_tool(name, arguments, state).await
 }
 
 /// Build the default system prompt.
