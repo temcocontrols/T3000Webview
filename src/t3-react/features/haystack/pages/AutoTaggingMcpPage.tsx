@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Spinner, Button, Input, Field, Switch, Tooltip,
   Tab, TabList, Dialog, DialogSurface, DialogBody, DialogTitle,
-  DialogContent, DialogActions, Badge, Select,
+  DialogContent, DialogActions, Badge, Select, Link,
   DataGrid, DataGridHeader, DataGridRow, DataGridCell, DataGridBody,
   createTableColumn, TableColumnDefinition,
   Popover, PopoverSurface, PopoverTrigger,
@@ -289,6 +289,7 @@ const RulesTab: React.FC = () => {
               <div style={{
                 maxHeight: (showAllAffected ? 200 : 100),
                 overflowY: 'auto',
+                scrollbarWidth: 'thin',
                 marginBottom: 8,
                 border: '1px solid var(--colorNeutralStroke2, #e0e0e0)',
                 borderRadius: 4,
@@ -346,6 +347,11 @@ const RulesTab: React.FC = () => {
 
   return (
     <div className={styles.rulesLayout}>
+      <div className={styles.runHint} style={{ display: 'block', marginBottom: 4 }}>
+        <InfoRegular style={{ fontSize: 13, verticalAlign: 'text-bottom', marginRight: 4 }} />
+        Rules are seeded from <Link href="https://github.com/qnst/brick-bacnet-mcp" target="_blank">brick-bacnet-mcp</Link> (regex) &amp; <Link href="https://github.com/qnst/Brick" target="_blank">Brick Schema</Link> (ontology). Click <strong>Sync from Brick Official</strong> to restore missing rules. Custom rules are preserved across syncs.
+      </div>
+
       <div className={styles.rulesTop}>
         <Select
           size="small"
@@ -384,20 +390,10 @@ const RulesTab: React.FC = () => {
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
               Sync Rules from Brick Official?
             </div>
-            <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5, marginBottom: 6 }}>
+            <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5, marginBottom: 14 }}>
               Downloads the latest tagging rules from the official{' '}
-              <a href="https://github.com/qnst/brick-bacnet-mcp" target="_blank" rel="noopener noreferrer" style={{ color: '#0078d4', textDecoration: 'none' }}>brick-bacnet-mcp ↗</a>
+              <Link href="https://github.com/qnst/brick-bacnet-mcp" target="_blank">brick-bacnet-mcp</Link>
               {' '}repo. Deleted rules will be restored. Rules you created or modified yourself are left as-is.
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#888', marginBottom: 14 }}>
-              <InfoRegular style={{ fontSize: 13, flexShrink: 0, color: '#888' }} />
-              <span>
-                Default rules sourced from{' '}
-                <a href="https://github.com/qnst/brick-bacnet-mcp" target="_blank" rel="noopener noreferrer" style={{ color: '#0078d4', textDecoration: 'none' }}>brick-bacnet-mcp</a>
-                {' '}(regex patterns) &amp;{' '}
-                <a href="https://github.com/qnst/Brick" target="_blank" rel="noopener noreferrer" style={{ color: '#0078d4', textDecoration: 'none' }}>Brick Schema</a>
-                {' '}(ontology).
-              </span>
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
               <Button size="small" appearance="subtle" style={{ color: '#d32f2f', fontSize: 11 }}
@@ -554,6 +550,7 @@ const RunTab: React.FC = () => {
   const [selectedRuleIds, setSelectedRuleIds] = useState<number[]>([]); // empty = nothing selected
   const [ruleSelectorOpen, setRuleSelectorOpen] = useState(false);
   const [ruleCategoryFilter, setRuleCategoryFilter] = useState('all'); // all | haystack | brick | range
+  const [previewFilter, setPreviewFilter] = useState('');
 
   const allDevices = devices.filter(d => d.productName && d.productName !== 'Unknown' && d.productName !== '(Unknown)');
   const allSerials = allDevices.map(d => String(d.serialNumber));
@@ -621,6 +618,12 @@ const RunTab: React.FC = () => {
       })
       .catch(() => {});
   }, []);
+  useEffect(() => {
+    if (result) {
+      const t = setTimeout(() => setResult(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [result]);
 
   const enabledRules = rules.filter(r => r.enabled);
   const filteredRules = ruleCategoryFilter === 'all'
@@ -839,14 +842,39 @@ const RunTab: React.FC = () => {
       {running && <Spinner size="extra-small" label="Processing..." className={styles.loadingSpinner} />}
 
       {previewData && (() => {
-        const sorted = [...previewData].sort((a, b) =>
-          a.point.serial_number - b.point.serial_number
-          || a.point.point_type.localeCompare(b.point.point_type)
-          || a.point.point_index - b.point.point_index
-        );
+        const sorted = [...previewData]
+          .filter(m => {
+            if (!previewFilter) return true;
+            const q = previewFilter.toLowerCase();
+            return (
+              String(m.point.serial_number).includes(q) ||
+              (m.point.point_type || '').toLowerCase().includes(q) ||
+              String(m.point.point_index).includes(q) ||
+              (m.point.label || '').toLowerCase().includes(q) ||
+              (m.point.full_label || '').toLowerCase().includes(q) ||
+              (m.matched_rule || '').toLowerCase().includes(q) ||
+              (m.brick_class || '').toLowerCase().includes(q) ||
+              m.haystack_tags.some(t => t.toLowerCase().includes(q))
+            );
+          })
+          .sort((a, b) =>
+            a.point.serial_number - b.point.serial_number
+            || a.point.point_type.localeCompare(b.point.point_type)
+            || a.point.point_index - b.point.point_index
+          );
         return (
         <div className={styles.previewSection}>
-          <div className={styles.sectionTitle}>Preview Results ({sorted.length} matches)</div>
+          <div className={styles.sectionTitle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Preview Results ({sorted.length}{previewFilter ? ` of ${previewData.length}` : ''} matches)</span>
+            <Input
+              size="small"
+              placeholder="Filter results…"
+              value={previewFilter}
+              onChange={(_, d) => setPreviewFilter(d.value)}
+              contentAfter={previewFilter ? <DismissRegular style={{ fontSize: 12, cursor: 'pointer', color: '#888' }} onClick={() => setPreviewFilter('')} /> : undefined}
+              style={{ width: 200, fontSize: 11 }}
+            />
+          </div>
           <table className={styles.previewTable}>
             <thead>
               <tr>

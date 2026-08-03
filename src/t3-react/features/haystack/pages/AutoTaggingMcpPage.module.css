@@ -81,6 +81,25 @@
 .ruleInfo a { color: var(--colorBrandForeground1); text-decoration: none; }
 .ruleInfo a:hover { text-decoration: underline; }
 
+.rulesInfoBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  background: var(--colorNeutralBackground2, #f8f8f8);
+  border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--colorNeutralForeground2, #555);
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+.rulesInfoBar strong { color: var(--colorNeutralForeground1, #323130); }
+.rulesInfoBar a { color: var(--colorBrandForeground1, #0078d4); text-decoration: none; font-weight: 500; }
+.rulesInfoBar a:hover { text-decoration: underline; }
+.rulesInfoIcon { color: var(--colorBrandForeground1, #0078d4); font-size: 14px; flex-shrink: 0; }
+
 /* ── DataGrid ── */
 .dataGrid { font-size: 12px; }
 .container :global(.fui-DataGridHeader) { background-color: #e8e8e8; }
