@@ -80,18 +80,6 @@ const AutoTaggingMcpPage: React.FC = () => {
   return (
     <div className={styles.container}>
       <style>{'[role="tooltip"],[role="tooltip"] *{max-width:none!important;white-space:nowrap!important;width:auto!important}'}</style>
-      {/* ── Info Bar ── */}
-      <div className={styles.infoBar}>
-        <div className={styles.infoBarLeft}>
-          <FlashRegular className={styles.infoIcon} />
-          <div className={styles.infoText}>
-            <div className={styles.infoTitle}>Auto-Tagging &amp; MCP</div>
-            <div className={styles.infoDesc}>
-              Manage regex-based rules for automatic Haystack tagging and Brick classification. Includes an MCP server for LLM agent integration.
-            </div>
-          </div>
-        </div>
-      </div>
 
       <TabList selectedValue={activeTab} onTabSelect={(_, d) => setActiveTab(d.value as string)}>
         <Tab value="rules" icon={<SettingsRegular />}><span style={{fontSize:13}}>Rules</span></Tab>
