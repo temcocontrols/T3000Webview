@@ -14,7 +14,7 @@ import {
   WarningRegular, InfoRegular, DeleteRegular,
   TagRegular, FlashRegular, SettingsRegular,
   SparkleRegular, CopyRegular, LightbulbRegular,
-  CodeRegular, BookOpenRegular,
+  CodeRegular, BookOpenRegular, ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -58,6 +58,14 @@ interface TagMatch {
   brick_class?: string;
   haystack_kind?: string;
   haystack_unit?: string;
+}
+
+interface AffectedPoint {
+  serial_number: number;
+  point_type: string;
+  point_index: number;
+  label?: string;
+  full_label?: string;
 }
 
 // ── Page Component ──
@@ -115,6 +123,10 @@ const RulesTab: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [syncConfirmOpen, setSyncConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AutoTaggingRule | null>(null);
+  const [affectedPoints, setAffectedPoints] = useState<AffectedPoint[]>([]);
+  const [forceDeleting, setForceDeleting] = useState(false);
+  const [showAllAffected, setShowAllAffected] = useState(false);
 
   useEffect(() => {
     if (syncMsg) {
@@ -150,15 +162,6 @@ const RulesTab: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/rules/${id}`, { method: 'DELETE' });
-      await fetchRules();
-    } catch (e: any) {
-      setError(e.message);
-    }
-  };
-
   const handleSyncBrickRules = async () => {
     setSyncConfirmOpen(false);
     setSyncing(true); setError(null); setSyncMsg(null);
@@ -172,13 +175,55 @@ const RulesTab: React.FC = () => {
     finally { setSyncing(false); }
   };
 
+  const handleOpenDeletePopover = async (rule: AutoTaggingRule) => {
+    setDeleteTarget(rule);
+    setShowAllAffected(false);
+    setAffectedPoints([]);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/rules/${rule.id}/affected-points`);
+      if (res.ok) {
+        const data = await res.json();
+        setAffectedPoints(data.points || []);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleDeleteRule = async () => {
+    if (!deleteTarget) return;
+    try {
+      await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/rules/${deleteTarget.id}`, { method: 'DELETE' });
+      setDeleteTarget(null);
+      setAffectedPoints([]);
+      await fetchRules();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleForceDeleteRule = async () => {
+    if (!deleteTarget) return;
+    setForceDeleting(true);
+    try {
+      await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/rules/${deleteTarget.id}?force=true`, { method: 'DELETE' });
+      setForceDeleting(false);
+      setDeleteTarget(null);
+      setAffectedPoints([]);
+      await fetchRules();
+    } catch (e: any) {
+      setForceDeleting(false);
+      setError(e.message);
+    }
+  };
+
   const filtered = useMemo(() => rules.filter(r =>
     (categoryFilter === 'all' || r.category === categoryFilter) &&
     (!filter || r.rule_name.toLowerCase().includes(filter.toLowerCase()) ||
     r.category.includes(filter) || (r.brick_class || '').toLowerCase().includes(filter.toLowerCase()))
   ), [rules, categoryFilter, filter]);
 
-  const columns: TableColumnDefinition<AutoTaggingRule>[] = useMemo(() => [
+  const columns: TableColumnDefinition<AutoTaggingRule>[] = [
     createTableColumn({ columnId: 'name', renderHeaderCell: () => 'Rule', renderCell: (r) => (
       <div className={styles.ruleCell}>
         <Badge appearance="filled" color={r.category === 'brick' ? 'important' : r.category === 'range' ? 'severe' : 'informative'} size="small">
@@ -197,22 +242,104 @@ const RulesTab: React.FC = () => {
       <Switch checked={r.enabled} onChange={() => handleToggle(r)} className={styles.switchScale} />
     ) }),
     createTableColumn({ columnId: 'actions', renderHeaderCell: () => '', renderCell: (r) => {
-      const [open, setOpen] = useState(false);
+      const isOpen = deleteTarget?.id === r.id;
       return (
-      <Popover open={open} onOpenChange={(_, d) => setOpen(d.open)} withArrow>
+      <Popover
+        open={isOpen}
+        onOpenChange={(_, d) => { if (!d.open) { setDeleteTarget(null); setAffectedPoints([]); setShowAllAffected(false); } }}
+        positioning="above-start"
+      >
         <PopoverTrigger disableButtonEnhancement>
-          <Button size="small" icon={<DeleteRegular style={{ fontSize: 17 }} />} appearance="subtle" />
+          <Button
+            size="small"
+            icon={<DeleteRegular style={{ fontSize: 17 }} />}
+            appearance="subtle"
+            onClick={() => handleOpenDeletePopover(r)}
+          />
         </PopoverTrigger>
-        <PopoverSurface style={{ padding: 12 }}>
-          <div style={{ fontSize: 12, marginBottom: 8 }}>Delete <strong>{r.rule_name}</strong>?</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button size="small" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button size="small" appearance="primary" style={{ background: '#d32f2f' }} onClick={() => { handleDelete(r.id); setOpen(false); }}>Delete</Button>
-          </div>
+        <PopoverSurface style={{ maxWidth: 340, padding: 16 }}>
+          {affectedPoints.length === 0 ? (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                Delete rule "{r.rule_name}"?
+              </div>
+              <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginBottom: 16 }}>
+                This action cannot be undone.
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <Button size="small" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+                <Button size="small" appearance="primary" style={{ background: '#d32f2f' }} onClick={handleDeleteRule}>Delete</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <ErrorCircleRegular style={{ fontSize: 18, color: '#da3b01' }} />
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  Cannot delete "{r.rule_name}"
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginBottom: 4 }}>
+                This rule's pattern matches {affectedPoints.length} point{affectedPoints.length !== 1 ? 's' : ''}:
+              </div>
+
+              <div style={{
+                maxHeight: (showAllAffected ? 200 : 100),
+                overflowY: 'auto',
+                marginBottom: 8,
+                border: '1px solid var(--colorNeutralStroke2, #e0e0e0)',
+                borderRadius: 4,
+                fontSize: 12,
+              }}>
+                {(showAllAffected ? affectedPoints : affectedPoints.slice(0, 3)).map((p, i) => (
+                  <div key={i} style={{
+                    padding: '4px 8px',
+                    borderBottom: '1px solid var(--colorNeutralStroke2, #f0f0f0)',
+                    display: 'flex', gap: 6,
+                  }}>
+                    <span style={{ color: '#888', minWidth: 48 }}>{p.serial_number}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.full_label || p.label || `${p.point_type} #${p.point_index}`}
+                    </span>
+                    <span style={{ color: '#888' }}>{p.point_type} #{p.point_index}</span>
+                  </div>
+                ))}
+              </div>
+
+              {affectedPoints.length > 3 && (
+                <Button
+                  size="small"
+                  appearance="transparent"
+                  onClick={() => setShowAllAffected(prev => !prev)}
+                  style={{ fontSize: 11, marginBottom: 8, minHeight: 22 }}
+                >
+                  {showAllAffected ? 'Show fewer' : `Show all ${affectedPoints.length} points`}
+                </Button>
+              )}
+
+              <div style={{ fontSize: 12, color: '#888', lineHeight: 1.4, marginBottom: 12 }}>
+                Force-delete will remove this rule <strong>and</strong> clean up all auto-assigned tags/brick classes
+                matching its pattern. Manual tags are preserved.
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <Button size="small" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+                <Button
+                  size="small"
+                  appearance="primary"
+                  style={{ background: '#d32f2f' }}
+                  onClick={handleForceDeleteRule}
+                  disabled={forceDeleting}
+                >
+                  {forceDeleting ? 'Deleting…' : 'Force Delete'}
+                </Button>
+              </div>
+            </>
+          )}
         </PopoverSurface>
       </Popover>
     )}}),
-  ], []);
+  ];
 
   return (
     <div className={styles.rulesLayout}>

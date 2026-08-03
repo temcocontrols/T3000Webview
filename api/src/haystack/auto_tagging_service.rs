@@ -39,6 +39,15 @@ pub struct PointInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AffectedPoint {
+    pub serial_number: i32,
+    pub point_type: String,
+    pub point_index: i32,
+    pub label: Option<String>,
+    pub full_label: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TagMatch {
     pub point: PointInfo,
     pub matched_rule: String,
@@ -200,7 +209,56 @@ pub async fn toggle_rule(db: &impl ConnectionTrait, id: i64) -> Result<bool, Str
     Ok(new_val != 0)
 }
 
-pub async fn delete_rule(db: &impl ConnectionTrait, id: i64) -> Result<(), String> {
+pub async fn delete_rule(db: &impl ConnectionTrait, id: i64, force: bool) -> Result<(), String> {
+    if force {
+        // Load the rule to get its tags and brick_class
+        let rows = db
+            .query_all(Statement::from_sql_and_values(
+                sea_orm::DatabaseBackend::Sqlite,
+                "SELECT category, haystack_tags, brick_class FROM HAYSTACK_AUTO_TAGGING_RULES WHERE id = ?",
+                vec![id.into()],
+            ))
+            .await
+            .map_err(|e| format!("Failed to load rule: {}", e))?;
+
+        if let Some(row) = rows.first() {
+            let category: String = row.try_get("", "category").unwrap_or_default();
+            let haystack_tags: Option<String> = row.try_get("", "haystack_tags").ok();
+            let brick_class: Option<String> = row.try_get("", "brick_class").ok();
+
+            // For haystack rules: delete auto-assigned tags matching this rule's tag names
+            if category == "haystack" {
+                if let Some(ref tags) = haystack_tags {
+                    for tag in tags.split(',') {
+                        let tag = tag.trim();
+                        if !tag.is_empty() {
+                            db.execute(Statement::from_sql_and_values(
+                                sea_orm::DatabaseBackend::Sqlite,
+                                "DELETE FROM haystack_point_tags WHERE tag_name = ?",
+                                vec![tag.into()],
+                            )).await
+                            .map_err(|e| format!("Failed to remove auto-assigned tag '{}': {}", tag, e))?;
+                        }
+                    }
+                }
+            }
+
+            // For brick rules: delete auto-assigned brick_class entries
+            if category == "brick" {
+                if let Some(ref bc) = brick_class {
+                    if !bc.is_empty() {
+                        db.execute(Statement::from_sql_and_values(
+                            sea_orm::DatabaseBackend::Sqlite,
+                            "DELETE FROM HAYSTACK_POINT_BRICK_CLASS WHERE brick_class = ?",
+                            vec![bc.clone().into()],
+                        )).await
+                        .map_err(|e| format!("Failed to remove auto-assigned brick_class '{}': {}", bc, e))?;
+                    }
+                }
+            }
+        }
+    }
+
     db.execute(Statement::from_sql_and_values(
         sea_orm::DatabaseBackend::Sqlite,
         "DELETE FROM HAYSTACK_AUTO_TAGGING_RULES WHERE id = ?",
@@ -209,6 +267,136 @@ pub async fn delete_rule(db: &impl ConnectionTrait, id: i64) -> Result<(), Strin
     .await
     .map_err(|e| format!("Failed to delete rule: {}", e))?;
     Ok(())
+}
+
+/// Get points that are currently auto-tagged/brick-classified by this rule.
+/// Queries haystack_point_tags and HAYSTACK_POINT_BRICK_CLASS directly
+/// (by tag names / brick_class), not by regex against labels.
+pub async fn get_rule_affected_points(
+    db: &impl ConnectionTrait,
+    id: i64,
+) -> Result<(usize, Vec<AffectedPoint>), String> {
+    let rows = db
+        .query_all(Statement::from_sql_and_values(
+            sea_orm::DatabaseBackend::Sqlite,
+            "SELECT category, haystack_tags, brick_class FROM HAYSTACK_AUTO_TAGGING_RULES WHERE id = ?",
+            vec![id.into()],
+        ))
+        .await
+        .map_err(|e| format!("Failed to load rule: {}", e))?;
+
+    let (category, haystack_tags, brick_class) = match rows.first() {
+        Some(r) => {
+            let cat: String = r.try_get("", "category").unwrap_or_default();
+            let tags: Option<String> = r.try_get("", "haystack_tags").ok();
+            let bc: Option<String> = r.try_get("", "brick_class").ok();
+            (cat, tags, bc)
+        }
+        None => return Ok((0, vec![])),
+    };
+
+    let mut points: Vec<AffectedPoint> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    // For haystack rules: find points with auto-assigned tags matching this rule
+    if category == "haystack" {
+        if let Some(ref tags_str) = haystack_tags {
+            let tag_list: Vec<&str> = tags_str.split(',').map(|t| t.trim()).filter(|t| !t.is_empty()).collect();
+            if !tag_list.is_empty() {
+                let placeholders = tag_list.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+                let sql = format!(
+                    "SELECT DISTINCT hpt.serial_number, hpt.point_type, CAST(hpt.point_index AS INTEGER) as point_index
+                     FROM haystack_point_tags hpt
+                     WHERE hpt.tag_name IN ({})
+                     LIMIT 51",
+                    placeholders
+                );
+                let mut params: Vec<sea_orm::Value> = tag_list.iter().map(|t| (*t).into()).collect();
+                if let Ok(rows) = db.query_all(Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite, &sql, params,
+                )).await {
+                    for r in &rows {
+                        let sn: i32 = r.try_get("", "serial_number").unwrap_or(0);
+                        let pt: String = r.try_get("", "point_type").unwrap_or_default();
+                        let idx: i32 = r.try_get("", "point_index").unwrap_or(0);
+                        let key = (sn, pt.clone(), idx);
+                        if seen.insert(key) && points.len() < 50 {
+                            let (label, full_label) = lookup_point_label(db, sn, &pt, idx).await;
+                            points.push(AffectedPoint {
+                                serial_number: sn,
+                                point_type: pt,
+                                point_index: idx,
+                                label,
+                                full_label,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // For brick rules: find points with auto-assigned brick_class matching this rule
+    if category == "brick" {
+        if let Some(ref bc) = brick_class {
+            if !bc.is_empty() {
+                let sql = "SELECT serial_number, point_type, point_index FROM HAYSTACK_POINT_BRICK_CLASS WHERE brick_class = ? LIMIT 51";
+                if let Ok(rows) = db.query_all(Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite, sql,
+                    vec![bc.clone().into()],
+                )).await {
+                    for r in &rows {
+                        let sn: i32 = r.try_get("", "serial_number").unwrap_or(0);
+                        let pt: String = r.try_get("", "point_type").unwrap_or_default();
+                        let idx: i32 = r.try_get("", "point_index").unwrap_or(0);
+                        let key = (sn, pt.clone(), idx);
+                        if seen.insert(key) && points.len() < 50 {
+                            let (label, full_label) = lookup_point_label(db, sn, &pt, idx).await;
+                            points.push(AffectedPoint {
+                                serial_number: sn,
+                                point_type: pt,
+                                point_index: idx,
+                                label,
+                                full_label,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let count = points.len();
+    Ok((count, points))
+}
+
+/// Look up a point's label from the device point tables.
+async fn lookup_point_label(
+    db: &impl ConnectionTrait,
+    sn: i32,
+    point_type: &str,
+    idx: i32,
+) -> (Option<String>, Option<String>) {
+    let (table, idx_col) = match point_type {
+        "INPUT" => ("INPUTS", "Input_Index"),
+        "OUTPUT" => ("OUTPUTS", "Output_Index"),
+        _ => ("VARIABLES", "Variable_Index"),
+    };
+    let sql = format!(
+        "SELECT Full_Label, Label FROM {} WHERE SerialNumber = ? AND {} = ?",
+        table, idx_col
+    );
+    if let Ok(rows) = db.query_all(Statement::from_sql_and_values(
+        sea_orm::DatabaseBackend::Sqlite, &sql,
+        vec![sn.into(), idx.into()],
+    )).await {
+        if let Some(r) = rows.first() {
+            let full: Option<String> = r.try_get("", "Full_Label").ok();
+            let label: Option<String> = r.try_get("", "Label").ok();
+            return (label, full);
+        }
+    }
+    (None, None)
 }
 
 // ── Auto-tagging Engine ──

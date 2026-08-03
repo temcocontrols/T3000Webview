@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
     routing::{delete, get, post, put},
@@ -39,6 +39,7 @@ pub fn create_auto_tagging_routes() -> Router<T3AppState> {
         .route("/api/haystack/auto-tagging/rules", get(list_rules).post(create_rule))
         .route("/api/haystack/auto-tagging/rules/:id", put(update_rule).delete(delete_rule))
         .route("/api/haystack/auto-tagging/rules/:id/toggle", post(toggle_rule))
+        .route("/api/haystack/auto-tagging/rules/:id/affected-points", get(get_affected_points))
         .route("/api/haystack/auto-tagging/brick-classes", post(get_brick_classes))
         .route("/api/haystack/auto-tagging/sync-brick-rules", post(sync_brick_rules))
 }
@@ -163,15 +164,34 @@ async fn update_rule(
     Ok(Json(json!({ "message": "Rule updated", "id": id })))
 }
 
+#[derive(Debug, Deserialize)]
+struct DeleteQuery {
+    #[serde(default)]
+    force: bool,
+}
+
 async fn delete_rule(
+    State(state): State<T3AppState>,
+    Path(id): Path<i64>,
+    Query(q): Query<DeleteQuery>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let db = get_db(&state).await?;
+    ats::delete_rule(&db, id, q.force).await.map_err(|e| {
+        (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
+    })?;
+    Ok(Json(json!({ "message": "Rule deleted", "id": id })))
+}
+
+/// Get points across all devices that match this rule's pattern.
+async fn get_affected_points(
     State(state): State<T3AppState>,
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let db = get_db(&state).await?;
-    ats::delete_rule(&db, id).await.map_err(|e| {
-        (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
+    let (count, points) = ats::get_rule_affected_points(&db, id).await.map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e })))
     })?;
-    Ok(Json(json!({ "message": "Rule deleted", "id": id })))
+    Ok(Json(json!({ "count": count, "points": points })))
 }
 
 async fn toggle_rule(
