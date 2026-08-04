@@ -522,19 +522,70 @@
 .drawerServerCard {
   border: 1px solid var(--colorNeutralStroke2);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   margin-bottom: 6px;
+}
+.drawerServerCardActive {
+  border-color: var(--colorBrandStroke1, var(--colorBrandBackground));
+  background: var(--colorNeutralBackground1);
 }
 .drawerServerRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
 }
-.drawerServerHeader {
+.drawerServerIcon {
+  color: var(--colorNeutralForeground3);
+  flex-shrink: 0;
+}
+.drawerServerName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--colorNeutralForeground1);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.drawerServerUrl {
+  font-size: 10px;
+  color: var(--colorNeutralForeground4);
+  margin-left: 23px;
+  margin-top: 2px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status badge */
+.drawerServerBadge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: none;
+  background: var(--colorNeutralBackground3);
+  color: var(--colorNeutralForeground3);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.drawerServerBadge:hover {
+  background: var(--colorNeutralBackground4);
+}
+.drawerServerBadgeOn {
+  background: var(--colorBrandBackground2);
+  color: var(--colorBrandForeground1);
+}
+
+/* Footer row */
+.drawerServerFooter {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex: 1;
+  gap: 4px;
+  width: 100%;
+  margin-left: 23px;
   border: none;
   background: none;
   cursor: pointer;
@@ -542,23 +593,11 @@
   font: inherit;
   color: inherit;
 }
-.drawerServerName {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--colorNeutralForeground1);
-  flex: 1;
-  text-align: left;
-}
-.drawerServerUrl {
+.drawerServerConnText {
   font-size: 10px;
   color: var(--colorNeutralForeground4);
-  margin-left: 12px;
-  margin-top: 3px;
 }
-.drawerServerTools {
-  margin-left: 12px;
-  margin-top: 4px;
-}
+
 .drawerServerRemove {
   display: flex;
   align-items: center;
@@ -576,48 +615,9 @@
   background: var(--colorStatusDangerBackground1);
   color: var(--colorStatusDangerForeground1);
 }
-
-/* ── Toggle switch ── */
-.drawerServerToggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 6px;
-}
-.drawerServerToggleLabel {
-  font-size: 11px;
-  color: var(--colorNeutralForeground3);
-}
-.toggleSwitch {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  border: none;
-  border-radius: 10px;
-  background: var(--colorNeutralStroke2);
-  cursor: pointer;
-  padding: 0;
-  transition: background 0.15s;
-}
-.toggleSwitchOn {
-  background: var(--colorBrandBackground);
-}
-.toggleSwitchKnob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: white;
-  transition: left 0.15s;
-}
-.toggleSwitchOn .toggleSwitchKnob {
-  left: 18px;
-}
-.toggleSwitch:disabled {
-  cursor: default;
-  opacity: 0.8;
+.drawerServerTools {
+  margin-left: 23px;
+  margin-top: 4px;
 }
 
 /* ── Inline add-server form (drawer) ── */

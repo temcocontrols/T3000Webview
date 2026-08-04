@@ -18,6 +18,7 @@ import {
   ChevronRightRegular,
   WrenchRegular,
   BoxRegular,
+  CloudRegular,
   CheckmarkCircleRegular,
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
@@ -220,18 +221,19 @@ export const ToolsDrawer: React.FC<Props> = ({
               <p className={styles.drawerEmpty}>No external servers connected</p>
             ) : (
               mcpServers.map((srv) => (
-                <div key={srv.id} className={styles.drawerServerCard}>
+                <div
+                  key={srv.id}
+                  className={`${styles.drawerServerCard} ${srv.enabled ? styles.drawerServerCardActive : ''}`}
+                >
+                  {/* Row 1: icon + name + status badge + remove */}
                   <div className={styles.drawerServerRow}>
+                    <CloudRegular fontSize={15} className={styles.drawerServerIcon} />
+                    <span className={styles.drawerServerName}>{srv.name}</span>
                     <button
-                      className={styles.drawerServerHeader}
-                      onClick={() => toggleServerExpand(srv.id)}
+                      className={`${styles.drawerServerBadge} ${srv.enabled ? styles.drawerServerBadgeOn : ''}`}
+                      onClick={() => onActivateServer(srv.id)}
                     >
-                      <span className={srv.enabled ? styles.statusDot : styles.statusDotOff} />
-                      <span className={styles.drawerServerName}>{srv.name}</span>
-                      {expandedServers.has(srv.id)
-                        ? <ChevronDownRegular fontSize={12} style={{ opacity: 0.4 }} />
-                        : <ChevronRightRegular fontSize={12} style={{ opacity: 0.4 }} />
-                      }
+                      {srv.enabled ? 'Active' : 'Inactive'}
                     </button>
                     <Tooltip content="Remove server" relationship="label">
                       <button
@@ -242,21 +244,23 @@ export const ToolsDrawer: React.FC<Props> = ({
                       </button>
                     </Tooltip>
                   </div>
+
+                  {/* Row 2: URL */}
                   <div className={styles.drawerServerUrl}>{srv.url}</div>
 
-                  {/* Toggle switch */}
-                  <div className={styles.drawerServerToggle}>
-                    <span className={styles.drawerServerToggleLabel}>
-                      {srv.enabled ? 'Active' : 'Inactive'}
+                  {/* Row 3: connection info + expand */}
+                  <button
+                    className={styles.drawerServerFooter}
+                    onClick={() => toggleServerExpand(srv.id)}
+                  >
+                    <span className={styles.drawerServerConnText}>
+                      {srv.enabled ? 'Connected' : '—'}
                     </span>
-                    <button
-                      className={`${styles.toggleSwitch} ${srv.enabled ? styles.toggleSwitchOn : ''}`}
-                      onClick={() => onActivateServer(srv.id)}
-                      disabled={srv.enabled}
-                    >
-                      <span className={styles.toggleSwitchKnob} />
-                    </button>
-                  </div>
+                    {expandedServers.has(srv.id)
+                      ? <ChevronDownRegular fontSize={11} style={{ opacity: 0.3 }} />
+                      : <ChevronRightRegular fontSize={11} style={{ opacity: 0.3 }} />
+                    }
+                  </button>
 
                   {expandedServers.has(srv.id) && (
                     <div className={styles.drawerServerTools}>

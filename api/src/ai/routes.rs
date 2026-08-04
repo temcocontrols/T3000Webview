@@ -28,7 +28,7 @@ use crate::haystack::mcp::TOOLS;
 use super::providers::{get_provider, ToolDef};
 use super::session::SessionManager;
 use super::types::{AiError, ChatRequest, Message, StreamEvent};
-use super::mcp_client::{McpClientManager, McpServerConfig};
+use super::mcp_client::{McpClient, McpClientManager, McpServerConfig};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -40,13 +40,16 @@ static SESSION_MANAGER: once_cell::sync::Lazy<Arc<SessionManager>> =
 pub(crate) static MCP_CLIENT_MANAGER: once_cell::sync::Lazy<Arc<McpClientManager>> =
     once_cell::sync::Lazy::new(|| {
         let mgr = Arc::new(McpClientManager::new());
-        // Load saved configs from file on startup
         let mgr_clone = mgr.clone();
         tokio::spawn(async move {
             if let Ok(configs) = super::session_store::load_mcp_servers() {
                 for config in configs {
                     if config.enabled {
                         let _ = mgr_clone.add_server(config).await;
+                    } else {
+                        // Load disabled servers into memory without connecting
+                        let mut clients = mgr_clone.clients.write().await;
+                        clients.push(McpClient::new(config));
                     }
                 }
             }
@@ -468,15 +471,10 @@ pub async fn handle_add_mcp_server(
     }
 
     let config_id = config.id.clone();
-    match MCP_CLIENT_MANAGER.add_server(config.clone()).await {
-        Ok(()) => {
-            // Save to file
-            let mut configs = MCP_CLIENT_MANAGER.get_configs().await;
-            configs.push(config);
-            let _ = super::session_store::save_mcp_servers(&configs);
-            Json(json!({ "ok": true, "id": config_id })).into_response()
-        }
-        Err(e) => {
+
+    // Always register in memory (mark as not connected if disabled)
+    if config.enabled {
+        if let Err(e) = MCP_CLIENT_MANAGER.add_server(config.clone()).await {
             let msg = format!("{}", e);
             let friendly = if msg.contains("connect") || msg.contains("502") || msg.contains("refused") {
                 "Could not reach the MCP server. Check the URL and make sure the server is running."
@@ -485,9 +483,22 @@ pub async fn handle_add_mcp_server(
             } else {
                 "Failed to add server. Please check your settings and try again."
             };
-            Json(json!({"ok": false, "error": friendly})).into_response()
+            return Json(json!({"ok": false, "error": friendly})).into_response();
         }
+    } else {
+        // Add to memory without connecting
+        let mut clients = MCP_CLIENT_MANAGER.clients.write().await;
+        clients.push(McpClient::new(config.clone()));
     }
+
+    // Save to file
+    let mut configs = MCP_CLIENT_MANAGER.get_configs().await;
+    // Avoid duplicate if already added above
+    if !configs.iter().any(|c| c.id == config_id) {
+        configs.push(config.clone());
+    }
+    let _ = super::session_store::save_mcp_servers(&configs);
+    Json(json!({ "ok": true, "id": config_id })).into_response()
 }
 
 pub async fn handle_delete_mcp_server(
@@ -497,6 +508,21 @@ pub async fn handle_delete_mcp_server(
     let configs = MCP_CLIENT_MANAGER.get_configs().await;
     let _ = super::session_store::save_mcp_servers(&configs);
     StatusCode::NO_CONTENT.into_response()
+}
+
+// ═══ POST /api/ai/delete-mcp-server ═══
+
+pub async fn handle_delete_mcp_server_post(
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let server_id = body.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    if server_id.is_empty() {
+        return Json(json!({"ok": false, "error": "Server ID required"})).into_response();
+    }
+    MCP_CLIENT_MANAGER.remove_server(server_id).await;
+    let configs = MCP_CLIENT_MANAGER.get_configs().await;
+    let _ = super::session_store::save_mcp_servers(&configs);
+    Json(json!({"ok": true})).into_response()
 }
 
 pub async fn handle_test_mcp_server(
@@ -577,6 +603,40 @@ pub async fn handle_activate_mcp_server(
     Json(json!({ "ok": true })).into_response()
 }
 
+// ═══ POST /api/ai/activate-mcp-server ═══
+
+pub async fn handle_activate_server_post(
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let server_id = body.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    if server_id.is_empty() {
+        return Json(json!({"ok": false, "error": "Server ID required"})).into_response();
+    }
+    let mut configs = MCP_CLIENT_MANAGER.get_configs().await;
+
+    // Toggle: if already active, deactivate; otherwise activate this one
+    let currently_active = configs.iter().any(|c| c.id == server_id && c.enabled);
+
+    for c in &mut configs {
+        c.enabled = if currently_active {
+            false // deactivate all
+        } else {
+            c.id == server_id // activate only this one
+        };
+    }
+    let _ = super::session_store::save_mcp_servers(&configs);
+    MCP_CLIENT_MANAGER.clear().await;
+    for c in &configs {
+        if c.enabled {
+            let _ = MCP_CLIENT_MANAGER.add_server(c.clone()).await;
+        } else {
+            let mut clients = MCP_CLIENT_MANAGER.clients.write().await;
+            clients.push(McpClient::new(c.clone()));
+        }
+    }
+    Json(json!({"ok": true})).into_response()
+}
+
 // ═══ GET /api/ai/tools ═══
 
 pub async fn handle_list_tools() -> impl IntoResponse {
@@ -603,15 +663,13 @@ pub fn ai_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/ai/chat", post(handle_ai_chat))
         .route("/api/ai/sessions", get(handle_list_sessions))
-        .route("/api/ai/sessions/{id}", get(handle_get_session))
-        .route("/api/ai/sessions/{id}", delete(handle_delete_session))
-        .route("/api/ai/sessions/{id}", put(handle_rename_session))
-        .route("/api/ai/settings", get(handle_get_settings))
-        .route("/api/ai/settings", put(handle_update_settings))
+        .route("/api/ai/sessions/{id}", get(handle_get_session).delete(handle_delete_session).put(handle_rename_session))
+        .route("/api/ai/settings", get(handle_get_settings).put(handle_update_settings))
         .route("/api/ai/tools", get(handle_list_tools))
-        .route("/api/ai/mcp-servers", get(handle_list_mcp_servers))
-        .route("/api/ai/mcp-servers", post(handle_add_mcp_server))
-        .route("/api/ai/mcp-servers/{id}", delete(handle_delete_mcp_server))
+        .route("/api/ai/mcp-servers", get(handle_list_mcp_servers).post(handle_add_mcp_server))
+        .route("/api/ai/mcp-servers/{id}/delete", post(handle_delete_mcp_server))
         .route("/api/ai/mcp-servers/{id}/activate", patch(handle_activate_mcp_server))
         .route("/api/ai/mcp-servers/test", post(handle_test_mcp_server))
+        .route("/api/ai/delete-mcp-server", post(handle_delete_mcp_server_post))
+        .route("/api/ai/activate-mcp-server", post(handle_activate_server_post))
 }

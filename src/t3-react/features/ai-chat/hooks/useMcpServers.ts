@@ -51,7 +51,7 @@ export function useMcpServers(): UseMcpServersReturn {
     const res = await fetch(`${API_BASE_URL}/api/ai/mcp-servers`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: crypto.randomUUID(), name, url, api_key: apiKey || '', enabled: true }),
+      body: JSON.stringify({ id: crypto.randomUUID(), name, url, api_key: apiKey || '', enabled: false }),
     });
     const body = await res.json().catch(() => ({ ok: false, error: 'Invalid server response' }));
     if (!body.ok) {
@@ -61,12 +61,20 @@ export function useMcpServers(): UseMcpServersReturn {
   }, [refresh]);
 
   const removeServer = useCallback(async (id: string) => {
-    await fetch(`${API_BASE_URL}/api/ai/mcp-servers/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/api/ai/delete-mcp-server`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
     setServers((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
   const activateServer = useCallback(async (id: string) => {
-    await fetch(`${API_BASE_URL}/api/ai/mcp-servers/${id}/activate`, { method: 'PATCH' });
+    await fetch(`${API_BASE_URL}/api/ai/activate-mcp-server`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
     await refresh();
   }, [refresh]);
 
