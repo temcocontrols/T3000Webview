@@ -141,43 +141,30 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
   const isUser = message.role === 'user';
 
   return (
-    <div
-      className={`${styles.messageWrapper} ${
-        isUser ? styles.messageWrapperUser : styles.messageWrapperAssistant
-      }`}
-    >
+    <div className={styles.messageWrapper}>
       {/* Meta: role label + timestamp */}
       <div className={styles.messageMeta}>
-        <span style={{ fontWeight: 600 }}>{isUser ? 'You' : 'AI'}</span>
+        <span className={styles.messageRole}>{isUser ? 'User' : 'Model'}</span>
         <span>{formatTime(message.timestamp)}</span>
       </div>
 
-      {/* Bubble */}
-      <div
-        className={`${styles.bubble} ${
-          isUser ? styles.bubbleUser : styles.bubbleAssistant
-        } ${isStreaming ? styles.bubbleStreaming : ''}`}
-      >
-        {isUser ? (
-          message.content
-        ) : htmlContent ? (
-          <div
-            className={styles.mdWrapper}
-            dangerouslySetInnerHTML={{ __html: htmlContent }}
-          />
-        ) : isStreaming ? (
-          <span style={{ opacity: 0.5 }}>▊</span>
-        ) : null}
+      {/* Content */}
+      {isUser ? (
+        <div className={styles.userContent}>{message.content}</div>
+      ) : htmlContent ? (
+        <div className={styles.mdWrapper} dangerouslySetInnerHTML={{ __html: htmlContent }} />
+      ) : isStreaming ? (
+        <span style={{ opacity: 0.5, padding: '0 16px' }}>▊</span>
+      ) : null}
 
-        {/* Tool call cards (assistant messages only) */}
-        {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
-          <div style={{ marginTop: 10 }}>
-            {message.toolCalls.map((tc) => (
-              <ToolCallCard key={tc.id} tool={tc} />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Tool call cards */}
+      {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
+        <div style={{ marginTop: 10, padding: '0 16px' }}>
+          {message.toolCalls.map((tc) => (
+            <ToolCallCard key={tc.id} tool={tc} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

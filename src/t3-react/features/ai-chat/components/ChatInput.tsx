@@ -88,10 +88,10 @@ export const ChatInput: React.FC<Props> = ({
         />
       </div>
 
-      {/* Actions row — below the input */}
-      <div className={styles.inputBadgeRow}>
+      {/* Bottom row: provider badge (left) + streaming indicator (right) */}
+      <div className={styles.inputBottomRow}>
         <span className={styles.inputBadge}>
-          <SparkleRegular style={{ fontSize: 12, marginRight: 4, verticalAlign: 'middle' }} />
+          <SparkleRegular style={{ fontSize: 11, marginRight: 3, verticalAlign: 'middle' }} />
           {providerLabel}
         </span>
         {isStreaming && (

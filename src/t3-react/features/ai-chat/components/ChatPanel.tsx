@@ -47,10 +47,21 @@ export const ChatPanel: React.FC = () => {
     isStreaming,
     streamingText,
     activeToolCalls,
+    sessionId,
     sendMessage,
     abort,
     clearSession,
   } = useAiChatStream(aiSettings);
+
+  // Sync backend session ID to history sidebar
+  const prevStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming && sessionId && messages.length > 0) {
+      setActiveSessionId(sessionId);
+      refreshSessions();
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming, sessionId, messages.length, setActiveSessionId, refreshSessions]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -92,14 +103,9 @@ export const ChatPanel: React.FC = () => {
 
   const providerLabel = `${aiSettings.provider}:${aiSettings.model}`;
 
-  // Refresh sidebar sessions after each completed response
-  const prevStreamingRef = useRef(isStreaming);
-  useEffect(() => {
-    if (prevStreamingRef.current && !isStreaming && messages.length > 0) {
-      refreshSessions();
-    }
-    prevStreamingRef.current = isStreaming;
-  }, [isStreaming, messages.length, refreshSessions]);
+  const activeSessionTitle = activeSessionId
+    ? sessions.find((s) => s.id === activeSessionId)?.title || ''
+    : '';
 
   const handleNewChat = useCallback(() => {
     clearSession();
@@ -139,14 +145,16 @@ export const ChatPanel: React.FC = () => {
 
       {/* ── Main chat area ── */}
       <div className={styles.root}>
-        {/* ── Header ── */}
-        <div className={styles.header}>
-          <div className={styles.headerTitle}>
-            <BotSparkleRegular style={{ fontSize: 20 }} />
-            AI Assistant
+        {/* ── Header — only visible when session is active ── */}
+        {activeSessionTitle && (
+          <div className={styles.header}>
+            <div className={styles.headerTitle}>
+              <BotSparkleRegular style={{ fontSize: 16 }} />
+              <span>{activeSessionTitle}</span>
+            </div>
+            <div className={styles.headerActions} />
           </div>
-          <div className={styles.headerActions} />
-        </div>
+        )}
 
       {/* ── Messages area ── */}
       <div className={styles.messagesArea} ref={messagesContainerRef}>
@@ -195,7 +203,12 @@ export const ChatPanel: React.FC = () => {
         providerLabel={providerLabel}
       />
 
-        {/* ── Settings Drawer ── */}
+      {/* ── Disclaimer ── */}
+      <p className={styles.disclaimer}>
+        AI may make mistakes. Verify important info.
+      </p>
+
+      {/* ── Settings Drawer ── */}
         <SettingsDrawer
           open={settingsOpen}
           settings={aiSettings}

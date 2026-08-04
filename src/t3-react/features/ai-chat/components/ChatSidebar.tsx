@@ -1,20 +1,15 @@
 /**
- * ChatSidebar — Copilot-style collapsible sidebar.
+ * ChatSidebar — Copilot-style sidebar.
  *
- * Shows:
- *   - + New Chat button
- *   - Conversation history (scrollable)
- *   - Settings button at bottom
+ * Matches Copilot's design: flat items, no buttons, just hover highlights.
  */
 
 import React, { useState } from 'react';
-import { Button, Tooltip } from '@fluentui/react-components';
+import { Tooltip } from '@fluentui/react-components';
 import {
   AddRegular,
-  DismissRegular,
   DeleteRegular,
-  PanelLeftContractRegular,
-  PanelLeftExpandRegular,
+  NavigationRegular,
   SettingsRegular,
 } from '@fluentui/react-icons';
 import type { SessionSummary } from '../hooks/useChatHistory';
@@ -60,30 +55,23 @@ export const ChatSidebar: React.FC<Props> = ({
     <div className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
       {/* Header */}
       <div className={styles.sidebarHeader}>
-        {!collapsed && <span className={styles.sidebarTitle}>Chats</span>}
+        {!collapsed && <span className={styles.sidebarTitle}>AI Assistant</span>}
         <Tooltip content={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} relationship="label">
-          <Button
-            appearance="subtle"
-            icon={collapsed ? <PanelLeftExpandRegular /> : <PanelLeftContractRegular />}
-            size="small"
+          <button
+            className={styles.sidebarIconBtn}
             onClick={onToggleCollapse}
-          />
+          >
+            <NavigationRegular />
+          </button>
         </Tooltip>
       </div>
 
-      {/* New Chat button */}
+      {/* New Chat — flat item, not a button */}
       {!collapsed && (
-        <div className={styles.sidebarNewChat}>
-          <Button
-            appearance="primary"
-            icon={<AddRegular />}
-            size="small"
-            onClick={onNewChat}
-            style={{ width: '100%', justifyContent: 'flex-start' }}
-          >
-            New Chat
-          </Button>
-        </div>
+        <button className={styles.sidebarNewChatItem} onClick={onNewChat}>
+          <AddRegular fontSize={16} style={{ marginRight: 8 }} />
+          New chat
+        </button>
       )}
 
       {/* History list */}
@@ -127,26 +115,18 @@ export const ChatSidebar: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Settings at bottom */}
+      {/* Settings — flat item at bottom */}
       <div className={styles.sidebarFooter}>
         {!collapsed ? (
-          <Button
-            appearance="subtle"
-            icon={<SettingsRegular />}
-            size="small"
-            onClick={onOpenSettings}
-            style={{ width: '100%', justifyContent: 'flex-start' }}
-          >
+          <button className={styles.sidebarFooterItem} onClick={onOpenSettings}>
+            <SettingsRegular fontSize={16} style={{ marginRight: 8 }} />
             Settings
-          </Button>
+          </button>
         ) : (
           <Tooltip content="Settings" relationship="label">
-            <Button
-              appearance="subtle"
-              icon={<SettingsRegular />}
-              size="small"
-              onClick={onOpenSettings}
-            />
+            <button className={styles.sidebarIconBtn} onClick={onOpenSettings}>
+              <SettingsRegular />
+            </button>
           </Tooltip>
         )}
       </div>

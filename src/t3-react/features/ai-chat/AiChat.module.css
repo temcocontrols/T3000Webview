@@ -39,7 +39,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 12px 8px 16px;
+  padding: 0 16px;
+  height: 38px;
+  border-bottom: 1px solid var(--colorNeutralStroke3, #e8e8e8);
 }
 .sidebarTitle {
   font-size: 14px;
@@ -47,7 +49,41 @@
   color: var(--colorNeutralForeground1);
 }
 .sidebarNewChat {
-  padding: 0 12px 12px 12px;
+  padding: 8px 12px 12px 12px;
+}
+.sidebarNewChatItem {
+  display: flex;
+  align-items: center;
+  width: calc(100% - 16px);
+  margin: 4px 8px 8px 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--colorNeutralForeground1);
+  text-align: left;
+}
+.sidebarNewChatItem:hover {
+  background-color: var(--colorNeutralBackground3);
+}
+.sidebarIconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  color: var(--colorNeutralForeground2);
+  font-size: 16px;
+}
+.sidebarIconBtn:hover {
+  background-color: var(--colorNeutralBackground3);
+  color: var(--colorNeutralForeground1);
 }
 .sidebarHistory {
   flex: 1;
@@ -66,8 +102,8 @@
 .sidebarEmpty {
   font-size: 12px;
   color: var(--colorNeutralForeground3);
-  padding: 16px;
-  text-align: center;
+  padding: 12px 16px;
+  text-align: left;
 }
 .sidebarItem {
   display: flex;
@@ -123,8 +159,24 @@
   color: var(--colorStatusDangerForeground1);
 }
 .sidebarFooter {
-  padding: 8px 12px;
+  padding: 4px 8px;
   border-top: 1px solid var(--colorNeutralStroke2);
+}
+.sidebarFooterItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--colorNeutralForeground1);
+  text-align: left;
+}
+.sidebarFooterItem:hover {
+  background-color: var(--colorNeutralBackground3);
 }
 
 /* ── Header ── */
@@ -132,8 +184,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--colorNeutralStroke2);
+  padding: 0 20px;
+  height: 38px;
+  border-bottom: 1px solid var(--colorNeutralStroke3, #e8e8e8);
   background-color: var(--colorNeutralBackground1);
   flex-shrink: 0;
   gap: 12px;
@@ -142,9 +195,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--colorNeutralForeground1);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--colorNeutralForeground2);
 }
 .headerActions {
   display: flex;
@@ -180,52 +233,36 @@
 .messageWrapper {
   display: flex;
   flex-direction: column;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   padding: 0 16px;
-}
-.messageWrapperUser {
-  align-items: flex-end;
-}
-.messageWrapperAssistant {
-  align-items: flex-start;
 }
 .messageMeta {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
-  font-size: 12px;
-  color: var(--colorNeutralForeground3);
-  padding: 0 4px;
+  font-size: 11px;
+  color: var(--colorNeutralForegroundDisabled, #bdbdbd);
+}
+.messageRole {
+  font-weight: 500;
 }
 
-/* ── Message bubble ── */
-.bubble {
-  max-width: 82%;
-  padding: 12px 16px;
-  border-radius: 16px;
+/* User message — plain text, no bubble */
+.userContent {
+  font-size: 13px;
   line-height: 1.6;
-  font-size: 14px;
-  word-break: break-word;
-  overflow-wrap: break-word;
-}
-.bubbleUser {
-  background-color: var(--colorBrandBackground);
-  color: var(--colorNeutralForegroundOnBrand);
-  border-bottom-right-radius: 4px;
-}
-.bubbleAssistant {
-  background-color: var(--colorNeutralBackground2);
   color: var(--colorNeutralForeground1);
-  border-bottom-left-radius: 4px;
-}
-.bubbleStreaming {
-  box-shadow: 0 0 0 1px var(--colorBrandStroke1);
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* ── Markdown content ── */
 .mdWrapper {
   line-height: 1.6;
+  font-size: 13px;
+  color: var(--colorNeutralForeground1);
 }
 .mdWrapper p {
   margin: 0 0 8px 0;
@@ -338,8 +375,8 @@
 .systemMessage {
   text-align: center;
   padding: 8px 16px;
-  color: var(--colorNeutralForeground3);
-  font-size: 13px;
+  color: var(--colorNeutralForeground4, #b0b0b0);
+  font-size: 11px;
   font-style: italic;
   margin-bottom: 8px;
 }
@@ -404,16 +441,16 @@
 
 /* ── Input area ── */
 .inputArea {
-  border-top: 1px solid var(--colorNeutralStroke3, transparent);
-  padding: 14px 20px 12px 20px;
+  border-top: 1px solid var(--colorNeutralStroke3, #e8e8e8);
+  padding: 12px 20px 8px 20px;
   background-color: var(--colorNeutralBackground1);
   flex-shrink: 0;
 }
-.inputBadgeRow {
+.inputBottomRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
+  justify-content: space-between;
+  margin-top: 8px;
 }
 .inputBadge {
   font-size: 11px;
@@ -462,7 +499,7 @@
   border: 1px solid var(--colorNeutralStroke3, #e8e8e8);
   border-radius: 12px;
   padding: 12px 16px;
-  font-size: 15px;
+  font-size: 13px;
   font-family: inherit;
   line-height: 1.5;
   outline: none;
@@ -480,7 +517,8 @@
   background-color: var(--colorNeutralBackground2);
 }
 .inputTextarea::placeholder {
-  color: var(--colorNeutralForeground3);
+  color: var(--colorNeutralForeground4, #b0b0b0);
+  font-size: 13px;
 }
 .inputTextarea::-webkit-scrollbar {
   width: 3px;
@@ -721,4 +759,14 @@
   font-size: 13px;
   color: var(--colorStatusDangerForeground1, #c50f1f);
   word-break: break-word;
+}
+
+/* ── Disclaimer ── */
+.disclaimer {
+  text-align: center;
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+  padding: 4px 20px 6px 20px;
+  margin: 0;
+  flex-shrink: 0;
 }
