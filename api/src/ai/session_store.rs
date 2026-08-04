@@ -182,3 +182,12 @@ pub fn save_ai_settings(settings: &Value) -> io::Result<()> {
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
     fs::write(ai_settings_path(), &json)
 }
+
+pub fn load_ai_settings() -> io::Result<Value> {
+    let path = ai_settings_path();
+    if !path.exists() {
+        return Err(io::Error::new(io::ErrorKind::NotFound, "No saved settings"));
+    }
+    let json = fs::read_to_string(&path)?;
+    serde_json::from_str(&json).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+}

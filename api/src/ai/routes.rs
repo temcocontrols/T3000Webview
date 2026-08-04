@@ -226,14 +226,17 @@ async fn process_chat(
                     .map(|m| m.content.as_str())
                     .unwrap_or("New Chat"),
             );
-            let _ = super::session_store::save_session(&super::session_store::SessionFile {
+            match super::session_store::save_session(&super::session_store::SessionFile {
                 id: session.id.clone(),
-                title,
+                title: title.clone(),
                 created_at: Utc::now().to_rfc3339(),
                 provider: session.provider.clone(),
                 model: session.model.clone(),
                 messages: current_messages.clone(),
-            });
+            }) {
+                Ok(()) => info!("[AI] Session saved: {} ({})", session.id, title),
+                Err(e) => info!("[AI] Failed to save session {}: {}", session.id, e),
+            }
 
             session_manager
                 .update_messages(&session.id, current_messages)
@@ -422,13 +425,15 @@ pub async fn handle_rename_session(
 // ═══ GET /api/ai/settings ═══
 
 pub async fn handle_get_settings() -> impl IntoResponse {
-    // Phase 3: read from DB. Phase 1: return defaults.
-    Json(json!({
-        "provider": "local",
-        "model": "llama3.1:8b",
-        "endpoint": "http://localhost:11434/v1",
-        "api_key": ""
-    }))
+    match super::session_store::load_ai_settings() {
+        Ok(settings) => Json(settings),
+        Err(_) => Json(json!({
+            "provider": "local",
+            "model": "llama3.1:8b",
+            "endpoint": "http://localhost:11434/v1",
+            "api_key": ""
+        })),
+    }
 }
 
 // ═══ PUT /api/ai/settings ═══

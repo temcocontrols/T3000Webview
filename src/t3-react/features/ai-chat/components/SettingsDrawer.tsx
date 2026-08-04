@@ -135,7 +135,12 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, onSave, onClos
         }),
       });
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
         setTestResult('success');
+        // Auto-fill model name from response
+        if (data.model && data.model !== model) {
+          setModel(data.model);
+        }
       } else {
         const text = await res.text().catch(() => '');
         setTestResult('error');
