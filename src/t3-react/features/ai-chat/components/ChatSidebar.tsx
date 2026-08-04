@@ -11,8 +11,11 @@ import {
   DeleteRegular,
   NavigationRegular,
   SettingsRegular,
+  WrenchRegular,
+  BoxRegular,
 } from '@fluentui/react-icons';
 import type { SessionSummary } from '../hooks/useChatHistory';
+import type { McpServerInfo } from '../hooks/useMcpServers';
 import styles from '../AiChat.module.css';
 
 interface Props {
@@ -24,6 +27,10 @@ interface Props {
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
   onOpenSettings: () => void;
+  mcpServers?: McpServerInfo[];
+  onOpenTools: () => void;
+  providerLabel?: string;
+  builtInToolCount?: number;
 }
 
 const formatDate = (iso: string): string => {
@@ -48,8 +55,14 @@ export const ChatSidebar: React.FC<Props> = ({
   onSelectSession,
   onDeleteSession,
   onOpenSettings,
+  mcpServers = [],
+  onOpenTools,
+  providerLabel = '',
+  builtInToolCount = 44,
 }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  const extCount = mcpServers.filter((s) => s.enabled).length;
 
   return (
     <div className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
@@ -112,6 +125,54 @@ export const ChatSidebar: React.FC<Props> = ({
               </button>
             ))
           )}
+        </div>
+      )}
+
+      {/* ── Tools panel ── */}
+      {!collapsed && (
+        <div className={styles.toolsPanel}>
+          <button className={styles.toolsPanelHeader} onClick={onOpenTools}>
+            <span className={styles.toolsPanelLabel}>
+              <WrenchRegular fontSize={16} style={{ marginRight: 5 }} />
+              Tools
+            </span>
+            <span className={styles.sidebarItemMeta} style={{ fontSize: 10 }}>
+              {builtInToolCount}{extCount > 0 ? ` + ${extCount}` : ''}
+            </span>
+          </button>
+
+          <div className={styles.toolsPanelBody}>
+            {/* Built-in */}
+            <div className={styles.toolsPanelItem}>
+              <BoxRegular fontSize={16} className={styles.toolsPanelItemIcon} />
+              <div className={styles.toolsPanelItemContent}>
+                <span className={styles.toolsPanelItemTitle}>Built-in T3000 MCP</span>
+                <span className={styles.toolsPanelItemMeta}>{builtInToolCount} tools</span>
+              </div>
+            </div>
+
+            {/* External MCP servers */}
+            {mcpServers.filter((s) => s.enabled).map((srv) => (
+              <div key={srv.id} className={styles.toolsPanelItem}>
+                <span className={styles.statusDot} />
+                <div className={styles.toolsPanelItemContent}>
+                  <span className={styles.toolsPanelItemTitle}>{srv.name}</span>
+                  <span className={styles.toolsPanelItemMeta} title={srv.url}>
+                    {srv.url.length > 28 ? srv.url.slice(0, 28) + '…' : srv.url}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {mcpServers.filter((s) => s.enabled).length === 0 && (
+              <button className={styles.toolsPanelAddHint} onClick={onOpenTools}>
+                <AddRegular fontSize={16} className={styles.toolsPanelItemIcon} style={{ opacity: 0.4 }} />
+                <span className={styles.toolsPanelItemMeta} style={{ fontStyle: 'italic' }}>
+                  Connect external MCP servers
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 

@@ -3,6 +3,7 @@
 // Mount all AI routes under /api/ai/* via create_ai_routes().
 // Called from server.rs during app construction.
 
+pub mod mcp_client;
 pub mod providers;
 pub mod routes;
 pub mod session;

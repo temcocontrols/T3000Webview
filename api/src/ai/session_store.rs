@@ -10,10 +10,12 @@
 
 use crate::constants::get_ai_sessions_path;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
 
+use super::mcp_client::McpServerConfig;
 use super::types::Message;
 
 // ── Persisted types ──
@@ -144,4 +146,39 @@ pub fn auto_title(first_user_message: &str) -> String {
     } else {
         format!("{}…", &trimmed[..50])
     }
+}
+
+// ── MCP Servers config ──
+
+fn mcp_servers_path() -> PathBuf {
+    sessions_dir().join("mcp-servers.json")
+}
+
+pub fn load_mcp_servers() -> io::Result<Vec<McpServerConfig>> {
+    let path = mcp_servers_path();
+    if !path.exists() {
+        return Ok(vec![]);
+    }
+    let json = fs::read_to_string(&path)?;
+    serde_json::from_str(&json).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+}
+
+pub fn save_mcp_servers(configs: &[McpServerConfig]) -> io::Result<()> {
+    ensure_dir()?;
+    let json = serde_json::to_string_pretty(configs)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    fs::write(mcp_servers_path(), &json)
+}
+
+// ── AI Settings ──
+
+fn ai_settings_path() -> PathBuf {
+    sessions_dir().join("settings.json")
+}
+
+pub fn save_ai_settings(settings: &Value) -> io::Result<()> {
+    ensure_dir()?;
+    let json = serde_json::to_string_pretty(settings)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    fs::write(ai_settings_path(), &json)
 }

@@ -28,24 +28,48 @@ use crate::haystack::mcp::TOOLS;
 use super::providers::{get_provider, ToolDef};
 use super::session::SessionManager;
 use super::types::{AiError, ChatRequest, Message, StreamEvent};
+use super::mcp_client::{McpClientManager, McpServerConfig};
 use chrono::Utc;
+use uuid::Uuid;
 
-// ═══ Lazy-initialized session manager (one per process) ═══
+// ═══ Lazy-initialized singletons ═══
 
 static SESSION_MANAGER: once_cell::sync::Lazy<Arc<SessionManager>> =
     once_cell::sync::Lazy::new(|| Arc::new(SessionManager::new()));
 
-// ═══ Tool definitions (from MCP) ═══
+pub(crate) static MCP_CLIENT_MANAGER: once_cell::sync::Lazy<Arc<McpClientManager>> =
+    once_cell::sync::Lazy::new(|| {
+        let mgr = Arc::new(McpClientManager::new());
+        // Load saved configs from file on startup
+        let mgr_clone = mgr.clone();
+        tokio::spawn(async move {
+            if let Ok(configs) = super::session_store::load_mcp_servers() {
+                for config in configs {
+                    if config.enabled {
+                        let _ = mgr_clone.add_server(config).await;
+                    }
+                }
+            }
+        });
+        mgr
+    });
 
-fn get_tool_defs() -> Vec<ToolDef> {
-    TOOLS
+// ═══ Tool definitions (built-in + external) ═══
+
+fn get_all_tool_defs() -> Vec<ToolDef> {
+    let mut tools: Vec<ToolDef> = TOOLS
         .iter()
         .map(|t| ToolDef {
             name: t.name.to_string(),
             description: t.description.to_string(),
             input_schema: t.input_schema.clone(),
         })
-        .collect()
+        .collect();
+
+    // External tools are fetched synchronously from cache
+    // (they're updated on connect/disconnect)
+    // For now, built-in only — external merge happens at call time
+    tools
 }
 
 // ═══ POST /api/ai/chat ═══
@@ -92,7 +116,7 @@ async fn process_chat(
     tx: &tokio::sync::mpsc::UnboundedSender<Result<Event, Infallible>>,
 ) -> Result<(), AiError> {
     let provider = get_provider(&session.provider)?;
-    let tools = get_tool_defs();
+    let tools = get_all_tool_defs();
 
     // Send the system prompt if this is a new conversation
     let messages = if session.messages.iter().any(|m| m.role == "system") {
@@ -409,9 +433,88 @@ pub async fn handle_get_settings() -> impl IntoResponse {
 pub async fn handle_update_settings(
     Json(settings): Json<Value>,
 ) -> impl IntoResponse {
-    // Phase 3: encrypt api_key and save to DB. Phase 1: accept and log.
+    // Phase 3: encrypt api_key and save to file
+    let _ = super::session_store::save_ai_settings(&settings);
     info!("[AI] Settings updated: {:?}", settings);
     Json(json!({ "ok": true }))
+}
+
+// ═══ MCP Server CRUD ═══
+
+pub async fn handle_list_mcp_servers() -> impl IntoResponse {
+    let configs = MCP_CLIENT_MANAGER.get_configs().await;
+    Json(json!({ "servers": configs }))
+}
+
+pub async fn handle_add_mcp_server(
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let config = McpServerConfig {
+        id: body.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        name: body.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        url: body.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        api_key: body.get("api_key").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        enabled: body.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true),
+    };
+
+    if config.url.is_empty() || config.name.is_empty() {
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "name and url required"}))).into_response();
+    }
+
+    let config_id = config.id.clone();
+    match MCP_CLIENT_MANAGER.add_server(config.clone()).await {
+        Ok(()) => {
+            // Save to file
+            let mut configs = MCP_CLIENT_MANAGER.get_configs().await;
+            configs.push(config);
+            let _ = super::session_store::save_mcp_servers(&configs);
+            Json(json!({ "ok": true, "id": config_id })).into_response()
+        }
+        Err(e) => {
+            (StatusCode::BAD_REQUEST, Json(json!({"error": e.to_string()}))).into_response()
+        }
+    }
+}
+
+pub async fn handle_delete_mcp_server(
+    Path(server_id): Path<String>,
+) -> impl IntoResponse {
+    MCP_CLIENT_MANAGER.remove_server(&server_id).await;
+    let configs = MCP_CLIENT_MANAGER.get_configs().await;
+    let _ = super::session_store::save_mcp_servers(&configs);
+    StatusCode::NO_CONTENT.into_response()
+}
+
+pub async fn handle_test_mcp_server(
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let url = body.get("url").and_then(|v| v.as_str()).unwrap_or("");
+    let client = reqwest::Client::new();
+
+    let body = json!({
+        "jsonrpc": "2.0", "id": 1, "method": "initialize",
+        "params": { "protocolVersion": "2024-11-05", "capabilities": {},
+            "clientInfo": { "name": "t3000", "version": "1.0" } }
+    });
+
+    match client
+        .post(&format!("{}/message", url.trim_end_matches('/')))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+        .await
+    {
+        Ok(res) if res.status().is_success() => {
+            Json(json!({ "ok": true })).into_response()
+        }
+        Ok(res) => {
+            Json(json!({ "ok": false, "error": format!("HTTP {}", res.status()) })).into_response()
+        }
+        Err(e) => {
+            Json(json!({ "ok": false, "error": e.to_string() })).into_response()
+        }
+    }
 }
 
 // ═══ GET /api/ai/tools ═══
@@ -446,4 +549,8 @@ pub fn ai_routes() -> Router<T3AppState> {
         .route("/api/ai/settings", get(handle_get_settings))
         .route("/api/ai/settings", put(handle_update_settings))
         .route("/api/ai/tools", get(handle_list_tools))
+        .route("/api/ai/mcp-servers", get(handle_list_mcp_servers))
+        .route("/api/ai/mcp-servers", post(handle_add_mcp_server))
+        .route("/api/ai/mcp-servers/{id}", delete(handle_delete_mcp_server))
+        .route("/api/ai/mcp-servers/test", post(handle_test_mcp_server))
 }

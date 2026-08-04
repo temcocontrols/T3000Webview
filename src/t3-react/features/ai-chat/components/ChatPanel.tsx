@@ -14,11 +14,14 @@ import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { ArrowDownRegular, BotSparkleRegular } from '@fluentui/react-icons';
 import { useAiChatStream } from '../hooks/useAiChatStream';
 import { useChatHistory } from '../hooks/useChatHistory';
+import { useMcpServers } from '../hooks/useMcpServers';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { EmptyState } from './EmptyState';
 import { ChatSidebar } from './ChatSidebar';
 import { SettingsDrawer } from './SettingsDrawer';
+import { ToolsDrawer } from './ToolsDrawer';
+import { AddServerDialog } from './AddServerDialog';
 import type { AiProviderSettings } from './SettingsDrawer';
 import styles from '../AiChat.module.css';
 
@@ -48,6 +51,8 @@ const saveSettings = (s: AiProviderSettings) => {
 export const ChatPanel: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [addServerOpen, setAddServerOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
 
   const {
@@ -57,6 +62,13 @@ export const ChatPanel: React.FC = () => {
     deleteSession,
     refreshSessions,
   } = useChatHistory();
+
+  const {
+    servers: mcpServers,
+    addServer,
+    removeServer,
+    testServer,
+  } = useMcpServers();
 
   const {
     messages,
@@ -163,6 +175,10 @@ export const ChatPanel: React.FC = () => {
         onSelectSession={handleSelectSession}
         onDeleteSession={handleDeleteSession}
         onOpenSettings={() => setSettingsOpen(true)}
+        mcpServers={mcpServers}
+        onOpenTools={() => setToolsOpen(true)}
+        providerLabel={providerLabel}
+        builtInToolCount={44}
       />
 
       {/* ── Main chat area ── */}
@@ -240,6 +256,23 @@ export const ChatPanel: React.FC = () => {
           onSave={(s) => { setAiSettings(s); saveSettings(s); setSettingsOpen(false); }}
           onClose={() => setSettingsOpen(false)}
         />
+
+      {/* ── Tools Drawer ── */}
+      <ToolsDrawer
+        open={toolsOpen}
+        mcpServers={mcpServers}
+        onClose={() => setToolsOpen(false)}
+        onAddServer={() => setAddServerOpen(true)}
+        onRemoveServer={(id) => removeServer(id)}
+      />
+
+      {/* ── Add MCP Server Dialog ── */}
+      <AddServerDialog
+        open={addServerOpen}
+        onClose={() => setAddServerOpen(false)}
+        onAdd={addServer}
+        onTest={testServer}
+      />
       </div>
     </div>
   );

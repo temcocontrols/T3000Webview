@@ -26,6 +26,14 @@ pub async fn execute_tool(
 
     info!("[AI] Executing tool: {} with args: {}", name, arguments);
 
+    // Try external MCP servers first
+    if let Some(result) = super::routes::MCP_CLIENT_MANAGER
+        .try_call_external(name, &args)
+        .await
+    {
+        return result.map_err(|e| e.to_string());
+    }
+
     // Get DB connection from app state
     let db = match mcp::get_db(state).await {
         Ok(db) => db,
