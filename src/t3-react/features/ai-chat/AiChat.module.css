@@ -159,6 +159,7 @@
   color: var(--colorStatusDangerForeground1);
 }
 .sidebarFooter {
+  margin-top: auto;
   padding: 4px 8px;
   border-top: 1px solid var(--colorNeutralStroke2);
 }
@@ -237,6 +238,17 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.activeTag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--colorNeutralForeground3);
+  background: var(--colorNeutralBackground3);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
 }
 .toolsPanelItemMeta {
   font-size: 10px;
@@ -508,17 +520,21 @@
 
 /* ── External server cards (drawer) ── */
 .drawerServerCard {
-  position: relative;
   border: 1px solid var(--colorNeutralStroke2);
   border-radius: 8px;
   padding: 8px 10px;
   margin-bottom: 6px;
 }
+.drawerServerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 .drawerServerHeader {
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 100%;
+  flex: 1;
   border: none;
   background: none;
   cursor: pointer;
@@ -544,9 +560,6 @@
   margin-top: 4px;
 }
 .drawerServerRemove {
-  position: absolute;
-  top: 6px;
-  right: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -557,10 +570,54 @@
   background: none;
   cursor: pointer;
   color: var(--colorNeutralForeground3);
+  flex-shrink: 0;
 }
 .drawerServerRemove:hover {
   background: var(--colorStatusDangerBackground1);
   color: var(--colorStatusDangerForeground1);
+}
+
+/* ── Toggle switch ── */
+.drawerServerToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.drawerServerToggleLabel {
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+}
+.toggleSwitch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--colorNeutralStroke2);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s;
+}
+.toggleSwitchOn {
+  background: var(--colorBrandBackground);
+}
+.toggleSwitchKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  transition: left 0.15s;
+}
+.toggleSwitchOn .toggleSwitchKnob {
+  left: 18px;
+}
+.toggleSwitch:disabled {
+  cursor: default;
+  opacity: 0.8;
 }
 
 /* ── Inline add-server form (drawer) ── */

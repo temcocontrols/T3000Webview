@@ -18,6 +18,7 @@ interface UseMcpServersReturn {
   loading: boolean;
   addServer: (name: string, url: string, apiKey?: string) => Promise<void>;
   removeServer: (id: string) => Promise<void>;
+  activateServer: (id: string) => Promise<void>;
   testServer: (url: string) => Promise<{ ok: boolean; error?: string }>;
   refresh: () => Promise<void>;
 }
@@ -52,7 +53,10 @@ export function useMcpServers(): UseMcpServersReturn {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: crypto.randomUUID(), name, url, api_key: apiKey || '', enabled: true }),
     });
-    if (!res.ok) throw new Error('Failed to add server');
+    const body = await res.json().catch(() => ({ ok: false, error: 'Invalid server response' }));
+    if (!body.ok) {
+      throw new Error(body.error || 'Failed to add server');
+    }
     await refresh();
   }, [refresh]);
 
@@ -60,6 +64,11 @@ export function useMcpServers(): UseMcpServersReturn {
     await fetch(`${API_BASE_URL}/api/ai/mcp-servers/${id}`, { method: 'DELETE' });
     setServers((prev) => prev.filter((s) => s.id !== id));
   }, []);
+
+  const activateServer = useCallback(async (id: string) => {
+    await fetch(`${API_BASE_URL}/api/ai/mcp-servers/${id}/activate`, { method: 'PATCH' });
+    await refresh();
+  }, [refresh]);
 
   const testServer = useCallback(async (url: string) => {
     const res = await fetch(`${API_BASE_URL}/api/ai/mcp-servers/test`, {
@@ -71,5 +80,5 @@ export function useMcpServers(): UseMcpServersReturn {
     return { ok: data.ok, error: data.error };
   }, []);
 
-  return { servers, loading, addServer, removeServer, testServer, refresh };
+  return { servers, loading, addServer, removeServer, activateServer, testServer, refresh };
 }

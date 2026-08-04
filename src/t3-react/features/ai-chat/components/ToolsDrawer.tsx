@@ -30,6 +30,7 @@ interface Props {
   onClose: () => void;
   onAddServer: (name: string, url: string, apiKey?: string) => Promise<void>;
   onRemoveServer: (id: string) => void;
+  onActivateServer: (id: string) => Promise<void>;
   onTestServer: (url: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
@@ -76,6 +77,7 @@ export const ToolsDrawer: React.FC<Props> = ({
   onClose,
   onAddServer,
   onRemoveServer,
+  onActivateServer,
   onTestServer,
 }) => {
   const [search, setSearch] = useState('');
@@ -91,6 +93,7 @@ export const ToolsDrawer: React.FC<Props> = ({
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'idle' | 'ok' | 'fail'>('idle');
   const [testError, setTestError] = useState('');
+  const [addError, setAddError] = useState('');
 
   const filteredCategories = search
     ? TOOL_CATEGORIES
@@ -111,11 +114,16 @@ export const ToolsDrawer: React.FC<Props> = ({
   const handleAdd = useCallback(async () => {
     if (!addName || !addUrl) return;
     setAdding(true);
+    setAddError('');
     try {
       await onAddServer(addName, addUrl, addApiKey || undefined);
       setAddName(''); setAddUrl(''); setAddApiKey('');
       setTestResult('idle');
-    } catch {}
+      setAddError('');
+      setShowAddForm(false);
+    } catch (e: any) {
+      setAddError(e.message || 'Failed to add server');
+    }
     setAdding(false);
   }, [addName, addUrl, addApiKey, onAddServer]);
 
@@ -213,18 +221,43 @@ export const ToolsDrawer: React.FC<Props> = ({
             ) : (
               mcpServers.map((srv) => (
                 <div key={srv.id} className={styles.drawerServerCard}>
-                  <button
-                    className={styles.drawerServerHeader}
-                    onClick={() => toggleServerExpand(srv.id)}
-                  >
-                    <span className={srv.enabled ? styles.statusDot : styles.statusDotOff} />
-                    <span className={styles.drawerServerName}>{srv.name}</span>
-                    {expandedServers.has(srv.id)
-                      ? <ChevronDownRegular fontSize={12} style={{ opacity: 0.4 }} />
-                      : <ChevronRightRegular fontSize={12} style={{ opacity: 0.4 }} />
-                    }
-                  </button>
+                  <div className={styles.drawerServerRow}>
+                    <button
+                      className={styles.drawerServerHeader}
+                      onClick={() => toggleServerExpand(srv.id)}
+                    >
+                      <span className={srv.enabled ? styles.statusDot : styles.statusDotOff} />
+                      <span className={styles.drawerServerName}>{srv.name}</span>
+                      {expandedServers.has(srv.id)
+                        ? <ChevronDownRegular fontSize={12} style={{ opacity: 0.4 }} />
+                        : <ChevronRightRegular fontSize={12} style={{ opacity: 0.4 }} />
+                      }
+                    </button>
+                    <Tooltip content="Remove server" relationship="label">
+                      <button
+                        className={styles.drawerServerRemove}
+                        onClick={() => onRemoveServer(srv.id)}
+                      >
+                        <DeleteRegular fontSize={14} />
+                      </button>
+                    </Tooltip>
+                  </div>
                   <div className={styles.drawerServerUrl}>{srv.url}</div>
+
+                  {/* Toggle switch */}
+                  <div className={styles.drawerServerToggle}>
+                    <span className={styles.drawerServerToggleLabel}>
+                      {srv.enabled ? 'Active' : 'Inactive'}
+                    </span>
+                    <button
+                      className={`${styles.toggleSwitch} ${srv.enabled ? styles.toggleSwitchOn : ''}`}
+                      onClick={() => onActivateServer(srv.id)}
+                      disabled={srv.enabled}
+                    >
+                      <span className={styles.toggleSwitchKnob} />
+                    </button>
+                  </div>
+
                   {expandedServers.has(srv.id) && (
                     <div className={styles.drawerServerTools}>
                       <p className={styles.drawerEmpty} style={{ padding: '4px 0 0 0' }}>
@@ -232,14 +265,6 @@ export const ToolsDrawer: React.FC<Props> = ({
                       </p>
                     </div>
                   )}
-                  <Tooltip content="Remove server" relationship="label">
-                    <button
-                      className={styles.drawerServerRemove}
-                      onClick={() => onRemoveServer(srv.id)}
-                    >
-                      <DeleteRegular fontSize={14} />
-                    </button>
-                  </Tooltip>
                 </div>
               ))
             )}
@@ -265,19 +290,19 @@ export const ToolsDrawer: React.FC<Props> = ({
                 value={addName}
                 onChange={(e) => setAddName(e.currentTarget.value)}
                 placeholder="Display name (e.g. Weather API)"
-                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 10 }}
+                style={{ height: 30, fontSize: 10, width: '100%', marginBottom: 10 }}
               />
               <Input
                 value={addUrl}
                 onChange={(e) => setAddUrl(e.currentTarget.value)}
                 placeholder="MCP URL (e.g. http://x:9001/mcp)"
-                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 10 }}
+                style={{ height: 30, fontSize: 10, width: '100%', marginBottom: 10 }}
               />
               <Input
                 value={addApiKey}
                 onChange={(e) => setAddApiKey(e.currentTarget.value)}
                 placeholder="API Key (optional)"
-                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 12 }}
+                style={{ height: 30, fontSize: 10, width: '100%', marginBottom: 12 }}
               />
 
               <div className={styles.drawerAddActions}>
@@ -309,6 +334,11 @@ export const ToolsDrawer: React.FC<Props> = ({
               {testResult === 'fail' && (
                 <div className={styles.drawerTestFail}>
                   <ErrorCircleRegular fontSize={14} /> {testError || 'Connection failed'}
+                </div>
+              )}
+              {addError && (
+                <div className={styles.drawerTestFail}>
+                  <ErrorCircleRegular fontSize={14} /> {addError}
                 </div>
               )}
             </div>

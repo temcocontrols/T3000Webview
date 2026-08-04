@@ -178,12 +178,19 @@ impl McpClientManager {
         }
     }
 
-    /// Add and connect a new MCP server.
+    /// Add and connect a new MCP server. Does not fail if unreachable —
+    /// the server is registered and will be tried again on next startup.
     pub async fn add_server(&self, config: McpServerConfig) -> Result<(), AiError> {
-        let mut client = McpClient::new(config);
-        client.connect().await?;
+        let mut client = McpClient::new(config.clone());
+
+        // Try connecting but don't fail — server may be offline
+        if let Err(e) = client.connect().await {
+            tracing::warn!("MCP server '{}' unreachable on add: {}", config.name, e);
+        }
 
         let mut clients = self.clients.write().await;
+        // Replace existing with same ID if present
+        clients.retain(|c| c.config.id != config.id);
         clients.push(client);
         Ok(())
     }
@@ -192,6 +199,12 @@ impl McpClientManager {
     pub async fn remove_server(&self, id: &str) {
         let mut clients = self.clients.write().await;
         clients.retain(|c| c.config.id != id);
+    }
+
+    /// Remove all connected clients.
+    pub async fn clear(&self) {
+        let mut clients = self.clients.write().await;
+        clients.clear();
     }
 
     /// Get all external tools from connected servers.

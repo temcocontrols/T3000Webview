@@ -65,6 +65,7 @@ export const ChatPanel: React.FC = () => {
     servers: mcpServers,
     addServer,
     removeServer,
+    activateServer,
     testServer,
   } = useMcpServers();
 
@@ -262,6 +263,7 @@ export const ChatPanel: React.FC = () => {
         onClose={() => setToolsOpen(false)}
         onAddServer={addServer}
         onRemoveServer={(id) => removeServer(id)}
+        onActivateServer={(id) => activateServer(id)}
         onTestServer={testServer}
       />
       </div>

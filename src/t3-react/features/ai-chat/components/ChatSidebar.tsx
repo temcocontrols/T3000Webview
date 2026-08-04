@@ -13,6 +13,7 @@ import {
   SettingsRegular,
   WrenchRegular,
   BoxRegular,
+  GlobeRegular,
 } from '@fluentui/react-icons';
 import type { SessionSummary } from '../hooks/useChatHistory';
 import type { McpServerInfo } from '../hooks/useMcpServers';
@@ -146,32 +147,42 @@ export const ChatSidebar: React.FC<Props> = ({
             <div className={styles.toolsPanelItem}>
               <BoxRegular fontSize={16} className={styles.toolsPanelItemIcon} />
               <div className={styles.toolsPanelItemContent}>
-                <span className={styles.toolsPanelItemTitle}>Built-in T3000 MCP</span>
+                <span className={styles.toolsPanelItemTitle}>
+                  Built-in T3000 MCP
+                  <span className={styles.activeTag}>Active</span>
+                </span>
                 <span className={styles.toolsPanelItemMeta}>{builtInToolCount} tools</span>
               </div>
             </div>
 
-            {/* External MCP servers */}
-            {mcpServers.filter((s) => s.enabled).map((srv) => (
-              <div key={srv.id} className={styles.toolsPanelItem}>
-                <span className={styles.statusDot} />
-                <div className={styles.toolsPanelItemContent}>
-                  <span className={styles.toolsPanelItemTitle}>{srv.name}</span>
-                  <span className={styles.toolsPanelItemMeta} title={srv.url}>
-                    {srv.url.length > 28 ? srv.url.slice(0, 28) + '…' : srv.url}
+            {/* External — show first active server only */}
+            {(() => {
+              const active = mcpServers.filter((s) => s.enabled)[0];
+              if (active) {
+                return (
+                  <div className={styles.toolsPanelItem}>
+                    <GlobeRegular fontSize={16} className={styles.toolsPanelItemIcon} />
+                    <div className={styles.toolsPanelItemContent}>
+                      <span className={styles.toolsPanelItemTitle}>
+                        {active.name}
+                        <span className={styles.activeTag}>Active</span>
+                      </span>
+                      <span className={styles.toolsPanelItemMeta} title={active.url}>
+                        {active.url.length > 28 ? active.url.slice(0, 28) + '…' : active.url}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <button className={styles.toolsPanelAddHint} onClick={onOpenTools}>
+                  <AddRegular fontSize={16} className={styles.toolsPanelItemIcon} style={{ opacity: 0.4 }} />
+                  <span className={styles.toolsPanelItemMeta} style={{ fontStyle: 'italic' }}>
+                    Connect external MCP server
                   </span>
-                </div>
-              </div>
-            ))}
-
-            {mcpServers.filter((s) => s.enabled).length === 0 && (
-              <button className={styles.toolsPanelAddHint} onClick={onOpenTools}>
-                <AddRegular fontSize={16} className={styles.toolsPanelItemIcon} style={{ opacity: 0.4 }} />
-                <span className={styles.toolsPanelItemMeta} style={{ fontStyle: 'italic' }}>
-                  Connect external MCP servers
-                </span>
-              </button>
-            )}
+                </button>
+              );
+            })()}
           </div>
         </div>
       )}

@@ -13,7 +13,7 @@ use axum::{
         sse::{Event, Sse},
         IntoResponse, Json,
     },
-    routing::{delete, get, post, put},
+    routing::{delete, get, patch, post, put},
     Router,
 };
 use serde_json::{json, Value};
@@ -457,8 +457,14 @@ pub async fn handle_add_mcp_server(
         enabled: body.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true),
     };
 
-    if config.url.is_empty() || config.name.is_empty() {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "name and url required"}))).into_response();
+    if config.name.trim().is_empty() {
+        return Json(json!({"ok": false, "error": "Please enter a display name for the server"})).into_response();
+    }
+    if config.url.trim().is_empty() {
+        return Json(json!({"ok": false, "error": "Please enter the MCP server URL"})).into_response();
+    }
+    if !config.url.starts_with("http://") && !config.url.starts_with("https://") {
+        return Json(json!({"ok": false, "error": "URL must start with http:// or https://"})).into_response();
     }
 
     let config_id = config.id.clone();
@@ -471,7 +477,15 @@ pub async fn handle_add_mcp_server(
             Json(json!({ "ok": true, "id": config_id })).into_response()
         }
         Err(e) => {
-            (StatusCode::BAD_REQUEST, Json(json!({"error": e.to_string()}))).into_response()
+            let msg = format!("{}", e);
+            let friendly = if msg.contains("connect") || msg.contains("502") || msg.contains("refused") {
+                "Could not reach the MCP server. Check the URL and make sure the server is running."
+            } else if msg.contains("timeout") {
+                "Connection timed out. The server may be down or the URL is incorrect."
+            } else {
+                "Failed to add server. Please check your settings and try again."
+            };
+            Json(json!({"ok": false, "error": friendly})).into_response()
         }
     }
 }
@@ -489,6 +503,14 @@ pub async fn handle_test_mcp_server(
     Json(body): Json<Value>,
 ) -> impl IntoResponse {
     let url = body.get("url").and_then(|v| v.as_str()).unwrap_or("");
+
+    if url.trim().is_empty() {
+        return Json(json!({ "ok": false, "error": "Please enter a URL to test" })).into_response();
+    }
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Json(json!({ "ok": false, "error": "URL must start with http:// or https://" })).into_response();
+    }
+
     let client = reqwest::Client::new();
 
     let body = json!({
@@ -509,12 +531,50 @@ pub async fn handle_test_mcp_server(
             Json(json!({ "ok": true })).into_response()
         }
         Ok(res) => {
-            Json(json!({ "ok": false, "error": format!("HTTP {}", res.status()) })).into_response()
+            let hint = match res.status().as_u16() {
+                404 => "Server not found at this URL. Make sure the path is correct (usually ends with /mcp).",
+                502 | 503 => "Server is unreachable. Check that the host and port are correct and the server is running.",
+                401 | 403 => "Authentication required. Please provide a valid API key.",
+                _ => "Server returned an unexpected response. Verify the URL points to a valid MCP endpoint.",
+            };
+            Json(json!({ "ok": false, "error": hint })).into_response()
         }
         Err(e) => {
-            Json(json!({ "ok": false, "error": e.to_string() })).into_response()
+            let hint = if e.is_timeout() {
+                "Connection timed out. The server didn't respond within 5 seconds."
+            } else if e.is_connect() {
+                "Could not connect. Check that the host and port are correct and the server is running."
+            } else if e.to_string().contains("dns") {
+                "Host not found. Please check the server address."
+            } else {
+                "Connection failed. Please verify the URL and try again."
+            };
+            Json(json!({ "ok": false, "error": hint })).into_response()
         }
     }
+}
+
+// ═══ PATCH /api/ai/mcp-servers/{id}/activate ═══
+
+pub async fn handle_activate_mcp_server(
+    Path(server_id): Path<String>,
+) -> impl IntoResponse {
+    // Deactivate all, then activate the selected one
+    let mut configs = MCP_CLIENT_MANAGER.get_configs().await;
+    for c in &mut configs {
+        c.enabled = c.id == server_id;
+    }
+    let _ = super::session_store::save_mcp_servers(&configs);
+
+    // Rebuild connections: remove all, re-add only enabled
+    MCP_CLIENT_MANAGER.clear().await;
+    for c in &configs {
+        if c.enabled {
+            let _ = MCP_CLIENT_MANAGER.add_server(c.clone()).await;
+        }
+    }
+
+    Json(json!({ "ok": true })).into_response()
 }
 
 // ═══ GET /api/ai/tools ═══
@@ -552,5 +612,6 @@ pub fn ai_routes() -> Router<T3AppState> {
         .route("/api/ai/mcp-servers", get(handle_list_mcp_servers))
         .route("/api/ai/mcp-servers", post(handle_add_mcp_server))
         .route("/api/ai/mcp-servers/{id}", delete(handle_delete_mcp_server))
+        .route("/api/ai/mcp-servers/{id}/activate", patch(handle_activate_mcp_server))
         .route("/api/ai/mcp-servers/test", post(handle_test_mcp_server))
 }
