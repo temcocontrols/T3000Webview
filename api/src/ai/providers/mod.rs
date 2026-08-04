@@ -12,6 +12,8 @@ use serde_json::Value;
 use super::types::{AiError, Message, StreamEvent};
 
 pub mod local;
+pub mod anthropic;
+pub mod gemini;
 
 /// Canonical tool definition (matches MCP ToolDef schema).
 #[derive(Debug, Clone, serde::Serialize)]
@@ -46,10 +48,10 @@ pub trait LlmProvider: Send + Sync {
 pub fn get_provider(provider: &str) -> Result<Box<dyn LlmProvider>, AiError> {
     match provider {
         "local" | "" => Ok(Box::new(local::LocalProvider)),
-        // Phase 3: "anthropic" => Ok(Box::new(super::anthropic::AnthropicProvider)),
-        // Phase 3: "gemini" => Ok(Box::new(super::gemini::GeminiProvider)),
+        "anthropic" => Ok(Box::new(anthropic::AnthropicProvider)),
+        "gemini" => Ok(Box::new(gemini::GeminiProvider)),
         other => Err(AiError::Provider(format!(
-            "Unknown provider '{}'. Use 'local' for Ollama/vLLM/LM Studio.",
+            "Unknown provider '{}'. Supported: local, anthropic, gemini",
             other
         ))),
     }
