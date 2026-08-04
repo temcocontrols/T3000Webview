@@ -6,6 +6,7 @@
 pub mod providers;
 pub mod routes;
 pub mod session;
+pub mod session_store;
 pub mod tool_executor;
 pub mod types;
 

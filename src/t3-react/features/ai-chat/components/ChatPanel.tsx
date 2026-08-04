@@ -11,19 +11,15 @@
  */
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { Button, Tooltip } from '@fluentui/react-components';
-import {
-  DismissRegular,
-  ArrowDownRegular,
-  BotSparkleRegular,
-  SettingsRegular,
-} from '@fluentui/react-icons';
+import { ArrowDownRegular, BotSparkleRegular } from '@fluentui/react-icons';
 import { useAiChatStream } from '../hooks/useAiChatStream';
+import { useChatHistory } from '../hooks/useChatHistory';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { EmptyState } from './EmptyState';
+import { ChatSidebar } from './ChatSidebar';
 import { SettingsDrawer } from './SettingsDrawer';
-import type { AiProviderSettings, ProviderType } from './SettingsDrawer';
+import type { AiProviderSettings } from './SettingsDrawer';
 import styles from '../AiChat.module.css';
 
 const DEFAULT_SETTINGS: AiProviderSettings = {
@@ -34,8 +30,17 @@ const DEFAULT_SETTINGS: AiProviderSettings = {
 };
 
 export const ChatPanel: React.FC = () => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(DEFAULT_SETTINGS);
+
+  const {
+    sessions,
+    activeSessionId,
+    setActiveSessionId,
+    deleteSession,
+    refreshSessions,
+  } = useChatHistory();
 
   const {
     messages,
@@ -87,37 +92,61 @@ export const ChatPanel: React.FC = () => {
 
   const providerLabel = `${aiSettings.provider}:${aiSettings.model}`;
 
+  // Refresh sidebar sessions after each completed response
+  const prevStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming && messages.length > 0) {
+      refreshSessions();
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming, messages.length, refreshSessions]);
+
+  const handleNewChat = useCallback(() => {
+    clearSession();
+    setActiveSessionId(null);
+  }, [clearSession, setActiveSessionId]);
+
+  const handleSelectSession = useCallback(
+    async (id: string) => {
+      setActiveSessionId(id);
+      // TODO: load messages from file via API and set them in the chat
+      refreshSessions();
+    },
+    [setActiveSessionId, refreshSessions],
+  );
+
+  const handleDeleteSession = useCallback(
+    async (id: string) => {
+      await deleteSession(id);
+      refreshSessions();
+    },
+    [deleteSession, refreshSessions],
+  );
+
   return (
-    <div className={styles.root}>
-      {/* ── Header ── */}
-      <div className={styles.header}>
-        <div className={styles.headerTitle}>
-          <BotSparkleRegular style={{ fontSize: 20 }} />
-          AI Assistant
+    <div className={styles.layoutWrapper}>
+      {/* ── Sidebar ── */}
+      <ChatSidebar
+        collapsed={sidebarCollapsed}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onNewChat={handleNewChat}
+        onSelectSession={handleSelectSession}
+        onDeleteSession={handleDeleteSession}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+
+      {/* ── Main chat area ── */}
+      <div className={styles.root}>
+        {/* ── Header ── */}
+        <div className={styles.header}>
+          <div className={styles.headerTitle}>
+            <BotSparkleRegular style={{ fontSize: 20 }} />
+            AI Assistant
+          </div>
+          <div className={styles.headerActions} />
         </div>
-        <div className={styles.headerActions}>
-          <Tooltip content="AI provider settings" relationship="label">
-            <Button
-              appearance="subtle"
-              icon={<SettingsRegular />}
-              size="small"
-              onClick={() => setSettingsOpen(true)}
-            />
-          </Tooltip>
-          {hasMessages && (
-            <Tooltip content="Start a new conversation" relationship="label">
-              <Button
-                appearance="subtle"
-                icon={<DismissRegular />}
-                size="small"
-                onClick={clearSession}
-              >
-                New Chat
-              </Button>
-            </Tooltip>
-          )}
-        </div>
-      </div>
 
       {/* ── Messages area ── */}
       <div className={styles.messagesArea} ref={messagesContainerRef}>
@@ -166,13 +195,14 @@ export const ChatPanel: React.FC = () => {
         providerLabel={providerLabel}
       />
 
-      {/* ── Settings Drawer ── */}
-      <SettingsDrawer
-        open={settingsOpen}
-        settings={aiSettings}
-        onSave={(s) => { setAiSettings(s); setSettingsOpen(false); }}
-        onClose={() => setSettingsOpen(false)}
-      />
+        {/* ── Settings Drawer ── */}
+        <SettingsDrawer
+          open={settingsOpen}
+          settings={aiSettings}
+          onSave={(s) => { setAiSettings(s); setSettingsOpen(false); }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      </div>
     </div>
   );
 };

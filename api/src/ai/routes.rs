@@ -28,6 +28,7 @@ use crate::haystack::mcp::TOOLS;
 use super::providers::{get_provider, ToolDef};
 use super::session::SessionManager;
 use super::types::{AiError, ChatRequest, Message, StreamEvent};
+use chrono::Utc;
 
 // ═══ Lazy-initialized session manager (one per process) ═══
 
@@ -182,16 +183,34 @@ async fn process_chat(
                 });
             }
 
-            session_manager
-                .update_messages(&session.id, current_messages)
-                .await;
-
             // Send done event
             let done_json = serde_json::to_string(&StreamEvent::Done {
                 session_id: session.id.clone(),
             })
             .unwrap();
             let _ = tx.send(Ok(Event::default().data(done_json)));
+
+            // Persist session to JSON file (clone before update_messages moves it)
+            let title = super::session_store::auto_title(
+                current_messages
+                    .iter()
+                    .filter(|m| m.role == "user")
+                    .last()
+                    .map(|m| m.content.as_str())
+                    .unwrap_or("New Chat"),
+            );
+            let _ = super::session_store::save_session(&super::session_store::SessionFile {
+                id: session.id.clone(),
+                title,
+                created_at: Utc::now().to_rfc3339(),
+                provider: session.provider.clone(),
+                model: session.model.clone(),
+                messages: current_messages.clone(),
+            });
+
+            session_manager
+                .update_messages(&session.id, current_messages)
+                .await;
 
             return Ok(());
         }
@@ -313,7 +332,64 @@ pub async fn handle_delete_session(
     Path(session_id): Path<String>,
 ) -> impl IntoResponse {
     SESSION_MANAGER.delete(&session_id).await;
+    let _ = super::session_store::delete_session(&session_id);
     StatusCode::NO_CONTENT
+}
+
+// ═══ GET /api/ai/sessions (list) ═══
+
+pub async fn handle_list_sessions() -> impl IntoResponse {
+    match super::session_store::load_index() {
+        Ok(index) => Json(json!({ "sessions": index })),
+        Err(e) => {
+            info!("[AI] Failed to load session index: {}", e);
+            Json(json!({ "sessions": [] }))
+        }
+    }
+}
+
+// ═══ GET /api/ai/sessions/:id (single) ═══
+
+pub async fn handle_get_session(
+    Path(session_id): Path<String>,
+) -> impl IntoResponse {
+    match super::session_store::load_session(&session_id) {
+        Ok(Some(session)) => Json(json!(session)).into_response(),
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(e) => {
+            info!("[AI] Failed to load session {}: {}", session_id, e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+// ═══ PUT /api/ai/sessions/:id (rename) ═══
+
+pub async fn handle_rename_session(
+    Path(session_id): Path<String>,
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let new_title = body
+        .get("title")
+        .and_then(|t| t.as_str())
+        .unwrap_or("Untitled");
+
+    match super::session_store::load_session(&session_id) {
+        Ok(Some(mut session)) => {
+            session.title = new_title.to_string();
+            if let Err(e) = super::session_store::save_session(&session) {
+                info!("[AI] Failed to rename session {}: {}", session_id, e);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            } else {
+                Json(json!({ "ok": true })).into_response()
+            }
+        }
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(e) => {
+            info!("[AI] Failed to load session {}: {}", session_id, e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
 }
 
 // ═══ GET /api/ai/settings ═══
@@ -363,7 +439,10 @@ pub async fn handle_list_tools() -> impl IntoResponse {
 pub fn ai_routes() -> Router<T3AppState> {
     Router::new()
         .route("/api/ai/chat", post(handle_ai_chat))
+        .route("/api/ai/sessions", get(handle_list_sessions))
+        .route("/api/ai/sessions/{id}", get(handle_get_session))
         .route("/api/ai/sessions/{id}", delete(handle_delete_session))
+        .route("/api/ai/sessions/{id}", put(handle_rename_session))
         .route("/api/ai/settings", get(handle_get_settings))
         .route("/api/ai/settings", put(handle_update_settings))
         .route("/api/ai/tools", get(handle_list_tools))

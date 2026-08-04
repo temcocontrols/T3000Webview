@@ -6,12 +6,125 @@
  */
 
 /* ── Layout ── */
+.layoutWrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
 .root {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   background-color: var(--colorNeutralBackground1);
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  min-width: 260px;
+  border-right: 1px solid var(--colorNeutralStroke2);
+  background-color: var(--colorNeutralBackground2);
+  transition: width 0.2s ease, min-width 0.2s ease;
+  overflow: hidden;
+}
+.sidebarCollapsed {
+  width: 48px;
+  min-width: 48px;
+}
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 8px 16px;
+}
+.sidebarTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+.sidebarNewChat {
+  padding: 0 12px 12px 12px;
+}
+.sidebarHistory {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--colorNeutralStroke1) transparent;
+}
+.sidebarHistory::-webkit-scrollbar {
+  width: 3px;
+}
+.sidebarHistory::-webkit-scrollbar-thumb {
+  background: var(--colorNeutralStroke1);
+  border-radius: 1.5px;
+}
+.sidebarEmpty {
+  font-size: 12px;
+  color: var(--colorNeutralForeground3);
+  padding: 16px;
+  text-align: center;
+}
+.sidebarItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+.sidebarItem:hover {
+  background-color: var(--colorNeutralBackground3);
+}
+.sidebarItemActive {
+  background-color: var(--colorNeutralBackground4);
+}
+.sidebarItemContent {
+  flex: 1;
+  min-width: 0;
+}
+.sidebarItemTitle {
+  display: block;
+  font-size: 13px;
+  color: var(--colorNeutralForeground1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebarItemMeta {
+  display: block;
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+  margin-top: 2px;
+}
+.sidebarItemDelete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  color: var(--colorNeutralForeground3);
+  flex-shrink: 0;
+}
+.sidebarItemDelete:hover {
+  background-color: var(--colorStatusDangerBackground1);
+  color: var(--colorStatusDangerForeground1);
+}
+.sidebarFooter {
+  padding: 8px 12px;
+  border-top: 1px solid var(--colorNeutralStroke2);
 }
 
 /* ── Header ── */

@@ -48,6 +48,11 @@ pub fn get_t3000_log_path() -> PathBuf {
     get_t3000_runtime_path().join("T3WebLog")
 }
 
+/// Get the AI Assistant sessions directory path
+pub fn get_ai_sessions_path() -> PathBuf {
+    get_t3000_runtime_path().join("T3Web").join("ai-assistant")
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct ActivityLogCategoryDef {
     pub category: &'static str,
