@@ -405,54 +405,155 @@
   border-top: 1px solid var(--colorNeutralStroke2);
 }
 
-/* ── Tools drawer checklist ── */
-.toolsChecklist {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  max-height: 360px;
-  overflow-y: auto;
+/* ── Tools drawer sections ── */
+.drawerSection {
+  margin-bottom: 20px;
 }
-.toolsCheckItem {
+.drawerSectionHeader {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 8px;
-  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.drawerSectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+  flex: 1;
+}
+.drawerSectionCount {
+  font-size: 11px;
+  color: var(--colorNeutralForeground4);
+}
+.drawerToolsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.drawerToolItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
   color: var(--colorNeutralForeground1);
 }
-.toolsCheckItem:hover {
-  background: var(--colorNeutralBackground2);
+.drawerToolItem:hover {
+  background: var(--colorNeutralBackground3);
 }
 .toolsCheckbox {
   accent-color: var(--colorBrandBackground);
   width: 14px;
   height: 14px;
   cursor: pointer;
+  flex-shrink: 0;
 }
-.toolsServerCard {
+.drawerEmpty {
+  font-size: 11px;
+  color: var(--colorNeutralForeground4);
+  padding: 6px 4px;
+  font-style: italic;
+}
+.drawerShowMore {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
+  gap: 4px;
+  width: 100%;
+  padding: 5px 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--colorBrandForeground1);
+  margin-top: 4px;
+}
+.drawerShowMore:hover {
+  text-decoration: underline;
+}
+
+/* ── External server cards (drawer) ── */
+.drawerServerCard {
+  position: relative;
   border: 1px solid var(--colorNeutralStroke2);
   border-radius: 8px;
+  padding: 8px 10px;
   margin-bottom: 6px;
 }
-.toolsServerName {
+.drawerServerHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+.drawerServerName {
   font-size: 12px;
   font-weight: 500;
   color: var(--colorNeutralForeground1);
-  margin-left: 6px;
+  flex: 1;
+  text-align: left;
 }
-.toolsServerUrl {
-  display: block;
+.drawerServerUrl {
   font-size: 10px;
   color: var(--colorNeutralForeground4);
   margin-left: 12px;
+  margin-top: 3px;
+}
+.drawerServerTools {
+  margin-left: 12px;
+  margin-top: 4px;
+}
+.drawerServerRemove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  color: var(--colorNeutralForeground3);
+}
+.drawerServerRemove:hover {
+  background: var(--colorStatusDangerBackground1);
+  color: var(--colorStatusDangerForeground1);
+}
+
+/* ── Inline add-server form (drawer) ── */
+.drawerAddForm {
   margin-top: 2px;
+}
+.drawerAddActions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.drawerTestOk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #10b981;
+  margin-top: 6px;
+}
+.drawerTestFail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 6px;
 }
 
 /* ── Header ── */

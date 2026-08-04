@@ -21,7 +21,6 @@ import { EmptyState } from './EmptyState';
 import { ChatSidebar } from './ChatSidebar';
 import { SettingsDrawer } from './SettingsDrawer';
 import { ToolsDrawer } from './ToolsDrawer';
-import { AddServerDialog } from './AddServerDialog';
 import type { AiProviderSettings } from './SettingsDrawer';
 import styles from '../AiChat.module.css';
 
@@ -52,7 +51,6 @@ export const ChatPanel: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [addServerOpen, setAddServerOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
 
   const {
@@ -262,16 +260,9 @@ export const ChatPanel: React.FC = () => {
         open={toolsOpen}
         mcpServers={mcpServers}
         onClose={() => setToolsOpen(false)}
-        onAddServer={() => setAddServerOpen(true)}
+        onAddServer={addServer}
         onRemoveServer={(id) => removeServer(id)}
-      />
-
-      {/* ── Add MCP Server Dialog ── */}
-      <AddServerDialog
-        open={addServerOpen}
-        onClose={() => setAddServerOpen(false)}
-        onAdd={addServer}
-        onTest={testServer}
+        onTestServer={testServer}
       />
       </div>
     </div>
