@@ -44,7 +44,7 @@ const BUILTIN_TOOLS = [
   'PID List', 'Documentation', 'Server Version', 'Describe Tool',
 ];
 
-const INITIAL_SHOW = 8;
+const INITIAL_SHOW = 5;
 
 export const ToolsDrawer: React.FC<Props> = ({
   open,
@@ -56,6 +56,7 @@ export const ToolsDrawer: React.FC<Props> = ({
 }) => {
   const [search, setSearch] = useState('');
   const [showAllBuiltin, setShowAllBuiltin] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
 
   // ── Inline add-server form state ──
@@ -107,8 +108,8 @@ export const ToolsDrawer: React.FC<Props> = ({
       <div className={`${styles.drawer} ${open ? styles.drawerOpen : ''}`}>
         <div className={styles.drawerHeader}>
           <div className={styles.drawerHeaderTitle}>
-            <WrenchRegular style={{ fontSize: 16, opacity: 0.6 }} />
-            Tools
+            <WrenchRegular style={{ fontSize: 14, opacity: 0.6 }} />
+            <span>Tools</span>
           </div>
           <Tooltip content="Close" relationship="label">
             <Button appearance="subtle" icon={<DismissRegular />} size="small" onClick={onClose} />
@@ -121,8 +122,8 @@ export const ToolsDrawer: React.FC<Props> = ({
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
             placeholder="Search tools..."
-            contentBefore={<SearchRegular fontSize={14} style={{ opacity: 0.4 }} />}
-            style={{ marginBottom: 16, height: 34, fontSize: 12 }}
+            contentBefore={<SearchRegular fontSize={12} style={{ opacity: 0.4 }} />}
+            style={{ marginBottom: 14, height: 28, fontSize: 11, width: '100%' }}
           />
 
           {/* ═══ Built-in T3000 MCP ═══ */}
@@ -212,29 +213,38 @@ export const ToolsDrawer: React.FC<Props> = ({
 
           {/* ═══ Add new MCP server ═══ */}
           <div className={styles.drawerSection}>
-            <div className={styles.drawerSectionHeader}>
+            <button
+              className={styles.drawerSectionHeader}
+              onClick={() => setShowAddForm(!showAddForm)}
+              style={{ cursor: 'pointer', width: '100%', border: 'none', background: 'none', padding: 0, font: 'inherit', color: 'inherit' }}
+            >
               <AddRegular fontSize={16} style={{ opacity: 0.6 }} />
               <span className={styles.drawerSectionTitle}>Add MCP Server</span>
-            </div>
+              {showAddForm
+                ? <ChevronDownRegular fontSize={12} style={{ opacity: 0.4 }} />
+                : <ChevronRightRegular fontSize={12} style={{ opacity: 0.4 }} />
+              }
+            </button>
 
+            {showAddForm && (
             <div className={styles.drawerAddForm}>
               <Input
                 value={addName}
                 onChange={(e) => setAddName(e.currentTarget.value)}
                 placeholder="Display name (e.g. Weather API)"
-                style={{ height: 34, fontSize: 12, marginBottom: 8 }}
+                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 6 }}
               />
               <Input
                 value={addUrl}
                 onChange={(e) => setAddUrl(e.currentTarget.value)}
                 placeholder="MCP URL (e.g. http://x:9001/mcp)"
-                style={{ height: 34, fontSize: 12, fontFamily: 'monospace', marginBottom: 8 }}
+                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 6 }}
               />
               <Input
                 value={addApiKey}
                 onChange={(e) => setAddApiKey(e.currentTarget.value)}
                 placeholder="API Key (optional)"
-                style={{ height: 34, fontSize: 12, marginBottom: 10 }}
+                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 8 }}
               />
 
               <div className={styles.drawerAddActions}>
@@ -269,6 +279,7 @@ export const ToolsDrawer: React.FC<Props> = ({
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
       </div>
