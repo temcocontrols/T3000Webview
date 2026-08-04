@@ -413,6 +413,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
   margin-bottom: 8px;
 }
 .drawerSectionTitle {
@@ -420,35 +428,60 @@
   font-weight: 600;
   color: var(--colorNeutralForeground1);
   flex: 1;
+  text-align: left;
 }
 .drawerSectionCount {
   font-size: 11px;
   color: var(--colorNeutralForeground4);
 }
-.drawerToolsList {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+/* ── Tool categories ── */
+.toolCategory {
+  margin-bottom: 2px;
+  padding-left: 12px;
 }
-.drawerToolItem {
+.toolCategoryDivider {
+  border-top: 1px solid var(--colorNeutralStroke2);
+  padding-top: 8px;
+  margin-top: 2px;
+}
+.toolCategoryHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--colorNeutralForeground1);
+  gap: 6px;
+  padding: 2px 0;
 }
-.drawerToolItem:hover {
-  background: var(--colorNeutralBackground3);
+.toolCategoryName {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground2);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
-.toolsCheckbox {
-  accent-color: var(--colorBrandBackground);
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
+.toolCategoryIndicator {
+  width: 3px;
+  height: 12px;
+  border-radius: 1.5px;
+  background: var(--colorBrandBackground);
   flex-shrink: 0;
+}
+.toolCategoryCount {
+  font-size: 10px;
+  color: var(--colorNeutralForeground4);
+}
+.toolCategoryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 8px;
+}
+.drawerToolItem {
+  display: block;
+  padding: 3px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--colorNeutralForeground1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .drawerEmpty {
   font-size: 11px;
@@ -461,7 +494,7 @@
   align-items: center;
   gap: 4px;
   width: 100%;
-  padding: 5px 6px;
+  padding: 5px 6px 5px 16px;
   border: none;
   background: none;
   cursor: pointer;
@@ -532,12 +565,13 @@
 
 /* ── Inline add-server form (drawer) ── */
 .drawerAddForm {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 .drawerAddActions {
   display: flex;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  margin-top: 2px;
 }
 .drawerTestOk {
   display: flex;
@@ -1033,7 +1067,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--colorNeutralForeground1);
 }

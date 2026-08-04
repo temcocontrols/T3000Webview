@@ -33,18 +33,42 @@ interface Props {
   onTestServer: (url: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
-const BUILTIN_TOOLS = [
-  'Device List', 'Active Alarms', 'Search Tags', 'Trend Logs',
-  'Read Points', 'Write Points', 'Auto Tag', 'Preview Tags',
-  'Export Model', 'Validate Tags', 'Refresh Device', 'Building Summary',
-  'Batch Read', 'Batch Write', 'Get Metadata', 'Semantic Search',
-  'List Rules', 'Toggle Rule', 'Create Rule', 'Acknowledge Alarm',
-  'List Trendlogs', 'Export Trendlog', 'List Schedules', 'List Programs',
-  'List Users', 'Read Settings', 'Device Control', 'Holiday List',
-  'PID List', 'Documentation', 'Server Version', 'Describe Tool',
+const TOOL_CATEGORIES = [
+  {
+    name: 'Devices',
+    tools: ['Device List', 'Refresh Device', 'Firmware Version', 'Network Scan', 'Backup Config', 'Building Summary'],
+  },
+  {
+    name: 'Points',
+    tools: ['Read Points', 'Write Points', 'Batch Read', 'Batch Write', 'Get Metadata', 'Point History', 'Setpoint Adjust', 'Override Value', 'Analog Output'],
+  },
+  {
+    name: 'Alarms',
+    tools: ['Active Alarms', 'Acknowledge Alarm', 'Alarm History'],
+  },
+  {
+    name: 'Semantic Model',
+    tools: ['Search Tags', 'Auto Tag', 'Preview Tags', 'Export Model', 'Validate Tags', 'Semantic Search', 'List Rules', 'Toggle Rule', 'Create Rule'],
+  },
+  {
+    name: 'Trendlogs',
+    tools: ['Trend Logs', 'List Trendlogs', 'Export Trendlog'],
+  },
+  {
+    name: 'Schedules',
+    tools: ['List Schedules', 'List Programs', 'Delete Schedule', 'Holiday List'],
+  },
+  {
+    name: 'Control',
+    tools: ['Device Control', 'PID List', 'Occupancy Mode'],
+  },
+  {
+    name: 'System',
+    tools: ['Server Version', 'Describe Tool', 'Documentation', 'Energy Report', 'Runtime Report', 'List Users', 'Read Settings'],
+  },
 ];
 
-const INITIAL_SHOW = 5;
+const TOTAL_BUILTIN = TOOL_CATEGORIES.reduce((sum, c) => sum + c.tools.length, 0);
 
 export const ToolsDrawer: React.FC<Props> = ({
   open,
@@ -55,8 +79,8 @@ export const ToolsDrawer: React.FC<Props> = ({
   onTestServer,
 }) => {
   const [search, setSearch] = useState('');
-  const [showAllBuiltin, setShowAllBuiltin] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
 
   // ── Inline add-server form state ──
@@ -68,11 +92,13 @@ export const ToolsDrawer: React.FC<Props> = ({
   const [testResult, setTestResult] = useState<'idle' | 'ok' | 'fail'>('idle');
   const [testError, setTestError] = useState('');
 
-  const filteredBuiltin = search
-    ? BUILTIN_TOOLS.filter((t) => t.toLowerCase().includes(search.toLowerCase()))
-    : BUILTIN_TOOLS;
+  const filteredCategories = search
+    ? TOOL_CATEGORIES
+        .map((c) => ({ ...c, tools: c.tools.filter((t) => t.toLowerCase().includes(search.toLowerCase())) }))
+        .filter((c) => c.tools.length > 0)
+    : TOOL_CATEGORIES;
 
-  const visibleBuiltin = showAllBuiltin ? filteredBuiltin : filteredBuiltin.slice(0, INITIAL_SHOW);
+  const visibleToolCount = filteredCategories.reduce((sum, c) => sum + c.tools.length, 0);
 
   const toggleServerExpand = (id: string) => {
     setExpandedServers((prev) => {
@@ -108,7 +134,7 @@ export const ToolsDrawer: React.FC<Props> = ({
       <div className={`${styles.drawer} ${open ? styles.drawerOpen : ''}`}>
         <div className={styles.drawerHeader}>
           <div className={styles.drawerHeaderTitle}>
-            <WrenchRegular style={{ fontSize: 14, opacity: 0.6 }} />
+            <WrenchRegular style={{ fontSize: 16, opacity: 0.6 }} />
             <span>Tools</span>
           </div>
           <Tooltip content="Close" relationship="label">
@@ -122,7 +148,7 @@ export const ToolsDrawer: React.FC<Props> = ({
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
             placeholder="Search tools..."
-            contentBefore={<SearchRegular fontSize={12} style={{ opacity: 0.4 }} />}
+            contentBefore={<SearchRegular fontSize={10} style={{ opacity: 0.4 }} />}
             style={{ marginBottom: 14, height: 28, fontSize: 11, width: '100%' }}
           />
 
@@ -131,38 +157,46 @@ export const ToolsDrawer: React.FC<Props> = ({
             <div className={styles.drawerSectionHeader}>
               <BoxRegular fontSize={16} style={{ opacity: 0.6 }} />
               <span className={styles.drawerSectionTitle}>Built-in T3000 MCP</span>
-              <span className={styles.drawerSectionCount}>{filteredBuiltin.length} tools</span>
+              <span className={styles.drawerSectionCount}>{visibleToolCount} tools</span>
             </div>
 
-            <div className={styles.drawerToolsList}>
-              {visibleBuiltin.map((t) => (
-                <label key={t} className={styles.drawerToolItem}>
-                  <input type="checkbox" defaultChecked readOnly className={styles.toolsCheckbox} />
-                  <span>{t}</span>
-                </label>
-              ))}
-              {filteredBuiltin.length === 0 && (
-                <p className={styles.drawerEmpty}>No tools match your search</p>
-              )}
-            </div>
-
-            {filteredBuiltin.length > INITIAL_SHOW && !showAllBuiltin && (
-              <button
-                className={styles.drawerShowMore}
-                onClick={() => setShowAllBuiltin(true)}
-              >
-                <ChevronDownRegular fontSize={12} />
-                Show all {filteredBuiltin.length} tools
-              </button>
-            )}
-            {showAllBuiltin && filteredBuiltin.length > INITIAL_SHOW && (
-              <button
-                className={styles.drawerShowMore}
-                onClick={() => setShowAllBuiltin(false)}
-              >
-                <ChevronRightRegular fontSize={12} />
-                Show less
-              </button>
+            {filteredCategories.length === 0 ? (
+              <p className={styles.drawerEmpty}>No tools match your search</p>
+            ) : (
+              <>
+                {filteredCategories.slice(0, showAllCategories ? undefined : 1).map((cat, idx) => (
+                  <div key={cat.name} className={`${styles.toolCategory} ${idx > 0 ? styles.toolCategoryDivider : ''}`}>
+                    <div className={styles.toolCategoryHeader}>
+                      <span className={styles.toolCategoryIndicator} />
+                      <span className={styles.toolCategoryName}>{cat.name}</span>
+                      <span className={styles.toolCategoryCount}>{cat.tools.length}</span>
+                    </div>
+                    <div className={styles.toolCategoryGrid}>
+                      {cat.tools.map((t) => (
+                        <span key={t} className={styles.drawerToolItem}>{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {!showAllCategories && filteredCategories.length > 1 && (
+                  <button
+                    className={styles.drawerShowMore}
+                    onClick={() => setShowAllCategories(true)}
+                  >
+                    <ChevronDownRegular fontSize={11} />
+                    Show all {filteredCategories.length} categories
+                  </button>
+                )}
+                {showAllCategories && filteredCategories.length > 1 && (
+                  <button
+                    className={styles.drawerShowMore}
+                    onClick={() => setShowAllCategories(false)}
+                  >
+                    <ChevronRightRegular fontSize={11} />
+                    Show less
+                  </button>
+                )}
+              </>
             )}
           </div>
 
@@ -216,7 +250,6 @@ export const ToolsDrawer: React.FC<Props> = ({
             <button
               className={styles.drawerSectionHeader}
               onClick={() => setShowAddForm(!showAddForm)}
-              style={{ cursor: 'pointer', width: '100%', border: 'none', background: 'none', padding: 0, font: 'inherit', color: 'inherit' }}
             >
               <AddRegular fontSize={16} style={{ opacity: 0.6 }} />
               <span className={styles.drawerSectionTitle}>Add MCP Server</span>
@@ -232,19 +265,19 @@ export const ToolsDrawer: React.FC<Props> = ({
                 value={addName}
                 onChange={(e) => setAddName(e.currentTarget.value)}
                 placeholder="Display name (e.g. Weather API)"
-                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 6 }}
+                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 10 }}
               />
               <Input
                 value={addUrl}
                 onChange={(e) => setAddUrl(e.currentTarget.value)}
                 placeholder="MCP URL (e.g. http://x:9001/mcp)"
-                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 6 }}
+                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 10 }}
               />
               <Input
                 value={addApiKey}
                 onChange={(e) => setAddApiKey(e.currentTarget.value)}
                 placeholder="API Key (optional)"
-                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 8 }}
+                style={{ height: 30, fontSize: 11, width: '100%', marginBottom: 12 }}
               />
 
               <div className={styles.drawerAddActions}>
