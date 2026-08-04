@@ -362,9 +362,9 @@ pub async fn handle_list_tools() -> impl IntoResponse {
 
 pub fn ai_routes() -> Router<T3AppState> {
     Router::new()
-        .route("/ai/chat", post(handle_ai_chat))
-        .route("/ai/sessions/{id}", delete(handle_delete_session))
-        .route("/ai/settings", get(handle_get_settings))
-        .route("/ai/settings", put(handle_update_settings))
-        .route("/ai/tools", get(handle_list_tools))
+        .route("/api/ai/chat", post(handle_ai_chat))
+        .route("/api/ai/sessions/{id}", delete(handle_delete_session))
+        .route("/api/ai/settings", get(handle_get_settings))
+        .route("/api/ai/settings", put(handle_update_settings))
+        .route("/api/ai/tools", get(handle_list_tools))
 }

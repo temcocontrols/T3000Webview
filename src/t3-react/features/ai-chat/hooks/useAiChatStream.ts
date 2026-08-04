@@ -8,7 +8,9 @@
  *      tool_result -> resolved card, done -> finalize, error -> system message
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { API_BASE_URL } from '../../../config/constants';
+import type { AiProviderSettings } from '../components/SettingsDrawer';
 
 // ── Types ──
 
@@ -54,14 +56,27 @@ export interface UseAiChatStreamReturn {
 
 // ── Hook ──
 
-export function useAiChatStream(): UseAiChatStreamReturn {
+export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [activeToolCalls, setActiveToolCalls] = useState<Map<string, ToolCallRecord>>(new Map());
   const [sessionId, setSessionId] = useState<string | null>(null);
 
+  // Refs to avoid stale closures in sendMessage
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const isStreamingRef = useRef(false);
+  const streamingTextRef = useRef('');
+  const sessionIdRef = useRef<string | null>(null);
+  const settingsRef = useRef<AiProviderSettings>(settings);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Keep refs in sync with state
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
+  useEffect(() => { streamingTextRef.current = streamingText; }, [streamingText]);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   const abort = useCallback(() => {
     abortRef.current?.abort();
@@ -69,9 +84,10 @@ export function useAiChatStream(): UseAiChatStreamReturn {
   }, []);
 
   const clearSession = useCallback(async () => {
-    if (sessionId) {
+    const sid = sessionIdRef.current;
+    if (sid) {
       try {
-        await fetch(`/api/ai/sessions/${sessionId}`, { method: 'DELETE' });
+        await fetch(`${API_BASE_URL}/api/ai/sessions/${sid}`, { method: 'DELETE' });
       } catch {
         // Session may already be expired — ignore
       }
@@ -80,16 +96,22 @@ export function useAiChatStream(): UseAiChatStreamReturn {
     setSessionId(null);
     setStreamingText('');
     setActiveToolCalls(new Map());
-  }, [sessionId]);
+  }, []);
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!content.trim() || isStreaming) return;
+      const trimmed = content.trim();
+      if (!trimmed || isStreamingRef.current) return;
 
-      // Add user message
+      // Capture current state via refs (stable, no deps needed)
+      const currentMessages = messagesRef.current;
+      const currentSessionId = sessionIdRef.current;
+      const s = settingsRef.current;
+
+      // Add user message to state
       const userMsg: ChatMessage = {
         role: 'user',
-        content: content.trim(),
+        content: trimmed,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, userMsg]);
@@ -100,21 +122,24 @@ export function useAiChatStream(): UseAiChatStreamReturn {
       abortRef.current = controller;
 
       try {
+        // Build messages array: all previous + the new user message
+        const apiMessages = [
+          ...currentMessages.map((m) => ({ role: m.role, content: m.content })),
+          { role: 'user' as const, content: trimmed },
+        ];
+
         const body = JSON.stringify({
-          provider: 'local',
-          model: 'llama3.1:8b',
-          messages: [
-            ...messages.map((m) => ({ role: m.role, content: m.content })),
-            { role: 'user', content: content.trim() },
-          ],
-          session_id: sessionId,
+          provider: s.provider,
+          model: s.model,
+          messages: apiMessages,
+          session_id: currentSessionId,
           settings: {
-            endpoint: 'http://localhost:11434/v1',
-            api_key: '',
+            endpoint: s.endpoint,
+            api_key: s.apiKey || '',
           },
         });
 
-        const response = await fetch('/api/ai/chat', {
+        const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body,
@@ -154,18 +179,18 @@ export function useAiChatStream(): UseAiChatStreamReturn {
 
           // Process complete SSE frames
           const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep incomplete last line in buffer
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const trimmedLine = line.trim();
+            if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue;
 
-            const dataStr = trimmed.slice(6);
+            const dataStr = trimmedLine.slice(6);
             let event: StreamEvent;
             try {
               event = JSON.parse(dataStr);
             } catch {
-              continue; // Skip unparseable lines
+              continue;
             }
 
             switch (event.event) {
@@ -204,7 +229,6 @@ export function useAiChatStream(): UseAiChatStreamReturn {
                   }
                   return next;
                 });
-                // Update in local records
                 const idx = toolCallRecords.findIndex((t) => t.id === id);
                 if (idx !== -1) {
                   toolCallRecords[idx] = {
@@ -248,13 +272,13 @@ export function useAiChatStream(): UseAiChatStreamReturn {
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') {
-          // User aborted — keep whatever text was accumulated so far
-          if (streamingText) {
+          const currentStreamingText = streamingTextRef.current;
+          if (currentStreamingText) {
             setMessages((prev) => [
               ...prev,
               {
                 role: 'assistant',
-                content: streamingText + ' [stopped]',
+                content: currentStreamingText + ' [stopped]',
                 timestamp: Date.now(),
               },
             ]);
@@ -277,7 +301,7 @@ export function useAiChatStream(): UseAiChatStreamReturn {
         abortRef.current = null;
       }
     },
-    [messages, sessionId, isStreaming, streamingText],
+    [], // Stable reference — uses refs for all external state
   );
 
   return {

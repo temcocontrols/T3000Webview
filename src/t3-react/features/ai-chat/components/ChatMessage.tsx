@@ -1,77 +1,121 @@
 /**
- * ChatMessage — Single message bubble for the chat panel.
+ * ChatMessage — Single message bubble for the AI chat panel.
  *
- * User messages: right-aligned, blue background.
- * AI messages: left-aligned, neutral background, with collapsible tool call cards.
- * System messages: centered, muted text (errors / info).
+ * - User messages: right-aligned, brand-colored bubble.
+ * - AI messages: left-aligned, neutral bubble with full Markdown rendering.
+ * - System messages: centered, muted text (errors / info).
+ * - Tool calls: collapsible cards showing args + result.
+ *
+ * Uses Fluent UI design tokens via shared AiChat.styles.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import styles from '../AiChat.module.css';
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from '../hooks/useAiChatStream';
+
+// Configure marked for safety
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 
 interface Props {
   message: ChatMessageType;
   isStreaming?: boolean;
 }
 
-const formatTime = (ts: number): string => {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
+// ── Helpers ──
+
+const formatTime = (ts: number): string =>
+  new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+function renderMarkdown(content: string): string {
+  if (!content) return '';
+  const raw = marked.parse(content) as string;
+  return DOMPurify.sanitize(raw, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'em', 'u', 's', 'a', 'code', 'pre',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li', 'blockquote', 'table', 'thead', 'tbody',
+      'tr', 'th', 'td', 'hr', 'img', 'span', 'div',
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class', 'style'],
+  });
+}
+
+// ── ToolCallCard ──
 
 const ToolCallCard: React.FC<{ tool: ToolCallRecord }> = ({ tool }) => {
   const [expanded, setExpanded] = useState(false);
 
   const statusIcon = tool.status === 'pending' ? '⏳' : tool.status === 'error' ? '❌' : '✅';
-  const statusLabel = tool.status === 'pending' ? 'Running...' : tool.status === 'error' ? 'Failed' : 'Done';
+  const statusLabel =
+    tool.status === 'pending' ? 'Running...' : tool.status === 'error' ? 'Failed' : 'Done';
+
+  let formattedArgs = '';
+  try {
+    formattedArgs = JSON.stringify(JSON.parse(tool.args), null, 2);
+  } catch {
+    formattedArgs = tool.args;
+  }
+
+  let formattedResult = '';
+  if (tool.result) {
+    try {
+      formattedResult = JSON.stringify(JSON.parse(tool.result), null, 2);
+    } catch {
+      formattedResult = tool.result;
+    }
+  }
 
   return (
-    <div
-      style={{
-        marginTop: 8,
-        border: '1px solid var(--colorNeutralStroke1, #d1d1d1)',
-        borderRadius: 6,
-        overflow: 'hidden',
-        fontSize: 13,
-      }}
-    >
+    <div className={styles.toolCard}>
       <button
+        className={styles.toolCardHeader}
         onClick={() => setExpanded(!expanded)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '6px 10px',
-          background: 'var(--colorNeutralBackground2, #f5f5f5)',
-          border: 'none',
-          cursor: 'pointer',
-          font: 'inherit',
-          color: 'inherit',
-        }}
+        aria-expanded={expanded}
       >
         <span>{statusIcon}</span>
         <span style={{ fontWeight: 600 }}>{tool.name}</span>
-        <span style={{ color: 'var(--colorNeutralForeground3, #888)', marginLeft: 'auto' }}>
-          {statusLabel}
-        </span>
+        <span style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.7 }}>{statusLabel}</span>
         <span style={{ fontSize: 11 }}>{expanded ? '▴' : '▾'}</span>
       </button>
       {expanded && (
-        <div style={{ padding: '8px 10px', background: 'var(--colorNeutralBackground1, #fff)' }}>
+        <div className={styles.toolCardBody}>
           {tool.args && (
-            <div style={{ marginBottom: 4 }}>
-              <strong>Args:</strong>{' '}
-              <code style={{ fontSize: 12, wordBreak: 'break-all' }}>{tool.args}</code>
+            <div style={{ marginBottom: 8 }}>
+              <strong>Arguments:</strong>
+              <pre
+                style={{
+                  margin: '4px 0 0 0',
+                  fontSize: 12,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                }}
+              >
+                {formattedArgs}
+              </pre>
             </div>
           )}
-          {tool.result && (
+          {formattedResult && (
             <div>
-              <strong>Result:</strong>{' '}
-              <code style={{ fontSize: 12, wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>
-                {tool.result.length > 500
-                  ? tool.result.slice(0, 500) + '…'
-                  : tool.result}
-              </code>
+              <strong>Result:</strong>
+              <pre
+                style={{
+                  margin: '4px 0 0 0',
+                  fontSize: 12,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  maxHeight: 160,
+                  overflowY: 'auto',
+                }}
+              >
+                {formattedResult.length > 800
+                  ? formattedResult.slice(0, 800) + '\u2026'
+                  : formattedResult}
+              </pre>
             </div>
           )}
         </div>
@@ -80,66 +124,54 @@ const ToolCallCard: React.FC<{ tool: ToolCallRecord }> = ({ tool }) => {
   );
 };
 
+// ── ChatMessage ──
+
 export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
+  // Pre-compute markdown for assistant messages
+  const htmlContent = useMemo(() => {
+    if (message.role !== 'assistant') return null;
+    return renderMarkdown(message.content);
+  }, [message.content, message.role]);
+
+  // System message
   if (message.role === 'system') {
-    return (
-      <div
-        style={{
-          textAlign: 'center',
-          padding: '8px 16px',
-          color: 'var(--colorNeutralForeground3, #888)',
-          fontSize: 13,
-          fontStyle: 'italic',
-        }}
-      >
-        {message.content}
-      </div>
-    );
+    return <div className={styles.systemMessage}>{message.content}</div>;
   }
 
   const isUser = message.role === 'user';
 
   return (
     <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: isUser ? 'flex-end' : 'flex-start',
-        marginBottom: 16,
-        padding: '0 8px',
-      }}
+      className={`${styles.messageWrapper} ${
+        isUser ? styles.messageWrapperUser : styles.messageWrapperAssistant
+      }`}
     >
-      {/* Role label */}
-      <div
-        style={{
-          fontSize: 12,
-          color: 'var(--colorNeutralForeground3, #888)',
-          marginBottom: 4,
-        }}
-      >
-        {isUser ? 'You' : 'AI'} · {formatTime(message.timestamp)}
+      {/* Meta: role label + timestamp */}
+      <div className={styles.messageMeta}>
+        <span style={{ fontWeight: 600 }}>{isUser ? 'You' : 'AI'}</span>
+        <span>{formatTime(message.timestamp)}</span>
       </div>
 
       {/* Bubble */}
       <div
-        style={{
-          maxWidth: '80%',
-          padding: '10px 14px',
-          borderRadius: 12,
-          background: isUser
-            ? 'var(--colorBrandBackground, #0078d4)'
-            : 'var(--colorNeutralBackground2, #f0f0f0)',
-          color: isUser ? '#fff' : 'var(--colorNeutralForeground1, #222)',
-          lineHeight: 1.5,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
+        className={`${styles.bubble} ${
+          isUser ? styles.bubbleUser : styles.bubbleAssistant
+        } ${isStreaming ? styles.bubbleStreaming : ''}`}
       >
-        {message.content || (isStreaming ? '▊' : '')}
+        {isUser ? (
+          message.content
+        ) : htmlContent ? (
+          <div
+            className={styles.mdWrapper}
+            dangerouslySetInnerHTML={{ __html: htmlContent }}
+          />
+        ) : isStreaming ? (
+          <span style={{ opacity: 0.5 }}>▊</span>
+        ) : null}
 
-        {/* Tool call cards */}
-        {message.toolCalls && message.toolCalls.length > 0 && (
-          <div style={{ marginTop: 8 }}>
+        {/* Tool call cards (assistant messages only) */}
+        {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
+          <div style={{ marginTop: 10 }}>
             {message.toolCalls.map((tc) => (
               <ToolCallCard key={tc.id} tool={tc} />
             ))}

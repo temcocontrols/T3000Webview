@@ -1,0 +1,611 @@
+/**
+ * AiChat.module.css — Styles for the AI Chat feature.
+ *
+ * Uses CSS custom properties for theming — automatically adapts to
+ * the FluentProvider's light/dark theme.
+ */
+
+/* ── Layout ── */
+.root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background-color: var(--colorNeutralBackground1);
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+  background-color: var(--colorNeutralBackground1);
+  flex-shrink: 0;
+  gap: 12px;
+}
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Messages area ── */
+.messagesArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 0;
+  position: relative;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--colorNeutralStroke1) transparent;
+}
+.messagesArea::-webkit-scrollbar {
+  width: 3px;
+}
+.messagesArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+.messagesArea::-webkit-scrollbar-thumb {
+  background: var(--colorNeutralStroke1);
+  border-radius: 1.5px;
+}
+.messagesArea::-webkit-scrollbar-thumb:hover {
+  background: var(--colorNeutralStroke2);
+}
+
+/* ── Message wrapper ── */
+.messageWrapper {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+  padding: 0 16px;
+}
+.messageWrapperUser {
+  align-items: flex-end;
+}
+.messageWrapperAssistant {
+  align-items: flex-start;
+}
+.messageMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--colorNeutralForeground3);
+  padding: 0 4px;
+}
+
+/* ── Message bubble ── */
+.bubble {
+  max-width: 82%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  line-height: 1.6;
+  font-size: 14px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.bubbleUser {
+  background-color: var(--colorBrandBackground);
+  color: var(--colorNeutralForegroundOnBrand);
+  border-bottom-right-radius: 4px;
+}
+.bubbleAssistant {
+  background-color: var(--colorNeutralBackground2);
+  color: var(--colorNeutralForeground1);
+  border-bottom-left-radius: 4px;
+}
+.bubbleStreaming {
+  box-shadow: 0 0 0 1px var(--colorBrandStroke1);
+}
+
+/* ── Markdown content ── */
+.mdWrapper {
+  line-height: 1.6;
+}
+.mdWrapper p {
+  margin: 0 0 8px 0;
+}
+.mdWrapper p:last-child {
+  margin-bottom: 0;
+}
+.mdWrapper code {
+  background-color: var(--colorNeutralBackground4);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+}
+.mdWrapper pre {
+  background-color: var(--colorNeutralBackground4);
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.mdWrapper pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+.mdWrapper ul,
+.mdWrapper ol {
+  padding-left: 20px;
+  margin: 4px 0 8px 0;
+}
+.mdWrapper li {
+  margin-bottom: 2px;
+}
+.mdWrapper blockquote {
+  border-left: 3px solid var(--colorBrandStroke1);
+  padding-left: 12px;
+  margin: 8px 0;
+  color: var(--colorNeutralForeground2);
+}
+.mdWrapper table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+  width: 100%;
+}
+.mdWrapper th,
+.mdWrapper td {
+  border: 1px solid var(--colorNeutralStroke2);
+  padding: 6px 10px;
+  text-align: left;
+}
+.mdWrapper th {
+  background-color: var(--colorNeutralBackground3);
+  font-weight: 600;
+}
+.mdWrapper a {
+  color: var(--colorBrandForeground1);
+  text-decoration: underline;
+}
+.mdWrapper h1,
+.mdWrapper h2,
+.mdWrapper h3,
+.mdWrapper h4 {
+  margin: 12px 0 6px 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.mdWrapper h1 {
+  font-size: 1.4em;
+}
+.mdWrapper h2 {
+  font-size: 1.2em;
+}
+.mdWrapper h3 {
+  font-size: 1.1em;
+}
+
+/* ── Tool call card ── */
+.toolCard {
+  margin-top: 10px;
+  border: 1px solid var(--colorNeutralStroke1);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 13px;
+}
+.toolCardHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: var(--colorNeutralBackground2);
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.toolCardBody {
+  padding: 10px 12px;
+  background-color: var(--colorNeutralBackground1);
+  font-size: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* ── System message ── */
+.systemMessage {
+  text-align: center;
+  padding: 8px 16px;
+  color: var(--colorNeutralForeground3);
+  font-size: 13px;
+  font-style: italic;
+  margin-bottom: 8px;
+}
+
+/* ── Empty state ── */
+.emptyRoot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px 20px 20px;
+  text-align: center;
+  min-height: 0;
+}
+.emptyTitle {
+  font-size: 26px;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+  color: var(--colorNeutralForeground1);
+  line-height: 1.3;
+}
+.emptySubtitle {
+  font-size: 15px;
+  color: var(--colorNeutralForeground2);
+  margin: 0 0 32px 0;
+  max-width: 500px;
+  line-height: 1.5;
+}
+
+/* Horizontal suggestion chips */
+.emptyChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  max-width: 560px;
+}
+.emptyChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 20px;
+  background-color: var(--colorNeutralBackground1);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--colorNeutralForeground1);
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.emptyChip:hover {
+  background-color: var(--colorNeutralBackground2);
+  border-color: var(--colorNeutralStroke1);
+  transform: translateY(-1px);
+}
+.emptyChipIcon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* ── Input area ── */
+.inputArea {
+  border-top: 1px solid var(--colorNeutralStroke3, transparent);
+  padding: 14px 20px 12px 20px;
+  background-color: var(--colorNeutralBackground1);
+  flex-shrink: 0;
+}
+.inputBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.inputBadge {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background-color: var(--colorNeutralBackground4);
+  color: var(--colorNeutralForeground2);
+}
+.inputStreamingDot {
+  font-size: 11px;
+  color: var(--colorBrandForeground1);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.streamingPulse {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: inherit;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 3px;
+  background: var(--colorNeutralBackground3);
+  line-height: 1.4;
+}
+.inputRow {
+  display: flex;
+  align-items: flex-end;
+}
+.inputTextarea {
+  width: 100%;
+  resize: none;
+  min-height: 52px;
+  border: 1px solid var(--colorNeutralStroke3, #e8e8e8);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-family: inherit;
+  line-height: 1.5;
+  outline: none;
+  background-color: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground1);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  scrollbar-width: thin;
+  scrollbar-color: var(--colorNeutralStroke1) transparent;
+}
+.inputTextarea:focus {
+  border-color: var(--colorBrandStroke1);
+  box-shadow: 0 0 0 2px var(--colorBrandBackground2);
+}
+.inputTextarea:disabled {
+  background-color: var(--colorNeutralBackground2);
+}
+.inputTextarea::placeholder {
+  color: var(--colorNeutralForeground3);
+}
+.inputTextarea::-webkit-scrollbar {
+  width: 3px;
+}
+.inputTextarea::-webkit-scrollbar-thumb {
+  background: var(--colorNeutralStroke1);
+  border-radius: 1.5px;
+}
+
+/* ── Scroll-to-bottom button ── */
+.scrollButton {
+  position: absolute;
+  bottom: 90px;
+  right: 24px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--colorNeutralStroke1);
+  background-color: var(--colorNeutralBackground1);
+  box-shadow: var(--shadow4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--colorNeutralForeground2);
+  z-index: 10;
+  transition: opacity 0.2s;
+}
+.scrollButton:hover {
+  background-color: var(--colorNeutralBackground2);
+}
+
+/* ── Settings Drawer ── */
+.drawerBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 50;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  max-width: 90vw;
+  background-color: var(--colorNeutralBackground1);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+  z-index: 51;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+}
+.drawerOpen {
+  transform: translateX(0);
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+  flex-shrink: 0;
+}
+.drawerHeaderTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--colorNeutralStroke1) transparent;
+}
+.drawerBody input,
+.drawerBody textarea {
+  font-size: 13px;
+}
+.drawerBody button,
+.drawerFooter button {
+  font-weight: 400;
+}
+.drawerBody::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+.drawerBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+.drawerBody::-webkit-scrollbar-thumb {
+  background: var(--colorNeutralStroke1);
+  border-radius: 1.5px;
+}
+
+.drawerHint {
+  font-size: 12px;
+  color: var(--colorNeutralForeground3);
+  margin: 4px 0 0 0;
+  line-height: 1.4;
+}
+
+/* ── Setup Guide ── */
+.guideToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 0;
+  margin-top: 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--colorNeutralForeground2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.guideToggle:hover {
+  color: var(--colorNeutralForeground1);
+}
+
+.guideBody {
+  padding: 12px;
+  margin-bottom: 4px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 8px;
+  background-color: var(--colorNeutralBackground2);
+}
+.guideText {
+  font-size: 12px;
+  color: var(--colorNeutralForeground2);
+  margin: 0 0 10px 0;
+  line-height: 1.5;
+}
+.guideNote {
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+  margin: 10px 0 0 0;
+  line-height: 1.5;
+}
+.guideNote code {
+  font-size: 11px;
+  background: var(--colorNeutralBackground4);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.guideCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 6px;
+  background: var(--colorNeutralBackground1);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.guideCard:hover {
+  border-color: var(--colorBrandStroke1);
+  background: var(--colorNeutralBackground2);
+}
+.guideCardName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--colorNeutralForeground1);
+  display: flex;
+  align-items: center;
+}
+.guideCardCmd {
+  font-size: 10px;
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+  color: var(--colorNeutralForeground3);
+  line-height: 1.4;
+  word-break: break-all;
+}
+.guideCardPort {
+  font-size: 10px;
+  color: var(--colorBrandForeground1);
+}
+
+.guideList {
+  font-size: 12px;
+  color: var(--colorNeutralForeground2);
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.8;
+}
+.guideList a {
+  color: var(--colorBrandForeground1);
+}
+
+.drawerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+  flex-shrink: 0;
+}
+
+.testSuccess {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--colorStatusSuccessForeground1, #107c10);
+}
+.testError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--colorStatusDangerForeground1, #c50f1f);
+  word-break: break-word;
+}

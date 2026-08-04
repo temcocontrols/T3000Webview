@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { API_BASE_URL } from '../../../config/constants';
 
 export interface AiSettings {
   provider: 'local' | 'anthropic' | 'gemini';
@@ -40,7 +41,7 @@ export function useAiSettings(): UseAiSettingsReturn {
   const saveSettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      await fetch('/api/ai/settings', {
+      await fetch(`${API_BASE_URL}/api/ai/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -61,7 +62,7 @@ export function useAiSettings(): UseAiSettingsReturn {
     setIsLoading(true);
     const start = Date.now();
     try {
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
