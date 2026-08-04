@@ -387,56 +387,116 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 0 20px 20px 20px;
+  justify-content: flex-start;
+  padding: 80px 20px 20px 20px;
   text-align: center;
   min-height: 0;
 }
 .emptyTitle {
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 600;
-  margin: 0 0 10px 0;
+  margin: 0 0 8px 0;
   color: var(--colorNeutralForeground1);
   line-height: 1.3;
 }
 .emptySubtitle {
-  font-size: 15px;
+  font-size: 13px;
   color: var(--colorNeutralForeground2);
   margin: 0 0 32px 0;
   max-width: 500px;
   line-height: 1.5;
 }
 
-/* Horizontal suggestion chips */
-.emptyChips {
-  display: flex;
-  flex-wrap: wrap;
+/* Suggestion cards */
+.emptyCards {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 10px;
-  justify-content: center;
-  max-width: 560px;
+  max-width: 880px;
+  width: 100%;
+  margin-bottom: 16px;
 }
-.emptyChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 18px;
+.emptyCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 14px;
   border: 1px solid var(--colorNeutralStroke2);
-  border-radius: 20px;
+  border-radius: 10px;
   background-color: var(--colorNeutralBackground1);
   cursor: pointer;
-  font-size: 13px;
-  color: var(--colorNeutralForeground1);
-  white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
 }
-.emptyChip:hover {
-  background-color: var(--colorNeutralBackground2);
+.emptyCard:hover {
   border-color: var(--colorNeutralStroke1);
-  transform: translateY(-1px);
+  background-color: var(--colorNeutralBackground2);
 }
-.emptyChipIcon {
-  font-size: 15px;
-  line-height: 1;
+.emptyCardIcon {
+  color: var(--colorNeutralForeground3);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.emptyCardTitle {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+  margin-bottom: 2px;
+}
+.emptyCardDesc {
+  display: block;
+  font-size: 10px;
+  color: var(--colorNeutralForeground3);
+  line-height: 1.4;
+}
+
+/* Tag chips */
+.emptyTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 840px;
+  margin-top: 8px;
+}
+.emptyTag {
+  padding: 6px 14px;
+  border: 1px solid var(--colorNeutralStroke3, #e8e8e8);
+  border-radius: 16px;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--colorNeutralForeground2);
+  transition: border-color 0.15s, background 0.15s;
+}
+.emptyTag:hover {
+  border-color: var(--colorNeutralStroke1);
+  background-color: var(--colorNeutralBackground2);
+}
+
+/* Example queries */
+.emptyExamples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 840px;
+  margin-top: 32px;
+}
+.emptyExample {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 14px;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--colorNeutralForeground3);
+  transition: color 0.15s, background 0.15s;
+}
+.emptyExample:hover {
+  color: var(--colorNeutralForeground1);
+  background-color: var(--colorNeutralBackground3);
 }
 
 /* ── Input area ── */
@@ -761,12 +821,32 @@
   word-break: break-word;
 }
 
-/* ── Disclaimer ── */
-.disclaimer {
-  text-align: center;
-  font-size: 11px;
-  color: var(--colorNeutralForeground3);
+/* ── Model info row (clickable → settings) ── */
+.modelInfoRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 4px 20px 6px 20px;
-  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
   flex-shrink: 0;
+  text-align: left;
+}
+.modelInfoRow:hover .modelInfoHint {
+  color: var(--colorNeutralForeground2);
+}
+.modelInfoBadge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  background-color: var(--colorNeutralBackground4);
+  color: var(--colorNeutralForeground2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.modelInfoHint {
+  font-size: 11px;
+  color: var(--colorNeutralForeground4, #b0b0b0);
+  transition: color 0.15s;
 }

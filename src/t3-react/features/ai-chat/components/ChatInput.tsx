@@ -10,33 +10,38 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { SparkleRegular } from '@fluentui/react-icons';
 import styles from '../AiChat.module.css';
 
 interface Props {
   onSend: (content: string) => void;
   onAbort: () => void;
   isStreaming: boolean;
-  providerLabel?: string;
+  onResize?: () => void;
 }
 
 export const ChatInput: React.FC<Props> = ({
   onSend,
   onAbort,
   isStreaming,
-  providerLabel = 'local:llama3.1:8b',
+  onResize,
 }) => {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const prevHeightRef = useRef(0);
 
   // Auto-resize textarea
   useEffect(() => {
     const el = textareaRef.current;
     if (el) {
       el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+      const newHeight = Math.min(el.scrollHeight, 150);
+      el.style.height = newHeight + 'px';
+      if (newHeight !== prevHeightRef.current) {
+        prevHeightRef.current = newHeight;
+        onResize?.();
+      }
     }
-  }, [value]);
+  }, [value, onResize]);
 
   // Refocus textarea after streaming completes
   useEffect(() => {
@@ -88,19 +93,15 @@ export const ChatInput: React.FC<Props> = ({
         />
       </div>
 
-      {/* Bottom row: provider badge (left) + streaming indicator (right) */}
-      <div className={styles.inputBottomRow}>
-        <span className={styles.inputBadge}>
-          <SparkleRegular style={{ fontSize: 11, marginRight: 3, verticalAlign: 'middle' }} />
-          {providerLabel}
-        </span>
-        {isStreaming && (
+      {/* Streaming indicator */}
+      {isStreaming && (
+        <div className={styles.inputBottomRow}>
           <span className={styles.inputStreamingDot}>
             <span className={styles.streamingPulse} />
             Streaming — press <kbd className={styles.kbd}>Esc</kbd> to stop
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

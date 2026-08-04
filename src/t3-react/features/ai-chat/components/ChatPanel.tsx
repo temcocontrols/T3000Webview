@@ -93,6 +93,12 @@ export const ChatPanel: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  const handleInputResize = useCallback(() => {
+    if (isNearBottom()) {
+      scrollToBottom();
+    }
+  }, [isNearBottom, scrollToBottom]);
+
   const handleSelectQuestion = useCallback(
     (question: string) => sendMessage(question),
     [sendMessage],
@@ -200,13 +206,16 @@ export const ChatPanel: React.FC = () => {
         onSend={sendMessage}
         onAbort={abort}
         isStreaming={isStreaming}
-        providerLabel={providerLabel}
+        onResize={handleInputResize}
       />
 
-      {/* ── Disclaimer ── */}
-      <p className={styles.disclaimer}>
-        AI may make mistakes. Verify important info.
-      </p>
+      {/* ── Model info + disclaimer (clickable → opens settings) ── */}
+      <button className={styles.modelInfoRow} onClick={() => setSettingsOpen(true)}>
+        <span className={styles.modelInfoBadge}>{providerLabel}</span>
+        <span className={styles.modelInfoHint}>
+          AI can make mistakes. Always verify critical building data before taking action.
+        </span>
+      </button>
 
       {/* ── Settings Drawer ── */}
         <SettingsDrawer

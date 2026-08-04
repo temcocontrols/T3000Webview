@@ -115,7 +115,7 @@ export const ChatSidebar: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Settings — flat item at bottom */}
+      {/* Settings */}
       <div className={styles.sidebarFooter}>
         {!collapsed ? (
           <button className={styles.sidebarFooterItem} onClick={onOpenSettings}>
