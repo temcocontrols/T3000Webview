@@ -86,7 +86,7 @@ export const ChatInput: React.FC<Props> = ({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isStreaming ? 'AI is responding\u2026' : 'Message AI Assistant\u2026'}
+          placeholder={isStreaming ? 'AI is responding\u2026' : 'Ask anything about your building\u2026'}
           disabled={isStreaming}
           rows={2}
           aria-label="Chat message input"

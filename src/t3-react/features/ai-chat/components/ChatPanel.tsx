@@ -29,10 +29,26 @@ const DEFAULT_SETTINGS: AiProviderSettings = {
   apiKey: '',
 };
 
+const STORAGE_KEY = 't3.ai.settings';
+
+const loadSettings = (): AiProviderSettings => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return DEFAULT_SETTINGS;
+};
+
+const saveSettings = (s: AiProviderSettings) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  } catch {}
+};
+
 export const ChatPanel: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [aiSettings, setAiSettings] = useState<AiProviderSettings>(DEFAULT_SETTINGS);
+  const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
 
   const {
     sessions,
@@ -221,7 +237,7 @@ export const ChatPanel: React.FC = () => {
         <SettingsDrawer
           open={settingsOpen}
           settings={aiSettings}
-          onSave={(s) => { setAiSettings(s); setSettingsOpen(false); }}
+          onSave={(s) => { setAiSettings(s); saveSettings(s); setSettingsOpen(false); }}
           onClose={() => setSettingsOpen(false)}
         />
       </div>
