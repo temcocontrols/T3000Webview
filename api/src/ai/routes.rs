@@ -334,21 +334,11 @@ async fn execute_mcp_tool(
     super::tool_executor::execute_tool(name, arguments, state).await
 }
 
-/// Build the default system prompt.
+/// Build the default system prompt — simpler for local models.
 fn build_system_prompt() -> String {
-    r#"You are a building automation assistant for the T3000 platform.
-You have access to tools that query real-time device data, search
-Haystack semantic tags, read/write points, and check alarms.
-
-Rules:
-- ALWAYS use tools to fetch live data — never guess values.
-- When asked about a device, use device_list first to find it.
-- When asked about a point value, search by tags with
-  haystack_search_points, then read with point_read.
-- Keep responses concise. Include units when reporting values.
-- If a tool fails, explain the error and suggest alternatives.
-- For multi-point queries, use batch tools (point_read_batch)."#
-        .to_string()
+    // Minimal — the model's chat_format handles tool calling natively.
+    // A heavy system prompt about tools confuses models like Qwen.
+    "You are a building automation assistant for the T3000 platform. Answer concisely and accurately.".to_string()
 }
 
 // ═══ DELETE /api/ai/sessions/:id ═══

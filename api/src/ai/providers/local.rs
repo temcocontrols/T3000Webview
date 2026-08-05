@@ -53,33 +53,20 @@ impl LlmProvider for LocalProvider {
                 obj
             })
             .collect();
-
-        // Local models work with a limited tool set. Send only essential tools
-        // to avoid overwhelming the model (especially with Qwen).
-        let essential_tools: Vec<&ToolDef> = tools.iter()
-            .filter(|t| {
-                let n = t.name.as_str();
-                n == "t3000_device_list" || n == "t3000_ping"
-                    || n == "t3000_point_read" || n == "t3000_alarm_list"
-                    || n == "t3000_trendlog_query"
-            })
-            .collect();
-
-        let tools_json: Vec<Value> = essential_tools.iter().map(|t| {
+        // DO NOT strip tools for local models.
+        // Qwen with peg-native format DOES produce tool_calls via grammar.
+        // Verified via raw SSE capture — server emits tool_calls deltas.
+        let tools_json: Vec<Value> = tools.iter().map(|t| {
             json!({ "type": "function", "function": { "name": t.name, "description": t.description, "parameters": t.input_schema } })
         }).collect();
 
         let mut body = json!({
-            "model": model,
-            "messages": messages_json,
-            "stream": true,
+            "model": model, "messages": messages_json, "stream": true,
         });
-
         if !tools_json.is_empty() {
             body["tools"] = json!(tools_json);
         }
-
-        tracing::info!("[Local] Sending request with {} tools (of {} available)", tools_json.len(), tools.len());
+        tracing::info!("[Local] Sending {} tools", tools_json.len());
 
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(300))
@@ -103,24 +90,27 @@ impl LlmProvider for LocalProvider {
             .map_err(|e| AiError::Provider(format!("Failed to connect: {}", e)))?;
 
         let status = response.status();
+        tracing::info!("[Local] Response status: {}", status);
         if !status.is_success() {
-            let body_text = response.text().await.unwrap_or_default();
-            return Err(AiError::Provider(format!("LLM returned {}: {}", status, body_text)));
+            let text = response.text().await.unwrap_or_default();
+            return Err(AiError::Provider(format!("LLM {}: {}", status, text)));
         }
 
         tracing::info!("[Local] Starting SSE stream parse");
-        Self::parse_sse_stream(response, tx).await
+        Self::parse_and_collect(response, tx).await.map(|_| ())
     }
 }
 
 impl LocalProvider {
-    async fn parse_sse_stream(
-        response: reqwest::Response,
+    async fn parse_and_collect(
+        resp: reqwest::Response,
         tx: &UnboundedSender<StreamEvent>,
-    ) -> Result<(), AiError> {
-        let mut stream = response.bytes_stream();
+    ) -> Result<(String, String, usize), AiError> {
+        let mut stream = resp.bytes_stream();
         let mut buffer = String::new();
         let mut tool_call_buf: Option<(String, String, String)> = None;
+        let mut full_text = String::new();
+        let mut full_reasoning = String::new();
         let mut content_count = 0u64;
         let mut reasoning_count = 0u64;
         let mut tool_call_count = 0u64;
@@ -169,12 +159,14 @@ impl LocalProvider {
                     if let Some(t) = delta.get("reasoning_content").and_then(|c| c.as_str()) {
                         if !t.is_empty() {
                             let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
+                            full_reasoning.push_str(t);
                             reasoning_count += 1;
                         }
                     }
                     if let Some(t) = delta.get("content").and_then(|c| c.as_str()) {
                         if !t.is_empty() {
                             let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
+                            full_text.push_str(t);
                             content_count += 1;
                         }
                     }
@@ -186,11 +178,13 @@ impl LocalProvider {
                                 let func_name = func.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string();
                                 let func_args = func.get("arguments").and_then(|a| a.as_str()).unwrap_or("").to_string();
                                 if !tc_id.is_empty() && !func_name.is_empty() {
-                                    tool_call_buf = Some((tc_id, func_name, format!(
-                                        "{}{}",
-                                        tool_call_buf.as_ref().map(|(_, _, a)| a.as_str()).unwrap_or(""),
-                                        func_args
-                                    )));
+                                    // Start new tool call
+                                    tool_call_buf = Some((tc_id, func_name, func_args));
+                                } else if !func_args.is_empty() {
+                                    // Arguments-only delta (may have no id/name) — append to existing
+                                    if let Some((_, _, ref mut existing_args)) = tool_call_buf {
+                                        existing_args.push_str(&func_args);
+                                    }
                                 }
                             }
                         }
@@ -206,12 +200,8 @@ impl LocalProvider {
             }
         }
 
-        tracing::info!(
-            "[Local] SSE done: frames={} content_chunks={} reasoning_chunks={} tool_calls={}",
-            frame_count, content_count, reasoning_count, tool_call_count
-        );
-
-        Ok(())
+        tracing::info!("[Local] SSE done frames={} content={} reasoning={} tool_calls={}", frame_count, content_count, reasoning_count, tool_call_count);
+        Ok((full_text, full_reasoning, tool_call_count as usize))
     }
 }
 
