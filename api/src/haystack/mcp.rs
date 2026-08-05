@@ -1403,7 +1403,7 @@ async fn point_write_ffi(
     Ok(json!({"success": true, "written_field": target_field, "written_value": new_value_str, "timestamp": Utc::now().to_rfc3339()}).to_string())
 }
 
-async fn execute_tool(
+pub(crate) async fn execute_tool(
     name: &str,
     args: &Value,
     db: &sea_orm::DatabaseConnection,

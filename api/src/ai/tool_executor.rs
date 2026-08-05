@@ -46,30 +46,13 @@ pub async fn execute_tool(
         }
     };
 
-    // Build synthetic JSON-RPC request
-    let req = mcp::JsonRpcRequest {
-        jsonrpc: "2.0".to_string(),
-        id: Some(Value::String("ai-chat-tool".to_string())),
-        method: name.to_string(),
-        params: Some(args),
-    };
+    // Call the real tool executor directly (not the JSON-RPC router)
+    let result_str = mcp::execute_tool(name, &args, &db).await
+        .map_err(|e| format!("Tool {} failed: {}", name, e))?;
 
-    // Dispatch to MCP handler
-    let response = mcp::handle_request(&req, &db).await;
+    info!("[AI] Tool {} succeeded", name);
 
-    // Extract result or error
-    match (response.result, response.error) {
-        (Some(result), _) => {
-            info!("[AI] Tool {} succeeded", name);
-            Ok(result)
-        }
-        (_, Some(err)) => {
-            let msg = format!("Tool {} failed: {} (code {})", name, err.message, err.code);
-            error!("[AI] {}", msg);
-            Err(msg)
-        }
-        (None, None) => {
-            Err(format!("Tool {} returned no result and no error", name))
-        }
-    }
+    // Parse result string back into JSON for the LLM
+    serde_json::from_str(&result_str)
+        .or_else(|_| Ok(Value::String(result_str)))
 }
