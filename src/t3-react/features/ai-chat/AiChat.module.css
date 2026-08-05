@@ -1051,12 +1051,22 @@
 
 /* ── System message ── */
 .systemMessage {
-  text-align: center;
-  padding: 8px 16px;
+  text-align: left;
+  padding: 6px 16px;
   color: var(--colorNeutralForeground4, #b0b0b0);
   font-size: 11px;
   font-style: italic;
   margin-bottom: 8px;
+}
+.systemError {
+  color: var(--colorStatusDangerForeground1, #c50f1f);
+  font-style: normal;
+  font-weight: 500;
+  background: var(--colorStatusDangerBackground1, #fde7e9);
+  border: 1px solid var(--colorStatusDangerBorder1, #eeacb2);
+  border-radius: 6px;
+  padding: 8px 14px;
+  margin: 4px 16px 8px 16px;
 }
 
 /* ── Empty state ── */

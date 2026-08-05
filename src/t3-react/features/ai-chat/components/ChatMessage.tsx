@@ -144,7 +144,7 @@ const ToolCallDetailDrawer: React.FC<{
 
   return (
     <>
-      <div className={styles.drawerOverlay} onClick={onClose} />
+      <div className={styles.drawerOverlay} onMouseDown={(e) => { e.preventDefault(); onClose(); }} />
       <div className={styles.drawer}>
         <div className={styles.drawerHeader}>
           <div className={styles.drawerTitle}>
@@ -189,7 +189,7 @@ const ToolCallTag: React.FC<{
   return (
     <button
       className={`${styles.toolTag} ${isPending ? styles.toolTagPending : ''} ${isError ? styles.toolTagError : ''}`}
-      onClick={onClick}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
       title={`${tool.name} — click for details`}
     >
       <span className={styles.toolTagIcon}>
@@ -220,7 +220,12 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
 
   // System message
   if (message.role === 'system') {
-    return <div className={styles.systemMessage}>{message.content}</div>;
+    const isError = message.content.startsWith('Error:');
+    return (
+      <div className={`${styles.systemMessage} ${isError ? styles.systemError : ''}`}>
+        {message.content}
+      </div>
+    );
   }
 
   const isUser = message.role === 'user';
