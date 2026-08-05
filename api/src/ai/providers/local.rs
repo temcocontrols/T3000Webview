@@ -26,23 +26,9 @@ impl LlmProvider for LocalProvider {
         tx: &UnboundedSender<StreamEvent>,
     ) -> Result<(), AiError> {
         let url = format!("{}/chat/completions", endpoint.trim_end_matches('/'));
+        tracing::info!("[Local] Request to {} model={} msgs={} tools={}", url, model, messages.len(), tools.len());
 
-        // Build OpenAI-format tools array
-        let tools_json: Vec<Value> = tools
-            .iter()
-            .map(|t| {
-                json!({
-                    "type": "function",
-                    "function": {
-                        "name": t.name,
-                        "description": t.description,
-                        "parameters": t.input_schema
-                    }
-                })
-            })
-            .collect();
-
-        // Build messages with tool calls and reasoning_content preserved
+        // Build messages with tool calls preserved
         let messages_json: Vec<Value> = messages
             .iter()
             .map(|m| {
@@ -68,18 +54,32 @@ impl LlmProvider for LocalProvider {
             })
             .collect();
 
+        // Local models work with a limited tool set. Send only essential tools
+        // to avoid overwhelming the model (especially with Qwen).
+        let essential_tools: Vec<&ToolDef> = tools.iter()
+            .filter(|t| {
+                let n = t.name.as_str();
+                n == "t3000_device_list" || n == "t3000_ping"
+                    || n == "t3000_point_read" || n == "t3000_alarm_list"
+                    || n == "t3000_trendlog_query"
+            })
+            .collect();
+
+        let tools_json: Vec<Value> = essential_tools.iter().map(|t| {
+            json!({ "type": "function", "function": { "name": t.name, "description": t.description, "parameters": t.input_schema } })
+        }).collect();
+
         let mut body = json!({
             "model": model,
             "messages": messages_json,
             "stream": true,
-            "reasoning_format": "auto",
-            "continue_final_message": true,
-            "add_generation_prompt": false,
         });
 
         if !tools_json.is_empty() {
             body["tools"] = json!(tools_json);
         }
+
+        tracing::info!("[Local] Sending request with {} tools (of {} available)", tools_json.len(), tools.len());
 
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(300))
@@ -100,28 +100,15 @@ impl LlmProvider for LocalProvider {
         let response = req_builder
             .send()
             .await
-            .map_err(|e| AiError::Provider(format!("Failed to connect to LLM at {}: {}", url, e)))?;
+            .map_err(|e| AiError::Provider(format!("Failed to connect: {}", e)))?;
 
         let status = response.status();
         if !status.is_success() {
             let body_text = response.text().await.unwrap_or_default();
-            if !tools_json.is_empty()
-                && (body_text.contains("parse tool") || body_text.contains("parse_error"))
-            {
-                let fallback_body = json!({
-                    "model": model, "messages": messages_json, "stream": true,
-                });
-                let fb = client.post(&url).header("Content-Type", "application/json")
-                    .json(&fallback_body).send().await
-                    .map_err(|e| AiError::Provider(format!("Fallback failed: {}", e)))?;
-                if !fb.status().is_success() {
-                    return Err(AiError::Provider(format!("Model doesn't support tools. ({})", fb.status())));
-                }
-                return Self::parse_sse_stream(fb, tx).await;
-            }
             return Err(AiError::Provider(format!("LLM returned {}: {}", status, body_text)));
         }
 
+        tracing::info!("[Local] Starting SSE stream parse");
         Self::parse_sse_stream(response, tx).await
     }
 }
@@ -133,7 +120,11 @@ impl LocalProvider {
     ) -> Result<(), AiError> {
         let mut stream = response.bytes_stream();
         let mut buffer = String::new();
-        let mut tool_call_buf: Option<(String, String, String)> = None; // (id, name, args_acc)
+        let mut tool_call_buf: Option<(String, String, String)> = None;
+        let mut content_count = 0u64;
+        let mut reasoning_count = 0u64;
+        let mut tool_call_count = 0u64;
+        let mut frame_count = 0u64;
 
         while let Some(chunk_result) = stream.next().await {
             let chunk = chunk_result.map_err(|e| {
@@ -143,10 +134,10 @@ impl LocalProvider {
             let chunk_str = String::from_utf8_lossy(&chunk);
             buffer.push_str(&chunk_str);
 
-            // Process complete SSE frames (separated by \n\n)
             while let Some(pos) = buffer.find("\n\n") {
                 let frame = buffer[..pos].to_string();
                 buffer = buffer[pos + 2..].to_string();
+                frame_count += 1;
 
                 for line in frame.lines() {
                     let line = line.trim();
@@ -154,12 +145,12 @@ impl LocalProvider {
                         continue;
                     }
 
-                    let data = &line[6..]; // Strip "data: " prefix
+                    let data = &line[6..];
                     if data == "[DONE]" {
-                        // Stream complete — send any pending tool call if valid
                         if let Some((id, name, args)) = tool_call_buf.take() {
                             if is_valid_tool_args(&args) {
                                 let _ = tx.send(StreamEvent::ToolCall { id, name, arguments: args });
+                                tool_call_count += 1;
                             }
                         }
                         continue;
@@ -167,67 +158,39 @@ impl LocalProvider {
 
                     let parsed: Value = match serde_json::from_str(data) {
                         Ok(v) => v,
-                        Err(_) => continue, // Skip unparseable lines
+                        Err(_) => continue,
                     };
 
-                    // Check for choices[0].delta
-                    let delta = match parsed
-                        .get("choices")
-                        .and_then(|c| c.get(0))
-                        .and_then(|c| c.get("delta"))
-                    {
+                    let delta = match parsed.get("choices").and_then(|c| c.get(0)).and_then(|c| c.get("delta")) {
                         Some(d) => d,
                         None => continue,
                     };
 
-                    // Emit both reasoning_content (thinking) and content (answer)
                     if let Some(t) = delta.get("reasoning_content").and_then(|c| c.as_str()) {
                         if !t.is_empty() {
                             let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
+                            reasoning_count += 1;
                         }
                     }
                     if let Some(t) = delta.get("content").and_then(|c| c.as_str()) {
                         if !t.is_empty() {
                             let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
+                            content_count += 1;
                         }
                     }
 
-                    // Tool call delta
                     if let Some(tool_calls) = delta.get("tool_calls").and_then(|tc| tc.as_array()) {
                         for tc in tool_calls {
-                            let _tc_index = tc.get("index").and_then(|i| i.as_u64()).unwrap_or(0);
-                            let tc_id = tc
-                                .get("id")
-                                .and_then(|i| i.as_str())
-                                .unwrap_or("")
-                                .to_string();
-
+                            let tc_id = tc.get("id").and_then(|i| i.as_str()).unwrap_or("").to_string();
                             if let Some(func) = tc.get("function") {
-                                let func_name = func
-                                    .get("name")
-                                    .and_then(|n| n.as_str())
-                                    .unwrap_or("")
-                                    .to_string();
-                                let func_args = func
-                                    .get("arguments")
-                                    .and_then(|a| a.as_str())
-                                    .unwrap_or("")
-                                    .to_string();
-
+                                let func_name = func.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string();
+                                let func_args = func.get("arguments").and_then(|a| a.as_str()).unwrap_or("").to_string();
                                 if !tc_id.is_empty() && !func_name.is_empty() {
-                                    // Start or update accumulating tool call
-                                    tool_call_buf = Some((
-                                        tc_id,
-                                        func_name,
-                                        format!(
-                                            "{}{}",
-                                            tool_call_buf
-                                                .as_ref()
-                                                .map(|(_, _, a)| a.as_str())
-                                                .unwrap_or(""),
-                                            func_args
-                                        ),
-                                    ));
+                                    tool_call_buf = Some((tc_id, func_name, format!(
+                                        "{}{}",
+                                        tool_call_buf.as_ref().map(|(_, _, a)| a.as_str()).unwrap_or(""),
+                                        func_args
+                                    )));
                                 }
                             }
                         }
@@ -236,12 +199,17 @@ impl LocalProvider {
             }
         }
 
-        // Flush any remaining tool call — validate JSON first
         if let Some((id, name, args)) = tool_call_buf.take() {
             if is_valid_tool_args(&args) {
                 let _ = tx.send(StreamEvent::ToolCall { id, name, arguments: args });
+                tool_call_count += 1;
             }
         }
+
+        tracing::info!(
+            "[Local] SSE done: frames={} content_chunks={} reasoning_chunks={} tool_calls={}",
+            frame_count, content_count, reasoning_count, tool_call_count
+        );
 
         Ok(())
     }

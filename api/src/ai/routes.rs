@@ -120,6 +120,7 @@ async fn process_chat(
 ) -> Result<(), AiError> {
     let provider = get_provider(&session.provider)?;
     let tools = get_all_tool_defs();
+    info!("[AI] process_chat: provider={} model={} endpoint={} tools={}", session.provider, session.model, session.endpoint, tools.len());
 
     // Send the system prompt if this is a new conversation
     let messages = if session.messages.iter().any(|m| m.role == "system") {
@@ -138,7 +139,6 @@ async fn process_chat(
     // Outer loop: keep calling the LLM until it produces a final response
     let mut current_messages = messages;
     let max_iterations = 10;
-    let mut nudge_attempted = false;
 
     for _iteration in 0..max_iterations {
         let (inner_tx, mut inner_rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
@@ -174,6 +174,7 @@ async fn process_chat(
             .collect();
 
         if tool_requests.is_empty() {
+            info!("[AI] No tools called, streaming {} events", turn_events.len());
             // No tools called — stream text events and finish
             for event in &turn_events {
                 if let StreamEvent::TextDelta { .. } = event {
@@ -201,22 +202,6 @@ async fn process_chat(
                     tool_calls: None,
                     tool_call_id: None,
                 });
-
-                // If model describes tools but didn't call any, nudge it
-                let mentioned_tools: Vec<&str> = tools.iter()
-                    .filter(|t| assistant_text.contains(&t.name))
-                    .map(|t| t.name.as_str())
-                    .collect();
-                if !mentioned_tools.is_empty() && !nudge_attempted {
-                    nudge_attempted = true;
-                    current_messages.push(Message {
-                        role: "user".to_string(),
-                        content: "Please call the tool now to get the data.".to_string(),
-                        tool_calls: None,
-                        tool_call_id: None,
-                    });
-                    continue;
-                }
             }
 
             // Send done event
@@ -254,6 +239,7 @@ async fn process_chat(
             return Ok(());
         }
 
+        info!("[AI] {} tool(s) called, executing", tool_requests.len());
         // Tools were called — execute them
         // First, stream the tool_call events to the frontend
         let mut tool_call_records: Vec<(String, String, String)> = vec![]; // (id, name, args)
