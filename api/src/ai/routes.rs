@@ -137,13 +137,11 @@ async fn process_chat(
 
     // Outer loop: keep calling the LLM until it produces a final response
     let mut current_messages = messages;
-    let max_iterations = 10; // Safety limit — prevent infinite tool-call loops
+    let max_iterations = 10;
 
     for _iteration in 0..max_iterations {
-        // Inner channel: collect events from the provider
         let (inner_tx, mut inner_rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
 
-        // Stream from LLM
         let provider_result = provider
             .stream_chat(
                 &session.endpoint,
@@ -165,12 +163,6 @@ async fn process_chat(
         }
 
         if let Err(e) = provider_result {
-            let _ = tx.send(Ok(Event::default().data(
-                serde_json::to_string(&StreamEvent::Error {
-                    message: e.to_string(),
-                })
-                .unwrap(),
-            )));
             return Err(e);
         }
 

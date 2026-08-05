@@ -85,9 +85,9 @@ impl LlmProvider for LocalProvider {
             "stream": true,
         });
 
-        // Build request
+        // Build request with optional tool-fallback retry
         let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(300)) // 5 min timeout for long generations
+            .timeout(std::time::Duration::from_secs(300))
             .build()
             .map_err(|e| AiError::Provider(format!("Failed to build HTTP client: {}", e)))?;
 
@@ -102,14 +102,70 @@ impl LlmProvider for LocalProvider {
             }
         }
 
-        let response = req_builder
-            .send()
+        let request = req_builder.build().map_err(|e| {
+            AiError::Provider(format!("Failed to build request: {}", e))
+        })?;
+
+        let response = client
+            .execute(request.try_clone().unwrap_or(request))
             .await
             .map_err(|e| AiError::Provider(format!("Failed to connect to LLM at {}: {}", url, e)))?;
 
         let status = response.status();
         if !status.is_success() {
             let body_text = response.text().await.unwrap_or_default();
+            // If tool parsing failed and we sent tools, retry without tools
+            if !tools.is_empty()
+                && (body_text.contains("parse tool") || body_text.contains("parse_error"))
+            {
+                tracing::info!("[AI] Tool parse error, retrying without tools. Model: {}", model);
+
+                // Strip tool-related messages and simplify system prompt on retry
+                let clean_messages: Vec<Value> = messages_json
+                    .iter()
+                    .filter(|m| {
+                        let role = m["role"].as_str().unwrap_or("");
+                        // Remove tool result messages and assistant messages with tool calls
+                        role != "tool" && !(role == "assistant" && m.get("tool_calls").is_some())
+                    })
+                    .map(|m| {
+                        let mut obj = m.clone();
+                        // Simplify system prompt
+                        if obj["role"] == "system" {
+                            obj["content"] = json!("You are a helpful building automation assistant. Answer concisely.");
+                        }
+                        obj
+                    })
+                    .collect();
+
+                let fallback_body = json!({
+                    "model": model,
+                    "messages": clean_messages,
+                    "stream": true,
+                });
+
+                tracing::info!("[AI] Sending retry with {} clean messages (no tools)", clean_messages.len());
+
+                let fallback_response = client
+                    .post(&url)
+                    .header("Content-Type", "application/json")
+                    .json(&fallback_body)
+                    .send()
+                    .await
+                    .map_err(|e| AiError::Provider(format!("Tool-less retry failed: {}", e)))?;
+
+                let fb_status = fallback_response.status();
+                if !fb_status.is_success() {
+                    let fb_text = fallback_response.text().await.unwrap_or_default();
+                    tracing::warn!("[AI] Retry without tools also failed: {} - {}", fb_status, fb_text);
+                    return Err(AiError::Provider(format!(
+                        "Model does not support tool calling. Try a different model or disable tools. ({})",
+                        fb_status
+                    )));
+                }
+                tracing::info!("[AI] Retry without tools succeeded");
+                return Self::parse_sse_stream(fallback_response, tx).await;
+            }
             return Err(AiError::Provider(format!(
                 "LLM returned {}: {}",
                 status, body_text
@@ -117,6 +173,15 @@ impl LlmProvider for LocalProvider {
         }
 
         // Parse SSE stream
+        Self::parse_sse_stream(response, tx).await
+    }
+}
+
+impl LocalProvider {
+    async fn parse_sse_stream(
+        response: reqwest::Response,
+        tx: &UnboundedSender<StreamEvent>,
+    ) -> Result<(), AiError> {
         let mut stream = response.bytes_stream();
         let mut buffer = String::new();
         let mut tool_call_buf: Option<(String, String, String)> = None; // (id, name, args_acc)
@@ -142,14 +207,11 @@ impl LlmProvider for LocalProvider {
 
                     let data = &line[6..]; // Strip "data: " prefix
                     if data == "[DONE]" {
-                        // Stream complete — send any pending tool call
+                        // Stream complete — send any pending tool call if valid
                         if let Some((id, name, args)) = tool_call_buf.take() {
-                            let _ = tx
-                                .send(StreamEvent::ToolCall {
-                                    id,
-                                    name,
-                                    arguments: args,
-                                });
+                            if is_valid_tool_args(&args) {
+                                let _ = tx.send(StreamEvent::ToolCall { id, name, arguments: args });
+                            }
                         }
                         continue;
                     }
@@ -169,13 +231,15 @@ impl LlmProvider for LocalProvider {
                         None => continue,
                     };
 
-                    // Text delta
-                    if let Some(content) = delta.get("content").and_then(|c| c.as_str()) {
-                        if !content.is_empty() {
-                            let _ = tx
-                                .send(StreamEvent::TextDelta {
-                                    content: content.to_string(),
-                                });
+                    // Emit both reasoning_content (thinking) and content (answer)
+                    if let Some(t) = delta.get("reasoning_content").and_then(|c| c.as_str()) {
+                        if !t.is_empty() {
+                            let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
+                        }
+                    }
+                    if let Some(t) = delta.get("content").and_then(|c| c.as_str()) {
+                        if !t.is_empty() {
+                            let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
                         }
                     }
 
@@ -223,16 +287,18 @@ impl LlmProvider for LocalProvider {
             }
         }
 
-        // Flush any remaining tool call
+        // Flush any remaining tool call — validate JSON first
         if let Some((id, name, args)) = tool_call_buf.take() {
-            let _ = tx
-                .send(StreamEvent::ToolCall {
-                    id,
-                    name,
-                    arguments: args,
-                });
+            if is_valid_tool_args(&args) {
+                let _ = tx.send(StreamEvent::ToolCall { id, name, arguments: args });
+            }
         }
 
         Ok(())
     }
+}
+
+/// Check that tool call arguments are valid JSON (or empty).
+fn is_valid_tool_args(args: &str) -> bool {
+    args.trim().is_empty() || serde_json::from_str::<Value>(args).is_ok()
 }
