@@ -78,7 +78,11 @@ export function useChatHistory(): UseChatHistoryReturn {
   }, []);
 
   const deleteSession = useCallback(async (id: string) => {
-    await fetch(`${API_BASE_URL}/api/ai/sessions/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/api/ai/delete-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
     setSessions((prev) => prev.filter((s) => s.id !== id));
     if (activeSessionId === id) setActiveSessionId(null);
   }, [activeSessionId]);

@@ -196,10 +196,25 @@ async fn process_chat(
             if !assistant_text.is_empty() {
                 current_messages.push(Message {
                     role: "assistant".to_string(),
-                    content: assistant_text,
+                    content: assistant_text.clone(),
                     tool_calls: None,
                     tool_call_id: None,
                 });
+
+                // If model describes tools but didn't call any, nudge it
+                let mentioned_tools: Vec<&str> = tools.iter()
+                    .filter(|t| assistant_text.contains(&t.name))
+                    .map(|t| t.name.as_str())
+                    .collect();
+                if !mentioned_tools.is_empty() && _iteration + 1 < max_iterations {
+                    current_messages.push(Message {
+                        role: "user".to_string(),
+                        content: "Please call the tool now to get the data.".to_string(),
+                        tool_calls: None,
+                        tool_call_id: None,
+                    });
+                    continue;
+                }
             }
 
             // Send done event
@@ -356,6 +371,20 @@ pub async fn handle_delete_session(
     SESSION_MANAGER.delete(&session_id).await;
     let _ = super::session_store::delete_session(&session_id);
     StatusCode::NO_CONTENT
+}
+
+// ═══ POST /api/ai/delete-session ═══
+
+pub async fn handle_delete_session_post(
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let session_id = body.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    if session_id.is_empty() {
+        return Json(json!({"ok": false, "error": "Session ID required"})).into_response();
+    }
+    SESSION_MANAGER.delete(session_id).await;
+    let _ = super::session_store::delete_session(session_id);
+    Json(json!({"ok": true})).into_response()
 }
 
 // ═══ GET /api/ai/sessions (list) ═══
@@ -669,4 +698,5 @@ pub fn ai_routes() -> Router<T3AppState> {
         .route("/api/ai/mcp-servers/test", post(handle_test_mcp_server))
         .route("/api/ai/delete-mcp-server", post(handle_delete_mcp_server_post))
         .route("/api/ai/activate-mcp-server", post(handle_activate_server_post))
+        .route("/api/ai/delete-session", post(handle_delete_session_post))
 }
