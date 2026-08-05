@@ -42,8 +42,7 @@ impl LlmProvider for LocalProvider {
             })
             .collect();
 
-        // Build messages array — filter out tool_call metadata that the
-        // frontend may not send; only keep role + content for simplicity.
+        // Build messages with tool calls and reasoning_content preserved
         let messages_json: Vec<Value> = messages
             .iter()
             .map(|m| {
@@ -51,26 +50,17 @@ impl LlmProvider for LocalProvider {
                     "role": m.role,
                     "content": m.content,
                 });
-                // If this is an assistant message with tool calls, include them
                 if m.role == "assistant" {
                     if let Some(ref tcs) = m.tool_calls {
-                        let openai_tool_calls: Vec<Value> = tcs
-                            .iter()
-                            .map(|tc| {
-                                json!({
-                                    "id": tc.id,
-                                    "type": "function",
-                                    "function": {
-                                        "name": tc.function.name,
-                                        "arguments": tc.function.arguments
-                                    }
-                                })
+                        let openai_tool_calls: Vec<Value> = tcs.iter().map(|tc| {
+                            json!({
+                                "id": tc.id, "type": "function",
+                                "function": { "name": tc.function.name, "arguments": tc.function.arguments }
                             })
-                            .collect();
+                        }).collect();
                         obj["tool_calls"] = json!(openai_tool_calls);
                     }
                 }
-                // If this is a tool result message
                 if m.role == "tool" {
                     obj["tool_call_id"] = json!(m.tool_call_id);
                 }
@@ -78,14 +68,19 @@ impl LlmProvider for LocalProvider {
             })
             .collect();
 
-        let body = json!({
+        let mut body = json!({
             "model": model,
             "messages": messages_json,
-            "tools": tools_json,
             "stream": true,
+            "reasoning_format": "auto",
+            "continue_final_message": true,
+            "add_generation_prompt": false,
         });
 
-        // Build request with optional tool-fallback retry
+        if !tools_json.is_empty() {
+            body["tools"] = json!(tools_json);
+        }
+
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(300))
             .build()
@@ -102,77 +97,31 @@ impl LlmProvider for LocalProvider {
             }
         }
 
-        let request = req_builder.build().map_err(|e| {
-            AiError::Provider(format!("Failed to build request: {}", e))
-        })?;
-
-        let response = client
-            .execute(request.try_clone().unwrap_or(request))
+        let response = req_builder
+            .send()
             .await
             .map_err(|e| AiError::Provider(format!("Failed to connect to LLM at {}: {}", url, e)))?;
 
         let status = response.status();
         if !status.is_success() {
             let body_text = response.text().await.unwrap_or_default();
-            // If tool parsing failed and we sent tools, retry without tools
-            if !tools.is_empty()
+            if !tools_json.is_empty()
                 && (body_text.contains("parse tool") || body_text.contains("parse_error"))
             {
-                tracing::info!("[AI] Tool parse error, retrying without tools. Model: {}", model);
-
-                // Strip tool-related messages and simplify system prompt on retry
-                let clean_messages: Vec<Value> = messages_json
-                    .iter()
-                    .filter(|m| {
-                        let role = m["role"].as_str().unwrap_or("");
-                        // Remove tool result messages and assistant messages with tool calls
-                        role != "tool" && !(role == "assistant" && m.get("tool_calls").is_some())
-                    })
-                    .map(|m| {
-                        let mut obj = m.clone();
-                        // Simplify system prompt
-                        if obj["role"] == "system" {
-                            obj["content"] = json!("You are a helpful building automation assistant. Answer concisely.");
-                        }
-                        obj
-                    })
-                    .collect();
-
                 let fallback_body = json!({
-                    "model": model,
-                    "messages": clean_messages,
-                    "stream": true,
+                    "model": model, "messages": messages_json, "stream": true,
                 });
-
-                tracing::info!("[AI] Sending retry with {} clean messages (no tools)", clean_messages.len());
-
-                let fallback_response = client
-                    .post(&url)
-                    .header("Content-Type", "application/json")
-                    .json(&fallback_body)
-                    .send()
-                    .await
-                    .map_err(|e| AiError::Provider(format!("Tool-less retry failed: {}", e)))?;
-
-                let fb_status = fallback_response.status();
-                if !fb_status.is_success() {
-                    let fb_text = fallback_response.text().await.unwrap_or_default();
-                    tracing::warn!("[AI] Retry without tools also failed: {} - {}", fb_status, fb_text);
-                    return Err(AiError::Provider(format!(
-                        "Model does not support tool calling. Try a different model or disable tools. ({})",
-                        fb_status
-                    )));
+                let fb = client.post(&url).header("Content-Type", "application/json")
+                    .json(&fallback_body).send().await
+                    .map_err(|e| AiError::Provider(format!("Fallback failed: {}", e)))?;
+                if !fb.status().is_success() {
+                    return Err(AiError::Provider(format!("Model doesn't support tools. ({})", fb.status())));
                 }
-                tracing::info!("[AI] Retry without tools succeeded");
-                return Self::parse_sse_stream(fallback_response, tx).await;
+                return Self::parse_sse_stream(fb, tx).await;
             }
-            return Err(AiError::Provider(format!(
-                "LLM returned {}: {}",
-                status, body_text
-            )));
+            return Err(AiError::Provider(format!("LLM returned {}: {}", status, body_text)));
         }
 
-        // Parse SSE stream
         Self::parse_sse_stream(response, tx).await
     }
 }

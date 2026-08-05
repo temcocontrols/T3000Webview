@@ -138,6 +138,7 @@ async fn process_chat(
     // Outer loop: keep calling the LLM until it produces a final response
     let mut current_messages = messages;
     let max_iterations = 10;
+    let mut nudge_attempted = false;
 
     for _iteration in 0..max_iterations {
         let (inner_tx, mut inner_rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
@@ -206,7 +207,8 @@ async fn process_chat(
                     .filter(|t| assistant_text.contains(&t.name))
                     .map(|t| t.name.as_str())
                     .collect();
-                if !mentioned_tools.is_empty() && _iteration + 1 < max_iterations {
+                if !mentioned_tools.is_empty() && !nudge_attempted {
+                    nudge_attempted = true;
                     current_messages.push(Message {
                         role: "user".to_string(),
                         content: "Please call the tool now to get the data.".to_string(),
