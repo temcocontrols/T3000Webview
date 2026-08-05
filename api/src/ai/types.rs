@@ -67,6 +67,12 @@ pub enum StreamEvent {
     /// A chunk of streaming text.
     #[serde(rename = "text_delta")]
     TextDelta { content: String },
+    /// A chunk of reasoning/thinking content (separate from final text).
+    #[serde(rename = "thinking_delta")]
+    ThinkingDelta { content: String },
+    /// Reasoning phase ended — sent before the final answer starts.
+    #[serde(rename = "thinking_end")]
+    ThinkingEnd { steps: usize, duration_ms: u64 },
     /// The LLM has requested a tool call.
     #[serde(rename = "tool_call")]
     ToolCall {

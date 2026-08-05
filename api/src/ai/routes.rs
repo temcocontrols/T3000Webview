@@ -175,11 +175,16 @@ async fn process_chat(
 
         if tool_requests.is_empty() {
             info!("[AI] No tools called, streaming {} events", turn_events.len());
-            // No tools called — stream text events and finish
+            // No tools called — stream text/thinking events and finish
             for event in &turn_events {
-                if let StreamEvent::TextDelta { .. } = event {
-                    let json = serde_json::to_string(event).unwrap();
-                    let _ = tx.send(Ok(Event::default().data(json)));
+                match event {
+                    StreamEvent::TextDelta { .. }
+                    | StreamEvent::ThinkingDelta { .. }
+                    | StreamEvent::ThinkingEnd { .. } => {
+                        let json = serde_json::to_string(event).unwrap();
+                        let _ = tx.send(Ok(Event::default().data(json)));
+                    }
+                    _ => {}
                 }
             }
 
@@ -246,7 +251,9 @@ async fn process_chat(
 
         for event in &turn_events {
             match event {
-                StreamEvent::TextDelta { content: _ } => {
+                StreamEvent::TextDelta { content: _ }
+                | StreamEvent::ThinkingDelta { .. }
+                | StreamEvent::ThinkingEnd { .. } => {
                     let json = serde_json::to_string(event).unwrap();
                     let _ = tx.send(Ok(Event::default().data(json)));
                 }

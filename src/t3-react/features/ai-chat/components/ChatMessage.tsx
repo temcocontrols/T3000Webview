@@ -4,7 +4,8 @@
  * - User messages: right-aligned, brand-colored bubble.
  * - AI messages: left-aligned, neutral bubble with full Markdown rendering.
  * - System messages: centered, muted text (errors / info).
- * - Tool calls: collapsible cards showing args + result.
+ * - Thinking section: collapsible "Finished with N steps · Xs" block.
+ * - Tool calls: compact inline tags that open a detail drawer.
  *
  * Uses Fluent UI design tokens via shared AiChat.styles.
  */
@@ -12,8 +13,17 @@
 import React, { useState, useMemo } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+import {
+  CheckmarkCircleRegular,
+  DismissCircleRegular,
+  ArrowSyncRegular,
+} from '@fluentui/react-icons';
 import styles from '../AiChat.module.css';
-import type { ChatMessage as ChatMessageType, ToolCallRecord } from '../hooks/useAiChatStream';
+import type {
+  ChatMessage as ChatMessageType,
+  ToolCallRecord,
+  ThinkingState,
+} from '../hooks/useAiChatStream';
 
 // Configure marked for safety
 marked.setOptions({
@@ -31,6 +41,11 @@ interface Props {
 const formatTime = (ts: number): string =>
   new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+const formatDuration = (ms: number): string => {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+};
+
 function renderMarkdown(content: string): string {
   if (!content) return '';
   const raw = marked.parse(content) as string;
@@ -45,20 +60,64 @@ function renderMarkdown(content: string): string {
   });
 }
 
-// ── ToolCallCard ──
+// ── ThinkingSection ──
 
-const ToolCallCard: React.FC<{ tool: ToolCallRecord }> = ({ tool }) => {
-  const [expanded, setExpanded] = useState(false);
+const ThinkingSection: React.FC<{
+  thinking: ThinkingState;
+  isStreaming?: boolean;
+}> = ({ thinking, isStreaming }) => {
+  const [expanded, setExpanded] = useState(isStreaming ?? true);
 
-  const statusIcon = tool.status === 'pending' ? '⏳' : tool.status === 'error' ? '❌' : '✅';
-  const statusLabel =
-    tool.status === 'pending' ? 'Running...' : tool.status === 'error' ? 'Failed' : 'Done';
+  if (isStreaming) {
+    return (
+      <div className={styles.thinkingSection}>
+        <div className={styles.thinkingHeader}>
+          <span className={styles.thinkingIcon}>
+            <ArrowSyncRegular style={{ fontSize: 14 }} />
+          </span>
+          <span className={styles.thinkingLabel}>Thinking&hellip;</span>
+          <span className={styles.thinkingCount}>{thinking.steps} steps</span>
+        </div>
+        <div className={styles.thinkingBody}>
+          <div className={styles.thinkingContent}>{thinking.content}</div>
+          <span className={styles.thinkingCursor}>▊</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.thinkingSection}>
+      <button
+        className={styles.thinkingToggle}
+        onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+      >
+        <span className={styles.thinkingToggleIcon}>{expanded ? '▾' : '▸'}</span>
+        <span className={styles.thinkingToggleLabel}>
+          Finished with {thinking.steps} steps &middot; {formatDuration(thinking.durationMs)}
+        </span>
+      </button>
+      {expanded && (
+        <div className={styles.thinkingBodyDone}>{thinking.content}</div>
+      )}
+    </div>
+  );
+};
+
+// ── ToolCallDetailDrawer ──
+
+const ToolCallDetailDrawer: React.FC<{
+  tool: ToolCallRecord | null;
+  onClose: () => void;
+}> = ({ tool, onClose }) => {
+  if (!tool) return null;
 
   let formattedArgs = '';
   try {
     formattedArgs = JSON.stringify(JSON.parse(tool.args), null, 2);
   } catch {
-    formattedArgs = tool.args;
+    formattedArgs = tool.args || '(empty)';
   }
 
   let formattedResult = '';
@@ -70,63 +129,89 @@ const ToolCallCard: React.FC<{ tool: ToolCallRecord }> = ({ tool }) => {
     }
   }
 
+  const statusIcon =
+    tool.status === 'pending'
+      ? '⏳'
+      : tool.status === 'error'
+      ? '❌'
+      : '✅';
+  const statusLabel =
+    tool.status === 'pending'
+      ? 'Running...'
+      : tool.status === 'error'
+      ? 'Failed'
+      : 'Completed';
+
   return (
-    <div className={styles.toolCard}>
-      <button
-        className={styles.toolCardHeader}
-        onClick={() => setExpanded(!expanded)}
-        aria-expanded={expanded}
-      >
-        <span>{statusIcon}</span>
-        <span style={{ fontWeight: 600 }}>{tool.name}</span>
-        <span style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.7 }}>{statusLabel}</span>
-        <span style={{ fontSize: 11 }}>{expanded ? '▴' : '▾'}</span>
-      </button>
-      {expanded && (
-        <div className={styles.toolCardBody}>
-          {tool.args && (
-            <div style={{ marginBottom: 8 }}>
-              <strong>Arguments:</strong>
-              <pre
-                style={{
-                  margin: '4px 0 0 0',
-                  fontSize: 12,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-all',
-                }}
-              >
-                {formattedArgs}
-              </pre>
-            </div>
-          )}
+    <>
+      <div className={styles.drawerOverlay} onClick={onClose} />
+      <div className={styles.drawer}>
+        <div className={styles.drawerHeader}>
+          <div className={styles.drawerTitle}>
+            <span style={{ marginRight: 8 }}>{statusIcon}</span>
+            <span>{tool.name}</span>
+          </div>
+          <button className={styles.drawerClose} onClick={onClose} aria-label="Close">
+            &times;
+          </button>
+        </div>
+        <div className={styles.drawerBody}>
+          <div className={styles.drawerStatus}>
+            <span className={styles.drawerStatusLabel}>{statusLabel}</span>
+          </div>
+
+          <div className={styles.drawerSection}>
+            <div className={styles.drawerSectionTitle}>Arguments</div>
+            <pre className={styles.drawerPre}>{formattedArgs}</pre>
+          </div>
+
           {formattedResult && (
-            <div>
-              <strong>Result:</strong>
-              <pre
-                style={{
-                  margin: '4px 0 0 0',
-                  fontSize: 12,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-all',
-                  maxHeight: 160,
-                  overflowY: 'auto',
-                }}
-              >
-                {formattedResult.length > 800
-                  ? formattedResult.slice(0, 800) + '\u2026'
-                  : formattedResult}
-              </pre>
+            <div className={styles.drawerSection}>
+              <div className={styles.drawerSectionTitle}>Result</div>
+              <pre className={styles.drawerPre}>{formattedResult}</pre>
             </div>
           )}
         </div>
-      )}
-    </div>
+      </div>
+    </>
+  );
+};
+
+// ── ToolCallTag ──
+
+const ToolCallTag: React.FC<{
+  tool: ToolCallRecord;
+  onClick: () => void;
+}> = ({ tool, onClick }) => {
+  const isPending = tool.status === 'pending';
+  const isError = tool.status === 'error';
+
+  return (
+    <button
+      className={`${styles.toolTag} ${isPending ? styles.toolTagPending : ''} ${isError ? styles.toolTagError : ''}`}
+      onClick={onClick}
+      title={`${tool.name} — click for details`}
+    >
+      <span className={styles.toolTagIcon}>
+        {isPending ? (
+          <ArrowSyncRegular style={{ fontSize: 12 }} />
+        ) : isError ? (
+          <DismissCircleRegular style={{ fontSize: 12, color: 'var(--colorStatusDangerForeground1, #c50f1f)' }} />
+        ) : (
+          <CheckmarkCircleRegular style={{ fontSize: 12, color: 'var(--colorStatusSuccessForeground1, #107c10)' }} />
+        )}
+      </span>
+      <span className={styles.toolTagName}>{tool.name}</span>
+      <span className={styles.toolTagArrow}>→</span>
+    </button>
   );
 };
 
 // ── ChatMessage ──
 
 export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
+  const [detailTool, setDetailTool] = useState<ToolCallRecord | null>(null);
+
   // Pre-compute markdown for assistant messages
   const htmlContent = useMemo(() => {
     if (message.role !== 'assistant') return null;
@@ -139,6 +224,9 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
   }
 
   const isUser = message.role === 'user';
+  const hasContent = !isUser && (htmlContent || (isStreaming && !message.thinking));
+  const hasThinking = !isUser && message.thinking;
+  const hasToolCalls = !isUser && message.toolCalls && message.toolCalls.length > 0;
 
   return (
     <div className={styles.messageWrapper}>
@@ -148,23 +236,31 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
         <span>{formatTime(message.timestamp)}</span>
       </div>
 
+      {/* Thinking section — shows first */}
+      {hasThinking && (
+        <ThinkingSection thinking={message.thinking!} isStreaming={isStreaming && !message.content} />
+      )}
+
       {/* Content */}
       {isUser ? (
         <div className={styles.userContent}>{message.content}</div>
-      ) : htmlContent ? (
-        <div className={styles.mdWrapper} dangerouslySetInnerHTML={{ __html: htmlContent }} />
-      ) : isStreaming ? (
+      ) : hasContent ? (
+        <div className={styles.mdWrapper} dangerouslySetInnerHTML={{ __html: htmlContent! }} />
+      ) : isStreaming && !message.thinking ? (
         <span style={{ opacity: 0.5, padding: '0 16px' }}>▊</span>
       ) : null}
 
-      {/* Tool call cards */}
-      {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
-        <div style={{ marginTop: 10, padding: '0 16px' }}>
-          {message.toolCalls.map((tc) => (
-            <ToolCallCard key={tc.id} tool={tc} />
+      {/* Tool call tags — inline after content */}
+      {hasToolCalls && (
+        <div className={styles.toolTagsRow}>
+          {message.toolCalls!.map((tc) => (
+            <ToolCallTag key={tc.id} tool={tc} onClick={() => setDetailTool(tc)} />
           ))}
         </div>
       )}
+
+      {/* Tool call detail drawer */}
+      <ToolCallDetailDrawer tool={detailTool} onClose={() => setDetailTool(null)} />
     </div>
   );
 };

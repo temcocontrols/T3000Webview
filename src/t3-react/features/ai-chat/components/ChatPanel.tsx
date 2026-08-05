@@ -73,6 +73,7 @@ export const ChatPanel: React.FC = () => {
     messages,
     isStreaming,
     streamingText,
+    streamingThinking,
     activeToolCalls,
     sessionId,
     sendMessage,
@@ -132,7 +133,7 @@ export const ChatPanel: React.FC = () => {
   );
 
   const hasMessages = messages.length > 0;
-  const showStreamingBubble = isStreaming && streamingText;
+  const showStreamingBubble = isStreaming && (streamingText || streamingThinking);
 
   const providerLabel = `${aiSettings.provider}:${aiSettings.model}`;
 
@@ -209,6 +210,7 @@ export const ChatPanel: React.FC = () => {
                 message={{
                   role: 'assistant',
                   content: streamingText,
+                  thinking: streamingThinking ?? undefined,
                   timestamp: Date.now(),
                   toolCalls: Array.from(activeToolCalls.values()),
                 }}

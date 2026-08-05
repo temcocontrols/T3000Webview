@@ -18,7 +18,15 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   toolCalls?: ToolCallRecord[];
+  /** Reasoning/thinking state for this message */
+  thinking?: ThinkingState;
   timestamp: number;
+}
+
+export interface ThinkingState {
+  steps: number;
+  durationMs: number;
+  content: string;
 }
 
 export interface ToolCallRecord {
@@ -40,6 +48,8 @@ interface StreamEvent {
     result?: string;
     session_id?: string;
     message?: string;
+    steps?: number;
+    duration_ms?: number;
   };
 }
 
@@ -47,6 +57,7 @@ export interface UseAiChatStreamReturn {
   messages: ChatMessage[];
   isStreaming: boolean;
   streamingText: string;
+  streamingThinking: ThinkingState | null;
   activeToolCalls: Map<string, ToolCallRecord>;
   sessionId: string | null;
   sendMessage: (content: string) => Promise<void>;
@@ -60,6 +71,7 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
+  const [streamingThinking, setStreamingThinking] = useState<ThinkingState | null>(null);
   const [activeToolCalls, setActiveToolCalls] = useState<Map<string, ToolCallRecord>>(new Map());
   const [sessionId, setSessionId] = useState<string | null>(null);
 
@@ -117,6 +129,7 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
       setMessages((prev) => [...prev, userMsg]);
       setIsStreaming(true);
       setStreamingText('');
+      setStreamingThinking(null);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -170,6 +183,9 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
         let buffer = '';
         let assistantContent = '';
         const toolCallRecords: ToolCallRecord[] = [];
+        let thinkingContent = '';
+        let thinkingSteps = 0;
+        let thinkingDurationMs = 0;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -200,6 +216,27 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
                 setStreamingText(assistantContent);
                 break;
               }
+              case 'thinking_delta': {
+                const chunk = event.data?.content || '';
+                thinkingContent += chunk;
+                thinkingSteps++;
+                setStreamingThinking({
+                  steps: thinkingSteps,
+                  durationMs: 0, // will be set on thinking_end
+                  content: thinkingContent,
+                });
+                break;
+              }
+              case 'thinking_end': {
+                thinkingSteps = event.data?.steps || thinkingSteps;
+                thinkingDurationMs = event.data?.duration_ms || 0;
+                setStreamingThinking((prev) =>
+                  prev
+                    ? { ...prev, steps: thinkingSteps, durationMs: thinkingDurationMs }
+                    : null,
+                );
+                break;
+              }
               case 'tool_call': {
                 const tc: ToolCallRecord = {
                   id: event.data?.id || '',
@@ -217,14 +254,17 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
               }
               case 'tool_result': {
                 const id = event.data?.id || '';
+                const result = event.data?.result || '';
+                // Detect error: result is a JSON string like {"error":"message"}
+                const isError = result.startsWith('{"error"');
                 setActiveToolCalls((prev) => {
                   const next = new Map(prev);
                   const existing = next.get(id);
                   if (existing) {
                     next.set(id, {
                       ...existing,
-                      result: event.data?.result || '',
-                      status: 'success',
+                      result,
+                      status: isError ? 'error' : 'success',
                     });
                   }
                   return next;
@@ -233,8 +273,8 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
                 if (idx !== -1) {
                   toolCallRecords[idx] = {
                     ...toolCallRecords[idx],
-                    result: event.data?.result || '',
-                    status: 'success',
+                    result,
+                    status: isError ? 'error' : 'success',
                   };
                 }
                 break;
@@ -261,11 +301,14 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
         }
 
         // Finalize assistant message
-        if (assistantContent || toolCallRecords.length > 0) {
+        if (assistantContent || toolCallRecords.length > 0 || thinkingContent) {
           const assistantMsg: ChatMessage = {
             role: 'assistant',
             content: assistantContent,
             toolCalls: toolCallRecords.length > 0 ? toolCallRecords : undefined,
+            thinking: thinkingContent
+              ? { steps: thinkingSteps, durationMs: thinkingDurationMs, content: thinkingContent }
+              : undefined,
             timestamp: Date.now(),
           };
           setMessages((prev) => [...prev, assistantMsg]);
@@ -298,6 +341,7 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
       } finally {
         setIsStreaming(false);
         setStreamingText('');
+        setStreamingThinking(null);
         abortRef.current = null;
       }
     },
@@ -308,6 +352,7 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
     messages,
     isStreaming,
     streamingText,
+    streamingThinking,
     activeToolCalls,
     sessionId,
     sendMessage,

@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use futures_util::StreamExt;
 use reqwest::Client;
 use serde_json::{json, Value};
+use std::time::Instant;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::super::types::{AiError, Message, StreamEvent};
@@ -115,6 +116,8 @@ impl LocalProvider {
         let mut reasoning_count = 0u64;
         let mut tool_call_count = 0u64;
         let mut frame_count = 0u64;
+        let thinking_start = Instant::now();
+        let mut thinking_ended = false;
 
         while let Some(chunk_result) = stream.next().await {
             let chunk = chunk_result.map_err(|e| {
@@ -158,13 +161,22 @@ impl LocalProvider {
 
                     if let Some(t) = delta.get("reasoning_content").and_then(|c| c.as_str()) {
                         if !t.is_empty() {
-                            let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
+                            let _ = tx.send(StreamEvent::ThinkingDelta { content: t.to_string() });
                             full_reasoning.push_str(t);
                             reasoning_count += 1;
                         }
                     }
                     if let Some(t) = delta.get("content").and_then(|c| c.as_str()) {
                         if !t.is_empty() {
+                            // End thinking phase when final content starts
+                            if !thinking_ended && reasoning_count > 0 {
+                                let duration = thinking_start.elapsed();
+                                let _ = tx.send(StreamEvent::ThinkingEnd {
+                                    steps: reasoning_count as usize,
+                                    duration_ms: duration.as_millis() as u64,
+                                });
+                                thinking_ended = true;
+                            }
                             let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
                             full_text.push_str(t);
                             content_count += 1;

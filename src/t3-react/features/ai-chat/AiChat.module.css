@@ -811,32 +811,242 @@
   font-size: 1.1em;
 }
 
-/* ── Tool call card ── */
-.toolCard {
-  margin-top: 10px;
-  border: 1px solid var(--colorNeutralStroke1);
+/* ── Thinking section (collapsible reasoning) ── */
+.thinkingSection {
+  margin: 6px 16px 10px 16px;
+  border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
   border-radius: 8px;
   overflow: hidden;
-  font-size: 13px;
+  font-size: 12px;
+  background-color: var(--colorNeutralBackground2, #f8f8f8);
 }
-.toolCardHeader {
+.thinkingHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  color: var(--colorNeutralForeground3, #666);
+}
+.thinkingIcon {
+  display: flex;
+  align-items: center;
+  animation: spin 1.2s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.thinkingLabel {
+  font-weight: 500;
+}
+.thinkingCount {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.7;
+}
+.thinkingBody {
+  display: flex;
+  align-items: flex-start;
+  padding: 0 12px 8px 12px;
+  color: var(--colorNeutralForeground3, #666);
+  line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.thinkingContent {
+  flex: 1;
+}
+.thinkingCursor {
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+  opacity: 0.5;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+.thinkingToggle {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  background-color: var(--colorNeutralBackground2);
+  padding: 6px 12px;
+  background: none;
   border: none;
   cursor: pointer;
   font: inherit;
-  color: inherit;
-}
-.toolCardBody {
-  padding: 10px 12px;
-  background-color: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground2, #555);
   font-size: 12px;
-  max-height: 200px;
+  text-align: left;
+}
+.thinkingToggle:hover {
+  background-color: var(--colorNeutralBackground3, #eee);
+}
+.thinkingToggleIcon {
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.thinkingToggleLabel {
+  font-weight: 500;
+}
+.thinkingBodyDone {
+  padding: 0 12px 8px 24px;
+  color: var(--colorNeutralForeground3, #666);
+  line-height: 1.5;
+  max-height: 300px;
   overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+}
+
+/* ── Tool call tags (compact inline pills) ── */
+.toolTagsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 16px 4px 16px;
+}
+.toolTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--colorNeutralStroke2, #d1d1d1);
+  border-radius: 14px;
+  background: var(--colorNeutralBackground1);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--colorNeutralForeground1);
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+.toolTag:hover {
+  background: var(--colorNeutralBackground3, #e8e8e8);
+  border-color: var(--colorBrandStroke1, #0078d4);
+}
+.toolTagPending {
+  border-color: var(--colorStatusWarningBorder1, #f0c03e);
+  background: var(--colorStatusWarningBackground1, #fff8e5);
+}
+.toolTagError {
+  border-color: var(--colorStatusDangerBorder1, #d13438);
+  background: var(--colorStatusDangerBackground1, #fde7e9);
+}
+.toolTagIcon {
+  display: flex;
+  align-items: center;
+}
+.toolTagName {
+  font-weight: 500;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.toolTagArrow {
+  font-size: 10px;
+  opacity: 0.5;
+  margin-left: 2px;
+}
+
+/* ── Tool call detail drawer ── */
+.drawerOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  z-index: 100;
+}
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 380px;
+  max-width: 90vw;
+  height: 100vh;
+  background: var(--colorNeutralBackground1);
+  border-left: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.2s ease-out;
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+}
+.drawerTitle {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+.drawerClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--colorNeutralForeground2);
+}
+.drawerClose:hover {
+  background: var(--colorNeutralBackground3);
+}
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+.drawerStatus {
+  margin-bottom: 16px;
+}
+.drawerStatusLabel {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--colorNeutralBackground3, #eee);
+  color: var(--colorNeutralForeground2, #555);
+}
+.drawerSection {
+  margin-bottom: 16px;
+}
+.drawerSectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--colorNeutralForeground4, #999);
+  margin-bottom: 6px;
+}
+.drawerPre {
+  margin: 0;
+  padding: 12px;
+  background: var(--colorNeutralBackground2, #f5f5f5);
+  border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
 }
 
 /* ── System message ── */
