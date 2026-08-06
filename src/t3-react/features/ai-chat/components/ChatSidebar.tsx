@@ -9,6 +9,7 @@ import { Tooltip } from '@fluentui/react-components';
 import {
   AddRegular,
   DeleteRegular,
+  HistoryRegular,
   NavigationRegular,
   SettingsRegular,
   WrenchRegular,
@@ -28,6 +29,7 @@ interface Props {
   onNewChat: () => void;
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
+  onClearAll: () => void;
   onOpenSettings: () => void;
   mcpServers?: McpServerInfo[];
   onOpenTools: () => void;
@@ -57,6 +59,7 @@ export const ChatSidebar: React.FC<Props> = ({
   onNewChat,
   onSelectSession,
   onDeleteSession,
+  onClearAll,
   onOpenSettings,
   mcpServers = [],
   onOpenTools,
@@ -89,12 +92,28 @@ export const ChatSidebar: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* New Chat — flat item, not a button */}
+      {/* New Chat */}
       {!collapsed && (
         <button className={styles.sidebarNewChatItem} onClick={onNewChat}>
           <AddRegular fontSize={16} style={{ marginRight: 8 }} />
           New chat
         </button>
+      )}
+
+      {/* Divider + History header */}
+      {!collapsed && (
+        <div className={styles.sidebarHistoryHeader}>
+          <div className={styles.sidebarDivider} />
+          <div className={styles.sidebarHistoryRow}>
+            <span className={styles.sidebarHistoryLabel}>
+              <HistoryRegular fontSize={16} style={{ marginRight: 8 }} />
+              History
+            </span>
+            <button className={styles.sidebarClearBtn} onClick={onClearAll} title="Clear all chats">
+              <DeleteRegular fontSize={14} />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* History list */}

@@ -201,6 +201,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
           onOpenSettings={() => setSettingsOpen(true)}
           mcpServers={mcpServers}
           onOpenTools={() => setToolsOpen(true)}
+          onClearAll={() => { if (confirm('Clear all chat history?')) { sessions.forEach((s) => deleteSession(s.id)); } }}
           onBackToPanel={handleBackToPanel}
           providerLabel={providerLabel}
           builtInToolCount={44}
@@ -358,9 +359,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
               )}
             </div>
             <div className={styles.historyDrawerFooter}>
-              <button className={styles.historyDrawerNewBtn} onClick={() => { setHistoryOpen(false); handleNewChat(); }}>
-                <AddRegular style={{ fontSize: 14 }} />
-                <span>New chat</span>
+              <button
+                className={styles.historyDrawerClearBtn}
+                onClick={() => { if (confirm('Clear all chat history?')) { sessions.forEach((s) => deleteSession(s.id)); } }}
+              >
+                <DeleteRegular style={{ fontSize: 14 }} />
+                <span>Clear all chats</span>
               </button>
             </div>
           </div>

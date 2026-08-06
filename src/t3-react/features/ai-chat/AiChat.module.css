@@ -257,6 +257,43 @@
   background-color: var(--colorNeutralBackground3);
   color: var(--colorNeutralForeground1);
 }
+.sidebarHistoryHeader {
+  padding: 0 8px;
+}
+.sidebarDivider {
+  height: 1px;
+  background: var(--colorNeutralStroke2);
+  margin: 4px 0 6px 0;
+}
+.sidebarHistoryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 12px 6px 12px;
+}
+.sidebarHistoryLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.sidebarClearBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  color: var(--colorNeutralForeground3);
+}
+.sidebarClearBtn:hover {
+  background: var(--colorStatusDangerBackground1);
+  color: var(--colorStatusDangerForeground1);
+}
 .sidebarHistory {
   flex: 1;
   overflow-y: auto;
@@ -1857,7 +1894,7 @@
   padding: 4px 8px;
   border-top: 1px solid var(--colorNeutralStroke3, #e8e8e8);
 }
-.historyDrawerNewBtn {
+.historyDrawerClearBtn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1869,10 +1906,11 @@
   cursor: pointer;
   font-size: 12px;
   font-family: inherit;
-  color: var(--colorNeutralForeground1);
+  color: var(--colorNeutralForeground2);
 }
-.historyDrawerNewBtn:hover {
-  background: var(--colorNeutralBackground3);
+.historyDrawerClearBtn:hover {
+  background: var(--colorStatusDangerBackground1);
+  color: var(--colorStatusDangerForeground1);
 }
 
 /* ── Settings Drawer ── */
