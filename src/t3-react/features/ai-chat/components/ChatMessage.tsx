@@ -71,14 +71,14 @@ const ThinkingSection: React.FC<{
   const [expanded, setExpanded] = useState(true);
   const outputStartedRef = useRef(false);
 
-  // Auto-scroll to bottom on new steps
+  // ── Auto-scroll ──
   useEffect(() => {
     if (bodyRef.current && isStreaming) {
       bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
     }
   }, [steps, isStreaming]);
 
-  // Auto-collapse when output starts arriving
+  // ── Auto-collapse when output starts ──
   useEffect(() => {
     if (outputStarted && !outputStartedRef.current) {
       outputStartedRef.current = true;
@@ -117,18 +117,23 @@ const ThinkingSection: React.FC<{
       {/* Step list */}
       {expanded && (
         <div className={styles.thinkingStepList} ref={bodyRef}>
-          {steps.map((step) => (
+          {steps.map((step, i) => {
+            const isLast = i === steps.length - 1;
+            return (
             <div key={step.index} className={styles.thinkingStepItem}>
               <span className={styles.thinkingStepMarker} />
               <div className={styles.thinkingStepContent}>
-                <div className={styles.thinkingStepText}>{step.content}</div>
+                <div className={styles.thinkingStepText}>
+                  {step.content}
+                  {isStreaming && isLast && <span className={styles.thinkingCursor} />}
+                </div>
                 {step.toolCall && (
                   <ToolCallTagInline tool={step.toolCall} />
                 )}
               </div>
             </div>
-          ))}
-          {isStreaming && <span className={styles.thinkingCursor} />}
+            );
+          })}
         </div>
       )}
     </div>

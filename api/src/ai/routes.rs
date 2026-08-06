@@ -112,13 +112,14 @@ pub async fn handle_ai_chat(
 }
 
 /// Core chat processing — manages the tool-call loop.
+/// Events are forwarded to the SSE stream in real-time (no buffering).
 async fn process_chat(
     session_manager: Arc<SessionManager>,
     mut session: super::session::Session,
     state: &T3AppState,
     tx: &tokio::sync::mpsc::UnboundedSender<Result<Event, Infallible>>,
 ) -> Result<(), AiError> {
-    let provider = get_provider(&session.provider)?;
+    let provider = Arc::new(get_provider(&session.provider)?);
     let tools = get_all_tool_defs();
     info!("[AI] process_chat: provider={} model={} endpoint={} tools={}", session.provider, session.model, session.endpoint, tools.len());
 
@@ -143,63 +144,59 @@ async fn process_chat(
     for _iteration in 0..max_iterations {
         let (inner_tx, mut inner_rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
 
-        let provider_result = provider
-            .stream_chat(
-                &session.endpoint,
-                session.api_key.as_deref(),
-                &session.model,
-                &current_messages,
-                &tools,
-                &inner_tx,
-            )
-            .await;
+        // Spawn the provider call — it streams events into inner_tx
+        let provider_handle = {
+            let provider = Arc::clone(&provider);
+            let endpoint = session.endpoint.clone();
+            let api_key = session.api_key.clone();
+            let model = session.model.clone();
+            let messages = current_messages.clone();
+            let tools = tools.clone();
+            tokio::spawn(async move {
+                provider
+                    .stream_chat(&endpoint, api_key.as_deref(), &model, &messages, &tools, &inner_tx)
+                    .await
+            })
+        };
 
-        // Drop the inner sender so the receiver will eventually close
+        // Drop our handle to inner_tx so the receiver closes when provider finishes
         drop(inner_tx);
 
-        // Collect all events from this turn
-        let mut turn_events: Vec<StreamEvent> = vec![];
+        // ── Forward events to SSE in real-time while tracking tool calls ──
+        let mut tool_call_records: Vec<(String, String, String)> = vec![];
+        let mut assistant_text = String::new();
+
         while let Some(event) = inner_rx.recv().await {
-            turn_events.push(event);
-        }
-
-        if let Err(e) = provider_result {
-            return Err(e);
-        }
-
-        // Check if the LLM called any tools
-        let tool_requests: Vec<&StreamEvent> = turn_events
-            .iter()
-            .filter(|e| matches!(e, StreamEvent::ToolCall { .. }))
-            .collect();
-
-        if tool_requests.is_empty() {
-            info!("[AI] No tools called, streaming {} events", turn_events.len());
-            // No tools called — stream text/thinking events and finish
-            for event in &turn_events {
-                match event {
-                    StreamEvent::TextDelta { .. }
-                    | StreamEvent::ThinkingDelta { .. }
-                    | StreamEvent::ThinkingEnd { .. } => {
-                        let json = serde_json::to_string(event).unwrap();
-                        let _ = tx.send(Ok(Event::default().data(json)));
-                    }
-                    _ => {}
+            // Track tool calls for the loop decision
+            match &event {
+                StreamEvent::ToolCall { id, name, arguments } => {
+                    tool_call_records.push((id.clone(), name.clone(), arguments.clone()));
                 }
+                StreamEvent::TextDelta { content } => {
+                    assistant_text.push_str(content);
+                }
+                _ => {}
             }
 
-            // Update session messages — append the assistant's final text
-            let assistant_text: String = turn_events
-                .iter()
-                .filter_map(|e| {
-                    if let StreamEvent::TextDelta { content } = e {
-                        Some(content.as_str())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+            // Forward immediately to the SSE stream
+            let json = serde_json::to_string(&event).unwrap();
+            let _ = tx.send(Ok(Event::default().data(json)));
+        }
 
+        // Wait for provider to complete and check for errors
+        match provider_handle.await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => return Err(e),
+            Err(join_err) => {
+                return Err(AiError::Stream(format!("Provider task panicked: {}", join_err)));
+            }
+        }
+
+        // ── No tools called — this is the final turn ──
+        if tool_call_records.is_empty() {
+            info!("[AI] No tools called, turn complete");
+
+            // Append assistant message to conversation
             if !assistant_text.is_empty() {
                 current_messages.push(Message {
                     role: "assistant".to_string(),
@@ -216,7 +213,7 @@ async fn process_chat(
             .unwrap();
             let _ = tx.send(Ok(Event::default().data(done_json)));
 
-            // Persist session to JSON file (clone before update_messages moves it)
+            // Persist session
             let title = super::session_store::auto_title(
                 current_messages
                     .iter()
@@ -244,30 +241,10 @@ async fn process_chat(
             return Ok(());
         }
 
-        info!("[AI] {} tool(s) called, executing", tool_requests.len());
-        // Tools were called — execute them
-        // First, stream the tool_call events to the frontend
-        let mut tool_call_records: Vec<(String, String, String)> = vec![]; // (id, name, args)
+        // ── Tools were called — execute them and loop ──
+        info!("[AI] {} tool(s) called, executing", tool_call_records.len());
 
-        for event in &turn_events {
-            match event {
-                StreamEvent::TextDelta { content: _ }
-                | StreamEvent::ThinkingDelta { .. }
-                | StreamEvent::ThinkingEnd { .. } => {
-                    let json = serde_json::to_string(event).unwrap();
-                    let _ = tx.send(Ok(Event::default().data(json)));
-                }
-                StreamEvent::ToolCall { id, name, arguments } => {
-                    let json = serde_json::to_string(event).unwrap();
-                    let _ = tx.send(Ok(Event::default().data(json)));
-                    tool_call_records.push((id.clone(), name.clone(), arguments.clone()));
-                }
-                _ => {}
-            }
-        }
-
-        // Execute tools and stream results
-        let mut tool_results: Vec<(String, String)> = vec![]; // (tool_call_id, result_json)
+        let mut tool_results: Vec<(String, String)> = vec![];
 
         for (tc_id, tc_name, tc_args) in &tool_call_records {
             match execute_mcp_tool(tc_name, tc_args, state).await {
@@ -293,7 +270,7 @@ async fn process_chat(
             }
         }
 
-        // Build assistant message with tool calls
+        // Build assistant message with tool calls for the next iteration
         let openai_tool_calls: Vec<super::types::ToolCall> = tool_call_records
             .iter()
             .map(|(id, name, args)| super::types::ToolCall {
@@ -313,7 +290,6 @@ async fn process_chat(
             tool_call_id: None,
         });
 
-        // Append tool result messages
         for (tc_id, result) in &tool_results {
             current_messages.push(Message {
                 role: "tool".to_string(),
