@@ -985,7 +985,7 @@
 
 /* ── Thinking section (collapsible reasoning) ── */
 .thinkingSection {
-  margin: 6px 16px 10px 16px;
+  margin: 6px 0 10px 0;
   border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
   border-radius: 8px;
   overflow: hidden;
@@ -1078,7 +1078,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 8px 16px 4px 16px;
+  margin: 8px 0 4px 0;
 }
 .toolTag {
   display: inline-flex;
@@ -1121,6 +1121,59 @@
   font-size: 10px;
   opacity: 0.5;
   margin-left: 2px;
+}
+
+/* ── Inline tool detail (replaces drawer) ── */
+.toolDetailInline {
+  margin: 4px 0 8px 0;
+  border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+  border-radius: 8px;
+  background: var(--colorNeutralBackground2, #f8f8f8);
+  overflow: hidden;
+  font-size: 12px;
+}
+.toolDetailStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--colorNeutralStroke3, #e8e8e8);
+  font-weight: 500;
+  color: var(--colorNeutralForeground1);
+}
+.toolDetailStatusIcon {
+  font-size: 14px;
+}
+.toolDetailStatusLabel {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+}
+.toolDetailSection {
+  padding: 4px 12px;
+}
+.toolDetailSectionTitle {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 4px 0;
+}
+.toolDetailPre {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke3, #e8e8e8);
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 /* ── Tool call detail drawer ── */
