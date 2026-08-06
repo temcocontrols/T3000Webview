@@ -14,6 +14,7 @@ import { makeStyles } from '@fluentui/react-components';
 import { Header } from './Header';
 import { GlobalMessageBar } from '../shared/components/GlobalMessageBar';
 import { useUIStore } from '../store/uiStore';
+import { AiChatOverlay } from '../features/ai-chat/components/AiChatOverlay';
 
 const useStyles = makeStyles({
   container: {
@@ -60,6 +61,9 @@ export const MinimalLayout: React.FC = () => {
       <div className={styles.mainContent}>
         <Outlet />
       </div>
+
+      {/* AI Chat Overlay */}
+      <AiChatOverlay />
     </div>
   );
 };

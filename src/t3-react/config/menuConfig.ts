@@ -762,8 +762,24 @@ const aiAssistantMenu: MenuItem = {
       id: 'ai-chat',
       label: 'Open AI Chat',
       type: 'item',
-      action: () => window.location.hash = '#/t3000/ai-chat',
+      action: () => {
+        window.dispatchEvent(new CustomEvent('t3-open-ai-chat'));
+      },
       icon: 'Chat',
+    },
+    {
+      id: 'ai-divider',
+      label: '',
+      type: 'divider',
+    },
+    {
+      id: 'ai-settings',
+      label: 'Settings...',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/ai-chat';
+      },
+      icon: 'Settings',
     },
   ],
 };

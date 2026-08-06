@@ -11,7 +11,7 @@
  */
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { ArrowDownRegular, BotSparkleRegular } from '@fluentui/react-icons';
+import { ArrowDownRegular, BotSparkleRegular, AddRegular, WrenchRegular, SettingsRegular } from '@fluentui/react-icons';
 import { useAiChatStream } from '../hooks/useAiChatStream';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useMcpServers } from '../hooks/useMcpServers';
@@ -47,7 +47,11 @@ const saveSettings = (s: AiProviderSettings) => {
   } catch {}
 };
 
-export const ChatPanel: React.FC = () => {
+interface ChatPanelProps {
+  hideSidebar?: boolean;
+}
+
+export const ChatPanel: React.FC<ChatPanelProps> = ({ hideSidebar = false }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -165,24 +169,41 @@ export const ChatPanel: React.FC = () => {
 
   return (
     <div className={styles.layoutWrapper}>
-      {/* ── Sidebar ── */}
-      <ChatSidebar
-        collapsed={sidebarCollapsed}
-        sessions={sessions}
-        activeSessionId={activeSessionId}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onNewChat={handleNewChat}
-        onSelectSession={handleSelectSession}
-        onDeleteSession={handleDeleteSession}
-        onOpenSettings={() => setSettingsOpen(true)}
-        mcpServers={mcpServers}
-        onOpenTools={() => setToolsOpen(true)}
-        providerLabel={providerLabel}
-        builtInToolCount={44}
-      />
+      {/* ── Sidebar (hidden in overlay mode) ── */}
+      {!hideSidebar && (
+        <ChatSidebar
+          collapsed={sidebarCollapsed}
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onNewChat={handleNewChat}
+          onSelectSession={handleSelectSession}
+          onDeleteSession={handleDeleteSession}
+          onOpenSettings={() => setSettingsOpen(true)}
+          mcpServers={mcpServers}
+          onOpenTools={() => setToolsOpen(true)}
+          providerLabel={providerLabel}
+          builtInToolCount={44}
+        />
+      )}
 
       {/* ── Main chat area ── */}
       <div className={styles.root}>
+        {/* ── Compact toolbar (overlay mode) ── */}
+        {hideSidebar && (
+          <div className={styles.compactToolbar}>
+            <button className={styles.compactToolbarBtn} onClick={handleNewChat} title="New chat">
+              <AddRegular style={{ fontSize: 16 }} />
+            </button>
+            <button className={styles.compactToolbarBtn} onClick={() => setToolsOpen(true)} title="Tools">
+              <WrenchRegular style={{ fontSize: 16 }} />
+            </button>
+            <button className={styles.compactToolbarBtn} onClick={() => setSettingsOpen(true)} title="Settings">
+              <SettingsRegular style={{ fontSize: 16 }} />
+            </button>
+          </div>
+        )}
+
         {/* ── Header — only visible when session is active ── */}
         {activeSessionTitle && (
           <div className={styles.header}>

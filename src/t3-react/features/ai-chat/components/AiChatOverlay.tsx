@@ -2,63 +2,94 @@
  * AiChatOverlay — Floating sidebar chat panel that overlays any T3000 page.
  *
  * Three modes, controlled by uiStore.chatMode:
- *   'hidden'  — Not visible; small floating button to open
+ *   'hidden'  — Not visible
  *   'sidebar' — Fixed 420px right panel with backdrop
  *   'full'    — Navigates to /t3000/ai-chat full-page route
+ *
+ * The overlay header contains a visible segmented mode toggle:
+ *   [Full Screen] [Chat Sidebar] [Hide AI]
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DismissRegular,
-  ChatRegular,
   ArrowExpandRegular,
 } from '@fluentui/react-icons';
 import { useUIStore } from '../../../store/uiStore';
 import { ChatPanel } from './ChatPanel';
 import styles from '../AiChat.module.css';
 
+type ChatMode = 'full' | 'sidebar' | 'hidden';
+
+const MODES: { mode: ChatMode; label: string }[] = [
+  { mode: 'full', label: 'Full Screen' },
+  { mode: 'sidebar', label: 'Chat Sidebar' },
+  { mode: 'hidden', label: 'Hide AI' },
+];
+
 export const AiChatOverlay: React.FC = () => {
   const chatMode = useUIStore((s) => s.chatMode);
   const setChatMode = useUIStore((s) => s.setChatMode);
   const navigate = useNavigate();
 
-  const handleOpenSidebar = useCallback(() => {
-    setChatMode('sidebar');
+  // Listen for the custom event from the menu config
+  useEffect(() => {
+    const handler = () => setChatMode('sidebar');
+    window.addEventListener('t3-open-ai-chat', handler);
+    return () => window.removeEventListener('t3-open-ai-chat', handler);
   }, [setChatMode]);
+
+  const handleGoFull = useCallback(() => {
+    setChatMode('full');
+    navigate('/t3000/ai-chat');
+  }, [setChatMode, navigate]);
+
+  const handleGoSidebar = useCallback(() => {
+    setChatMode('sidebar');
+    // If currently on the full-page route, go back to dashboard first
+    if (window.location.hash.includes('/ai-chat')) {
+      navigate('/t3000/dashboard');
+    }
+  }, [setChatMode, navigate]);
 
   const handleClose = useCallback(() => {
     setChatMode('hidden');
   }, [setChatMode]);
 
-  const handleGoFull = useCallback(() => {
-    navigate('/t3000/ai-chat');
-  }, [navigate]);
-
   if (chatMode === 'hidden') {
-    return (
-      <button
-        className={styles.floatingChatButton}
-        onClick={handleOpenSidebar}
-        title="Open AI Chat"
-        aria-label="Open AI Chat"
-      >
-        <ChatRegular style={{ fontSize: 20 }} />
-      </button>
-    );
+    return null; // No floating button — user opens from top menu
   }
 
   if (chatMode === 'sidebar') {
     return (
       <>
-        {/* Backdrop — closes on click */}
+        {/* Backdrop */}
         <div className={styles.overlayBackdrop} onClick={handleClose} />
 
         {/* Sidebar panel */}
         <div className={styles.overlayPanel}>
-          {/* Top bar */}
+          {/* ── Header: mode toggle + actions ── */}
           <div className={styles.overlayHeader}>
-            <span className={styles.overlayTitle}>AI Assistant</span>
+            <div className={styles.overlayModeToggle}>
+              {MODES.map(({ mode, label }) => (
+                <button
+                  key={mode}
+                  className={`${styles.overlayModeBtn} ${chatMode === mode ? styles.overlayModeBtnActive : ''}`}
+                  onClick={() => {
+                    if (mode === 'full') {
+                      handleGoFull();
+                    } else if (mode === 'sidebar') {
+                      handleGoSidebar();
+                    } else {
+                      setChatMode(mode);
+                    }
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className={styles.overlayActions}>
               <button
                 className={styles.overlayActionBtn}
@@ -79,10 +110,10 @@ export const AiChatOverlay: React.FC = () => {
             </div>
           </div>
 
-          {/* Chat panel */}
+          {/* ── Body ── */}
           <div className={styles.overlayBody}>
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              <ChatPanel />
+              <ChatPanel hideSidebar />
             </div>
           </div>
         </div>

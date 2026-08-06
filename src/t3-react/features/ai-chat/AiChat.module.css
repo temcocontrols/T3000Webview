@@ -7,29 +7,6 @@
 
 /* ── AI Chat Overlay (sidebar mode) ── */
 
-.floatingChatButton {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: none;
-  background: var(--colorBrandBackground, #0078d4);
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-  z-index: 90;
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-.floatingChatButton:hover {
-  transform: scale(1.08);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
 .overlayBackdrop {
   position: fixed;
   inset: 0;
@@ -62,32 +39,64 @@
   to { transform: translateX(0); }
 }
 
+/* ── Overlay header ── */
 .overlayHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
-  height: 42px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--colorNeutralStroke3, #e8e8e8);
   flex-shrink: 0;
+  gap: 8px;
 }
-.overlayTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--colorNeutralForeground1);
+
+/* Segmented mode toggle */
+.overlayModeToggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--colorNeutralStroke2, #d1d1d1);
+  border-radius: 6px;
+  overflow: hidden;
 }
+.overlayModeBtn {
+  padding: 4px 10px;
+  border: none;
+  background: var(--colorNeutralBackground1);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--colorNeutralForeground2);
+  border-right: 1px solid var(--colorNeutralStroke2, #d1d1d1);
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+.overlayModeBtn:last-child {
+  border-right: none;
+}
+.overlayModeBtn:hover {
+  background: var(--colorNeutralBackground3);
+}
+.overlayModeBtnActive {
+  background: var(--colorBrandBackground, #0078d4);
+  color: #fff;
+}
+.overlayModeBtnActive:hover {
+  background: var(--colorBrandBackgroundHover, #106ebe);
+}
+
 .overlayActions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
+  flex-shrink: 0;
 }
 .overlayActionBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   background: none;
   cursor: pointer;
   color: var(--colorNeutralForeground2);
@@ -105,19 +114,56 @@
   overflow: hidden;
 }
 
-/* Collapse chat sidebar inside the overlay (narrow 420px panel) */
-.overlayPanel .sidebar {
-  width: 48px !important;
-  min-width: 48px !important;
+/* ── Full-page "Back to Sidebar" bar ── */
+.fullPageBar {
+  display: flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--colorNeutralStroke3, #e8e8e8);
+  background: var(--colorNeutralBackground2, #f8f8f8);
+  flex-shrink: 0;
 }
-.overlayPanel .sidebarHeader,
-.overlayPanel .sidebarHistory,
-.overlayPanel .sidebarNewChat,
-.overlayPanel .sidebarBottom {
-  display: none;
+.fullPageBarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--colorNeutralStroke2, #d1d1d1);
+  border-radius: 5px;
+  background: var(--colorNeutralBackground1);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--colorNeutralForeground1);
 }
-.overlayPanel .sidebarIconBtn {
-  margin: 4px auto;
+.fullPageBarBtn:hover {
+  background: var(--colorNeutralBackground3);
+}
+
+/* ── Compact toolbar (overlay mode, replaces sidebar) ── */
+.compactToolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--colorNeutralStroke3, #e8e8e8);
+  flex-shrink: 0;
+}
+.compactToolbarBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  color: var(--colorNeutralForeground2);
+}
+.compactToolbarBtn:hover {
+  background: var(--colorNeutralBackground3);
+  color: var(--colorNeutralForeground1);
 }
 
 /* ── Layout ── */
