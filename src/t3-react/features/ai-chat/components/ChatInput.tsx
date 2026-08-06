@@ -28,7 +28,7 @@ export const ChatInput: React.FC<Props> = ({
   isStreaming,
   onResize,
   placeholder = 'Ask anything about your building\u2026',
-  streamingLabel = 'The model is responding\u2026',
+  streamingLabel = 'The AI model is responding\u2026',
 }) => {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);

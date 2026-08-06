@@ -296,7 +296,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
         isStreaming={isStreaming}
         onResize={handleInputResize}
         placeholder={isPanel ? 'Ask anything — AI can make mistakes. Verify critical data.' : undefined}
-        streamingLabel={`${aiSettings.model} is responding\u2026`}
       />
 
       {/* ── Model info + disclaimer (hidden in panel mode) ── */}

@@ -145,6 +145,7 @@ async fn process_chat(
         let (inner_tx, mut inner_rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
 
         // Spawn the provider call — it streams events into inner_tx
+        let provider_tx = inner_tx.clone();
         let provider_handle = {
             let provider = Arc::clone(&provider);
             let endpoint = session.endpoint.clone();
@@ -154,7 +155,7 @@ async fn process_chat(
             let tools = tools.clone();
             tokio::spawn(async move {
                 provider
-                    .stream_chat(&endpoint, api_key.as_deref(), &model, &messages, &tools, &inner_tx)
+                    .stream_chat(&endpoint, api_key.as_deref(), &model, &messages, &tools, &provider_tx)
                     .await
             })
         };
