@@ -294,23 +294,27 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
       </button>
 
       {/* ── Settings Drawer ── */}
+      {settingsOpen && (
         <SettingsDrawer
           open={settingsOpen}
           settings={aiSettings}
           onSave={(s) => { setAiSettings(s); saveSettings(s); setSettingsOpen(false); }}
           onClose={() => setSettingsOpen(false)}
         />
+      )}
 
       {/* ── Tools Drawer ── */}
-      <ToolsDrawer
-        open={toolsOpen}
-        mcpServers={mcpServers}
-        onClose={() => setToolsOpen(false)}
-        onAddServer={addServer}
-        onRemoveServer={(id) => removeServer(id)}
-        onActivateServer={(id) => activateServer(id)}
-        onTestServer={testServer}
-      />
+      {toolsOpen && (
+        <ToolsDrawer
+          open={toolsOpen}
+          mcpServers={mcpServers}
+          onClose={() => setToolsOpen(false)}
+          onAddServer={addServer}
+          onRemoveServer={(id) => removeServer(id)}
+          onActivateServer={(id) => activateServer(id)}
+          onTestServer={testServer}
+        />
+      )}
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ import {
   WrenchRegular,
   BoxRegular,
   GlobeRegular,
-  PanelRightExpandRegular,
+  PanelRightContractRegular,
 } from '@fluentui/react-icons';
 import type { SessionSummary } from '../hooks/useChatHistory';
 import type { McpServerInfo } from '../hooks/useMcpServers';
@@ -77,7 +77,7 @@ export const ChatSidebar: React.FC<Props> = ({
           {!collapsed && onBackToPanel && (
             <Tooltip content="Back to sidebar" relationship="label">
               <button className={styles.sidebarIconBtn} onClick={onBackToPanel}>
-                <PanelRightExpandRegular />
+                <PanelRightContractRegular />
               </button>
             </Tooltip>
           )}
