@@ -77,7 +77,7 @@ export interface UseAiChatStreamReturn {
 
 // ── Hook ──
 
-export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamReturn {
+export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => void): UseAiChatStreamReturn {
   const messages = useChatStore((s) => s.messages);
   const sessionId = useChatStore((s) => s.sessionId);
   const isStreaming = useChatStore((s) => s.isStreaming);
@@ -102,9 +102,40 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
     storeSetIsStreaming(false);
   }, [storeSetIsStreaming]);
 
+  // Save current partial session to backend
+  const saveCurrentToBackend = useCallback(async () => {
+    const state = useChatStore.getState();
+    if (!state.sessionId || state.messages.length === 0) return;
+    try {
+      await fetch(`${API_BASE_URL}/api/ai/save-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: state.sessionId,
+          messages: state.messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+            thinkingSteps: m.thinkingSteps || undefined,
+            toolCalls: m.toolCalls || undefined,
+          })),
+        }),
+      });
+      onSaved?.();
+    } catch {}
+  }, [onSaved]);
+
   const clearSession = useCallback(() => {
+    const state = useChatStore.getState();
+    if (state.isStreaming) {
+      abortRef.current?.abort();
+      storeSetIsStreaming(false);
+    }
+    // Save before clearing if we have a session
+    if (state.sessionId && state.messages.length > 0) {
+      saveCurrentToBackend();
+    }
     storeReset();
-  }, [storeReset]);
+  }, [storeReset, saveCurrentToBackend, storeSetIsStreaming]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -286,9 +317,18 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           const currentText = useChatStore.getState().streamingText;
+          const currentSteps = useChatStore.getState().streamingSteps;
+          const currentTools = useChatStore.getState().activeToolCalls;
           if (currentText) {
-            storeSetMessages((prev) => [...prev, { role: 'assistant', content: currentText + ' [stopped]', timestamp: Date.now() }]);
+            storeSetMessages((prev) => [...prev, {
+              role: 'assistant',
+              content: currentText + ' [stopped]',
+              thinkingSteps: currentSteps.length > 0 ? currentSteps : undefined,
+              toolCalls: Object.values(currentTools).length > 0 ? Object.values(currentTools) : undefined,
+              timestamp: Date.now(),
+            }]);
           }
+          saveCurrentToBackend();
         } else {
           const errorMsg = err instanceof Error ? err.message : 'Unknown error';
           storeSetMessages((prev) => [...prev, { role: 'system', content: `Connection lost: ${errorMsg}`, timestamp: Date.now() }]);

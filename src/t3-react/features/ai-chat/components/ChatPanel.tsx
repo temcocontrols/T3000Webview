@@ -103,7 +103,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
     sendMessage,
     abort,
     clearSession,
-  } = useAiChatStream(aiSettings);
+  } = useAiChatStream(aiSettings, refreshSessions);
 
   // Sync backend session ID to history sidebar
   const prevStreamingRef = useRef(isStreaming);

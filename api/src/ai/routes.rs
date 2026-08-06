@@ -660,6 +660,53 @@ pub async fn handle_activate_server_post(
     Json(json!({"ok": true})).into_response()
 }
 
+/// Save a session with updated messages (used for partial save on stop/new-chat).
+#[derive(Deserialize)]
+struct SaveSessionRequest {
+    id: String,
+    messages: Vec<Message>,
+}
+
+pub async fn handle_save_session(
+    Json(body): Json<SaveSessionRequest>,
+) -> impl IntoResponse {
+    info!("[AI] POST /api/ai/save-session id={} msgs={}", body.id, body.messages.len());
+    let existing = super::session_store::load_session(&body.id).ok().flatten();
+    let title = existing.as_ref()
+        .map(|s| s.title.clone())
+        .unwrap_or_else(|| {
+            body.messages.iter()
+                .filter(|m| m.role == "user")
+                .last()
+                .map(|m| m.content.chars().take(50).collect())
+                .unwrap_or_else(|| "New Chat".into())
+        });
+    let created_at = existing.as_ref()
+        .map(|s| s.created_at.clone())
+        .unwrap_or_else(|| Utc::now().to_rfc3339());
+    let provider = existing.as_ref().map(|s| s.provider.clone()).unwrap_or_default();
+    let model = existing.as_ref().map(|s| s.model.clone()).unwrap_or_default();
+
+    let session = super::session_store::SessionFile {
+        id: body.id.clone(),
+        title,
+        created_at,
+        provider,
+        model,
+        messages: body.messages,
+    };
+    match super::session_store::save_session(&session) {
+        Ok(()) => {
+            info!("[AI] Session saved via save-session: {}", body.id);
+            Json(json!({"ok": true})).into_response()
+        }
+        Err(e) => {
+            info!("[AI] Failed to save session {}: {}", body.id, e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
 // ═══ GET /api/ai/tools ═══
 
 pub async fn handle_list_tools() -> impl IntoResponse {
@@ -697,4 +744,5 @@ pub fn ai_routes() -> Router<T3AppState> {
         .route("/api/ai/activate-mcp-server", post(handle_activate_server_post))
         .route("/api/ai/delete-session", post(handle_delete_session_post))
         .route("/api/ai/get-session", post(handle_get_session_post))
+        .route("/api/ai/save-session", post(handle_save_session))
 }
