@@ -24,6 +24,7 @@ import { EmptyState } from './EmptyState';
 import { ChatSidebar } from './ChatSidebar';
 import { SettingsDrawer } from './SettingsDrawer';
 import { ToolsDrawer } from './ToolsDrawer';
+import { Popover, PopoverTrigger, PopoverSurface, Button } from '@fluentui/react-components';
 import type { AiProviderSettings } from './SettingsDrawer';
 import styles from '../AiChat.module.css';
 
@@ -61,6 +62,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyHoveredId, setHistoryHoveredId] = useState<string | null>(null);
+  const [clearAllOpen, setClearAllOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
   const navigate = useNavigate();
   const setChatMode = useUIStore((s) => s.setChatMode);
@@ -199,6 +201,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
     [deleteSession, refreshSessions, activeSessionId, storeSetMessages],
   );
 
+  const handleClearAll = useCallback(() => {
+    sessions.forEach((s) => deleteSession(s.id));
+    storeSetMessages([]);
+    setClearAllOpen(false);
+  }, [sessions, deleteSession, storeSetMessages]);
+
   return (
     <div className={styles.layoutWrapper}>
       {/* ── Sidebar (hidden in overlay mode) ── */}
@@ -214,7 +222,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
           onOpenSettings={() => setSettingsOpen(true)}
           mcpServers={mcpServers}
           onOpenTools={() => setToolsOpen(true)}
-          onClearAll={() => { if (confirm('Clear all chat history?')) { sessions.forEach((s) => deleteSession(s.id)); } }}
+          onClearAll={handleClearAll}
           onBackToPanel={handleBackToPanel}
           providerLabel={providerLabel}
           builtInToolCount={44}
@@ -372,13 +380,24 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
               )}
             </div>
             <div className={styles.historyDrawerFooter}>
-              <button
-                className={styles.historyDrawerClearBtn}
-                onClick={() => { if (confirm('Clear all chat history?')) { sessions.forEach((s) => deleteSession(s.id)); } }}
-              >
-                <DeleteRegular style={{ fontSize: 14 }} />
-                <span>Clear all chats</span>
-              </button>
+              <Popover open={clearAllOpen} onOpenChange={(_, d) => { if (!d.open) setClearAllOpen(false); }}>
+                <PopoverTrigger disableButtonEnhancement>
+                  <button className={styles.historyDrawerClearBtn} onClick={() => setClearAllOpen(true)}>
+                    <DeleteRegular style={{ fontSize: 14 }} />
+                    <span>Clear all chats</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverSurface style={{ maxWidth: 300, padding: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Clear all chats?</div>
+                  <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginBottom: 16 }}>
+                    This action cannot be undone.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <Button size="small" onClick={() => setClearAllOpen(false)}>Cancel</Button>
+                    <Button size="small" appearance="primary" style={{ background: '#d32f2f' }} onClick={handleClearAll}>Delete all</Button>
+                  </div>
+                </PopoverSurface>
+              </Popover>
             </div>
           </div>
         </>

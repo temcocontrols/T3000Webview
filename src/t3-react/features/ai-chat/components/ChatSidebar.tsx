@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import { Tooltip } from '@fluentui/react-components';
+import { Popover, PopoverTrigger, PopoverSurface, Button } from '@fluentui/react-components';
 import {
   AddRegular,
   DeleteRegular,
@@ -68,6 +69,7 @@ export const ChatSidebar: React.FC<Props> = ({
   builtInToolCount = 44,
 }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
 
   const extCount = mcpServers.filter((s) => s.enabled).length;
 
@@ -109,9 +111,23 @@ export const ChatSidebar: React.FC<Props> = ({
               <HistoryRegular fontSize={16} style={{ marginRight: 8 }} />
               History
             </span>
-            <button className={styles.sidebarClearBtn} onClick={onClearAll} title="Clear all chats">
-              <DeleteRegular fontSize={14} />
-            </button>
+            <Popover open={clearOpen} onOpenChange={(_, d) => setClearOpen(d.open)}>
+              <PopoverTrigger disableButtonEnhancement>
+                <button className={styles.sidebarClearBtn} onClick={() => setClearOpen(true)} title="Clear all chats">
+                  <DeleteRegular fontSize={14} />
+                </button>
+              </PopoverTrigger>
+              <PopoverSurface style={{ maxWidth: 300, padding: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Clear all chats?</div>
+                <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginBottom: 16 }}>
+                  This action cannot be undone.
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <Button size="small" onClick={() => setClearOpen(false)}>Cancel</Button>
+                  <Button size="small" appearance="primary" style={{ background: '#d32f2f' }} onClick={() => { onClearAll(); setClearOpen(false); }}>Delete all</Button>
+                </div>
+              </PopoverSurface>
+            </Popover>
           </div>
         </div>
       )}
