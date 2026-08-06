@@ -216,7 +216,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
             <button className={styles.compactToolbarBtn} onClick={() => setSettingsOpen(true)} title="Settings">
               <SettingsRegular style={{ fontSize: 16 }} />
             </button>
-            <div style={{ flex: 1 }} />
+            <span className={styles.compactToolbarLabel}>{providerLabel}</span>
             <button className={styles.compactToolbarBtn} onClick={() => { setPreviousPageHash(window.location.hash.replace(/^#/, '')); setChatMode('full'); navigate('/t3000/ai-chat'); }} title="Open full screen">
               <ArrowExpandRegular style={{ fontSize: 16 }} />
             </button>
@@ -240,7 +240,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
       {/* ── Messages area ── */}
       <div className={styles.messagesArea} ref={messagesContainerRef}>
         {!hasMessages ? (
-          <EmptyState onSelectQuestion={handleSelectQuestion} />
+          <EmptyState onSelectQuestion={handleSelectQuestion} variant={isPanel ? 'panel' : 'full'} />
         ) : (
           <>
             {messages.map((msg, i) => (
@@ -283,15 +283,18 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
         onAbort={abort}
         isStreaming={isStreaming}
         onResize={handleInputResize}
+        placeholder={isPanel ? 'Ask anything — AI can make mistakes. Verify critical data.' : undefined}
       />
 
-      {/* ── Model info + disclaimer (clickable → opens settings) ── */}
-      <button className={styles.modelInfoRow} onClick={() => setSettingsOpen(true)}>
-        <span className={styles.modelInfoBadge}>{providerLabel}</span>
-        <span className={styles.modelInfoHint}>
-          AI can make mistakes. Always verify critical building data before taking action.
-        </span>
-      </button>
+      {/* ── Model info + disclaimer (hidden in panel mode) ── */}
+      {!isPanel && (
+        <button className={styles.modelInfoRow} onClick={() => setSettingsOpen(true)}>
+          <span className={styles.modelInfoBadge}>{providerLabel}</span>
+          <span className={styles.modelInfoHint}>
+            AI can make mistakes. Always verify critical building data before taking action.
+          </span>
+        </button>
+      )}
 
       {/* ── Settings Drawer ── */}
       {settingsOpen && (

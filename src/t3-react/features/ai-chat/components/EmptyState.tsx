@@ -1,7 +1,8 @@
 /**
  * EmptyState — Welcome screen shown when no messages exist yet.
  *
- * Card-style suggestions based on available MCP API tools.
+ * Panel mode: compact — short title, 4 key cards, single column.
+ * Full mode: rich — cards, tags, examples.
  */
 
 import React from 'react';
@@ -9,6 +10,7 @@ import styles from '../AiChat.module.css';
 
 interface Props {
   onSelectQuestion: (question: string) => void;
+  variant?: 'full' | 'panel';
 }
 
 import {
@@ -29,27 +31,42 @@ const CARDS = [
   { title: 'Write Points', desc: 'Command a value to an output point', query: 'Set point 5 on device 1 to 22.5', Icon: EditRegular },
 ];
 
+const PANEL_CARDS = CARDS.slice(0, 4);
+
 const TAGS = [
-  'Preview Auto-Tags',
-  'Acknowledge Alarm',
-  'Batch Read Points',
-  'Auto-Tag Devices',
-  'Refresh Device Data',
-  'List Tagging Rules',
+  'Preview Auto-Tags', 'Acknowledge Alarm', 'Batch Read Points',
+  'Auto-Tag Devices', 'Refresh Device Data', 'List Tagging Rules',
 ];
 
 const EXAMPLES = [
-  'Is the T3000 server running?',
-  'What devices are currently online?',
-  'List all Haystack tags',
-  'Find all points without tags',
-  'What Brick class does input 8 have?',
-  'Show temperature in AHU-1',
-  'Summarize the building system',
-  'Write 22.5 to the setpoint',
+  'Is the T3000 server running?', 'What devices are currently online?',
+  'List all Haystack tags', 'Find all points without tags',
+  'What Brick class does input 8 have?', 'Show temperature in AHU-1',
+  'Summarize the building system', 'Write 22.5 to the setpoint',
 ];
 
-export const EmptyState: React.FC<Props> = ({ onSelectQuestion }) => {
+export const EmptyState: React.FC<Props> = ({ onSelectQuestion, variant = 'full' }) => {
+  const isPanel = variant === 'panel';
+
+  if (isPanel) {
+    return (
+      <div className={`${styles.emptyRoot} ${styles.emptyRootPanel}`}>
+        <h2 className={styles.emptyTitle}>How can I help with your building today?</h2>
+        <div className={styles.emptyCardsPanel}>
+          {PANEL_CARDS.map((s) => (
+            <button key={s.title} className={styles.emptyPanelCard} onClick={() => onSelectQuestion(s.query)}>
+              <s.Icon fontSize={18} className={styles.emptyCardIcon} />
+              <div>
+                <span className={styles.emptyCardTitle}>{s.title}</span>
+                <span className={styles.emptyCardDesc}>{s.desc}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.emptyRoot}>
       <h2 className={styles.emptyTitle}>Hello, how can I help with your building today?</h2>
@@ -57,14 +74,9 @@ export const EmptyState: React.FC<Props> = ({ onSelectQuestion }) => {
         I can query live device data, check alarms, search Haystack tags, and analyze trend logs.
       </p>
 
-      {/* Card row */}
       <div className={styles.emptyCards}>
         {CARDS.map((s) => (
-          <button
-            key={s.title}
-            className={styles.emptyCard}
-            onClick={() => onSelectQuestion(s.query)}
-          >
+          <button key={s.title} className={styles.emptyCard} onClick={() => onSelectQuestion(s.query)}>
             <s.Icon fontSize={18} className={styles.emptyCardIcon} />
             <div>
               <span className={styles.emptyCardTitle}>{s.title}</span>
@@ -74,29 +86,15 @@ export const EmptyState: React.FC<Props> = ({ onSelectQuestion }) => {
         ))}
       </div>
 
-      {/* Tag chips */}
       <div className={styles.emptyTags}>
         {TAGS.map((t) => (
-          <button
-            key={t}
-            className={styles.emptyTag}
-            onClick={() => onSelectQuestion(t)}
-          >
-            {t}
-          </button>
+          <button key={t} className={styles.emptyTag} onClick={() => onSelectQuestion(t)}>{t}</button>
         ))}
       </div>
 
-      {/* Example queries */}
       <div className={styles.emptyExamples}>
         {EXAMPLES.map((q) => (
-          <button
-            key={q}
-            className={styles.emptyExample}
-            onClick={() => onSelectQuestion(q)}
-          >
-            {q}
-          </button>
+          <button key={q} className={styles.emptyExample} onClick={() => onSelectQuestion(q)}>{q}</button>
         ))}
       </div>
     </div>

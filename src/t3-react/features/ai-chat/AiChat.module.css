@@ -166,6 +166,16 @@
   background: var(--colorNeutralBackground3);
   color: var(--colorNeutralForeground1);
 }
+.compactToolbarLabel {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  color: var(--colorNeutralForeground4, #999);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 8px;
+}
 
 /* ── Layout ── */
 .layoutWrapper {
@@ -1242,10 +1252,15 @@
   text-align: center;
   min-height: 0;
 }
+.emptyRootPanel {
+  align-items: center;
+  text-align: center;
+  padding: 60px 20px 20px 20px;
+}
 .emptyTitle {
   font-size: 20px;
   font-weight: 600;
-  margin: 0 0 8px 0;
+  margin: 0 0 24px 0;
   color: var(--colorNeutralForeground1);
   line-height: 1.3;
 }
@@ -1260,11 +1275,71 @@
 /* Suggestion cards */
 .emptyCards {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-  max-width: 880px;
+  max-width: 560px;
   width: 100%;
   margin-bottom: 16px;
+}
+.emptyCardsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+.emptyPanelCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: var(--colorNeutralForeground1);
+  transition: background 0.15s;
+}
+.emptyPanelCard:hover {
+  background: var(--colorNeutralBackground2, #f0f0f0);
+}
+.emptyPills {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+.emptyPillsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.emptyGreeting {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+  color: var(--colorNeutralForeground1);
+  line-height: 1.4;
+}
+.emptyPill {
+  padding: 8px 16px;
+  border: 1px solid var(--colorNeutralStroke2, #d1d1d1);
+  border-radius: 20px;
+  background: var(--colorNeutralBackground1);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--colorNeutralForeground1);
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.emptyPill:hover {
+  background: var(--colorNeutralBackground3, #e0e0e0);
+  border-color: var(--colorBrandStroke1, #0078d4);
 }
 .emptyCard {
   display: flex;
