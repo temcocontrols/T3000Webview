@@ -19,6 +19,7 @@ interface Props {
   isStreaming: boolean;
   onResize?: () => void;
   placeholder?: string;
+  streamingLabel?: string;
 }
 
 export const ChatInput: React.FC<Props> = ({
@@ -27,6 +28,7 @@ export const ChatInput: React.FC<Props> = ({
   isStreaming,
   onResize,
   placeholder = 'Ask anything about your building\u2026',
+  streamingLabel = 'The model is responding\u2026',
 }) => {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -90,11 +92,14 @@ export const ChatInput: React.FC<Props> = ({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isStreaming ? 'AI is responding\u2026' : placeholder}
+            placeholder={isStreaming ? '' : placeholder}
             disabled={isStreaming}
             rows={2}
             aria-label="Chat message input"
           />
+          {isStreaming && (
+            <span className={styles.inputStreamingLabel}>{streamingLabel}</span>
+          )}
 
           {/* Send / Stop button */}
           <div className={styles.inputSendBtnRow}>

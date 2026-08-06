@@ -1424,16 +1424,16 @@
 /* Suggestion cards */
 .emptyCards {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  max-width: 560px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  max-width: 960px;
   width: 100%;
   margin-bottom: 16px;
 }
 .emptyCardsPanel {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   width: 100%;
   margin-bottom: 16px;
 }
@@ -1442,17 +1442,20 @@
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border: none;
+  border: 1px solid var(--colorNeutralStroke3, #e8e8e8);
   border-radius: 8px;
   background: none;
   cursor: pointer;
   text-align: left;
   font-family: inherit;
   color: var(--colorNeutralForeground1);
-  transition: background 0.15s;
+  transition: border-color 0.15s;
 }
 .emptyPanelCard:hover {
-  background: var(--colorNeutralBackground2, #f0f0f0);
+  border-color: var(--colorBrandStroke1, #0078d4);
+}
+.emptyPanelCard:hover .emptyCardIcon {
+  color: var(--colorBrandForeground1, #0078d4);
 }
 .emptyPills {
   display: flex;
@@ -1503,13 +1506,16 @@
   transition: border-color 0.15s, background 0.15s;
 }
 .emptyCard:hover {
-  border-color: var(--colorNeutralStroke1);
-  background-color: var(--colorNeutralBackground2);
+  border-color: var(--colorBrandStroke1, #0078d4);
 }
 .emptyCardIcon {
   color: var(--colorNeutralForeground3);
   flex-shrink: 0;
   margin-top: 1px;
+  transition: color 0.15s;
+}
+.emptyCard:hover .emptyCardIcon {
+  color: var(--colorBrandForeground1, #0078d4);
 }
 .emptyCardTitle {
   display: block;
@@ -1653,6 +1659,27 @@
 }
 .inputTextarea:disabled {
   background-color: var(--colorNeutralBackground2);
+  border-color: var(--colorBrandStroke1);
+}
+
+/* Animated "AI is responding" label */
+.inputStreamingLabel {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  font-size: 13px;
+  font-family: inherit;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--colorBrandForeground1, #0078d4), #009e8c, #4caf50, #009e8c, var(--colorBrandForeground1, #0078d4));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmerText 2s linear infinite;
+}
+@keyframes shimmerText {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 .inputTextarea::placeholder {
   color: var(--colorNeutralForeground4, #b0b0b0);
