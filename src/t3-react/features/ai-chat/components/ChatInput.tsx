@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { ArrowUpRegular, ArrowUpFilled, DismissRegular } from '@fluentui/react-icons';
 import styles from '../AiChat.module.css';
 
 interface Props {
@@ -82,28 +83,48 @@ export const ChatInput: React.FC<Props> = ({
     <div className={styles.inputArea}>
       {/* Input row */}
       <div className={styles.inputRow}>
-        <textarea
-          ref={textareaRef}
-          className={styles.inputTextarea}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={isStreaming ? 'AI is responding\u2026' : placeholder}
-          disabled={isStreaming}
-          rows={2}
-          aria-label="Chat message input"
-        />
-      </div>
+        <div className={styles.inputTextareaWrapper}>
+          <textarea
+            ref={textareaRef}
+            className={styles.inputTextarea}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={isStreaming ? 'AI is responding\u2026' : placeholder}
+            disabled={isStreaming}
+            rows={2}
+            aria-label="Chat message input"
+          />
 
-      {/* Streaming indicator */}
-      {isStreaming && (
-        <div className={styles.inputBottomRow}>
-          <span className={styles.inputStreamingDot}>
-            <span className={styles.streamingPulse} />
-            Streaming — press <kbd className={styles.kbd}>Esc</kbd> to stop
-          </span>
+          {/* Send / Stop button */}
+          <div className={styles.inputSendBtnRow}>
+            {isStreaming ? (
+              <button
+                className={`${styles.inputSendBtn} ${styles.inputSendBtnActive}`}
+                onClick={onAbort}
+                title="Stop generating"
+                aria-label="Stop generating"
+              >
+                <DismissRegular style={{ fontSize: 18 }} />
+              </button>
+            ) : (
+              <button
+                className={`${styles.inputSendBtn} ${value.trim() ? styles.inputSendBtnActive : ''}`}
+                onClick={handleSend}
+                disabled={!value.trim()}
+                title="Send message"
+                aria-label="Send message"
+              >
+                {value.trim() ? (
+                  <ArrowUpFilled style={{ fontSize: 18 }} />
+                ) : (
+                  <ArrowUpRegular style={{ fontSize: 18 }} />
+                )}
+              </button>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
