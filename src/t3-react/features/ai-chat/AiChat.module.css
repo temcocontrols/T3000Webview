@@ -1154,6 +1154,12 @@
   max-height: 160px;
 }
 
+.stepToolBadgeIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 /* ── Tool call tags (compact inline pills) ── */
 .toolTagsRow {
   display: flex;
@@ -1192,7 +1198,7 @@
   align-items: center;
 }
 .toolTagName {
-  font-weight: 500;
+  font-weight: 600;
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;

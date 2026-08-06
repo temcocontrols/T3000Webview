@@ -121,10 +121,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   }, []);
 
   useEffect(() => {
-    if (isNearBottom()) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, streamingText, isNearBottom]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, streamingText, streamingSteps]);
 
   // Show scroll-to-bottom button when not near bottom
   useEffect(() => {

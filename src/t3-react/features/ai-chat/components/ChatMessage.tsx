@@ -15,6 +15,8 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import {
   ArrowSyncRegular,
+  CheckmarkCircleFilled,
+  DismissCircleFilled,
 } from '@fluentui/react-icons';
 import styles from '../AiChat.module.css';
 import type {
@@ -63,9 +65,11 @@ function renderMarkdown(content: string): string {
 const ThinkingSection: React.FC<{
   steps: ThinkingStep[];
   isStreaming: boolean;
-}> = ({ steps, isStreaming }) => {
+  outputStarted: boolean;
+}> = ({ steps, isStreaming, outputStarted }) => {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(true);
+  const outputStartedRef = useRef(false);
 
   // Auto-scroll to bottom on new steps
   useEffect(() => {
@@ -73,6 +77,14 @@ const ThinkingSection: React.FC<{
       bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
     }
   }, [steps, isStreaming]);
+
+  // Auto-collapse when output starts arriving
+  useEffect(() => {
+    if (outputStarted && !outputStartedRef.current) {
+      outputStartedRef.current = true;
+      setExpanded(false);
+    }
+  }, [outputStarted]);
 
   const stepCount = steps.length;
 
@@ -145,6 +157,15 @@ const ToolCallTagInline: React.FC<{ tool: ToolCallRecord }> = ({ tool }) => {
         onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
         title={`${tool.name} — click for details`}
       >
+        <span className={styles.stepToolBadgeIcon}>
+          {isPending ? (
+            <ArrowSyncRegular style={{ fontSize: 11, color: 'var(--colorStatusWarningForeground1, #8a6d00)' }} />
+          ) : isError ? (
+            <DismissCircleFilled style={{ fontSize: 11, color: 'var(--colorStatusDangerForeground1, #c50f1f)' }} />
+          ) : (
+            <CheckmarkCircleFilled style={{ fontSize: 11, color: 'var(--colorStatusSuccessForeground1, #107c10)' }} />
+          )}
+        </span>
         <span className={styles.toolTagName}>{tool.name}</span>
         <span className={styles.toolTagArrow}>{expanded ? '▾' : '→'}</span>
       </button>
@@ -201,7 +222,7 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
 
       {/* Thinking section — shows when steps have arrived */}
       {hasThinking && (
-        <ThinkingSection steps={steps} isStreaming={!!isStreaming} />
+        <ThinkingSection steps={steps} isStreaming={!!isStreaming} outputStarted={!!message.content} />
       )}
 
       {/* Content */}
