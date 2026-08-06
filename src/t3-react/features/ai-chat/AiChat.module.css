@@ -1750,6 +1750,131 @@
   background-color: var(--colorNeutralBackground2);
 }
 
+/* ── History drawer (panel mode) ── */
+.historyOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.15);
+  z-index: 20;
+}
+.historyDrawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 220px;
+  background: var(--colorNeutralBackground1);
+  border-right: 1px solid var(--colorNeutralStroke2);
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  animation: slideInLeft 0.15s ease-out;
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.historyDrawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--colorNeutralStroke3, #e8e8e8);
+}
+.historyDrawerTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+.historyDrawerClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  color: var(--colorNeutralForeground2);
+}
+.historyDrawerClose:hover {
+  background: var(--colorNeutralBackground3);
+}
+.historyDrawerList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--colorNeutralStroke1) transparent;
+}
+.historyDrawerList::-webkit-scrollbar {
+  width: 2px;
+}
+.historyDrawerList::-webkit-scrollbar-thumb {
+  background: var(--colorNeutralStroke1);
+  border-radius: 1px;
+}
+.historyDrawerEmpty {
+  font-size: 12px;
+  color: var(--colorNeutralForeground3);
+  padding: 16px 12px;
+  text-align: center;
+}
+.historyDrawerItem {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.historyDrawerItem:hover {
+  background: var(--colorNeutralBackground3);
+}
+.historyDrawerItemActive {
+  background: var(--colorNeutralBackground4);
+}
+.historyDrawerItemContent {
+  flex: 1;
+  min-width: 0;
+}
+.historyDrawerItemTitle {
+  display: block;
+  font-size: 12px;
+  color: var(--colorNeutralForeground1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.historyDrawerItemMeta {
+  display: block;
+  font-size: 10px;
+  color: var(--colorNeutralForeground3);
+  margin-top: 2px;
+}
+.historyDrawerFooter {
+  padding: 4px 8px;
+  border-top: 1px solid var(--colorNeutralStroke3, #e8e8e8);
+}
+.historyDrawerNewBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--colorNeutralForeground1);
+}
+.historyDrawerNewBtn:hover {
+  background: var(--colorNeutralBackground3);
+}
+
 /* ── Settings Drawer ── */
 .drawerBackdrop {
   position: fixed;

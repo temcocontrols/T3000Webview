@@ -12,7 +12,7 @@
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDownRegular, BotSparkleRegular, AddRegular, WrenchRegular, SettingsRegular, ArrowExpandRegular, DismissRegular, ArrowSyncRegular } from '@fluentui/react-icons';
+import { ArrowDownRegular, BotSparkleRegular, AddRegular, WrenchRegular, SettingsRegular, ArrowExpandRegular, DismissRegular, ArrowSyncRegular, HistoryRegular, DeleteRegular } from '@fluentui/react-icons';
 import { useAiChatStream } from '../hooks/useAiChatStream';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useMcpServers } from '../hooks/useMcpServers';
@@ -59,6 +59,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyHoveredId, setHistoryHoveredId] = useState<string | null>(null);
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
   const navigate = useNavigate();
   const setChatMode = useUIStore((s) => s.setChatMode);
@@ -121,7 +123,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    // Instant scroll during streaming to keep up with rapid updates
+    el.scrollTop = el.scrollHeight;
   }, [messages, streamingText, streamingSteps]);
 
   // Show scroll-to-bottom button when not near bottom
@@ -134,7 +139,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   }, [isNearBottom]);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, []);
 
   const handleInputResize = useCallback(() => {
@@ -214,6 +220,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
             </button>
             <button className={styles.compactToolbarBtn} onClick={() => setSettingsOpen(true)} title="Settings">
               <SettingsRegular style={{ fontSize: 16 }} />
+            </button>
+            <button className={styles.compactToolbarBtn} onClick={() => { refreshSessions(); setHistoryOpen(true); }} title="History">
+              <HistoryRegular style={{ fontSize: 16 }} />
             </button>
             <span className={styles.compactToolbarLabel}>{providerLabel}</span>
             <button className={styles.compactToolbarBtn} onClick={() => { setPreviousPageHash(window.location.hash.replace(/^#/, '')); setChatMode('full'); navigate('/t3000/ai-chat'); }} title="Open full screen">
@@ -306,6 +315,56 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
             AI can make mistakes. Always verify critical building data before taking action.
           </span>
         </button>
+      )}
+
+      {/* ── History Drawer (panel mode) ── */}
+      {isPanel && historyOpen && (
+        <>
+          <div className={styles.historyOverlay} onClick={() => setHistoryOpen(false)} />
+          <div className={styles.historyDrawer}>
+            <div className={styles.historyDrawerHeader}>
+              <span className={styles.historyDrawerTitle}>History</span>
+              <button className={styles.historyDrawerClose} onClick={() => setHistoryOpen(false)} title="Close">
+                <DismissRegular style={{ fontSize: 14 }} />
+              </button>
+            </div>
+            <div className={styles.historyDrawerList}>
+              {sessions.length === 0 ? (
+                <div className={styles.historyDrawerEmpty}>No conversations yet</div>
+              ) : (
+                sessions.map((s) => (
+                  <div
+                    key={s.id}
+                    className={`${styles.historyDrawerItem} ${s.id === activeSessionId ? styles.historyDrawerItemActive : ''}`}
+                    onClick={() => { setActiveSessionId(s.id); setHistoryOpen(false); }}
+                    onMouseEnter={() => setHistoryHoveredId(s.id)}
+                    onMouseLeave={() => setHistoryHoveredId(null)}
+                  >
+                    <div className={styles.historyDrawerItemContent}>
+                      <span className={styles.historyDrawerItemTitle}>{s.title || 'Untitled'}</span>
+                      <span className={styles.historyDrawerItemMeta}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : ''}</span>
+                    </div>
+                    {historyHoveredId === s.id && (
+                      <button
+                        className={styles.sidebarItemDelete}
+                        onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                        title="Delete conversation"
+                      >
+                        <DeleteRegular fontSize={14} />
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+            <div className={styles.historyDrawerFooter}>
+              <button className={styles.historyDrawerNewBtn} onClick={() => { setHistoryOpen(false); handleNewChat(); }}>
+                <AddRegular style={{ fontSize: 14 }} />
+                <span>New chat</span>
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* ── Settings Drawer ── */}

@@ -57,8 +57,17 @@ function renderMarkdown(content: string): string {
       'tr', 'th', 'td', 'hr', 'img', 'span', 'div',
     ],
     ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class', 'style'],
+    ADD_ATTR: ['target'],
   });
 }
+
+// Hook: force all links to open in a new tab
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A') {
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noopener noreferrer');
+  }
+});
 
 // ── ThinkingSection (per-step, Copilot-style) ──
 
