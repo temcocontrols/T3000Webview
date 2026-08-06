@@ -145,7 +145,8 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px 8px;
+  padding: 0 8px;
+  height: 44px;
   border-bottom: 1px solid var(--colorNeutralStroke3, #e8e8e8);
   flex-shrink: 0;
 }

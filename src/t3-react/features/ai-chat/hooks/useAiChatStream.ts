@@ -10,6 +10,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { API_BASE_URL } from '../../../config/constants';
+import { useChatStore } from '../../../store/chatStore';
 import type { AiProviderSettings } from '../components/SettingsDrawer';
 
 // ── Types ──
@@ -58,7 +59,7 @@ export interface UseAiChatStreamReturn {
   isStreaming: boolean;
   streamingText: string;
   streamingThinking: ThinkingState | null;
-  activeToolCalls: Map<string, ToolCallRecord>;
+  activeToolCalls: Record<string, ToolCallRecord>;
   sessionId: string | null;
   sendMessage: (content: string) => Promise<void>;
   abort: () => void;
@@ -68,68 +69,57 @@ export interface UseAiChatStreamReturn {
 // ── Hook ──
 
 export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamReturn {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingText, setStreamingText] = useState('');
-  const [streamingThinking, setStreamingThinking] = useState<ThinkingState | null>(null);
-  const [activeToolCalls, setActiveToolCalls] = useState<Map<string, ToolCallRecord>>(new Map());
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const messages = useChatStore((s) => s.messages);
+  const sessionId = useChatStore((s) => s.sessionId);
+  const isStreaming = useChatStore((s) => s.isStreaming);
+  const streamingText = useChatStore((s) => s.streamingText);
+  const streamingThinking = useChatStore((s) => s.streamingThinking);
+  const activeToolCalls = useChatStore((s) => s.activeToolCalls);
+  const storeSetMessages = useChatStore((s) => s.setMessages);
+  const storeSetSessionId = useChatStore((s) => s.setSessionId);
+  const storeSetIsStreaming = useChatStore((s) => s.setIsStreaming);
+  const storeSetStreamingText = useChatStore((s) => s.setStreamingText);
+  const storeSetStreamingThinking = useChatStore((s) => s.setStreamingThinking);
+  const storeSetActiveToolCalls = useChatStore((s) => s.setActiveToolCalls);
+  const storeReset = useChatStore((s) => s.reset);
 
-  // Refs to avoid stale closures in sendMessage
-  const messagesRef = useRef<ChatMessage[]>([]);
-  const isStreamingRef = useRef(false);
-  const streamingTextRef = useRef('');
-  const sessionIdRef = useRef<string | null>(null);
   const settingsRef = useRef<AiProviderSettings>(settings);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Keep refs in sync with state
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
-  useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
-  useEffect(() => { streamingTextRef.current = streamingText; }, [streamingText]);
-  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   const abort = useCallback(() => {
     abortRef.current?.abort();
-    setIsStreaming(false);
-  }, []);
+    storeSetIsStreaming(false);
+  }, [storeSetIsStreaming]);
 
   const clearSession = useCallback(async () => {
-    const sid = sessionIdRef.current;
+    const sid = useChatStore.getState().sessionId;
     if (sid) {
       try {
         await fetch(`${API_BASE_URL}/api/ai/sessions/${sid}`, { method: 'DELETE' });
-      } catch {
-        // Session may already be expired — ignore
-      }
+      } catch {}
     }
-    setMessages([]);
-    setSessionId(null);
-    setStreamingText('');
-    setActiveToolCalls(new Map());
-  }, []);
+    storeReset();
+  }, [storeReset]);
 
   const sendMessage = useCallback(
     async (content: string) => {
       const trimmed = content.trim();
-      if (!trimmed || isStreamingRef.current) return;
+      const state = useChatStore.getState();
+      if (!trimmed || state.isStreaming) return;
 
-      // Capture current state via refs (stable, no deps needed)
-      const currentMessages = messagesRef.current;
-      const currentSessionId = sessionIdRef.current;
+      const currentMessages = state.messages;
+      const currentSessionId = state.sessionId;
       const s = settingsRef.current;
 
-      // Add user message to state
       const userMsg: ChatMessage = {
-        role: 'user',
-        content: trimmed,
-        timestamp: Date.now(),
+        role: 'user', content: trimmed, timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, userMsg]);
-      setIsStreaming(true);
-      setStreamingText('');
-      setStreamingThinking(null);
+      storeSetMessages((prev) => [...prev, userMsg]);
+      storeSetIsStreaming(true);
+      storeSetStreamingText('');
+      storeSetStreamingThinking(null);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -161,15 +151,11 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
 
         if (!response.ok) {
           const errorText = await response.text();
-          setMessages((prev) => [
+          storeSetMessages((prev) => [
             ...prev,
-            {
-              role: 'system',
-              content: `Error: Server returned ${response.status}. ${errorText || 'Please check that the LLM server is running.'}`,
-              timestamp: Date.now(),
-            },
+            { role: 'system', content: `Error: Server returned ${response.status}. ${errorText || 'Please check that the LLM server is running.'}`, timestamp: Date.now() },
           ]);
-          setIsStreaming(false);
+          storeSetIsStreaming(false);
           return;
         }
 
@@ -213,86 +199,62 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
               case 'text_delta': {
                 const chunk = event.data?.content || '';
                 assistantContent += chunk;
-                setStreamingText(assistantContent);
+                storeSetStreamingText(assistantContent);
                 break;
               }
               case 'thinking_delta': {
                 const chunk = event.data?.content || '';
                 thinkingContent += chunk;
                 thinkingSteps++;
-                setStreamingThinking({
-                  steps: thinkingSteps,
-                  durationMs: 0, // will be set on thinking_end
-                  content: thinkingContent,
+                storeSetStreamingThinking({
+                  steps: thinkingSteps, durationMs: 0, content: thinkingContent,
                 });
                 break;
               }
               case 'thinking_end': {
                 thinkingSteps = event.data?.steps || thinkingSteps;
                 thinkingDurationMs = event.data?.duration_ms || 0;
-                setStreamingThinking((prev) =>
-                  prev
-                    ? { ...prev, steps: thinkingSteps, durationMs: thinkingDurationMs }
-                    : null,
+                storeSetStreamingThinking((prev) =>
+                  prev ? { ...prev, steps: thinkingSteps, durationMs: thinkingDurationMs } : null,
                 );
                 break;
               }
               case 'tool_call': {
                 const tc: ToolCallRecord = {
-                  id: event.data?.id || '',
-                  name: event.data?.name || '',
-                  args: event.data?.args || event.data?.arguments || '',
-                  status: 'pending',
+                  id: event.data?.id || '', name: event.data?.name || '',
+                  args: event.data?.args || event.data?.arguments || '', status: 'pending',
                 };
                 toolCallRecords.push(tc);
-                setActiveToolCalls((prev) => {
-                  const next = new Map(prev);
-                  next.set(tc.id, tc);
-                  return next;
-                });
+                storeSetActiveToolCalls((prev) => ({ ...prev, [tc.id]: tc }));
                 break;
               }
               case 'tool_result': {
                 const id = event.data?.id || '';
                 const result = event.data?.result || '';
-                // Detect error: result is a JSON string like {"error":"message"}
                 const isError = result.startsWith('{"error"');
-                setActiveToolCalls((prev) => {
-                  const next = new Map(prev);
-                  const existing = next.get(id);
+                storeSetActiveToolCalls((prev) => {
+                  const existing = prev[id];
                   if (existing) {
-                    next.set(id, {
-                      ...existing,
-                      result,
-                      status: isError ? 'error' : 'success',
-                    });
+                    return { ...prev, [id]: { ...existing, result, status: isError ? 'error' : 'success' } };
                   }
-                  return next;
+                  return prev;
                 });
                 const idx = toolCallRecords.findIndex((t) => t.id === id);
                 if (idx !== -1) {
-                  toolCallRecords[idx] = {
-                    ...toolCallRecords[idx],
-                    result,
-                    status: isError ? 'error' : 'success',
-                  };
+                  toolCallRecords[idx] = { ...toolCallRecords[idx], result, status: isError ? 'error' : 'success' };
                 }
                 break;
               }
               case 'done': {
                 if (event.data?.session_id) {
-                  setSessionId(event.data.session_id);
+                  storeSetSessionId(event.data.session_id);
                 }
                 break;
               }
               case 'error': {
-                setMessages((prev) => [
+                storeSetMessages((prev) => [
                   ...prev,
-                  {
-                    role: 'system',
-                    content: `Error: ${event.data?.message || 'Unknown error'}`,
-                    timestamp: Date.now(),
-                  },
+                  { role: 'system', content: `Error: ${event.data?.message || 'Unknown error'}`, timestamp: Date.now() },
                 ]);
                 break;
               }
@@ -311,41 +273,26 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
               : undefined,
             timestamp: Date.now(),
           };
-          setMessages((prev) => [...prev, assistantMsg]);
+          storeSetMessages((prev) => [...prev, assistantMsg]);
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') {
-          const currentStreamingText = streamingTextRef.current;
-          if (currentStreamingText) {
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: 'assistant',
-                content: currentStreamingText + ' [stopped]',
-                timestamp: Date.now(),
-              },
-            ]);
+          const currentText = useChatStore.getState().streamingText;
+          if (currentText) {
+            storeSetMessages((prev) => [...prev, { role: 'assistant', content: currentText + ' [stopped]', timestamp: Date.now() }]);
           }
         } else {
-          const errorMsg =
-            err instanceof Error ? err.message : 'Unknown error';
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'system',
-              content: `Connection lost: ${errorMsg}`,
-              timestamp: Date.now(),
-            },
-          ]);
+          const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+          storeSetMessages((prev) => [...prev, { role: 'system', content: `Connection lost: ${errorMsg}`, timestamp: Date.now() }]);
         }
       } finally {
-        setIsStreaming(false);
-        setStreamingText('');
-        setStreamingThinking(null);
+        storeSetIsStreaming(false);
+        storeSetStreamingText('');
+        storeSetStreamingThinking(null);
         abortRef.current = null;
       }
     },
-    [], // Stable reference — uses refs for all external state
+    [storeSetMessages, storeSetIsStreaming, storeSetStreamingText, storeSetStreamingThinking, storeSetActiveToolCalls, storeSetSessionId],
   );
 
   return {

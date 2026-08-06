@@ -260,7 +260,7 @@ const DesktopLayoutWithChat: React.FC = () => {
           <div
             onMouseDown={handleChatResize}
             style={{
-            position: 'fixed', top: '44px', bottom: 0,
+            position: 'fixed', top: '42px', bottom: 0,
               right: `${chatWidth}px`, width: '4px',
               cursor: 'col-resize', zIndex: 11,
               background: 'transparent',
@@ -271,11 +271,11 @@ const DesktopLayoutWithChat: React.FC = () => {
           />
           {/* Chat panel — starts at toolbar level, below menu bar */}
           <div style={{
-            position: 'fixed', top: '44px', right: 0, bottom: 0, width: `${chatWidth}px`,
+            position: 'fixed', top: '42px', right: 0, bottom: 0, width: `${chatWidth}px`,
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
             borderLeft: '1px solid #e1e1e1', backgroundColor: '#ffffff', zIndex: 10,
           }}>
-            <ChatPanel hideSidebar />
+            <ChatPanel variant="panel" />
           </div>
         </>
       )}

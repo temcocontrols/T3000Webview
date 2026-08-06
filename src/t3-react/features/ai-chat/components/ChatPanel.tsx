@@ -11,10 +11,12 @@
  */
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { ArrowDownRegular, BotSparkleRegular, AddRegular, WrenchRegular, SettingsRegular } from '@fluentui/react-icons';
+import { useNavigate } from 'react-router-dom';
+import { ArrowDownRegular, BotSparkleRegular, AddRegular, WrenchRegular, SettingsRegular, ArrowExpandRegular, DismissRegular } from '@fluentui/react-icons';
 import { useAiChatStream } from '../hooks/useAiChatStream';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useMcpServers } from '../hooks/useMcpServers';
+import { useUIStore } from '../../../store/uiStore';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { EmptyState } from './EmptyState';
@@ -48,14 +50,17 @@ const saveSettings = (s: AiProviderSettings) => {
 };
 
 interface ChatPanelProps {
-  hideSidebar?: boolean;
+  variant?: 'full' | 'panel';
 }
 
-export const ChatPanel: React.FC<ChatPanelProps> = ({ hideSidebar = false }) => {
+export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
+  const isPanel = variant === 'panel';
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
+  const navigate = useNavigate();
+  const setChatMode = useUIStore((s) => s.setChatMode);
 
   const {
     sessions,
@@ -170,7 +175,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ hideSidebar = false }) => 
   return (
     <div className={styles.layoutWrapper}>
       {/* ── Sidebar (hidden in overlay mode) ── */}
-      {!hideSidebar && (
+      {!isPanel && (
         <ChatSidebar
           collapsed={sidebarCollapsed}
           sessions={sessions}
@@ -190,7 +195,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ hideSidebar = false }) => 
       {/* ── Main chat area ── */}
       <div className={styles.root}>
         {/* ── Compact toolbar (overlay mode) ── */}
-        {hideSidebar && (
+        {isPanel && (
           <div className={styles.compactToolbar}>
             <button className={styles.compactToolbarBtn} onClick={handleNewChat} title="New chat">
               <AddRegular style={{ fontSize: 16 }} />
@@ -200,6 +205,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ hideSidebar = false }) => 
             </button>
             <button className={styles.compactToolbarBtn} onClick={() => setSettingsOpen(true)} title="Settings">
               <SettingsRegular style={{ fontSize: 16 }} />
+            </button>
+            <div style={{ flex: 1 }} />
+            <button className={styles.compactToolbarBtn} onClick={() => { setChatMode('full'); navigate('/t3000/ai-chat'); }} title="Open full screen">
+              <ArrowExpandRegular style={{ fontSize: 16 }} />
+            </button>
+            <button className={styles.compactToolbarBtn} onClick={() => setChatMode('hidden')} title="Hide AI">
+              <DismissRegular style={{ fontSize: 16 }} />
             </button>
           </div>
         )}
@@ -233,7 +245,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ hideSidebar = false }) => 
                   content: streamingText,
                   thinking: streamingThinking ?? undefined,
                   timestamp: Date.now(),
-                  toolCalls: Array.from(activeToolCalls.values()),
+                  toolCalls: Object.values(activeToolCalls),
                 }}
                 isStreaming
               />
