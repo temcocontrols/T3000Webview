@@ -27,8 +27,6 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100vh',
-    width: '100%',
     overflow: 'hidden',
     backgroundColor: '#f5f5f5',
     fontFamily: 'var(--t3-font-family)',
@@ -89,16 +87,6 @@ const useStyles = makeStyles({
     minWidth: '200px',
     maxWidth: '500px',
   },
-  aiChatPanel: {
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-    borderLeft: '1px solid #e1e1e1',
-    backgroundColor: '#ffffff',
-    width: '420px',
-    minWidth: '320px',
-    flexShrink: 0,
-  },
   rightPanelContent: {
     padding: '16px',
     color: '#323130',
@@ -110,7 +98,7 @@ const useStyles = makeStyles({
 });
 
 /** Desktop-only layout — full shell with resizable left panel, menu bar, and status bar. */
-const DesktopLayout: React.FC = () => {
+const DesktopLayout: React.FC<{ chatWidth?: number }> = ({ chatWidth = 500 }) => {
   const styles = useStyles();
 
   const isLeftPanelVisible = useUIStore((state) => state.isLeftPanelVisible);
@@ -195,73 +183,103 @@ const DesktopLayout: React.FC = () => {
   };
 
   return (
-    <div className={styles.container}>
-      {/* Global Message Bar */}
-      <GlobalMessageBar
-        message={globalMessage}
-        onDismiss={dismissGlobalMessage}
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <GlobalMessageBar message={globalMessage} onDismiss={dismissGlobalMessage} />
+      <Header />
 
-      {/* Top Area: Header */}
-      <div className={styles.topArea}>
-        <Header />
-      </div>
-
-      {/* Middle Area: Left Panel + Content (+ Right Panel + AI Chat) */}
-      <div className={styles.middleArea}>
-        {/* Left Panel - Tree Navigation */}
-        {isLeftPanelVisible && (
-          <>
-            <div ref={leftPanelRef} className={styles.leftPanel}>
-              <TreePanel />
-            </div>
-            <div className={styles.resizer} onMouseDown={handleLeftPanelResize} />
-          </>
-        )}
-
-        {/* Main Content Area */}
-        <div className={styles.mainContent}>
-          <PageHeader />
-          <div className={styles.mainContentBody}>
-            <Outlet />
+      {/* Container — shrinks when chat is open */}
+      <div className={styles.container} style={{
+        flex: 1,
+        width: chatMode === 'sidebar' ? `calc(100% - ${chatWidth}px)` : '100%',
+      }}>
+        <div className={styles.middleArea}>
+          {isLeftPanelVisible && (
+            <>
+              <div ref={leftPanelRef} className={styles.leftPanel}><TreePanel /></div>
+              <div className={styles.resizer} onMouseDown={handleLeftPanelResize} />
+            </>
+          )}
+          <div className={styles.mainContent}>
+            <PageHeader />
+            <div className={styles.mainContentBody}><Outlet /></div>
           </div>
-        </div>
-
-        {/* Right Panel - Properties/Details */}
-        {isRightPanelVisible && (
-          <>
-            <div className={styles.resizer} onMouseDown={handleRightPanelResize} />
-            <div ref={rightPanelRef} className={styles.rightPanel}>
-              <div className={styles.rightPanelContent}>
-                <h3>Properties</h3>
-                <p>Property panel content...</p>
+          {isRightPanelVisible && (
+            <>
+              <div className={styles.resizer} onMouseDown={handleRightPanelResize} />
+              <div ref={rightPanelRef} className={styles.rightPanel}>
+                <div className={styles.rightPanelContent}>
+                  <h3>Properties</h3><p>Property panel content...</p>
+                </div>
               </div>
-            </div>
-          </>
-        )}
-
-        {/* AI Chat Panel — integrated as a third column */}
-        {chatMode === 'sidebar' && (
-          <>
-            <div className={styles.resizer} />
-            <div className={styles.aiChatPanel}>
-              <ChatPanel hideSidebar />
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Bottom Area: Status Bar */}
-      <div className={styles.bottomArea}>
-        <StatusBar
-          rxCount={rxCount} txCount={txCount}
-          deviceName={statusDeviceName} deviceSerialNumber={statusDeviceSerial}
-          devicePanelId={statusDevicePanel} protocol={protocol}
-          connectionType={connectionType} message={statusMessage}
-          messageType={statusMessageType}
-        />
+            </>
+          )}
+        </div>
+        <div className={styles.bottomArea}>
+          <StatusBar rxCount={rxCount} txCount={txCount}
+            deviceName={statusDeviceName} deviceSerialNumber={statusDeviceSerial}
+            devicePanelId={statusDevicePanel} protocol={protocol}
+            connectionType={connectionType} message={statusMessage} messageType={statusMessageType} />
+        </div>
       </div>
     </div>
+  );
+};
+
+// ── AI Chat fixed panel (sibling to container, not inside it) ──
+
+const DesktopLayoutWithChat: React.FC = () => {
+  const chatMode = useUIStore((state) => state.chatMode);
+  const [chatWidth, setChatWidth] = React.useState(500);
+
+  const handleChatResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = chatWidth;
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = startX - moveEvent.clientX;
+      setChatWidth(Math.min(Math.max(startWidth + delta, 320), 700));
+    };
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <>
+      <DesktopLayout chatWidth={chatWidth} />
+      {chatMode === 'sidebar' && (
+        <>
+          {/* Resize handle */}
+          <div
+            onMouseDown={handleChatResize}
+            style={{
+            position: 'fixed', top: '44px', bottom: 0,
+              right: `${chatWidth}px`, width: '4px',
+              cursor: 'col-resize', zIndex: 11,
+              background: 'transparent',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#0078d4')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          />
+          {/* Chat panel — starts at toolbar level, below menu bar */}
+          <div style={{
+            position: 'fixed', top: '44px', right: 0, bottom: 0, width: `${chatWidth}px`,
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            borderLeft: '1px solid #e1e1e1', backgroundColor: '#ffffff', zIndex: 10,
+          }}>
+            <ChatPanel hideSidebar />
+          </div>
+        </>
+      )}
+    </>
   );
 };
 
@@ -277,5 +295,5 @@ const DesktopLayout: React.FC = () => {
 export const MainLayout: React.FC = () => {
   const { isMobile } = useResponsive();
   if (isMobile) return <MobileShell />;
-  return <DesktopLayout />;
+  return <DesktopLayoutWithChat />;
 };
