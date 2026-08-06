@@ -102,13 +102,7 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
     storeSetIsStreaming(false);
   }, [storeSetIsStreaming]);
 
-  const clearSession = useCallback(async () => {
-    const sid = useChatStore.getState().sessionId;
-    if (sid) {
-      try {
-        await fetch(`${API_BASE_URL}/api/ai/sessions/${sid}`, { method: 'DELETE' });
-      } catch {}
-    }
+  const clearSession = useCallback(() => {
     storeReset();
   }, [storeReset]);
 

@@ -66,6 +66,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const setChatMode = useUIStore((s) => s.setChatMode);
   const setPreviousPageHash = useChatStore((s) => s.setPreviousPageHash);
   const previousPageHash = useChatStore((s) => s.previousPageHash);
+  const storeSetMessages = useChatStore((s) => s.setMessages);
 
   const handleBackToPanel = useCallback(() => {
     setChatMode('sidebar');
@@ -79,6 +80,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
     setActiveSessionId,
     deleteSession,
     refreshSessions,
+    loadSessionMessages,
   } = useChatHistory();
 
   const {
@@ -172,18 +174,29 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const handleSelectSession = useCallback(
     async (id: string) => {
       setActiveSessionId(id);
-      // TODO: load messages from file via API and set them in the chat
+      const msgs = await loadSessionMessages(id);
+      if (msgs.length > 0) {
+        storeSetMessages(msgs);
+        // Scroll to bottom after render
+        setTimeout(() => {
+          const el = messagesContainerRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        }, 100);
+      }
       refreshSessions();
     },
-    [setActiveSessionId, refreshSessions],
+    [setActiveSessionId, loadSessionMessages, storeSetMessages, refreshSessions],
   );
 
   const handleDeleteSession = useCallback(
     async (id: string) => {
       await deleteSession(id);
+      if (activeSessionId === id) {
+        storeSetMessages([]);
+      }
       refreshSessions();
     },
-    [deleteSession, refreshSessions],
+    [deleteSession, refreshSessions, activeSessionId, storeSetMessages],
   );
 
   return (

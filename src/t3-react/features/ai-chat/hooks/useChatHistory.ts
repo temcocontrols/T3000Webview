@@ -62,7 +62,11 @@ export function useChatHistory(): UseChatHistoryReturn {
   const loadSessionMessages = useCallback(async (id: string): Promise<ChatMessage[]> => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/ai/sessions/${id}`);
+      const res = await fetch(`${API_BASE_URL}/api/ai/get-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
       if (!res.ok) return [];
       const data = await res.json();
       return (data.messages || []).map((m: any) => ({

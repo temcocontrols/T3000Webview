@@ -41,7 +41,9 @@ pub struct SessionIndexEntry {
 // ── Path helpers ──
 
 fn sessions_dir() -> PathBuf {
-    get_ai_sessions_path()
+    let dir = get_ai_sessions_path();
+    tracing::info!("[AI] sessions_dir={}", dir.display());
+    dir
 }
 
 fn index_path() -> PathBuf {
@@ -69,9 +71,11 @@ pub fn ensure_dir() -> io::Result<()> {
 pub fn save_session(session: &SessionFile) -> io::Result<()> {
     ensure_dir()?;
 
+    let path = session_path(&session.id);
     let json = serde_json::to_string_pretty(session)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-    fs::write(session_path(&session.id), &json)?;
+    fs::write(&path, &json)?;
+    tracing::info!("[AI] save_session id={} path={} bytes={}", session.id, path.display(), json.len());
 
     // Update index
     let mut index = load_index().unwrap_or_default();
@@ -101,7 +105,9 @@ pub fn save_session(session: &SessionFile) -> io::Result<()> {
 /// Load a single session by ID.
 pub fn load_session(id: &str) -> io::Result<Option<SessionFile>> {
     let path = session_path(id);
+    tracing::info!("[AI] load_session id={} path={}", id, path.display());
     if !path.exists() {
+        tracing::warn!("[AI] load_session NOT FOUND at {}", path.display());
         return Ok(None);
     }
     let json = fs::read_to_string(&path)?;

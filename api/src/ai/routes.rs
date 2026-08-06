@@ -16,6 +16,7 @@ use axum::{
     routing::{delete, get, patch, post, put},
     Router,
 };
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -366,11 +367,45 @@ pub async fn handle_list_sessions() -> impl IntoResponse {
 pub async fn handle_get_session(
     Path(session_id): Path<String>,
 ) -> impl IntoResponse {
+    info!("[AI] GET /api/ai/sessions/{}", session_id);
     match super::session_store::load_session(&session_id) {
-        Ok(Some(session)) => Json(json!(session)).into_response(),
-        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Ok(Some(session)) => {
+            info!("[AI] GET session {} OK, {} messages", session_id, session.messages.len());
+            Json(json!(session)).into_response()
+        }
+        Ok(None) => {
+            info!("[AI] GET session {} NOT FOUND", session_id);
+            StatusCode::NOT_FOUND.into_response()
+        }
         Err(e) => {
-            info!("[AI] Failed to load session {}: {}", session_id, e);
+            info!("[AI] GET session {} ERROR: {}", session_id, e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+// ═══ POST /api/ai/get-session (fallback) ═══
+
+#[derive(Deserialize)]
+struct GetSessionRequest {
+    id: String,
+}
+
+pub async fn handle_get_session_post(
+    Json(body): Json<GetSessionRequest>,
+) -> impl IntoResponse {
+    info!("[AI] POST /api/ai/get-session id={}", body.id);
+    match super::session_store::load_session(&body.id) {
+        Ok(Some(session)) => {
+            info!("[AI] POST get-session {} OK, {} messages", body.id, session.messages.len());
+            Json(json!(session)).into_response()
+        }
+        Ok(None) => {
+            info!("[AI] POST get-session {} NOT FOUND", body.id);
+            StatusCode::NOT_FOUND.into_response()
+        }
+        Err(e) => {
+            info!("[AI] POST get-session {} ERROR: {}", body.id, e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
@@ -661,4 +696,5 @@ pub fn ai_routes() -> Router<T3AppState> {
         .route("/api/ai/delete-mcp-server", post(handle_delete_mcp_server_post))
         .route("/api/ai/activate-mcp-server", post(handle_activate_server_post))
         .route("/api/ai/delete-session", post(handle_delete_session_post))
+        .route("/api/ai/get-session", post(handle_get_session_post))
 }
