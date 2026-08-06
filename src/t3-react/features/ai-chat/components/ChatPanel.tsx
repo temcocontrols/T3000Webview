@@ -151,7 +151,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   );
 
   const hasMessages = messages.length > 0;
-  const showStreamingBubble = isStreaming && (streamingText || streamingSteps.length > 0);
+  const showStreamingBubble = isStreaming;
 
   const providerLabel = `${aiSettings.provider}:${aiSettings.model}`;
 

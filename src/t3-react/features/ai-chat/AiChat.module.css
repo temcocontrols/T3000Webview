@@ -1096,33 +1096,34 @@
 
 /* ── Inline tool badge inside a thinking step ── */
 .stepToolWrapper {
-  margin-top: 4px;
+  margin-top: 3px;
 }
 .stepToolBadge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
-  border: 1px solid var(--colorNeutralStroke2, #d1d1d1);
-  border-radius: 11px;
-  background: var(--colorNeutralBackground1);
+  padding: 2px 4px;
+  border: none;
+  border-bottom: 1px solid var(--colorNeutralStroke2, #d1d1d1);
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
   font-size: 11px;
-  color: var(--colorNeutralForeground1);
-  transition: background 0.15s, border-color 0.15s;
+  color: var(--colorNeutralForeground2);
+  transition: color 0.15s, border-color 0.15s;
   font-family: inherit;
 }
 .stepToolBadge:hover {
-  background: var(--colorNeutralBackground3, #e8e8e8);
-  border-color: var(--colorBrandStroke1, #0078d4);
+  color: var(--colorBrandForeground1, #0078d4);
+  border-bottom-color: var(--colorBrandForeground1, #0078d4);
 }
 .stepToolBadgePending {
-  border-color: var(--colorStatusWarningBorder1, #f0c03e);
-  background: var(--colorStatusWarningBackground1, #fff8e5);
+  color: var(--colorStatusWarningForeground1, #8a6d00);
+  border-bottom-color: var(--colorStatusWarningBorder1, #f0c03e);
 }
 .stepToolBadgeError {
-  border-color: var(--colorStatusDangerBorder1, #d13438);
-  background: var(--colorStatusDangerBackground1, #fde7e9);
+  color: var(--colorStatusDangerForeground1, #c50f1f);
+  border-bottom-color: var(--colorStatusDangerBorder1, #d13438);
 }
 .stepToolDetail {
   margin-top: 4px;
@@ -1130,6 +1131,18 @@
   border-radius: 6px;
   background: var(--colorNeutralBackground1);
   overflow: hidden;
+  font-size: 10px;
+}
+.stepToolDetail .toolDetailPre {
+  font-size: 10px;
+  max-height: 160px;
+}
+.stepToolDetail .toolDetailPre::-webkit-scrollbar {
+  width: 2px;
+}
+.stepToolDetail .toolDetailPre::-webkit-scrollbar-thumb {
+  background: var(--colorNeutralStroke1);
+  border-radius: 1px;
 }
 
 /* ── Tool call tags (compact inline pills) ── */
@@ -1665,10 +1678,10 @@
 /* ── Scroll-to-bottom button ── */
 .scrollButton {
   position: absolute;
-  bottom: 90px;
-  right: 24px;
-  width: 36px;
-  height: 36px;
+  bottom: 80px;
+  right: 20px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 1px solid var(--colorNeutralStroke1);
   background-color: var(--colorNeutralBackground1);
@@ -1677,7 +1690,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 14px;
   color: var(--colorNeutralForeground2);
   z-index: 10;
   transition: opacity 0.2s;

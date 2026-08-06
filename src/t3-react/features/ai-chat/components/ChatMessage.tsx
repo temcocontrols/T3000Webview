@@ -86,7 +86,7 @@ const ThinkingSection: React.FC<{
           <span className={styles.thinkingIcon}>
             <ArrowSyncRegular style={{ fontSize: 14 }} />
           </span>
-          <span className={styles.thinkingLabel}>Thinking&hellip;</span>
+          <span className={styles.thinkingLabel}>Reasoning&hellip;</span>
         </div>
       </div>
     );
@@ -102,7 +102,7 @@ const ThinkingSection: React.FC<{
           <span className={styles.thinkingIcon}>
             <ArrowSyncRegular style={{ fontSize: 14 }} />
           </span>
-          <span className={styles.thinkingLabel}>Thinking&hellip;</span>
+          <span className={styles.thinkingLabel}>Reasoning&hellip;</span>
           <span className={styles.thinkingCount}>{stepCount} step{stepCount !== 1 ? 's' : ''}</span>
         </div>
       ) : (
