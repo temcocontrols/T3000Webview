@@ -21,7 +21,7 @@ import { useUIStore } from '../store/uiStore';
 import { useStatusBarStore } from '../store/statusBarStore';
 import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
 import { MobileShell } from '@t3-mobile/layout/MobileShell';
-import { AiChatOverlay } from '../features/ai-chat/components/AiChatOverlay';
+import { ChatPanel } from '../features/ai-chat/components/ChatPanel';
 
 const useStyles = makeStyles({
   container: {
@@ -89,6 +89,16 @@ const useStyles = makeStyles({
     minWidth: '200px',
     maxWidth: '500px',
   },
+  aiChatPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    borderLeft: '1px solid #e1e1e1',
+    backgroundColor: '#ffffff',
+    width: '420px',
+    minWidth: '320px',
+    flexShrink: 0,
+  },
   rightPanelContent: {
     padding: '16px',
     color: '#323130',
@@ -111,6 +121,7 @@ const DesktopLayout: React.FC = () => {
   const setRightPanelWidth = useUIStore((state) => state.setRightPanelWidth);
   const globalMessage = useUIStore((state) => state.globalMessage);
   const dismissGlobalMessage = useUIStore((state) => state.dismissGlobalMessage);
+  const chatMode = useUIStore((state) => state.chatMode);
 
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
@@ -196,21 +207,15 @@ const DesktopLayout: React.FC = () => {
         <Header />
       </div>
 
-      {/* Middle Area: Left Panel + Content (+ Right Panel) */}
+      {/* Middle Area: Left Panel + Content (+ Right Panel + AI Chat) */}
       <div className={styles.middleArea}>
         {/* Left Panel - Tree Navigation */}
         {isLeftPanelVisible && (
           <>
-            <div
-              ref={leftPanelRef}
-              className={styles.leftPanel}
-            >
+            <div ref={leftPanelRef} className={styles.leftPanel}>
               <TreePanel />
             </div>
-            <div
-              className={styles.resizer}
-              onMouseDown={handleLeftPanelResize}
-            />
+            <div className={styles.resizer} onMouseDown={handleLeftPanelResize} />
           </>
         )}
 
@@ -225,19 +230,22 @@ const DesktopLayout: React.FC = () => {
         {/* Right Panel - Properties/Details */}
         {isRightPanelVisible && (
           <>
-            <div
-              className={styles.resizer}
-              onMouseDown={handleRightPanelResize}
-            />
-            <div
-              ref={rightPanelRef}
-              className={styles.rightPanel}
-            >
-              {/* Right panel content will be rendered here */}
+            <div className={styles.resizer} onMouseDown={handleRightPanelResize} />
+            <div ref={rightPanelRef} className={styles.rightPanel}>
               <div className={styles.rightPanelContent}>
                 <h3>Properties</h3>
                 <p>Property panel content...</p>
               </div>
+            </div>
+          </>
+        )}
+
+        {/* AI Chat Panel — integrated as a third column */}
+        {chatMode === 'sidebar' && (
+          <>
+            <div className={styles.resizer} />
+            <div className={styles.aiChatPanel}>
+              <ChatPanel hideSidebar />
             </div>
           </>
         )}
@@ -246,20 +254,13 @@ const DesktopLayout: React.FC = () => {
       {/* Bottom Area: Status Bar */}
       <div className={styles.bottomArea}>
         <StatusBar
-          rxCount={rxCount}
-          txCount={txCount}
-          deviceName={statusDeviceName}
-          deviceSerialNumber={statusDeviceSerial}
-          devicePanelId={statusDevicePanel}
-          protocol={protocol}
-          connectionType={connectionType}
-          message={statusMessage}
+          rxCount={rxCount} txCount={txCount}
+          deviceName={statusDeviceName} deviceSerialNumber={statusDeviceSerial}
+          devicePanelId={statusDevicePanel} protocol={protocol}
+          connectionType={connectionType} message={statusMessage}
           messageType={statusMessageType}
         />
       </div>
-
-      {/* AI Chat Overlay — sidebar mode renders on top of everything */}
-      <AiChatOverlay />
     </div>
   );
 };

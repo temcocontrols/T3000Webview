@@ -8,7 +8,7 @@
  * - User profile
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Menu,
   MenuTrigger,
@@ -100,6 +100,7 @@ import { menuConfig } from '@t3-react/config/menuConfig';
 import { MenuAction } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
+import { useUIStore } from '@t3-react/store/uiStore';
 import { t3000Routes } from '@t3-react/app/router/routes';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
 import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
@@ -672,6 +673,19 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     await logout();
     navigate('/login');
   };
+
+  // Listen for "Open AI Chat" menu event
+  const setChatMode = useUIStore((s) => s.setChatMode);
+  useEffect(() => {
+    const handler = () => {
+      if (window.location.hash.includes('/ai-chat')) {
+        navigate(-1);
+      }
+      setChatMode('sidebar');
+    };
+    window.addEventListener('t3-open-ai-chat', handler);
+    return () => window.removeEventListener('t3-open-ai-chat', handler);
+  }, [setChatMode, navigate]);
 
   return (
     <div className={styles.header}>
