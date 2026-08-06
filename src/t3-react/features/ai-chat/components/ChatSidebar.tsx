@@ -14,6 +14,7 @@ import {
   WrenchRegular,
   BoxRegular,
   GlobeRegular,
+  PanelRightExpandRegular,
 } from '@fluentui/react-icons';
 import type { SessionSummary } from '../hooks/useChatHistory';
 import type { McpServerInfo } from '../hooks/useMcpServers';
@@ -30,6 +31,7 @@ interface Props {
   onOpenSettings: () => void;
   mcpServers?: McpServerInfo[];
   onOpenTools: () => void;
+  onBackToPanel?: () => void;
   providerLabel?: string;
   builtInToolCount?: number;
 }
@@ -58,6 +60,7 @@ export const ChatSidebar: React.FC<Props> = ({
   onOpenSettings,
   mcpServers = [],
   onOpenTools,
+  onBackToPanel,
   providerLabel = '',
   builtInToolCount = 44,
 }) => {
@@ -70,14 +73,20 @@ export const ChatSidebar: React.FC<Props> = ({
       {/* Header */}
       <div className={styles.sidebarHeader}>
         {!collapsed && <span className={styles.sidebarTitle}>AI Assistant</span>}
-        <Tooltip content={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} relationship="label">
-          <button
-            className={styles.sidebarIconBtn}
-            onClick={onToggleCollapse}
-          >
-            <NavigationRegular />
-          </button>
-        </Tooltip>
+        <div style={{ display: 'flex', gap: 2, marginLeft: 'auto' }}>
+          {!collapsed && onBackToPanel && (
+            <Tooltip content="Back to sidebar" relationship="label">
+              <button className={styles.sidebarIconBtn} onClick={onBackToPanel}>
+                <PanelRightExpandRegular />
+              </button>
+            </Tooltip>
+          )}
+          <Tooltip content={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} relationship="label">
+            <button className={styles.sidebarIconBtn} onClick={onToggleCollapse}>
+              <NavigationRegular />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       {/* New Chat — flat item, not a button */}

@@ -11,6 +11,7 @@ interface ChatStore {
   streamingText: string;
   streamingThinking: ThinkingState | null;
   activeToolCalls: Record<string, ToolCallRecord>;
+  previousPageHash: string | null;
 
   setMessages: (messages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
   setSessionId: (id: string | null) => void;
@@ -18,6 +19,7 @@ interface ChatStore {
   setStreamingText: (t: string) => void;
   setStreamingThinking: (t: ThinkingState | null) => void;
   setActiveToolCalls: (fn: (prev: Record<string, ToolCallRecord>) => Record<string, ToolCallRecord>) => void;
+  setPreviousPageHash: (hash: string | null) => void;
   reset: () => void;
 }
 
@@ -28,6 +30,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   streamingText: '',
   streamingThinking: null,
   activeToolCalls: {},
+  previousPageHash: null,
 
   setMessages: (v) => set((s) => ({ messages: typeof v === 'function' ? v(s.messages) : v })),
   setSessionId: (id) => set({ sessionId: id }),
@@ -35,5 +38,6 @@ export const useChatStore = create<ChatStore>((set) => ({
   setStreamingText: (t) => set({ streamingText: t }),
   setStreamingThinking: (t) => set({ streamingThinking: t }),
   setActiveToolCalls: (fn) => set((s) => ({ activeToolCalls: fn(s.activeToolCalls) })),
-  reset: () => set({ messages: [], sessionId: null, isStreaming: false, streamingText: '', streamingThinking: null, activeToolCalls: {} }),
+  setPreviousPageHash: (hash) => set({ previousPageHash: hash }),
+  reset: () => set({ messages: [], sessionId: null, isStreaming: false, streamingText: '', streamingThinking: null, activeToolCalls: {}, previousPageHash: null }),
 }));

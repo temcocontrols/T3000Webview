@@ -16,6 +16,7 @@ import { ArrowDownRegular, BotSparkleRegular, AddRegular, WrenchRegular, Setting
 import { useAiChatStream } from '../hooks/useAiChatStream';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useMcpServers } from '../hooks/useMcpServers';
+import { useChatStore } from '../../../store/chatStore';
 import { useUIStore } from '../../../store/uiStore';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -61,6 +62,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
   const navigate = useNavigate();
   const setChatMode = useUIStore((s) => s.setChatMode);
+  const setPreviousPageHash = useChatStore((s) => s.setPreviousPageHash);
+  const previousPageHash = useChatStore((s) => s.previousPageHash);
+
+  const handleBackToPanel = useCallback(() => {
+    setChatMode('sidebar');
+    const target = previousPageHash?.replace(/^#/, '') || '/t3000/dashboard';
+    navigate(target.startsWith('/') ? target : `/${target}`);
+  }, [setChatMode, previousPageHash, navigate]);
 
   const {
     sessions,
@@ -187,6 +196,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
           onOpenSettings={() => setSettingsOpen(true)}
           mcpServers={mcpServers}
           onOpenTools={() => setToolsOpen(true)}
+          onBackToPanel={handleBackToPanel}
           providerLabel={providerLabel}
           builtInToolCount={44}
         />
@@ -207,7 +217,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
               <SettingsRegular style={{ fontSize: 16 }} />
             </button>
             <div style={{ flex: 1 }} />
-            <button className={styles.compactToolbarBtn} onClick={() => { setChatMode('full'); navigate('/t3000/ai-chat'); }} title="Open full screen">
+            <button className={styles.compactToolbarBtn} onClick={() => { setPreviousPageHash(window.location.hash.replace(/^#/, '')); setChatMode('full'); navigate('/t3000/ai-chat'); }} title="Open full screen">
               <ArrowExpandRegular style={{ fontSize: 16 }} />
             </button>
             <button className={styles.compactToolbarBtn} onClick={() => setChatMode('hidden')} title="Hide AI">

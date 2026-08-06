@@ -11,11 +11,13 @@ import React, { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChatPanel } from '../components/ChatPanel';
 import { useUIStore } from '../../../store/uiStore';
+import { useChatStore } from '../../../store/chatStore';
 import { PanelRightContractRegular } from '@fluentui/react-icons';
 import styles from '../AiChat.module.css';
 
 export const AiChatPage: React.FC = () => {
   const setChatMode = useUIStore((s) => s.setChatMode);
+  const previousPageHash = useChatStore((s) => s.previousPageHash);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,8 +26,9 @@ export const AiChatPage: React.FC = () => {
 
   const handleBackToSidebar = useCallback(() => {
     setChatMode('sidebar');
-    navigate(-1); // go back to previous page
-  }, [setChatMode, navigate]);
+    const target = previousPageHash?.replace(/^#/, '') || '/t3000/dashboard';
+    navigate(target.startsWith('/') ? target : `/${target}`);
+  }, [setChatMode, previousPageHash, navigate]);
 
   return (
     <div
@@ -36,13 +39,6 @@ export const AiChatPage: React.FC = () => {
         minHeight: 0,
       }}
     >
-      {/* Thin bar to switch back to sidebar */}
-      <div className={styles.fullPageBar}>
-        <button className={styles.fullPageBarBtn} onClick={handleBackToSidebar}>
-          <PanelRightContractRegular style={{ fontSize: 14 }} />
-          <span>Chat Sidebar</span>
-        </button>
-      </div>
       <ChatPanel />
     </div>
   );

@@ -101,6 +101,7 @@ import { MenuAction } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
 import { useUIStore } from '@t3-react/store/uiStore';
+import { useChatStore } from '@t3-react/store/chatStore';
 import { t3000Routes } from '@t3-react/app/router/routes';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
 import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
@@ -679,7 +680,8 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   useEffect(() => {
     const handler = () => {
       if (window.location.hash.includes('/ai-chat')) {
-        navigate(-1);
+        const prev = useChatStore.getState().previousPageHash?.replace(/^#/, '') || '/t3000/dashboard';
+        navigate(prev.startsWith('/') ? prev : `/${prev}`);
       }
       setChatMode('sidebar');
     };
