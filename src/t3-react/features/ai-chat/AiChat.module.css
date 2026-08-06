@@ -983,6 +983,19 @@
   font-size: 1.1em;
 }
 
+/* ── Simple thinking indicator (before steps arrive) ── */
+.thinkingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--colorNeutralForeground3, #666);
+}
+.thinkingIndicator :global(svg) {
+  animation: spin 1.2s linear infinite;
+}
+
 /* ── Thinking section (collapsible reasoning) ── */
 .thinkingSection {
   margin: 6px 0 10px 0;
@@ -1058,11 +1071,13 @@
   word-break: break-word;
 }
 .thinkingCursor {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
   margin-left: 2px;
+  background: var(--colorNeutralForeground1);
   animation: blink 1s step-end infinite;
-  opacity: 0.5;
-  padding: 0 12px;
-  font-size: 12px;
+  vertical-align: text-bottom;
 }
 @keyframes blink {
   50% { opacity: 0; }
@@ -1109,6 +1124,7 @@
   background: transparent;
   cursor: pointer;
   font-size: 11px;
+  font-weight: 600;
   color: var(--colorNeutralForeground2);
   transition: color 0.15s, border-color 0.15s;
   font-family: inherit;
@@ -1136,13 +1152,6 @@
 .stepToolDetail .toolDetailPre {
   font-size: 10px;
   max-height: 160px;
-}
-.stepToolDetail .toolDetailPre::-webkit-scrollbar {
-  width: 2px;
-}
-.stepToolDetail .toolDetailPre::-webkit-scrollbar-thumb {
-  background: var(--colorNeutralStroke1);
-  border-radius: 1px;
 }
 
 /* ── Tool call tags (compact inline pills) ── */
@@ -1246,6 +1255,15 @@
   word-break: break-word;
   max-height: 200px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--colorNeutralStroke1) transparent;
+}
+.toolDetailPre::-webkit-scrollbar {
+  width: 2px;
+}
+.toolDetailPre::-webkit-scrollbar-thumb {
+  background: var(--colorNeutralStroke1);
+  border-radius: 1px;
 }
 
 /* ── Tool call detail drawer ── */

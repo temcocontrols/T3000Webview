@@ -12,7 +12,7 @@
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDownRegular, BotSparkleRegular, AddRegular, WrenchRegular, SettingsRegular, ArrowExpandRegular, DismissRegular } from '@fluentui/react-icons';
+import { ArrowDownRegular, BotSparkleRegular, AddRegular, WrenchRegular, SettingsRegular, ArrowExpandRegular, DismissRegular, ArrowSyncRegular } from '@fluentui/react-icons';
 import { useAiChatStream } from '../hooks/useAiChatStream';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useMcpServers } from '../hooks/useMcpServers';
@@ -151,7 +151,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   );
 
   const hasMessages = messages.length > 0;
-  const showStreamingBubble = isStreaming;
+  const showStreamingBubble = isStreaming && (streamingText || streamingSteps.length > 0);
+  const showThinkingIndicator = isStreaming && !streamingText && streamingSteps.length === 0;
 
   const providerLabel = `${aiSettings.provider}:${aiSettings.model}`;
 
@@ -246,6 +247,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
             {messages.map((msg, i) => (
               <ChatMessage key={i} message={msg} />
             ))}
+
+            {/* Thinking indicator — shows immediately before any steps arrive */}
+            {showThinkingIndicator && (
+              <div className={styles.messageWrapper}>
+                <div className={styles.messageMeta}>
+                  <span className={styles.messageRole}>Model</span>
+                </div>
+                <div className={styles.thinkingIndicator}>
+                  <ArrowSyncRegular style={{ fontSize: 14 }} />
+                  <span>Thinking&hellip;</span>
+                </div>
+              </div>
+            )}
 
             {/* Streaming bubble */}
             {showStreamingBubble && (

@@ -14,8 +14,6 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import {
-  CheckmarkCircleRegular,
-  DismissCircleRegular,
   ArrowSyncRegular,
 } from '@fluentui/react-icons';
 import styles from '../AiChat.module.css';
@@ -78,20 +76,6 @@ const ThinkingSection: React.FC<{
 
   const stepCount = steps.length;
 
-  if (stepCount === 0 && isStreaming) {
-    // Show placeholder immediately, before any thinking_delta arrives
-    return (
-      <div className={styles.thinkingSection}>
-        <div className={styles.thinkingHeader}>
-          <span className={styles.thinkingIcon}>
-            <ArrowSyncRegular style={{ fontSize: 14 }} />
-          </span>
-          <span className={styles.thinkingLabel}>Reasoning&hellip;</span>
-        </div>
-      </div>
-    );
-  }
-
   if (stepCount === 0) return null;
 
   return (
@@ -102,7 +86,7 @@ const ThinkingSection: React.FC<{
           <span className={styles.thinkingIcon}>
             <ArrowSyncRegular style={{ fontSize: 14 }} />
           </span>
-          <span className={styles.thinkingLabel}>Reasoning&hellip;</span>
+          <span className={styles.thinkingLabel}>Thinking&hellip;</span>
           <span className={styles.thinkingCount}>{stepCount} step{stepCount !== 1 ? 's' : ''}</span>
         </div>
       ) : (
@@ -132,7 +116,7 @@ const ThinkingSection: React.FC<{
               </div>
             </div>
           ))}
-          {isStreaming && <span className={styles.thinkingCursor}>▊</span>}
+          {isStreaming && <span className={styles.thinkingCursor} />}
         </div>
       )}
     </div>
@@ -161,15 +145,6 @@ const ToolCallTagInline: React.FC<{ tool: ToolCallRecord }> = ({ tool }) => {
         onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
         title={`${tool.name} — click for details`}
       >
-        <span className={styles.toolTagIcon}>
-          {isPending ? (
-            <ArrowSyncRegular style={{ fontSize: 11 }} />
-          ) : isError ? (
-            <DismissCircleRegular style={{ fontSize: 11, color: 'var(--colorStatusDangerForeground1, #c50f1f)' }} />
-          ) : (
-            <CheckmarkCircleRegular style={{ fontSize: 11, color: 'var(--colorStatusSuccessForeground1, #107c10)' }} />
-          )}
-        </span>
         <span className={styles.toolTagName}>{tool.name}</span>
         <span className={styles.toolTagArrow}>{expanded ? '▾' : '→'}</span>
       </button>
@@ -212,10 +187,9 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
   }
 
   const isUser = message.role === 'user';
-  const hasContent = !isUser && (htmlContent || (isStreaming && !message.thinkingSteps?.length && !message.thinking));
+  const hasContent = !isUser && !!htmlContent;
   const steps = message.thinkingSteps || [];
-  const hasThinking = !isUser && (steps.length > 0 || (isStreaming && !message.content));
-  const showStreamingPlaceholder = isStreaming && !isUser && steps.length === 0 && !message.content && !message.thinking;
+  const hasThinking = steps.length > 0;
 
   return (
     <div className={styles.messageWrapper}>
@@ -225,7 +199,7 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
         <span>{formatTime(message.timestamp)}</span>
       </div>
 
-      {/* Thinking section — shows immediately when streaming starts */}
+      {/* Thinking section — shows when steps have arrived */}
       {hasThinking && (
         <ThinkingSection steps={steps} isStreaming={!!isStreaming} />
       )}
@@ -235,8 +209,8 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
         <div className={styles.userContent}>{message.content}</div>
       ) : hasContent ? (
         <div className={styles.mdWrapper} dangerouslySetInnerHTML={{ __html: htmlContent! }} />
-      ) : showStreamingPlaceholder ? (
-        <span className={styles.thinkingCursor}>▊</span>
+      ) : isStreaming && !hasThinking ? (
+        <span className={styles.thinkingCursor} />
       ) : null}
     </div>
   );
