@@ -10,7 +10,7 @@
  * Uses Fluent UI design tokens via shared AiChat.styles.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import {
@@ -22,7 +22,7 @@ import styles from '../AiChat.module.css';
 import type {
   ChatMessage as ChatMessageType,
   ToolCallRecord,
-  ThinkingState,
+  ThinkingStep,
 } from '../hooks/useAiChatStream';
 
 // Configure marked for safety
@@ -60,15 +60,26 @@ function renderMarkdown(content: string): string {
   });
 }
 
-// ── ThinkingSection ──
+// ── ThinkingSection (per-step, Copilot-style) ──
 
 const ThinkingSection: React.FC<{
-  thinking: ThinkingState;
-  isStreaming?: boolean;
-}> = ({ thinking, isStreaming }) => {
-  const [expanded, setExpanded] = useState(isStreaming ?? true);
+  steps: ThinkingStep[];
+  isStreaming: boolean;
+}> = ({ steps, isStreaming }) => {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(true);
 
-  if (isStreaming) {
+  // Auto-scroll to bottom on new steps
+  useEffect(() => {
+    if (bodyRef.current && isStreaming) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    }
+  }, [steps, isStreaming]);
+
+  const stepCount = steps.length;
+
+  if (stepCount === 0 && isStreaming) {
+    // Show placeholder immediately, before any thinking_delta arrives
     return (
       <div className={styles.thinkingSection}>
         <div className={styles.thinkingHeader}>
@@ -76,73 +87,114 @@ const ThinkingSection: React.FC<{
             <ArrowSyncRegular style={{ fontSize: 14 }} />
           </span>
           <span className={styles.thinkingLabel}>Thinking&hellip;</span>
-          <span className={styles.thinkingCount}>{thinking.steps} steps</span>
-        </div>
-        <div className={styles.thinkingBody}>
-          <div className={styles.thinkingContent}>{thinking.content}</div>
-          <span className={styles.thinkingCursor}>▊</span>
         </div>
       </div>
     );
   }
 
+  if (stepCount === 0) return null;
+
   return (
     <div className={styles.thinkingSection}>
-      <button
-        className={styles.thinkingToggle}
-        onClick={() => setExpanded(!expanded)}
-        aria-expanded={expanded}
-      >
-        <span className={styles.thinkingToggleIcon}>{expanded ? '▾' : '▸'}</span>
-        <span className={styles.thinkingToggleLabel}>
-          Finished with {thinking.steps} steps &middot; {formatDuration(thinking.durationMs)}
-        </span>
-      </button>
+      {/* Header */}
+      {isStreaming ? (
+        <div className={styles.thinkingHeader}>
+          <span className={styles.thinkingIcon}>
+            <ArrowSyncRegular style={{ fontSize: 14 }} />
+          </span>
+          <span className={styles.thinkingLabel}>Thinking&hellip;</span>
+          <span className={styles.thinkingCount}>{stepCount} step{stepCount !== 1 ? 's' : ''}</span>
+        </div>
+      ) : (
+        <button
+          className={styles.thinkingToggle}
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+        >
+          <span className={styles.thinkingToggleIcon}>{expanded ? '▾' : '▸'}</span>
+          <span className={styles.thinkingToggleLabel}>
+            Finished with {stepCount} step{stepCount !== 1 ? 's' : ''}
+          </span>
+        </button>
+      )}
+
+      {/* Step list */}
       {expanded && (
-        <div className={styles.thinkingBodyDone}>{thinking.content}</div>
+        <div className={styles.thinkingStepList} ref={bodyRef}>
+          {steps.map((step) => (
+            <div key={step.index} className={styles.thinkingStepItem}>
+              <span className={styles.thinkingStepMarker} />
+              <div className={styles.thinkingStepContent}>
+                <div className={styles.thinkingStepText}>{step.content}</div>
+                {step.toolCall && (
+                  <ToolCallTagInline tool={step.toolCall} />
+                )}
+              </div>
+            </div>
+          ))}
+          {isStreaming && <span className={styles.thinkingCursor}>▊</span>}
+        </div>
       )}
     </div>
   );
 };
 
-// ── ToolCallDetailDrawer ── (replaced with inline expansion below)
+// ── ToolCallTagInline (compact badge inside a step) ──
 
-
-// ── ToolCallTag ──
-
-const ToolCallTag: React.FC<{
-  tool: ToolCallRecord;
-  onClick: () => void;
-}> = ({ tool, onClick }) => {
+const ToolCallTagInline: React.FC<{ tool: ToolCallRecord }> = ({ tool }) => {
+  const [expanded, setExpanded] = useState(false);
   const isPending = tool.status === 'pending';
   const isError = tool.status === 'error';
 
+  let formattedArgs = '';
+  try { formattedArgs = JSON.stringify(JSON.parse(tool.args), null, 2); } catch { formattedArgs = tool.args || '(empty)'; }
+
+  let formattedResult = '';
+  if (tool.result) {
+    try { formattedResult = JSON.stringify(JSON.parse(tool.result), null, 2); } catch { formattedResult = tool.result; }
+  }
+
   return (
-    <button
-      className={`${styles.toolTag} ${isPending ? styles.toolTagPending : ''} ${isError ? styles.toolTagError : ''}`}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-      title={`${tool.name} — click for details`}
-    >
-      <span className={styles.toolTagIcon}>
-        {isPending ? (
-          <ArrowSyncRegular style={{ fontSize: 12 }} />
-        ) : isError ? (
-          <DismissCircleRegular style={{ fontSize: 12, color: 'var(--colorStatusDangerForeground1, #c50f1f)' }} />
-        ) : (
-          <CheckmarkCircleRegular style={{ fontSize: 12, color: 'var(--colorStatusSuccessForeground1, #107c10)' }} />
-        )}
-      </span>
-      <span className={styles.toolTagName}>{tool.name}</span>
-      <span className={styles.toolTagArrow}>→</span>
-    </button>
+    <div className={styles.stepToolWrapper}>
+      <button
+        className={`${styles.stepToolBadge} ${isPending ? styles.stepToolBadgePending : ''} ${isError ? styles.stepToolBadgeError : ''}`}
+        onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+        title={`${tool.name} — click for details`}
+      >
+        <span className={styles.toolTagIcon}>
+          {isPending ? (
+            <ArrowSyncRegular style={{ fontSize: 11 }} />
+          ) : isError ? (
+            <DismissCircleRegular style={{ fontSize: 11, color: 'var(--colorStatusDangerForeground1, #c50f1f)' }} />
+          ) : (
+            <CheckmarkCircleRegular style={{ fontSize: 11, color: 'var(--colorStatusSuccessForeground1, #107c10)' }} />
+          )}
+        </span>
+        <span className={styles.toolTagName}>{tool.name}</span>
+        <span className={styles.toolTagArrow}>{expanded ? '▾' : '→'}</span>
+      </button>
+
+      {expanded && (
+        <div className={styles.stepToolDetail}>
+          <div className={styles.toolDetailSection}>
+            <div className={styles.toolDetailSectionTitle}>Arguments</div>
+            <pre className={styles.toolDetailPre}>{formattedArgs}</pre>
+          </div>
+          {formattedResult && (
+            <div className={styles.toolDetailSection}>
+              <div className={styles.toolDetailSectionTitle}>Result</div>
+              <pre className={styles.toolDetailPre}>{formattedResult}</pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
 // ── ChatMessage ──
 
 export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
-  const [expandedToolId, setExpandedToolId] = useState<string | null>(null);
-
   // Pre-compute markdown for assistant messages
   const htmlContent = useMemo(() => {
     if (message.role !== 'assistant') return null;
@@ -160,9 +212,10 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
   }
 
   const isUser = message.role === 'user';
-  const hasContent = !isUser && (htmlContent || (isStreaming && !message.thinking));
-  const hasThinking = !isUser && message.thinking;
-  const hasToolCalls = !isUser && message.toolCalls && message.toolCalls.length > 0;
+  const hasContent = !isUser && (htmlContent || (isStreaming && !message.thinkingSteps?.length && !message.thinking));
+  const steps = message.thinkingSteps || [];
+  const hasThinking = !isUser && (steps.length > 0 || (isStreaming && !message.content));
+  const showStreamingPlaceholder = isStreaming && !isUser && steps.length === 0 && !message.content && !message.thinking;
 
   return (
     <div className={styles.messageWrapper}>
@@ -172,9 +225,9 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
         <span>{formatTime(message.timestamp)}</span>
       </div>
 
-      {/* Thinking section — shows first */}
+      {/* Thinking section — shows immediately when streaming starts */}
       {hasThinking && (
-        <ThinkingSection thinking={message.thinking!} isStreaming={isStreaming && !message.content} />
+        <ThinkingSection steps={steps} isStreaming={!!isStreaming} />
       )}
 
       {/* Content */}
@@ -182,69 +235,9 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
         <div className={styles.userContent}>{message.content}</div>
       ) : hasContent ? (
         <div className={styles.mdWrapper} dangerouslySetInnerHTML={{ __html: htmlContent! }} />
-      ) : isStreaming && !message.thinking ? (
-        <span style={{ opacity: 0.5 }}>▊</span>
+      ) : showStreamingPlaceholder ? (
+        <span className={styles.thinkingCursor}>▊</span>
       ) : null}
-
-      {/* Tool call tags — inline after content */}
-      {hasToolCalls && (
-        <div className={styles.toolTagsRow}>
-          {message.toolCalls!.map((tc) => (
-            <ToolCallTag
-              key={tc.id}
-              tool={tc}
-              onClick={() => setExpandedToolId(expandedToolId === tc.id ? null : tc.id)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Inline tool detail expansion */}
-      {hasToolCalls &&
-        message.toolCalls!.map((tc) => {
-          if (expandedToolId !== tc.id) return null;
-
-          let formattedArgs = '';
-          try { formattedArgs = JSON.stringify(JSON.parse(tc.args), null, 2); } catch { formattedArgs = tc.args || '(empty)'; }
-
-          let formattedResult = '';
-          if (tc.result) {
-            try { formattedResult = JSON.stringify(JSON.parse(tc.result), null, 2); } catch { formattedResult = tc.result; }
-          }
-
-          const isPending = tc.status === 'pending';
-          const isError = tc.status === 'error';
-
-          return (
-            <div key={`detail-${tc.id}`} className={styles.toolDetailInline}>
-              <div className={styles.toolDetailStatus}>
-                <span className={styles.toolDetailStatusIcon}>
-                  {isPending ? (
-                    <ArrowSyncRegular style={{ fontSize: 14 }} />
-                  ) : isError ? (
-                    <DismissCircleRegular style={{ fontSize: 14, color: 'var(--colorStatusDangerForeground1, #c50f1f)' }} />
-                  ) : (
-                    <CheckmarkCircleRegular style={{ fontSize: 14, color: 'var(--colorStatusSuccessForeground1, #107c10)' }} />
-                  )}
-                </span>
-                <span>{tc.name}</span>
-                <span className={styles.toolDetailStatusLabel}>
-                  {isPending ? 'Running...' : isError ? 'Failed' : 'Completed'}
-                </span>
-              </div>
-              <div className={styles.toolDetailSection}>
-                <div className={styles.toolDetailSectionTitle}>Arguments</div>
-                <pre className={styles.toolDetailPre}>{formattedArgs}</pre>
-              </div>
-              {formattedResult && (
-                <div className={styles.toolDetailSection}>
-                  <div className={styles.toolDetailSectionTitle}>Result</div>
-                  <pre className={styles.toolDetailPre}>{formattedResult}</pre>
-                </div>
-              )}
-            </div>
-          );
-        })}
     </div>
   );
 };

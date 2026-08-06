@@ -19,8 +19,10 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   toolCalls?: ToolCallRecord[];
-  /** Reasoning/thinking state for this message */
+  /** Reasoning/thinking state for this message (legacy blob format) */
   thinking?: ThinkingState;
+  /** New per-step thinking breakdown */
+  thinkingSteps?: ThinkingStep[];
   timestamp: number;
 }
 
@@ -28,6 +30,13 @@ export interface ThinkingState {
   steps: number;
   durationMs: number;
   content: string;
+}
+
+/** A single thinking step with optional tool call — Copilot-style per-step breakdown */
+export interface ThinkingStep {
+  index: number;
+  content: string;
+  toolCall?: ToolCallRecord;
 }
 
 export interface ToolCallRecord {
@@ -58,7 +67,7 @@ export interface UseAiChatStreamReturn {
   messages: ChatMessage[];
   isStreaming: boolean;
   streamingText: string;
-  streamingThinking: ThinkingState | null;
+  streamingSteps: ThinkingStep[];
   activeToolCalls: Record<string, ToolCallRecord>;
   sessionId: string | null;
   sendMessage: (content: string) => Promise<void>;
@@ -73,13 +82,13 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
   const sessionId = useChatStore((s) => s.sessionId);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const streamingText = useChatStore((s) => s.streamingText);
-  const streamingThinking = useChatStore((s) => s.streamingThinking);
+  const streamingSteps = useChatStore((s) => s.streamingSteps);
   const activeToolCalls = useChatStore((s) => s.activeToolCalls);
   const storeSetMessages = useChatStore((s) => s.setMessages);
   const storeSetSessionId = useChatStore((s) => s.setSessionId);
   const storeSetIsStreaming = useChatStore((s) => s.setIsStreaming);
   const storeSetStreamingText = useChatStore((s) => s.setStreamingText);
-  const storeSetStreamingThinking = useChatStore((s) => s.setStreamingThinking);
+  const storeSetStreamingSteps = useChatStore((s) => s.setStreamingSteps);
   const storeSetActiveToolCalls = useChatStore((s) => s.setActiveToolCalls);
   const storeReset = useChatStore((s) => s.reset);
 
@@ -119,7 +128,7 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
       storeSetMessages((prev) => [...prev, userMsg]);
       storeSetIsStreaming(true);
       storeSetStreamingText('');
-      storeSetStreamingThinking(null);
+      storeSetStreamingSteps([]);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -169,8 +178,7 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
         let buffer = '';
         let assistantContent = '';
         const toolCallRecords: ToolCallRecord[] = [];
-        let thinkingContent = '';
-        let thinkingSteps = 0;
+        const steps: ThinkingStep[] = [];
         let thinkingDurationMs = 0;
 
         while (true) {
@@ -204,19 +212,17 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
               }
               case 'thinking_delta': {
                 const chunk = event.data?.content || '';
-                thinkingContent += chunk;
-                thinkingSteps++;
-                storeSetStreamingThinking({
-                  steps: thinkingSteps, durationMs: 0, content: thinkingContent,
-                });
+                const last = steps[steps.length - 1];
+                if (last && !last.toolCall) {
+                  last.content += chunk;
+                } else {
+                  steps.push({ index: steps.length + 1, content: chunk });
+                }
+                storeSetStreamingSteps([...steps]);
                 break;
               }
               case 'thinking_end': {
-                thinkingSteps = event.data?.steps || thinkingSteps;
                 thinkingDurationMs = event.data?.duration_ms || 0;
-                storeSetStreamingThinking((prev) =>
-                  prev ? { ...prev, steps: thinkingSteps, durationMs: thinkingDurationMs } : null,
-                );
                 break;
               }
               case 'tool_call': {
@@ -226,6 +232,11 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
                 };
                 toolCallRecords.push(tc);
                 storeSetActiveToolCalls((prev) => ({ ...prev, [tc.id]: tc }));
+                const lastStep = steps[steps.length - 1];
+                if (lastStep) {
+                  lastStep.toolCall = tc;
+                  storeSetStreamingSteps([...steps]);
+                }
                 break;
               }
               case 'tool_result': {
@@ -242,6 +253,11 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
                 const idx = toolCallRecords.findIndex((t) => t.id === id);
                 if (idx !== -1) {
                   toolCallRecords[idx] = { ...toolCallRecords[idx], result, status: isError ? 'error' : 'success' };
+                }
+                const stepWithTool = steps.find((s) => s.toolCall?.id === id);
+                if (stepWithTool?.toolCall) {
+                  stepWithTool.toolCall = { ...stepWithTool.toolCall, result, status: isError ? 'error' : 'success' };
+                  storeSetStreamingSteps([...steps]);
                 }
                 break;
               }
@@ -263,14 +279,12 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
         }
 
         // Finalize assistant message
-        if (assistantContent || toolCallRecords.length > 0 || thinkingContent) {
+        if (assistantContent || toolCallRecords.length > 0 || steps.length > 0) {
           const assistantMsg: ChatMessage = {
             role: 'assistant',
             content: assistantContent,
             toolCalls: toolCallRecords.length > 0 ? toolCallRecords : undefined,
-            thinking: thinkingContent
-              ? { steps: thinkingSteps, durationMs: thinkingDurationMs, content: thinkingContent }
-              : undefined,
+            thinkingSteps: steps.length > 0 ? steps : undefined,
             timestamp: Date.now(),
           };
           storeSetMessages((prev) => [...prev, assistantMsg]);
@@ -288,18 +302,18 @@ export function useAiChatStream(settings: AiProviderSettings): UseAiChatStreamRe
       } finally {
         storeSetIsStreaming(false);
         storeSetStreamingText('');
-        storeSetStreamingThinking(null);
+        storeSetStreamingSteps([]);
         abortRef.current = null;
       }
     },
-    [storeSetMessages, storeSetIsStreaming, storeSetStreamingText, storeSetStreamingThinking, storeSetActiveToolCalls, storeSetSessionId],
+    [storeSetMessages, storeSetIsStreaming, storeSetStreamingText, storeSetStreamingSteps, storeSetActiveToolCalls, storeSetSessionId],
   );
 
   return {
     messages,
     isStreaming,
     streamingText,
-    streamingThinking,
+    streamingSteps,
     activeToolCalls,
     sessionId,
     sendMessage,

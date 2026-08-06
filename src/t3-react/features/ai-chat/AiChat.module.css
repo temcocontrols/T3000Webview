@@ -1016,28 +1016,59 @@
   font-size: 11px;
   opacity: 0.7;
 }
-.thinkingBody {
+
+/* ── Per-step thinking list ── */
+.thinkingStepList {
+  padding: 4px 12px 8px 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--colorNeutralStroke1) transparent;
+}
+.thinkingStepList::-webkit-scrollbar {
+  width: 2px;
+}
+.thinkingStepList::-webkit-scrollbar-thumb {
+  background: var(--colorNeutralStroke1);
+  border-radius: 1px;
+}
+.thinkingStepItem {
   display: flex;
+  gap: 8px;
+  padding: 3px 0;
   align-items: flex-start;
-  padding: 0 12px 8px 12px;
+}
+.thinkingStepMarker {
+  width: 6px;
+  height: 6px;
+  min-width: 6px;
+  border-radius: 50%;
+  background: var(--colorNeutralStroke1);
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+.thinkingStepContent {
+  flex: 1;
+  min-width: 0;
+}
+.thinkingStepText {
   color: var(--colorNeutralForeground3, #666);
   line-height: 1.5;
-  max-height: 200px;
-  overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-word;
-}
-.thinkingContent {
-  flex: 1;
 }
 .thinkingCursor {
   margin-left: 2px;
   animation: blink 1s step-end infinite;
   opacity: 0.5;
+  padding: 0 12px;
+  font-size: 12px;
 }
 @keyframes blink {
   50% { opacity: 0; }
 }
+
+/* ── Toggle for completed thinking ── */
 .thinkingToggle {
   width: 100%;
   display: flex;
@@ -1062,15 +1093,43 @@
 .thinkingToggleLabel {
   font-weight: 500;
 }
-.thinkingBodyDone {
-  padding: 0 12px 8px 24px;
-  color: var(--colorNeutralForeground3, #666);
-  line-height: 1.5;
-  max-height: 300px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-size: 12px;
+
+/* ── Inline tool badge inside a thinking step ── */
+.stepToolWrapper {
+  margin-top: 4px;
+}
+.stepToolBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--colorNeutralStroke2, #d1d1d1);
+  border-radius: 11px;
+  background: var(--colorNeutralBackground1);
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--colorNeutralForeground1);
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+.stepToolBadge:hover {
+  background: var(--colorNeutralBackground3, #e8e8e8);
+  border-color: var(--colorBrandStroke1, #0078d4);
+}
+.stepToolBadgePending {
+  border-color: var(--colorStatusWarningBorder1, #f0c03e);
+  background: var(--colorStatusWarningBackground1, #fff8e5);
+}
+.stepToolBadgeError {
+  border-color: var(--colorStatusDangerBorder1, #d13438);
+  background: var(--colorStatusDangerBackground1, #fde7e9);
+}
+.stepToolDetail {
+  margin-top: 4px;
+  border: 1px solid var(--colorNeutralStroke3, #e8e8e8);
+  border-radius: 6px;
+  background: var(--colorNeutralBackground1);
+  overflow: hidden;
 }
 
 /* ── Tool call tags (compact inline pills) ── */
