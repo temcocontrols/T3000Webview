@@ -94,12 +94,17 @@ import {
   HistoryRegular,
   CalendarDataBar28Regular,
   TagRegular,
+  ChatRegular,
+  PanelRightContractRegular,
+  ArrowExpandRegular,
+  DismissRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
 import { MenuAction } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
+import { useUIStore } from '@t3-react/store/uiStore';
 import { t3000Routes } from '@t3-react/app/router/routes';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
 import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
@@ -235,6 +240,22 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+  },
+  chatToggleBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '32px',
+    height: '32px',
+    borderRadius: '6px',
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+    color: 'var(--t3-color-header-text)',
+    marginRight: '4px',
+    '&:hover': {
+      backgroundColor: 'rgba(255,255,255,0.1)',
+    },
   },
   menuPopover: {
     minWidth: '300px',
@@ -717,6 +738,43 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
 
         {/* Theme Selector and User Avatar on right side of menu bar */}
         <div className={styles.menuBarRight}>
+          {/* AI Chat mode toggle */}
+          <Menu>
+            <MenuTrigger>
+              <button className={styles.chatToggleBtn} title="AI Chat" aria-label="AI Chat modes">
+                <ChatRegular style={{ fontSize: 16 }} />
+              </button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem
+                  icon={<ArrowExpandRegular />}
+                  onClick={() => {
+                    useUIStore.getState().setChatMode('full');
+                    navigate('/t3000/ai-chat');
+                  }}
+                  style={{ fontSize: 'var(--t3-font-size-small)', padding: '8px 16px', minHeight: '32px' }}
+                >
+                  Full Screen
+                </MenuItem>
+                <MenuItem
+                  icon={<PanelRightContractRegular />}
+                  onClick={() => useUIStore.getState().setChatMode('sidebar')}
+                  style={{ fontSize: 'var(--t3-font-size-small)', padding: '8px 16px', minHeight: '32px' }}
+                >
+                  Chat Sidebar
+                </MenuItem>
+                <MenuItem
+                  icon={<DismissRegular />}
+                  onClick={() => useUIStore.getState().setChatMode('hidden')}
+                  style={{ fontSize: 'var(--t3-font-size-small)', padding: '8px 16px', minHeight: '32px' }}
+                >
+                  Hide
+                </MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
+
           <span style={{ fontSize: '12px', color: 'var(--t3-color-header-text)', marginRight: '8px' }}>
             {devVersion.value}
           </span>

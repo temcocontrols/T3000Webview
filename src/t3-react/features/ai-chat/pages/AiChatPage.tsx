@@ -7,10 +7,18 @@
  * provides the header, toolbar, and device tree.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ChatPanel } from '../components/ChatPanel';
+import { useUIStore } from '../../../store/uiStore';
 
 export const AiChatPage: React.FC = () => {
+  const setChatMode = useUIStore((s) => s.setChatMode);
+
+  useEffect(() => {
+    setChatMode('full');
+    return () => setChatMode('hidden');
+  }, [setChatMode]);
+
   return (
     <div
       style={{

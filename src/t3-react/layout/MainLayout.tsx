@@ -21,6 +21,7 @@ import { useUIStore } from '../store/uiStore';
 import { useStatusBarStore } from '../store/statusBarStore';
 import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
 import { MobileShell } from '@t3-mobile/layout/MobileShell';
+import { AiChatOverlay } from '../features/ai-chat/components/AiChatOverlay';
 
 const useStyles = makeStyles({
   container: {
@@ -256,6 +257,9 @@ const DesktopLayout: React.FC = () => {
           messageType={statusMessageType}
         />
       </div>
+
+      {/* AI Chat Overlay — sidebar mode renders on top of everything */}
+      <AiChatOverlay />
     </div>
   );
 };
