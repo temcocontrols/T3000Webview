@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { ArrowCircleUpRegular, ArrowCircleUpFilled, DismissCircleFilled } from '@fluentui/react-icons';
+import { ArrowCircleUpRegular, ArrowCircleUpFilled, RecordStopRegular } from '@fluentui/react-icons';
 import styles from '../AiChat.module.css';
 
 interface Props {
@@ -110,7 +110,7 @@ export const ChatInput: React.FC<Props> = ({
                 title="Stop generating"
                 aria-label="Stop generating"
               >
-                <DismissCircleFilled style={{ fontSize: 18 }} />
+                <RecordStopRegular style={{ fontSize: 18 }} />
               </button>
             ) : (
               <button
