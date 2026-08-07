@@ -326,12 +326,12 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
         if (truncated) {
           storeSetMessages((prev) => [
             ...prev,
-            { role: 'system', content: 'Response was truncated — the model reached its token limit. Try a shorter request or increase the max tokens in settings.', timestamp: Date.now() },
+            { role: 'system', content: 'Unable to complete your request — token limit reached.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/', timestamp: Date.now() },
           ]);
         } else if (!receivedDone && (assistantContent || steps.length > 0)) {
           storeSetMessages((prev) => [
             ...prev,
-            { role: 'system', content: 'Response may be incomplete — the connection was interrupted.', timestamp: Date.now() },
+            { role: 'system', content: 'Unable to complete your request — connection interrupted.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/', timestamp: Date.now() },
           ]);
         }
       } catch (err: unknown) {
