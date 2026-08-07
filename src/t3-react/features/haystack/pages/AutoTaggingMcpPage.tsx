@@ -1064,7 +1064,7 @@ const McpTab: React.FC = () => {
       {/* ── Available Tools ── */}
       <div className={styles.mcpSection} style={{ marginTop: 20 }}>
         <div className={styles.sectionTitle}>
-          <TagRegular style={{ fontSize: 14 }} /> Available Tools (44 across 11 categories)
+          <TagRegular style={{ fontSize: 14 }} /> Available Tools (45+ across 14 categories)
         </div>
         <table className={styles.mcpToolTable}>
           <thead>
@@ -1136,6 +1136,21 @@ const McpTab: React.FC = () => {
             <tr><td><code>t3000_pid_list</code></td><td>List PID loops on a device</td><td>serial_number: int</td></tr>
             <tr><td><code>t3000_holiday_list</code></td><td>List holiday schedules on a device</td><td>serial_number: int</td></tr>
             <tr><td><code>t3000_building_summary</code></td><td>Get a summary overview of the building system</td><td>serial_numbers?: int[]</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Task Management</td></tr>
+            <tr><td><code>t3000_task_create</code></td><td>Create a workflow task for commissioning or maintenance</td><td>title: string<br/>description?, serial_number?, priority?</td></tr>
+            <tr><td><code>t3000_task_list</code></td><td>List all tasks, filter by status or device</td><td>status?: pending|in_progress|completed<br/>serial_number?: int</td></tr>
+            <tr><td><code>t3000_task_update</code></td><td>Update task status, title, or priority</td><td>task_id: string<br/>status?, title?, description?, priority?</td></tr>
+            <tr><td><code>t3000_task_delete</code></td><td>Delete a task by ID</td><td>task_id: string</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Site Memory</td></tr>
+            <tr><td><code>t3000_memory_save</code></td><td>Save site-specific knowledge that persists across sessions</td><td>key: string, content: string<br/>category?: string</td></tr>
+            <tr><td><code>t3000_memory_list</code></td><td>List all saved site memories, filter by category or search</td><td>category?, search?: string</td></tr>
+            <tr><td><code>t3000_memory_delete</code></td><td>Delete a memory entry by key</td><td>key: string</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Diagnostics</td></tr>
+            <tr><td><code>t3000_device_diagnostics</code></td><td>Comprehensive device health check: firmware, alarms, points, programs, PIDs</td><td>serial_number: int</td></tr>
+            <tr><td><code>t3000_device_diagnostics_batch</code></td><td>Diagnose multiple devices or all devices at once</td><td>serial_numbers?: int[]</td></tr>
           </tbody>
         </table>
       </div>
@@ -1246,6 +1261,27 @@ const promptCategories: PromptCategory[] = [
       { prompt: 'List PID loops on device 233626', tool: 't3000_pid_list', desc: 'Enumerate PID controllers' },
       { prompt: 'Show holiday schedules on device 240488', tool: 't3000_holiday_list', desc: 'List holiday exceptions' },
       { prompt: 'Give me a summary of the building system', tool: 't3000_building_summary', desc: 'Overview of all devices and points' },
+    ]
+  },
+  {
+    name: 'Task Management', tools: 4, items: [
+      { prompt: 'Create a task list for commissioning AHU-1', tool: 't3000_task_create', desc: 'Create a workflow task' },
+      { prompt: 'Show me all pending tasks', tool: 't3000_task_list', desc: 'List tasks by status' },
+      { prompt: 'Mark task "Configure AHU-1 network" as completed', tool: 't3000_task_update', desc: 'Update task status' },
+      { prompt: 'Delete the completed commissioning tasks', tool: 't3000_task_delete', desc: 'Clean up completed tasks' },
+    ]
+  },
+  {
+    name: 'Site Memory', tools: 3, items: [
+      { prompt: 'Remember that AHU-3 is the main unit and AHU-2 is decommissioned', tool: 't3000_memory_save', desc: 'Save site knowledge' },
+      { prompt: 'What do we know about this site?', tool: 't3000_memory_list', desc: 'List saved memories' },
+      { prompt: 'Forget the old AHU layout notes', tool: 't3000_memory_delete', desc: 'Remove outdated memory' },
+    ]
+  },
+  {
+    name: 'Diagnostics', tools: 2, items: [
+      { prompt: 'Run diagnostics on device 233626', tool: 't3000_device_diagnostics', desc: 'Single device health check' },
+      { prompt: 'Check the health of all devices', tool: 't3000_device_diagnostics_batch', desc: 'Batch diagnostics across building' },
     ]
   },
 ];

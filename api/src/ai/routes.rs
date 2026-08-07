@@ -253,13 +253,15 @@ async fn process_chat(
             match execute_mcp_tool(tc_name, tc_args, state).await {
                 Ok(result) => {
                     let result_json = serde_json::to_string(&result).unwrap_or_else(|_| "null".to_string());
+                    // Truncate large results to avoid overwhelming local models
+                    let truncated = truncate_tool_result(&result_json);
                     let event = StreamEvent::ToolResult {
                         id: tc_id.clone(),
-                        result: result_json.clone(),
+                        result: truncated.clone(),
                     };
                     let json = serde_json::to_string(&event).unwrap();
                     let _ = tx.send(Ok(Event::default().data(json)));
-                    tool_results.push((tc_id.clone(), result_json));
+                    tool_results.push((tc_id.clone(), truncated));
                 }
                 Err(e) => {
                     let event = StreamEvent::ToolResult {
@@ -322,25 +324,83 @@ async fn execute_mcp_tool(
 
 /// Build the default system prompt — simpler for local models.
 fn build_system_prompt() -> String {
-    r#"You are a T3000 building automation engineer. Configure HVAC IO points.
+    let mut prompt = String::from(r#"You are a T3000 building automation engineer. Configure and maintain HVAC/building control systems.
 
 ## RULES (follow strictly)
 1. Keep ALL reasoning under 150 words total — you have limited output space
 2. NEVER repeat yourself. Say it once, then act.
 3. After user says "OK", immediately call tools. Do NOT explain your plan again.
 4. If you need multiple tool calls, batch them together.
-
-## Workflow
-- Propose points concisely → Wait for OK → Execute tools immediately
+5. Use task_create/task_list/task_update to track multi-step workflows (e.g., commissioning).
+6. When you learn site-specific knowledge (naming conventions, device roles, layout facts), immediately call memory_save so it persists. The user should NOT need to ask — be proactive.
+   Examples worth saving: "AHU-3 is the main unit", "basement sensors use prefix B-", "VAV boxes are MSTP subnet 2".
 
 ## Point Reference
 Analog ranges: 0-5V, 0-10V, 4-20mA | Digital: ON/OFF
 Units: degF, degC, %, Amps, Volts
 Label format: "EQUIP NAME Type" (e.g., "AHU1 Supply Air Temp")
 
-## Tools
-device_list, point_read, point_write, point_read_batch, point_write_batch, alarm_list, trendlog_query, search_points"#
-    .to_string()
+## Key Tools
+- Discovery: device_list, device_get_points, point_search, metadata_search, building_summary
+- Read/Write: point_read, point_write, point_read_batch, point_write_batch
+- Monitoring: alarm_list, alarm_acknowledge, trendlog_query, trendlog_list, trendlog_export
+- Config: settings_read, settings_write, schedule_list, holiday_list, program_list, program_read, pid_list
+- Diagnostics: device_diagnostics, device_refresh, device_control
+- Haystack: haystack_list_tags, haystack_search_points, haystack_auto_tag, haystack_preview_tags, haystack_validate, haystack_export
+- Tasks: task_create, task_list, task_update, task_delete
+- Memory: memory_save, memory_list, memory_delete
+- Docs: doc_list, doc_read"#);
+
+    // Load site memories into the prompt
+    if let Ok(memories) = load_memories_for_prompt() {
+        if !memories.is_empty() {
+            prompt.push_str("\n\n## Site Knowledge\n");
+            for m in &memories {
+                push_str_fmt(&mut prompt, &format!("- [{}] {}\n", m.0, m.1));
+            }
+        }
+    }
+
+    prompt
+}
+
+/// Load site memories as key-value pairs for the system prompt.
+fn load_memories_for_prompt() -> Result<Vec<(String, String)>, ()> {
+    let dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let path = dir.join("data").join("mcp_memory.json");
+    let content = std::fs::read_to_string(&path).unwrap_or_else(|_| "[]".into());
+    let v: serde_json::Value = serde_json::from_str(&content).map_err(|_| ())?;
+    let arr = v.as_array().ok_or(())?;
+    let mut result = Vec::new();
+    for entry in arr {
+        let key = entry.get("key").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let content = entry.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        if !key.is_empty() {
+            result.push((key, content));
+        }
+    }
+    Ok(result)
+}
+
+fn push_str_fmt(buf: &mut String, s: &str) {
+    buf.push_str(s);
+}
+
+/// Truncate tool results exceeding MAX_TOOL_RESULT_CHARS to prevent
+/// local models from choking on large responses (trendlog exports, point lists).
+const MAX_TOOL_RESULT_CHARS: usize = 8000;
+
+fn truncate_tool_result(json: &str) -> String {
+    if json.len() <= MAX_TOOL_RESULT_CHARS {
+        return json.to_string();
+    }
+    let truncated = &json[..MAX_TOOL_RESULT_CHARS];
+    format!(
+        "{}...\n\n[truncated: {} total chars, showing first {}]",
+        truncated,
+        json.len(),
+        MAX_TOOL_RESULT_CHARS
+    )
 }
 
 // ═══ DELETE /api/ai/sessions/:id ═══

@@ -1,5 +1,5 @@
 // MCP (Model Context Protocol) Server — Streamable HTTP transport
-// Exposes 44 tools for LLM agents via POST /api/mcp (JSON-RPC 2.0)
+// Exposes 45+ tools for LLM agents via POST /api/mcp (JSON-RPC 2.0)
 // SSE server→client streaming via GET /api/mcp
 // Session termination via DELETE /api/mcp
 //
@@ -13,6 +13,9 @@
 //   Data (4):      device_list, device_get_points, point_get_metadata, metadata_search
 //   Operational(5): point_read, point_write, point_read_batch, point_write_batch, point_batch_metadata
 //   Analytics (2): haystack_validate, haystack_export
+//   Tasks (4):     task_create, task_list, task_update, task_delete
+//   Memory (3):    memory_save, memory_list, memory_delete
+//   Diagnostics(2): device_ping, device_diagnostics
 //   Rules (2):     rule_toggle, rule_create
 //   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
 //   Docs (2):      doc_list, doc_read
@@ -47,6 +50,51 @@ use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHis
 
 fn mcp_log(msg: &str) {
     crate::server::debug_log(&format!("[MCP] {}", msg));
+}
+
+// ═══ File-Based JSON Storage (Tasks & Memory) ═══
+
+use std::path::PathBuf;
+
+fn data_dir() -> PathBuf {
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")).join("data")
+}
+
+fn tasks_file() -> PathBuf { data_dir().join("mcp_tasks.json") }
+fn memory_file() -> PathBuf { data_dir().join("mcp_memory.json") }
+
+async fn load_json_file(path: &PathBuf) -> Result<Value, String> {
+    let content = tokio::fs::read_to_string(path).await.unwrap_or_else(|_| "[]".into());
+    serde_json::from_str(&content).map_err(|e| format!("JSON parse error: {}", e))
+}
+
+async fn save_json_file(path: &PathBuf, data: &Value) -> Result<(), String> {
+    tokio::fs::create_dir_all(data_dir()).await.map_err(|e| format!("Cannot create data dir: {}", e))?;
+    let json = serde_json::to_string_pretty(data).map_err(|e| format!("Serialize error: {}", e))?;
+    tokio::fs::write(path, &json).await.map_err(|e| format!("Write error: {}", e))?;
+    Ok(())
+}
+
+// ── Task helpers ──
+
+async fn load_tasks() -> Result<Vec<Value>, String> {
+    let v = load_json_file(&tasks_file()).await?;
+    Ok(v.as_array().cloned().unwrap_or_default())
+}
+
+async fn save_tasks(tasks: &[Value]) -> Result<(), String> {
+    save_json_file(&tasks_file(), &json!(tasks)).await
+}
+
+// ── Memory helpers ──
+
+async fn load_memories() -> Result<Vec<Value>, String> {
+    let v = load_json_file(&memory_file()).await?;
+    Ok(v.as_array().cloned().unwrap_or_default())
+}
+
+async fn save_memories(memories: &[Value]) -> Result<(), String> {
+    save_json_file(&memory_file(), &json!(memories)).await
 }
 
 // ═══ JSON-RPC Types ═══
@@ -415,6 +463,10 @@ lazy_static::lazy_static! {
                 "confirm": {
                     "type": "boolean",
                     "description": "Safety confirmation - must be true for OUTPUT/VARIABLE points"
+                },
+                "readback": {
+                    "type": "boolean",
+                    "description": "Optional: if true, read the point back after writing to confirm the new value"
                 }
             },
             "required": ["serial_number", "point_type", "point_index", "value", "confirm"]
@@ -970,6 +1022,129 @@ lazy_static::lazy_static! {
             "properties": {}
         }),
     },
+    // ═══ v5: Task Management ═══
+    ToolDef {
+        name: "t3000_task_create",
+        title: "Create Task",
+        description: "Create a new task for tracking commissioning, maintenance, or troubleshooting workflows. Tasks have a title, description, status (pending/in_progress/completed), and optional device reference.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "title": { "type": "string", "description": "Short task title (e.g. 'Configure AHU-1 network')" },
+                "description": { "type": "string", "description": "Optional: detailed description of what needs to be done" },
+                "serial_number": { "type": "integer", "description": "Optional: associate task with a specific device" },
+                "priority": { "type": "string", "description": "Optional: low, normal (default), high, critical" }
+            },
+            "required": ["title"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_task_list",
+        title: "List Tasks",
+        description: "List all tasks with optional filters by status or device. Returns tasks sorted by creation time (newest first).",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "status": { "type": "string", "description": "Optional: filter by status (pending, in_progress, completed)" },
+                "serial_number": { "type": "integer", "description": "Optional: filter by device serial number" }
+            }
+        }),
+    },
+    ToolDef {
+        name: "t3000_task_update",
+        title: "Update Task",
+        description: "Update a task's status, title, description, or priority. Use to mark tasks as in_progress or completed as you work through a workflow.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "task_id": { "type": "string", "description": "Task ID (from task_list)" },
+                "status": { "type": "string", "description": "Optional: new status (pending, in_progress, completed)" },
+                "title": { "type": "string", "description": "Optional: new title" },
+                "description": { "type": "string", "description": "Optional: new description" },
+                "priority": { "type": "string", "description": "Optional: new priority" }
+            },
+            "required": ["task_id"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_task_delete",
+        title: "Delete Task",
+        description: "Delete a task by ID. Use to clean up completed or obsolete tasks.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "task_id": { "type": "string", "description": "Task ID to delete" }
+            },
+            "required": ["task_id"]
+        }),
+    },
+    // ═══ v5: Site Memory ═══
+    ToolDef {
+        name: "t3000_memory_save",
+        title: "Save Site Memory",
+        description: "Save a note about the building site for future reference. Use for site-specific conventions, device naming patterns, or user preferences. Memories persist across sessions and are automatically loaded into the AI context.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "key": { "type": "string", "description": "Short key/topic for this memory (e.g. 'naming-convention', 'ahu-layout')" },
+                "content": { "type": "string", "description": "The memory content to save" },
+                "category": { "type": "string", "description": "Optional: site-config, naming, workflow, troubleshooting, user-pref" }
+            },
+            "required": ["key", "content"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_memory_list",
+        title: "List Site Memories",
+        description: "List all saved site memories with optional filtering by category. Returns memories sorted by last update time (newest first).",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "category": { "type": "string", "description": "Optional: filter by category (site-config, naming, workflow, troubleshooting, user-pref)" },
+                "search": { "type": "string", "description": "Optional: search memory content for this text" }
+            }
+        }),
+    },
+    ToolDef {
+        name: "t3000_memory_delete",
+        title: "Delete Site Memory",
+        description: "Delete a specific memory entry by key. Use to remove outdated or incorrect site information.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "key": { "type": "string", "description": "Memory key to delete" }
+            },
+            "required": ["key"]
+        }),
+    },
+    // ═══ v5: Device Diagnostics ═══
+    ToolDef {
+        name: "t3000_device_diagnostics",
+        title: "Device Diagnostics",
+        description: "Run a comprehensive diagnostic check on a device. Returns: connection status, firmware version, point counts, alarm summary, trendlog status, program status, schedule status, and PID loop health. Use for troubleshooting or health verification.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": { "type": "integer", "description": "Device serial number to diagnose" }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_device_diagnostics_batch",
+        title: "Batch Device Diagnostics",
+        description: "Run diagnostics on multiple devices at once. If no serial_numbers provided, diagnoses ALL devices. Returns health summary for each device and overall building health.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_numbers": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "description": "Optional: device serials to diagnose (omit for all devices)"
+                }
+            }
+        }),
+    },
     ];
 }
 
@@ -1401,6 +1576,111 @@ async fn point_write_ffi(
     info!("[MCP] point_write OK: dev={} {}[{}] field={} val={}", serial, point_type, point_index, target_field, new_value_str);
     mcp_log(&format!("OK: dev={} {}[{}] field={} val={}", serial, point_type, point_index, target_field, new_value_str));
     Ok(json!({"success": true, "written_field": target_field, "written_value": new_value_str, "timestamp": Utc::now().to_rfc3339()}).to_string())
+}
+
+// ═══ Diagnostics Helper ═══
+
+async fn run_device_diagnostics(db: &sea_orm::DatabaseConnection, serial: i32) -> Result<Value, String> {
+    let now = Utc::now().to_rfc3339();
+
+    // 1. Basic device info
+    let dev_sql = format!(
+        "SELECT Product_Name, Firmware_Version_Hi, Firmware_Version_Lo, Hardware_Rev
+         FROM DEVICES WHERE SerialNumber = {}", serial
+    );
+    let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dev_sql)).await
+        .map_err(|e| format!("Device query failed: {}", e))?;
+    let dev = dev_rows.first()
+        .ok_or_else(|| format!("Device {} not found", serial))?;
+
+    let name: String = dev.try_get("", "Product_Name").unwrap_or_default();
+    let fw_hi: String = dev.try_get("", "Firmware_Version_Hi").unwrap_or_default();
+    let fw_lo: String = dev.try_get("", "Firmware_Version_Lo").unwrap_or_default();
+    let hw: String = dev.try_get("", "Hardware_Rev").unwrap_or_default();
+
+    // 2. Point counts
+    let count_sql = format!(
+        "SELECT 'inputs' as kind, COUNT(*) as cnt FROM INPUTS WHERE SerialNumber = {0}
+         UNION ALL SELECT 'outputs', COUNT(*) FROM OUTPUTS WHERE SerialNumber = {0}
+         UNION ALL SELECT 'variables', COUNT(*) FROM VARIABLES WHERE SerialNumber = {0}", serial
+    );
+    let mut input_count = 0i64; let mut output_count = 0i64; let mut var_count = 0i64;
+    if let Ok(rows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &count_sql)).await {
+        for row in &rows {
+            let kind: String = row.try_get("", "kind").unwrap_or_default();
+            let cnt: i64 = row.try_get("", "cnt").unwrap_or(0);
+            match kind.as_str() { "inputs" => { input_count = cnt; } "outputs" => { output_count = cnt; } "variables" => { var_count = cnt; } _ => {} }
+        }
+    }
+
+    // 3. Active alarms
+    let alarm_sql = format!("SELECT COUNT(*) as cnt FROM ALARMS WHERE SerialNumber = {} AND (Acknowledged IS NULL OR Acknowledged = '' OR Acknowledged = '0')", serial);
+    let active_alarms: i64 = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &alarm_sql)).await
+        .ok().and_then(|r| r.first().and_then(|rr| rr.try_get::<i64>("", "cnt").ok())).unwrap_or(0);
+
+    // 4. Trendlogs
+    let tl_sql = format!("SELECT COUNT(*) as cnt FROM TRENDLOGS WHERE SerialNumber = {}", serial);
+    let trendlog_count: i64 = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &tl_sql)).await
+        .ok().and_then(|r| r.first().and_then(|rr| rr.try_get::<i64>("", "cnt").ok())).unwrap_or(0);
+
+    // 5. Programs
+    let prog_sql = format!("SELECT COUNT(*) as cnt, SUM(CASE WHEN Program_Status = '1' THEN 1 ELSE 0 END) as running FROM PROGRAMS WHERE SerialNumber = {}", serial);
+    let (prog_count, prog_running) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &prog_sql)).await
+        .ok().and_then(|r| r.first().map(|rr| (
+            rr.try_get::<i64>("", "cnt").unwrap_or(0),
+            rr.try_get::<i64>("", "running").unwrap_or(0),
+        ))).unwrap_or((0, 0));
+
+    // 6. Schedules
+    let sch_sql = format!("SELECT COUNT(*) as cnt FROM SCHEDULES WHERE SerialNumber = {}", serial);
+    let schedule_count: i64 = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sch_sql)).await
+        .ok().and_then(|r| r.first().and_then(|rr| rr.try_get::<i64>("", "cnt").ok())).unwrap_or(0);
+
+    // 7. PID loops
+    let pid_sql = format!("SELECT COUNT(*) as cnt, SUM(CASE WHEN Auto_Manual = '1' THEN 1 ELSE 0 END) as auto FROM PID_TABLE WHERE SerialNumber = {}", serial);
+    let (pid_count, pid_auto) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &pid_sql)).await
+        .ok().and_then(|r| r.first().map(|rr| (
+            rr.try_get::<i64>("", "cnt").unwrap_or(0),
+            rr.try_get::<i64>("", "auto").unwrap_or(0),
+        ))).unwrap_or((0, 0));
+
+    // 8. Network settings
+    let net_sql = format!("SELECT IP_Address, TCP_Type FROM NETWORK_SETTINGS WHERE SerialNumber = {}", serial);
+    let (ip, tcp_type) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &net_sql)).await
+        .ok().and_then(|r| r.first().map(|rr| (
+            rr.try_get::<String>("", "IP_Address").unwrap_or_default(),
+            rr.try_get::<String>("", "TCP_Type").unwrap_or_default(),
+        ))).unwrap_or_default();
+
+    let issues: Vec<&str> = {
+        let mut i = Vec::new();
+        if active_alarms > 0 { i.push("active_alarms"); }
+        if prog_count == 0 { i.push("no_programs"); }
+        if pid_count == 0 { i.push("no_pid_loops"); }
+        if ip.is_empty() { i.push("no_ip"); }
+        i
+    };
+    let health = if issues.is_empty() { "good" }
+        else if issues.len() <= 2 { "warning" }
+        else { "needs_attention" };
+
+    Ok(json!({
+        "serial": serial,
+        "name": name,
+        "firmware": format!("{}.{}", fw_hi, fw_lo),
+        "hardware_rev": hw,
+        "ip_address": ip,
+        "tcp_type": tcp_type,
+        "points": { "inputs": input_count, "outputs": output_count, "variables": var_count, "total": input_count + output_count + var_count },
+        "active_alarms": active_alarms,
+        "trendlogs": trendlog_count,
+        "programs": { "total": prog_count, "running": prog_running },
+        "schedules": schedule_count,
+        "pid_loops": { "total": pid_count, "in_auto": pid_auto },
+        "health": health,
+        "issues": issues,
+        "timestamp": now,
+    }))
 }
 
 pub(crate) async fn execute_tool(
@@ -2094,7 +2374,39 @@ pub(crate) async fn execute_tool(
 
             info!("[MCP] point_write: serial={} type={} idx={} field={} val={}",
                 serial, point_type, point_index, field, value_str);
-            point_write_ffi(db, serial, point_type, point_index, field, &value_str).await
+            let write_result = point_write_ffi(db, serial, point_type, point_index, field, &value_str).await?;
+
+            // Optional readback to confirm
+            let readback = args.get("readback").and_then(|v| v.as_bool()).unwrap_or(false);
+            if readback && field == "value" {
+                let (table, idx_col, val_col, label_col, units_col) = match point_type {
+                    "INPUT" => ("INPUTS", "Input_Index", "fValue", "Label", "Units"),
+                    "OUTPUT" => ("OUTPUTS", "Output_Index", "fValue", "Label", "Units"),
+                    _ => ("VARIABLES", "Variable_Index", "fValue", "Label", "Units"),
+                };
+                let sql = format!(
+                    "SELECT {}, {}, {} FROM {} WHERE SerialNumber = {} AND {} = '{}'",
+                    val_col, label_col, units_col, table, serial, idx_col, point_index
+                );
+                if let Ok(rows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await {
+                    if let Some(row) = rows.first() {
+                        let readback_val: Option<String> = row.try_get("", val_col).ok();
+                        let readback_label: Option<String> = row.try_get("", label_col).ok();
+                        let readback_units: Option<String> = row.try_get("", units_col).ok();
+                        let parsed = readback_val.as_ref().and_then(|v| v.parse::<f64>().ok());
+                        let display = if point_type == "INPUT" { parsed.map(|x| x / 1000.0) } else { parsed };
+                        return Ok(json!({
+                            "success": true,
+                            "written_field": field,
+                            "written_value": value_str,
+                            "readback": { "label": readback_label, "value": display, "units": readback_units },
+                            "timestamp": Utc::now().to_rfc3339(),
+                        }).to_string());
+                    }
+                }
+            }
+
+            Ok(write_result)
         }
 
         "t3000_point_read_batch" => {
@@ -3517,6 +3829,276 @@ pub(crate) async fn execute_tool(
                 "total_programs": total_programs,
                 "total_pid_loops": total_pid_loops,
                 "health": if active_alarms == 0 { "good" } else if active_alarms < 5 { "warning" } else { "critical" },
+                "timestamp": Utc::now().to_rfc3339(),
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        // ═══ v5: Task Management ═══
+
+        "t3000_task_create" => {
+            let title = args.get("title").and_then(|v| v.as_str())
+                .ok_or_else(|| "title required".to_string())?;
+            let description = args.get("description").and_then(|v| v.as_str()).unwrap_or("");
+            let sn = args.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
+            let priority = args.get("priority").and_then(|v| v.as_str()).unwrap_or("normal");
+
+            let task_id = Uuid::new_v4().to_string();
+            let now = Utc::now().to_rfc3339();
+
+            let mut tasks = load_tasks().await?;
+            tasks.push(json!({
+                "id": task_id,
+                "title": title,
+                "description": description,
+                "status": "pending",
+                "priority": priority,
+                "serial_number": sn,
+                "created_at": now,
+                "updated_at": now,
+            }));
+            save_tasks(&tasks).await?;
+
+            serde_json::to_string_pretty(&json!({
+                "task_id": task_id,
+                "title": title,
+                "status": "pending",
+                "created_at": now,
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_task_list" => {
+            let status_filter = args.get("status").and_then(|v| v.as_str());
+            let sn_filter = args.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
+
+            let tasks = load_tasks().await?;
+            let filtered: Vec<&Value> = tasks.iter()
+                .filter(|t| {
+                    if let Some(s) = status_filter {
+                        if t.get("status").and_then(|v| v.as_str()) != Some(s) { return false; }
+                    }
+                    if let Some(sn) = sn_filter {
+                        if t.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32) != Some(sn) { return false; }
+                    }
+                    true
+                })
+                .collect();
+
+            let results: Vec<Value> = filtered.iter().map(|t| (*t).clone()).collect();
+            serde_json::to_string_pretty(&json!({
+                "tasks": results,
+                "total": results.len(),
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_task_update" => {
+            let task_id = args.get("task_id").and_then(|v| v.as_str())
+                .ok_or_else(|| "task_id required".to_string())?;
+            let new_status = args.get("status").and_then(|v| v.as_str());
+            let new_title = args.get("title").and_then(|v| v.as_str());
+            let new_desc = args.get("description").and_then(|v| v.as_str());
+            let new_priority = args.get("priority").and_then(|v| v.as_str());
+
+            let mut tasks = load_tasks().await?;
+            let mut found = false;
+            let mut updated = json!({});
+            let now = Utc::now().to_rfc3339();
+
+            for task in tasks.iter_mut() {
+                if task.get("id").and_then(|v| v.as_str()) == Some(task_id) {
+                    if let Some(s) = new_status {
+                        let valid = ["pending", "in_progress", "completed"];
+                        if !valid.contains(&s) {
+                            return Err(format!("Invalid status: {}. Must be: {}", s, valid.join(", ")));
+                        }
+                        task["status"] = json!(s);
+                    }
+                    if let Some(t) = new_title { task["title"] = json!(t); }
+                    if let Some(d) = new_desc { task["description"] = json!(d); }
+                    if let Some(p) = new_priority { task["priority"] = json!(p); }
+                    task["updated_at"] = json!(now);
+                    updated = task.clone();
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
+                return Err(format!("Task not found: {}", task_id));
+            }
+            save_tasks(&tasks).await?;
+
+            serde_json::to_string_pretty(&json!({
+                "task": updated,
+                "updated_at": now,
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_task_delete" => {
+            let task_id = args.get("task_id").and_then(|v| v.as_str())
+                .ok_or_else(|| "task_id required".to_string())?;
+
+            let mut tasks = load_tasks().await?;
+            let len_before = tasks.len();
+            tasks.retain(|t| t.get("id").and_then(|v| v.as_str()) != Some(task_id));
+            if tasks.len() == len_before {
+                return Err(format!("Task not found: {}", task_id));
+            }
+            save_tasks(&tasks).await?;
+
+            Ok(json!({
+                "deleted": true,
+                "task_id": task_id,
+                "timestamp": Utc::now().to_rfc3339(),
+            }).to_string())
+        }
+
+        // ═══ v5: Site Memory ═══
+
+        "t3000_memory_save" => {
+            let key = args.get("key").and_then(|v| v.as_str())
+                .ok_or_else(|| "key required".to_string())?;
+            let content = args.get("content").and_then(|v| v.as_str())
+                .ok_or_else(|| "content required".to_string())?;
+            let category = args.get("category").and_then(|v| v.as_str()).unwrap_or("general");
+
+            let now = Utc::now().to_rfc3339();
+            let mut memories = load_memories().await?;
+
+            // Upsert: replace existing entry with same key, or append
+            memories.retain(|m| m.get("key").and_then(|v| v.as_str()) != Some(key));
+            memories.push(json!({
+                "key": key,
+                "content": content,
+                "category": category,
+                "created_at": now,
+                "updated_at": now,
+            }));
+            save_memories(&memories).await?;
+
+            serde_json::to_string_pretty(&json!({
+                "saved": true,
+                "key": key,
+                "category": category,
+                "timestamp": now,
+                "total_memories": memories.len(),
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_memory_list" => {
+            let category_filter = args.get("category").and_then(|v| v.as_str());
+            let search = args.get("search").and_then(|v| v.as_str()).map(|s| s.to_lowercase());
+
+            let memories = load_memories().await?;
+            let filtered: Vec<&Value> = memories.iter()
+                .filter(|m| {
+                    if let Some(cat) = category_filter {
+                        if m.get("category").and_then(|v| v.as_str()) != Some(cat) { return false; }
+                    }
+                    if let Some(ref q) = search {
+                        let content = m.get("content").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
+                        let key = m.get("key").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
+                        if !content.contains(q) && !key.contains(q) { return false; }
+                    }
+                    true
+                })
+                .collect();
+
+            let results: Vec<Value> = filtered.iter().map(|m| (*m).clone()).collect();
+            serde_json::to_string_pretty(&json!({
+                "memories": results,
+                "total": results.len(),
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_memory_delete" => {
+            let key = args.get("key").and_then(|v| v.as_str())
+                .ok_or_else(|| "key required".to_string())?;
+
+            let mut memories = load_memories().await?;
+            let len_before = memories.len();
+            memories.retain(|m| m.get("key").and_then(|v| v.as_str()) != Some(key));
+            if memories.len() == len_before {
+                return Err(format!("Memory not found: {}", key));
+            }
+            save_memories(&memories).await?;
+
+            Ok(json!({
+                "deleted": true,
+                "key": key,
+                "timestamp": Utc::now().to_rfc3339(),
+            }).to_string())
+        }
+
+        // ═══ v5: Device Diagnostics ═══
+
+        "t3000_device_diagnostics" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            let diag = run_device_diagnostics(db, serial).await?;
+            serde_json::to_string_pretty(&diag)
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_device_diagnostics_batch" => {
+            let serials: Vec<i32> = args.get("serial_numbers")
+                .and_then(|v| v.as_array())
+                .map(|a| a.iter().filter_map(|v| v.as_i64().map(|n| n as i32)).collect())
+                .unwrap_or_default();
+
+            let target_serials: Vec<i32> = if serials.is_empty() {
+                // Diagnose all devices
+                let all_sql = "SELECT SerialNumber FROM DEVICES ORDER BY SerialNumber";
+                db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, all_sql)).await
+                    .map_err(|e| format!("Device list failed: {}", e))?
+                    .iter()
+                    .filter_map(|r| r.try_get::<i32>("", "SerialNumber").ok())
+                    .collect()
+            } else {
+                serials
+            };
+
+            let mut results: Vec<Value> = Vec::new();
+            let mut good = 0i32;
+            let mut warning = 0i32;
+            let mut attention = 0i32;
+
+            for serial in &target_serials {
+                match run_device_diagnostics(db, *serial).await {
+                    Ok(diag) => {
+                        match diag.get("health").and_then(|v| v.as_str()).unwrap_or("unknown") {
+                            "good" => good += 1,
+                            "warning" => warning += 1,
+                            _ => attention += 1,
+                        }
+                        results.push(diag);
+                    }
+                    Err(_) => {
+                        attention += 1;
+                        results.push(json!({
+                            "serial": serial,
+                            "name": "unknown",
+                            "health": "offline",
+                            "error": "Device not found or query failed",
+                        }));
+                    }
+                }
+            }
+
+            let overall = if attention > 0 { "needs_attention" }
+                else if warning > 0 { "warning" }
+                else { "good" };
+
+            serde_json::to_string_pretty(&json!({
+                "overall_health": overall,
+                "summary": { "good": good, "warning": warning, "attention": attention, "total": target_serials.len() },
+                "devices": results,
                 "timestamp": Utc::now().to_rfc3339(),
             }))
             .map_err(|e| format!("Serialize error: {}", e))
