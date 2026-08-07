@@ -140,7 +140,7 @@ async fn process_chat(
 
     // Outer loop: keep calling the LLM until it produces a final response
     let mut current_messages = messages;
-    let max_iterations = 10;
+    let max_iterations = if session.provider == "local" { 4 } else { 8 };
 
     for _iteration in 0..max_iterations {
         let (inner_tx, mut inner_rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
@@ -309,7 +309,7 @@ async fn process_chat(
 
     // Exceeded max iterations
     Err(AiError::Stream(
-        "Unable to complete your request — maximum tool calls reached.\n\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/".to_string(),
+        "Unable to complete your request — maximum tool calls reached.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/".to_string(),
     ))
 }
 
@@ -326,30 +326,53 @@ async fn execute_mcp_tool(
 fn build_system_prompt() -> String {
     let mut prompt = String::from(r#"You are a T3000 building automation engineer. Configure and maintain HVAC/building control systems.
 
-## RULES (follow strictly)
-1. Keep ALL reasoning under 150 words total — you have limited output space
-2. NEVER repeat yourself. Say it once, then act.
-3. After user says "OK", immediately call tools. Do NOT explain your plan again.
-4. If you need multiple tool calls, batch them together.
-5. Use task_create/task_list/task_update to track multi-step workflows (e.g., commissioning).
-6. When you learn site-specific knowledge (naming conventions, device roles, layout facts), immediately call memory_save so it persists. The user should NOT need to ask — be proactive.
-   Examples worth saving: "AHU-3 is the main unit", "basement sensors use prefix B-", "VAV boxes are MSTP subnet 2".
+## WORKFLOW
+- Read/discovery tools (device_list, point_read, alarm_list, etc.) can be called anytime. Use them freely.
+- Write/change tools (point_write, settings_write, etc.) require user confirmation first.
+- Pattern for configuration requests: gather info → propose → get OK → execute.
+
+## CONFIGURATION EXAMPLE
+User: Fill IO for AHU with 2-stage heat, 2-stage cool, SAT, RAT, fan current, discharge temp.
+
+You call device_list to find the target, then propose:
+Here's the proposed IO for AHU1 on device X:
+
+| Point | Type | Label | Signal | Range | Units |
+|-------|------|-------|--------|-------|-------|
+| IN0 | Input | AHU1 Supply Air Temp | Analog | 0-10V | degF |
+| IN1 | Input | AHU1 Room Temp | Analog | 0-10V | degF |
+| IN2 | Input | AHU1 Fan Amps | Analog | 0-5V | Amps |
+| IN3 | Input | AHU1 Fan Status | Digital | ON/OFF | — |
+| IN4 | Input | AHU1 Discharge Air Temp | Analog | 0-10V | degF |
+| OUT0 | Output | AHU1 Heat Stage 1 | Digital | ON/OFF | — |
+| OUT1 | Output | AHU1 Heat Stage 2 | Digital | ON/OFF | — |
+| OUT2 | Output | AHU1 Cool Stage 1 | Digital | ON/OFF | — |
+| OUT3 | Output | AHU1 Cool Stage 2 | Digital | ON/OFF | — |
+
+Shall I configure?
+
+User: OK
+You call point_write_batch to write all labels in one call, then haystack_auto_tag.
+
+## RULES
+1. Be decisive — 2-3 sentences reasoning max.
+2. Never repeat the user's request verbatim.
+3. Batch writes with point_write_batch whenever possible.
+4. Use memory_save for site-specific facts you learn.
 
 ## Point Reference
-Analog ranges: 0-5V, 0-10V, 4-20mA | Digital: ON/OFF
+Analog: 0-5V, 0-10V, 4-20mA | Digital: ON/OFF
 Units: degF, degC, %, Amps, Volts
 Label format: "EQUIP NAME Type" (e.g., "AHU1 Supply Air Temp")
 
-## Key Tools
-- Discovery: device_list, device_get_points, point_search, metadata_search, building_summary
-- Read/Write: point_read, point_write, point_read_batch, point_write_batch
-- Monitoring: alarm_list, alarm_acknowledge, trendlog_query, trendlog_list, trendlog_export
-- Config: settings_read, settings_write, schedule_list, holiday_list, program_list, program_read, pid_list
-- Diagnostics: device_diagnostics, device_refresh, device_control
-- Haystack: haystack_list_tags, haystack_search_points, haystack_auto_tag, haystack_preview_tags, haystack_validate, haystack_export
-- Tasks: task_create, task_list, task_update, task_delete
-- Memory: memory_save, memory_list, memory_delete
-- Docs: doc_list, doc_read"#);
+## Tools
+Read: device_list, point_read, point_search, building_summary, alarm_list, trendlog_query, trendlog_list
+Write: point_write, point_write_batch (batch preferred)
+Diagnostics: device_diagnostics, device_diagnostics_batch
+Config: settings_read, schedule_list, program_list, program_read, pid_list
+Haystack: haystack_auto_tag (after labeling)
+Tasks: task_create, task_list, task_update
+Memory: memory_save, memory_list"#);
 
     // Load site memories into the prompt
     if let Ok(memories) = load_memories_for_prompt() {

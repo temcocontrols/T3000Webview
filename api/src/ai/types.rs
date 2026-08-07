@@ -128,7 +128,7 @@ pub enum AiError {
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
 
-    #[error("Stream error: {0}")]
+    #[error("{0}")]
     Stream(String),
 
     #[error("Tool execution error: {0}")]

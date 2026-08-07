@@ -1480,6 +1480,14 @@
   color: var(--colorBrandForegroundHover, #106ebe);
 }
 
+/* Consecutive system messages — tighter gap */
+.systemError + .systemWarning,
+.systemWarning + .systemError,
+.systemError + .systemError,
+.systemWarning + .systemWarning {
+  margin-top: 0;
+}
+
 /* ── Empty state ── */
 .emptyRoot {
   flex: 1;

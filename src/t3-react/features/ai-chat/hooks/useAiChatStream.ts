@@ -219,6 +219,7 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
         let currentOutput = '';
         let receivedDone = false;
         let truncated = false;
+        let pendingError: string | null = null;
 
         const flushBlock = () => {
           if (currentBlockType === 'thinking' && currentThinkingSteps.length > 0) {
@@ -363,10 +364,8 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
                 break;
               }
               case 'error': {
-                storeSetMessages((prev) => [
-                  ...prev,
-                  { role: 'system', content: `Error: ${event.data?.message || 'Unknown error'}`, timestamp: Date.now() },
-                ]);
+                const msg = event.data?.message || 'Unknown error';
+                pendingError = msg.startsWith('Unable to complete') ? msg : `Error: ${msg}`;
                 break;
               }
             }
@@ -387,6 +386,14 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
             timestamp: Date.now(),
           };
           storeSetMessages((prev) => [...prev, assistantMsg]);
+
+          // Deferred error — show after assistant message, not before
+          if (pendingError) {
+            storeSetMessages((prev) => [
+              ...prev,
+              { role: 'system', content: pendingError, timestamp: Date.now() },
+            ]);
+          }
         }
 
         // Show warning AFTER the assistant message
