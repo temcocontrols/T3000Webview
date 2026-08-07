@@ -80,12 +80,16 @@ const ThinkingSection: React.FC<{
   const [expanded, setExpanded] = useState(true);
   const outputStartedRef = useRef(false);
 
-  // ── Auto-scroll ──
+  // ── Auto-scroll to latest step (RAF ensures DOM painted first) ──
   useEffect(() => {
-    if (bodyRef.current && isStreaming) {
-      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    if (bodyRef.current && expanded && isStreaming) {
+      requestAnimationFrame(() => {
+        if (bodyRef.current) {
+          bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+        }
+      });
     }
-  }, [steps, isStreaming]);
+  }, [steps, expanded, isStreaming]);
 
   // ── Auto-collapse when output starts ──
   useEffect(() => {
@@ -265,6 +269,36 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
   const hasContent = !isUser && !!htmlContent;
   const steps = message.thinkingSteps || [];
   const hasThinking = steps.length > 0;
+  const blocks = message.messageBlocks;
+  const hasBlocks = blocks && blocks.length > 0;
+
+  // Render interleaved blocks or fall back to legacy mode
+  const renderBlocks = () => {
+    if (!blocks) return null;
+    // Pre-compute: does each thinking block have output after it?
+    const hasOutputAfter: boolean[] = new Array(blocks.length).fill(false);
+    let foundOutput = false;
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      if (blocks[i].type === 'output') foundOutput = true;
+      hasOutputAfter[i] = foundOutput && blocks[i].type === 'thinking';
+    }
+    return blocks.map((block, i) => {
+      if (block.type === 'thinking') {
+        const finished = hasOutputAfter[i]; // output exists after this block
+        return (
+          <ThinkingSection
+            key={i}
+            steps={block.steps}
+            isStreaming={!!isStreaming && !finished}
+            outputStarted={finished}
+          />
+        );
+      }
+      return (
+        <div key={i} className={styles.mdWrapper} dangerouslySetInnerHTML={{ __html: renderMarkdown(block.content) }} />
+      );
+    });
+  };
 
   return (
     <div className={styles.messageWrapper}>
@@ -274,19 +308,21 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
         <span>{formatTime(message.timestamp)}</span>
       </div>
 
-      {/* Thinking section — shows when steps have arrived */}
-      {hasThinking && (
-        <ThinkingSection steps={steps} isStreaming={!!isStreaming} outputStarted={!!message.content} />
+      {/* Interleaved blocks (new format) or legacy fallback */}
+      {hasBlocks ? renderBlocks() : (
+        <>
+          {hasThinking && (
+            <ThinkingSection steps={steps} isStreaming={!!isStreaming} outputStarted={!!message.content} />
+          )}
+          {isUser ? (
+            <div className={styles.userContent}>{message.content}</div>
+          ) : hasContent ? (
+            <div className={styles.mdWrapper} dangerouslySetInnerHTML={{ __html: htmlContent! }} />
+          ) : isStreaming && !hasThinking ? (
+            <span className={styles.thinkingCursor} />
+          ) : null}
+        </>
       )}
-
-      {/* Content */}
-      {isUser ? (
-        <div className={styles.userContent}>{message.content}</div>
-      ) : hasContent ? (
-        <div className={styles.mdWrapper} dangerouslySetInnerHTML={{ __html: htmlContent! }} />
-      ) : isStreaming && !hasThinking ? (
-        <span className={styles.thinkingCursor} />
-      ) : null}
     </div>
   );
 };

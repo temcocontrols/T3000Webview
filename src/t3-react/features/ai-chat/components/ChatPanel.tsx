@@ -142,6 +142,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
     clearSession,
   } = useAiChatStream(aiSettings, refreshSessions);
 
+  const streamingBlocks = useChatStore((s) => s.streamingBlocks);
+
   // Sync backend session ID to history sidebar
   const prevStreamingRef = useRef(isStreaming);
   useEffect(() => {
@@ -334,6 +336,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
                   role: 'assistant',
                   content: streamingText,
                   thinkingSteps: streamingSteps,
+                  messageBlocks: streamingBlocks.length > 0 ? streamingBlocks : undefined,
                   timestamp: Date.now(),
                   toolCalls: Object.values(activeToolCalls),
                 }}

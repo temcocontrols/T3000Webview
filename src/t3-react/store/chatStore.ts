@@ -2,7 +2,7 @@
  * chatStore — Shared chat state so panel + full-page ChatPanel share conversations.
  */
 import { create } from 'zustand';
-import type { ChatMessage, ThinkingStep, ToolCallRecord } from '../features/ai-chat/hooks/useAiChatStream';
+import type { ChatMessage, ThinkingStep, ToolCallRecord, MessageBlock } from '../features/ai-chat/hooks/useAiChatStream';
 
 interface ChatStore {
   messages: ChatMessage[];
@@ -10,6 +10,7 @@ interface ChatStore {
   isStreaming: boolean;
   streamingText: string;
   streamingSteps: ThinkingStep[];
+  streamingBlocks: MessageBlock[];
   activeToolCalls: Record<string, ToolCallRecord>;
   previousPageHash: string | null;
 
@@ -18,6 +19,7 @@ interface ChatStore {
   setIsStreaming: (v: boolean) => void;
   setStreamingText: (t: string) => void;
   setStreamingSteps: (steps: ThinkingStep[]) => void;
+  setStreamingBlocks: (blocks: MessageBlock[]) => void;
   setActiveToolCalls: (fn: (prev: Record<string, ToolCallRecord>) => Record<string, ToolCallRecord>) => void;
   setPreviousPageHash: (hash: string | null) => void;
   reset: () => void;
@@ -29,6 +31,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   isStreaming: false,
   streamingText: '',
   streamingSteps: [],
+  streamingBlocks: [],
   activeToolCalls: {},
   previousPageHash: null,
 
@@ -37,7 +40,8 @@ export const useChatStore = create<ChatStore>((set) => ({
   setIsStreaming: (v) => set({ isStreaming: v }),
   setStreamingText: (t) => set({ streamingText: t }),
   setStreamingSteps: (steps) => set({ streamingSteps: steps }),
+  setStreamingBlocks: (blocks) => set({ streamingBlocks: blocks }),
   setActiveToolCalls: (fn) => set((s) => ({ activeToolCalls: fn(s.activeToolCalls) })),
   setPreviousPageHash: (hash) => set({ previousPageHash: hash }),
-  reset: () => set({ messages: [], sessionId: null, isStreaming: false, streamingText: '', streamingSteps: [], activeToolCalls: {}, previousPageHash: null }),
+  reset: () => set({ messages: [], sessionId: null, isStreaming: false, streamingText: '', streamingSteps: [], streamingBlocks: [], activeToolCalls: {}, previousPageHash: null }),
 }));

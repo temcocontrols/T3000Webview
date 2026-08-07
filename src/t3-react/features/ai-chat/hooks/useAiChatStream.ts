@@ -21,10 +21,16 @@ export interface ChatMessage {
   toolCalls?: ToolCallRecord[];
   /** Reasoning/thinking state for this message (legacy blob format) */
   thinking?: ThinkingState;
-  /** New per-step thinking breakdown */
+  /** New per-step thinking breakdown — flat, retained for backward compat */
   thinkingSteps?: ThinkingStep[];
+  /** Interleaved thinking+output blocks. Each thinking_end starts a new block pair. */
+  messageBlocks?: MessageBlock[];
   timestamp: number;
 }
+
+export type MessageBlock =
+  | { type: 'thinking'; steps: ThinkingStep[] }
+  | { type: 'output'; content: string };
 
 export interface ThinkingState {
   steps: number;
@@ -90,6 +96,7 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
   const storeSetIsStreaming = useChatStore((s) => s.setIsStreaming);
   const storeSetStreamingText = useChatStore((s) => s.setStreamingText);
   const storeSetStreamingSteps = useChatStore((s) => s.setStreamingSteps);
+  const storeSetStreamingBlocks = useChatStore((s) => s.setStreamingBlocks);
   const storeSetActiveToolCalls = useChatStore((s) => s.setActiveToolCalls);
   const storeReset = useChatStore((s) => s.reset);
 
@@ -155,6 +162,7 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
       storeSetIsStreaming(true);
       storeSetStreamingText('');
       storeSetStreamingSteps([]);
+      storeSetStreamingBlocks([]);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -205,9 +213,34 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
         let assistantContent = '';
         const toolCallRecords: ToolCallRecord[] = [];
         const steps: ThinkingStep[] = [];
-        let thinkingDurationMs = 0;
+        const blocks: MessageBlock[] = [];
+        let currentBlockType: 'thinking' | 'output' | null = null;
+        let currentThinkingSteps: ThinkingStep[] = [];
+        let currentOutput = '';
         let receivedDone = false;
         let truncated = false;
+
+        const flushBlock = () => {
+          if (currentBlockType === 'thinking' && currentThinkingSteps.length > 0) {
+            blocks.push({ type: 'thinking', steps: [...currentThinkingSteps] });
+            currentThinkingSteps = [];
+          } else if (currentBlockType === 'output' && currentOutput) {
+            blocks.push({ type: 'output', content: currentOutput });
+            currentOutput = '';
+          }
+          currentBlockType = null;
+        };
+
+        // Push blocks + in-progress block to the store for live streaming display
+        const pushBlocks = () => {
+          const display: MessageBlock[] = [...blocks];
+          if (currentBlockType === 'thinking' && currentThinkingSteps.length > 0) {
+            display.push({ type: 'thinking', steps: [...currentThinkingSteps] });
+          } else if (currentBlockType === 'output' && currentOutput) {
+            display.push({ type: 'output', content: currentOutput });
+          }
+          storeSetStreamingBlocks(display);
+        };
 
         while (true) {
           const { done, value } = await reader.read();
@@ -234,23 +267,43 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
             switch (event.event) {
               case 'text_delta': {
                 const chunk = event.data?.content || '';
+                if (currentBlockType !== 'output') {
+                  flushBlock();
+                  currentBlockType = 'output';
+                }
+                currentOutput += chunk;
                 assistantContent += chunk;
                 storeSetStreamingText(assistantContent);
+                pushBlocks();
                 break;
               }
               case 'thinking_delta': {
                 const chunk = event.data?.content || '';
-                const last = steps[steps.length - 1];
+                if (currentBlockType !== 'thinking') {
+                  flushBlock();
+                  currentBlockType = 'thinking';
+                }
+                const last = currentThinkingSteps[currentThinkingSteps.length - 1];
                 if (last && !last.toolCall) {
                   last.content += chunk;
+                } else {
+                  currentThinkingSteps.push({ index: steps.length + currentThinkingSteps.length + 1, content: chunk });
+                }
+                // Also keep flat steps for backward compat + store
+                const flatLast = steps[steps.length - 1];
+                if (flatLast && !flatLast.toolCall) {
+                  flatLast.content += chunk;
                 } else {
                   steps.push({ index: steps.length + 1, content: chunk });
                 }
                 storeSetStreamingSteps([...steps]);
+                pushBlocks();
                 break;
               }
               case 'thinking_end': {
-                thinkingDurationMs = event.data?.duration_ms || 0;
+                // Flush current thinking block so next output starts a new block
+                flushBlock();
+                pushBlocks();
                 break;
               }
               case 'tool_call': {
@@ -260,11 +313,13 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
                 };
                 toolCallRecords.push(tc);
                 storeSetActiveToolCalls((prev) => ({ ...prev, [tc.id]: tc }));
-                const lastStep = steps[steps.length - 1];
-                if (lastStep) {
-                  lastStep.toolCall = tc;
-                  storeSetStreamingSteps([...steps]);
-                }
+                // Attach to both flat and block-local steps
+                const flatLast = steps[steps.length - 1];
+                if (flatLast) { flatLast.toolCall = tc; }
+                const blockLast = currentThinkingSteps[currentThinkingSteps.length - 1];
+                if (blockLast) { blockLast.toolCall = tc; }
+                storeSetStreamingSteps([...steps]);
+                pushBlocks();
                 break;
               }
               case 'tool_result': {
@@ -282,11 +337,19 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
                 if (idx !== -1) {
                   toolCallRecords[idx] = { ...toolCallRecords[idx], result, status: isError ? 'error' : 'success' };
                 }
-                const stepWithTool = steps.find((s) => s.toolCall?.id === id);
-                if (stepWithTool?.toolCall) {
-                  stepWithTool.toolCall = { ...stepWithTool.toolCall, result, status: isError ? 'error' : 'success' };
-                  storeSetStreamingSteps([...steps]);
+                // Update tool in both flat and block steps
+                for (const s of steps) {
+                  if (s.toolCall?.id === id) {
+                    s.toolCall = { ...s.toolCall, result, status: isError ? 'error' : 'success' };
+                  }
                 }
+                for (const s of currentThinkingSteps) {
+                  if (s.toolCall?.id === id) {
+                    s.toolCall = { ...s.toolCall, result, status: isError ? 'error' : 'success' };
+                  }
+                }
+                storeSetStreamingSteps([...steps]);
+                pushBlocks();
                 break;
               }
               case 'done': {
@@ -310,6 +373,9 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
           }
         }
 
+        // Flush final block
+        flushBlock();
+
         // Finalize assistant message
         if (assistantContent || toolCallRecords.length > 0 || steps.length > 0) {
           const assistantMsg: ChatMessage = {
@@ -317,6 +383,7 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
             content: assistantContent,
             toolCalls: toolCallRecords.length > 0 ? toolCallRecords : undefined,
             thinkingSteps: steps.length > 0 ? steps : undefined,
+            messageBlocks: blocks.length > 0 ? blocks : undefined,
             timestamp: Date.now(),
           };
           storeSetMessages((prev) => [...prev, assistantMsg]);
