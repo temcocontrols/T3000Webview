@@ -95,6 +95,15 @@ const ThinkingSection: React.FC<{
     }
   }, [outputStarted]);
 
+  // ── Re-expand when new thinking arrives (tool-call loop iterations) ──
+  const prevStepCountRef = useRef(steps.length);
+  useEffect(() => {
+    if (steps.length > prevStepCountRef.current && isStreaming) {
+      setExpanded(true);
+    }
+    prevStepCountRef.current = steps.length;
+  }, [steps.length, isStreaming]);
+
   const stepCount = steps.length;
 
   if (stepCount === 0) return null;
@@ -128,8 +137,11 @@ const ThinkingSection: React.FC<{
         <div className={styles.thinkingStepList} ref={bodyRef}>
           {steps.map((step, i) => {
             const isLast = i === steps.length - 1;
+            const prevHadTool = i > 0 && !!steps[i - 1].toolCall;
             return (
-            <div key={step.index} className={styles.thinkingStepItem}>
+            <React.Fragment key={step.index}>
+              {prevHadTool && <div className={styles.thinkingIterationDivider} />}
+            <div className={styles.thinkingStepItem}>
               <span className={styles.thinkingStepMarker} />
               <div className={styles.thinkingStepContent}>
                 <div className={styles.thinkingStepText}>
@@ -141,6 +153,7 @@ const ThinkingSection: React.FC<{
                 )}
               </div>
             </div>
+            </React.Fragment>
             );
           })}
         </div>
@@ -214,9 +227,35 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
   // System message
   if (message.role === 'system') {
     const isError = message.content.startsWith('Error:');
-    const isWarning = message.content.startsWith('Response was truncated') || message.content.startsWith('Response may be incomplete');
+    const isWarning = message.content.startsWith('Unable to complete your request');
+    if (isWarning) {
+      const nl = message.content.indexOf('\n');
+      const title = nl > -1 ? message.content.slice(0, nl) : message.content;
+      const body = nl > -1 ? message.content.slice(nl + 1) : '';
+      // Split body around the URL to render it as a link
+      const urlMatch = body.match(/(https?:\/\/\S+)/);
+      const linkUrl = urlMatch ? urlMatch[1] : '';
+      const beforeLink = urlMatch ? body.slice(0, urlMatch.index!) : body;
+      const afterLink = urlMatch ? body.slice(urlMatch.index! + linkUrl.length) : '';
+      return (
+        <div className={`${styles.systemMessage} ${styles.systemWarning}`}>
+          <div className={styles.systemWarningTitle}>{title}</div>
+          {body && (
+            <div className={styles.systemWarningBody}>
+              {beforeLink}
+              {linkUrl && (
+                <a href={linkUrl} target="_blank" rel="noopener noreferrer" className={styles.systemWarningLink}>
+                  {linkUrl}
+                </a>
+              )}
+              {afterLink}
+            </div>
+          )}
+        </div>
+      );
+    }
     return (
-      <div className={`${styles.systemMessage} ${isError ? styles.systemError : ''} ${isWarning ? styles.systemWarning : ''}`}>
+      <div className={`${styles.systemMessage} ${isError ? styles.systemError : ''}`}>
         {message.content}
       </div>
     );

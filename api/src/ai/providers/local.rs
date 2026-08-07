@@ -63,7 +63,6 @@ impl LlmProvider for LocalProvider {
 
         let mut body = json!({
             "model": model, "messages": messages_json, "stream": true,
-            "options": { "num_predict": 8192 },
             "stream_options": { "include_usage": true },
         });
         if !tools_json.is_empty() {
@@ -164,13 +163,6 @@ impl LocalProvider {
                             if let Some(reason) = parsed.get("choices").and_then(|c| c.get(0)).and_then(|c| c.get("finish_reason")).and_then(|r| r.as_str()) {
                                 finish_reason = reason.to_string();
                             }
-                            if let Some(usage) = parsed.get("usage") {
-                                if let Some(completion) = usage.get("completion_tokens").and_then(|v| v.as_u64()) {
-                                    if completion >= 8196 {
-                                        finish_reason = "length".to_string();
-                                    }
-                                }
-                            }
                             continue;
                         }
                     };
@@ -230,12 +222,11 @@ impl LocalProvider {
 
         tracing::info!("[Local] SSE done frames={} content={} reasoning={} tool_calls={} finish={}", frame_count, content_count, reasoning_count, tool_call_count, finish_reason);
 
-        // Detect truncation: model used ~all output tokens but didn't call tools
-        const NUM_PREDICT: u64 = 4096;
-        let total_output = full_text.len() as u64 + full_reasoning.len() as u64;
+        // Detect truncation: only when no real text was produced (model stalled in thinking)
         let truncated = tool_call_count == 0
-            && total_output > (NUM_PREDICT * 9 / 10)
-            && finish_reason == "stop";
+            && full_text.trim().len() < 20
+            && finish_reason == "stop"
+            && reasoning_count > 50;
 
         Ok((full_text, full_reasoning, if truncated { "truncated".into() } else { finish_reason }))
     }

@@ -290,6 +290,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
               </div>
             )}
 
+            {/* ── TEST: warning bar layout ── */}
+            <ChatMessage message={{ role: 'system', content: 'Unable to complete your request — token limit reached.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/', timestamp: Date.now() }} />
+            <ChatMessage message={{ role: 'system', content: 'Error: Connection lost: timeout', timestamp: Date.now() }} />
+
             {/* Streaming bubble */}
             {showStreamingBubble && (
               <ChatMessage

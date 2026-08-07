@@ -307,7 +307,7 @@ async fn process_chat(
 
     // Exceeded max iterations
     Err(AiError::Stream(
-        "Unable to complete your request — maximum tool calls reached.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/".to_string(),
+        "Unable to complete your request — maximum tool calls reached.\n\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/".to_string(),
     ))
 }
 
