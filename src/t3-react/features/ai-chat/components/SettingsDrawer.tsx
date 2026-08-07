@@ -43,6 +43,7 @@ export interface AiProviderSettings {
 interface Props {
   open: boolean;
   settings: AiProviderSettings;
+  providerCache: Record<ProviderType, Pick<AiProviderSettings, 'endpoint' | 'model' | 'apiKey'>>;
   onSave: (settings: AiProviderSettings) => void;
   onClose: () => void;
 }
@@ -81,7 +82,7 @@ const LOCAL_SERVERS = [
 
 // ── Component ──
 
-export const SettingsDrawer: React.FC<Props> = ({ open, settings, onSave, onClose }) => {
+export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache, onSave, onClose }) => {
   const [provider, setProvider] = useState<ProviderType>(settings.provider);
   const [endpoint, setEndpoint] = useState(settings.endpoint);
   const [model, setModel] = useState(settings.model);
@@ -106,11 +107,13 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, onSave, onClos
   const handleProviderChange = useCallback((_: any, data: { value: string }) => {
     const p = data.value as ProviderType;
     setProvider(p);
-    const preset = PROVIDER_PRESETS[p];
-    setEndpoint(preset.defaultEndpoint);
-    setModel(preset.defaultModel);
+    // Restore last-used settings for this provider, falling back to defaults
+    const cached = providerCache[p];
+    setEndpoint(cached?.endpoint ?? PROVIDER_PRESETS[p].defaultEndpoint);
+    setModel(cached?.model ?? PROVIDER_PRESETS[p].defaultModel);
+    setApiKey(cached?.apiKey ?? '');
     setTestResult('idle');
-  }, []);
+  }, [providerCache]);
 
   const handleSave = useCallback(() => {
     onSave({ provider, endpoint, model, apiKey });

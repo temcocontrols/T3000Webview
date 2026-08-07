@@ -25,7 +25,7 @@ import { ChatSidebar } from './ChatSidebar';
 import { SettingsDrawer } from './SettingsDrawer';
 import { ToolsDrawer } from './ToolsDrawer';
 import { Popover, PopoverTrigger, PopoverSurface, Button } from '@fluentui/react-components';
-import type { AiProviderSettings } from './SettingsDrawer';
+import type { AiProviderSettings, ProviderType } from './SettingsDrawer';
 import styles from '../AiChat.module.css';
 
 const DEFAULT_SETTINGS: AiProviderSettings = {
@@ -36,11 +36,43 @@ const DEFAULT_SETTINGS: AiProviderSettings = {
 };
 
 const STORAGE_KEY = 't3.ai.settings';
+const PROVIDER_CACHE_KEY = 't3.ai.providerCache';
+
+type ProviderCache = Record<ProviderType, Pick<AiProviderSettings, 'endpoint' | 'model' | 'apiKey'>>;
+
+const DEFAULT_CACHE: ProviderCache = {
+  local: { endpoint: 'http://localhost:11434/v1', model: 'llama3.1:8b', apiKey: '' },
+  anthropic: { endpoint: 'https://api.anthropic.com/v1', model: 'claude-3-5-sonnet-20241022', apiKey: '' },
+  gemini: { endpoint: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-2.0-flash', apiKey: '' },
+};
+
+const loadProviderCache = (): ProviderCache => {
+  try {
+    const raw = localStorage.getItem(PROVIDER_CACHE_KEY);
+    if (raw) return { ...DEFAULT_CACHE, ...JSON.parse(raw) };
+  } catch {}
+  return DEFAULT_CACHE;
+};
+
+const saveProviderCache = (cache: ProviderCache) => {
+  try {
+    localStorage.setItem(PROVIDER_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+};
 
 const loadSettings = (): AiProviderSettings => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrate old format: if provider-specific cache doesn't exist, seed it from current settings
+      if (!localStorage.getItem(PROVIDER_CACHE_KEY)) {
+        const cache = loadProviderCache();
+        cache[parsed.provider] = { endpoint: parsed.endpoint, model: parsed.model, apiKey: parsed.apiKey || '' };
+        saveProviderCache(cache);
+      }
+      return parsed;
+    }
   } catch {}
   return DEFAULT_SETTINGS;
 };
@@ -48,6 +80,10 @@ const loadSettings = (): AiProviderSettings => {
 const saveSettings = (s: AiProviderSettings) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    // Also update the per-provider cache
+    const cache = loadProviderCache();
+    cache[s.provider] = { endpoint: s.endpoint, model: s.model, apiKey: s.apiKey || '' };
+    saveProviderCache(cache);
   } catch {}
 };
 
@@ -64,6 +100,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const [historyHoveredId, setHistoryHoveredId] = useState<string | null>(null);
   const [clearAllOpen, setClearAllOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
+  const [providerCache, setProviderCache] = useState<ProviderCache>(loadProviderCache);
   const navigate = useNavigate();
   const setChatMode = useUIStore((s) => s.setChatMode);
   const setPreviousPageHash = useChatStore((s) => s.setPreviousPageHash);
@@ -290,10 +327,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
               </div>
             )}
 
-            {/* ── TEST: warning bar layout ── */}
-            <ChatMessage message={{ role: 'system', content: 'Unable to complete your request — token limit reached.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/', timestamp: Date.now() }} />
-            <ChatMessage message={{ role: 'system', content: 'Error: Connection lost: timeout', timestamp: Date.now() }} />
-
             {/* Streaming bubble */}
             {showStreamingBubble && (
               <ChatMessage
@@ -412,7 +445,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
         <SettingsDrawer
           open={settingsOpen}
           settings={aiSettings}
-          onSave={(s) => { setAiSettings(s); saveSettings(s); setSettingsOpen(false); }}
+          providerCache={providerCache}
+          onSave={(s) => {
+            setAiSettings(s);
+            saveSettings(s);
+            setProviderCache(loadProviderCache());
+            setSettingsOpen(false);
+          }}
           onClose={() => setSettingsOpen(false)}
         />
       )}
