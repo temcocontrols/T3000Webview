@@ -24,7 +24,7 @@ impl LlmProvider for AnthropicProvider {
         messages: &[Message],
         tools: &[ToolDef],
         tx: &UnboundedSender<StreamEvent>,
-    ) -> Result<(), AiError> {
+    ) -> Result<Option<String>, AiError> {
         let url = format!(
             "{}/messages",
             endpoint.trim_end_matches('/')
@@ -245,6 +245,6 @@ impl LlmProvider for AnthropicProvider {
             }
         }
 
-        Ok(())
+        Ok(None)
     }
 }

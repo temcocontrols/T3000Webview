@@ -86,7 +86,11 @@ pub enum StreamEvent {
     ToolResult { id: String, result: String },
     /// The turn is complete.
     #[serde(rename = "done")]
-    Done { session_id: String },
+    Done {
+        session_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        finish_reason: Option<String>,
+    },
     /// A fatal error occurred.
     #[serde(rename = "error")]
     Error { message: String },

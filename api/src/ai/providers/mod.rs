@@ -33,6 +33,7 @@ pub trait LlmProvider: Send + Sync {
     /// when the LLM requests a tool. The route handler intercepts tool
     /// calls, executes them locally, and re-invokes this method with
     /// updated messages.
+    /// Returns Ok(Some(finish_reason)) on success — "stop", "length", "tool_calls", etc.
     async fn stream_chat(
         &self,
         endpoint: &str,
@@ -41,7 +42,7 @@ pub trait LlmProvider: Send + Sync {
         messages: &[Message],
         tools: &[ToolDef],
         tx: &tokio::sync::mpsc::UnboundedSender<StreamEvent>,
-    ) -> Result<(), AiError>;
+    ) -> Result<Option<String>, AiError>;
 }
 
 /// Select the appropriate provider based on the provider key.

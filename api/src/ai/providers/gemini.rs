@@ -24,7 +24,7 @@ impl LlmProvider for GeminiProvider {
         messages: &[Message],
         tools: &[ToolDef],
         tx: &UnboundedSender<StreamEvent>,
-    ) -> Result<(), AiError> {
+    ) -> Result<Option<String>, AiError> {
         let base = endpoint.trim_end_matches('/');
         let url = format!(
             "{}/models/{}:streamGenerateContent?alt=sse",
@@ -221,6 +221,6 @@ impl LlmProvider for GeminiProvider {
             }
         }
 
-        Ok(())
+        Ok(None)
     }
 }

@@ -1426,6 +1426,17 @@
   padding: 8px 14px;
   margin: 4px 16px 8px 16px;
 }
+.systemWarning {
+  color: var(--colorStatusWarningForeground1, #6d4c00);
+  font-style: normal;
+  font-weight: 500;
+  background: var(--colorStatusWarningBackground1, #fff4ce);
+  border: 1px solid var(--colorStatusWarningBorder1, #f0c03e);
+  border-radius: 6px;
+  padding: 8px 14px;
+  margin: 4px 24px 8px 24px;
+  font-size: 12px;
+}
 
 /* ── Empty state ── */
 .emptyRoot {

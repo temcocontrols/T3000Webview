@@ -214,8 +214,9 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
   // System message
   if (message.role === 'system') {
     const isError = message.content.startsWith('Error:');
+    const isWarning = message.content.startsWith('Response was truncated') || message.content.startsWith('Response may be incomplete');
     return (
-      <div className={`${styles.systemMessage} ${isError ? styles.systemError : ''}`}>
+      <div className={`${styles.systemMessage} ${isError ? styles.systemError : ''} ${isWarning ? styles.systemWarning : ''}`}>
         {message.content}
       </div>
     );

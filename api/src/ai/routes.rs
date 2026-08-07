@@ -186,13 +186,13 @@ async fn process_chat(
         }
 
         // Wait for provider to complete and check for errors
-        match provider_handle.await {
-            Ok(Ok(())) => {}
+        let finish_reason = match provider_handle.await {
+            Ok(Ok(reason)) => reason.unwrap_or_else(|| "stop".into()),
             Ok(Err(e)) => return Err(e),
             Err(join_err) => {
                 return Err(AiError::Stream(format!("Provider task panicked: {}", join_err)));
             }
-        }
+        };
 
         // ── No tools called — this is the final turn ──
         if tool_call_records.is_empty() {
@@ -211,6 +211,7 @@ async fn process_chat(
             // Send done event
             let done_json = serde_json::to_string(&StreamEvent::Done {
                 session_id: session.id.clone(),
+                finish_reason: Some(finish_reason),
             })
             .unwrap();
             let _ = tx.send(Ok(Event::default().data(done_json)));
@@ -321,36 +322,24 @@ async fn execute_mcp_tool(
 
 /// Build the default system prompt — simpler for local models.
 fn build_system_prompt() -> String {
-    r#"You are a T3000 building automation engineer. You help configure HVAC equipment IO points.
+    r#"You are a T3000 building automation engineer. Configure HVAC IO points.
 
-## Workflow Pattern (CRITICAL)
-Follow this pattern for any configuration task:
-1. ANALYZE: Understand what the user needs
-2. PROPOSE: List suggested points with labels, types, ranges, units — do NOT call tools yet
-3. WAIT: Let the user review and refine
-4. CONFIRM: User must explicitly approve ("OK", "yes", "go ahead", "apply")
-5. EXECUTE: Only now use point_write or other tools to apply the configuration
+## RULES (follow strictly)
+1. Keep ALL reasoning under 150 words total — you have limited output space
+2. NEVER repeat yourself. Say it once, then act.
+3. After user says "OK", immediately call tools. Do NOT explain your plan again.
+4. If you need multiple tool calls, batch them together.
 
-## Example Flow
-User: "Set up IO for an AHU with supply air temp, room temp, fan status"
-Agent: "I propose these points:
-1. INPUT: AHU1 Supply Air Temp — Type: 10K Thermistor, Range: 0-5V, Scale: -40 to 120°F, Units: degF
-2. INPUT: AHU1 Room Temp — Type: 10K Thermistor, Range: 0-5V, Scale: 40-90°F, Units: degF  
-3. INPUT: AHU1 Fan Status — Type: Digital, Range: ON/OFF
-Shall I apply this?"
-→ User says "OK" → NOW use write_points to configure each point
+## Workflow
+- Propose points concisely → Wait for OK → Execute tools immediately
 
-## Point Configuration Reference
-- Analog Input ranges: 0-5V, 0-10V, 4-20mA
-- Analog Output ranges: 0-10V, 4-20mA
-- Digital: ON/OFF, OPEN/CLOSED, RUN/STOP
-- Engineering units: degF, degC, %, PPM, CFM, PSI, Amps, Volts, Hz
-- Label format: "EQUIP NAME Type" (e.g., "AHU1 Supply Air Temp")
+## Point Reference
+Analog ranges: 0-5V, 0-10V, 4-20mA | Digital: ON/OFF
+Units: degF, degC, %, Amps, Volts
+Label format: "EQUIP NAME Type" (e.g., "AHU1 Supply Air Temp")
 
-## Available Tools
-You have access to: device_list, point_read, point_write, point_read_batch, alarm_list, trendlog_query, search_points, auto_tag, and more.
-
-Be concise. NEVER call tools on step 2 (proposal phase). Only call tools on step 5 (execution phase)."#
+## Tools
+device_list, point_read, point_write, point_read_batch, point_write_batch, alarm_list, trendlog_query, search_points"#
     .to_string()
 }
 

@@ -57,6 +57,7 @@ interface StreamEvent {
     arguments?: string;
     result?: string;
     session_id?: string;
+    finish_reason?: string;
     message?: string;
     steps?: number;
     duration_ms?: number;
@@ -205,6 +206,8 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
         const toolCallRecords: ToolCallRecord[] = [];
         const steps: ThinkingStep[] = [];
         let thinkingDurationMs = 0;
+        let receivedDone = false;
+        let truncated = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -287,8 +290,12 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
                 break;
               }
               case 'done': {
+                receivedDone = true;
                 if (event.data?.session_id) {
                   storeSetSessionId(event.data.session_id);
+                }
+                if (event.data?.finish_reason === 'length' || event.data?.finish_reason === 'truncated') {
+                  truncated = true;
                 }
                 break;
               }
@@ -313,6 +320,19 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
             timestamp: Date.now(),
           };
           storeSetMessages((prev) => [...prev, assistantMsg]);
+        }
+
+        // Show warning AFTER the assistant message
+        if (truncated) {
+          storeSetMessages((prev) => [
+            ...prev,
+            { role: 'system', content: 'Response was truncated — the model reached its token limit. Try a shorter request or increase the max tokens in settings.', timestamp: Date.now() },
+          ]);
+        } else if (!receivedDone && (assistantContent || steps.length > 0)) {
+          storeSetMessages((prev) => [
+            ...prev,
+            { role: 'system', content: 'Response may be incomplete — the connection was interrupted.', timestamp: Date.now() },
+          ]);
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') {

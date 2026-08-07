@@ -25,7 +25,7 @@ impl LlmProvider for LocalProvider {
         messages: &[Message],
         tools: &[ToolDef],
         tx: &UnboundedSender<StreamEvent>,
-    ) -> Result<(), AiError> {
+    ) -> Result<Option<String>, AiError> {
         let url = format!("{}/chat/completions", endpoint.trim_end_matches('/'));
         tracing::info!("[Local] Request to {} model={} msgs={} tools={}", url, model, messages.len(), tools.len());
 
@@ -63,6 +63,8 @@ impl LlmProvider for LocalProvider {
 
         let mut body = json!({
             "model": model, "messages": messages_json, "stream": true,
+            "options": { "num_predict": 8192 },
+            "stream_options": { "include_usage": true },
         });
         if !tools_json.is_empty() {
             body["tools"] = json!(tools_json);
@@ -98,7 +100,8 @@ impl LlmProvider for LocalProvider {
         }
 
         tracing::info!("[Local] Starting SSE stream parse");
-        Self::parse_and_collect(response, tx).await.map(|_| ())
+        let result = Self::parse_and_collect(response, tx).await?;
+        Ok(Some(result.2))
     }
 }
 
@@ -106,7 +109,7 @@ impl LocalProvider {
     async fn parse_and_collect(
         resp: reqwest::Response,
         tx: &UnboundedSender<StreamEvent>,
-    ) -> Result<(String, String, usize), AiError> {
+    ) -> Result<(String, String, String), AiError> {
         let mut stream = resp.bytes_stream();
         let mut buffer = String::new();
         let mut tool_call_buf: Option<(String, String, String)> = None;
@@ -116,6 +119,7 @@ impl LocalProvider {
         let mut reasoning_count = 0u64;
         let mut tool_call_count = 0u64;
         let mut frame_count = 0u64;
+        let mut finish_reason = "stop".to_string();
         let thinking_start = Instant::now();
         let mut thinking_ended = false;
 
@@ -156,7 +160,19 @@ impl LocalProvider {
 
                     let delta = match parsed.get("choices").and_then(|c| c.get(0)).and_then(|c| c.get("delta")) {
                         Some(d) => d,
-                        None => continue,
+                        None => {
+                            if let Some(reason) = parsed.get("choices").and_then(|c| c.get(0)).and_then(|c| c.get("finish_reason")).and_then(|r| r.as_str()) {
+                                finish_reason = reason.to_string();
+                            }
+                            if let Some(usage) = parsed.get("usage") {
+                                if let Some(completion) = usage.get("completion_tokens").and_then(|v| v.as_u64()) {
+                                    if completion >= 8196 {
+                                        finish_reason = "length".to_string();
+                                    }
+                                }
+                            }
+                            continue;
+                        }
                     };
 
                     if let Some(t) = delta.get("reasoning_content").and_then(|c| c.as_str()) {
@@ -212,8 +228,16 @@ impl LocalProvider {
             }
         }
 
-        tracing::info!("[Local] SSE done frames={} content={} reasoning={} tool_calls={}", frame_count, content_count, reasoning_count, tool_call_count);
-        Ok((full_text, full_reasoning, tool_call_count as usize))
+        tracing::info!("[Local] SSE done frames={} content={} reasoning={} tool_calls={} finish={}", frame_count, content_count, reasoning_count, tool_call_count, finish_reason);
+
+        // Detect truncation: model used ~all output tokens but didn't call tools
+        const NUM_PREDICT: u64 = 4096;
+        let total_output = full_text.len() as u64 + full_reasoning.len() as u64;
+        let truncated = tool_call_count == 0
+            && total_output > (NUM_PREDICT * 9 / 10)
+            && finish_reason == "stop";
+
+        Ok((full_text, full_reasoning, if truncated { "truncated".into() } else { finish_reason }))
     }
 }
 
