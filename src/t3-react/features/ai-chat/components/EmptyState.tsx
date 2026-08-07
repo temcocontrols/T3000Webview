@@ -17,32 +17,25 @@ import {
   DesktopRegular,
   AlertRegular,
   TagRegular,
-  DataTrendingRegular,
   EyeRegular,
   EditRegular,
   PulseSquareRegular,
-  CheckmarkCircleRegular,
-  WrenchRegular,
 } from '@fluentui/react-icons';
 
 const CARDS = [
-  { title: 'Building Health', desc: 'Diagnose all devices — alarms, programs, points', query: 'Run diagnostics on all devices', Icon: PulseSquareRegular },
   { title: 'Device List', desc: 'Show all devices and their online status', query: 'List all devices and their online status', Icon: DesktopRegular },
   { title: 'Active Alarms', desc: 'Check current alarms across the system', query: 'Show me all active alarms', Icon: AlertRegular },
+  { title: 'Building Health', desc: 'Diagnose all devices — alarms, programs, points', query: 'Run diagnostics on all devices', Icon: PulseSquareRegular },
   { title: 'Search Tags', desc: 'Find points by Haystack or Brick tags', query: 'Search for supply air temperature sensors', Icon: TagRegular },
-  { title: 'Trend Logs', desc: 'Query historical trend data for a point', query: 'Show trend data for the last hour', Icon: DataTrendingRegular },
   { title: 'Read Points', desc: 'Read current values from any device', query: 'Read the current value of point 0 on device 1', Icon: EyeRegular },
   { title: 'Write Points', desc: 'Command a value to an output point', query: 'Set point 5 on device 1 to 22.5', Icon: EditRegular },
-  { title: 'Tasks', desc: 'Create a commissioning workflow checklist', query: 'Create a task list for commissioning AHU-1', Icon: CheckmarkCircleRegular },
-  { title: 'Maintenance', desc: 'Check firmware, schedules, and PID loops', query: 'Check the health of all PID loops', Icon: WrenchRegular },
 ];
 
-const PANEL_CARDS = CARDS.slice(0, 5);
+const PANEL_CARDS = CARDS.slice(0, 4);
 
 const TAGS = [
   'Preview Auto-Tags', 'Acknowledge Alarm', 'Batch Read Points',
   'Auto-Tag Devices', 'Refresh Device Data', 'List Tagging Rules',
-  'Save site memory', 'Create task',
 ];
 
 const EXAMPLES = [
