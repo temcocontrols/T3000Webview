@@ -15,7 +15,8 @@
 //   Analytics (2): haystack_validate, haystack_export
 //   Tasks (4):     task_create, task_list, task_update, task_delete
 //   Memory (3):    memory_save, memory_list, memory_delete
-//   Diagnostics(2): device_ping, device_diagnostics
+//   Diagnostics(2): device_diagnostics, device_diagnostics_batch
+//   Navigation (5): nav_list, nav_search, nav_redirect, page_info, device_current
 //   Rules (2):     rule_toggle, rule_create
 //   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
 //   Docs (2):      doc_list, doc_read
@@ -1145,6 +1146,67 @@ lazy_static::lazy_static! {
             }
         }),
     },
+    // ═══ v5: Navigation ═══
+    ToolDef {
+        name: "t3000_nav_list",
+        title: "List T3000 Pages",
+        description: "List all pages in the T3000 web UI with paths, titles, keyboard shortcuts, and whether they require a device to be selected. Use to help users find the right page: 'Where do I configure PID loops?' → nav_list.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "section": {
+                    "type": "string",
+                    "description": "Optional: filter by section — points, control, monitoring, config, system, develop"
+                }
+            }
+        }),
+    },
+    ToolDef {
+        name: "t3000_nav_search",
+        title: "Search T3000 Pages",
+        description: "Search for T3000 pages and topics by keyword. Returns matching pages ranked by relevance. Use when the user asks 'How do I...' or 'Where is...' type questions about the T3000 interface.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "query": { "type": "string", "description": "Search term — e.g., 'alarm', 'schedule', 'PID', 'network'" }
+            },
+            "required": ["query"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_nav_redirect",
+        title: "Navigate to Page",
+        description: "Get the URL to navigate to a specific T3000 page, optionally with a device pre-selected. The frontend uses this URL to redirect the user. Use when the user says 'open the outputs page' or 'take me to alarms'.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "page": { "type": "string", "description": "Page name or path — e.g., 'outputs', 'alarms', 'programs', 'pidloops'" },
+                "serial_number": { "type": "integer", "description": "Optional: pre-select this device on the target page" }
+            },
+            "required": ["page"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_page_info",
+        title: "Page Details",
+        description: "Get detailed information about a T3000 page: what it does, what you can view/edit/configure, related MCP tools, keyboard shortcuts, and available features. Use when the user asks 'What can I do on the Alarms page?'",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "page": { "type": "string", "description": "Page name — e.g., 'inputs', 'outputs', 'schedules', 'settings'" }
+            },
+            "required": ["page"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_device_current",
+        title: "Get Current Device",
+        description: "Get the currently selected device in the web UI. Returns serial number, name, type, and point counts. Use when the user asks 'which device am I on?' or as a context hint for other operations.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {}
+        }),
+    },
     ];
 }
 
@@ -1585,8 +1647,7 @@ async fn run_device_diagnostics(db: &sea_orm::DatabaseConnection, serial: i32) -
 
     // 1. Basic device info
     let dev_sql = format!(
-        "SELECT Product_Name, Firmware_Version_Hi, Firmware_Version_Lo, Hardware_Rev
-         FROM DEVICES WHERE SerialNumber = {}", serial
+        "SELECT Product_Name FROM DEVICES WHERE SerialNumber = {}", serial
     );
     let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dev_sql)).await
         .map_err(|e| format!("Device query failed: {}", e))?;
@@ -1594,9 +1655,18 @@ async fn run_device_diagnostics(db: &sea_orm::DatabaseConnection, serial: i32) -
         .ok_or_else(|| format!("Device {} not found", serial))?;
 
     let name: String = dev.try_get("", "Product_Name").unwrap_or_default();
-    let fw_hi: String = dev.try_get("", "Firmware_Version_Hi").unwrap_or_default();
-    let fw_lo: String = dev.try_get("", "Firmware_Version_Lo").unwrap_or_default();
-    let hw: String = dev.try_get("", "Hardware_Rev").unwrap_or_default();
+
+    // Firmware + hardware from HARDWARE_INFO
+    let hw_sql = format!(
+        "SELECT Hardware_Rev, Firmware0_Rev_Main, Firmware0_Rev_Sub
+         FROM HARDWARE_INFO WHERE SerialNumber = {}", serial
+    );
+    let (hw, fw_hi, fw_lo) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &hw_sql)).await
+        .ok().and_then(|r| r.first().map(|rr| (
+            rr.try_get::<i32>("", "Hardware_Rev").unwrap_or(0),
+            rr.try_get::<i32>("", "Firmware0_Rev_Main").unwrap_or(0),
+            rr.try_get::<i32>("", "Firmware0_Rev_Sub").unwrap_or(0),
+        ))).unwrap_or((0, 0, 0));
 
     // 2. Point counts
     let count_sql = format!(
@@ -1681,6 +1751,142 @@ async fn run_device_diagnostics(db: &sea_orm::DatabaseConnection, serial: i32) -
         "issues": issues,
         "timestamp": now,
     }))
+}
+
+// ═══ Navigation Data (static page registry) ═══
+
+struct NavPage {
+    title: &'static str,
+    path: &'static str,
+    shortcut: &'static str,
+    requires_device: bool,
+    section: &'static str,
+    description: &'static str,
+    features: &'static [&'static str],
+    related_tools: &'static [&'static str],
+}
+
+fn get_nav_pages() -> Vec<NavPage> {
+    vec![
+        // ── Points ──
+        NavPage { title: "Dashboard", path: "/t3000/dashboard", shortcut: "", requires_device: false, section: "points",
+            description: "Overview of all devices with online/offline status, alarm counts, and quick stats.",
+            features: &["Device cards with status", "Online/offline indicators", "Alarm count badges", "Quick navigation to device pages"],
+            related_tools: &["device_list", "building_summary", "device_diagnostics_batch"] },
+        NavPage { title: "Inputs", path: "/t3000/inputs", shortcut: "Alt+I", requires_device: true, section: "points",
+            description: "View and configure input points (analog sensors, digital inputs). Shows labels, values, engineering units, range, and digital/analog type.",
+            features: &["Search/filter by label", "Edit labels and descriptions", "Batch edit mode", "Column visibility toggles", "Auto-tagging integration", "Value display with units"],
+            related_tools: &["point_read", "point_write", "point_read_batch", "device_get_points", "haystack_auto_tag"] },
+        NavPage { title: "Outputs", path: "/t3000/outputs", shortcut: "Alt+O", requires_device: true, section: "points",
+            description: "View and control output points. Override values, toggle auto/manual mode, configure ranges and labels.",
+            features: &["Search/filter by label", "Override output values", "Auto/manual mode toggle", "Batch edit mode", "Column visibility toggles", "Auto-tagging integration"],
+            related_tools: &["point_read", "point_write", "point_write_batch", "device_get_points"] },
+        NavPage { title: "Variables", path: "/t3000/variables", shortcut: "Alt+V", requires_device: true, section: "points",
+            description: "View and edit variable points used in control logic, setpoints, and calculations.",
+            features: &["Search/filter by label", "Edit values and labels", "Batch edit mode", "Column visibility toggles"],
+            related_tools: &["point_read", "point_write", "point_read_batch"] },
+        // ── Control ──
+        NavPage { title: "Programs", path: "/t3000/programs", shortcut: "Alt+P", requires_device: true, section: "control",
+            description: "PLC program editor. View and edit PLC/BASIC control programs. Shows program status (running/stopped), size, and source code.",
+            features: &["Program list with status", "Source code viewer/editor", "Run/stop programs", "Auto/manual mode", "Program size display"],
+            related_tools: &["program_list", "program_read"] },
+        NavPage { title: "PID Loops", path: "/t3000/pidloops", shortcut: "Alt+L", requires_device: true, section: "control",
+            description: "Configure PID control loops. Set setpoint, proportional/reset/rate parameters, action type, and auto/manual mode.",
+            features: &["PID loop list", "Setpoint adjustment", "P/I/D parameter tuning", "Auto/manual mode toggle", "Input/output value display"],
+            related_tools: &["pid_list"] },
+        NavPage { title: "Schedules", path: "/t3000/schedules", shortcut: "Alt+S", requires_device: true, section: "control",
+            description: "Weekly schedule editor. Configure time-based ON/OFF events for each day of the week.",
+            features: &["Daily time settings", "Output/variable assignment", "Interval settings", "Holiday overrides"],
+            related_tools: &["schedule_list"] },
+        NavPage { title: "Holidays", path: "/t3000/holidays", shortcut: "Alt+H", requires_device: true, section: "control",
+            description: "Holiday exception schedules. Define dates that override normal weekly schedules.",
+            features: &["Date-based exceptions", "Month/day/year fields", "Holiday value settings", "Auto/manual mode"],
+            related_tools: &["holiday_list"] },
+        // ── Monitoring ──
+        NavPage { title: "Alarms", path: "/t3000/alarms", shortcut: "Alt+A", requires_device: true, section: "monitoring",
+            description: "Active alarm log. View and acknowledge alarms with priority levels, timestamps, and descriptions.",
+            features: &["Active alarm list", "Acknowledge alarms", "Priority indicators", "Alarm type and source", "Timestamp display"],
+            related_tools: &["alarm_list", "alarm_acknowledge", "alarm_settings_read"] },
+        NavPage { title: "Trend Logs", path: "/t3000/trendlogs", shortcut: "Alt+T", requires_device: true, section: "monitoring",
+            description: "Monitor and analyze trend log data. View historical values for points with trend logging enabled.",
+            features: &["Trend log list", "Data point configuration", "Interval settings", "Historical data viewer"],
+            related_tools: &["trendlog_list", "trendlog_query", "trendlog_export"] },
+        NavPage { title: "Trend Chart", path: "/t3000/trends/chart", shortcut: "", requires_device: false, section: "monitoring",
+            description: "Visual trend chart. Plot historical data over time with zoom and pan.",
+            features: &["Time-series chart", "Multi-point overlay", "Zoom and pan", "Time range selection"],
+            related_tools: &["trendlog_query", "trendlog_export"] },
+        NavPage { title: "Graphics", path: "/t3000/graphics", shortcut: "Alt+G", requires_device: true, section: "monitoring",
+            description: "HMI graphic screens. View and edit visual representations of equipment with live point bindings.",
+            features: &["Graphic screen list", "Live point values", "Picture file display", "Switch node navigation"],
+            related_tools: &["graphics_list"] },
+        // ── Config ──
+        NavPage { title: "Settings", path: "/t3000/settings", shortcut: "Alt+E", requires_device: true, section: "config",
+            description: "Device configuration. Network (IP/subnet/gateway), communication (COM ports/baud rates), time (timezone/NTP), and email alarm settings.",
+            features: &["Network settings", "Communication settings", "Time/NTP settings", "Protocol settings", "Email alarm settings", "DynDNS settings"],
+            related_tools: &["settings_read", "settings_write"] },
+        NavPage { title: "Users", path: "/t3000/users", shortcut: "", requires_device: false, section: "config",
+            description: "User account management. Configure user names, access levels, rights, and default panels.",
+            features: &["User list", "Access level configuration", "Rights management", "Default panel assignment"],
+            related_tools: &["users_list"] },
+        NavPage { title: "Custom Units", path: "/t3000/custom-units", shortcut: "", requires_device: true, section: "config",
+            description: "Custom engineering units. Define unit conversion tables for specialized sensors.",
+            features: &["Unit table editor", "Conversion formulas", "Unit assignment to points"],
+            related_tools: &[] },
+        NavPage { title: "Haystack Tags", path: "/t3000/haystack-tags", shortcut: "Alt+Y", requires_device: false, section: "config",
+            description: "Haystack semantic tagging. Browse and manage Haystack v4 tags across all devices.",
+            features: &["Tag list with categories", "Point-tag mappings", "Tag documentation"],
+            related_tools: &["haystack_list_tags", "haystack_get_point_tags", "haystack_search_points"] },
+        NavPage { title: "Auto-Tagging & MCP", path: "/t3000/auto-tagging", shortcut: "", requires_device: false, section: "config",
+            description: "Auto-tagging rules and MCP server management. Create regex rules to automatically apply Haystack tags and Brick classes.",
+            features: &["Auto-tagging rule editor", "Rule preview", "MCP tool reference", "Prompt examples"],
+            related_tools: &["haystack_auto_tag", "haystack_preview_tags", "haystack_list_rules", "rule_create", "rule_toggle"] },
+        // ── System ──
+        NavPage { title: "Discover Devices", path: "/t3000/discover", shortcut: "", requires_device: false, section: "system",
+            description: "Device discovery. Scan the network for T3000 controllers using BACnet/MSTP or Modbus.",
+            features: &["Network scan", "Device list", "Add discovered devices", "Connection testing"],
+            related_tools: &["device_list"] },
+        NavPage { title: "Buildings", path: "/t3000/buildings", shortcut: "", requires_device: false, section: "system",
+            description: "Building hierarchy. Organize devices into buildings, floors, and rooms.",
+            features: &["Building/floor/room tree", "Device assignment", "Hierarchy navigation"],
+            related_tools: &["device_list"] },
+        NavPage { title: "Network Points", path: "/t3000/network", shortcut: "Alt+N", requires_device: true, section: "system",
+            description: "Network point configuration. Set up remote I/O points shared across devices.",
+            features: &["Remote point table", "Point mapping", "Network binding"],
+            related_tools: &[] },
+        NavPage { title: "Array", path: "/t3000/array", shortcut: "", requires_device: true, section: "system",
+            description: "Array editor. Configure array data structures for batch point operations.",
+            features: &["Array list", "Element editor", "Batch operations"],
+            related_tools: &[] },
+        NavPage { title: "Tables", path: "/t3000/tables", shortcut: "", requires_device: true, section: "system",
+            description: "Generic data tables. View and edit custom table data stored on devices.",
+            features: &["Table browser", "Row editor", "Import/export"],
+            related_tools: &[] },
+        // ── Develop ──
+        NavPage { title: "File Browser", path: "/t3000/develop/files", shortcut: "", requires_device: false, section: "develop",
+            description: "Browse project files and upload/download device configurations.",
+            features: &["File tree", "Upload/download", "File operations"],
+            related_tools: &[] },
+        NavPage { title: "Database Viewer", path: "/t3000/develop/database", shortcut: "", requires_device: false, section: "develop",
+            description: "Direct database viewer. Inspect SQLite tables and run queries.",
+            features: &["Table browser", "SQL query editor", "Data export"],
+            related_tools: &["point_read", "device_list"] },
+        NavPage { title: "Transport Tester", path: "/t3000/develop/transport", shortcut: "", requires_device: false, section: "develop",
+            description: "Network transport testing. Send raw commands to devices for debugging.",
+            features: &["Command sender", "Response viewer", "Protocol debug"],
+            related_tools: &[] },
+        NavPage { title: "T3000 Logs", path: "/t3000/develop/logs", shortcut: "", requires_device: false, section: "develop",
+            description: "Application and FFI logs. View debug output from the T3000 backend.",
+            features: &["Log viewer", "Filter by level", "Search", "Export"],
+            related_tools: &[] },
+        NavPage { title: "Database Config", path: "/t3000/database/config", shortcut: "", requires_device: false, section: "develop",
+            description: "Database connection settings. Configure SQL Server or SQLite backend.",
+            features: &["Connection string editor", "Test connection", "Migration tools"],
+            related_tools: &[] },
+        NavPage { title: "Documentation", path: "/t3000/documentation", shortcut: "", requires_device: false, section: "develop",
+            description: "Product documentation. Browse user guides, API references, and tutorials.",
+            features: &["Doc browser", "Search", "Section navigation"],
+            related_tools: &["doc_list", "doc_read"] },
+    ]
 }
 
 pub(crate) async fn execute_tool(
@@ -2832,9 +3038,9 @@ pub(crate) async fn execute_tool(
                     let mut all_rows: Vec<FlatRow> = Vec::new();
                     for sn in &serials {
                         let sq = format!(
-                            "SELECT 'INPUT' as pt, Input_Index as idx, Label, Full_Label, Units, fValue, Digital_Analog, Input_Range FROM INPUTS WHERE SerialNumber={0}
-                             UNION ALL SELECT 'OUTPUT', Output_Index, Label, Full_Label, Units, fValue, Digital_Analog, Output_Range FROM OUTPUTS WHERE SerialNumber={0}
-                             UNION ALL SELECT 'VARIABLE', Variable_Index, Label, Full_Label, Units, fValue, Digital_Analog, '' FROM VARIABLES WHERE SerialNumber={0}", sn
+                            "SELECT 'INPUT' as pt, Input_Index as idx, Label, Full_Label, Units, fValue, Digital_Analog, Range_Field as range_field FROM INPUTS WHERE SerialNumber={0}
+                             UNION ALL SELECT 'OUTPUT', Output_Index, Label, Full_Label, Units, fValue, Digital_Analog, Range_Field as range_field FROM OUTPUTS WHERE SerialNumber={0}
+                             UNION ALL SELECT 'VARIABLE', Variable_Index, Label, Full_Label, Units, fValue, Digital_Analog, Range_Field as range_field FROM VARIABLES WHERE SerialNumber={0}", sn
                         );
                         if let Ok(rows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sq)).await {
                             for r in &rows {
@@ -2847,7 +3053,7 @@ pub(crate) async fn execute_tool(
                                     units: r.try_get("", "Units").unwrap_or_default(),
                                     fval: r.try_get("", "fValue").unwrap_or_default(),
                                     da: r.try_get("", "Digital_Analog").unwrap_or_default(),
-                                    range: r.try_get("", if sq.contains("INPUT") { "Input_Range" } else { "Output_Range" }).unwrap_or_default(),
+                                    range: r.try_get("", "range_field").unwrap_or_default(),
                                 });
                             }
                         }
@@ -3222,7 +3428,7 @@ pub(crate) async fn execute_tool(
             let point_type_filter = args.get("point_type").and_then(|v| v.as_str());
 
             let (panel_id, object_instance) = lookup_action17_target(db, serial).await
-                .map_err(|e| format!("{}", e.1))?;
+                .map_err(|e| format!("Cannot refresh device {}: {}. This may be expected for devices without BACnet/MSTP protocol settings configured.", serial, e.1))?;
 
             let mut refreshed = 0;
             let point_types = match point_type_filter {
@@ -3335,22 +3541,22 @@ pub(crate) async fn execute_tool(
                 ("communication", "COMMUNICATION_SETTINGS", &["COM0_Config", "COM1_Config", "COM2_Config", "COM_Baudrate0", "COM_Baudrate1", "COM_Baudrate2", "UART_Parity0", "UART_Parity1", "UART_Parity2", "UART_Stopbit0", "UART_Stopbit1", "UART_Stopbit2", "Fix_COM_Config"]),
                 ("time", "TIME_SETTINGS", &["Time_Zone", "Time_Zone_Summer_Daytime", "Enable_SNTP", "SNTP_Server", "Flag_Time_Sync_PC", "Time_Sync_Auto_Manual", "Sync_Time_Results", "Start_Month", "Start_Day", "End_Month", "End_Day"]),
                 ("protocol", "PROTOCOL_SETTINGS", &["Modbus_ID", "Modbus_Port", "MSTP_ID", "MSTP_Network_Number", "Max_Master", "Object_Instance", "BBMD_Enable", "Network_Number", "Network_Number_Hi"]),
-                ("dyndns", "DYNDNS_SETTINGS", &["Enable_DynDNS", "Provider", "User", "Pass", "Domain", "Update_Time", "Update_Status"]),
-                ("hardware", "HARDWARE_INFO", &["Hardware_Rev", "Firmware_Version", "Firmware_Version_Hi", "Firmware_Version_Lo", "Bootloader_Rev", "Mini_Type", "Panel_Type", "USB_Mode", "SD_Exist", "Zigbee_Exist", "Max_Var", "Max_In", "Max_Out"]),
-                ("features", "FEATURE_FLAGS", &["User_Name_Enable", "Customer_Unite_Enable", "LCD_Backlight_Time", "LCD_Display_Time", "Plug_N_Play", "Refresh_Flash_Timer", "Debug_Enable", "Debug_Mode", "Screen_Type"]),
-                ("email", "EMAIL_ALARMS", &["SMTP_Server", "SMTP_Port", "Email_Address", "User_Name", "Password", "Secure_Connection_Type", "To1_Addr", "To2_Addr", "To3_Addr", "To4_Addr", "Enable", "Error_Code"]),
+                ("dyndns", "DYNDNS_SETTINGS", &["Enable_DynDNS", "DynDNS_Provider", "DynDNS_User", "DynDNS_Pass", "DynDNS_Domain", "DynDNS_Update_Time", "Update_DynDNS_Time"]),
+                ("hardware", "HARDWARE_INFO", &["Hardware_Rev", "Firmware0_Rev_Main", "Firmware0_Rev_Sub", "Firmware1_Rev", "Firmware2_Rev", "Firmware3_Rev", "Bootloader_Rev", "Mini_Type", "Panel_Type", "USB_Mode", "SD_Exist", "Zigbee_Exist", "Max_Var", "Max_In", "Max_Out"]),
+                ("features", "FEATURE_FLAGS", &["User_Name_Enable", "Customer_Unite_Enable", "Enable_Panel_Name", "LCD_Display", "LCD_Display_Type", "LCD_Point_Type", "LCD_Point_Number", "LCD_BACnet_Instance", "Enable_Plug_N_Play", "Refresh_Flash_Timer", "Reset_Default", "Debug", "Webview_JSON_Flash", "Write_Flash", "LCD_Mode", "LCD_Delay_Seconds"]),
+                ("email", "EMAIL_ALARMS", &["SMTP_Type", "SMTP_IP", "SMTP_Domain", "SMTP_Port", "Email_Address", "User_Name", "Password", "Secure_Connection_Type", "To1_Addr", "To2_Addr", "Error_Code", "Status"]),
             ];
 
             if let Some(cat) = category {
                 if let Some((key, table, cols)) = cats.iter().find(|(k, _, _)| *k == cat) {
-                    let data = read_table(db, serial, table, cols).await?;
+                    let data = read_table(db, serial, table, cols).await.unwrap_or(json!(null));
                     result.as_object_mut().unwrap().insert(key.to_string(), data);
                 } else {
                     return Err(format!("Unknown category: {}. Valid: network, communication, time, protocol, dyndns, hardware, features, email", cat));
                 }
             } else {
                 for (key, table, cols) in &cats {
-                    let data = read_table(db, serial, table, cols).await?;
+                    let data = read_table(db, serial, table, cols).await.unwrap_or(json!(null));
                     result.as_object_mut().unwrap().insert(key.to_string(), data);
                 }
             }
@@ -3377,7 +3583,7 @@ pub(crate) async fn execute_tool(
                 "network" => ("NETWORK_SETTINGS", &["IP_Address", "Subnet", "Gateway", "MAC_Address", "TCP_Type"]),
                 "communication" => ("COMMUNICATION_SETTINGS", &["COM0_Config", "COM1_Config", "COM2_Config", "COM_Baudrate0", "COM_Baudrate1", "COM_Baudrate2", "UART_Parity0", "UART_Parity1", "UART_Parity2", "UART_Stopbit0", "UART_Stopbit1", "UART_Stopbit2", "Fix_COM_Config"]),
                 "time" => ("TIME_SETTINGS", &["Time_Zone", "Time_Zone_Summer_Daytime", "Enable_SNTP", "SNTP_Server", "Flag_Time_Sync_PC", "Time_Sync_Auto_Manual", "Start_Month", "Start_Day", "End_Month", "End_Day"]),
-                "email" => ("EMAIL_ALARMS", &["SMTP_Server", "SMTP_Port", "Email_Address", "User_Name", "Password", "Secure_Connection_Type", "To1_Addr", "To2_Addr", "To3_Addr", "To4_Addr", "Enable"]),
+                "email" => ("EMAIL_ALARMS", &["SMTP_Type", "SMTP_IP", "SMTP_Domain", "SMTP_Port", "Email_Address", "User_Name", "Password", "Secure_Connection_Type", "To1_Addr", "To2_Addr"]),
                 _ => return Err(format!("Unknown category: {}. Valid: network, communication, time, email", category)),
             };
 
@@ -3559,8 +3765,8 @@ pub(crate) async fn execute_tool(
                 .ok_or_else(|| "serial_number required".to_string())?;
 
             let sql = format!(
-                "SELECT Alarm_Setting_ID, Point, Point_Type, Point_Panel, Point1, Point1_Type, Point1_Panel,
-                        Condition, Way_Low, Low, Normal, High, Way_High, Time_Field, Time_1, Time_2, Message_Count
+                "SELECT Alarm_Setting_ID, Point_Number, Point_Type, Point_Panel, Point1_Number, Point1_Type, Point1_Panel,
+                        Condition, Way_Low, Low, Normal, High, Way_High, Time_Field, Count_Field, Message_Count
                  FROM ALARM_SETTINGS WHERE SerialNumber = {} ORDER BY Alarm_Setting_ID",
                 serial
             );
@@ -3568,11 +3774,11 @@ pub(crate) async fn execute_tool(
                 .map_err(|e| format!("Alarm settings read failed: {}", e))?;
 
             let results: Vec<Value> = rows.iter().map(|r| json!({
-                "alarm_setting_id": r.try_get::<i32>("", "Alarm_Setting_ID").ok(),
-                "point": r.try_get::<i32>("", "Point").ok(),
+                "alarm_setting_id": r.try_get::<String>("", "Alarm_Setting_ID").ok(),
+                "point_number": r.try_get::<i32>("", "Point_Number").ok(),
                 "point_type": r.try_get::<i32>("", "Point_Type").ok(),
                 "point_panel": r.try_get::<i32>("", "Point_Panel").ok(),
-                "point1": r.try_get::<i32>("", "Point1").ok(),
+                "point1_number": r.try_get::<i32>("", "Point1_Number").ok(),
                 "point1_type": r.try_get::<i32>("", "Point1_Type").ok(),
                 "point1_panel": r.try_get::<i32>("", "Point1_Panel").ok(),
                 "condition": r.try_get::<i32>("", "Condition").ok(),
@@ -3582,8 +3788,7 @@ pub(crate) async fn execute_tool(
                 "high": r.try_get::<i32>("", "High").ok(),
                 "way_high": r.try_get::<i32>("", "Way_High").ok(),
                 "time_field": r.try_get::<i32>("", "Time_Field").ok(),
-                "time_1": r.try_get::<i32>("", "Time_1").ok(),
-                "time_2": r.try_get::<i32>("", "Time_2").ok(),
+                "count_field": r.try_get::<i32>("", "Count_Field").ok(),
                 "message_count": r.try_get::<i32>("", "Message_Count").ok(),
             })).collect();
 
@@ -4102,6 +4307,140 @@ pub(crate) async fn execute_tool(
                 "timestamp": Utc::now().to_rfc3339(),
             }))
             .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        // ═══ v5: Navigation ═══
+
+        "t3000_nav_list" => {
+            let section = args.get("section").and_then(|v| v.as_str());
+            let pages = get_nav_pages();
+            let filtered: Vec<&NavPage> = if let Some(sec) = section {
+                pages.iter().filter(|p| p.section == sec).collect()
+            } else {
+                pages.iter().collect()
+            };
+            let results: Vec<Value> = filtered.iter().map(|p| json!({
+                "title": p.title,
+                "path": p.path,
+                "shortcut": p.shortcut,
+                "requires_device": p.requires_device,
+                "section": p.section,
+            })).collect();
+            serde_json::to_string_pretty(&json!({"pages": results, "total": results.len()}))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_nav_search" => {
+            let query = args.get("query").and_then(|v| v.as_str())
+                .ok_or_else(|| "query required".to_string())?;
+            let query_lower = query.to_lowercase();
+            let pages = get_nav_pages();
+            let mut scored: Vec<(i32, &NavPage)> = pages.iter()
+                .filter_map(|p| {
+                    let title_lower = p.title.to_lowercase();
+                    let desc_lower = p.description.to_lowercase();
+                    let section_lower = p.section.to_lowercase();
+                    let mut score = 0i32;
+                    if title_lower.contains(&query_lower) { score += 10; }
+                    for word in query_lower.split_whitespace() {
+                        if title_lower.contains(word) { score += 5; }
+                        if desc_lower.contains(word) { score += 2; }
+                        if section_lower.contains(word) { score += 1; }
+                    }
+                    if score > 0 { Some((score, p)) } else { None }
+                })
+                .collect();
+            scored.sort_by(|a, b| b.0.cmp(&a.0));
+            let results: Vec<Value> = scored.iter().map(|(s, p)| json!({
+                "title": p.title, "path": p.path, "shortcut": p.shortcut,
+                "section": p.section, "relevance": s,
+            })).collect();
+            serde_json::to_string_pretty(&json!({"results": results, "total": results.len()}))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_nav_redirect" => {
+            let page = args.get("page").and_then(|v| v.as_str())
+                .ok_or_else(|| "page required".to_string())?;
+            let sn = args.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
+            let pages = get_nav_pages();
+            let page_lower = page.to_lowercase();
+            let found = pages.iter().find(|p| {
+                p.title.to_lowercase().contains(&page_lower)
+                    || p.path.to_lowercase().contains(&page_lower)
+            });
+            match found {
+                Some(p) => {
+                    let url = if let Some(s) = sn {
+                        format!("{}?serial={}", p.path, s)
+                    } else {
+                        p.path.to_string()
+                    };
+                    serde_json::to_string_pretty(&json!({
+                        "page": p.title, "url": format!("#{}", url),
+                        "shortcut": p.shortcut, "requires_device": p.requires_device,
+                    }))
+                    .map_err(|e| format!("Serialize error: {}", e))
+                }
+                None => Err(format!("Page not found: {}. Use nav_list to see all pages.", page)),
+            }
+        }
+
+        "t3000_page_info" => {
+            let page = args.get("page").and_then(|v| v.as_str())
+                .ok_or_else(|| "page required".to_string())?;
+            let pages = get_nav_pages();
+            let page_lower = page.to_lowercase();
+            let found = pages.iter().find(|p| {
+                p.title.to_lowercase().contains(&page_lower)
+                    || p.path.to_lowercase().contains(&page_lower)
+            });
+            match found {
+                Some(p) => {
+                    serde_json::to_string_pretty(&json!({
+                        "title": p.title, "path": p.path,
+                        "shortcut": p.shortcut, "requires_device": p.requires_device,
+                        "section": p.section,
+                        "description": p.description,
+                        "features": p.features,
+                        "related_tools": p.related_tools,
+                    }))
+                    .map_err(|e| format!("Serialize error: {}", e))
+                }
+                None => Err(format!("Page not found: {}. Use nav_list to see all pages.", page)),
+            }
+        }
+
+        "t3000_device_current" => {
+            // Return the first device from DEVICES as a reasonable default
+            let sql = "SELECT SerialNumber, Product_Name, Product_ID FROM DEVICES ORDER BY SerialNumber LIMIT 1";
+            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql)).await
+                .map_err(|e| format!("Device query failed: {}", e))?;
+            if let Some(row) = rows.first() {
+                let serial: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
+                let name: String = row.try_get("", "Product_Name").unwrap_or_default();
+                let pid: i32 = row.try_get("", "Product_ID").unwrap_or(0);
+                // Get point counts
+                let cnt_sql = format!("SELECT 'inputs' as k, COUNT(*) as c FROM INPUTS WHERE SerialNumber = {0}
+                    UNION ALL SELECT 'outputs', COUNT(*) FROM OUTPUTS WHERE SerialNumber = {0}
+                    UNION ALL SELECT 'variables', COUNT(*) FROM VARIABLES WHERE SerialNumber = {0}", serial);
+                let mut ic = 0i64; let mut oc = 0i64; let mut vc = 0i64;
+                if let Ok(crows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &cnt_sql)).await {
+                    for cr in &crows {
+                        let k: String = cr.try_get("", "k").unwrap_or_default();
+                        let c: i64 = cr.try_get("", "c").unwrap_or(0);
+                        match k.as_str() { "inputs" => { ic = c; } "outputs" => { oc = c; } "variables" => { vc = c; } _ => {} }
+                    }
+                }
+                serde_json::to_string_pretty(&json!({
+                    "serial": serial, "name": name, "device_type": pid,
+                    "points": { "inputs": ic, "outputs": oc, "variables": vc, "total": ic + oc + vc },
+                    "note": "This is the first device in the system. The web UI may have a different device selected."
+                }))
+                .map_err(|e| format!("Serialize error: {}", e))
+            } else {
+                Ok(json!({"error": "No devices found in the system"}).to_string())
+            }
         }
 
         _ => Err(format!("Unknown tool: {}", name)),
