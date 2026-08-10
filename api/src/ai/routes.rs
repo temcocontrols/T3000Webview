@@ -175,6 +175,7 @@ async fn process_chat(
         let mut msgs = vec![Message {
             role: "system".to_string(),
             content: prompt_builder::build_system_prompt(last_user, provider_is_local, &memories),
+            name: None,
             tool_calls: None,
             tool_call_id: None,
         }];
@@ -252,6 +253,7 @@ async fn process_chat(
                 current_messages.push(Message {
                     role: "assistant".to_string(),
                     content: assistant_text.clone(),
+                    name: None,
                     tool_calls: None,
                     tool_call_id: None,
                 });
@@ -296,33 +298,49 @@ async fn process_chat(
         // ── Tools were called — execute them and loop ──
         info!("[AI] {} tool(s) called, executing", tool_call_records.len());
 
-        let mut tool_results: Vec<(String, String)> = vec![];
+        let mut tool_results: Vec<(String, String)> = vec![];  // (id, result)
 
         for (tc_id, tc_name, tc_args) in &tool_call_records {
             info!("Tool call: {} with args {}", tc_name, tc_args);
+
+            // Safety guard: block write tools without confirm
+            if is_write_tool(tc_name) && !has_confirm(tc_args) {
+                info!("BLOCKED write tool {}: missing confirm", tc_name);
+                let blocked = wrap_error(tc_name, "This write operation requires user confirmation. Please ask the user before proceeding.");
+                let event = StreamEvent::ToolResult {
+                    id: tc_id.clone(),
+                    result: blocked.clone(),
+                };
+                let json = serde_json::to_string(&event).unwrap();
+                let _ = tx.send(Ok(Event::default().data(json)));
+                tool_results.push((tc_id.clone(), blocked));
+                continue;
+            }
+
             match execute_mcp_tool(tc_name, tc_args, state).await {
                 Ok(result) => {
                     let result_json = serde_json::to_string(&result).unwrap_or_else(|_| "null".to_string());
                     info!("Tool result for {}: {} chars", tc_name, result_json.len());
-                    // Truncate large results to avoid overwhelming local models
                     let truncated = truncate_tool_result(&result_json);
+                    let wrapped = wrap_result(tc_name, &truncated);
                     let event = StreamEvent::ToolResult {
                         id: tc_id.clone(),
-                        result: truncated.clone(),
+                        result: wrapped.clone(),
                     };
                     let json = serde_json::to_string(&event).unwrap();
                     let _ = tx.send(Ok(Event::default().data(json)));
-                    tool_results.push((tc_id.clone(), truncated));
+                    tool_results.push((tc_id.clone(), wrapped));
                 }
                 Err(e) => {
                     info!("Tool error for {}: {}", tc_name, e);
+                    let wrapped = wrap_error(tc_name, &e);
                     let event = StreamEvent::ToolResult {
                         id: tc_id.clone(),
-                        result: format!(r#"{{"error":"{}"}}"#, e),
+                        result: wrapped.clone(),
                     };
                     let json = serde_json::to_string(&event).unwrap();
                     let _ = tx.send(Ok(Event::default().data(json)));
-                    tool_results.push((tc_id.clone(), format!(r#"{{"error":"{}"}}"#, e)));
+                    tool_results.push((tc_id.clone(), wrapped));
                 }
             }
         }
@@ -343,14 +361,23 @@ async fn process_chat(
         current_messages.push(Message {
             role: "assistant".to_string(),
             content: String::new(),
+            name: None,
             tool_calls: Some(openai_tool_calls),
             tool_call_id: None,
         });
 
+        // Build a lookup of tc_id → name from the tool_call_records
+        let name_map: std::collections::HashMap<&str, &str> = tool_call_records
+            .iter()
+            .map(|(id, name, _)| (id.as_str(), name.as_str()))
+            .collect();
+
         for (tc_id, result) in &tool_results {
+            let tool_name = name_map.get(tc_id.as_str()).map(|s| s.to_string());
             current_messages.push(Message {
                 role: "tool".to_string(),
                 content: result.clone(),
+                name: tool_name,
                 tool_calls: None,
                 tool_call_id: Some(tc_id.clone()),
             });
@@ -372,6 +399,36 @@ async fn execute_mcp_tool(
     state: &T3AppState,
 ) -> Result<Value, String> {
     super::tool_executor::execute_tool(name, arguments, state).await
+}
+
+/// Check if a tool is a write/dangerous tool that requires confirmation.
+const WRITE_TOOLS: &[&str] = &[
+    "t3000_point_write",
+    "t3000_point_write_batch",
+    "t3000_settings_write",
+    "t3000_device_control",
+];
+
+fn is_write_tool(name: &str) -> bool {
+    WRITE_TOOLS.contains(&name)
+}
+
+/// Verify that a write tool has confirm:true in its arguments.
+fn has_confirm(arguments: &str) -> bool {
+    arguments.contains("\"confirm\": true") || arguments.contains("\"confirm\":true")
+}
+
+/// Wrap a successful tool result in a consistent schema.
+fn wrap_result(tool_name: &str, result_json: &str) -> String {
+    // If result is already a well-formed JSON object, wrap it
+    // Otherwise treat it as raw data
+    format!(r#"{{"tool":"{}","ok":true,"data":{}}}"#, tool_name, result_json)
+}
+
+/// Wrap an error in a consistent schema.
+fn wrap_error(tool_name: &str, message: &str) -> String {
+    let escaped = message.replace('\\', "\\\\").replace('"', "\\\"");
+    format!(r#"{{"tool":"{}","ok":false,"error":"{}"}}"#, tool_name, escaped)
 }
 
 /// Load site memories as key-value pairs for the system prompt.

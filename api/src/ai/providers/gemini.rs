@@ -83,11 +83,11 @@ impl LlmProvider for GeminiProvider {
             // Tool results
             if m.role == "tool" {
                 let result: Value = serde_json::from_str(&m.content).unwrap_or(json!({"result": m.content}));
+                let func_name = m.name.as_deref().unwrap_or("unknown");
                 parts.push(json!({
                     "functionResponse": {
-                        "name": "tool_result",
+                        "name": func_name,
                         "response": {
-                            "name": "tool_result",
                             "content": result
                         }
                     }

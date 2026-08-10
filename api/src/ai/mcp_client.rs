@@ -122,6 +122,7 @@ impl McpClient {
     }
 
     /// Call a tool on this external MCP server.
+    /// Includes timeout, size limits, and response validation.
     pub async fn call_tool(
         &self,
         tool_name: &str,
@@ -144,15 +145,32 @@ impl McpClient {
             .post(&format!("{}/message", url))
             .header("Content-Type", "application/json")
             .json(&body)
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
-            .map_err(|e| AiError::Provider(format!("MCP tool call failed: {}", e)))?;
+            .map_err(|e| {
+                if e.is_timeout() {
+                    AiError::Provider(format!("MCP tool '{}' timed out after 30s", tool_name))
+                } else {
+                    AiError::Provider(format!("MCP tool call failed: {}", e))
+                }
+            })?;
+
+        // Validate response size before parsing (1MB limit)
+        if let Some(len) = res.content_length() {
+            if len > 1_000_000 {
+                return Err(AiError::Provider(format!(
+                    "MCP response too large: {} bytes (max 1MB)", len
+                )));
+            }
+        }
 
         let json: Value = res
             .json()
             .await
             .map_err(|e| AiError::Provider(format!("MCP response parse error: {}", e)))?;
 
+        // Validate response has expected structure
         if let Some(err) = json.get("error") {
             return Err(AiError::Provider(format!(
                 "MCP tool error: {}",
@@ -162,7 +180,13 @@ impl McpClient {
             )));
         }
 
-        Ok(json.get("result").cloned().unwrap_or(json!({})))
+        // Must have a "result" field
+        match json.get("result") {
+            Some(result) => Ok(result.clone()),
+            None => Err(AiError::Provider(format!(
+                "MCP response missing 'result' field for tool '{}'", tool_name
+            ))),
+        }
     }
 }
 
