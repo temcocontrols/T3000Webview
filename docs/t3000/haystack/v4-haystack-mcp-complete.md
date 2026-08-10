@@ -1,10 +1,12 @@
-# T3000 MCP Server — v4 Design
+# T3000 MCP Server — Design
+
+> **Current state**: 50+ tools across 16 categories (v5 expanded from v4). This doc describes the v4 baseline (44 tools, 11 categories).
 
 ---
 
 ## 1. Scope
 
-v4 extends the MCP server from 7 Haystack-only tools to 44 tools across 11 categories. One file changes: `api/src/haystack/mcp.rs`. New handlers call existing public service functions — no other files touched.
+v4 extends the MCP server from 7 Haystack-only tools to 44 tools across 11 categories (since expanded to 50+ across 16 categories in v5). One file changes: `api/src/haystack/mcp.rs`. New handlers call existing public service functions — no other files touched.
 
 | | v3 | v4 |
 |---|---|---|
@@ -42,7 +44,7 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
                       │   Streamable HTTP     │
                       │   POST/GET/DELETE     │
                       │   /api/mcp            │
-                      │   44 tools            │
+                      │   50+ tools          │
                       └──────────────────────┘
 ```
 

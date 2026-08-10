@@ -2,7 +2,7 @@
 
 > ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
-Complete reference of natural-language prompts for all 45 MCP tools across 12 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
+Complete reference of natural-language prompts for 50+ MCP tools across 16 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
 ---
 
@@ -168,7 +168,7 @@ Brick is a formal ontology for buildings (brickschema.org). After auto-tagging, 
 
 ---
 
-## Data & Discovery <span style="font-weight:400;font-size:12px;color:#888">4 tools</span>
+## Data & Discovery <span style="font-weight:400;font-size:12px;color:#888">5 tools</span>
 
 ### `t3000_device_list` — Enumerate all devices
 
@@ -263,6 +263,32 @@ Search point labels across all devices by keyword. Matches against point labels,
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Find all points with fan in the name on device 233626**
+
+</div>
+
+</div>
+
+### `t3000_point_search` — Semantic point search
+
+Search points across devices using natural language. Matches against point labels, Haystack tags, Brick classes, and descriptions. Returns ranked results by relevance. Much smarter than label search — "supply air temperature" matches `Supply_Air_Temperature_Sensor` even if the label is abbreviated.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Find the temperature sensor in the lobby**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me all fan speed outputs**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Search for discharge air temperature on device 233626**
 
 </div>
 
@@ -398,7 +424,7 @@ Get complete metadata for multiple points in a single call. Returns label, engin
 
 ---
 
-## Device Operations <span style="font-weight:400;font-size:12px;color:#888">12 tools</span>
+## Device Operations <span style="font-weight:400;font-size:12px;color:#888">7 tools</span>
 
 ### `t3000_trendlog_list` — Discover available trendlogs
 
@@ -670,7 +696,51 @@ Get a one-shot dashboard of the entire building automation system. Returns total
 
 ---
 
-## Diagnostics <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
+## Diagnostics <span style="font-weight:400;font-size:12px;color:#888">2 tools</span>
+
+### `t3000_device_diagnostics` — Single device health check
+
+Run a comprehensive diagnostic check on a single device. Returns: device name, firmware version, hardware revision, IP address, point counts (inputs/outputs/variables), active alarm count, trendlog count, program status (total/running), schedule count, PID loop status (total/in-auto), and an overall health rating (good/warning/needs_attention).
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Run diagnostics on device 233626**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Check the health of device 240488**
+
+</div>
+
+</div>
+
+### `t3000_device_diagnostics_batch` — Multi-device health check
+
+Run diagnostics on multiple devices or all devices at once. Returns per-device health reports plus an overall building health summary (good/warning/needs_attention). Pass no serial_numbers to diagnose everything. Use for system-wide health assessments.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Check the health of all devices**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Run diagnostics on devices 233626, 237219, and 240488**
+
+</div>
+
+</div>
+
+---
+
+## Config & Users <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
 
 ### `t3000_alarm_settings_read` — Read alarm thresholds
 
@@ -1011,6 +1081,246 @@ Retrieve time-series data for any point over a specified time range. Specify sta
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Get the last 100 readings for output 2 on device 233626**
+
+</div>
+
+</div>
+
+---
+
+## Task Management <span style="font-weight:400;font-size:12px;color:#888">4 tools</span>
+
+### `t3000_task_create` — Create a workflow task
+
+Create a new task for tracking commissioning, maintenance, or troubleshooting workflows. Tasks have a title, description, status (pending/in_progress/completed), priority (low/normal/high/critical), and optional device reference.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Create a task: configure AHU-1 network settings**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Add a high-priority task to troubleshoot device 233626 alarms**
+
+</div>
+
+</div>
+
+### `t3000_task_list` — List tasks
+
+List all tasks with optional filters by status (pending, in_progress, completed) or device serial number. Returns tasks sorted by creation time, newest first.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me all pending tasks**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What tasks are associated with device 240488?**
+
+</div>
+
+</div>
+
+### `t3000_task_update` — Update a task
+
+Update a task's status, title, description, or priority. Use to mark tasks as in_progress or completed as you work through a workflow.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Mark task "Configure AHU-1" as completed**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Change priority of task "Calibrate sensors" to high**
+
+</div>
+
+</div>
+
+### `t3000_task_delete` — Delete a task
+
+Delete a task by ID. Use to clean up completed or obsolete tasks.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Delete the completed commissioning tasks**
+
+</div>
+
+</div>
+
+---
+
+## Site Memory <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
+
+### `t3000_memory_save` — Save site knowledge
+
+Save a note about the building site for future reference. Memories persist across sessions and are automatically loaded into the AI context. Use for site-specific conventions, device naming patterns, or user preferences.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Remember that AHU-3 is the main unit and AHU-2 is decommissioned**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Save a note: device naming convention is Building-Floor-Type-Number**
+
+</div>
+
+</div>
+
+### `t3000_memory_list` — List site memories
+
+List all saved site memories with optional filtering by category or text search. Returns memories sorted by last update time.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What do we know about this site?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show me memories about AHU layout**
+
+</div>
+
+</div>
+
+### `t3000_memory_delete` — Delete a memory
+
+Delete a specific memory entry by key. Use to remove outdated or incorrect site information.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Forget the old AHU layout notes**
+
+</div>
+
+</div>
+
+---
+
+## Navigation <span style="font-weight:400;font-size:12px;color:#888">5 tools</span>
+
+### `t3000_nav_list` — List all UI pages
+
+List all pages in the T3000 web UI with paths, titles, keyboard shortcuts, and whether they require a device to be selected. Use to help users find the right page.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What pages are available in the T3000?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List all monitoring pages**
+
+</div>
+
+</div>
+
+### `t3000_nav_search` — Search UI pages
+
+Search for T3000 pages and topics by keyword. Returns matching pages ranked by relevance. Use when the user asks "How do I..." or "Where is..." questions about the T3000 interface.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Where do I configure PID loops?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**How do I set up schedules?**
+
+</div>
+
+</div>
+
+### `t3000_nav_redirect` — Navigate to a page
+
+Get the URL to navigate to a specific T3000 page, optionally with a device pre-selected. The frontend uses this URL to redirect the user.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Open the outputs page for device 233626**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Take me to the alarms page**
+
+</div>
+
+</div>
+
+### `t3000_page_info` — Page details
+
+Get detailed information about a T3000 page: what it does, what you can view/edit/configure, related MCP tools, keyboard shortcuts, and available features.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What can I do on the Alarms page?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Tell me about the PID Loops page**
+
+</div>
+
+</div>
+
+### `t3000_device_current` — Current device context
+
+Get the currently selected device in the web UI. Returns device type, name, and a note about its role. Use to discover which device the user is working with before querying points.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Which device am I currently working with?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What device is selected right now?**
 
 </div>
 
