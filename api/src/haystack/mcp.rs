@@ -4,24 +4,24 @@
 // Session termination via DELETE /api/mcp
 //
 // Protocol spec: https://spec.modelcontextprotocol.io/
-// Transport spec: Streamable HTTP (2025-03-26)
+// Transport spec: Streamable HTTP
 //
 // Categories:
-//   Haystack (7):  list_tags, get_point_tags, search_points, auto_tag,
+//   Haystack (7):   list_tags, get_point_tags, search_points, auto_tag,
 //                   preview_tags, list_rules, get_brick_class
-//   Core (3):      ping, get_version, describe_tool
-//   Data (4):      device_list, device_get_points, point_get_metadata, metadata_search
+//   Core (3):       ping, get_version, describe_tool
+//   Data (4):       device_list, device_get_points, point_get_metadata, metadata_search
 //   Operational(5): point_read, point_write, point_read_batch, point_write_batch, point_batch_metadata
-//   Analytics (2): haystack_validate, haystack_export
-//   Tasks (4):     task_create, task_list, task_update, task_delete
-//   Memory (3):    memory_save, memory_list, memory_delete
+//   Analytics (2):  haystack_validate, haystack_export
+//   Tasks (4):      task_create, task_list, task_update, task_delete
+//   Memory (3):     memory_save, memory_list, memory_delete
 //   Diagnostics(2): device_diagnostics, device_diagnostics_batch
 //   Navigation (5): nav_list, nav_search, nav_redirect, page_info, device_current
-//   Rules (2):     rule_toggle, rule_create
-//   Alarms (3):    alarm_list, alarm_acknowledge, trendlog_query
-//   Docs (2):      doc_list, doc_read
-//   Docs (2):      doc_list, doc_read
-//   Device (12):   trendlog_list, trendlog_export, device_refresh, schedule_list, settings_read, settings_write, device_control,
+//   Rules (2):      rule_toggle, rule_create
+//   Alarms (3):     alarm_list, alarm_acknowledge, trendlog_query
+//   Docs (2):       doc_list, doc_read
+//   Docs (2):       doc_list, doc_read
+//   Device (12):    trendlog_list, trendlog_export, device_refresh, schedule_list, settings_read, settings_write, device_control,
 //                   program_list, program_read, pid_list, holiday_list, building_summary
 
 use axum::{
@@ -47,13 +47,13 @@ use crate::haystack::tags_service as ts;
 use crate::t3_device::services::T3DeviceService;
 use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHistoryRequest, SpecificPoint};
 
-// ═══ MCP API Logger — console + t3-webview-api-dll.log (gated by debug_log=1 in setting.ini) ═══
+// ═══ MCP API Logger — console + t3-webview-api-dll.log (gated by debug_log=1 in setting.ini) ═══ 
 
 fn mcp_log(msg: &str) {
     crate::server::debug_log(&format!("[MCP] {}", msg));
 }
 
-// ═══ File-Based JSON Storage (Tasks & Memory) ═══
+// ═══ File-Based JSON Storage (Tasks & Memory) ═══ 
 
 use std::path::PathBuf;
 
@@ -70,7 +70,9 @@ async fn load_json_file(path: &PathBuf) -> Result<Value, String> {
 }
 
 async fn save_json_file(path: &PathBuf, data: &Value) -> Result<(), String> {
-    tokio::fs::create_dir_all(data_dir()).await.map_err(|e| format!("Cannot create data dir: {}", e))?;
+    if let Some(parent) = path.parent() {
+        tokio::fs::create_dir_all(parent).await.map_err(|e| format!("Cannot create dir: {}", e))?;
+    }
     let json = serde_json::to_string_pretty(data).map_err(|e| format!("Serialize error: {}", e))?;
     tokio::fs::write(path, &json).await.map_err(|e| format!("Write error: {}", e))?;
     Ok(())
@@ -102,7 +104,13 @@ async fn save_memories(memories: &[Value]) -> Result<(), String> {
 // Saves the serial_number from any device-specific tool call so that
 // device_current can return the device the user is actually working with.
 
-fn current_device_file() -> PathBuf { data_dir().join("mcp_device_context.json") }
+fn current_device_file() -> PathBuf {
+    std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("T3Web")
+        .join("ai-assistant")
+        .join("mcp_device_context.json")
+}
 
 async fn track_current_device(args: &Value) {
     // Extract serial_number or first entry from serial_numbers array
@@ -119,7 +127,7 @@ async fn track_current_device(args: &Value) {
     }
 }
 
-// ═══ JSON-RPC Types ═══
+// ═══ JSON-RPC Types ═══ 
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct JsonRpcRequest {
@@ -151,7 +159,7 @@ pub(crate) struct JsonRpcError {
     pub(crate) data: Option<Value>,
 }
 
-// ═══ Session State ═══
+// ═══ Session State ═══ 
 
 /// MCP session tracking — one per connected client
 #[derive(Debug, Clone)]
@@ -166,7 +174,7 @@ struct McpSession {
 /// Shared session store (in-memory, lost on restart)
 type SessionStore = Arc<Mutex<HashMap<String, McpSession>>>;
 
-// ═══ Tool Definitions ═══
+// ═══ Tool Definitions ═══ 
 
 lazy_static::lazy_static! {
     pub(crate) static ref TOOLS: Vec<ToolDef> = vec![
@@ -287,7 +295,7 @@ lazy_static::lazy_static! {
             "required": ["serial_numbers"]
         }),
     },
-    // ═══ v4: Core / Generic ═══
+    // ═══ v4: Core / Generic ═══ 
     ToolDef {
         name: "t3000_ping",
         title: "Ping Server",
@@ -321,7 +329,7 @@ lazy_static::lazy_static! {
             "required": ["tool_name"]
         }),
     },
-    // ═══ v4: Data & Metadata ═══
+    // ═══ v4: Data & Metadata ═══ 
     ToolDef {
         name: "t3000_device_list",
         title: "List Devices",
@@ -407,7 +415,7 @@ lazy_static::lazy_static! {
             "required": ["query"]
         }),
     },
-    // ═══ v4: Semantic Search ═══
+    // ═══ v4: Semantic Search ═══ 
     ToolDef {
         name: "t3000_point_search",
         title: "Semantic Point Search",
@@ -432,7 +440,7 @@ lazy_static::lazy_static! {
             "required": ["query"]
         }),
     },
-    // ═══ v4: Operational ═══
+    // ═══ v4: Operational ═══ 
     ToolDef {
         name: "t3000_point_read",
         title: "Read Point Value",
@@ -572,7 +580,7 @@ lazy_static::lazy_static! {
             "required": ["points"]
         }),
     },
-    // ═══ v4: Analytics ═══
+    // ═══ v4: Analytics ═══ 
     ToolDef {
         name: "t3000_haystack_validate",
         title: "Validate Tagging",
@@ -608,7 +616,7 @@ lazy_static::lazy_static! {
             "required": ["serial_numbers", "format"]
         }),
     },
-    // ═══ v4: Rules Management ═══
+    // ═══ v4: Rules Management ═══ 
     ToolDef {
         name: "t3000_rule_toggle",
         title: "Toggle Rule",
@@ -671,7 +679,7 @@ lazy_static::lazy_static! {
             "required": ["rule_name", "pattern", "category"]
         }),
     },
-    // ═══ v4: Alarms & Trends ═══
+    // ═══ v4: Alarms & Trends ═══ 
     ToolDef {
         name: "t3000_alarm_list",
         title: "List Alarms",
@@ -745,7 +753,7 @@ lazy_static::lazy_static! {
             "required": ["serial_number", "point_type", "point_index", "start"]
         }),
     },
-    // ═══ v4: Device Operations (new) ═══
+    // ═══ v4: Device Operations (new) ═══ 
     ToolDef {
         name: "t3000_trendlog_list",
         title: "List Trendlogs",
@@ -830,7 +838,7 @@ lazy_static::lazy_static! {
             "required": ["serial_number"]
         }),
     },
-    // ═══ v4: Settings ═══
+    // ═══ v4: Settings ═══ 
     ToolDef {
         name: "t3000_settings_read",
         title: "Read Device Settings",
@@ -900,7 +908,7 @@ lazy_static::lazy_static! {
             "required": ["serial_number", "command", "confirm"]
         }),
     },
-    // ═══ v4: Control Logic ═══
+    // ═══ v4: Control Logic ═══ 
     ToolDef {
         name: "t3000_program_list",
         title: "List Programs",
@@ -980,7 +988,7 @@ lazy_static::lazy_static! {
             "required": ["serial_number"]
         }),
     },
-    // ═══ v4: Documentation ═══
+    // ═══ v4: Documentation ═══ 
     ToolDef {
         name: "t3000_doc_list",
         title: "List Documentation Topics",
@@ -1044,7 +1052,7 @@ lazy_static::lazy_static! {
             "properties": {}
         }),
     },
-    // ═══ v5: Task Management ═══
+    // ═══ v5: Task Management ═══ 
     ToolDef {
         name: "t3000_task_create",
         title: "Create Task",
@@ -1100,7 +1108,7 @@ lazy_static::lazy_static! {
             "required": ["task_id"]
         }),
     },
-    // ═══ v5: Site Memory ═══
+    // ═══ v5: Site Memory ═══ 
     ToolDef {
         name: "t3000_memory_save",
         title: "Save Site Memory",
@@ -1139,7 +1147,7 @@ lazy_static::lazy_static! {
             "required": ["key"]
         }),
     },
-    // ═══ v5: Device Diagnostics ═══
+    // ═══ v5: Device Diagnostics ═══ 
     ToolDef {
         name: "t3000_device_diagnostics",
         title: "Device Diagnostics",
@@ -1167,7 +1175,7 @@ lazy_static::lazy_static! {
             }
         }),
     },
-    // ═══ v5: Navigation ═══
+    // ═══ v5: Navigation ═══ 
     ToolDef {
         name: "t3000_nav_list",
         title: "List T3000 Pages",
@@ -1253,7 +1261,7 @@ pub(crate) struct ToolDef {
     pub(crate) input_schema: Value,
 }
 
-// ═══ MCP Server (Streamable HTTP) ═══
+// ═══ MCP Server (Streamable HTTP) ═══ 
 
 const SERVER_NAME: &str = "T3000 Haystack MCP";
 const SERVER_VERSION: &str = "1.0.0";
@@ -1267,7 +1275,7 @@ pub(crate) async fn get_db(state: &T3AppState) -> Result<sea_orm::DatabaseConnec
     Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Local database connection not available"}))))
 }
 
-// ═══ Session Store ═══
+// ═══ Session Store ═══ 
 
 fn get_session_store(_state: &T3AppState) -> SessionStore {
     // Reuse or create session store — stored in a static for now
@@ -1277,7 +1285,7 @@ fn get_session_store(_state: &T3AppState) -> SessionStore {
     SESSIONS.get_or_init(|| Arc::new(Mutex::new(HashMap::new()))).clone()
 }
 
-// ═══ Routes ═══
+// ═══ Routes ═══ 
 
 /// Create MCP routes for the Axum router
 pub fn create_mcp_routes() -> Router<T3AppState> {
@@ -1289,7 +1297,7 @@ pub fn create_mcp_routes() -> Router<T3AppState> {
         .route("/api/mcp/current-device", get(get_current_device_handler))
 }
 
-// ═══ POST /api/mcp/current-device — Frontend reports UI-selected device ═══
+// ═══ POST /api/mcp/current-device — Frontend reports UI-selected device ═══ 
 // Saves ONLY the ui_device field. chat_device is managed by the AI via set_chat_device tool.
 
 async fn set_current_device_handler(
@@ -1299,7 +1307,7 @@ async fn set_current_device_handler(
 
     match serial {
         Some(s) => {
-            let state_file = data_dir().join("mcp_device_context.json");
+            let state_file = current_device_file();
             // Preserve existing chat_device if any
             let mut existing = if state_file.exists() {
                 load_json_file(&state_file).await.unwrap_or(json!({}))
@@ -1333,10 +1341,10 @@ async fn set_current_device_handler(
     }
 }
 
-// ═══ GET /api/mcp/current-device — Read both device contexts ═══
+// ═══ GET /api/mcp/current-device — Read both device contexts ═══ 
 
 async fn get_current_device_handler() -> impl IntoResponse {
-    let state_file = data_dir().join("mcp_device_context.json");
+    let state_file = current_device_file();
     if state_file.exists() {
         match load_json_file(&state_file).await {
             Ok(v) => Json(v).into_response(),
@@ -1347,7 +1355,7 @@ async fn get_current_device_handler() -> impl IntoResponse {
     }
 }
 
-// ═══ POST /api/mcp — JSON-RPC 2.0 request handling ═══
+// ═══ POST /api/mcp — JSON-RPC 2.0 request handling ═══ 
 
 pub async fn mcp_post_handler(
     State(state): State<T3AppState>,
@@ -1452,7 +1460,7 @@ pub async fn mcp_post_handler(
     Ok((response_headers, body))
 }
 
-// ═══ GET /api/mcp — SSE endpoint for server→client notifications ═══
+// ═══ GET /api/mcp — SSE endpoint for server→client notifications ═══ 
 
 pub async fn mcp_sse_handler(
     State(state): State<T3AppState>,
@@ -1488,7 +1496,7 @@ pub async fn mcp_sse_handler(
     Ok((response_headers, body))
 }
 
-// ═══ DELETE /api/mcp — Session termination ═══
+// ═══ DELETE /api/mcp — Session termination ═══ 
 
 pub async fn mcp_delete_handler(
     State(state): State<T3AppState>,
@@ -1504,7 +1512,7 @@ pub async fn mcp_delete_handler(
     Ok(StatusCode::NO_CONTENT)
 }
 
-// ═══ Request Dispatch ═══
+// ═══ Request Dispatch ═══ 
 
 pub(crate) async fn handle_request(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnection) -> JsonRpcResponse {
     match req.method.as_str() {
@@ -1626,7 +1634,7 @@ async fn handle_tools_call(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnectio
     }
 }
 
-// ═══ Point Write via FFI (Action 16) ═══
+// ═══ Point Write via FFI (Action 16) ═══ 
 
 async fn point_write_ffi(
     db: &sea_orm::DatabaseConnection,
@@ -1736,7 +1744,7 @@ async fn point_write_ffi(
     Ok(json!({"success": true, "written_field": target_field, "written_value": new_value_str, "timestamp": Utc::now().to_rfc3339()}).to_string())
 }
 
-// ═══ Diagnostics Helper ═══
+// ═══ Diagnostics Helper ═══ 
 
 async fn run_device_diagnostics(db: &sea_orm::DatabaseConnection, serial: i32) -> Result<Value, String> {
     let now = Utc::now().to_rfc3339();
@@ -1849,7 +1857,7 @@ async fn run_device_diagnostics(db: &sea_orm::DatabaseConnection, serial: i32) -
     }))
 }
 
-// ═══ Navigation Data (static page registry) ═══
+// ═══ Navigation Data (static page registry) ═══ 
 
 struct NavPage {
     title: &'static str,
@@ -2171,7 +2179,7 @@ pub(crate) async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        // ═══ v4: Core / Generic ═══
+        // ═══ v4: Core / Generic ═══ 
 
         "t3000_ping" => {
             let now = Utc::now().to_rfc3339();
@@ -2207,7 +2215,7 @@ pub(crate) async fn execute_tool(
             }
         }
 
-        // ═══ v4: Data & Metadata ═══
+        // ═══ v4: Data & Metadata ═══ 
 
         "t3000_device_list" => {
             let filter_name = args.get("filter_name").and_then(|v| v.as_str()).map(String::from);
@@ -2508,7 +2516,7 @@ pub(crate) async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        // ═══ v4: Semantic Search ═══
+        // ═══ v4: Semantic Search ═══ 
 
         "t3000_point_search" => {
             let query = args.get("query").and_then(|v| v.as_str())
@@ -2595,7 +2603,7 @@ pub(crate) async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        // ═══ v4: Operational ═══
+        // ═══ v4: Operational ═══ 
 
         "t3000_point_read" => {
             let serial: i32 = args.get("serial_number")
@@ -2883,7 +2891,7 @@ pub(crate) async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        // ═══ v4: Analytics ═══
+        // ═══ v4: Analytics ═══ 
 
         "t3000_haystack_validate" => {
             let serials: Option<Vec<i32>> = args
@@ -3185,7 +3193,7 @@ pub(crate) async fn execute_tool(
             }
         }
 
-        // ═══ v4: Rules Management ═══
+        // ═══ v4: Rules Management ═══ 
 
         "t3000_rule_toggle" => {
             let rule_id: i64 = args.get("rule_id")
@@ -3239,7 +3247,7 @@ pub(crate) async fn execute_tool(
             }).to_string())
         }
 
-        // ═══ v4: Alarms & Trends ═══
+        // ═══ v4: Alarms & Trends ═══ 
 
         "t3000_alarm_list" => {
             let serials: Option<Vec<i32>> = args
@@ -3380,7 +3388,7 @@ pub(crate) async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        // ═══ v4: Device Operations ═══
+        // ═══ v4: Device Operations ═══ 
 
         "t3000_trendlog_list" => {
             let serial: i32 = args.get("serial_number")
@@ -3607,7 +3615,7 @@ pub(crate) async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        // ═══ v4: Settings ═══
+        // ═══ v4: Settings ═══ 
 
         "t3000_settings_read" => {
             let serial: i32 = args.get("serial_number")
@@ -3791,7 +3799,7 @@ pub(crate) async fn execute_tool(
             }
         }
 
-        // ═══ v4: Control Logic ═══
+        // ═══ v4: Control Logic ═══ 
 
         "t3000_program_list" => {
             let serial: i32 = args.get("serial_number")
@@ -3857,7 +3865,7 @@ pub(crate) async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        // ═══ v4: Diagnostics ═══
+        // ═══ v4: Diagnostics ═══ 
 
         "t3000_alarm_settings_read" => {
             let serial: i32 = args.get("serial_number")
@@ -3950,7 +3958,7 @@ pub(crate) async fn execute_tool(
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        // ═══ v4: Documentation ═══
+        // ═══ v4: Documentation ═══ 
 
         "t3000_doc_list" => {
             let sections: Vec<Value> = vec![
@@ -4139,7 +4147,7 @@ pub(crate) async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        // ═══ v5: Task Management ═══
+        // ═══ v5: Task Management ═══ 
 
         "t3000_task_create" => {
             let title = args.get("title").and_then(|v| v.as_str())
@@ -4260,7 +4268,7 @@ pub(crate) async fn execute_tool(
             }).to_string())
         }
 
-        // ═══ v5: Site Memory ═══
+        // ═══ v5: Site Memory ═══ 
 
         "t3000_memory_save" => {
             let key = args.get("key").and_then(|v| v.as_str())
@@ -4339,7 +4347,7 @@ pub(crate) async fn execute_tool(
             }).to_string())
         }
 
-        // ═══ v5: Device Diagnostics ═══
+        // ═══ v5: Device Diagnostics ═══ 
 
         "t3000_device_diagnostics" => {
             let serial: i32 = args.get("serial_number")
@@ -4409,7 +4417,7 @@ pub(crate) async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
-        // ═══ v5: Navigation ═══
+        // ═══ v5: Navigation ═══ 
 
         "t3000_nav_list" => {
             let section = args.get("section").and_then(|v| v.as_str());
@@ -4512,13 +4520,12 @@ pub(crate) async fn execute_tool(
         }
 
         "t3000_device_current" => {
-            // Return the device the user last interacted with via MCP tools.
-            // We track this by saving the serial whenever a device-specific tool is called.
-            let state_file = data_dir().join("mcp_device_context.json");
+            // Return the device the user selected in the UI tree (stored via POST /api/mcp/current-device).
+            let state_file = current_device_file();
             let last_serial: Option<i32> = if state_file.exists() {
                 if let Ok(content) = tokio::fs::read_to_string(&state_file).await {
                     serde_json::from_str::<Value>(&content).ok()
-                        .and_then(|v| v.get("serial").and_then(|s| s.as_i64()).map(|n| n as i32))
+                        .and_then(|v| v.get("ui_device").and_then(|s| s.as_i64()).map(|n| n as i32))
                 } else { None }
             } else { None };
 
@@ -4568,7 +4575,7 @@ pub(crate) async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
 
-            let state_file = data_dir().join("mcp_device_context.json");
+            let state_file = current_device_file();
             let mut existing = if state_file.exists() {
                 load_json_file(&state_file).await.unwrap_or(json!({}))
             } else {

@@ -345,7 +345,12 @@ const CORE_PROMPT: &str = r#"You are a T3000 building automation engineer. You h
 
 IMPORTANT: Before calling any write tool (point_write, point_write_batch, settings_write, device_control), confirm your intention with the user first. Reads are safe -- just call them and answer.
 
-Device targeting: use device_current to see which device the user has selected in the UI tree. Use device_list only for system-wide browsing (\"how many devices?\"). For any device-specific task, prefer device_current -- it tells you what the user is looking at right now.
+Device targeting:
+- For device-specific tasks, call device_current first.
+- If it returns a specific device and this is a WRITE/CONFIG task: "I see [name] (serial [N]) is selected -- shall I proceed?" Wait for yes, then call set_chat_device.
+- If it returns a specific device and this is just a READ: use it directly, no confirm needed.
+- If it returns a device list: "No device is selected. Which device?" then show options.
+- Use device_list only for system-wide browsing, not device targeting.
 
 ## Tools
 Core: ping, get_version, describe_tool

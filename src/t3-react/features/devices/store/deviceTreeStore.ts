@@ -808,7 +808,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           fetch(`${API_BASE_URL}/api/mcp/current-device`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ serial_number: node.data.serialNumber }),
+            body: JSON.stringify({ serial_number: node.data.serialNumber, device_name: node.data.showLabelName ?? node.data.productName ?? null }),
           }).catch(() => {});
         }
       },
@@ -827,7 +827,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           fetch(`${API_BASE_URL}/api/mcp/current-device`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ serial_number: device.serialNumber }),
+            body: JSON.stringify({ serial_number: device.serialNumber, device_name: device.showLabelName ?? device.productName ?? null }),
           }).catch(() => {}); // fire-and-forget, don't block UI
         } else {
           localStorage.removeItem('t3.lastSelectedDevice');
