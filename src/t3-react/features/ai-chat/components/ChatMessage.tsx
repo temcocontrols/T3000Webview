@@ -41,11 +41,6 @@ interface Props {
 const formatTime = (ts: number): string =>
   new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-const formatDuration = (ms: number): string => {
-  if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
-};
-
 function renderMarkdown(content: string): string {
   if (!content) return '';
   const raw = marked.parse(content) as string;

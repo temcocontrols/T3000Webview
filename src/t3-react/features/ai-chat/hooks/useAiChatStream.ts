@@ -8,7 +8,7 @@
  *      tool_result -> resolved card, done -> finalize, error -> system message
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { API_BASE_URL } from '../../../config/constants';
 import { useChatStore } from '../../../store/chatStore';
 import type { AiProviderSettings } from '../components/SettingsDrawer';

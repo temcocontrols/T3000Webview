@@ -64,11 +64,12 @@ const loadSettings = (): AiProviderSettings => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(raw) as AiProviderSettings;
       // Migrate old format: if provider-specific cache doesn't exist, seed it from current settings
       if (!localStorage.getItem(PROVIDER_CACHE_KEY)) {
         const cache = loadProviderCache();
-        cache[parsed.provider] = { endpoint: parsed.endpoint, model: parsed.model, apiKey: parsed.apiKey || '' };
+        const prov = parsed.provider as ProviderType;
+        cache[prov] = { endpoint: parsed.endpoint, model: parsed.model, apiKey: parsed.apiKey || '' };
         saveProviderCache(cache);
       }
       return parsed;
@@ -263,7 +264,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
           onOpenTools={() => setToolsOpen(true)}
           onClearAll={handleClearAll}
           onBackToPanel={handleBackToPanel}
-          providerLabel={providerLabel}
           builtInToolCount="50+"
         />
       )}

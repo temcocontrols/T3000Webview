@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Spinner, Button, Input, Field, Switch, Tooltip,
+  Spinner, Button, Input, Field, Switch,
   Tab, TabList, Dialog, DialogSurface, DialogBody, DialogTitle,
   DialogContent, DialogActions, Badge, Select, Link,
   DataGrid, DataGridHeader, DataGridRow, DataGridCell, DataGridBody,
@@ -12,9 +12,9 @@ import {
   ArrowClockwiseRegular, AddRegular, DismissRegular,
   PlayRegular, EyeRegular, CheckmarkCircleRegular,
   WarningRegular, InfoRegular, DeleteRegular,
-  TagRegular, FlashRegular, SettingsRegular,
+  TagRegular, SettingsRegular,
   SparkleRegular, CopyRegular, LightbulbRegular,
-  CodeRegular, BookOpenRegular, ErrorCircleRegular,
+  BookOpenRegular, ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
@@ -71,7 +71,6 @@ interface AffectedPoint {
 // ── Page Component ──
 
 const AutoTaggingMcpPage: React.FC = () => {
-  const { selectedDevice, devices } = useDeviceTreeStore();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(
     location.hash === '#mcp' ? 'mcp' : 'rules'
@@ -106,7 +105,6 @@ const RulesTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [editing, setEditing] = useState<AutoTaggingRule | null>(null);
   const [creating, setCreating] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
@@ -432,14 +430,14 @@ const RulesTab: React.FC = () => {
         )}
       </div>
 
-      {creating && <RuleDialog mode="create" onClose={() => setCreating(false)} onSaved={() => { setCreating(false); fetchRules(); }} />}
+      {creating && <RuleDialog onClose={() => setCreating(false)} onSaved={() => { setCreating(false); fetchRules(); }} />}
     </div>
   );
 };
 
 // ── Rule Dialog ──
 
-const RuleDialog: React.FC<{ mode: 'create'; onClose: () => void; onSaved: () => void }> = ({ mode, onClose, onSaved }) => {
+const RuleDialog: React.FC<{ onClose: () => void; onSaved: () => void }> = ({ onClose, onSaved }) => {
   const [form, setForm] = useState({
     rule_name: '', category: 'haystack' as string, pattern: '',
     units: '', object_types: '', haystack_tags: '', brick_class: '',
@@ -545,7 +543,6 @@ const RunTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [runConfirmOpen, setRunConfirmOpen] = useState(false);
-  const [rulesCount, setRulesCount] = useState(0);
   const [rules, setRules] = useState<AutoTaggingRule[]>([]);
   const [selectedRuleIds, setSelectedRuleIds] = useState<number[]>([]); // empty = nothing selected
   const [ruleSelectorOpen, setRuleSelectorOpen] = useState(false);
@@ -613,7 +610,6 @@ const RunTab: React.FC = () => {
         const all: AutoTaggingRule[] = d.rules || [];
         setRules(all);
         const enabled = all.filter((r: AutoTaggingRule) => r.enabled);
-        setRulesCount(enabled.length);
         if (selectedRuleIds.length === 0) setSelectedRuleIds(enabled.map(r => r.id));
       })
       .catch(() => {});
@@ -680,7 +676,7 @@ const RunTab: React.FC = () => {
             {selectAll ? 'Deselect All' : 'Select All'}
           </div>
           {allDevices.map(d => (
-            <Option key={String(d.serialNumber)} value={String(d.serialNumber)} style={{ fontSize: 12 }}>
+            <Option key={String(d.serialNumber)} value={String(d.serialNumber)} text={`${d.serialNumber} — ${d.productName || `Device ${d.serialNumber}`}`}>
               {d.serialNumber} — {d.productName || `Device ${d.serialNumber}`}
             </Option>
           ))}

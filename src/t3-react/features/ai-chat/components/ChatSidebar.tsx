@@ -35,7 +35,6 @@ interface Props {
   mcpServers?: McpServerInfo[];
   onOpenTools: () => void;
   onBackToPanel?: () => void;
-  providerLabel?: string;
   builtInToolCount?: string;
 }
 
@@ -65,7 +64,6 @@ export const ChatSidebar: React.FC<Props> = ({
   mcpServers = [],
   onOpenTools,
   onBackToPanel,
-  providerLabel = '',
   builtInToolCount = '50+',
 }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);

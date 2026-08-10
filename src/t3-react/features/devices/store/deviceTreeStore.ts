@@ -296,7 +296,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       scanForDevices: async (options?: ScanOptions) => {
         set({ isLoading: true, error: null });
         try {
-          const newDevices = await DeviceApiService.scanDevices(options);
+          const _newDevices = await DeviceApiService.scanDevices(options);
           // TODO: Add discovered devices to database
           set({ isLoading: false });
         } catch (error) {
@@ -342,12 +342,12 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
 
             // Log detailed panel information for debugging
-            panels.forEach((panel: any, idx: number) => {
+            panels.forEach((_panel: any, _idx: number) => {
             });
 
             // Filter out unknown devices before processing
-            const knownPanels = panels.filter((panel: any) => {
-              const name = (panel.panel_name || panel.panelName || '').trim();
+            const _knownPanels = panels.filter((_panel: any) => {
+              const name = (_panel.panel_name || _panel.panelName || '').trim();
               return name !== '(Unknown)' && name !== '';
             });
 
