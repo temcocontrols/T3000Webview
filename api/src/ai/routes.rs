@@ -1,10 +1,10 @@
 // AI Chat — Axum route handlers.
 //
-// POST /api/ai/chat       — SSE streaming chat (with tool-call loop)
+// POST   /api/ai/chat          — SSE streaming chat (with tool-call loop)
 // DELETE /api/ai/sessions/:id  — Clear a session
-// GET  /api/ai/settings    — Get stored AI settings (Phase 3)
-// PUT  /api/ai/settings    — Save AI settings (Phase 3)
-// GET  /api/ai/tools       — List available MCP tools for transparency
+// GET    /api/ai/settings    — Get stored AI settings (Phase 3)
+// PUT    /api/ai/settings    — Save AI settings (Phase 3)
+// GET    /api/ai/tools       — List available MCP tools for transparency
 
 use axum::{
     extract::{Path, State},
