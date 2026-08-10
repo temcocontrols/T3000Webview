@@ -4,6 +4,7 @@
 // Called from server.rs during app construction.
 
 pub mod mcp_client;
+pub mod prompt_builder;
 pub mod providers;
 pub mod routes;
 pub mod session;

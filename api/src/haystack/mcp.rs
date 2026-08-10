@@ -1306,13 +1306,8 @@ async fn set_current_device_handler(
             } else {
                 json!({})
             };
-            // Look up device name for quick reference
-            let dev_name = if let Ok(rows) = db.query_all(
-                sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
-                    &format!("SELECT Product_Name FROM DEVICES WHERE SerialNumber = {}", s))
-            ).await {
-                rows.first().and_then(|r| r.try_get::<String>("", "Product_Name").ok())
-            } else { None };
+            // Device name is provided by the frontend or left as null
+            let dev_name = body.get("device_name").and_then(|v| v.as_str()).map(|s| s.to_string());
             existing["ui_device"] = json!(s);
             existing["ui_device_name"] = json!(dev_name);
             existing["updated_at"] = json!(Utc::now().to_rfc3339());
