@@ -98,6 +98,27 @@ async fn save_memories(memories: &[Value]) -> Result<(), String> {
     save_json_file(&memory_file(), &json!(memories)).await
 }
 
+// ── Current device tracking ──
+// Saves the serial_number from any device-specific tool call so that
+// device_current can return the device the user is actually working with.
+
+fn current_device_file() -> PathBuf { data_dir().join("mcp_device_context.json") }
+
+async fn track_current_device(args: &Value) {
+    // Extract serial_number or first entry from serial_numbers array
+    let serial: Option<i64> = args.get("serial_number")
+        .and_then(|v| v.as_i64())
+        .or_else(|| {
+            args.get("serial_numbers")
+                .and_then(|v| v.as_array())
+                .and_then(|a| a.first())
+                .and_then(|v| v.as_i64())
+        });
+    if let Some(sn) = serial {
+        let _ = save_json_file(&current_device_file(), &json!({"serial": sn, "updated_at": Utc::now().to_rfc3339()})).await;
+    }
+}
+
 // ═══ JSON-RPC Types ═══
 
 #[derive(Debug, Deserialize)]
@@ -1207,6 +1228,21 @@ lazy_static::lazy_static! {
             "properties": {}
         }),
     },
+    ToolDef {
+        name: "t3000_set_chat_device",
+        title: "Set Chat Device",
+        description: "Confirm which device the AI should use for MCP operations. Call after the user confirms which device to work with (which may differ from the UI-selected device). This sets the authoritative chat_device context.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number to use for MCP operations"
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
     ];
 }
 
@@ -1249,6 +1285,71 @@ pub fn create_mcp_routes() -> Router<T3AppState> {
         .route("/api/mcp", post(mcp_post_handler))
         .route("/api/mcp", get(mcp_sse_handler))
         .route("/api/mcp", delete(mcp_delete_handler))
+        .route("/api/mcp/current-device", post(set_current_device_handler))
+        .route("/api/mcp/current-device", get(get_current_device_handler))
+}
+
+// ═══ POST /api/mcp/current-device — Frontend reports UI-selected device ═══
+// Saves ONLY the ui_device field. chat_device is managed by the AI via set_chat_device tool.
+
+async fn set_current_device_handler(
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let serial = body.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
+
+    match serial {
+        Some(s) => {
+            let state_file = data_dir().join("mcp_device_context.json");
+            // Preserve existing chat_device if any
+            let mut existing = if state_file.exists() {
+                load_json_file(&state_file).await.unwrap_or(json!({}))
+            } else {
+                json!({})
+            };
+            // Look up device name for quick reference
+            let dev_name = if let Ok(rows) = db.query_all(
+                sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
+                    &format!("SELECT Product_Name FROM DEVICES WHERE SerialNumber = {}", s))
+            ).await {
+                rows.first().and_then(|r| r.try_get::<String>("", "Product_Name").ok())
+            } else { None };
+            existing["ui_device"] = json!(s);
+            existing["ui_device_name"] = json!(dev_name);
+            existing["updated_at"] = json!(Utc::now().to_rfc3339());
+            if existing.get("chat_device").is_none() {
+                existing["chat_device"] = json!(null);
+                existing["chat_device_name"] = json!(null);
+                existing["confirmed_at"] = json!(null);
+            }
+            match save_json_file(&state_file, &existing).await {
+                Ok(()) => {
+                    info!("[MCP] ui_device set to serial={} name={:?}", s, dev_name);
+                    Json(json!({"ok": true, "ui_device": s, "ui_device_name": dev_name, "chat_device": existing["chat_device"]})).into_response()
+                }
+                Err(e) => {
+                    error!("[MCP] Failed to save device: {}", e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"ok": false, "error": e}))).into_response()
+                }
+            }
+        }
+        None => {
+            (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "error": "serial_number required"}))).into_response()
+        }
+    }
+}
+
+// ═══ GET /api/mcp/current-device — Read both device contexts ═══
+
+async fn get_current_device_handler() -> impl IntoResponse {
+    let state_file = data_dir().join("mcp_device_context.json");
+    if state_file.exists() {
+        match load_json_file(&state_file).await {
+            Ok(v) => Json(v).into_response(),
+            Err(_) => Json(json!({"ui_device": null, "chat_device": null, "note": "No device selected"})).into_response(),
+        }
+    } else {
+        Json(json!({"ui_device": null, "chat_device": null, "note": "No device selected"})).into_response()
+    }
 }
 
 // ═══ POST /api/mcp — JSON-RPC 2.0 request handling ═══
@@ -1896,6 +1997,10 @@ pub(crate) async fn execute_tool(
 ) -> Result<String, String> {
     info!("[MCP] -> {} args={}", name, serde_json::to_string(args).unwrap_or_default());
     mcp_log(&format!("-> {} {}", name, serde_json::to_string(args).unwrap_or_default()));
+
+    // Track the device the user is working with for device_current
+    track_current_device(args).await;
+
     let result = match name {
         "t3000_haystack_list_tags" => {
             let filter = args.get("filter")
@@ -4412,35 +4517,90 @@ pub(crate) async fn execute_tool(
         }
 
         "t3000_device_current" => {
-            // Return the first device from DEVICES as a reasonable default
-            let sql = "SELECT SerialNumber, Product_Name, Product_ID FROM DEVICES ORDER BY SerialNumber LIMIT 1";
-            let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql)).await
-                .map_err(|e| format!("Device query failed: {}", e))?;
-            if let Some(row) = rows.first() {
-                let serial: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
-                let name: String = row.try_get("", "Product_Name").unwrap_or_default();
-                let pid: i32 = row.try_get("", "Product_ID").unwrap_or(0);
-                // Get point counts
-                let cnt_sql = format!("SELECT 'inputs' as k, COUNT(*) as c FROM INPUTS WHERE SerialNumber = {0}
-                    UNION ALL SELECT 'outputs', COUNT(*) FROM OUTPUTS WHERE SerialNumber = {0}
-                    UNION ALL SELECT 'variables', COUNT(*) FROM VARIABLES WHERE SerialNumber = {0}", serial);
-                let mut ic = 0i64; let mut oc = 0i64; let mut vc = 0i64;
-                if let Ok(crows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &cnt_sql)).await {
-                    for cr in &crows {
-                        let k: String = cr.try_get("", "k").unwrap_or_default();
-                        let c: i64 = cr.try_get("", "c").unwrap_or(0);
-                        match k.as_str() { "inputs" => { ic = c; } "outputs" => { oc = c; } "variables" => { vc = c; } _ => {} }
+            // Return the device the user last interacted with via MCP tools.
+            // We track this by saving the serial whenever a device-specific tool is called.
+            let state_file = data_dir().join("mcp_device_context.json");
+            let last_serial: Option<i32> = if state_file.exists() {
+                if let Ok(content) = tokio::fs::read_to_string(&state_file).await {
+                    serde_json::from_str::<Value>(&content).ok()
+                        .and_then(|v| v.get("serial").and_then(|s| s.as_i64()).map(|n| n as i32))
+                } else { None }
+            } else { None };
+
+            if let Some(serial) = last_serial {
+                let sql = format!("SELECT Product_Name, Product_ID FROM DEVICES WHERE SerialNumber = {}", serial);
+                let rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql)).await
+                    .map_err(|e| format!("Device query failed: {}", e))?;
+                if let Some(row) = rows.first() {
+                    let name: String = row.try_get("", "Product_Name").unwrap_or_default();
+                    let pid: i32 = row.try_get("", "Product_ID").unwrap_or(0);
+                    let cnt_sql = format!("SELECT 'inputs' as k, COUNT(*) as c FROM INPUTS WHERE SerialNumber = {0}
+                        UNION ALL SELECT 'outputs', COUNT(*) FROM OUTPUTS WHERE SerialNumber = {0}
+                        UNION ALL SELECT 'variables', COUNT(*) FROM VARIABLES WHERE SerialNumber = {0}", serial);
+                    let mut ic = 0i64; let mut oc = 0i64; let mut vc = 0i64;
+                    if let Ok(crows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &cnt_sql)).await {
+                        for cr in &crows {
+                            let k: String = cr.try_get("", "k").unwrap_or_default();
+                            let c: i64 = cr.try_get("", "c").unwrap_or(0);
+                            match k.as_str() { "inputs" => { ic = c; } "outputs" => { oc = c; } "variables" => { vc = c; } _ => {} }
+                        }
                     }
+                    return serde_json::to_string_pretty(&json!({
+                        "serial": serial, "name": name, "device_type": pid,
+                        "points": { "inputs": ic, "outputs": oc, "variables": vc, "total": ic + oc + vc },
+                        "note": "This device is currently selected in the T3000 UI. It may or may not be the device the user wants to work with — ALWAYS confirm with the user before proceeding."
+                    }))
+                    .map_err(|e| format!("Serialize error: {}", e));
                 }
-                serde_json::to_string_pretty(&json!({
-                    "serial": serial, "name": name, "device_type": pid,
-                    "points": { "inputs": ic, "outputs": oc, "variables": vc, "total": ic + oc + vc },
-                    "note": "This is the first device in the system. The web UI may have a different device selected."
-                }))
-                .map_err(|e| format!("Serialize error: {}", e))
-            } else {
-                Ok(json!({"error": "No devices found in the system"}).to_string())
             }
+
+            // Fallback: return device list so the model can ask the user to pick
+            let all_sql = "SELECT SerialNumber, Product_Name, Product_ID FROM DEVICES ORDER BY SerialNumber";
+            let all_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, all_sql)).await.unwrap_or_default();
+            let devices: Vec<Value> = all_rows.iter().map(|r| json!({
+                "serial": r.try_get::<i32>("", "SerialNumber").unwrap_or(0),
+                "name": r.try_get::<String>("", "Product_Name").unwrap_or_default(),
+            })).collect();
+            Ok(json!({
+                "devices": devices,
+                "total": devices.len(),
+                "note": "No device has been used yet in this session. Ask the user which device they want to work with."
+            }).to_string())
+        }
+
+        "t3000_set_chat_device" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            let state_file = data_dir().join("mcp_device_context.json");
+            let mut existing = if state_file.exists() {
+                load_json_file(&state_file).await.unwrap_or(json!({}))
+            } else {
+                json!({})
+            };
+            // Look up device name
+            let dev_name = if let Ok(rows) = db.query_all(
+                sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
+                    &format!("SELECT Product_Name FROM DEVICES WHERE SerialNumber = {}", serial))
+            ).await {
+                rows.first().and_then(|r| r.try_get::<String>("", "Product_Name").ok())
+            } else { None };
+            existing["chat_device"] = json!(serial);
+            existing["chat_device_name"] = json!(dev_name);
+            existing["confirmed_at"] = json!(Utc::now().to_rfc3339());
+            existing["updated_at"] = json!(Utc::now().to_rfc3339());
+            save_json_file(&state_file, &existing).await
+                .map_err(|e| format!("Failed to save: {}", e))?;
+
+            info!("[MCP] chat_device set to serial={} name={:?}", serial, dev_name);
+            mcp_log(&format!("chat_device confirmed: serial={}", serial));
+            Ok(json!({
+                "ok": true,
+                "chat_device": serial,
+                "chat_device_name": dev_name,
+                "note": "Chat device confirmed. All subsequent operations will use this device."
+            }).to_string())
         }
 
         _ => Err(format!("Unknown tool: {}", name)),

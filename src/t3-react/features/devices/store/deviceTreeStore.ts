@@ -804,6 +804,12 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         // Persist selection so it survives page refresh
         if (node?.data) {
           localStorage.setItem('t3.lastSelectedDevice', String(node.data.serialNumber));
+          // Notify the MCP server so device_current tool knows the UI selection
+          fetch(`${API_BASE_URL}/api/mcp/current-device`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ serial_number: node.data.serialNumber }),
+          }).catch(() => {});
         }
       },
 
@@ -817,6 +823,12 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         // Persist selection so it survives page refresh
         if (device) {
           localStorage.setItem('t3.lastSelectedDevice', String(device.serialNumber));
+          // Notify the MCP server so device_current tool knows the UI selection
+          fetch(`${API_BASE_URL}/api/mcp/current-device`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ serial_number: device.serialNumber }),
+          }).catch(() => {}); // fire-and-forget, don't block UI
         } else {
           localStorage.removeItem('t3.lastSelectedDevice');
         }
