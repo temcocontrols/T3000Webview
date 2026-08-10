@@ -185,7 +185,7 @@ async fn process_chat(
 
     // Outer loop: keep calling the LLM until it produces a final response
     let mut current_messages = messages;
-    let max_iterations = 10;
+    let max_iterations = 100;
 
     for _iteration in 0..max_iterations {
         // Trim old tool results to prevent context overflow on local models
