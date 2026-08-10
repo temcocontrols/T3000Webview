@@ -264,7 +264,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
           onClearAll={handleClearAll}
           onBackToPanel={handleBackToPanel}
           providerLabel={providerLabel}
-          builtInToolCount={44}
+          builtInToolCount="50+"
         />
       )}
 

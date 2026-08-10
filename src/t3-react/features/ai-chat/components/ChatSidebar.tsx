@@ -36,7 +36,7 @@ interface Props {
   onOpenTools: () => void;
   onBackToPanel?: () => void;
   providerLabel?: string;
-  builtInToolCount?: number;
+  builtInToolCount?: string;
 }
 
 const formatDate = (iso: string): string => {
@@ -66,7 +66,7 @@ export const ChatSidebar: React.FC<Props> = ({
   onOpenTools,
   onBackToPanel,
   providerLabel = '',
-  builtInToolCount = 44,
+  builtInToolCount = '50+',
 }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [clearOpen, setClearOpen] = useState(false);
