@@ -72,6 +72,8 @@ impl LlmProvider for LocalProvider {
 
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(300))
+            .http1_only()
+            .user_agent("T3000-MCP/1.0")
             .build()
             .map_err(|e| AiError::Provider(format!("Failed to build HTTP client: {}", e)))?;
 
@@ -92,10 +94,13 @@ impl LlmProvider for LocalProvider {
             .map_err(|e| AiError::Provider(format!("Failed to connect: {}", e)))?;
 
         let status = response.status();
-        tracing::info!("[Local] Response status: {}", status);
+        let resp_headers = format!("{:?}", response.headers());
+        tracing::info!("[Local] Response status: {} headers: {}", status, resp_headers);
         if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
-            return Err(AiError::Provider(format!("LLM {}: {}", status, text)));
+            let truncated = if text.len() > 500 { format!("{}... ({} chars)", &text[..500], text.len()) } else { text.clone() };
+            tracing::error!("[Local] LLM error response ({}): {}", status, truncated);
+            return Err(AiError::Provider(format!("LLM {}: {}", status, truncated)));
         }
 
         tracing::info!("[Local] Starting SSE stream parse");

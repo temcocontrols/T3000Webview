@@ -143,6 +143,11 @@ async fn process_chat(
     let max_iterations = if session.provider == "local" { 4 } else { 8 };
 
     for _iteration in 0..max_iterations {
+        // Trim old tool results to prevent context overflow on local models
+        if session.provider == "local" {
+            trim_old_tool_results(&mut current_messages);
+        }
+
         let (inner_tx, mut inner_rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
 
         // Spawn the provider call — it streams events into inner_tx
@@ -359,6 +364,9 @@ You call point_write_batch to write all labels in one call, then haystack_auto_t
 2. Never repeat the user's request verbatim.
 3. Batch writes with point_write_batch whenever possible.
 4. Use memory_save for site-specific facts you learn.
+5. Use nav_redirect + page_info when users ask "where is..." or "how do I...". Don't describe UI steps — send them to the right page.
+6. Use device_current to discover the user's active device context before querying points.
+7. Use building_summary for "How is the building doing?" — it's a one-shot overview.
 
 ## Point Reference
 Analog: 0-5V, 0-10V, 4-20mA | Digital: ON/OFF
@@ -366,13 +374,17 @@ Units: degF, degC, %, Amps, Volts
 Label format: "EQUIP NAME Type" (e.g., "AHU1 Supply Air Temp")
 
 ## Tools
-Read: device_list, point_read, point_search, building_summary, alarm_list, trendlog_query, trendlog_list
-Write: point_write, point_write_batch (batch preferred)
-Diagnostics: device_diagnostics, device_diagnostics_batch
-Config: settings_read, schedule_list, program_list, program_read, pid_list
-Haystack: haystack_auto_tag (after labeling)
-Tasks: task_create, task_list, task_update
-Memory: memory_save, memory_list"#);
+Read: device_list, device_get_points, point_read, point_read_batch, point_search, point_get_metadata, point_batch_metadata, metadata_search, building_summary
+Write: point_write, point_write_batch (batch preferred), settings_write, device_control
+Monitor: alarm_list, alarm_acknowledge, alarm_settings_read, trendlog_query, trendlog_list, trendlog_export
+Config: settings_read, schedule_list, holiday_list, program_list, program_read, pid_list, graphics_list, users_list
+Diagnostics: device_diagnostics, device_diagnostics_batch, device_refresh
+Haystack: haystack_auto_tag (after labeling), haystack_list_tags, haystack_get_point_tags, haystack_search_points, haystack_preview_tags, haystack_get_brick_class, haystack_validate, haystack_export
+Rules: haystack_list_rules, rule_create, rule_toggle
+Tasks: task_create, task_list, task_update, task_delete
+Memory: memory_save, memory_list, memory_delete
+Navigation: nav_list, nav_search, nav_redirect, page_info, device_current
+Docs: doc_list, doc_read"#);
 
     // Load site memories into the prompt
     if let Ok(memories) = load_memories_for_prompt() {
@@ -411,7 +423,7 @@ fn push_str_fmt(buf: &mut String, s: &str) {
 
 /// Truncate tool results exceeding MAX_TOOL_RESULT_CHARS to prevent
 /// local models from choking on large responses (trendlog exports, point lists).
-const MAX_TOOL_RESULT_CHARS: usize = 8000;
+const MAX_TOOL_RESULT_CHARS: usize = 2000;
 
 fn truncate_tool_result(json: &str) -> String {
     if json.len() <= MAX_TOOL_RESULT_CHARS {
@@ -419,11 +431,51 @@ fn truncate_tool_result(json: &str) -> String {
     }
     let truncated = &json[..MAX_TOOL_RESULT_CHARS];
     format!(
-        "{}...\n\n[truncated: {} total chars, showing first {}]",
+        "{}...\n[truncated: {} total chars]",
         truncated,
         json.len(),
-        MAX_TOOL_RESULT_CHARS
     )
+}
+
+/// Trim old tool results from the conversation to prevent context overflow.
+/// Local models typically have 8K-32K context. Tool results accumulate quickly.
+/// We keep the system prompt + last 2 user-assistant exchanges, trimming older tool results.
+fn trim_old_tool_results(messages: &mut Vec<Message>) {
+    // Rough token estimator: ~4 chars per token
+    let total_chars: usize = messages.iter().map(|m| m.content.len()).sum();
+    let estimated_tokens = total_chars / 4;
+
+    // Only trim if we're approaching 8K tokens (safe for 8K-32K models)
+    if estimated_tokens < 7000 {
+        return;
+    }
+
+    // Find the last 2 user messages and keep everything from the second-to-last onward
+    let user_indices: Vec<usize> = messages.iter().enumerate()
+        .filter(|(_, m)| m.role == "user")
+        .map(|(i, _)| i)
+        .collect();
+
+    if user_indices.len() > 2 {
+        let keep_from = user_indices[user_indices.len() - 2];
+        // Keep system prompt (index 0) + messages from keep_from onward
+        let system_msg = messages[0].clone();
+        let kept: Vec<Message> = messages.drain(keep_from..).collect();
+        messages.clear();
+        messages.push(system_msg);
+        messages.extend(kept);
+    }
+
+    // Also truncate remaining tool result messages that are still too long
+    for msg in messages.iter_mut() {
+        if msg.role == "tool" && msg.content.len() > MAX_TOOL_RESULT_CHARS {
+            msg.content = truncate_tool_result(&msg.content);
+        }
+    }
+
+    let new_chars: usize = messages.iter().map(|m| m.content.len()).sum();
+    tracing::info!("[AI] Context trimmed: {}→{} chars (~{}→{} tokens)",
+        total_chars, new_chars, total_chars/4, new_chars/4);
 }
 
 // ═══ DELETE /api/ai/sessions/:id ═══
