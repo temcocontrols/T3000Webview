@@ -185,7 +185,7 @@ async fn process_chat(
 
     // Outer loop: keep calling the LLM until it produces a final response
     let mut current_messages = messages;
-    let max_iterations = if session.provider == "local" { 4 } else { 8 };
+    let max_iterations = 10;
 
     for _iteration in 0..max_iterations {
         // Trim old tool results to prevent context overflow on local models
@@ -451,7 +451,7 @@ fn load_memories_for_prompt() -> Result<Vec<(String, String)>, ()> {
 
 /// Truncate tool results exceeding MAX_TOOL_RESULT_CHARS to prevent
 /// local models from choking on large responses (trendlog exports, point lists).
-const MAX_TOOL_RESULT_CHARS: usize = 2000;
+const MAX_TOOL_RESULT_CHARS: usize = 8000;
 
 fn truncate_tool_result(json: &str) -> String {
     if json.len() <= MAX_TOOL_RESULT_CHARS {
@@ -473,8 +473,8 @@ fn trim_old_tool_results(messages: &mut Vec<Message>) {
     let total_chars: usize = messages.iter().map(|m| m.content.len()).sum();
     let estimated_tokens = total_chars / 4;
 
-    // Only trim if we're approaching 8K tokens (safe for 8K-32K models)
-    if estimated_tokens < 7000 {
+    // Only trim if approaching 30K tokens (effectively disabled for 32K+ models)
+    if estimated_tokens < 30000 {
         return;
     }
 

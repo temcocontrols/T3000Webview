@@ -324,10 +324,10 @@ device_diagnostics_batch for fleet health. Summarize concisely -- counts, online
 
 fn qwen_optimization_block() -> &'static str {
     "\n\n[Optimization for local Qwen model]\n\
-- Think step by step before calling tools.\n\
-- Call only the necessary tools -- avoid redundant calls.\n\
-- If a tool result clearly answers the question, respond without calling more tools.\n\
-- Batch operations when possible (point_read_batch, point_write_batch)."
+- Think step by step, then call tools ONCE. Do not re-call the same tool.\n\
+- After getting results, respond immediately. Do not call more tools to verify.\n\
+- Batch: use device_get_points once with no filter to see everything at once.\n\
+- You have limited iterations. Be efficient -- plan before calling."
 }
 
 fn cloud_optimization_block() -> &'static str {
