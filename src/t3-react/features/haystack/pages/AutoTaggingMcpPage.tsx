@@ -1027,7 +1027,7 @@ const McpTab: React.FC = () => {
               <li>Paste the <strong>Claude Desktop</strong> config (left) into <code>claude_desktop_config.json</code></li>
               <li>Make sure <code>npx</code> is installed (<code>npm install -g npx</code> if needed)</li>
               <li>Restart Claude Desktop — first run will download <code>mcp-remote</code> automatically</li>
-              <li>Look for the 🔌 icon — you should see 25 T3000 tools available</li>
+              <li>Look for the 🔌 icon — you should see 50+ T3000 tools available</li>
             </ol>
           </div>
 
@@ -1064,7 +1064,7 @@ const McpTab: React.FC = () => {
       {/* ── Available Tools ── */}
       <div className={styles.mcpSection} style={{ marginTop: 20 }}>
         <div className={styles.sectionTitle}>
-          <TagRegular style={{ fontSize: 14 }} /> Available Tools (45+ across 14 categories)
+          <TagRegular style={{ fontSize: 14 }} /> Available Tools (50+ across 16 categories)
         </div>
         <table className={styles.mcpToolTable}>
           <thead>
@@ -1151,6 +1151,13 @@ const McpTab: React.FC = () => {
             <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Diagnostics</td></tr>
             <tr><td><code>t3000_device_diagnostics</code></td><td>Comprehensive device health check: firmware, alarms, points, programs, PIDs</td><td>serial_number: int</td></tr>
             <tr><td><code>t3000_device_diagnostics_batch</code></td><td>Diagnose multiple devices or all devices at once</td><td>serial_numbers?: int[]</td></tr>
+
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Navigation</td></tr>
+            <tr><td><code>t3000_nav_list</code></td><td>List all T3000 web UI pages with paths and shortcuts</td><td>section?: points|control|monitoring|config|system|develop</td></tr>
+            <tr><td><code>t3000_nav_search</code></td><td>Search T3000 pages by keyword (e.g., 'PID', 'alarm')</td><td>query: string</td></tr>
+            <tr><td><code>t3000_nav_redirect</code></td><td>Get navigation URL for a page, optionally with device</td><td>page: string<br/>serial_number?: int</td></tr>
+            <tr><td><code>t3000_page_info</code></td><td>Get detailed info about a page: features, related tools</td><td>page: string</td></tr>
+            <tr><td><code>t3000_device_current</code></td><td>Get the currently selected device in the web UI</td><td>—</td></tr>
           </tbody>
         </table>
       </div>
@@ -1284,6 +1291,15 @@ const promptCategories: PromptCategory[] = [
       { prompt: 'Check the health of all devices', tool: 't3000_device_diagnostics_batch', desc: 'Batch diagnostics across building' },
     ]
   },
+  {
+    name: 'Navigation', tools: 5, items: [
+      { prompt: 'What pages are available in the T3000?', tool: 't3000_nav_list', desc: 'List all UI pages' },
+      { prompt: 'Where do I configure PID loops?', tool: 't3000_nav_search', desc: 'Search pages by keyword' },
+      { prompt: 'Open the outputs page for device 233626', tool: 't3000_nav_redirect', desc: 'Get navigation URL' },
+      { prompt: 'What can I do on the Alarms page?', tool: 't3000_page_info', desc: 'Page details and features' },
+      { prompt: 'Which device am I currently working with?', tool: 't3000_device_current', desc: 'Get current device' },
+    ]
+  },
 ];
 
 const ExamplesTab: React.FC = () => {
@@ -1390,7 +1406,7 @@ const ExamplesTab: React.FC = () => {
         color: 'var(--colorNeutralForeground3)',
       }}>
         <BookOpenRegular style={{ fontSize: 14 }} />
-        <span>See the full <a href="#/t3000/documentation/t3000/haystack/mcp-api-examples" style={{ color: 'var(--colorBrandForeground1)' }}>MCP API Examples</a> doc for all 25 tools with detailed descriptions.</span>
+        <span>See the full <a href="#/t3000/documentation/t3000/haystack/mcp-api-examples" style={{ color: 'var(--colorBrandForeground1)' }}>MCP API Examples</a> doc for all 50+ tools with detailed descriptions.</span>
       </div>
     </div>
   );

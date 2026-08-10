@@ -37,36 +37,64 @@ interface Props {
 
 const TOOL_CATEGORIES = [
   {
-    name: 'Devices',
-    tools: ['Device List', 'Refresh Device', 'Firmware Version', 'Network Scan', 'Backup Config', 'Building Summary'],
+    name: 'Haystack Tagging',
+    tools: ['List Tags', 'Get Point Tags', 'Search Points', 'Auto Tag', 'Preview Tags', 'List Rules', 'Get Brick Class'],
   },
   {
-    name: 'Points',
-    tools: ['Read Points', 'Write Points', 'Batch Read', 'Batch Write', 'Get Metadata', 'Point History', 'Setpoint Adjust', 'Override Value', 'Analog Output'],
+    name: 'Core',
+    tools: ['Ping', 'Get Version', 'Describe Tool'],
   },
   {
-    name: 'Alarms',
-    tools: ['Active Alarms', 'Acknowledge Alarm', 'Alarm History'],
+    name: 'Data & Discovery',
+    tools: ['Device List', 'Get Device Points', 'Point Metadata', 'Metadata Search', 'Semantic Search'],
   },
   {
-    name: 'Semantic Model',
-    tools: ['Search Tags', 'Auto Tag', 'Preview Tags', 'Export Model', 'Validate Tags', 'Semantic Search', 'List Rules', 'Toggle Rule', 'Create Rule'],
+    name: 'Operational',
+    tools: ['Read Point', 'Write Point', 'Batch Read', 'Batch Write', 'Batch Metadata'],
   },
   {
-    name: 'Trendlogs',
-    tools: ['Trend Logs', 'List Trendlogs', 'Export Trendlog'],
+    name: 'Analytics',
+    tools: ['Validate Tags', 'Export Model'],
   },
   {
-    name: 'Schedules',
-    tools: ['List Schedules', 'List Programs', 'Delete Schedule', 'Holiday List'],
+    name: 'Rules Management',
+    tools: ['Toggle Rule', 'Create Rule'],
   },
   {
-    name: 'Control',
-    tools: ['Device Control', 'PID List', 'Occupancy Mode'],
+    name: 'Alarms & Trends',
+    tools: ['Alarm List', 'Acknowledge Alarm', 'Trendlog Query'],
   },
   {
-    name: 'System',
-    tools: ['Server Version', 'Describe Tool', 'Documentation', 'Energy Report', 'Runtime Report', 'List Users', 'Read Settings'],
+    name: 'Device Operations',
+    tools: ['Trendlog List', 'Export Trendlog', 'Refresh Device', 'Schedule List'],
+  },
+  {
+    name: 'Settings',
+    tools: ['Read Settings', 'Write Settings', 'Device Control'],
+  },
+  {
+    name: 'Control Logic',
+    tools: ['Program List', 'Read Program', 'Alarm Settings', 'Users List', 'Graphics List'],
+  },
+  {
+    name: 'Docs & Config',
+    tools: ['Documentation List', 'Read Doc', 'PID List', 'Holiday List', 'Building Summary'],
+  },
+  {
+    name: 'Task Management',
+    tools: ['Create Task', 'List Tasks', 'Update Task', 'Delete Task'],
+  },
+  {
+    name: 'Site Memory',
+    tools: ['Save Memory', 'List Memories', 'Delete Memory'],
+  },
+  {
+    name: 'Diagnostics',
+    tools: ['Device Diagnostics', 'Batch Diagnostics'],
+  },
+  {
+    name: 'Navigation',
+    tools: ['Nav List', 'Nav Search', 'Nav Redirect', 'Page Info', 'Current Device'],
   },
 ];
 

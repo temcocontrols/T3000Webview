@@ -1463,8 +1463,8 @@
   font-weight: 600;
 }
 .systemWarningTitle {
-  color: var(--colorStatusDangerForeground1, #c50f1f);
-  font-weight: 400;
+  color: var(--colorBrandForeground1, #0078d4);
+  font-weight: 600;
   margin-bottom: 2px;
 }
 .systemWarningBody {

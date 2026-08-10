@@ -396,13 +396,13 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
           }
         }
 
-        // Show warning AFTER the assistant message
-        if (truncated) {
+        // Show warning AFTER the assistant message — but only if no pending error already covers it
+        if (truncated && !pendingError) {
           storeSetMessages((prev) => [
             ...prev,
             { role: 'system', content: 'Unable to complete your request — token limit reached.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/', timestamp: Date.now() },
           ]);
-        } else if (!receivedDone && (assistantContent || steps.length > 0)) {
+        } else if (!receivedDone && !pendingError && (assistantContent || steps.length > 0)) {
           storeSetMessages((prev) => [
             ...prev,
             { role: 'system', content: 'Unable to complete your request — connection interrupted.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/', timestamp: Date.now() },
