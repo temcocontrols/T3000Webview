@@ -640,6 +640,12 @@ async fn migrate_single_period(
         .map(|m| m.len() as i64)
         .unwrap_or(0);
 
+    // Upsert: check if exists first, then insert or update
+    let existing = database_files::Entity::find()
+        .filter(database_files::Column::FileName.eq(&partition_file_name))
+        .one(db)
+        .await?;
+
     let new_file = database_files::ActiveModel {
         file_name: Set(partition_file_name),
         file_path: Set(partition_path.to_string_lossy().to_string()),
@@ -648,16 +654,27 @@ async fn migrate_single_period(
         record_count: Set(migrated_count as i64),
         start_date: Set(Some(start_date)),
         end_date: Set(Some(end_date)),
-        is_active: Set(false), // Partitions are not active for new inserts
+        is_active: Set(false),
         is_archived: Set(false),
         created_at: Set(Utc::now().naive_utc()),
         last_accessed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
 
-    new_file.insert(db).await?;
-
-    logger.info(&format!("[OK] Partition {} registered in DATABASE_FILES", partition_id));
+    if let Some(record) = existing {
+        // Update existing record
+        let mut active: database_files::ActiveModel = record.into();
+        active.file_size_bytes = Set(file_size);
+        active.record_count = Set(migrated_count as i64);
+        active.start_date = Set(Some(start_date));
+        active.end_date = Set(Some(end_date));
+        active.last_accessed_at = Set(Utc::now().naive_utc());
+        active.update(db).await?;
+        logger.info(&format!("[OK] Partition {} updated in DATABASE_FILES", partition_id));
+    } else {
+        new_file.insert(db).await?;
+        logger.info(&format!("[OK] Partition {} registered in DATABASE_FILES", partition_id));
+    }
     logger.info(&format!("[SUCCESS] Migration complete: {} records, {} MB partition (main DB unchanged for testing)",
         migrated_count, partition_size_mb));
     // Activity Log: partition created
@@ -1028,6 +1045,11 @@ async fn check_and_partition_by_size() -> Result<bool> {
         Err(_) => 0
     };
 
+    let existing = database_files::Entity::find()
+        .filter(database_files::Column::FileName.eq(partition_file_name.clone()))
+        .one(&db)
+        .await?;
+
     let new_file = database_files::ActiveModel {
         file_name: Set(partition_file_name.clone()),
         file_path: Set(partition_path.to_string_lossy().to_string()),
@@ -1043,9 +1065,17 @@ async fn check_and_partition_by_size() -> Result<bool> {
         ..Default::default()
     };
 
-    database_files::Entity::insert(new_file)
-        .exec(&db)
-        .await?;
+    if let Some(record) = existing {
+        let mut active: database_files::ActiveModel = record.into();
+        active.file_size_bytes = Set(file_size_bytes);
+        active.record_count = Set(record_count);
+        active.start_date = Set(start_datetime);
+        active.end_date = Set(end_datetime);
+        active.last_accessed_at = Set(Utc::now().naive_utc());
+        active.update(&db).await?;
+    } else {
+        database_files::Entity::insert(new_file).exec(&db).await?;
+    }
 
     let msg = format!(
         "[OK] Size-based partition created: {} ({} records, {:.2} MB). Main database cleared and ready for new data.",
