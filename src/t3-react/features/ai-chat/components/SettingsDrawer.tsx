@@ -91,6 +91,55 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'idle' | 'success' | 'error'>('idle');
   const [testError, setTestError] = useState('');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
+
+  const fetchModels = useCallback(async (ep: string, key?: string) => {
+    if (!ep.trim()) return;
+    setFetchingModels(true);
+    try {
+      const res = await fetch(`${ep.trimEnd('/')}/models`, {
+        headers: key ? { Authorization: `Bearer ${key}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const models: string[] = (data.data || [])
+          .map((m: any) => m.id || m.name || '')
+          .filter(Boolean);
+        setAvailableModels(models);
+        if (models.length > 0 && !model.trim()) {
+          setModel(models[0]);
+        }
+      } else {
+        setAvailableModels([]);
+      }
+    } catch {
+      setAvailableModels([]);
+    } finally {
+      setFetchingModels(false);
+    }
+  }, [model]);
+
+  // When endpoint changes, clear old model and fetch new models
+  useEffect(() => {
+    if (endpoint.trim()) {
+      setModel('');
+      setTestResult('idle');
+      fetchModels(endpoint, apiKey);
+    }
+  }, [endpoint]);
+
+  // When model changes, reset test result
+  useEffect(() => {
+    setTestResult('idle');
+  }, [model]);
+
+  // Fetch models when drawer opens for local provider
+  useEffect(() => {
+    if (open && provider === 'local') {
+      fetchModels(endpoint);
+    }
+  }, [open, provider, endpoint, fetchModels]);
 
   // Sync from parent on open
   useEffect(() => {
@@ -120,6 +169,16 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
   }, [provider, endpoint, model, apiKey, onSave]);
 
   const handleTest = useCallback(async () => {
+    if (!model.trim()) {
+      if (availableModels.length > 0) {
+        setTestResult('error');
+        setTestError('Please select a model from the list below, then test again');
+      } else {
+        setTestResult('error');
+        setTestError('Could not fetch model list from this endpoint. Check the URL or enter a model name manually.');
+      }
+      return;
+    }
     setTesting(true);
     setTestResult('idle');
     setTestError('');
@@ -140,10 +199,11 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         setTestResult('success');
-        // Auto-fill model name from response
         if (data.model && data.model !== model) {
           setModel(data.model);
         }
+        // Refresh available models
+        fetchModels(endpoint, apiKey);
       } else {
         const text = await res.text().catch(() => '');
         setTestResult('error');
@@ -284,14 +344,43 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
           </Field>
 
           {/* ── Model ── */}
-          <Field label="Model Name" size="small" style={{ marginBottom: 14 }}>
+          <Field label="Model Name" size="small" style={{ marginBottom: 4 }}>
             <Input
               value={model}
               onChange={(e) => setModel(e.currentTarget.value)}
-              placeholder="model-name"
+              placeholder={fetchingModels ? 'Fetching models...' : 'model-name'}
               style={{ height: 38 }}
             />
           </Field>
+          {provider === 'local' && availableModels.length > 0 && (
+            <div style={{
+              marginBottom: 14, maxHeight: 120, overflowY: 'auto',
+              border: '1px solid var(--colorNeutralStroke2)',
+              borderRadius: 4, fontSize: 12,
+            }}>
+              {fetchingModels ? (
+                <div style={{ padding: '8px 12px', color: 'var(--colorNeutralForeground3)' }}>Loading models...</div>
+              ) : availableModels.map((m) => (
+                <div
+                  key={m}
+                  onClick={() => setModel(m)}
+                  style={{
+                    padding: '6px 12px', cursor: 'pointer',
+                    background: m === model ? 'var(--colorNeutralBackground2)' : 'transparent',
+                    borderBottom: '1px solid var(--colorNeutralStroke2)',
+                  }}
+                >
+                  <CheckmarkCircleRegular
+                    style={{
+                      fontSize: 12, color: m === model ? 'var(--colorBrandForeground1)' : 'transparent',
+                      marginRight: 6, verticalAlign: 'middle',
+                    }}
+                  />
+                  {m}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* ── API Key (cloud only) ── */}
           {showApiKey && (
@@ -306,7 +395,7 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
           )}
 
           {/* ── Test Connection ── */}
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginTop: 8, marginBottom: 16 }}>
             <Button
               appearance="outline"
               size="small"
@@ -321,13 +410,13 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
               )}
             </Button>
             {testResult === 'success' && (
-              <div className={styles.testSuccess}>
+              <div className={styles.testSuccess} style={{ fontSize: 12 }}>
                 <CheckmarkCircleRegular /> Connected successfully
               </div>
             )}
             {testResult === 'error' && (
-              <div className={styles.testError}>
-                <ErrorCircleRegular /> {testError || 'Connection failed'}
+              <div className={styles.testError} style={{ fontSize: 12 }}>
+                <ErrorCircleRegular style={{ fontSize: 16 }} /> {testError || 'Connection failed'}
               </div>
             )}
           </div>
@@ -342,7 +431,7 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
             appearance="primary"
             size="small"
             onClick={handleSave}
-            disabled={!hasChanges || !endpoint || !model || (showApiKey && !apiKey)}
+            disabled={!hasChanges || !endpoint || !model || (showApiKey && !apiKey) || (hasChanges && testResult !== 'success')}
           >
             Save
           </Button>
