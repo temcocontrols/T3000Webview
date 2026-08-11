@@ -82,6 +82,78 @@ export interface UseAiChatStreamReturn {
   clearSession: () => void;
 }
 
+// ── Tool descriptions for synthetic thinking text ──
+// Used when the model doesn't emit reasoning content (e.g. Gemma, non-reasoning models)
+
+const TOOL_DESCRIPTIONS: Record<string, string> = {
+  t3000_device_list: 'Scanning building device inventory\u2026',
+  t3000_device_get_points: 'Reading point configuration\u2026',
+  t3000_device_refresh: 'Refreshing live data from controller\u2026',
+  t3000_device_control: 'Sending control command\u2026',
+  t3000_device_current: 'Setting active device context\u2026',
+  t3000_device_diagnostics: 'Running device diagnostics\u2026',
+  t3000_device_diagnostics_batch: 'Running diagnostics on multiple devices\u2026',
+  t3000_building_summary: 'Generating building health summary\u2026',
+  t3000_point_search: 'Searching for matching points\u2026',
+  t3000_point_read: 'Reading point value\u2026',
+  t3000_point_read_batch: 'Reading multiple point values\u2026',
+  t3000_point_write: 'Writing value to point\u2026',
+  t3000_point_write_batch: 'Writing values to multiple points\u2026',
+  t3000_point_get_metadata: 'Fetching point metadata\u2026',
+  t3000_point_batch_metadata: 'Fetching metadata for multiple points\u2026',
+  t3000_alarm_list: 'Checking active alarms\u2026',
+  t3000_alarm_acknowledge: 'Acknowledging alarm\u2026',
+  t3000_alarm_settings_read: 'Reading alarm threshold settings\u2026',
+  t3000_pid_list: 'Listing PID control loops\u2026',
+  t3000_program_list: 'Listing PLC programs\u2026',
+  t3000_program_read: 'Reading PLC program source\u2026',
+  t3000_schedule_list: 'Reading time schedules\u2026',
+  t3000_holiday_list: 'Checking holiday overrides\u2026',
+  t3000_trendlog_list: 'Listing trendlog configurations\u2026',
+  t3000_trendlog_query: 'Querying historical trend data\u2026',
+  t3000_trendlog_export: 'Exporting trendlog data\u2026',
+  t3000_settings_read: 'Reading device settings\u2026',
+  t3000_settings_write: 'Updating device settings\u2026',
+  t3000_users_list: 'Listing device users\u2026',
+  t3000_haystack_list_tags: 'Listing Haystack tags\u2026',
+  t3000_haystack_get_point_tags: 'Reading Haystack tags for points\u2026',
+  t3000_haystack_search_points: 'Searching points by Haystack tags\u2026',
+  t3000_haystack_auto_tag: 'Running Haystack auto-tagging\u2026',
+  t3000_haystack_preview_tags: 'Previewing Haystack tag assignments\u2026',
+  t3000_haystack_export: 'Exporting Haystack/Brick model\u2026',
+  t3000_haystack_get_brick_class: 'Reading Brick class assignments\u2026',
+  t3000_haystack_list_rules: 'Listing auto-tagging rules\u2026',
+  t3000_haystack_validate: 'Validating Haystack ontology\u2026',
+  t3000_rule_create: 'Creating auto-tagging rule\u2026',
+  t3000_rule_toggle: 'Toggling auto-tagging rule\u2026',
+  t3000_doc_list: 'Listing available documentation\u2026',
+  t3000_doc_read: 'Reading documentation page\u2026',
+  t3000_graphics_list: 'Listing HMI graphics screens\u2026',
+  t3000_nav_list: 'Listing navigation entries\u2026',
+  t3000_nav_search: 'Searching navigation\u2026',
+  t3000_nav_redirect: 'Redirecting to page\u2026',
+  t3000_page_info: 'Getting page information\u2026',
+  t3000_metadata_search: 'Searching metadata by label\u2026',
+  t3000_set_chat_device: 'Setting chat device context\u2026',
+  t3000_task_list: 'Listing background tasks\u2026',
+  t3000_task_create: 'Creating background task\u2026',
+  t3000_task_update: 'Updating background task\u2026',
+  t3000_task_delete: 'Deleting background task\u2026',
+  t3000_memory_list: 'Listing AI memories\u2026',
+  t3000_memory_save: 'Saving AI memory\u2026',
+  t3000_memory_delete: 'Deleting AI memory\u2026',
+  t3000_describe_tool: 'Looking up tool documentation\u2026',
+  t3000_get_version: 'Checking API version\u2026',
+  t3000_ping: 'Checking server health\u2026',
+};
+
+function toolDescription(name: string): string {
+  if (TOOL_DESCRIPTIONS[name]) return TOOL_DESCRIPTIONS[name];
+  // Fallback: strip common prefixes and humanize
+  const short = name.replace(/^(mcp__|t3000__|haystac__|t3000_)+/g, '').replace(/_/g, ' ');
+  return `Calling ${short}\u2026`;
+}
+
 // ── Hook ──
 
 export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => void): UseAiChatStreamReturn {
@@ -163,6 +235,7 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
       storeSetStreamingText('');
       storeSetStreamingSteps([]);
       storeSetStreamingBlocks([]);
+      storeSetActiveToolCalls(() => ({}));
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -314,11 +387,30 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
                 };
                 toolCallRecords.push(tc);
                 storeSetActiveToolCalls((prev) => ({ ...prev, [tc.id]: tc }));
-                // Attach to both flat and block-local steps
-                const flatLast = steps[steps.length - 1];
-                if (flatLast) { flatLast.toolCall = tc; }
+
+                // Ensure we're in a thinking block so tool calls are visible
+                if (currentBlockType !== 'thinking') {
+                  flushBlock();
+                  currentBlockType = 'thinking';
+                }
+
+                // Create a step to host this tool call if none exists
+                const desc = toolDescription(tc.name);
+                if (currentThinkingSteps.length === 0 || currentThinkingSteps[currentThinkingSteps.length - 1].toolCall) {
+                  const idx = steps.length + currentThinkingSteps.length + 1;
+                  currentThinkingSteps.push({ index: idx, content: desc });
+                }
                 const blockLast = currentThinkingSteps[currentThinkingSteps.length - 1];
-                if (blockLast) { blockLast.toolCall = tc; }
+                blockLast.toolCall = tc;
+
+                // Also keep flat steps for backward compat
+                const flatLast = steps[steps.length - 1];
+                if (flatLast && !flatLast.toolCall) {
+                  flatLast.toolCall = tc;
+                } else {
+                  steps.push({ index: steps.length + 1, content: desc, toolCall: tc });
+                }
+
                 storeSetStreamingSteps([...steps]);
                 pushBlocks();
                 break;

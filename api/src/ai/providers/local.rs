@@ -126,6 +126,9 @@ impl LocalProvider {
         let mut finish_reason = "stop".to_string();
         let thinking_start = Instant::now();
         let mut thinking_ended = false;
+        // Buffer for content that arrives before tool calls (models without native reasoning)
+        let mut pre_tool_content: Vec<String> = Vec::new();
+        let mut has_tool_calls = false;
 
         while let Some(chunk_result) = stream.next().await {
             let chunk = chunk_result.map_err(|e| {
@@ -152,8 +155,11 @@ impl LocalProvider {
                             if is_valid_tool_args(&args) {
                                 let _ = tx.send(StreamEvent::ToolCall { id, name, arguments: args });
                                 tool_call_count += 1;
+                                has_tool_calls = true;
                             }
                         }
+                        // Flush buffered pre-tool content
+                        flush_pre_tool_content(tx, &mut pre_tool_content, &mut full_reasoning, &mut reasoning_count, &mut thinking_ended, has_tool_calls, thinking_start);
                         continue;
                     }
 
@@ -172,30 +178,7 @@ impl LocalProvider {
                         }
                     };
 
-                    if let Some(t) = delta.get("reasoning_content").and_then(|c| c.as_str()) {
-                        if !t.is_empty() {
-                            let _ = tx.send(StreamEvent::ThinkingDelta { content: t.to_string() });
-                            full_reasoning.push_str(t);
-                            reasoning_count += 1;
-                        }
-                    }
-                    if let Some(t) = delta.get("content").and_then(|c| c.as_str()) {
-                        if !t.is_empty() {
-                            // End thinking phase when final content starts
-                            if !thinking_ended && reasoning_count > 0 {
-                                let duration = thinking_start.elapsed();
-                                let _ = tx.send(StreamEvent::ThinkingEnd {
-                                    steps: reasoning_count as usize,
-                                    duration_ms: duration.as_millis() as u64,
-                                });
-                                thinking_ended = true;
-                            }
-                            let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
-                            full_text.push_str(t);
-                            content_count += 1;
-                        }
-                    }
-
+                    // Check for tool_calls BEFORE content, so we know if content is pre-tool
                     if let Some(tool_calls) = delta.get("tool_calls").and_then(|tc| tc.as_array()) {
                         for tc in tool_calls {
                             let tc_id = tc.get("id").and_then(|i| i.as_str()).unwrap_or("").to_string();
@@ -203,6 +186,8 @@ impl LocalProvider {
                                 let func_name = func.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string();
                                 let func_args = func.get("arguments").and_then(|a| a.as_str()).unwrap_or("").to_string();
                                 if !tc_id.is_empty() && !func_name.is_empty() {
+                                    // Flush buffered pre-tool content as thinking before sending tool call
+                                    flush_pre_tool_content(tx, &mut pre_tool_content, &mut full_reasoning, &mut reasoning_count, &mut thinking_ended, true, thinking_start);
                                     // Start new tool call
                                     tool_call_buf = Some((tc_id, func_name, func_args));
                                 } else if !func_args.is_empty() {
@@ -214,6 +199,45 @@ impl LocalProvider {
                             }
                         }
                     }
+
+                    if let Some(t) = delta.get("reasoning_content").and_then(|c| c.as_str()) {
+                        if !t.is_empty() {
+                            let _ = tx.send(StreamEvent::ThinkingDelta { content: t.to_string() });
+                            full_reasoning.push_str(t);
+                            reasoning_count += 1;
+                        }
+                    }
+                    if let Some(t) = delta.get("content").and_then(|c| c.as_str()) {
+                        if !t.is_empty() {
+                            if reasoning_count > 0 {
+                                // Native reasoning model (Qwen): end thinking when final content starts
+                                if !thinking_ended {
+                                    let duration = thinking_start.elapsed();
+                                    let _ = tx.send(StreamEvent::ThinkingEnd {
+                                        steps: reasoning_count as usize,
+                                        duration_ms: duration.as_millis() as u64,
+                                    });
+                                    thinking_ended = true;
+                                }
+                                let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
+                                full_text.push_str(t);
+                                content_count += 1;
+                            } else if has_tool_calls || !tool_call_buf.is_none() {
+                                // Content after tool calls in same stream — send as TextDelta
+                                if !thinking_ended {
+                                    thinking_ended = true;
+                                }
+                                let _ = tx.send(StreamEvent::TextDelta { content: t.to_string() });
+                                full_text.push_str(t);
+                                content_count += 1;
+                            } else {
+                                // No native reasoning, no tool calls yet → buffer
+                                pre_tool_content.push(t.to_string());
+                                full_text.push_str(t);
+                                content_count += 1;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -222,8 +246,12 @@ impl LocalProvider {
             if is_valid_tool_args(&args) {
                 let _ = tx.send(StreamEvent::ToolCall { id, name, arguments: args });
                 tool_call_count += 1;
+                has_tool_calls = true;
             }
         }
+
+        // Flush any remaining buffered pre-tool content at end of stream
+        flush_pre_tool_content(tx, &mut pre_tool_content, &mut full_reasoning, &mut reasoning_count, &mut thinking_ended, has_tool_calls, thinking_start);
 
         tracing::info!("[Local] SSE done frames={} content={} reasoning={} tool_calls={} finish={}", frame_count, content_count, reasoning_count, tool_call_count, finish_reason);
 
@@ -234,6 +262,40 @@ impl LocalProvider {
             && reasoning_count > 50;
 
         Ok((full_text, full_reasoning, if truncated { "truncated".into() } else { finish_reason }))
+    }
+}
+
+/// Flush buffered pre-tool content: emit as ThinkingDelta if tool calls followed, otherwise as TextDelta.
+fn flush_pre_tool_content(
+    tx: &UnboundedSender<StreamEvent>,
+    buffer: &mut Vec<String>,
+    full_reasoning: &mut String,
+    reasoning_count: &mut u64,
+    thinking_ended: &mut bool,
+    has_tool_calls: bool,
+    thinking_start: Instant,
+) {
+    if buffer.is_empty() {
+        return;
+    }
+    if has_tool_calls {
+        // Emit as thinking steps
+        for chunk in buffer.drain(..) {
+            full_reasoning.push_str(&chunk);
+            *reasoning_count += 1;
+            let _ = tx.send(StreamEvent::ThinkingDelta { content: chunk });
+        }
+        let duration = thinking_start.elapsed();
+        let _ = tx.send(StreamEvent::ThinkingEnd {
+            steps: *reasoning_count as usize,
+            duration_ms: duration.as_millis() as u64,
+        });
+        *thinking_ended = true;
+    } else {
+        // No tool calls — this was the final answer, emit as TextDelta
+        for chunk in buffer.drain(..) {
+            let _ = tx.send(StreamEvent::TextDelta { content: chunk });
+        }
     }
 }
 
