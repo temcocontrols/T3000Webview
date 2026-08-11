@@ -11,8 +11,6 @@ import {
   Button,
   Input,
   Textarea,
-  RadioGroup,
-  Radio,
   Spinner,
   Divider,
   Tooltip,
@@ -22,6 +20,7 @@ import {
   DismissRegular,
   SettingsRegular,
   CheckmarkCircleRegular,
+  CheckmarkCircleFilled,
   ErrorCircleRegular,
   ChevronDownRegular,
   ChevronUpRegular,
@@ -120,10 +119,9 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
     }
   }, [model]);
 
-  // When endpoint changes, clear old model and fetch new models
+  // When endpoint changes, fetch available models (model is set by provider switch or user input)
   useEffect(() => {
     if (endpoint.trim()) {
-      setModel('');
       setTestResult('idle');
       fetchModels(endpoint, apiKey);
     }
@@ -251,17 +249,58 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
         <div className={styles.drawerBody}>
           {/* ── Provider ── */}
           <Field label="Provider" size="small">
-            <RadioGroup
-              value={provider}
-              onChange={handleProviderChange}
-              layout="vertical"
-            >
-              {(Object.keys(PROVIDER_PRESETS) as ProviderType[]).map((key) => (
-                <Radio key={key} value={key} label={PROVIDER_PRESETS[key].label} />
-              ))}
-            </RadioGroup>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+              {(Object.keys(PROVIDER_PRESETS) as ProviderType[]).map((key) => {
+                const p = PROVIDER_PRESETS[key];
+                const selected = key === provider;
+                return (
+                  <div
+                    key={key}
+                    onClick={() => {
+                      setProvider(key);
+                      const cached = providerCache[key];
+                      setEndpoint(cached?.endpoint ?? p.defaultEndpoint);
+                      setModel(cached?.model ?? p.defaultModel);
+                      setApiKey(cached?.apiKey ?? '');
+                      setTestResult('idle');
+                    }}
+                    style={{
+                      flex: '0 0 calc(50% - 4px)',
+                      minWidth: 140,
+                      position: 'relative',
+                      padding: '12px 14px',
+                      border: selected
+                        ? '2px solid var(--colorBrandForeground1, #0078d4)'
+                        : '1px solid var(--colorNeutralStroke2, #d1d1d1)',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      background: selected
+                        ? 'var(--colorBrandBackground2, #f0f6ff)'
+                        : 'var(--colorNeutralBackground1, #fff)',
+                    }}
+                  >
+                    {selected && (
+                      <CheckmarkCircleFilled
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          fontSize: 18,
+                          color: 'var(--colorBrandForeground1, #0078d4)',
+                        }}
+                      />
+                    )}
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>
+                      {p.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)', lineHeight: 1.4 }}>
+                      {p.desc}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </Field>
-          <p className={styles.drawerHint}>{preset.desc}</p>
 
           {/* ── Setup Guide (collapsible) ── */}
           <button
