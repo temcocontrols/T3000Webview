@@ -209,7 +209,12 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
       }
     } catch (e) {
       setTestResult('error');
-      setTestError(e instanceof Error ? e.message : 'Connection refused');
+      const msg = e instanceof Error ? e.message : '';
+      if (msg.includes('NetworkError') || msg.includes('Failed to fetch') || msg.includes('fetch')) {
+        setTestError(`Could not reach ${endpoint}. Make sure the model server is running and the URL is correct.`);
+      } else {
+        setTestError(msg || 'Connection refused');
+      }
     } finally {
       setTesting(false);
     }
@@ -247,9 +252,23 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
         </div>
 
         <div className={styles.drawerBody}>
-          {/* ── Provider ── */}
-          <Field label="Provider" size="small">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+          {/* ═══════════════════════════════════════════
+              GROUP 1 — Provider
+              ═══════════════════════════════════════════ */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12,
+            }}>
+              <span style={{
+                width: 2, height: 12, borderRadius: 1,
+                background: 'var(--colorBrandForeground1, #0078d4)',
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--colorNeutralForeground2)', lineHeight: '12px' }}>
+                Provider
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {(Object.keys(PROVIDER_PRESETS) as ProviderType[]).map((key) => {
                 const p = PROVIDER_PRESETS[key];
                 const selected = key === provider;
@@ -270,7 +289,7 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
                       position: 'relative',
                       padding: '12px 14px',
                       border: selected
-                        ? '2px solid var(--colorBrandForeground1, #0078d4)'
+                        ? '1px solid var(--colorBrandForeground1, #0078d4)'
                         : '1px solid var(--colorNeutralStroke2, #d1d1d1)',
                       borderRadius: 6,
                       cursor: 'pointer',
@@ -300,164 +319,196 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
                 );
               })}
             </div>
-          </Field>
+          </div>
 
-          {/* ── Setup Guide (collapsible) ── */}
-          <button
-            className={styles.guideToggle}
-            onClick={() => setShowGuide(!showGuide)}
-          >
-            <span>Setup Guide</span>
-            {showGuide ? <ChevronUpRegular fontSize={14} /> : <ChevronDownRegular fontSize={14} />}
-          </button>
-
-          {showGuide && (
-            <div className={styles.guideBody}>
-              {provider === 'local' ? (
-                <>
-                  <p className={styles.guideText}>
-                    Choose one of these free, open-source local servers. Click to visit their site.
-                  </p>
-                  <div className={styles.guideGrid}>
-                    {LOCAL_SERVERS.map((srv) => (
-                      <a
-                        key={srv.name}
-                        href={srv.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.guideCard}
-                      >
-                        <div className={styles.guideCardName}>
-                          {srv.name}
-                          <OpenRegular fontSize={12} style={{ marginLeft: 4, opacity: 0.5 }} />
-                        </div>
-                        <code className={styles.guideCardCmd}>{srv.cmd}</code>
-                        <span className={styles.guideCardPort}>Port: {srv.port}</span>
-                      </a>
-                    ))}
-                  </div>
-                  <p className={styles.guideNote}>
-                    After starting your server, set the Endpoint URL below to <code>http://localhost:&lt;port&gt;/v1</code>.
-                    No API key is needed for local models.
-                  </p>
-                </>
-              ) : provider === 'anthropic' ? (
-                <>
-                  <p className={styles.guideText}>To use Claude, you need an API key from Anthropic:</p>
-                  <ol className={styles.guideList}>
-                    <li>Go to <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer">console.anthropic.com</a></li>
-                    <li>Sign up or log in, then create an API key</li>
-                    <li>Paste your key below (starts with <code>sk-ant-</code>)</li>
-                    <li>Choose your model (e.g. claude-3-5-sonnet-20241022)</li>
-                  </ol>
-                </>
-              ) : (
-                <>
-                  <p className={styles.guideText}>To use Gemini, you need an API key from Google:</p>
-                  <ol className={styles.guideList}>
-                    <li>Go to <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer">aistudio.google.com</a></li>
-                    <li>Sign in with your Google account</li>
-                    <li>Click "Get API Key" and create a new key</li>
-                    <li>Paste your key below and select a model</li>
-                  </ol>
-                </>
-              )}
-            </div>
-          )}
-
-          <Divider style={{ margin: '16px 0' }} />
-
-          {/* ── Endpoint ── */}
-          <Field label="Endpoint URL" size="small" style={{ marginBottom: 14 }}>
-            <Textarea
-              value={endpoint}
-              onChange={(e) => setEndpoint(e.currentTarget.value)}
-              placeholder="https://your-llm-server:port/v1"
-              resize="vertical"
-              rows={2}
+          {/* ═══════════════════════════════════════════
+              GROUP 2 — Setup Guide
+              ═══════════════════════════════════════════ */}
+          <div style={{ marginBottom: 24 }}>
+            <button
+              onClick={() => setShowGuide(!showGuide)}
               style={{
-                fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                minHeight: 56,
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', border: 'none', background: 'none',
+                cursor: 'pointer', padding: 0, font: 'inherit', color: 'inherit',
+                textAlign: 'left', marginBottom: showGuide ? 12 : 0,
               }}
-            />
-          </Field>
+            >
+              <span style={{
+                width: 2, height: 12, borderRadius: 1,
+                background: 'var(--colorBrandForeground1, #0078d4)',
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--colorNeutralForeground2)', flex: 1, lineHeight: '12px' }}>
+                Setup Guide
+              </span>
+              {showGuide ? <ChevronUpRegular fontSize={14} /> : <ChevronDownRegular fontSize={14} />}
+            </button>
 
-          {/* ── Model ── */}
-          <Field label="Model Name" size="small" style={{ marginBottom: 4 }}>
-            <Input
-              value={model}
-              onChange={(e) => setModel(e.currentTarget.value)}
-              placeholder={fetchingModels ? 'Fetching models...' : 'model-name'}
-              style={{ height: 38 }}
-            />
-          </Field>
-          {provider === 'local' && availableModels.length > 0 && (
+            {showGuide && (
+              <div className={styles.guideBody}>
+                {provider === 'local' ? (
+                  <>
+                    <p className={styles.guideText}>
+                      Choose one of these free, open-source local servers. Click to visit their site.
+                    </p>
+                    <div className={styles.guideGrid}>
+                      {LOCAL_SERVERS.map((srv) => (
+                        <a
+                          key={srv.name}
+                          href={srv.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.guideCard}
+                        >
+                          <div className={styles.guideCardName}>
+                            {srv.name}
+                            <OpenRegular fontSize={12} style={{ marginLeft: 4, opacity: 0.5 }} />
+                          </div>
+                          <code className={styles.guideCardCmd}>{srv.cmd}</code>
+                          <span className={styles.guideCardPort}>Port: {srv.port}</span>
+                        </a>
+                      ))}
+                    </div>
+                    <p className={styles.guideNote}>
+                      After starting your server, set the Endpoint URL below to <code>http://localhost:&lt;port&gt;/v1</code>.
+                      No API key is needed for local models.
+                    </p>
+                  </>
+                ) : provider === 'anthropic' ? (
+                  <>
+                    <p className={styles.guideText}>To use Claude, you need an API key from Anthropic:</p>
+                    <ol className={styles.guideList}>
+                      <li>Go to <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer">console.anthropic.com</a></li>
+                      <li>Sign up or log in, then create an API key</li>
+                      <li>Paste your key below (starts with <code>sk-ant-</code>)</li>
+                      <li>Choose your model (e.g. claude-3-5-sonnet-20241022)</li>
+                    </ol>
+                  </>
+                ) : (
+                  <>
+                    <p className={styles.guideText}>To use Gemini, you need an API key from Google:</p>
+                    <ol className={styles.guideList}>
+                      <li>Go to <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer">aistudio.google.com</a></li>
+                      <li>Sign in with your Google account</li>
+                      <li>Click "Get API Key" and create a new key</li>
+                      <li>Paste your key below and select a model</li>
+                    </ol>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ═══════════════════════════════════════════
+              GROUP 3 — Configuration
+              ═══════════════════════════════════════════ */}
+          <div style={{ marginBottom: 8 }}>
             <div style={{
-              marginBottom: 14, maxHeight: 120, overflowY: 'auto',
-              border: '1px solid var(--colorNeutralStroke2)',
-              borderRadius: 4, fontSize: 12,
+              display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12,
             }}>
-              {fetchingModels ? (
-                <div style={{ padding: '8px 12px', color: 'var(--colorNeutralForeground3)' }}>Loading models...</div>
-              ) : availableModels.map((m) => (
-                <div
-                  key={m}
-                  onClick={() => setModel(m)}
-                  style={{
-                    padding: '6px 12px', cursor: 'pointer',
-                    background: m === model ? 'var(--colorNeutralBackground2)' : 'transparent',
-                    borderBottom: '1px solid var(--colorNeutralStroke2)',
-                  }}
-                >
-                  <CheckmarkCircleRegular
-                    style={{
-                      fontSize: 12, color: m === model ? 'var(--colorBrandForeground1)' : 'transparent',
-                      marginRight: 6, verticalAlign: 'middle',
-                    }}
-                  />
-                  {m}
-                </div>
-              ))}
+              <span style={{
+                width: 2, height: 12, borderRadius: 1,
+                background: 'var(--colorBrandForeground1, #0078d4)',
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--colorNeutralForeground2)', lineHeight: '12px' }}>
+                Configuration
+              </span>
             </div>
-          )}
 
-          {/* ── API Key (cloud only) ── */}
-          {showApiKey && (
-            <Field label="API Key" size="small" style={{ marginBottom: 14 }}>
+            {/* Endpoint */}
+            <Field label={<span style={{ color: 'var(--colorNeutralForeground2)', fontSize: 11 }}>Endpoint URL</span>} size="small" style={{ marginBottom: 14 }}>
+              <Textarea
+                value={endpoint}
+                onChange={(e) => setEndpoint(e.currentTarget.value)}
+                placeholder="https://your-llm-server:port/v1"
+                resize="vertical"
+                rows={2}
+                style={{
+                  fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                  minHeight: 56,
+                }}
+              />
+            </Field>
+
+            {/* Model */}
+            <Field label={<span style={{ color: 'var(--colorNeutralForeground2)', fontSize: 11 }}>Model Name</span>} size="small" style={{ marginBottom: 4 }}>
               <Input
-                value={apiKey}
-                onChange={(e) => setApiKey(e.currentTarget.value)}
-                placeholder="sk-..."
+                value={model}
+                onChange={(e) => setModel(e.currentTarget.value)}
+                placeholder={fetchingModels ? 'Fetching models...' : 'model-name'}
                 style={{ height: 38 }}
               />
             </Field>
-          )}
+            {provider === 'local' && availableModels.length > 0 && (
+              <div style={{
+                marginBottom: 14, maxHeight: 120, overflowY: 'auto',
+                border: '1px solid var(--colorNeutralStroke2)',
+                borderRadius: 4, fontSize: 12,
+              }}>
+                {fetchingModels ? (
+                  <div style={{ padding: '8px 12px', color: 'var(--colorNeutralForeground3)' }}>Loading models...</div>
+                ) : availableModels.map((m) => (
+                  <div
+                    key={m}
+                    onClick={() => setModel(m)}
+                    style={{
+                      padding: '6px 12px', cursor: 'pointer',
+                      background: m === model ? 'var(--colorNeutralBackground2)' : 'transparent',
+                      borderBottom: '1px solid var(--colorNeutralStroke2)',
+                    }}
+                  >
+                    <CheckmarkCircleRegular
+                      style={{
+                        fontSize: 12, color: m === model ? 'var(--colorBrandForeground1)' : 'transparent',
+                        marginRight: 6, verticalAlign: 'middle',
+                      }}
+                    />
+                    {m}
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {/* ── Test Connection ── */}
-          <div style={{ marginTop: 8, marginBottom: 16 }}>
-            <Button
-              appearance="outline"
-              size="small"
-              onClick={handleTest}
-              disabled={testing || !endpoint}
-              style={{ width: '100%', height: 30 }}
-            >
-              {testing ? (
-                <><Spinner size="extra-tiny" style={{ marginRight: 8 }} /> Testing...</>
-              ) : (
-                'Test Connection'
+            {/* API Key (cloud only) */}
+            {showApiKey && (
+              <Field label={<span style={{ color: 'var(--colorNeutralForeground2)', fontSize: 11 }}>API Key</span>} size="small" style={{ marginTop: 14, marginBottom: 14 }}>
+                <Input
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.currentTarget.value)}
+                  placeholder="sk-..."
+                  style={{ height: 38 }}
+                />
+              </Field>
+            )}
+
+            {/* Test Connection */}
+            <div style={{ marginTop: 8 }}>
+              <Button
+                appearance="outline"
+                size="small"
+                onClick={handleTest}
+                disabled={testing || !endpoint}
+                style={{ width: '100%', height: 30 }}
+              >
+                {testing ? (
+                  <><Spinner size="extra-tiny" style={{ marginRight: 8 }} /> Testing...</>
+                ) : (
+                  'Test Connection'
+                )}
+              </Button>
+              {testResult === 'success' && (
+                <div className={styles.testSuccess} style={{ fontSize: 12 }}>
+                  <CheckmarkCircleRegular /> Connected successfully
+                </div>
               )}
-            </Button>
-            {testResult === 'success' && (
-              <div className={styles.testSuccess} style={{ fontSize: 12 }}>
-                <CheckmarkCircleRegular /> Connected successfully
-              </div>
-            )}
-            {testResult === 'error' && (
-              <div className={styles.testError} style={{ fontSize: 12 }}>
-                <ErrorCircleRegular style={{ fontSize: 16 }} /> {testError || 'Connection failed'}
-              </div>
-            )}
+              {testResult === 'error' && (
+                <div className={styles.testError} style={{ fontSize: 12 }}>
+                  <ErrorCircleRegular style={{ fontSize: 16 }} /> {testError || 'Connection failed'}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
