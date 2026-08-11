@@ -76,7 +76,6 @@ const LOCAL_SERVERS = [
   { name: 'Ollama', url: 'https://ollama.com', cmd: 'ollama pull llama3.1:8b && ollama serve', port: '11434' },
   { name: 'llama.cpp', url: 'https://github.com/ggerganov/llama.cpp', cmd: 'llama-server -m model.gguf --port 8080', port: '8080' },
   { name: 'vLLM', url: 'https://github.com/vllm-project/vllm', cmd: 'vllm serve model-name', port: '8000' },
-  { name: 'LM Studio', url: 'https://lmstudio.ai', cmd: 'Download & run the app, load a model', port: '1234' },
 ];
 
 // ── Component ──

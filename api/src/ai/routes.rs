@@ -123,7 +123,8 @@ async fn process_chat(
 ) -> Result<(), AiError> {
     let provider = Arc::new(get_provider(&session.provider)?);
     let tools = get_all_tool_defs();
-    info!("[AI] process_chat: provider={} model={} endpoint={} tools={}", session.provider, session.model, session.endpoint, tools.len());
+    info!("[AI] process_chat START: provider={} model={} endpoint={} tools={} session_msgs={}",
+        session.provider, session.model, session.endpoint, tools.len(), session.messages.len());
 
     // Send the system prompt if this is a new conversation
     let messages = if session.messages.iter().any(|m| m.role == "system") {
@@ -187,7 +188,9 @@ async fn process_chat(
     let mut current_messages = messages;
     let max_iterations = 100;
 
-    for _iteration in 0..max_iterations {
+    for iteration in 0..max_iterations {
+        info!("[AI] === Iteration {}/{} === messages={}", iteration + 1, max_iterations, current_messages.len());
+
         // Trim old tool results to prevent context overflow on local models
         if session.provider == "local" {
             trim_old_tool_results(&mut current_messages);
@@ -196,6 +199,8 @@ async fn process_chat(
         let (inner_tx, mut inner_rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
 
         // Spawn the provider call — it streams events into inner_tx
+        info!("[AI] Iteration {}: calling LLM provider...", iteration + 1);
+        let llm_start = std::time::Instant::now();
         let provider_tx = inner_tx.clone();
         let provider_handle = {
             let provider = Arc::clone(&provider);
@@ -237,16 +242,25 @@ async fn process_chat(
 
         // Wait for provider to complete and check for errors
         let finish_reason = match provider_handle.await {
-            Ok(Ok(reason)) => reason.unwrap_or_else(|| "stop".into()),
-            Ok(Err(e)) => return Err(e),
+            Ok(Ok(reason)) => {
+                let elapsed = llm_start.elapsed();
+                info!("[AI] Iteration {}: LLM done in {:?}, finish_reason={:?}, text_len={}, tool_calls={}",
+                    iteration + 1, elapsed, reason, assistant_text.len(), tool_call_records.len());
+                reason.unwrap_or_else(|| "stop".into())
+            }
+            Ok(Err(e)) => {
+                info!("[AI] Iteration {}: LLM error: {}", iteration + 1, e);
+                return Err(e);
+            }
             Err(join_err) => {
+                info!("[AI] Iteration {}: Provider task panicked: {}", iteration + 1, join_err);
                 return Err(AiError::Stream(format!("Provider task panicked: {}", join_err)));
             }
         };
 
         // ── No tools called — this is the final turn ──
         if tool_call_records.is_empty() {
-            info!("[AI] No tools called, turn complete");
+            info!("[AI] No tools called — final turn complete. text_len={} finish={}", assistant_text.len(), finish_reason);
 
             // Append assistant message to conversation
             if !assistant_text.is_empty() {
@@ -296,16 +310,18 @@ async fn process_chat(
         }
 
         // ── Tools were called — execute them and loop ──
-        info!("[AI] {} tool(s) called, executing", tool_call_records.len());
+        info!("[AI] {} tool(s) called, executing (iteration {})", tool_call_records.len(), iteration + 1);
 
         let mut tool_results: Vec<(String, String)> = vec![];  // (id, result)
+        let tool_start = std::time::Instant::now();
 
         for (tc_id, tc_name, tc_args) in &tool_call_records {
-            info!("Tool call: {} with args {}", tc_name, tc_args);
+            let tc_start = std::time::Instant::now();
+            info!("[AI] Tool {}/{}: {} args={}", tool_results.len() + 1, tool_call_records.len(), tc_name, tc_args);
 
             // Safety guard: block write tools without confirm
             if is_write_tool(tc_name) && !has_confirm(tc_args) {
-                info!("BLOCKED write tool {}: missing confirm", tc_name);
+                info!("[AI] BLOCKED write tool {}: missing confirm:true in args", tc_name);
                 let blocked = wrap_error(tc_name, "This write operation requires user confirmation. Please ask the user before proceeding.");
                 let event = StreamEvent::ToolResult {
                     id: tc_id.clone(),
@@ -319,8 +335,9 @@ async fn process_chat(
 
             match execute_mcp_tool(tc_name, tc_args, state).await {
                 Ok(result) => {
+                    let elapsed = tc_start.elapsed();
                     let result_json = serde_json::to_string(&result).unwrap_or_else(|_| "null".to_string());
-                    info!("Tool result for {}: {} chars", tc_name, result_json.len());
+                    info!("[AI] Tool {} OK in {:?} -> {} chars", tc_name, elapsed, result_json.len());
                     let truncated = truncate_tool_result(&result_json);
                     let wrapped = wrap_result(tc_name, &truncated);
                     let event = StreamEvent::ToolResult {
@@ -332,7 +349,8 @@ async fn process_chat(
                     tool_results.push((tc_id.clone(), wrapped));
                 }
                 Err(e) => {
-                    info!("Tool error for {}: {}", tc_name, e);
+                    let elapsed = tc_start.elapsed();
+                    info!("[AI] Tool {} FAILED in {:?}: {}", tc_name, elapsed, e);
                     let wrapped = wrap_error(tc_name, &e);
                     let event = StreamEvent::ToolResult {
                         id: tc_id.clone(),
@@ -344,6 +362,8 @@ async fn process_chat(
                 }
             }
         }
+
+        info!("[AI] All {} tools executed in {:?}", tool_results.len(), tool_start.elapsed());
 
         // Build assistant message with tool calls for the next iteration
         let openai_tool_calls: Vec<super::types::ToolCall> = tool_call_records
@@ -387,6 +407,7 @@ async fn process_chat(
     }
 
     // Exceeded max iterations
+    info!("[AI] MAX ITERATIONS ({}) exceeded — aborting. Last messages count: {}", max_iterations, current_messages.len());
     Err(AiError::Stream(
         "Unable to complete your request — maximum tool calls reached.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/".to_string(),
     ))

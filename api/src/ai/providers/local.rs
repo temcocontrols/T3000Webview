@@ -200,7 +200,10 @@ impl LocalProvider {
                         }
                     }
 
-                    if let Some(t) = delta.get("reasoning_content").and_then(|c| c.as_str()) {
+                    // Check for reasoning content: Ollama uses "reasoning", DeepSeek/Qwen use "reasoning_content"
+                    let reasoning_text = delta.get("reasoning").and_then(|c| c.as_str())
+                        .or_else(|| delta.get("reasoning_content").and_then(|c| c.as_str()));
+                    if let Some(t) = reasoning_text {
                         if !t.is_empty() {
                             let _ = tx.send(StreamEvent::ThinkingDelta { content: t.to_string() });
                             full_reasoning.push_str(t);

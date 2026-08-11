@@ -331,17 +331,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
 
             {/* Streaming bubble */}
             {showStreamingBubble && (
-              <ChatMessage
-                message={{
-                  role: 'assistant',
-                  content: streamingText,
-                  thinkingSteps: streamingSteps,
-                  messageBlocks: streamingBlocks.length > 0 ? streamingBlocks : undefined,
-                  timestamp: Date.now(),
-                  toolCalls: Object.values(activeToolCalls),
-                }}
-                isStreaming
-              />
+              <>
+                <ChatMessage
+                  message={{
+                    role: 'assistant',
+                    content: streamingText,
+                    thinkingSteps: streamingSteps,
+                    messageBlocks: streamingBlocks.length > 0 ? streamingBlocks : undefined,
+                    timestamp: Date.now(),
+                    toolCalls: Object.values(activeToolCalls),
+                  }}
+                  isStreaming
+                />
+              </>
             )}
 
             <div ref={messagesEndRef} />
