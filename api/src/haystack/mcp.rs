@@ -177,7 +177,7 @@ type SessionStore = Arc<Mutex<HashMap<String, McpSession>>>;
 // ═══ Tool Definitions ═══ 
 
 lazy_static::lazy_static! {
-    pub(crate) static ref TOOLS: Vec<ToolDef> = vec![
+    pub static ref TOOLS: Vec<ToolDef> = vec![
     ToolDef {
         name: "t3000_haystack_list_tags",
         title: "List Haystack Tags",
@@ -1254,11 +1254,11 @@ lazy_static::lazy_static! {
     ];
 }
 
-pub(crate) struct ToolDef {
-    pub(crate) name: &'static str,
-    pub(crate) title: &'static str,
-    pub(crate) description: &'static str,
-    pub(crate) input_schema: Value,
+pub struct ToolDef {
+    pub name: &'static str,
+    pub title: &'static str,
+    pub description: &'static str,
+    pub input_schema: Value,
 }
 
 // ═══ MCP Server (Streamable HTTP) ═══ 
@@ -1993,7 +1993,7 @@ fn get_nav_pages() -> Vec<NavPage> {
     ]
 }
 
-pub(crate) async fn execute_tool(
+pub async fn execute_tool(
     name: &str,
     args: &Value,
     db: &sea_orm::DatabaseConnection,
