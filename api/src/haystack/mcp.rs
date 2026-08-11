@@ -458,7 +458,7 @@ lazy_static::lazy_static! {
                 },
                 "point_index": {
                     "type": "integer",
-                    "description": "Zero-based point index"
+                    "description": "1-based point index (matches UI display, e.g. out1=1)"
                 }
             },
             "required": ["serial_number", "point_type", "point_index"]
@@ -735,7 +735,7 @@ lazy_static::lazy_static! {
                 },
                 "point_index": {
                     "type": "integer",
-                    "description": "Zero-based point index"
+                    "description": "1-based point index (matches UI display, e.g. out1=1)"
                 },
                 "start": {
                     "type": "string",
@@ -2394,7 +2394,7 @@ pub async fn execute_tool(
             let point_type = args.get("point_type").and_then(|v| v.as_str())
                 .ok_or_else(|| "point_type required".to_string())?;
             let point_index: i32 = args.get("point_index")
-                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
                 .ok_or_else(|| "point_index required".to_string())?;
 
             // Validate point_type early — prevents SQL injection
@@ -2612,7 +2612,7 @@ pub async fn execute_tool(
             let point_type = args.get("point_type").and_then(|v| v.as_str())
                 .ok_or_else(|| "point_type required".to_string())?;
             let point_index: i32 = args.get("point_index")
-                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
                 .ok_or_else(|| "point_index required".to_string())?;
 
             let (table, label_col, value_col, units_col) = match point_type {
@@ -2661,7 +2661,7 @@ pub async fn execute_tool(
             let point_type = args.get("point_type").and_then(|v| v.as_str())
                 .ok_or_else(|| "point_type required".to_string())?;
             let point_index: i32 = args.get("point_index")
-                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
                 .ok_or_else(|| "point_index required".to_string())?;
             let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
             let field = args.get("field").and_then(|v| v.as_str()).unwrap_or("value");
@@ -2733,7 +2733,7 @@ pub async fn execute_tool(
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let pt = point.get("point_type").and_then(|v| v.as_str());
-                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
+                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32 - 1);
                 if let (Some(sn), Some(pt), Some(idx)) = (sn, pt, idx) {
                     let (table, label_col, value_col, units_col) = match pt {
                         "INPUT" => ("INPUTS", "Label", "fValue", "Units"),
@@ -2794,7 +2794,7 @@ pub async fn execute_tool(
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let pt = point.get("point_type").and_then(|v| v.as_str());
-                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
+                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32 - 1);
                 let val = point.get("value");
                 let field = point.get("field").and_then(|v| v.as_str()).unwrap_or("value");
                 if let (Some(sn), Some(pt), Some(idx), Some(val)) = (sn, pt, idx, val) {
@@ -2830,7 +2830,7 @@ pub async fn execute_tool(
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let pt = point.get("point_type").and_then(|v| v.as_str());
-                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
+                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32 - 1);
                 if let (Some(sn), Some(pt_str), Some(idx)) = (sn, pt, idx) {
                     let (table, idx_col) = match pt_str {
                         "INPUT" => ("INPUTS", "Input_Index"),
@@ -3339,7 +3339,7 @@ pub async fn execute_tool(
             let point_type = args.get("point_type").and_then(|v| v.as_str())
                 .ok_or_else(|| "point_type required".to_string())?;
             let point_index: i32 = args.get("point_index")
-                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
                 .ok_or_else(|| "point_index required".to_string())?;
             let start = args.get("start").and_then(|v| v.as_str()).map(String::from)
                 .ok_or_else(|| "start time required".to_string())?;
