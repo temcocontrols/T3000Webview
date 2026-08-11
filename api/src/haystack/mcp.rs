@@ -1998,7 +1998,7 @@ pub(crate) async fn execute_tool(
     args: &Value,
     db: &sea_orm::DatabaseConnection,
 ) -> Result<String, String> {
-    info!("[MCP] -> {} args={}", name, serde_json::to_string(args).unwrap_or_default());
+    // (routes.rs logs tool calls with args)
     mcp_log(&format!("-> {} {}", name, serde_json::to_string(args).unwrap_or_default()));
 
     // Track the device the user is working with for device_current
@@ -4608,8 +4608,8 @@ pub(crate) async fn execute_tool(
         _ => Err(format!("Unknown tool: {}", name)),
     };
     match &result {
-        Ok(_) => { info!("[MCP] <- {} OK", name); mcp_log(&format!("<- {} OK", name)); },
-        Err(e) => { error!("[MCP] <- {} FAILED: {}", name, e); mcp_log(&format!("<- {} FAILED: {}", name, e)); },
+        Ok(_) => { /* routes.rs logs tool results */ },
+        Err(e) => { error!("[MCP] {} FAILED: {}", name, e); },
     }
     result
 }

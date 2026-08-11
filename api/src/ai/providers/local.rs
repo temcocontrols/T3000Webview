@@ -68,7 +68,7 @@ impl LlmProvider for LocalProvider {
         if !tools_json.is_empty() {
             body["tools"] = json!(tools_json);
         }
-        tracing::info!("[Local] Sending {} tools", tools_json.len());
+        // (tools count already in request log above)
 
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(300))
@@ -94,8 +94,7 @@ impl LlmProvider for LocalProvider {
             .map_err(|e| AiError::Provider(format!("Failed to connect: {}", e)))?;
 
         let status = response.status();
-        let resp_headers = format!("{:?}", response.headers());
-        tracing::info!("[Local] Response status: {} headers: {}", status, resp_headers);
+        tracing::info!("[Local] Response: {}", status);
         if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
             let truncated = if text.len() > 500 { format!("{}... ({} chars)", &text[..500], text.len()) } else { text.clone() };

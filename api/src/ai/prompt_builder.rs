@@ -403,7 +403,6 @@ fn append_memories(prompt: &mut String, memories: &[(String, String)]) {
 /// Build the full system prompt from user context.
 pub fn build_system_prompt(user_text: &str, provider_is_local: bool, memories: &[(String, String)]) -> String {
     let persona = classify_persona(user_text);
-    info!("Persona selected: {:?}", persona);
 
     let mut prompt = String::from(CORE_PROMPT);
 
@@ -411,7 +410,7 @@ pub fn build_system_prompt(user_text: &str, provider_is_local: bool, memories: &
     append_optimization(&mut prompt, provider_is_local);
     append_memories(&mut prompt, memories);
 
-    info!("System prompt length: {} chars (persona={}, local={})",
+    info!("[AI] System prompt: {} chars, persona={}, local={}",
         prompt.len(), persona.label(), provider_is_local);
 
     prompt

@@ -172,7 +172,6 @@ async fn process_chat(
             .unwrap_or("");
         let provider_is_local = session.provider == "local";
         let memories = load_memories_for_prompt().unwrap_or_default();
-        info!("Provider: {}, Local model: {}", session.provider, provider_is_local);
         let mut msgs = vec![Message {
             role: "system".to_string(),
             content: prompt_builder::build_system_prompt(last_user, provider_is_local, &memories),

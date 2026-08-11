@@ -24,7 +24,7 @@ pub async fn execute_tool(
         format!("Failed to parse tool arguments: {}", e)
     })?;
 
-    info!("[AI] Executing tool: {} with args: {}", name, arguments);
+    // (routes.rs logs tool execution with timing)
 
     // Try external MCP servers first
     if let Some(result) = super::routes::MCP_CLIENT_MANAGER
@@ -50,7 +50,7 @@ pub async fn execute_tool(
     let result_str = mcp::execute_tool(name, &args, &db).await
         .map_err(|e| format!("Tool {} failed: {}", name, e))?;
 
-    info!("[AI] Tool {} succeeded", name);
+    // (routes.rs logs success with timing)
 
     // Parse result string back into JSON for the LLM
     serde_json::from_str(&result_str)

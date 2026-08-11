@@ -41,9 +41,7 @@ pub struct SessionIndexEntry {
 // ── Path helpers ──
 
 fn sessions_dir() -> PathBuf {
-    let dir = get_ai_sessions_path();
-    tracing::info!("[AI] sessions_dir={}", dir.display());
-    dir
+    get_ai_sessions_path()
 }
 
 fn index_path() -> PathBuf {
