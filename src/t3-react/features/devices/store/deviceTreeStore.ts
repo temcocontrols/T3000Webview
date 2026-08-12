@@ -922,7 +922,27 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       },
 
       toggleShowOfflineDevices: () => {
-        set((state) => ({ showOfflineDevices: !state.showOfflineDevices }));
+        const { showOfflineDevices, selectedDevice, deviceStatuses, devices } = get();
+        const willShow = !showOfflineDevices;
+
+        set({ showOfflineDevices: willShow });
+
+        // When collapsing the offline group, the currently selected offline device
+        // becomes hidden. Fall back to selecting the first online device instead.
+        if (!willShow && selectedDevice) {
+          const selectedStatus = deviceStatuses.get(selectedDevice.serialNumber);
+          if (selectedStatus !== 'online') {
+            const onlineDevices = devices
+              .filter((d) => deviceStatuses.get(d.serialNumber) === 'online')
+              .sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+            if (onlineDevices.length > 0) {
+              get().selectNode(`device-${onlineDevices[0].serialNumber}`);
+            } else {
+              set({ selectedDevice: null, selectedNodeId: null });
+            }
+          }
+        }
+
         get().buildTreeStructure();
       },
 
