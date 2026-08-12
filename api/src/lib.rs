@@ -1,7 +1,7 @@
 use std::panic;
 use utils::{copy_database_if_not_exists, SHUTDOWN_CHANNEL};
 use db_connection::establish_t3_device_connection;
-use database_management::partition_monitor_service;
+use server_db::partition_monitor_service;
 
 pub mod app_state;
 pub mod auth;
@@ -24,7 +24,7 @@ pub mod user;
 pub mod utils;
 
 // Database management modules
-pub mod database_management;
+pub mod server_db;
 
 // MCP (Model Context Protocol) server — JSON-RPC 2.0 + 45+ tools
 pub mod mcp;

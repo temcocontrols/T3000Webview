@@ -712,7 +712,7 @@ async fn save_ini_config(
     let mut local_db_mirror_saved = false;
     if let Some(ref local_conn) = state.local_config_conn {
         let db = local_conn.lock().await;
-        let enabled_saved = crate::database_management::ApplicationConfigService::set_setting(
+        let enabled_saved = crate::server_db::ApplicationConfigService::set_setting(
             &*db,
             "server_db".to_string(),
             "enabled".to_string(),
@@ -722,7 +722,7 @@ async fn save_ini_config(
             None,
         )
         .await;
-        let role_saved = crate::database_management::ApplicationConfigService::set_setting(
+        let role_saved = crate::server_db::ApplicationConfigService::set_setting(
             &*db,
             "server_db".to_string(),
             "role".to_string(),

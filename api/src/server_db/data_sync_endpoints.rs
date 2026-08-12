@@ -10,7 +10,7 @@ use axum::{
 use serde::Deserialize;
 
 use crate::app_state::T3AppState;
-use crate::database_management::data_sync_service::{
+use crate::server_db::data_sync_service::{
     DataSyncMetadataService, InsertSyncMetadataRequest, SyncStatusResponse,
 };
 use crate::error::Result;

@@ -19,7 +19,7 @@ use super::types::{DiscoveredDevice, ScanResult};
 
 /// Reuse the existing `get_all_local_ips()` from the SQL Server network scan module.
 fn get_local_ips() -> Vec<String> {
-    crate::database_management::network_scan::get_all_local_ips()
+    crate::server_db::network_scan::get_all_local_ips()
 }
 
 /// Scan the local network for T3000 devices via UDP broadcast.

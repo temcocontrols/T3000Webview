@@ -941,8 +941,8 @@ pub async fn query_trendlog_for_dashboard(
     end_date: &str,         // "YYYY-MM-DD HH:MM:SS"
     serial_number: Option<i32>,
     panel_id: Option<i32>,
-) -> Result<Vec<crate::database_management::partition_query_service::TrendlogDataRecord>, String> {
-    use crate::database_management::partition_query_service::TrendlogDataRecord;
+) -> Result<Vec<crate::server_db::partition_query_service::TrendlogDataRecord>, String> {
+    use crate::server_db::partition_query_service::TrendlogDataRecord;
 
     let mut conn = pool.get().await.map_err(|e| format!("Pool error: {}", e))?;
 

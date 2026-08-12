@@ -177,7 +177,7 @@ pub struct QueryResult {
 async fn get_database_status(State(state): State<T3AppState>) -> Result<Json<DatabaseInfo>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let table_names = mssql_generic_crud::list_tables(pool)
             .await
             .map_err(|e| { eprintln!("MSSQL list tables error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -272,7 +272,7 @@ async fn get_table_data(
     // ── MSSQL branch (non-trendlog tables stay MSSQL-first) ──
     if let Some(pool) = &state.mssql_pool {
         if !sqlite_first_table {
-            use crate::database_management::mssql_generic_crud;
+            use crate::server_db::mssql_generic_crud;
             let page = params.page.unwrap_or(1);
             let per_page = params.per_page.unwrap_or(10);
             let data = if let Some(search) = &params.search {
@@ -377,7 +377,7 @@ async fn create_record(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let id = mssql_generic_crud::insert_row(pool, &table, &payload)
             .await
             .map_err(|e| { eprintln!("MSSQL insert error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -414,7 +414,7 @@ async fn update_record(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let rows = mssql_generic_crud::update_row(pool, &table, id, &payload)
             .await
             .map_err(|e| { eprintln!("MSSQL update error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -450,7 +450,7 @@ async fn delete_record(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let rows = mssql_generic_crud::delete_row(pool, &table, id)
             .await
             .map_err(|e| { eprintln!("MSSQL delete error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -492,7 +492,7 @@ async fn get_device_table_data(
     // ── MSSQL branch (non-SQLite-first tables) ──
     if let Some(pool) = &state.mssql_pool {
         if !sqlite_first_table {
-            use crate::database_management::mssql_generic_crud;
+            use crate::server_db::mssql_generic_crud;
             let serial_number: i32 = serial.parse().map_err(|_| StatusCode::BAD_REQUEST)?;
             let data = mssql_generic_crud::select_by_device(pool, &table, serial_number)
                 .await
@@ -562,7 +562,7 @@ async fn get_device_table_data(
     // Only fall back when SQLite returned nothing and a pool is active.
     if data_len == 0 && sqlite_first_table {
         if let Some(pool) = &state.mssql_pool {
-            use crate::database_management::mssql_generic_crud;
+            use crate::server_db::mssql_generic_crud;
             if let Ok(serial_number) = serial.parse::<i32>() {
                 if let Ok(mssql_data) = mssql_generic_crud::select_by_device(pool, &table, serial_number).await {
                     if !mssql_data.is_empty() {
@@ -590,7 +590,7 @@ async fn export_table(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let data = mssql_generic_crud::select_all(pool, &table, 1, 100_000)
             .await
             .map_err(|e| { eprintln!("MSSQL export error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -663,7 +663,7 @@ async fn import_table(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let data = payload.get("data")
             .and_then(|d| d.as_array())
             .ok_or(StatusCode::BAD_REQUEST)?;
@@ -735,7 +735,7 @@ async fn create_device(
 
     // ── MSSQL replication (if center DB is MSSQL) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_queries;
+        use crate::server_db::mssql_queries;
         let serial_number = payload.serial_number.unwrap_or(0);
         mssql_queries::upsert_device(
             pool,
@@ -823,7 +823,7 @@ async fn update_device(
 
     // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::update_row(pool, "DEVICES", device_id, &json_payload).await;
     }
 
@@ -847,7 +847,7 @@ async fn delete_device(
 
     // ── MSSQL delete (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::delete_row(pool, "DEVICES", device_id).await;
     }
 
@@ -868,7 +868,7 @@ async fn delete_all_devices(
 
     // ── MSSQL delete all (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::delete_all(pool, "DEVICES").await;
     }
 
@@ -1131,7 +1131,7 @@ async fn create_input_point(
 
     // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::insert_row(pool, "INPUTS", &json_payload).await;
     }
 
@@ -1157,7 +1157,7 @@ async fn create_output_point(
 
     // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::insert_row(pool, "OUTPUTS", &json_payload).await;
     }
 
@@ -1183,7 +1183,7 @@ async fn create_variable_point(
 
     // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::insert_row(pool, "VARIABLES", &json_payload).await;
     }
 
@@ -1261,7 +1261,7 @@ async fn create_schedule(
 
     // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::insert_row(pool, "SCHEDULES", &json_payload).await;
     }
 
@@ -1313,7 +1313,7 @@ async fn update_schedule(
 
     // ── MSSQL write (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         if let Ok(all) = mssql_generic_crud::select_by_device(pool, "SCHEDULES", device_id).await {
             let found = all.iter().find(|s| {
                 s.get("Schedule_ID").and_then(|v| v.as_str()) == Some(&schedule_id)
@@ -1346,7 +1346,7 @@ async fn delete_schedule(
 
     // ── MSSQL delete (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         if let Ok(all) = mssql_generic_crud::select_by_device(pool, "SCHEDULES", device_id).await {
             let found = all.iter().find(|s| {
                 s.get("Schedule_ID").and_then(|v| v.as_str()) == Some(&schedule_id)
@@ -1447,7 +1447,7 @@ async fn create_program(
 
     // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::insert_row(pool, "PROGRAMS", &json_payload).await;
     }
 
@@ -1491,7 +1491,7 @@ async fn update_program(
 
     // ── MSSQL write (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         if let Ok(all) = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id).await {
             let found = all.iter().find(|p| {
                 p.get("Program_ID").and_then(|v| v.as_str()) == Some(&program_id)
@@ -1524,7 +1524,7 @@ async fn delete_program(
 
     // ── MSSQL delete (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         if let Ok(all) = mssql_generic_crud::select_by_device(pool, "PROGRAMS", device_id).await {
             let found = all.iter().find(|p| {
                 p.get("Program_ID").and_then(|v| v.as_str()) == Some(&program_id)
@@ -1623,7 +1623,7 @@ async fn get_trendlogs_by_device(
 
             // ── MSSQL fallback branch ──
             if let Some(pool) = &state.mssql_pool {
-                use crate::database_management::mssql_generic_crud;
+                use crate::server_db::mssql_generic_crud;
                 let mut trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
                     .await
                     .map_err(|err| { eprintln!("MSSQL get trendlogs fallback error: {}", err); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -1676,7 +1676,7 @@ async fn get_trendlog_stats(
 
             // ── MSSQL fallback branch ──
             if let Some(pool) = &state.mssql_pool {
-                use crate::database_management::mssql_generic_crud;
+                use crate::server_db::mssql_generic_crud;
                 let trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
                     .await
                     .map_err(|err| { eprintln!("MSSQL trendlog stats fallback error: {}", err); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -1703,7 +1703,7 @@ async fn get_trendlogs_with_config(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let trendlogs = mssql_generic_crud::select_by_device(pool, "TRENDLOGS", device_id)
             .await
             .map_err(|e| { eprintln!("MSSQL trendlogs config error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -1730,7 +1730,7 @@ async fn get_all_trendlogs(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let trendlogs = mssql_generic_crud::select_all(pool, "TRENDLOGS", 1, 10000)
             .await
             .map_err(|e| { eprintln!("MSSQL all trendlogs error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -1767,7 +1767,7 @@ async fn create_trendlog(
 
     // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::insert_row(pool, "TRENDLOGS", &json_payload).await;
     }
 
@@ -2001,7 +2001,7 @@ async fn get_table_records(
 
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
 
         let data = if let Some(search) = &params.search {
             mssql_generic_crud::search_rows(pool, &table, search, page, per_page)
@@ -2068,7 +2068,7 @@ async fn get_table_count(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
 
         let count = mssql_generic_crud::count_rows(pool, &table)
             .await
@@ -2135,7 +2135,7 @@ async fn create_table_record(
 
     // ── MSSQL write (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::insert_row(pool, &table, &payload).await;
     }
 
@@ -2178,7 +2178,7 @@ async fn update_table_record(
 
     // ── MSSQL write (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::update_row(pool, &table, id, &payload).await;
     }
 
@@ -2207,7 +2207,7 @@ async fn delete_table_record(
 
     // ── MSSQL delete (if center DB active, best-effort) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
         let _ = mssql_generic_crud::delete_row(pool, &table, id).await;
     }
 
@@ -2253,7 +2253,7 @@ async fn get_trendlog_history(
 
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
 
         let specific_points: Option<Vec<mssql_trendlog_service::SpecificPoint>> =
             payload.specific_points.as_ref().map(|sp| {
@@ -2344,7 +2344,7 @@ async fn get_trendlog_data_stats(
 
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let stats = mssql_trendlog_service::get_data_statistics(pool, device_id, panel_id)
             .await
             .map_err(|e| { eprintln!("MSSQL stats error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -2372,7 +2372,7 @@ async fn get_trendlog_data_usage(
 
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let usage = mssql_trendlog_service::get_data_usage(pool, device_id, panel_id)
             .await
             .map_err(|e| { eprintln!("MSSQL usage error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -2409,7 +2409,7 @@ async fn get_recent_trendlog_data(
 
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let recent = mssql_trendlog_service::get_recent_data(pool, device_id, panel_id, point_types, limit)
             .await
             .map_err(|e| { eprintln!("MSSQL recent data error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -2465,7 +2465,7 @@ async fn get_smart_trendlog_data(
 ) -> Result<Json<Value>, StatusCode> {
     // ── MSSQL branch — fall back to history query (smart features use same data) ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let lookback_start = chrono::Local::now() - chrono::Duration::minutes(request.lookback_minutes as i64);
         let start_str = lookback_start.format("%Y-%m-%d %H:%M:%S").to_string();
 
@@ -2550,7 +2550,7 @@ async fn save_realtime_trendlog_data(
     let effective_mssql_pool = state.mssql_pool.as_ref()
         .or_else(|| crate::server_db_writer::get_server_mssql_pool());
     if let Some(pool) = effective_mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         eprintln!("📤 Realtime trendlog save target: CENTER DB (MSSQL)");
         let parent_id = mssql_trendlog_service::save_realtime_data(
             pool,
@@ -2772,7 +2772,7 @@ async fn save_realtime_trendlog_batch(
     let effective_mssql_pool = state.mssql_pool.as_ref()
         .or_else(|| crate::server_db_writer::get_server_mssql_pool());
     if let Some(pool) = effective_mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         if let Some(db) = log_db.as_ref() {
             crate::logging::service::emit_app_log(
                 db,
@@ -2986,7 +2986,7 @@ async fn cleanup_old_trendlog_data(
 
     // ── MSSQL branch ──
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let rows_deleted = mssql_trendlog_service::cleanup_old_data(pool, device_id, days_to_keep)
             .await
             .map_err(|e| { eprintln!("MSSQL cleanup error: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
@@ -3044,7 +3044,7 @@ async fn get_device_capacity(
 ) -> Result<Json<DeviceCapacity>, StatusCode> {
     // MSSQL branch
     if let Some(pool) = &state.mssql_pool {
-        use crate::database_management::mssql_generic_crud;
+        use crate::server_db::mssql_generic_crud;
 
         let serial_num: i32 = serial_number.parse().map_err(|_| StatusCode::BAD_REQUEST)?;
 
@@ -3278,7 +3278,7 @@ async fn get_project_point_tree(
     // When the MSSQL schema or tiberius handling is fixed, uncomment below.
     // ═══════════════════════════════════════════════════════════════════════
     // if let Some(pool) = &state.mssql_pool {
-    //     use crate::database_management::mssql_generic_crud;
+    //     use crate::server_db::mssql_generic_crud;
     //
     //     let devices = mssql_generic_crud::select_all(pool, "DEVICES", 1, 10000).await
     //         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

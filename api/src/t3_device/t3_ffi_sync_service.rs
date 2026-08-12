@@ -11,8 +11,8 @@ use crate::entity::t3_device::{
     devices, input_points, output_points, trendlog_data_detail, trendlog_data_sync_metadata,
     variable_points,
 };
-use crate::database_management::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
-use crate::database_management::mssql_queries;
+use crate::server_db::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
+use crate::server_db::mssql_queries;
 use crate::error::AppError;
 use crate::logger::ServiceLogger;
 use crate::t3_device::trendlog_parent_cache::{ParentKey, TrendlogParentCache};
@@ -615,7 +615,7 @@ impl T3000MainService {
         } else {
             "center_db=disabled (standalone)".to_string()
         };
-        crate::database_management::sync_health::ensure_app_log_table(&self.db).await;
+        crate::server_db::sync_health::ensure_app_log_table(&self.db).await;
         crate::logging::service::emit_app_log(
             &self.db,
             "info",
@@ -1325,15 +1325,15 @@ impl T3000MainService {
             return Ok(true);
         }
 
-        let active_cfg = crate::database_management::db_backend_config::load_active_config(local_db)
+        let active_cfg = crate::server_db::db_backend_config::load_active_config(local_db)
             .await
             .map_err(|e| format!("load_active_backend_config failed: {}", e))?;
 
         match active_cfg.backend_type {
-            crate::database_management::db_backend_config::BackendType::Mssql => {
-                let tib = crate::database_management::db_backend_config::build_mssql_config(&active_cfg)
+            crate::server_db::db_backend_config::BackendType::Mssql => {
+                let tib = crate::server_db::db_backend_config::build_mssql_config(&active_cfg)
                     .map_err(|e| format!("build_mssql_config failed: {}", e))?;
-                let pool = crate::database_management::mssql_queries::create_mssql_pool(tib, 5)
+                let pool = crate::server_db::mssql_queries::create_mssql_pool(tib, 5)
                     .await
                     .map_err(|e| format!("create_mssql_pool failed: {}", e))?;
 
@@ -1361,7 +1361,7 @@ impl T3000MainService {
             e
         })?;
 
-        crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
+        crate::server_db::sync_health::ensure_app_log_table(&local_db).await;
 
         // Start TRENDLOG_BACKEND flow (total_steps=0 = variable; actual count depends on rediscovery path)
         let t_cycle = std::time::Instant::now();
@@ -4717,10 +4717,10 @@ impl T3000MainService {
     async fn replicate_all_data_to_mssql(
         local_db: &DatabaseConnection,
         serial_numbers: &[i32],
-        pool: &crate::database_management::mssql_queries::MssqlPool,
+        pool: &crate::server_db::mssql_queries::MssqlPool,
         sync_interval_secs: u64,
     ) -> Result<(u64, u64, u64, u64), AppError> {
-        use crate::database_management::mssql_queries;
+        use crate::server_db::mssql_queries;
         use crate::entity::t3_device::{trendlog_data, trendlog_data_detail};
 
         let mut dev_count: u64 = 0;

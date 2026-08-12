@@ -1,6 +1,6 @@
 use crate::db_connection::establish_t3_device_connection;
 use crate::entity::{database_files, database_partition_config};
-use crate::database_management::{DatabaseConfigService, format_path_for_attach};
+use crate::server_db::{DatabaseConfigService, format_path_for_attach};
 use crate::error::Result;
 use crate::constants::get_t3000_database_path;
 use sea_orm::*;

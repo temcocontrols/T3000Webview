@@ -1,4 +1,4 @@
-﻿//! Database Management Module
+//! Database Management Module
 //!
 //! Comprehensive database management system including:
 //! - Application settings storage (localStorage replacement)
@@ -2421,7 +2421,7 @@ impl DatabaseConfigService {
         .await;
 
         // Get the last known period from application settings
-        let last_period_setting = crate::database_management::ApplicationConfigService::get_setting(
+        let last_period_setting = crate::server_db::ApplicationConfigService::get_setting(
             db, "partitioning", "last_active_period", None, None
         ).await?;
 
@@ -2548,7 +2548,7 @@ impl DatabaseConfigService {
             }
 
             // Step 4: Update last known period
-            let _ = crate::database_management::ApplicationConfigService::set_setting(
+            let _ = crate::server_db::ApplicationConfigService::set_setting(
                 db,
                 "partitioning".to_string(),
                 "last_active_period".to_string(),
@@ -3331,7 +3331,7 @@ impl DatabaseConfigService {
         let _current_period = Self::get_current_time_period(&config);
 
         // Get last shutdown time from application settings
-        let last_shutdown_setting = crate::database_management::ApplicationConfigService::get_setting(
+        let last_shutdown_setting = crate::server_db::ApplicationConfigService::get_setting(
             db, "partitioning", "last_shutdown_time", None, None
         ).await?;
 
@@ -3385,7 +3385,7 @@ impl DatabaseConfigService {
         }
 
         // Update shutdown time for next startup
-        let _ = crate::database_management::ApplicationConfigService::set_setting(
+        let _ = crate::server_db::ApplicationConfigService::set_setting(
             db,
             "partitioning".to_string(),
             "last_shutdown_time".to_string(),

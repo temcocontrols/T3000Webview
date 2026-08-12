@@ -518,7 +518,7 @@ async fn build_sync_health_response(state: &T3AppState) -> Result<SyncHealthResp
     }
 
     let sync_interval_secs = if let Some(db) = get_local_log_db_conn(&state).await {
-        crate::database_management::config_api::get_sync_interval_secs(&db)
+        crate::server_db::config_api::get_sync_interval_secs(&db)
             .await
             .unwrap_or(300)
     } else {
@@ -1082,7 +1082,7 @@ async fn get_event_log(
     // The two sets are disjoint, so no deduplication is needed.
     if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
         // Fetch from MSSQL
-        let mssql_rows = crate::database_management::mssql_queries::query_app_log(
+        let mssql_rows = crate::server_db::mssql_queries::query_app_log(
             pool,
             level_filter,
             cat_filter,
@@ -1091,7 +1091,7 @@ async fn get_event_log(
         .await
         .unwrap_or_default();
 
-        let mssql_total = crate::database_management::mssql_queries::count_app_log(
+        let mssql_total = crate::server_db::mssql_queries::count_app_log(
             pool,
             level_filter,
             cat_filter,
@@ -1099,11 +1099,11 @@ async fn get_event_log(
         .await
         .unwrap_or(0);
 
-        let mssql_categories = crate::database_management::mssql_queries::query_app_log_categories(pool)
+        let mssql_categories = crate::server_db::mssql_queries::query_app_log_categories(pool)
             .await
             .unwrap_or_default();
 
-        let mssql_category_counts = crate::database_management::mssql_queries::query_app_log_category_counts(
+        let mssql_category_counts = crate::server_db::mssql_queries::query_app_log_category_counts(
             pool,
             level_filter,
             cat_filter,
@@ -1111,7 +1111,7 @@ async fn get_event_log(
         .await
         .unwrap_or_default();
 
-        let mssql_level_counts = crate::database_management::mssql_queries::query_app_log_level_counts(
+        let mssql_level_counts = crate::server_db::mssql_queries::query_app_log_level_counts(
             pool,
             cat_filter,
         )
@@ -2079,7 +2079,7 @@ async fn fetch_recent_ffi_events(state: &T3AppState, limit: usize) -> Vec<AppLog
     let mut merged: Vec<(i64, AppLogEntry)> = Vec::new();
 
     if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
-        for row in crate::database_management::mssql_queries::query_app_log(pool, None, Some("POLL"), 40)
+        for row in crate::server_db::mssql_queries::query_app_log(pool, None, Some("POLL"), 40)
             .await
             .unwrap_or_default()
         {
@@ -2089,7 +2089,7 @@ async fn fetch_recent_ffi_events(state: &T3AppState, limit: usize) -> Vec<AppLog
             let entry = json_to_log_entry(&row);
             merged.push((entry.ts_unix, entry));
         }
-        for row in crate::database_management::mssql_queries::query_app_log(pool, None, Some("DEVICE"), 20)
+        for row in crate::server_db::mssql_queries::query_app_log(pool, None, Some("DEVICE"), 20)
             .await
             .unwrap_or_default()
         {
@@ -2228,7 +2228,7 @@ async fn get_server_sync_diagnostics(
 
     let server_ip = if let Some(ref local_conn) = state.local_config_conn {
         let db = local_conn.lock().await;
-        crate::database_management::db_backend_config::load_active_config(&*db)
+        crate::server_db::db_backend_config::load_active_config(&*db)
             .await
             .ok()
             .and_then(|cfg| cfg.host)
@@ -2383,7 +2383,7 @@ async fn get_server_sync_metrics(
     // Get the configured server host (SQL Server host == server PC IP)
     let server_ip = if let Some(ref local_conn) = state.local_config_conn {
         let db = local_conn.lock().await;
-        crate::database_management::db_backend_config::load_active_config(&*db)
+        crate::server_db::db_backend_config::load_active_config(&*db)
             .await
             .ok()
             .and_then(|cfg| cfg.host)

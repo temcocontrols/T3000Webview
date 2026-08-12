@@ -20,7 +20,7 @@ use super::{
     ApplicationConfigService, DatabasePartitionService, DatabaseSizeService,
     DatabaseConfigService, DatabaseFilesService, CleanupResult,
     LocalStorageMigrationRequest, SettingRequest, PartitionRequest,
-};pub fn database_management_routes() -> Router<T3AppState> {
+};pub fn server_db_routes() -> Router<T3AppState> {
     Router::new()
         // Application Settings endpoints
         .route("/db_management/settings", post(create_setting))

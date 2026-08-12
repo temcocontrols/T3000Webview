@@ -1,7 +1,7 @@
 use crate::db_connection::establish_t3_device_connection;
 use crate::entity::database_files;
 use crate::entity::database_partition_config;
-use crate::database_management::DatabaseConfigService;
+use crate::server_db::DatabaseConfigService;
 use crate::error::Result;
 use crate::logger::ServiceLogger;
 use crate::constants::get_t3000_database_path;

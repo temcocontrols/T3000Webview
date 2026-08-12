@@ -733,7 +733,7 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
     use sea_orm::*;
 
     let conn = establish_connection().await?;
-    crate::database_management::sync_health::ensure_app_log_table(&conn).await;
+    crate::server_db::sync_health::ensure_app_log_table(&conn).await;
     crate::logging::service::emit_app_log(
         &conn,
         "info",
@@ -839,7 +839,7 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
 
     drop(conn);
     if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-        crate::database_management::sync_health::ensure_app_log_table(&db).await;
+        crate::server_db::sync_health::ensure_app_log_table(&db).await;
         crate::logging::service::emit_app_log(
             &db,
             "info",
@@ -859,7 +859,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
     // First, cleanup any orphaned migration records
     if let Err(e) = cleanup_orphaned_migrations().await {
         if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-            crate::database_management::sync_health::ensure_app_log_table(&db).await;
+            crate::server_db::sync_health::ensure_app_log_table(&db).await;
             crate::logging::service::emit_app_log(
                 &db,
                 "warn",
@@ -876,7 +876,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
     match has_pending_migrations().await {
         Ok(true) => {
             if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-                crate::database_management::sync_health::ensure_app_log_table(&db).await;
+                crate::server_db::sync_health::ensure_app_log_table(&db).await;
                 crate::logging::service::emit_app_log(
                     &db,
                     "info",
@@ -892,7 +892,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
                 Ok(_) => {
                     // Activity Log: migration success
                     if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-                        crate::database_management::sync_health::ensure_app_log_table(&db).await;
+                        crate::server_db::sync_health::ensure_app_log_table(&db).await;
                         crate::logging::service::emit_app_log(
                             &db, "info", "MAINTENANCE", Some("migration"), None,
                             "DB migrations applied successfully", None,
@@ -902,7 +902,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
                 Err(e) => {
                     // Activity Log: migration warning
                     if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-                        crate::database_management::sync_health::ensure_app_log_table(&db).await;
+                        crate::server_db::sync_health::ensure_app_log_table(&db).await;
                         crate::logging::service::emit_app_log(
                             &db, "warn", "MAINTENANCE", Some("migration"), None,
                             "DB migration warning",
@@ -917,7 +917,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
         },
         Ok(false) => {
             if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-                crate::database_management::sync_health::ensure_app_log_table(&db).await;
+                crate::server_db::sync_health::ensure_app_log_table(&db).await;
                 crate::logging::service::emit_app_log(
                     &db,
                     "info",
@@ -932,7 +932,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
         },
         Err(e) => {
             if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-                crate::database_management::sync_health::ensure_app_log_table(&db).await;
+                crate::server_db::sync_health::ensure_app_log_table(&db).await;
                 crate::logging::service::emit_app_log(
                     &db,
                     "warn",

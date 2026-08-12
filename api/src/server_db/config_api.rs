@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use sea_orm::*;
 
 use crate::app_state::T3AppState;
-use crate::database_management::ApplicationConfigService;
+use crate::server_db::ApplicationConfigService;
 use crate::entity::application_settings;
 use crate::error::Result;
 
