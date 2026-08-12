@@ -21,8 +21,11 @@ pub const RESPONSE_MSG: u8 = 101; // 0x65 = 100+1
 /// Sub-device list info response (not yet parsed, but recognized).
 pub const RESPONSE_TOTAL_SUB_INFO: u8 = 0x2f; // 47
 
-/// Port range the scanner tries to bind to (57619..=57623).
+/// Port range the scanner tries to bind to for receiving (57619..=57623).
 pub const SCAN_PORT_RANGE: std::ops::RangeInclusive<u16> = 57619..=57623;
+
+/// The port devices listen on for broadcast queries (UDP_BROADCAST_PORT in C++).
+pub const BROADCAST_DEST_PORT: u16 = 1234;
 
 /// Build the 5-byte scan query packet: [0x64, 0x00, 0x00, 0x00, 0x00]
 pub fn build_scan_query() -> [u8; 5] {

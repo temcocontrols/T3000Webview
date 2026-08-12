@@ -233,3 +233,47 @@ fn test_parse_sub_device_info() {
     assert_eq!(info.sub_devices[1].status, 0);
     assert_eq!(info.sub_devices[1].modbus_id, 7);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Real network scan test — requires T3000 devices on the LAN.
+// Run with: cargo test --test lan_scan test_real_network_scan -- --ignored --nocapture
+// ═══════════════════════════════════════════════════════════════════
+
+#[tokio::test]
+#[ignore = "requires T3000 devices on the local network"]
+async fn test_real_network_scan() {
+    use t3_webview_api::lan_scan::scanner;
+    use t3_webview_api::lan_scan::protocol;
+
+    println!("\n=== T3000 LAN Scan (8s timeout) ===");
+
+    let result = scanner::scan_network(8).await;
+
+    println!("Adapters scanned:  {}", result.adapters_scanned);
+    println!("Local IPs: {:?}", result.local_ips);
+    for w in &result.warnings {
+        println!("  ⚠  {}", w);
+    }
+    println!("Devices found: {}", result.devices.len());
+    if result.devices.is_empty() {
+        println!("(No devices responded — expected if no T3000 hardware on this LAN)");
+    }
+    for dev in &result.devices {
+        println!(
+            "  SN={:<12}  IP={:<16}  Name={:<20}  FW={:<6}  PID={:<3}  ModbusID={}",
+            dev.serial_number,
+            dev.ip_address,
+            dev.product_name,
+            format!("{:.1}", dev.firmware_version),
+            dev.product_id,
+            dev.modbus_id,
+        );
+    }
+
+    // Show what was sent
+    let q = protocol::build_scan_query();
+    println!("\nQuery sent: {:02X?}", q);
+    println!("Broadcast:  255.255.255.255:1234");
+    println!("Bind ports: 57619..57623");
+    println!("=== Scan complete ===\n");
+}

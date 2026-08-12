@@ -14,7 +14,7 @@ use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::time::timeout;
 
-use super::protocol::{self, build_scan_query, SCAN_PORT_RANGE, RESPONSE_MSG, RESPONSE_TOTAL_SUB_INFO};
+use super::protocol::{self, build_scan_query, BROADCAST_DEST_PORT, SCAN_PORT_RANGE, RESPONSE_MSG};
 use super::types::{DiscoveredDevice, ScanResult};
 
 /// Mirrors C++ `ALL_LOCAL_SUBNET_NODE` from `global_struct.h`:
@@ -49,14 +49,18 @@ fn get_ip_mask_gateway() -> Vec<LocalSubnetNode> {
             for line in stdout.lines() {
                 let line = line.trim();
                 if line.contains("IPv4") && !line.contains("IPv6") {
-                    if let Some(v) = line.rsplit(':').next().map(|s| s.trim().to_string()) {
-                        if v.parse::<Ipv4Addr>().is_ok() && !v.starts_with("127.") {
+                    if let Some(v) = line.rsplit(':').next() {
+                        let ip_str = v.trim()
+                            .replace("(Preferred)", "")
+                            .trim()
+                            .to_string();
+                        if ip_str.parse::<Ipv4Addr>().is_ok() && !ip_str.starts_with("127.") {
                             if let (Some(ip), Some(mask)) = (current_ip.take(), current_mask.take()) {
                                 if !ip.starts_with("169.254.") {
                                     nodes.push(LocalSubnetNode { ip, mask, gateway: current_gw.take().unwrap_or_default() });
                                 }
                             }
-                            current_ip = Some(v);
+                            current_ip = Some(ip_str);
                         }
                     }
                 }
@@ -143,7 +147,7 @@ async fn scan_on_adapter(
     let socket = bind_scan_port(local_addr)?;
     socket.set_broadcast(true).map_err(|e| format!("set_broadcast failed: {}", e))?;
 
-    let broadcast_target = SocketAddrV4::new(Ipv4Addr::new(255, 255, 255, 255), 57619);
+    let broadcast_target = SocketAddrV4::new(Ipv4Addr::new(255, 255, 255, 255), BROADCAST_DEST_PORT);
     socket.send_to(query, broadcast_target).await.map_err(|e| format!("send_to broadcast failed: {}", e))?;
 
     let mut devices: Vec<DiscoveredDevice> = Vec::new();
@@ -157,17 +161,10 @@ async fn scan_on_adapter(
         match timeout(remaining, socket.recv_from(&mut buf)).await {
             Ok(Ok((n, _src))) => {
                 if n == 0 { continue; }
-                match buf[0] {
-                    RESPONSE_MSG => {
-                        if let Some(dev) = protocol::parse_scan_response(&buf[..n]) {
-                            devices.push(dev);
-                        }
+                if buf[0] == RESPONSE_MSG {
+                    if let Some(dev) = protocol::parse_scan_response(&buf[..n]) {
+                        devices.push(dev);
                     }
-                    RESPONSE_TOTAL_SUB_INFO => {
-                        // Phase 2: store sub-device info
-                        let _ = protocol::parse_sub_device_info(&buf[..n]);
-                    }
-                    _ => {}
                 }
             }
             Ok(Err(_)) => break,
