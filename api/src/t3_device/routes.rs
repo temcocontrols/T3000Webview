@@ -723,7 +723,7 @@ async fn get_devices_with_stats(
 /// Run UDP LAN scan (command 0x64/0x65) and upsert discovered devices into DB.
 /// Marks devices not seen in this scan as offline.
 #[derive(Deserialize)]
-struct ScanAndRefreshQuery {
+struct ScanAndRefreshRequest {
     #[serde(default = "default_timeout")]
     timeout: u64,
 }
@@ -732,11 +732,11 @@ fn default_timeout() -> u64 { 8 }
 
 async fn scan_and_refresh_devices(
     State(state): State<T3AppState>,
-    Query(query): Query<ScanAndRefreshQuery>,
+    Json(body): Json<ScanAndRefreshRequest>,
 ) -> Result<Json<Value>, StatusCode> {
     let db = get_t3_device_conn!(state);
 
-    match T3DeviceService::scan_and_refresh(&*db, query.timeout).await {
+    match T3DeviceService::scan_and_refresh(&*db, body.timeout).await {
         Ok(result) => Ok(Json(json!({
             "devices": result.devices,
             "total": result.devices.len(),

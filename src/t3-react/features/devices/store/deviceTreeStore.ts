@@ -294,7 +294,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Scan for new devices
       scanForDevices: async (options?: ScanOptions) => {
-        set({ error: null });
         const { setMessage } = useStatusBarStore.getState();
         try {
           setMessage('Scanning network for T3000 devices...', 'info');
@@ -327,10 +326,9 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           });
 
           get().buildTreeStructure();
-          setMessage(`Scan complete — ${response.devices.length} devices in database`, 'success');
+          setMessage(`Scan complete — ${response.scanned ?? response.devices?.length ?? 0} device(s) found on network, ${response.devices?.length ?? 0} in database`, 'success');
         } catch (error) {
-          set({ error: error instanceof Error ? error.message : 'Failed to scan for devices' });
-          setMessage('Network scan failed', 'error');
+          setMessage('Network scan failed', 'warning');
         }
       },
 
@@ -844,6 +842,12 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           selectedDevice: node?.data || null,
         });
 
+        // Update status bar with selected device
+        if (node?.data) {
+          const { setDeviceLabel } = useStatusBarStore.getState();
+          setDeviceLabel(node.data.nameShowOnTree || node.data.productName || '', node.data.serialNumber, node.data.panelId ?? node.data.panelNumber);
+        }
+
         // Persist selection so it survives page refresh
         if (node?.data) {
           localStorage.setItem('t3.lastSelectedDevice', String(node.data.serialNumber));
@@ -862,6 +866,12 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           selectedDevice: device,
           selectedNodeId: device ? `device-${device.serialNumber}` : null,
         });
+
+        // Update status bar with selected device
+        if (device) {
+          const { setDeviceLabel } = useStatusBarStore.getState();
+          setDeviceLabel(device.nameShowOnTree || device.productName || '', device.serialNumber, device.panelId ?? device.panelNumber);
+        }
 
         // Persist selection so it survives page refresh
         if (device) {

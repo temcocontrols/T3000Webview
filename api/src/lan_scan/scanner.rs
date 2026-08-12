@@ -148,11 +148,13 @@ async fn scan_on_adapter(
     socket.set_broadcast(true).map_err(|e| format!("set_broadcast failed: {}", e))?;
 
     let broadcast_target = SocketAddrV4::new(Ipv4Addr::new(255, 255, 255, 255), BROADCAST_DEST_PORT);
+    tracing::info!("[lan_scan] {} sending query to {}", local_ip, broadcast_target);
     socket.send_to(query, broadcast_target).await.map_err(|e| format!("send_to broadcast failed: {}", e))?;
 
     let mut devices: Vec<DiscoveredDevice> = Vec::new();
     let mut buf = [0u8; 512];
     let deadline = tokio::time::Instant::now() + timeout_dur;
+    let mut packet_count = 0u32;
 
     loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
@@ -161,9 +163,13 @@ async fn scan_on_adapter(
         match timeout(remaining, socket.recv_from(&mut buf)).await {
             Ok(Ok((n, _src))) => {
                 if n == 0 { continue; }
+                packet_count += 1;
                 if buf[0] == RESPONSE_MSG {
                     if let Some(dev) = protocol::parse_scan_response(&buf[..n]) {
+                        tracing::info!("[lan_scan] {} found SN={} PID={} IP={} name={}", local_ip, dev.serial_number, dev.product_id, dev.ip_address, dev.panel_name);
                         devices.push(dev);
+                    } else {
+                        tracing::debug!("[lan_scan] {} parse failed for {}B response", local_ip, n);
                     }
                 }
             }
@@ -171,6 +177,7 @@ async fn scan_on_adapter(
             Err(_elapsed) => break,
         }
     }
+    tracing::info!("[lan_scan] {} scan done: {} packets, {} devices found", local_ip, packet_count, devices.len());
     Ok(devices)
 }
 

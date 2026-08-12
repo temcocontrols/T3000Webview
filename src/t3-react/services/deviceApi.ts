@@ -214,7 +214,6 @@ export class DeviceApiService {
         .filter((d: DeviceInfo) => Number.isFinite(d.serialNumber));
       return { ...data, devices: transformedDevices };
     } catch (error) {
-      console.error('Failed to scan and refresh devices:', error);
       throw error;
     }
   }
