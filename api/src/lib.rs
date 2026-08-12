@@ -26,6 +26,9 @@ pub mod utils;
 // Database management modules
 pub mod database_management;
 
+// LAN scan — pure-Rust UDP broadcast scanner (0x64/0x65 protocol)
+pub mod lan_scan;
+
 // T3000 device modules
 pub mod t3_device;
 pub mod haystack;

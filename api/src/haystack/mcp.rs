@@ -329,6 +329,21 @@ lazy_static::lazy_static! {
             "required": ["tool_name"]
         }),
     },
+    // ═══ Network Discovery ═══
+    ToolDef {
+        name: "t3000_scan_network",
+        title: "Scan Network for T3000 Devices",
+        description: "Scan the local network for T3000 devices via UDP broadcast (0x64/0x65 protocol). Returns discovered devices with serial numbers, IP addresses, product types, firmware versions, panel names, and subnet info. Takes 5–10 seconds. Use this to discover new/replacement devices on the network.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "timeout_seconds": {
+                    "type": "integer",
+                    "description": "Seconds to wait for device responses (default: 8, range: 3–30)"
+                }
+            }
+        }),
+    },
     // ═══ v4: Data & Metadata ═══ 
     ToolDef {
         name: "t3000_device_list",
@@ -2213,6 +2228,24 @@ pub async fn execute_tool(
                 }
                 None => Err(format!("Tool not found: {}", tool_name)),
             }
+        }
+
+        // ═══ Network Discovery ═══
+
+        "t3000_scan_network" => {
+            let timeout_secs = args.get("timeout_seconds")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(8)
+                .clamp(3, 30);
+            let result = crate::network_discovery::scanner::scan_network(timeout_secs).await;
+            serde_json::to_string_pretty(&json!({
+                "devices": result.devices,
+                "total": result.devices.len(),
+                "adapters_scanned": result.adapters_scanned,
+                "local_ips": result.local_ips,
+                "warnings": result.warnings,
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
         }
 
         // ═══ v4: Data & Metadata ═══ 
