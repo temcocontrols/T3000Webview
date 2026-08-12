@@ -560,10 +560,24 @@ impl T3DeviceService {
         }
 
         // Return fresh device list with scan count
-        let devices = Self::get_all_devices_with_stats(db).await?;
-        Ok(ScanAndRefreshResult {
-            scanned_count: seen_serials.len(),
-            devices,
-        })
+        match Self::get_all_devices_with_stats(db).await {
+            Ok(devices) => Ok(ScanAndRefreshResult {
+                scanned_count: seen_serials.len(),
+                devices,
+            }),
+            Err(e) => {
+                tracing::error!("[lan_scan] get_all_devices_with_stats failed: {:?}", e);
+                // Fallback: return devices without point counts
+                let all_devices = devices::Entity::find().all(db).await
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|mut d| { d.clean_all_fields(); DeviceWithStats { device: d, input_count: 0, output_count: 0, variable_count: 0, total_points: 0 } })
+                    .collect();
+                Ok(ScanAndRefreshResult {
+                    scanned_count: seen_serials.len(),
+                    devices: all_devices,
+                })
+            }
+        }
     }
 }

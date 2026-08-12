@@ -52,7 +52,7 @@ export const refreshView = async (): Promise<void> => {
   try {
     await DeviceApiService.scanAndRefreshDevices(8);
   } catch (error) {
-    throw error;
+    console.error('UDP scan failed:', error);
   }
   // Trigger refresh event for tree/store to reload from updated DB
   window.dispatchEvent(new CustomEvent('view-refresh'));

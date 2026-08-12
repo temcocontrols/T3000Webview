@@ -44,6 +44,7 @@ const cleanDeviceName = (name: string | undefined | null, fallback: string = 'Un
 
 // Prevent duplicate bursts when multiple components trigger fetches at the same time.
 let fetchDevicesInFlight: Promise<void> | null = null;
+let scanInProgress = false;
 
 /**
  * Device Tree State Interface
@@ -294,12 +295,13 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Scan for new devices
       scanForDevices: async (options?: ScanOptions) => {
+        if (scanInProgress) return;
+        scanInProgress = true;
         const { setMessage } = useStatusBarStore.getState();
         try {
           setMessage('Scanning network for T3000 devices...', 'info');
           const response = await DeviceApiService.scanAndRefreshDevices(options?.timeout ?? 8);
 
-          // Clean device names and update store
           const cleanedDevices = response.devices
             .map(device => ({
               ...device,
@@ -307,28 +309,20 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               productName: cleanDeviceName(device.productName, ''),
             }));
 
-          // Update statuses from persisted isOnline
           const newStatuses = new Map<number, DeviceStatus>();
           cleanedDevices.forEach((d) => {
             if (d.lastChecked) {
-              if (d.isOnline === true || d.isOnline === (1 as any)) {
-                newStatuses.set(d.serialNumber, 'online');
-              } else {
-                newStatuses.set(d.serialNumber, 'offline');
-              }
+              newStatuses.set(d.serialNumber, d.isOnline === true || d.isOnline === (1 as any) ? 'online' : 'offline');
             }
           });
 
-          set({
-            devices: cleanedDevices,
-            deviceStatuses: newStatuses,
-            lastSyncTime: new Date(),
-          });
-
+          set({ devices: cleanedDevices, deviceStatuses: newStatuses, lastSyncTime: new Date() });
           get().buildTreeStructure();
           setMessage(`Scan complete — ${response.scanned ?? response.devices?.length ?? 0} device(s) found on network, ${response.devices?.length ?? 0} in database`, 'success');
         } catch (error) {
           setMessage('Network scan failed', 'warning');
+        } finally {
+          scanInProgress = false;
         }
       },
 

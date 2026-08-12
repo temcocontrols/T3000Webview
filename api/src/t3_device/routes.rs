@@ -737,14 +737,17 @@ async fn scan_and_refresh_devices(
     let db = get_t3_device_conn!(state);
 
     match T3DeviceService::scan_and_refresh(&*db, body.timeout).await {
-        Ok(result) => Ok(Json(json!({
-            "devices": result.devices,
-            "total": result.devices.len(),
-            "scanned": result.scanned_count,
-            "message": format!("UDP scan found {} device(s), {} total in database", result.scanned_count, result.devices.len())
-        }))),
+        Ok(result) => {
+            tracing::info!("[lan_scan] HTTP response: {} scanned, {} in DB", result.scanned_count, result.devices.len());
+            Ok(Json(json!({
+                "devices": result.devices,
+                "total": result.devices.len(),
+                "scanned": result.scanned_count,
+                "message": format!("UDP scan found {} device(s), {} total in database", result.scanned_count, result.devices.len())
+            })))
+        }
         Err(e) => {
-            eprintln!("scan_and_refresh error: {:?}", e);
+            tracing::error!("[lan_scan] scan_and_refresh failed: {:?}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -854,7 +857,20 @@ async fn update_device(
     // ── MSSQL write (if center DB active) ──
     if let Some(pool) = &state.mssql_pool {
         use crate::server_db::mssql_generic_crud;
-        let _ = mssql_generic_crud::update_row(pool, "DEVICES", device_id, &json_payload).await;
+        // Strip columns that don't exist in MSSQL DEVICES table
+        let mut mssql_payload = json_payload.clone();
+        if let Some(obj) = mssql_payload.as_object_mut() {
+            obj.remove("is_online");
+            obj.remove("last_checked");
+            obj.remove("firmware_version");
+            obj.remove("hardware_version");
+            obj.remove("object_instance");
+            obj.remove("parent_serial_number");
+            obj.remove("subnet_protocol");
+            obj.remove("command_version");
+            obj.remove("minitype");
+        }
+        let _ = mssql_generic_crud::update_row(pool, "DEVICES", device_id, &mssql_payload).await;
     }
 
     match sqlite_result {
