@@ -3,9 +3,6 @@
  * Handles view-related operations matching C++ T3000 View menu
  */
 
-import { API_BASE_URL } from '../config/constants';
-import DeviceApiService from './deviceApi';
-
 export interface ViewState {
   toolBarVisible: boolean;
   buildingPaneVisible: boolean;
@@ -45,17 +42,13 @@ export const setTheme = async (theme: ViewState['theme']): Promise<void> => {
 };
 
 /**
- * Refresh view (F2) — run UDP LAN scan and reload device tree
+ * Refresh view (F2) — trigger UDP scan + tree reload via deviceTreeStore
  */
 export const refreshView = async (): Promise<void> => {
-  // Run the UDP LAN scan to get latest device info and update DB
-  try {
-    await DeviceApiService.scanAndRefreshDevices(8);
-  } catch (error) {
-    console.error('UDP scan failed:', error);
-  }
-  // Trigger refresh event for tree/store to reload from updated DB
-  window.dispatchEvent(new CustomEvent('view-refresh'));
+  // Delegate to deviceTreeStore.scanForDevices which shows status bar messages
+  // and updates the tree with online devices after the scan completes.
+  const { useDeviceTreeStore } = await import('../features/devices/store/deviceTreeStore');
+  useDeviceTreeStore.getState().scanForDevices({ timeout: 8 }).catch(() => {});
 };
 
 /**

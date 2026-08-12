@@ -314,6 +314,21 @@ export function findNodeById(nodes: TreeNode[], nodeId: string): TreeNode | null
 }
 
 /**
+ * Build a flat list of device leaf nodes (no building grouping).
+ * Used for the collapsible "offline devices" group so devices render
+ * at the same indent level as the group itself.
+ */
+export function buildFlatDeviceNodes(
+  devices: DeviceInfo[],
+  expandedNodes: Set<string>,
+  deviceStatuses: Map<number, DeviceStatus>
+): TreeNode[] {
+  return [...devices]
+    .sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree))
+    .map((device) => createDeviceNode(device, expandedNodes, deviceStatuses));
+}
+
+/**
  * Get all node IDs (recursive)
  */
 export function getAllNodeIds(nodes: TreeNode[]): string[] {

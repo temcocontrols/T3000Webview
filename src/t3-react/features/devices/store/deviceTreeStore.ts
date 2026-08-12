@@ -24,7 +24,7 @@ import type {
   DeviceStatus,
 } from '../../../shared/types/device';
 import DeviceApiService from '../../../services/deviceApi';
-import { buildTreeFromDevices } from '../lib/treeBuilder';
+import { buildTreeFromDevices, buildFlatDeviceNodes } from '../lib/treeBuilder';
 import { useStatusBarStore } from '../../../store/statusBarStore';
 import { API_BASE_URL } from '../../../config/constants';
 import { T3Transport } from '../../../../lib/t3-transport/core/T3Transport';
@@ -70,7 +70,7 @@ interface DeviceTreeState {
   filterText: string;
   filterProtocol: string;
   filterBuilding: string;
-  showOfflineOnly: boolean;
+  showOfflineDevices: boolean;
 
   // Background sync
   isSyncing: boolean;
@@ -113,7 +113,7 @@ interface DeviceTreeState {
   setFilterText: (text: string) => void;
   setFilterProtocol: (protocol: string) => void;
   setFilterBuilding: (building: string) => void;
-  setShowOfflineOnly: (show: boolean) => void;
+  toggleShowOfflineDevices: () => void;
   clearFilters: () => void;
 
   // Actions: Device Navigation
@@ -157,7 +157,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       filterText: '',
       filterProtocol: 'All',
       filterBuilding: 'All',
-      showOfflineOnly: false,
+      showOfflineDevices: false,
 
       isSyncing: false,
       lastSyncTime: null,
@@ -316,9 +316,12 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             }
           });
 
+          // Keep ALL devices in the store — buildTreeStructure splits online (top)
+          // and offline (collapsible group at bottom).
           set({ devices: cleanedDevices, deviceStatuses: newStatuses, lastSyncTime: new Date() });
           get().buildTreeStructure();
-          setMessage(`Scan complete — ${response.scanned ?? response.devices?.length ?? 0} device(s) found on network, ${response.devices?.length ?? 0} in database`, 'success');
+          const scannedCount = response.scanned ?? 0;
+          setMessage(`Scan complete — ${scannedCount} device(s) found on network`, 'success');
         } catch (error) {
           setMessage('Network scan failed', 'warning');
         } finally {
@@ -501,20 +504,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           await transport.disconnect();
 
           // Step 4: Background UDP LAN scan to enrich device info (non-blocking)
-          DeviceApiService.scanAndRefreshDevices(8)
-            .then((response) => {
-              const cleaned = response.devices
-                .map(d => ({ ...d, nameShowOnTree: cleanDeviceName(d.nameShowOnTree, ''), productName: cleanDeviceName(d.productName, '') }));
-              const newStatuses = new Map<number, DeviceStatus>();
-              cleaned.forEach((d) => {
-                if (d.lastChecked) {
-                  newStatuses.set(d.serialNumber, d.isOnline === true || d.isOnline === (1 as any) ? 'online' : 'offline');
-                }
-              });
-              set({ devices: cleaned, deviceStatuses: newStatuses, lastSyncTime: new Date() });
-              get().buildTreeStructure();
-            })
-            .catch(() => { /* UDP scan is best-effort on page load */ });
+          get().scanForDevices({ timeout: 8 }).catch(() => {});
         } catch (error) {
           LogUtil.Error('[loadDevicesWithSync] Failed:', error);
           const errorMsg = error instanceof Error ? error.message : 'Failed to load devices';
@@ -710,7 +700,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Build tree structure from flat device list
       buildTreeStructure: () => {
-        const { devices, filterText, filterProtocol, filterBuilding, showOfflineOnly, deviceStatuses, expandedNodes } = get();
+        const { devices, filterText, filterProtocol, filterBuilding, showOfflineDevices, deviceStatuses, expandedNodes } = get();
 
         // Apply filters
         let filteredDevices = [...devices];
@@ -735,23 +725,48 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           );
         }
 
-        if (showOfflineOnly) {
-          filteredDevices = filteredDevices.filter(
-            (d) => deviceStatuses.get(d.serialNumber) === 'offline'
-          );
-        }
-
-        // Hide unknown devices from the tree �?they are saved to DB but have no
+        // Hide unknown devices from the tree — they are saved to DB but have no
         // real discovery data and would clutter the UI with empty entries.
         const isUnknownDevice = (d: DeviceInfo) =>
           !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
         filteredDevices = filteredDevices.filter(d => !isUnknownDevice(d));
 
-        // Sort devices by name (alphabetically)
-        filteredDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+        // Split into online (top) and offline (collapsible group at bottom)
+        const byName = (a: DeviceInfo, b: DeviceInfo) => a.nameShowOnTree.localeCompare(b.nameShowOnTree);
+        const onlineDevices = filteredDevices
+          .filter((d) => deviceStatuses.get(d.serialNumber) === 'online')
+          .sort(byName);
+        const offlineDevices = filteredDevices
+          .filter((d) => deviceStatuses.get(d.serialNumber) !== 'online')
+          .sort(byName);
 
-        // Use treeBuilder utility to construct tree
-        const treeNodes = buildTreeFromDevices(filteredDevices, expandedNodes, deviceStatuses);
+        // Use treeBuilder utility to construct tree (online devices only at top)
+        const treeNodes = buildTreeFromDevices(onlineDevices, expandedNodes, deviceStatuses);
+
+        // Append offline group (leaf) + its devices as flat siblings inside the building
+        if (offlineDevices.length > 0) {
+          const offlineGroupNode: TreeNode = {
+            id: 'offline-group',
+            type: 'device',
+            label: showOfflineDevices
+              ? 'Hide offline devices'
+              : `Show ${offlineDevices.length} more offline`,
+            icon: 'Devices3',
+            expanded: showOfflineDevices,
+            level: 1,
+          };
+
+          const extraNodes: TreeNode[] = showOfflineDevices
+            ? [offlineGroupNode, ...buildFlatDeviceNodes(offlineDevices, expandedNodes, deviceStatuses)]
+            : [offlineGroupNode];
+
+          if (treeNodes.length > 0) {
+            const lastBuilding = treeNodes[treeNodes.length - 1];
+            lastBuilding.children = [...(lastBuilding.children || []), ...extraNodes];
+          } else {
+            treeNodes.push(...extraNodes);
+          }
+        }
 
         // Extract buildings list for filter dropdown
         const buildingMap = new Map<string, DeviceInfo[]>();
@@ -906,8 +921,8 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         get().buildTreeStructure();
       },
 
-      setShowOfflineOnly: (show: boolean) => {
-        set({ showOfflineOnly: show });
+      toggleShowOfflineDevices: () => {
+        set((state) => ({ showOfflineDevices: !state.showOfflineDevices }));
         get().buildTreeStructure();
       },
 
@@ -916,14 +931,14 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           filterText: '',
           filterProtocol: 'All',
           filterBuilding: 'All',
-          showOfflineOnly: false,
+          showOfflineDevices: false,
         });
         get().buildTreeStructure();
       },
 
       // Get filtered devices list (applies same filters as buildTreeStructure)
       getFilteredDevices: () => {
-        const { devices, filterText, filterProtocol, filterBuilding, showOfflineOnly, deviceStatuses } = get();
+        const { devices, filterText, filterProtocol, filterBuilding, deviceStatuses } = get();
 
         let filteredDevices = [...devices];
 
@@ -947,14 +962,18 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           );
         }
 
-        if (showOfflineOnly) {
-          filteredDevices = filteredDevices.filter(
-            (d) => deviceStatuses.get(d.serialNumber) === 'offline'
-          );
-        }
-
-        // Sort devices by name (alphabetically) for consistent order
-        filteredDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+        // Sort: online first, then offline; alphabetically within each group
+        const statusRank = (d: DeviceInfo): number => {
+          const s = deviceStatuses.get(d.serialNumber);
+          if (s === 'online') return 0;
+          if (s === 'offline') return 1;
+          return 2;
+        };
+        filteredDevices.sort((a, b) => {
+          const rankDiff = statusRank(a) - statusRank(b);
+          if (rankDiff !== 0) return rankDiff;
+          return a.nameShowOnTree.localeCompare(b.nameShowOnTree);
+        });
 
         return filteredDevices;
       },

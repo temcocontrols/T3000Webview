@@ -22,6 +22,8 @@ import {
   Dismiss20Regular,
   Info20Regular,
   Desktop20Regular,
+  CaretRight16Regular,
+  CaretDown16Regular,
 } from '@fluentui/react-icons';
 import type { TreeNode } from '../../../../shared/types/device';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
@@ -61,11 +63,14 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
     expandNode,
     collapseNode,
     selectNode,
+    toggleShowOfflineDevices,
     deleteDevice,
     updateDevice,
     checkDeviceStatus,
     connectDevice,
   } = useDeviceTreeStore();
+
+  const isOfflineGroup = node.id === 'offline-group';
 
   const handleOpenChange = useCallback(
     (_event: unknown, data: { open: boolean }) => {
@@ -79,8 +84,12 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
   );
 
   const handleClick = useCallback(() => {
+    if (isOfflineGroup) {
+      toggleShowOfflineDevices();
+      return;
+    }
     selectNode(node.id);
-  }, [node.id, selectNode]);
+  }, [isOfflineGroup, node.id, selectNode, toggleShowOfflineDevices]);
 
   // Context menu handlers
   const handleOpen = useCallback((device: typeof node.data) => {
@@ -168,6 +177,28 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
   const prefixIcon = isOffline
     ? <Dismiss20Regular data-offline="true" style={{ color: '#a80000', width: '16px', height: '16px', flexShrink: 0 }} />
     : <Desktop20Regular style={{ color: '#605e5c', width: '16px', height: '16px' }} />;
+
+  // Offline group node — renders as a leaf (identical indent/icon position as
+  // device items) with a "▶" caret; its devices are flat siblings in the tree.
+  if (isOfflineGroup) {
+    return (
+      <TreeItem itemType="leaf" value={node.id}>
+        <TreeItemLayout
+          onClick={handleClick}
+          selector={null}
+          iconBefore={
+            node.expanded
+              ? <CaretDown16Regular style={{ color: '#0078d4', width: '16px', height: '16px' }} />
+              : <CaretRight16Regular style={{ color: '#0078d4', width: '16px', height: '16px' }} />
+          }
+          className={`${styles.treeItemNormal} ${styles.offlineGroupItem}`}
+          style={{ '--tree-level': level } as React.CSSProperties}
+        >
+          {node.label}
+        </TreeItemLayout>
+      </TreeItem>
+    );
+  }
 
   // Building/subnet node
   if (node.type === 'building' && node.children) {
