@@ -126,7 +126,7 @@ fn persona_keywords(persona: ContextMode) -> KeywordMap {
 // Tool -> ContextMode mapping (for second-pass scoring)
 // ---------------------------------------------------------------------------
 
-fn tool_persona_map(tool_name: &str) -> Option<ContextMode> {
+pub fn tool_persona_map(tool_name: &str) -> Option<ContextMode> {
     match tool_name {
         // Diagnostics tools
         "t3000_device_diagnostics" | "t3000_device_diagnostics_batch"

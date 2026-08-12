@@ -168,7 +168,7 @@ Brick is a formal ontology for buildings (brickschema.org). After auto-tagging, 
 
 ---
 
-## Data & Discovery <span style="font-weight:400;font-size:12px;color:#888">5 tools</span>
+## Data & Discovery <span style="font-weight:400;font-size:12px;color:#888">6 tools</span>
 
 ### `t3000_device_list` — Enumerate all devices
 
@@ -191,6 +191,32 @@ Get every T3000 device in the system with serial number, name, device type, buil
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **How many devices are in this system?**
+
+</div>
+
+</div>
+
+### `t3000_scan_network` — Scan network for T3000 devices
+
+Scan the local network for T3000 devices via UDP broadcast (0x64/0x65 protocol). Returns discovered devices with serial numbers, IP addresses, product types, firmware versions, panel names, and subnet info. Takes 5–10 seconds. Use this to discover new or replacement devices on the network.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Scan the network for T3000 devices**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Discover any new T3000 panels on the network**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Find all T3000 devices on my LAN**
 
 </div>
 
@@ -1224,7 +1250,7 @@ Delete a specific memory entry by key. Use to remove outdated or incorrect site 
 
 ---
 
-## Navigation <span style="font-weight:400;font-size:12px;color:#888">5 tools</span>
+## Navigation <span style="font-weight:400;font-size:12px;color:#888">6 tools</span>
 
 ### `t3000_nav_list` — List all UI pages
 
@@ -1321,6 +1347,26 @@ Get the currently selected device in the web UI. Returns device type, name, and 
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **What device is selected right now?**
+
+</div>
+
+</div>
+
+### `t3000_set_chat_device` — Set the device to use for MCP operations
+
+Confirm which device the AI should use for MCP operations. Call after the user confirms which device to work with (which may differ from the UI-selected device). This sets the authoritative chat device context.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Use device 233626 for the rest of this conversation**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Switch the current device to 240488**
 
 </div>
 
