@@ -29,6 +29,60 @@ pub fn build_scan_query() -> [u8; 5] {
     [UPD_BROADCAST_QRY_MSG, 0, 0, 0, 0]
 }
 
+/// Mirror C++ `ShowBacnetView()` — true if this product supports BACnet MSTP.
+fn is_bacnet_device(product_id: u8) -> bool {
+    matches!(product_id, 35 | 74 | 88 | 50 | 10)
+    // PM_MINIPANEL=35, PM_MINIPANEL_ARM=74, PM_ESP32_T3_SERIES=88, PM_CM5=50, PM_TSTAT10=10
+}
+
+/// Parse a RESPONSE_TOTAL_SUB_INFO (0x2f) packet — sub-device status list.
+/// Mirrors C++ `AddSubNetInfoIntoRefreshList()`.
+pub fn parse_sub_device_info(buf: &[u8]) -> Option<SubDeviceInfo> {
+    if buf.is_empty() || buf[0] != RESPONSE_TOTAL_SUB_INFO {
+        return None;
+    }
+    // buf[1]: device_count
+    // buf[2..6]: parent_serial (u32 LE)
+    // buf[7..22]: reserved (15 bytes)
+    // Then device_count pairs of (nstatus, modbusid)
+    let device_count = buf.get(1).copied().unwrap_or(0) as usize;
+    let parent_sn = if buf.len() > 5 {
+        u32::from_le_bytes([buf[2], buf[3], buf[4], buf[5]])
+    } else {
+        0
+    };
+
+    let mut subs = Vec::with_capacity(device_count.min(32));
+    let base = 21; // 1 (cmd) + 5 (skip+parent_sn) + 15 (reserved) = 21 bytes header
+    for i in 0..device_count {
+        let off = base + i * 2;
+        if off + 1 >= buf.len() { break; }
+        subs.push(SubDeviceStatus {
+            status: buf[off],
+            modbus_id: buf[off + 1],
+        });
+    }
+
+    Some(SubDeviceInfo {
+        parent_serial: parent_sn,
+        sub_devices: subs,
+    })
+}
+
+/// Sub-device info from a parent device.
+#[derive(Debug, Clone)]
+pub struct SubDeviceInfo {
+    pub parent_serial: u32,
+    pub sub_devices: Vec<SubDeviceStatus>,
+}
+
+/// Status of one sub-device connected to a parent.
+#[derive(Debug, Clone)]
+pub struct SubDeviceStatus {
+    pub status: u8,
+    pub modbus_id: u8,
+}
+
 // ── Response Parser ─────────────────────────────────────────────────
 //
 // The C++ code reads from a raw byte buffer `BYTE buffer[512]` received via
@@ -69,7 +123,11 @@ pub fn parse_scan_response(buf: &[u8]) -> Option<DiscoveredDevice> {
 
     // Byte 12: product_id
     let product_id = buf[12];
+    // Mirror C++: skip product_id==0 (unread) and <220 not in product_map
     if product_id == 0 {
+        return None;
+    }
+    if product_id < 220 && super::types::product_name(product_id) == "Unknown" {
         return None;
     }
 
@@ -178,11 +236,17 @@ pub fn parse_scan_response(buf: &[u8]) -> Option<DiscoveredDevice> {
     let hardware_info = if buf.len() > 62 { buf[62] } else { 0 };
 
     // Byte 63: subnet_protocol
-    let subnet_protocol = if buf.len() > 63 { buf[63] } else { 0 };
-    // Mirror C++: MODBUS_RS485 → MODBUS_TCPIP (when reported via 0x64, it's actually TCP)
-    let subnet_protocol = if subnet_protocol == 6 { 0 } else { subnet_protocol };
+    let mut subnet_protocol = if buf.len() > 63 { buf[63] } else { 0 };
+    // Mirror C++ ShowBacnetView: if protocol==12 and device is BACnet-capable, map to 10
+    if subnet_protocol == 12 && is_bacnet_device(product_id) {
+        subnet_protocol = 10;
+    }
+    // Mirror C++: MODBUS_RS485(0) → MODBUS_TCPIP(1)
+    if subnet_protocol == 0 {
+        subnet_protocol = 1;
+    }
 
-    // Optional fields (require buf.len() >= 67)
+    // Optional fields (require buf.len() >= 67 for command_version, >= 68 for minitype)
     let mut command_version: Option<u8> = None;
     let mut subnet_port: Option<u8> = None;
     let mut subnet_baudrate: Option<u8> = None;
@@ -190,24 +254,29 @@ pub fn parse_scan_response(buf: &[u8]) -> Option<DiscoveredDevice> {
 
     if buf.len() >= 67 {
         command_version = Some(buf[64]);
-
-        if parent_serial != 0 && buf.len() > 66 {
-            subnet_port = Some(buf[65]);
-            subnet_baudrate = Some(buf[66]);
+        if parent_serial != 0 {
+            subnet_port = buf.get(65).copied();
+            subnet_baudrate = buf.get(66).copied();
         }
     }
 
     if buf.len() >= 68 {
-        let minitype_offset = if parent_serial != 0 { 67 } else { 65 };
-        if buf.len() > minitype_offset {
-            minitype = Some(buf[minitype_offset]);
-        }
+        // C++ always reads minitype at offset 67 regardless of parent_serial
+        // (the else branch skips 2 bytes via my_temp_point += 2)
+        minitype = buf.get(67).copied();
     }
+
+    // ESP32 T3 series: override product name if minitype indicates Airlab (mirrors C++)
+    let product_name = if product_id == 88 && minitype == Some(15) {
+        "Airlab".to_string()
+    } else {
+        super::types::product_name(product_id).to_string()
+    };
 
     Some(DiscoveredDevice {
         serial_number,
         product_id,
-        product_name: super::types::product_name(product_id).to_string(),
+        product_name,
         modbus_id,
         ip_address,
         modbus_port,

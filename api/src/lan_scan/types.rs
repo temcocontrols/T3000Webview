@@ -63,6 +63,20 @@ pub struct ScanResult {
     pub warnings: Vec<String>,
 }
 
+/// Sub-device info parsed from a RESPONSE_TOTAL_SUB_INFO (0x2f) packet.
+#[derive(Debug, Clone, Serialize)]
+pub struct SubDeviceInfo {
+    pub parent_serial: u32,
+    pub sub_devices: Vec<SubDeviceStatus>,
+}
+
+/// Status of one sub-device connected to a parent.
+#[derive(Debug, Clone, Serialize)]
+pub struct SubDeviceStatus {
+    pub status: u8,
+    pub modbus_id: u8,
+}
+
 // ── Product name lookup ───────────────────────────────────────────
 // Mirrors C++ `Inial_Product_map()` in global_function.cpp
 
