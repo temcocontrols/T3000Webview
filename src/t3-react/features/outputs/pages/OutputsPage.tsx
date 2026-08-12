@@ -586,13 +586,13 @@ const OutputsPageDesktop: React.FC = () => {
     if (!selectedDevice?.serialNumber) return;
     let cancelled = false;
     fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
-      if (cancelled) return;
+      if (cancelled || !Array.isArray(all)) return;
       setPointTags(all.map(t => ({
         pointType: t.point_type,
         pointIndex: t.point_index,
         tagName: t.tag_name,
       })));
-    });
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, [selectedDevice?.serialNumber]);
 

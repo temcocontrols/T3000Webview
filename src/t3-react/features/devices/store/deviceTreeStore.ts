@@ -294,7 +294,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Scan for new devices
       scanForDevices: async (options?: ScanOptions) => {
-        set({ isLoading: true, error: null });
+        set({ error: null });
         const { setMessage } = useStatusBarStore.getState();
         try {
           setMessage('Scanning network for T3000 devices...', 'info');
@@ -323,17 +323,13 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           set({
             devices: cleanedDevices,
             deviceStatuses: newStatuses,
-            isLoading: false,
             lastSyncTime: new Date(),
           });
 
           get().buildTreeStructure();
-          setMessage(`Scan complete — ${response.devices.length} devices found`, 'success');
+          setMessage(`Scan complete — ${response.devices.length} devices in database`, 'success');
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to scan for devices',
-            isLoading: false,
-          });
+          set({ error: error instanceof Error ? error.message : 'Failed to scan for devices' });
           setMessage('Network scan failed', 'error');
         }
       },

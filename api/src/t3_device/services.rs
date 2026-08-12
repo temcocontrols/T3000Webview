@@ -83,7 +83,13 @@ pub struct CreateDeviceRequest {
     pub last_checked: Option<String>,              // ISO 8601 timestamp
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Result of a UDP LAN scan + DB refresh operation.
+pub struct ScanAndRefreshResult {
+    pub devices: Vec<DeviceWithStats>,
+    pub scanned_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateDeviceRequest {
     #[serde(rename = "PanelId")]
     pub panel_id: Option<i32>,                      // T3000: PanelId (new column for panel identification)
@@ -468,11 +474,11 @@ impl T3DeviceService {
     }
 
     /// Run UDP LAN scan and upsert discovered devices into DEVICES table.
-    /// Returns the updated device list (same format as get_all_devices_with_stats).
+    /// Returns the updated device list with separate scanned vs. DB counts.
     pub async fn scan_and_refresh(
         db: &DatabaseConnection,
         timeout_secs: u64,
-    ) -> Result<Vec<DeviceWithStats>, AppError> {
+    ) -> Result<ScanAndRefreshResult, AppError> {
         use crate::lan_scan::scanner;
 
         let now = chrono::Utc::now().to_rfc3339();
@@ -553,7 +559,11 @@ impl T3DeviceService {
             }
         }
 
-        // Return fresh device list
-        Self::get_all_devices_with_stats(db).await
+        // Return fresh device list with scan count
+        let devices = Self::get_all_devices_with_stats(db).await?;
+        Ok(ScanAndRefreshResult {
+            scanned_count: seen_serials.len(),
+            devices,
+        })
     }
 }

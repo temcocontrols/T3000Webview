@@ -737,10 +737,11 @@ async fn scan_and_refresh_devices(
     let db = get_t3_device_conn!(state);
 
     match T3DeviceService::scan_and_refresh(&*db, query.timeout).await {
-        Ok(devices) => Ok(Json(json!({
-            "devices": devices,
-            "total": devices.len(),
-            "message": "UDP scan completed, devices updated"
+        Ok(result) => Ok(Json(json!({
+            "devices": result.devices,
+            "total": result.devices.len(),
+            "scanned": result.scanned_count,
+            "message": format!("UDP scan found {} device(s), {} total in database", result.scanned_count, result.devices.len())
         }))),
         Err(e) => {
             eprintln!("scan_and_refresh error: {:?}", e);

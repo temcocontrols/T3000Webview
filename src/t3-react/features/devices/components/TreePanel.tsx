@@ -57,13 +57,14 @@ export const TreePanel: React.FC = () => {
       // First, check database
       await fetchDevices();
 
-      // If database is empty, auto-sync from T3000
+      // If database is empty, auto-sync from T3000 (Action 4 + UDP scan)
       const { devices } = useDeviceTreeStore.getState();
       if (devices.length === 0) {
-        //console.log('[TreePanel] No devices in database, auto-syncing from T3000...');
         await loadDevicesWithSync({ skipInitialFetch: true });
       } else {
-        //console.log(`[TreePanel] Found ${devices.length} devices in database, skipping auto-sync`);
+        // DB has devices from previous session — fire UDP scan in background (non-blocking)
+        const { scanForDevices } = useDeviceTreeStore.getState();
+        scanForDevices({ timeout: 8 }).catch(() => {});
       }
     };
 
