@@ -31,7 +31,7 @@ fn call_tool(name: &str, args: Value) -> Result<Value, String> {
     // This function would normally call execute_tool directly.
     // For now, we document the expected behavior for each tool.
     // When running in a full integration environment, replace with:
-    // let result_str = t3_webview_api::haystack::mcp::execute_tool(name, &args, &db).await?;
+    // let result_str = t3_webview_api::mcp::execute_tool(name, &args, &db).await?;
     // serde_json::from_str(&result_str).map_err(|e| format!("Parse: {}", e))
     Err("Requires DB connection — run in integration test".into())
 }
@@ -207,7 +207,7 @@ fn test_memory_crud_flow() {
 #[test]
 fn test_total_tool_count_is_58() {
     // TOOLS.len() should be 58
-    // Verify: t3_webview_api::haystack::mcp::TOOLS.len() == 58
+    // Verify: t3_webview_api::mcp::TOOLS.len() == 58
 }
 
 #[test]

@@ -24,7 +24,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::info;
 
 use crate::app_state::T3AppState;
-use crate::haystack::mcp::TOOLS;
+use crate::mcp::tools::TOOLS;
 use crate::ai::prompt_builder;
 
 use super::providers::{get_provider, ToolDef};

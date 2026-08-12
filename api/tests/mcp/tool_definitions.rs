@@ -4,8 +4,8 @@
 //! is properly defined with all required metadata fields.
 
 /// Helper: get all tool definitions from the library.
-fn all_tools() -> &'static [t3_webview_api::haystack::mcp::ToolDef] {
-    &t3_webview_api::haystack::mcp::TOOLS
+fn all_tools() -> &'static [t3_webview_api::mcp::ToolDef] {
+    &t3_webview_api::mcp::TOOLS
 }
 
 // ═══ Count ═══
@@ -146,7 +146,7 @@ fn test_required_params_match_properties() {
 // ═══ Tool-by-tool shape checks ═══
 
 /// Helper: find a tool by name.
-fn find_tool(name: &str) -> Option<&t3_webview_api::haystack::mcp::ToolDef> {
+fn find_tool(name: &str) -> Option<&t3_webview_api::mcp::ToolDef> {
     all_tools().iter().find(|t| t.name == name)
 }
 

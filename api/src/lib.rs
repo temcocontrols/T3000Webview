@@ -26,6 +26,9 @@ pub mod utils;
 // Database management modules
 pub mod database_management;
 
+// MCP (Model Context Protocol) server — JSON-RPC 2.0 + 45+ tools
+pub mod mcp;
+
 // LAN scan — pure-Rust UDP broadcast scanner (0x64/0x65 protocol)
 pub mod lan_scan;
 

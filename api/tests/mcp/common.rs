@@ -28,8 +28,8 @@ fn runtime_db_path() -> &'static Option<String> {
 // ═══ Tool list access ═══
 
 /// Get all 58 MCP tool definitions from the library.
-pub fn all_tools() -> &'static [t3_webview_api::haystack::mcp::ToolDef] {
-    &t3_webview_api::haystack::mcp::TOOLS
+pub fn all_tools() -> &'static [t3_webview_api::mcp::ToolDef] {
+    &t3_webview_api::mcp::TOOLS
 }
 
 // ═══ Argument builders ═══
@@ -121,7 +121,7 @@ pub async fn execute_tool(
     args: &Value,
     db: &sea_orm::DatabaseConnection,
 ) -> Result<String, String> {
-    t3_webview_api::haystack::mcp::execute_tool(name, args, db).await
+    t3_webview_api::mcp::execute_tool(name, args, db).await
 }
 
 /// Execute a tool and parse the result as JSON.

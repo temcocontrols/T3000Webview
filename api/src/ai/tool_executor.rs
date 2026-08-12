@@ -11,7 +11,8 @@ use serde_json::Value;
 use tracing::{info, error};
 
 use crate::app_state::T3AppState;
-use crate::haystack::mcp;
+use crate::mcp;
+use crate::mcp::server::get_db;
 
 /// Execute an MCP tool by name with JSON arguments.
 /// Returns the result as a JSON Value, or an error string.
@@ -35,7 +36,7 @@ pub async fn execute_tool(
     }
 
     // Get DB connection from app state
-    let db = match mcp::get_db(state).await {
+    let db = match get_db(state).await {
         Ok(db) => db,
         Err((_, err_body)) => {
             let msg = err_body
