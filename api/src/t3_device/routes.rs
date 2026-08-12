@@ -720,6 +720,35 @@ async fn get_devices_with_stats(
     }
 }
 
+/// Run UDP LAN scan (command 0x64/0x65) and upsert discovered devices into DB.
+/// Marks devices not seen in this scan as offline.
+#[derive(Deserialize)]
+struct ScanAndRefreshQuery {
+    #[serde(default = "default_timeout")]
+    timeout: u64,
+}
+
+fn default_timeout() -> u64 { 8 }
+
+async fn scan_and_refresh_devices(
+    State(state): State<T3AppState>,
+    Query(query): Query<ScanAndRefreshQuery>,
+) -> Result<Json<Value>, StatusCode> {
+    let db = get_t3_device_conn!(state);
+
+    match T3DeviceService::scan_and_refresh(&*db, query.timeout).await {
+        Ok(devices) => Ok(Json(json!({
+            "devices": devices,
+            "total": devices.len(),
+            "message": "UDP scan completed, devices updated"
+        }))),
+        Err(e) => {
+            eprintln!("scan_and_refresh error: {:?}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 async fn create_device(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateDeviceRequest>,
@@ -1861,6 +1890,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         // T3000 Device endpoints
         .route("/devices", get(get_devices_with_stats))
         .route("/devices", post(create_device))
+        .route("/devices/scan-refresh", post(scan_and_refresh_devices))
         .route("/devices", delete(delete_all_devices))  // DELETE all devices
         .route("/devices/:id", get(get_device_by_id))
         .route("/devices/:id", put(update_device))

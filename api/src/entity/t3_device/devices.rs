@@ -79,6 +79,22 @@ pub struct Model {
     pub is_online: Option<i32>,                // 0 = offline/unknown, 1 = online
     #[sea_orm(column_name = "last_checked")]
     pub last_checked: Option<String>,          // ISO 8601 timestamp of last status check
+
+    // Fields from UDP LAN scan (command 0x64/0x65 protocol)
+    #[sea_orm(column_name = "object_instance")]
+    pub object_instance: Option<i32>,          // BACnet object instance
+    #[sea_orm(column_name = "firmware_version")]
+    pub firmware_version: Option<f64>,         // Firmware version (float, /10 for certain products)
+    #[sea_orm(column_name = "hardware_version")]
+    pub hardware_version: Option<i32>,         // Hardware revision
+    #[sea_orm(column_name = "parent_serial_number")]
+    pub parent_serial_number: Option<i32>,     // Parent device serial (0 = top-level)
+    #[sea_orm(column_name = "subnet_protocol")]
+    pub subnet_protocol: Option<i32>,          // 0=old modbus, 10=bacnet mstp, 12=mstp-to-modbus
+    #[sea_orm(column_name = "command_version")]
+    pub command_version: Option<i32>,          // Command protocol version
+    #[sea_orm(column_name = "minitype")]
+    pub minitype: Option<i32>,                 // Minitype / sub-product variant
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -466,4 +466,94 @@ impl T3DeviceService {
 
         Ok(result.rows_affected > 0)
     }
+
+    /// Run UDP LAN scan and upsert discovered devices into DEVICES table.
+    /// Returns the updated device list (same format as get_all_devices_with_stats).
+    pub async fn scan_and_refresh(
+        db: &DatabaseConnection,
+        timeout_secs: u64,
+    ) -> Result<Vec<DeviceWithStats>, AppError> {
+        use crate::lan_scan::scanner;
+
+        let now = chrono::Utc::now().to_rfc3339();
+        let scan_result = scanner::scan_network(timeout_secs).await;
+
+        // Track which serials were found in this scan
+        let mut seen_serials: Vec<i32> = Vec::new();
+
+        for dev in &scan_result.devices {
+            let sn = dev.serial_number as i32;
+            seen_serials.push(sn);
+
+            let existing = devices::Entity::find_by_id(sn).one(db).await?;
+
+            if existing.is_some() {
+                // Update existing device
+                let mut active: devices::ActiveModel = existing.unwrap().into();
+                active.product_name = Set(Some(dev.product_name.clone()));
+                active.product_id = Set(Some(dev.product_id as i32));
+                active.product_class_id = Set(Some(dev.product_id as i32));
+                active.ip_address = Set(Some(dev.ip_address.clone()));
+                active.modbus_port = Set(Some(dev.modbus_port));
+                active.modbus_address = Set(Some(dev.modbus_id));
+                active.panel_number = Set(Some(dev.panel_number as i32));
+                active.show_label_name = Set(Some(dev.panel_name.clone()));
+                active.object_instance = Set(Some(dev.object_instance as i32));
+                active.firmware_version = Set(Some(dev.firmware_version as f64));
+                active.hardware_version = Set(Some(dev.hardware_version as i32));
+                active.parent_serial_number = Set(Some(dev.parent_serial as i32));
+                active.subnet_protocol = Set(Some(dev.subnet_protocol as i32));
+                active.command_version = Set(dev.command_version.map(|v| v as i32));
+                active.minitype = Set(dev.minitype.map(|v| v as i32));
+                active.bacnet_ip_port = Set(Some(dev.bacnetip_port));
+                active.is_online = Set(Some(1));
+                active.last_checked = Set(Some(now.clone()));
+                active.bautrate = Set(Some(dev.ip_address.clone()));
+                let _ = active.update(db).await;
+            } else {
+                // Insert new device
+                let active = devices::ActiveModel {
+                    serial_number: Set(sn),
+                    product_name: Set(Some(dev.product_name.clone())),
+                    product_id: Set(Some(dev.product_id as i32)),
+                    product_class_id: Set(Some(dev.product_id as i32)),
+                    ip_address: Set(Some(dev.ip_address.clone())),
+                    modbus_port: Set(Some(dev.modbus_port)),
+                    modbus_address: Set(Some(dev.modbus_id)),
+                    panel_number: Set(Some(dev.panel_number as i32)),
+                    show_label_name: Set(Some(dev.panel_name.clone())),
+                    screen_name: Set(Some(dev.panel_name.clone())),
+                    object_instance: Set(Some(dev.object_instance as i32)),
+                    firmware_version: Set(Some(dev.firmware_version as f64)),
+                    hardware_version: Set(Some(dev.hardware_version as i32)),
+                    parent_serial_number: Set(Some(dev.parent_serial as i32)),
+                    subnet_protocol: Set(Some(dev.subnet_protocol as i32)),
+                    command_version: Set(dev.command_version.map(|v| v as i32)),
+                    minitype: Set(dev.minitype.map(|v| v as i32)),
+                    bacnet_ip_port: Set(Some(dev.bacnetip_port)),
+                    is_online: Set(Some(1)),
+                    last_checked: Set(Some(now.clone())),
+                    bautrate: Set(Some(dev.ip_address.clone())),
+                    ..Default::default()
+                };
+                let _ = devices::Entity::insert(active).exec(db).await;
+            }
+        }
+
+        // Mark devices not seen in this scan as offline
+        if !seen_serials.is_empty() {
+            let all_devices = devices::Entity::find().all(db).await?;
+            for device in all_devices {
+                if !seen_serials.contains(&device.serial_number) {
+                    let mut active: devices::ActiveModel = device.into();
+                    active.is_online = Set(Some(0));
+                    active.last_checked = Set(Some(now.clone()));
+                    let _ = active.update(db).await;
+                }
+            }
+        }
+
+        // Return fresh device list
+        Self::get_all_devices_with_stats(db).await
+    }
 }

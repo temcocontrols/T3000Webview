@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL } from '../config/constants';
+import DeviceApiService from './deviceApi';
 
 export interface ViewState {
   toolBarVisible: boolean;
@@ -44,12 +45,17 @@ export const setTheme = async (theme: ViewState['theme']): Promise<void> => {
 };
 
 /**
- * Refresh view (F2)
+ * Refresh view (F2) — run UDP LAN scan and reload device tree
  */
 export const refreshView = async (): Promise<void> => {
-  // Trigger refresh event
+  // Run the UDP LAN scan to get latest device info and update DB
+  try {
+    await DeviceApiService.scanAndRefreshDevices(8);
+  } catch (error) {
+    console.error('UDP scan failed during refresh:', error);
+  }
+  // Trigger refresh event for tree/store to reload from updated DB
   window.dispatchEvent(new CustomEvent('view-refresh'));
-  // Could also reload data from backend if needed
 };
 
 /**

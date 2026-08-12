@@ -222,8 +222,8 @@ fn test_parse_sub_device_info() {
     buf[1] = 2;  // device_count = 2
     buf[2] = 0x78; buf[3] = 0x56; buf[4] = 0x34; buf[5] = 0x12; // parent_sn = 0x12345678
     // buf[6..21] = reserved
-    buf[22] = 1; buf[23] = 5; // sub[0]: status=1, modbus_id=5
-    buf[24] = 0; buf[25] = 7; // sub[1]: status=0, modbus_id=7
+    buf[21] = 1; buf[22] = 5; // sub[0]: status=1, modbus_id=5
+    buf[23] = 0; buf[24] = 7; // sub[1]: status=0, modbus_id=7
 
     let info = protocol::parse_sub_device_info(&buf).expect("should parse");
     assert_eq!(info.parent_serial, 0x12345678);

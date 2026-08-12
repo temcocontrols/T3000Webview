@@ -13,6 +13,7 @@ import { NotificationProvider } from '../shared/components/NotificationCenter';
 import { CsvOperationsProvider } from '../shared/context/CsvOperationsContext';
 import { MainLayout } from '../layout/MainLayout';
 import { MinimalLayout } from '../layout/MinimalLayout';
+import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
 import styles from './App.module.css';
 
 // Lazy load pages from features
@@ -182,6 +183,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
  */
 export const App: React.FC = () => {
   const [theme] = React.useState<'light' | 'dark'>('light');
+  const fetchDevices = useDeviceTreeStore((s) => s.fetchDevices);
+
+  // Listen for view-refresh event (from Header refresh button / F2)
+  React.useEffect(() => {
+    const handler = () => {
+      fetchDevices();
+    };
+    window.addEventListener('view-refresh', handler);
+    return () => window.removeEventListener('view-refresh', handler);
+  }, [fetchDevices]);
 
 
   return (

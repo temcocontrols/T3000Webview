@@ -295,15 +295,46 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
       // Scan for new devices
       scanForDevices: async (options?: ScanOptions) => {
         set({ isLoading: true, error: null });
+        const { setMessage } = useStatusBarStore.getState();
         try {
-          const _newDevices = await DeviceApiService.scanDevices(options);
-          // TODO: Add discovered devices to database
-          set({ isLoading: false });
+          setMessage('Scanning network for T3000 devices...', 'info');
+          const response = await DeviceApiService.scanAndRefreshDevices(options?.timeout ?? 8);
+
+          // Clean device names and update store
+          const cleanedDevices = response.devices
+            .map(device => ({
+              ...device,
+              nameShowOnTree: cleanDeviceName(device.nameShowOnTree, ''),
+              productName: cleanDeviceName(device.productName, ''),
+            }));
+
+          // Update statuses from persisted isOnline
+          const newStatuses = new Map<number, DeviceStatus>();
+          cleanedDevices.forEach((d) => {
+            if (d.lastChecked) {
+              if (d.isOnline === true || d.isOnline === (1 as any)) {
+                newStatuses.set(d.serialNumber, 'online');
+              } else {
+                newStatuses.set(d.serialNumber, 'offline');
+              }
+            }
+          });
+
+          set({
+            devices: cleanedDevices,
+            deviceStatuses: newStatuses,
+            isLoading: false,
+            lastSyncTime: new Date(),
+          });
+
+          get().buildTreeStructure();
+          setMessage(`Scan complete — ${response.devices.length} devices found`, 'success');
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : 'Failed to scan for devices',
             isLoading: false,
           });
+          setMessage('Network scan failed', 'error');
         }
       },
 
@@ -480,6 +511,22 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           }
 
           await transport.disconnect();
+
+          // Step 4: Background UDP LAN scan to enrich device info (non-blocking)
+          DeviceApiService.scanAndRefreshDevices(8)
+            .then((response) => {
+              const cleaned = response.devices
+                .map(d => ({ ...d, nameShowOnTree: cleanDeviceName(d.nameShowOnTree, ''), productName: cleanDeviceName(d.productName, '') }));
+              const newStatuses = new Map<number, DeviceStatus>();
+              cleaned.forEach((d) => {
+                if (d.lastChecked) {
+                  newStatuses.set(d.serialNumber, d.isOnline === true || d.isOnline === (1 as any) ? 'online' : 'offline');
+                }
+              });
+              set({ devices: cleaned, deviceStatuses: newStatuses, lastSyncTime: new Date() });
+              get().buildTreeStructure();
+            })
+            .catch(() => { /* UDP scan is best-effort on page load */ });
         } catch (error) {
           LogUtil.Error('[loadDevicesWithSync] Failed:', error);
           const errorMsg = error instanceof Error ? error.message : 'Failed to load devices';
