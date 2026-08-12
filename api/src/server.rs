@@ -25,7 +25,7 @@ use crate::{
     utils::{SHUTDOWN_CHANNEL, SPA_DIR},
 };
 
-use super::modbus_register::routes::modbus_register_routes;
+use super::reg_defs::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
 pub(crate) const DEBUG_LOG_NAME: &str = "t3-webview-api-dll.log";

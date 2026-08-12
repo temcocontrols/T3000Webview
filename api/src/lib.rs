@@ -18,7 +18,7 @@ pub mod file;
 pub mod log;
 pub mod logging;
 pub mod logger;
-pub mod modbus_register;
+pub mod reg_defs;
 pub mod server;
 pub mod user;
 pub mod utils;
