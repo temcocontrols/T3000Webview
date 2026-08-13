@@ -177,7 +177,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_device_list",
         title: "List Devices",
-        description: "Enumerate all devices with serial numbers, names, types, point counts, building, floor, and room.",
+        description: "Enumerate all devices with serial numbers, names, types, point counts, building, floor, room, and online/offline status (is_online) from the latest LAN scan.",
         input_schema: json!({
             "type": "object",
             "properties": {

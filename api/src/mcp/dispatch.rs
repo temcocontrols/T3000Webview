@@ -768,6 +768,8 @@ pub async fn execute_tool(
                         "building": d.device.building_name,
                         "floor": d.device.floor_name,
                         "room": d.device.room_name,
+                        "is_online": d.device.is_online,
+                        "last_checked": d.device.last_checked,
                     })
                 })
                 .collect();
@@ -2622,6 +2624,15 @@ pub async fn execute_tool(
                 .map_err(|e| format!("Device count failed: {}", e))?;
             let device_count: i64 = dev_rows.first().and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
 
+            // Online / offline counts (is_online is maintained by the UDP LAN scan)
+            let online_sql = "SELECT COUNT(*) as cnt FROM DEVICES WHERE is_online = 1";
+            let online_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, online_sql)).await.unwrap_or_default();
+            let online_count: i64 = online_rows.first().and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
+
+            let offline_sql = "SELECT COUNT(*) as cnt FROM DEVICES WHERE is_online IS NULL OR is_online = 0";
+            let offline_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, offline_sql)).await.unwrap_or_default();
+            let offline_count: i64 = offline_rows.first().and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
+
             // Active alarms
             let alarm_sql = "SELECT COUNT(*) as cnt FROM ALARMS WHERE (Acknowledged IS NULL OR Acknowledged = '' OR Acknowledged = '0')";
             let alarm_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, alarm_sql)).await.unwrap_or_default();
@@ -2647,16 +2658,19 @@ pub async fn execute_tool(
             let pid_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, pid_sql)).await.unwrap_or_default();
             let total_pid_loops: i64 = pid_rows.first().and_then(|r| r.try_get::<i64>("", "cnt").ok()).unwrap_or(0);
 
-            // Device list with names
-            let dev_list_sql = "SELECT SerialNumber, Product_Name FROM DEVICES ORDER BY SerialNumber";
+            // Device list with names and online status
+            let dev_list_sql = "SELECT SerialNumber, Product_Name, is_online FROM DEVICES ORDER BY SerialNumber";
             let dev_list_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, dev_list_sql)).await.unwrap_or_default();
             let devices: Vec<Value> = dev_list_rows.iter().map(|r| json!({
                 "serial": r.try_get::<i32>("", "SerialNumber").unwrap_or(0),
                 "name": r.try_get::<String>("", "Product_Name").ok(),
+                "is_online": r.try_get::<i32>("", "is_online").ok(),
             })).collect();
 
             serde_json::to_string_pretty(&json!({
                 "device_count": device_count,
+                "online_devices": online_count,
+                "offline_devices": offline_count,
                 "devices": devices,
                 "active_alarms": active_alarms,
                 "total_trendlogs": total_trendlogs,
