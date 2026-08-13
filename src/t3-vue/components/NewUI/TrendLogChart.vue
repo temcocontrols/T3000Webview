@@ -1328,7 +1328,7 @@
     }
 
     // 1. Try fresh Action 17 cache first
-    const cachedDevice = freshWebviewCache.value.get(`${panelId}_${idToFind}`)
+    const cachedDevice = freshWebviewCache.value.get(freshCacheKeyFor(panelId, idToFind))
     if (cachedDevice !== undefined) {
       const result = resolveRange(cachedDevice?.range)
       if (result) return result
@@ -1338,8 +1338,11 @@
     const panelsData = T3000_Data.value.panelsData
     if (!panelsData?.length) return ''
 
+    const sn = getSerialForPanel(panelId)
     const device = panelsData.find((d: any) =>
-      String(d.pid) === String(panelId) && d.id === idToFind
+      String(d.pid) === String(panelId) &&
+      d.id === idToFind &&
+      (d.serial_number == null || sn === 0 || Number(d.serial_number) === sn)
     )
 
     if (!device || device.range === undefined) return ''
@@ -1815,6 +1818,35 @@
   // Route for URL parameter extraction
   const route = useRoute()
 
+  // ── Shared panel→device resolution ─────────────────────────────────────────
+  // Resolves which physical device (panelsList entry) hosts a given panel number.
+  // For the MAIN panel, the URL serial is authoritative because multiple devices
+  // can share panel_number=1. Foreign panels fall back to panel_number lookup.
+  const resolvePanelEntry = (pid: number): any => {
+    const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
+    const urlSn = route.query.sn ? parseInt(route.query.sn as string) : 0
+    const panelsList = T3000_Data.value.panelsList || []
+    const mainPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 0)
+
+    if (urlSn && pid === mainPanelId) {
+      const bySn = panelsList.find((p: any) => p.serial_number === urlSn)
+      if (bySn) return bySn
+    }
+    return panelsList.find((p: any) => p.panel_number === pid || p.panel_id === pid || p.id === pid)
+  }
+
+  // Serial number for a panel (0 if unknown).
+  const getSerialForPanel = (pid: number): number => {
+    const entry = resolvePanelEntry(pid)
+    return entry?.serial_number ?? entry?.panel_serial_number ?? 0
+  }
+
+  // Serial-aware cache key: `${serial}_${panelId}_${id}` so two devices sharing
+  // the same panel_number never overwrite each other's fresh Action 17 entries.
+  const freshCacheKeyFor = (panelId: number, id: string): string => {
+    return `${getSerialForPanel(panelId)}_${panelId}_${id}`
+  }
+
   // NEW: Resizable divider state
   const digitalAreaHeightOverride = ref<number | null>(null) // null = auto-compact
   const isResizing = ref(false)
@@ -1849,7 +1881,7 @@
     // This ensures the longest user-defined name is shown first.
 
     // 1. Try fresh Action 17 cache first (most reliable, reads directly from device)
-    const cachedDevice = freshWebviewCache.value.get(`${panelId}_${idToFind}`)
+    const cachedDevice = freshWebviewCache.value.get(freshCacheKeyFor(panelId, idToFind))
     if (cachedDevice) {
       const desc = (cachedDevice.description && cachedDevice.description.trim())
         || (cachedDevice.label && cachedDevice.label.trim())
@@ -1865,8 +1897,11 @@
       return cachedDevice ? `${panelId}-${idToFind}` : ''
     }
 
+    const sn = getSerialForPanel(panelId)
     const device = panelsData.find((d: any) =>
-      String(d.pid) === String(panelId) && d.id === idToFind
+      String(d.pid) === String(panelId) &&
+      d.id === idToFind &&
+      (d.serial_number == null || sn === 0 || Number(d.serial_number) === sn)
     )
 
     if (!device) {
@@ -1896,7 +1931,7 @@
     const idToFind = `${pointTypeInfo.category}${pointNumber + 1}`
 
     // 1. Try fresh Action 17 cache first
-    const cachedDevice = freshWebviewCache.value.get(`${panelId}_${idToFind}`)
+    const cachedDevice = freshWebviewCache.value.get(freshCacheKeyFor(panelId, idToFind))
     if (cachedDevice !== undefined) {
       return cachedDevice?.digital_analog ?? BAC_UNITS_ANALOG
     }
@@ -1905,8 +1940,11 @@
     const panelsData = T3000_Data.value.panelsData
     if (!panelsData?.length) return BAC_UNITS_ANALOG
 
+    const sn = getSerialForPanel(panelId)
     const device = panelsData.find((d: any) =>
-      String(d.pid) === String(panelId) && d.id === idToFind
+      String(d.pid) === String(panelId) &&
+      d.id === idToFind &&
+      (d.serial_number == null || sn === 0 || Number(d.serial_number) === sn)
     )
 
     return device?.digital_analog ?? BAC_UNITS_ANALOG
@@ -2136,9 +2174,7 @@
         if (entryType < 0) continue
         const key = `${panelId}_${entryType}`
         if (fetchSet.has(key)) continue
-        const panelEntry = panelsList.find(
-          (p: any) => p.panel_number === panelId || p.panel_id === panelId || p.id === panelId
-        )
+        const panelEntry = resolvePanelEntry(panelId)
         if (!panelEntry) {
           LogUtil.Warn(`fetchFreshPointsForAllPanels: panelId ${panelId} not found in panelsList`)
           continue
@@ -2179,7 +2215,7 @@
             // Normalize pid=0: action 17 may return pid=0 for local panel items.
             // Use the queried panelId so getDeviceDescription cache lookups hit correctly.
             const fixedPid = Number(pt.pid) > 0 ? pt.pid : panelId
-            const cacheKey = `${fixedPid}_${pt.id}`
+            const cacheKey = `${sn}_${fixedPid}_${pt.id}`
             newCache.set(cacheKey, { ...pt, pid: fixedPid })
           }
           freshWebviewCache.value = newCache
@@ -6672,16 +6708,8 @@
       const panelsList = T3000_Data.value.panelsList || []
       const mainPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 0)
 
-      // Resolve the panel entry for a given panelId. For the MAIN panel prefer the
-      // URL-provided serial (authoritative) because several devices share panel_number=1
-      // and a panel_number lookup would pick the wrong serial/object_instance.
-      const resolvePanelEntry = (pid: number): any => {
-        if (urlSn && pid === mainPanelId) {
-          const bySn = panelsList.find((p: any) => p.serial_number === urlSn)
-          if (bySn) return bySn
-        }
-        return panelsList.find((p: any) => p.panel_number === pid || p.panel_id === pid || p.id === pid)
-      }
+      // resolvePanelEntry is now a shared component-level helper (URL serial
+      // preferred for the main panel, panel_number fallback for foreign panels).
 
       LogUtil.Info('[TrendLogChart] Action 17 panel resolution', {
         urlPanelId,
@@ -7929,7 +7957,7 @@
       if (panelGroups.size === 0) panelGroups.set(currentPanelId, [])
 
       const getSnForHistoryPanel = (pid: number): number => {
-        const entry = (T3000_Data.value.panelsList || []).find((p: any) => p.panel_number === pid)
+        const entry = resolvePanelEntry(pid)
         return entry?.serial_number || currentSN
       }
 
@@ -8465,8 +8493,9 @@
       if (monitoredSeriesPanels.size === 0) monitoredSeriesPanels.add(queryPanelId)
 
       // Per-panel SN lookup foreign panels have their own serial_number, must NOT use URL SN
+      // (shared resolvePanelEntry prefers URL serial for the main panel only).
       const getSerialForPanelInSave = (pid: number): number => {
-        const entry = panelsList.find((p: any) => p.panel_number === pid)
+        const entry = resolvePanelEntry(pid)
         return entry?.serial_number || currentSN
       }
 
@@ -8623,7 +8652,7 @@
         LogUtil.Info('Sending real-time batch to API', {
           pointsCount: realtimeDataPoints.length,
           serialNumber: currentSN,
-          apiEndpoint: 'localhost:9103/api/trendlog/realtime/batch',
+          apiEndpoint: '/api/t3_device/trendlog-data/realtime/batch',
           sampleDataPoint: realtimeDataPoints[0],
           detailedDataPoints: realtimeDataPoints.map(p => ({
             point_id: p.point_id,
@@ -8642,7 +8671,6 @@
 
         const rowsAffected = await trendlogAPI.saveRealtimeBatch(realtimeDataPoints)
 
-        /*
         LogUtil.Info(`Successfully stored ${rowsAffected} real-time data points`, {
           pointsCount: realtimeDataPoints.length,
           rowsAffected,
@@ -8650,7 +8678,6 @@
           timestamp: new Date().toISOString(),
           success: rowsAffected > 0
         })
-        */
       } else {
         LogUtil.Warn('No valid data points to store', {
           originalItemsCount: validDataItems.length,

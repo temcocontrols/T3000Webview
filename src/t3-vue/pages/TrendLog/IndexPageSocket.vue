@@ -381,12 +381,29 @@ const ffiApi = useT3000FfiApi()
 const loadPanelData = async (targetPanelId: number): Promise<void> => {
   const response = await ffiApi.ffiGetPanelData(targetPanelId)
   if (response && response.data) {
+    // Resolve which device this panel belongs to and tag each point with its
+    // serial_number, so downstream lookups (names/units/digital-analog) can
+    // disambiguate devices that share the same panel_number. The main panel uses
+    // the authoritative URL serial; foreign panels use the panelsList entry.
+    const urlSn = route.query.sn ? Number(route.query.sn) : null
+    const urlPanelId = route.query.panel_id ? Number(route.query.panel_id) : null
+    let snForPanel: number | null = null
+    if (urlSn != null && targetPanelId === urlPanelId) {
+      snForPanel = urlSn
+    } else {
+      const entry = T3000_Data.value.panelsList?.find((p: any) => p.panel_number === targetPanelId)
+      snForPanel = entry?.serial_number ?? null
+    }
+    const points = snForPanel != null
+      ? response.data.map((pt: any) => ({ ...pt, serial_number: snForPanel }))
+      : response.data
+
     T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
       (item: any) => item.pid !== targetPanelId
     )
-    T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(response.data)
+    T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(points)
     T3000_Data.value.panelsData.sort((a: any, b: any) => a.pid - b.pid)
-    LogUtil.Info('[IndexPage] Panel data loaded', { panelId: targetPanelId, itemCount: response.data.length })
+    LogUtil.Info('[IndexPage] Panel data loaded', { panelId: targetPanelId, itemCount: points.length })
   } else {
     LogUtil.Warn('[IndexPage] GET_PANEL_DATA returned no data', { panelId: targetPanelId })
   }
