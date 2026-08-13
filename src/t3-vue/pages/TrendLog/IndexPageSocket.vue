@@ -223,7 +223,7 @@ const formatDataFromQueryParams = () => {
   const { sn, panel_id, trendlog_id, all_data } = urlParams.value
 
   // Print 1: Full original raw query parameters
-  LogUtil.Debug('📊 IndexPageSocket - Original Query Parameters:', route.query)
+  LogUtil.Debug('IndexPageSocket - Original Query Parameters:', route.query)
 
   // Print 2: Complete readable object with decoded all_data
   const readableQuery = {
@@ -244,9 +244,9 @@ const formatDataFromQueryParams = () => {
       )
     )
   }
-  LogUtil.Debug('📊 IndexPageSocket - Readable Query Object:', readableQuery)  // Validate required parameters (allow trendlog_id=0)
+  LogUtil.Debug('IndexPageSocket - Readable Query Object:', readableQuery)  // Validate required parameters (allow trendlog_id=0)
   if (sn === null || panel_id === null || trendlog_id === null) {
-    LogUtil.Debug('�?IndexPageSocket: Missing required parameters for trend log data')
+    LogUtil.Debug('IndexPageSocket: Missing required parameters for trend log data')
     return null
   }
 
@@ -386,9 +386,9 @@ const loadPanelData = async (targetPanelId: number): Promise<void> => {
     )
     T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(response.data)
     T3000_Data.value.panelsData.sort((a: any, b: any) => a.pid - b.pid)
-    LogUtil.Info('✅ [IndexPage] Panel data loaded', { panelId: targetPanelId, itemCount: response.data.length })
+    LogUtil.Info('[IndexPage] Panel data loaded', { panelId: targetPanelId, itemCount: response.data.length })
   } else {
-    LogUtil.Warn('⚠️ [IndexPage] GET_PANEL_DATA returned no data', { panelId: targetPanelId })
+    LogUtil.Warn('[IndexPage] GET_PANEL_DATA returned no data', { panelId: targetPanelId })
   }
 }
 
@@ -421,11 +421,11 @@ const initializeT3000Data = async () => {
     T3000_Data.value.loadingPanel = panel_id
 
     // Step 1: Action 4 - GET_PANELS_LIST (via FFI HTTP, replaces WebSocket GetPanelsList)
-    LogUtil.Info('📡 [IndexPage] Action 4 GET_PANELS_LIST via FFI API', { panel_id, sn })
+    LogUtil.Info('[IndexPage] Action 4 GET_PANELS_LIST via FFI API', { panel_id, sn })
     const panelsListResponse = await ffiApi.ffiGetPanelsList()
 
     if (panelsListResponse) {
-      LogUtil.Info('✅ [IndexPage] GET_PANELS_LIST response received via FFI', panelsListResponse)
+      LogUtil.Info('[IndexPage] GET_PANELS_LIST response received via FFI', panelsListResponse)
       // Populate T3000_Data.panelsList from response so every panel's own serial_number
       // is available for per-panel FFI polling (action=15) in TrendLogChart.
       // Without this, getSerialForPanel() falls back to the URL panel's SN for foreign panels.
@@ -453,17 +453,17 @@ const initializeT3000Data = async () => {
             })
           }
         })
-        LogUtil.Info('✅ [IndexPage] panelsList populated from GET_PANELS_LIST', {
+        LogUtil.Info('[IndexPage] panelsList populated from GET_PANELS_LIST', {
           count: T3000_Data.value.panelsList.length,
           panels: T3000_Data.value.panelsList.map((p: any) => ({ pn: p.panel_number, sn: p.serial_number }))
         })
       }
     } else {
-      LogUtil.Warn('⚠️ [IndexPage] GET_PANELS_LIST returned no data', { panel_id })
+      LogUtil.Warn('[IndexPage] GET_PANELS_LIST returned no data', { panel_id })
     }
 
     // Step 2: Action 0 - GET_PANEL_DATA for the primary panel (pid in monitor config)
-    LogUtil.Info('📡 [IndexPage] Action 0 GET_PANEL_DATA via FFI API', { panel_id })
+    LogUtil.Info('[IndexPage] Action 0 GET_PANEL_DATA via FFI API', { panel_id })
     await loadPanelData(panel_id)
 
     // Step 3: Detect foreign panels referenced in monitor config inputs and load them too.
@@ -485,7 +485,7 @@ const initializeT3000Data = async () => {
     }
 
     if (foreignPanelIds.size > 0) {
-      LogUtil.Info('📡 [IndexPage] Loading foreign panel(s) referenced in monitor inputs', {
+      LogUtil.Info('[IndexPage] Loading foreign panel(s) referenced in monitor inputs', {
         primaryPanel: panel_id,
         foreignPanels: Array.from(foreignPanelIds)
       })
@@ -497,7 +497,7 @@ const initializeT3000Data = async () => {
 
   } catch (error) {
     T3000_Data.value.loadingPanel = null
-    LogUtil.Error('❌ [IndexPage] FFI init error:', error)
+    LogUtil.Error('[IndexPage] FFI init error:', error)
   }
 }
 

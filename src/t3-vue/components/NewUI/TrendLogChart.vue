@@ -339,7 +339,7 @@
                   <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
                        :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
                     <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
-                    <!-- ⌨️ Keyboard shortcut badge for left panel -->
+                    <!-- Keyboard shortcut badge for left panel -->
                     <div v-if="keyboardEnabled && getKeyboardShortcut(series.key)"
                          class="keyboard-shortcut-badge left-panel-badge"
                          :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.key) }"
@@ -423,7 +423,7 @@
                   <div class="series-toggle-indicator" :class="{ 'active': series.visible, 'inactive': !series.visible }"
                        :style="{ backgroundColor: series.visible ? series.color : '#d9d9d9' }">
                     <div class="toggle-inner" :class="{ 'visible': series.visible }"></div>
-                    <!-- ⌨️ Keyboard shortcut badge for left panel -->
+                    <!-- Keyboard shortcut badge for left panel -->
                     <div v-if="keyboardEnabled && getKeyboardShortcut(series.key)"
                          class="keyboard-shortcut-badge left-panel-badge"
                          :class="{ 'active': lastKeyboardAction === getKeyboardShortcutCode(series.key) }"
@@ -628,7 +628,7 @@
                 @click="showFfiSyncHistory = true"
                 style="width: 100%; font-size: 10px; height: 24px;"
               >
-                📜 View Change History
+                View Change History
               </a-button>
             </div> -->
             <!-- Warning Messages -->
@@ -1463,16 +1463,16 @@
   const customDateModalVisible = ref(false)
   const isRealTime = ref(true)
 
-  // 🆕 Request management for timebase changes and historical data fetching
+  // Request management for timebase changes and historical data fetching
   let timebaseChangeTimeout: NodeJS.Timeout | null = null
   let historyAbortController: AbortController | null = null
-  let historyFetchDebounceTimeout: NodeJS.Timeout | null = null // 🆕 PERFORMANCE: Debounce rapid API calls
+  let historyFetchDebounceTimeout: NodeJS.Timeout | null = null // PERFORMANCE: Debounce rapid API calls
 
-  // 🆕 Chart update debouncing to prevent UI freezing in C++ embedded WebView
+  // Chart update debouncing to prevent UI freezing in C++ embedded WebView
   let chartUpdatePending = false
   let chartUpdateQueued = false  // queued while an update is in-flight
 
-  // 🆕 Chart creation retry tracking to prevent infinite loops
+  // Chart creation retry tracking to prevent infinite loops
   let chartCreationRetries = 0
   const MAX_CHART_CREATION_RETRIES = 10 // Maximum retries before giving up
 
@@ -1481,7 +1481,7 @@
   const lastKnownY2Range = ref<{ min: number; max: number; step: number; nSteps: number } | null>(null)
   const lastKnownY3Range = ref<{ min: number; max: number; step: number; nSteps: number } | null>(null)
 
-  // 🆕 Gap detection threshold (minutes) - configurable threshold for breaking lines when data gaps occur
+  // Gap detection threshold (minutes) - configurable threshold for breaking lines when data gaps occur
   // Default: 1 minute (reasonable since Action 15 runs every 15s minimum - detects ~4 missed data points)
   const gapDetectionThreshold = ref(1) // Default: 1 minute
   const getGapThresholdMs = () => gapDetectionThreshold.value * 60 * 1000
@@ -1630,7 +1630,7 @@
     }
   ]
 
-  // ⌨️ Keyboard Navigation System
+  // Keyboard Navigation System
   const keyboardEnabled = ref(true)
   const lastKeyboardAction = ref<string | null>(null)
   const selectedItemIndex = ref<number>(-1) // For up/down navigation (-1 = no selection)
@@ -1649,7 +1649,7 @@
   // Dynamic interval calculation based on T3000 monitorConfig
   const calculateT3000Interval = (monitorConfig: any): number => {
     if (!monitorConfig) {
-      LogUtil.Info('⏱️ calculateT3000Interval: no monitorConfig → fallback 15000 ms')
+      LogUtil.Info('calculateT3000Interval: no monitorConfig → fallback 15000 ms')
       return 15000 // Default fallback: 15 seconds
     }
 
@@ -1670,7 +1670,7 @@
       : 15000  // Default 15 seconds if all intervals are 0
 
     LogUtil.Info(
-      `⏱️ calculateT3000Interval: hour=${hour_interval_time} min=${minute_interval_time} sec=${second_interval_time}` +
+      `calculateT3000Interval: hour=${hour_interval_time} min=${minute_interval_time} sec=${second_interval_time}` +
       ` → totalSeconds=${totalSeconds} → intervalMs=${intervalMs}` +
       (totalSeconds > 0 && totalSeconds * 1000 < 15000 ? ' (clamped to 15000 minimum)' : '')
     )
@@ -1870,7 +1870,7 @@
     )
 
     if (!device) {
-      LogUtil.Debug('⚠️ TrendLogChart: Device not found in panelsData or freshWebviewCache', {
+      LogUtil.Debug('TrendLogChart: Device not found in panelsData or freshWebviewCache', {
         panelId,
         pointType,
         pointNumber,
@@ -1934,7 +1934,7 @@
     // num_inputs are active. Cap the loop to num_inputs to match T3000 native display.
     const numInputs: number | undefined = freshMonitorData.value?.num_inputs ?? (props.itemData as any)?.t3Entry?.num_inputs
 
-    LogUtil.Info('📊 generateDataSeries: data source', {
+    LogUtil.Info('generateDataSeries: data source', {
       usingFreshMonitorData: !!(freshInput?.length),
       freshInputLength: freshInput?.length ?? 0,
       propsInputLength: (props.itemData as any)?.t3Entry?.input?.length ?? 0,
@@ -2067,9 +2067,9 @@
     // During startup, generateDataSeries can run before panelsData is available.
     // Downgrade that transient "0 valid" state to debug to reduce noise.
     if (!panelsDataReady && validSeries.length === 0) {
-      LogUtil.Debug('📊 TrendLogChart: Generated series with filtering (startup warmup)', generatedSeriesSummary)
+      LogUtil.Debug('TrendLogChart: Generated series with filtering (startup warmup)', generatedSeriesSummary)
     } else {
-      LogUtil.Info('📊 TrendLogChart: Generated series with filtering', generatedSeriesSummary)
+      LogUtil.Info('TrendLogChart: Generated series with filtering', generatedSeriesSummary)
     }
 
     return validSeries
@@ -2107,7 +2107,7 @@
 
       const panelsList: any[] = T3000_Data.value.panelsList || []
       if (!panelsList.length) {
-        LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels: panelsList empty, cannot look up objectinstance')
+        LogUtil.Warn('fetchFreshPointsForAllPanels: panelsList empty, cannot look up objectinstance')
         return
       }
 
@@ -2140,7 +2140,7 @@
           (p: any) => p.panel_number === panelId || p.panel_id === panelId || p.id === panelId
         )
         if (!panelEntry) {
-          LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} not found in panelsList`)
+          LogUtil.Warn(`fetchFreshPointsForAllPanels: panelId ${panelId} not found in panelsList`)
           continue
         }
         fetchSet.set(key, { panelId, entryType, panel: panelEntry })
@@ -2148,7 +2148,7 @@
 
       if (!fetchSet.size) return
 
-      LogUtil.Info(`📡 fetchFreshPointsForAllPanels: fetching ${fetchSet.size} panel/type combo(s) via Action 17`, {
+      LogUtil.Info(`fetchFreshPointsForAllPanels: fetching ${fetchSet.size} panel/type combo(s) via Action 17`, {
         combos: Array.from(fetchSet.keys())
       })
 
@@ -2157,12 +2157,12 @@
         try {
           const sn: number = panel.serial_number ?? panel.panel_serial_number ?? 0
           if (!sn) {
-            LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} missing serialNumber — skipping`)
+            LogUtil.Warn(`fetchFreshPointsForAllPanels: panelId ${panelId} missing serialNumber — skipping`)
             return
           }
           const objectInstance: number = panel.object_instance ?? panel.objectInstance ?? 0
           if (!objectInstance) {
-            LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: panelId ${panelId} missing object_instance — skip Action 17 to avoid invalid payload`)
+            LogUtil.Warn(`fetchFreshPointsForAllPanels: panelId ${panelId} missing object_instance — skip Action 17 to avoid invalid payload`)
             return
           }
           const resp = await ffiApi.ffiGetWebviewList(
@@ -2183,17 +2183,17 @@
             newCache.set(cacheKey, { ...pt, pid: fixedPid })
           }
           freshWebviewCache.value = newCache
-          LogUtil.Info(`✅ fetchFreshPointsForAllPanels: cached ${deviceData.length} points for panelId=${panelId} entryType=${entryType}`)
+          LogUtil.Info(`fetchFreshPointsForAllPanels: cached ${deviceData.length} points for panelId=${panelId} entryType=${entryType}`)
         } catch (err) {
-          LogUtil.Warn(`⚠️ fetchFreshPointsForAllPanels: failed for panelId=${panelId} entryType=${entryType}`, err)
+          LogUtil.Warn(`fetchFreshPointsForAllPanels: failed for panelId=${panelId} entryType=${entryType}`, err)
         }
       })
 
       await Promise.allSettled(fetchPromises)
 
-      LogUtil.Info(`✅ fetchFreshPointsForAllPanels: total cached entries = ${freshWebviewCache.value.size}`)
+      LogUtil.Info(`fetchFreshPointsForAllPanels: total cached entries = ${freshWebviewCache.value.size}`)
     } catch (err) {
-      LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels: unexpected error', err)
+      LogUtil.Warn('fetchFreshPointsForAllPanels: unexpected error', err)
     }
   }
 
@@ -2207,7 +2207,7 @@
     // This prevents data loss when freshMonitorData has unresolvable inputs
     // (e.g. foreign-panel items whose panelsData hasn't been loaded yet).
     if (newSeries.length === 0 && dataSeries.value.length > 0) {
-      LogUtil.Warn('🔄 regenerateDataSeries: New generation produced 0 series but existing has', dataSeries.value.length, '— keeping existing')
+      LogUtil.Warn('regenerateDataSeries: New generation produced 0 series but existing has', dataSeries.value.length, '— keeping existing')
       return
     }
 
@@ -2220,7 +2220,7 @@
     })
 
     /*
-    LogUtil.Debug('🔄 regenerateDataSeries: Starting intelligent merge', {
+    LogUtil.Debug('regenerateDataSeries: Starting intelligent merge', {
       newSeriesCount: newSeries.length,
       existingSeriesCount: dataSeries.value.length,
       existingKeys: Array.from(existingSeriesMap.keys())
@@ -2251,7 +2251,7 @@
 
           /*
           // UPDATED ITEM: Use latest config but preserve user preferences
-          LogUtil.Debug(`📝 Item updated: ${newSeriesItem.name}`, {
+          LogUtil.Debug(`Item updated: ${newSeriesItem.name}`, {
             changes: {
               name: existingSeries.name !== newSeriesItem.name ? `${existingSeries.name} ${newSeriesItem.name}` : 'unchanged',
               unitType: existingSeries.unitType !== newSeriesItem.unitType ? `${existingSeries.unitType} ${newSeriesItem.unitType}` : 'unchanged',
@@ -2298,7 +2298,7 @@
     ).length
 
     /*
-    LogUtil.Info('🔄 regenerateDataSeries: Merge completed', {
+    LogUtil.Info('regenerateDataSeries: Merge completed', {
       totalItems: mergedSeries.length,
       addedItems: addedCount,
       removedItems: removedCount,
@@ -2321,7 +2321,7 @@
       panelId: series.panelId
     }))
 
-    LogUtil.Debug(`📊 DataSeries Flow [${context}]:`, {
+    LogUtil.Debug(`DataSeries Flow [${context}]:`, {
       totalSeries: seriesSnapshot.length,
       visibleSeries: seriesSnapshot.filter(s => s.visible).length,
       hiddenSeries: seriesSnapshot.filter(s => !s.visible).length,
@@ -2334,7 +2334,7 @@
   }
   */
 
-  // 🛡️Guard flag: set true once all `const` declarations in setup have been evaluated.
+  // Guard flag: set true once all `const` declarations in setup have been evaluated.
   // Watchers that can fire before setup completes (deep/immediate) must check this first.
   let _setupComplete = false
 
@@ -2350,7 +2350,7 @@
       const oldPid = (oldData as any)?.t3Entry?.pid
 
       if (oldData && (newMonitorId !== oldMonitorId || newPid !== oldPid)) {
-        LogUtil.Info('🔄 currentItemData watcher: Trendlog switched → clearing stale series', {
+        LogUtil.Info('currentItemData watcher: Trendlog switched → clearing stale series', {
           from: `${oldMonitorId} (pid ${oldPid})`,
           to: `${newMonitorId} (pid ${newPid})`
         })
@@ -2368,10 +2368,10 @@
     // Series updated, reactive changes handled automatically
   }, { deep: true })
 
-  // 🆕 FIX: Watch monitorConfig and ensure dataseries consistency
+  // FIX: Watch monitorConfig and ensure dataseries consistency
   watch(monitorConfig, (newMonitorConfig, oldMonitorConfig) => {
     if (newMonitorConfig && !oldMonitorConfig) {
-      LogUtil.Info('🔧 monitorConfig watcher: Monitor config became available, checking dataseries consistency', {
+      LogUtil.Info('monitorConfig watcher: Monitor config became available, checking dataseries consistency', {
         hasMonitorConfig: !!newMonitorConfig,
         dataSeriesCount: dataSeries.value.length,
         monitorInputItemsCount: newMonitorConfig.inputItems?.length || 0,
@@ -2380,7 +2380,7 @@
 
       // If we have monitor config but no dataseries, try to regenerate
       if (dataSeries.value.length === 0 && newMonitorConfig.inputItems?.length > 0) {
-        LogUtil.Info('🔧 monitorConfig watcher: Regenerating dataseries since monitor config is now ready')
+        LogUtil.Info('monitorConfig watcher: Regenerating dataseries since monitor config is now ready')
         regenerateDataSeries()
       }
     }
@@ -2393,9 +2393,9 @@
 
   // Watch T3000_Data for panels data changes
   watch(() => T3000_Data.value?.panelsData, async (newPanelsData, oldPanelsData) => {
-    // 🛡️Guard: reactive data can arrive before setup finishes initialising all consts
+    // Guard: reactive data can arrive before setup finishes initialising all consts
     if (!_setupComplete) return
-    LogUtil.Debug('🔔 T3000_Data.panelsData watcher TRIGGERED', {
+    LogUtil.Debug('T3000_Data.panelsData watcher TRIGGERED', {
       hasNewData: !!newPanelsData,
       newDataLength: newPanelsData?.length || 0,
       isRealTime: isRealTime.value,
@@ -2403,7 +2403,7 @@
       timestamp: new Date().toLocaleTimeString()
     })
 
-    LogUtil.Info('🔔 T3000_Data.panelsData watcher TRIGGERED', {
+    LogUtil.Info('T3000_Data.panelsData watcher TRIGGERED', {
       hasNewData: !!newPanelsData,
       newDataLength: newPanelsData?.length || 0,
       isRealTime: isRealTime.value,
@@ -2413,7 +2413,7 @@
     // Only process panel data updates in real-time mode
     // Skip for custom/historical data to avoid interfering with loaded historical datasets
     if (!isRealTime.value) {
-      LogUtil.Debug('⏭️ T3000_Data watcher: Skipping panel data processing (not in real-time mode)', {
+      LogUtil.Debug('T3000_Data watcher: Skipping panel data processing (not in real-time mode)', {
         timeBase: timeBase.value,
         isRealTime: isRealTime.value
       })
@@ -2434,12 +2434,12 @@
       // Process new data for chart data points
       // Batch data is APPENDED to existing data, not replacing it
       const chartDataFormat = newPanelsData.flat()
-      // 🔥 FIX: T3000_Data.panelsData is ONLY updated by action=0 (panel snapshot).
+      // FIX: T3000_Data.panelsData is ONLY updated by action=0 (panel snapshot).
       // Action=0 returns the device's CURRENT value timestamped with new Date(), which creates a
       // visual spike on the chart (e.g. showing 20.00°C at page-load time when history shows 14.00°C).
       // Real-time chart updates come exclusively from sendPeriodicBatchRequest (action=17 polling).
       // Therefore: NEVER update the chart from the T3000_Data watcher.
-      LogUtil.Debug('⏭️ T3000_Data watcher: Skipping chart update — action=0 snapshot data never plotted (use action=17 polling)')
+      LogUtil.Debug('T3000_Data watcher: Skipping chart update — action=0 snapshot data never plotted (use action=17 polling)')
 
       // NOTE: DB saves are handled exclusively by updateChartWithNewData → storeRealtimeDataToDatabase.
       // T3000_Data.panelsData is ONLY updated from action=0 (panel snapshot) responses.
@@ -2449,7 +2449,7 @@
       if (false) { // REMOVED: was saving action=0 stale data to DB — do not re-enable
 
         /*
-        LogUtil.Info('💾 T3000_Data watcher: Filtering for chart series storage', {
+        LogUtil.Info('T3000_Data watcher: Filtering for chart series storage', {
           isRealTime: isRealTime.value,
           totalDataItemsCount: chartDataFormat.length,
           chartSeriesCount: dataSeries.value.length,
@@ -2475,7 +2475,7 @@
         })).filter(item => item.id && item.panelId)
 
         /*
-        LogUtil.Info('🎯 Chart series identifiers for filtering', {
+        LogUtil.Info('Chart series identifiers for filtering', {
           chartSeriesCount: chartSeriesItems.length,
           chartSeries: chartSeriesItems.map(item => ({
             id: item.id,
@@ -2514,7 +2514,7 @@
         )
 
         /*
-        LogUtil.Info('📊 Filtered data for storage', {
+        LogUtil.Info('Filtered data for storage', {
           originalItemsCount: chartDataFormat.length,
           filteredItemsCount: chartRelevantItems.length,
           chartSeriesCount: dataSeries.value.length,
@@ -2540,7 +2540,7 @@
             LogUtil.Warn('Background batch save failed (non-critical)', err)
           })
         } else {
-          LogUtil.Warn('⚠️ No chart-relevant items found for storage', {
+          LogUtil.Warn('No chart-relevant items found for storage', {
             totalItems: chartDataFormat.length,
             chartSeriesCount: dataSeries.value.length,
             sampleTotalItem: chartDataFormat[0],
@@ -2571,39 +2571,39 @@
 
   // Watch timeBase for changes and hybrid data loading with debouncing and cancellation
   watch(timeBase, async (newTimeBase, oldTimeBase) => {
-    // 🛡️SKIP: Custom timebase is handled by onCustomDateChange() separately
+    // SKIP: Custom timebase is handled by onCustomDateChange() separately
     // This prevents duplicate API calls when custom date range is applied
     if (newTimeBase === 'custom') {
-      LogUtil.Debug('⏭️ Skipping timebase watcher for custom - handled by onCustomDateChange()', {
+      LogUtil.Debug('Skipping timebase watcher for custom - handled by onCustomDateChange()', {
         oldTimeBase,
         newTimeBase
       })
       return
     }
 
-    // 🔄 RESET: When switching FROM custom TO regular timebase, re-enable real-time mode
+    // RESET: When switching FROM custom TO regular timebase, re-enable real-time mode
     if (oldTimeBase === 'custom' && newTimeBase !== 'custom') {
-      LogUtil.Info('🔄 Switching from custom date to regular timebase - re-enabling real-time mode', {
+      LogUtil.Info('Switching from custom date to regular timebase - re-enabling real-time mode', {
         oldTimeBase,
         newTimeBase
       })
       isRealTime.value = true
       dataSource.value = 'realtime'
 
-      // 🧹 CLEANUP: Clear custom date values to prevent X-axis from using custom range
+      // CLEANUP: Clear custom date values to prevent X-axis from using custom range
       customStartDate.value = null
       customEndDate.value = null
       customStartTime.value = null
       customEndTime.value = null
 
-      // 🔄 Reset time offset when returning to real-time
+      // Reset time offset when returning to real-time
       timeOffset.value = 0
 
-      // 🆕 DESTROY CHARTS: Force complete recreation to reset x-axis scales
+      // DESTROY CHARTS: Force complete recreation to reset x-axis scales
       destroyAllCharts()
       await nextTick()
 
-      // 🧹 CRITICAL: Clear stale custom-range data points from all series.
+      // CRITICAL: Clear stale custom-range data points from all series.
       // The smart-loading coverage check in loadHistoricalDataFromDatabase uses
       // getExistingDataTimeRange() — if custom data is still present it incorrectly
       // concludes "data already covers the 5m window" and skips the DB fetch,
@@ -2612,31 +2612,31 @@
       // Also reset the history-loaded guard so createAnalogChart triggers a fresh load
       hasLoadedInitialHistory.value = false
 
-      LogUtil.Info('✅Cleared custom date settings, stale data, and destroyed charts — will reload for new timebase', {
+      LogUtil.Info('Cleared custom date settings, stale data, and destroyed charts — will reload for new timebase', {
         timeBase: newTimeBase,
         isRealTime: isRealTime.value
       })
 
-      // 🆕 FIX: When switching from custom back to preset, call API directly instead of relying on debounced logic
+      // FIX: When switching from custom back to preset, call API directly instead of relying on debounced logic
       // This ensures fresh data is loaded immediately
-      LogUtil.Info('🔄 Calling onTimeBaseChange() directly for custom→preset transition')
+      LogUtil.Info('Calling onTimeBaseChange() directly for custom→preset transition')
       await onTimeBaseChange()
-      // 🆕 FIX: Mark that we just exited custom mode so the first zoom/timebase-change
+      // FIX: Mark that we just exited custom mode so the first zoom/timebase-change
       // does a full DB reload instead of gap-only load (avoids break lines from sparse DB data)
       _justSwitchedFromCustom = true
       return // Exit early - onTimeBaseChange handles everything
     }
 
-    // 🆕 DEBOUNCE: Cancel previous pending timebase change
+    // DEBOUNCE: Cancel previous pending timebase change
     if (timebaseChangeTimeout) {
       clearTimeout(timebaseChangeTimeout)
-      LogUtil.Debug('⏸️ Cancelled pending timebase change', { cancelledTimebase: oldTimeBase })
+      LogUtil.Debug('Cancelled pending timebase change', { cancelledTimebase: oldTimeBase })
     }
 
-    // 🆕 CANCEL: Abort any ongoing history API request
+    // CANCEL: Abort any ongoing history API request
     if (historyAbortController) {
       historyAbortController.abort()
-      LogUtil.Info('🛑 Aborted previous history API request', {
+      LogUtil.Info('Aborted previous history API request', {
         reason: 'New timebase change',
         oldTimeBase,
         newTimeBase
@@ -2656,11 +2656,11 @@
         // Create new abort controller for this request
         historyAbortController = new AbortController()
 
-        // 🆕 OPTIMIZATION: Check if we can reuse existing data for seamless transition
+        // OPTIMIZATION: Check if we can reuse existing data for seamless transition
         const canReuseExistingData = await checkDataReuseOptimization(oldTimeBase, newTimeBase)
 
         if (canReuseExistingData) {
-          LogUtil.Info('🚀 Smart timebase transition: Reusing existing data, loading only missing gap', {
+          LogUtil.Info('Smart timebase transition: Reusing existing data, loading only missing gap', {
             optimization: 'INCREMENTAL_LOAD',
             oldTimeBase,
             newTimeBase,
@@ -2683,7 +2683,7 @@
         }
 
         // Fallback to full reload for complex cases
-        LogUtil.Info('📚 Full timebase reload: Cannot optimize, doing complete data refresh', {
+        LogUtil.Info('Full timebase reload: Cannot optimize, doing complete data refresh', {
           reason: 'COMPLEX_TRANSITION',
           oldTimeBase,
           newTimeBase
@@ -2696,7 +2696,7 @@
         const coverageCheck = getExistingDataTimeRange()
         if (coverageCheck && coverageCheck.totalPoints > 0 &&
             coverageCheck.latestEarliest <= targetWindow.min) {
-          LogUtil.Info('⚡ In-memory data already covers new window — skipping API call, re-rendering only', {
+          LogUtil.Info('In-memory data already covers new window — skipping API call, re-rendering only', {
             newTimeBase,
             windowMin: new Date(targetWindow.min).toISOString(),
             dataEarliest: new Date(coverageCheck.latestEarliest).toISOString(),
@@ -2707,7 +2707,7 @@
           return
         }
 
-        // 🆕 FIX: Don't show loading state if we already have data
+        // FIX: Don't show loading state if we already have data
         const existingDataRange = getExistingDataTimeRange()
         const hasExistingData = existingDataRange && existingDataRange.totalPoints > 0
 
@@ -2715,7 +2715,7 @@
           // Only show loading for initial data fetch
           startLoading()
           startLoadingTimeout()
-          LogUtil.Debug('🔄 No existing data - showing loading state', {
+          LogUtil.Debug('No existing data - showing loading state', {
             willLoadHistorical: true
           })
         } else {
@@ -2728,9 +2728,9 @@
           })
         }
 
-        // 🆕 DON'T clear existing data - let merge function handle deduplication
+        // DON'T clear existing data - let merge function handle deduplication
         // This preserves real-time data that hasn't been saved to database yet
-        LogUtil.Debug('🔄 Preserving existing data, will merge with historical load', {
+        LogUtil.Debug('Preserving existing data, will merge with historical load', {
           existingDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
         })
 
@@ -2748,10 +2748,10 @@
           await loadHistoricalDataFromDatabase()
         }
 
-        // 🆕 RECREATE CHARTS: After data loaded, recreate charts if switching from custom date
+        // RECREATE CHARTS: After data loaded, recreate charts if switching from custom date
         if (oldTimeBase === 'custom' && newTimeBase !== 'custom') {
           await nextTick()
-          LogUtil.Info('🎨 Recreating charts with fresh configuration after custom→regular transition')
+          LogUtil.Info('Recreating charts with fresh configuration after custom→regular transition')
           createCharts()
           await nextTick()
         }
@@ -2763,7 +2763,7 @@
         // Wait for DOM to update, then update charts
         await nextTick()
 
-        // 🆕 FIX: Add extra yield for C++ embedded WebView to process messages
+        // FIX: Add extra yield for C++ embedded WebView to process messages
         // This prevents the parent application from freezing
         await new Promise(resolve => setTimeout(resolve, 10))
 
@@ -2772,19 +2772,19 @@
 
         // Delayed chart update for safety (in case first one didn't render)
         setTimeout(() => {
-          LogUtil.Info('🎨 Executing delayed chart update after timebase data load')
+          LogUtil.Info('Executing delayed chart update after timebase data load')
           updateCharts()
         }, 100)
 
       } catch (error) {
         // Check if error is due to abort
         if (error.name === 'AbortError') {
-          LogUtil.Info('⏹️ History request aborted (newer request started)', { timeBase: newTimeBase })
+          LogUtil.Info('History request aborted (newer request started)', { timeBase: newTimeBase })
           return
         }
 
         // Don't treat initialization delays as connection errors
-        LogUtil.Info('ℹ️ Timebase change skipped (component still initializing)', {
+        LogUtil.Info('ℹTimebase change skipped (component still initializing)', {
           error: error?.message,
           timeBase: newTimeBase
         })
@@ -2814,7 +2814,7 @@
     const deviceChanged = (newSN && oldSN && newSN !== oldSN) || (newPanelId && oldPanelId && newPanelId !== oldPanelId)
 
     if (deviceChanged) {
-      LogUtil.Info('🔄 Device changed - Reloading historical data', {
+      LogUtil.Info('Device changed - Reloading historical data', {
         oldSN: oldSN,
         newSN: newSN,
         oldPanelId: oldPanelId,
@@ -3045,7 +3045,7 @@
   let realtimeInterval: NodeJS.Timeout | null = null
   let realtimeIntervalMs = 0
 
-  // 🆔 Unique instance ID to track and prevent duplicate intervals across HMR reloads
+  // Unique instance ID to track and prevent duplicate intervals across HMR reloads
   const instanceId = Math.random().toString(36).substring(7)
   const trendlogTrace = createFeatureTraceLogger({
     feature: 'trendlog',
@@ -3130,7 +3130,7 @@
     } catch { /* fire-and-forget */ }
   }
 
-  LogUtil.Debug(`📊 TrendLogChart instance created: ${instanceId}`)
+  LogUtil.Debug(`TrendLogChart instance created: ${instanceId}`)
 
   const getTrendlogTraceContext = () => {
     const routePanelId = Number(route.query.panel_id)
@@ -3293,7 +3293,7 @@
     dataSource.value = 'realtime'
     timeOffset.value = 0
 
-    LogUtil.Info('🔄 Exiting custom mode via preset selection', {
+    LogUtil.Info('Exiting custom mode via preset selection', {
       selectedTimeBase: targetTimeBase,
       isRealTime: isRealTime.value
     })
@@ -3321,7 +3321,7 @@
     return currentIndex >= 0 && currentIndex < timebaseProgression.length - 1 // Can zoom out if not at longest timebase
   })
 
-  // ⌨️ Keyboard Navigation: Item mappings (1-9, A-E) - analog first then digital for sequential badge numbers
+  // Keyboard Navigation: Item mappings (1-9, A-E) - analog first then digital for sequential badge numbers
   const keyboardItemMappings = computed(() => {
     const mappings: { [key: string]: { item: string, display: string, index: number } } = {}
 
@@ -3350,7 +3350,7 @@
       }
     })
 
-    LogUtil.Debug(`⌨️ Keyboard: Generated mappings`, {
+    LogUtil.Debug(`Keyboard: Generated mappings`, {
       displayedSeriesCount: displayedSeries.value.length,
       currentView: currentView.value,
       mappingKeys: Object.keys(mappings),
@@ -3372,7 +3372,7 @@
     // The timeBase watcher + onTimeBaseChange will perform the full data reload/restart.
     normalizeCustomModeForPresetSelection(value)
 
-    // 🔧 FIX: Timebase only controls X-axis display range (5m, 10m, 30m, 1h)
+    // FIX: Timebase only controls X-axis display range (5m, 10m, 30m, 1h)
     // Real-time mode should stay active for all timebases - only 'custom' disables it
     // The Auto Scroll toggle is the primary control for real-time mode
     // Note: Custom date ranges will disable real-time mode separately
@@ -3406,7 +3406,7 @@
     }
 
     if (!realtimeInterval) {
-      LogUtil.Info('🔄 Re-arming realtime polling for preset mode', {
+      LogUtil.Info('Re-arming realtime polling for preset mode', {
         reason,
         timeBase: timeBase.value,
         dataSource: dataSource.value,
@@ -3472,14 +3472,14 @@
         // Keep startup in live window; users can navigate history intentionally
         // via left/right after the chart is loaded.
         if (state.timeBase && state.timeBase !== 'custom' && state.timeOffset !== 0) {
-          LogUtil.Info('📦 TrendLogChart: Resetting persisted preset timeOffset on load', {
+          LogUtil.Info('TrendLogChart: Resetting persisted preset timeOffset on load', {
             storedOffset: state.timeOffset,
             restoredAs: 0
           })
         }
         timeOffset.value = 0
       }
-      LogUtil.Info('📦 TrendLogChart: View state restored from localStorage', { ...state, appliedTimeOffset: timeOffset.value })
+      LogUtil.Info('TrendLogChart: View state restored from localStorage', { ...state, appliedTimeOffset: timeOffset.value })
     } catch (_e) { /* Malformed state ignore */ }
     _restoringViewState = false
   }
@@ -3613,7 +3613,7 @@
     const hasAnyRenderedData = dataSeries.value.some(s => s.data && s.data.length > 0)
     const result = (isLoading.value && !hasAnyRenderedData) || (noDataYet && noConfirmedError)
 
-    LogUtil.Debug('🔍 shouldShowLoading:', result, {
+    LogUtil.Debug('shouldShowLoading:', result, {
       isLoading: isLoading.value,
       noDataYet,
       noConfirmedError,
@@ -3669,7 +3669,7 @@
   const visibleDigitalSeries = computed(() => {
     // Use digitalSeriesList (which respects view tracking) instead of digitalSeries
     const result = digitalSeriesList.value.filter(series => series.visible)
-    LogUtil.Info('🔍 visibleDigitalSeries computed', {
+    LogUtil.Info('visibleDigitalSeries computed', {
       digitalSeriesListLength: digitalSeriesList.value.length,
       visibleCount: result.length,
       seriesNames: result.map(s => s.name)
@@ -3778,8 +3778,8 @@
 
   // Manual refresh function
   const manualRefresh = async () => {
-    LogUtil.Debug('🔄 === MANUAL REFRESH START ===')
-    LogUtil.Info('🔄 Manual refresh initiated')
+    LogUtil.Debug('=== MANUAL REFRESH START ===')
+    LogUtil.Info('Manual refresh initiated')
 
     // Reset all states
     clearLoadingTimeout()
@@ -3789,25 +3789,25 @@
 
     // Clear existing data completely
     dataSeries.value = []
-    LogUtil.Debug('🔄 Step 1: Cleared dataSeries, length:', dataSeries.value.length)
+    LogUtil.Debug('Step 1: Cleared dataSeries, length:', dataSeries.value.length)
 
     try {
       // Start timeout for this refresh attempt
       startLoadingTimeout()
 
-      LogUtil.Debug('🔄 Step 2: Loading historical data...')
+      LogUtil.Debug('Step 2: Loading historical data...')
       // Just reload historical data - it will populate the series
       await loadHistoricalDataFromDatabase(true) // Force reload from device
-      LogUtil.Debug('🔄 Step 3: After loadHistoricalDataFromDatabase, dataSeries length:', dataSeries.value.length)
+      LogUtil.Debug('Step 3: After loadHistoricalDataFromDatabase, dataSeries length:', dataSeries.value.length)
 
-      // 🔧 FIX: Check if chart was destroyed during refresh and recreate it
+      // FIX: Check if chart was destroyed during refresh and recreate it
       if (!analogChartInstance && analogSeriesList.value.length > 0) {
-        LogUtil.Debug('🔧 Recreating analog chart instance after refresh')
+        LogUtil.Debug('Recreating analog chart instance after refresh')
         createAnalogChart()
         await nextTick()
       }
 
-      // 🔧 FIX: Call updateCharts to display the newly loaded data
+      // FIX: Call updateCharts to display the newly loaded data
       updateCharts()
 
       // Restart real-time updates if needed
@@ -3818,19 +3818,19 @@
       // Success - clear timeout and error state
       clearLoadingTimeout()
       hasConnectionError.value = false
-      LogUtil.Debug('🔄 === MANUAL REFRESH SUCCESS ===', {
+      LogUtil.Debug('=== MANUAL REFRESH SUCCESS ===', {
         dataSeriesLength: dataSeries.value.length,
         analogSeriesLength: analogSeriesList.value.length
       })
 
     } catch (error) {
-      LogUtil.Debug('🔄 === MANUAL REFRESH ERROR ===')
-      LogUtil.Error('❌Manual refresh failed:', error)
+      LogUtil.Debug('=== MANUAL REFRESH ERROR ===')
+      LogUtil.Error('Manual refresh failed:', error)
       clearLoadingTimeout()
       hasConnectionError.value = true
       dataSeries.value = [] // Ensure series is cleared on error
 
-      LogUtil.Debug('🔍Error state set:', {
+      LogUtil.Debug('Error state set:', {
         hasConnectionError: hasConnectionError.value,
         isLoading: isLoading.value,
         analogSeriesCount: analogSeriesList.value.length,
@@ -3838,7 +3838,7 @@
         error: error
       })
     } finally {
-      // 🔧 FIX: Always ensure loading state is cleared
+      // FIX: Always ensure loading state is cleared
       stopLoading()
     }
   }
@@ -3925,8 +3925,8 @@
       const leftGroups = groups.filter(g => g.axisId === 'y')
       const rightGroups = groups.filter(g => g.axisId === 'y1')
 
-      // 🐛 DEBUG: Log header grouping
-      LogUtil.Info('📊 Header label groups:', {
+      // DEBUG: Log header grouping
+      LogUtil.Info('Header label groups:', {
         totalGroups: groups.length,
         leftCount: leftGroups.length,
         rightCount: rightGroups.length,
@@ -5927,7 +5927,7 @@
       const minTime = customStartDate.value.valueOf()
       const maxTime = customEndDate.value.valueOf()
 
-      LogUtil.Info('📅 Custom Date Range Time Window:', {
+      LogUtil.Info('Custom Date Range Time Window:', {
         customStartDate: customStartDate.value.format('YYYY-MM-DD HH:mm:ss'),
         customEndDate: customEndDate.value.format('YYYY-MM-DD HH:mm:ss'),
         minTimestamp: minTime,
@@ -5974,7 +5974,7 @@
     const monitorId = (currentItemData.value as any)?.t3Entry?.id
     const panelId = (currentItemData.value as any)?.t3Entry?.pid
 
-    LogUtil.Info('🔍 getMonitorConfigFromT3000Data: Extracting config parameters', {
+    LogUtil.Info('getMonitorConfigFromT3000Data: Extracting config parameters', {
       monitorId,
       panelId,
       hasCurrentItemData: !!currentItemData.value,
@@ -6025,7 +6025,7 @@
       const resolvedMinuteFull = propEntryForInterval?.minute_interval_time ?? monitorConfig.minute_interval_time ?? 0
       const resolvedSecondFull = propEntryForInterval?.second_interval_time ?? monitorConfig.second_interval_time ?? 0
       LogUtil.Info(
-        '📐 getMonitorConfigFromT3000Data interval resolution:' +
+        'getMonitorConfigFromT3000Data interval resolution:' +
         `\n  props.t3Entry  hour=${propEntryForInterval?.hour_interval_time} min=${propEntryForInterval?.minute_interval_time} sec=${propEntryForInterval?.second_interval_time}` +
         `\n  T3000DataMgr   hour=${monitorConfig.hour_interval_time} min=${monitorConfig.minute_interval_time} sec=${monitorConfig.second_interval_time}` +
         `\n  RESOLVED (props wins via ??) hour=${resolvedHourFull} min=${resolvedMinuteFull} sec=${resolvedSecondFull}`
@@ -6039,7 +6039,7 @@
       // Parse input items based on actual monitor configuration structure
       // monitorConfig has 'input' array with objects and 'range' array
 
-      // 🔧 FIX: Filter to only include items specified in URL parameters to prevent 14-item generation
+      // FIX: Filter to only include items specified in URL parameters to prevent 14-item generation
       const urlInputItems = props.itemData?.t3Entry?.input || []
       const urlRangeItems = props.itemData?.t3Entry?.range || []
 
@@ -6070,7 +6070,7 @@
               const rangeValue = urlRangeItems[urlIndex] || 0
               ranges.push(rangeValue)
             } else {
-              LogUtil.Warn('⚠️ URL item not found in monitor config', {
+              LogUtil.Warn('URL item not found in monitor config', {
                 urlItem: urlInputItem,
                 availableItems: monitorConfig.input.slice(0, 3) // Show first 3 for debugging
               })
@@ -6171,11 +6171,11 @@
     const results: DataPoint[][] = []
 
     if (!response?.data) {
-      LogUtil.Warn('⚠️ processPanelDataResponse: No data in response')
+      LogUtil.Warn('processPanelDataResponse: No data in response')
       return results
     }
 
-    LogUtil.Info('📊 Processing GET_PANEL_DATA response (Action 0)', {
+    LogUtil.Info('Processing GET_PANEL_DATA response (Action 0)', {
       hasInputs: !!response.data.inputs,
       hasOutputs: !!response.data.outputs,
       hasVariables: !!response.data.variables,
@@ -6269,7 +6269,7 @@
           value: 0
         }])
 
-        LogUtil.Warn(`⚠️ No matching point for item ${target.index}`, {
+        LogUtil.Warn(`No matching point for item ${target.index}`, {
           expectedDeviceId,
           expectedPanelId: target.expectedPanelId
         })
@@ -6284,7 +6284,7 @@
    */
   const fetchRealTimeMonitorData = async (): Promise<DataPoint[][]> => {
     try {
-      LogUtil.Info('📡 fetchRealTimeMonitorData: Starting data fetch', {
+      LogUtil.Info('fetchRealTimeMonitorData: Starting data fetch', {
         hasMonitorConfig: !!monitorConfig.value,
         hasPanelsData: !!(T3000_Data.value.panelsData?.length),
         panelsDataLength: T3000_Data.value.panelsData?.length || 0,
@@ -6329,7 +6329,7 @@
       // Initialize data client (returns single client based on environment)
       const dataClient = initializeDataClients()
 
-      LogUtil.Info('🔌 fetchRealTimeMonitorData: Data client initialized', {
+      LogUtil.Info('fetchRealTimeMonitorData: Data client initialized', {
         hasDataClient: !!dataClient,
         clientType: dataClient?.constructor?.name || 'unknown',
         isBuiltInBrowser: window.location.protocol === 'ms-appx-web:' || (window as any).chrome?.webview !== undefined
@@ -6343,27 +6343,27 @@
       // Note: Database storage is handled by T3000_Data watcher instead of custom handlers
       // setupGetEntriesResponseHandlers(dataClient) // Removed - doesn't work with bound methods
 
-      // 🆕 FFI API: Get panel ID from URL or monitor config
+      // FFI API: Get panel ID from URL or monitor config
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : null
       const panelId = urlPanelId || monitorConfigData.pid || 1
 
-      LogUtil.Info('📡 FFI API: Using GET_PANEL_DATA (Action 0) for initial data fetch', {
+      LogUtil.Info('FFI API: Using GET_PANEL_DATA (Action 0) for initial data fetch', {
         panelId,
         urlPanelId,
         monitorConfigPid: monitorConfigData.pid,
         inputItemsCount: monitorConfigData.inputItems?.length || 0
       })
 
-      // 🆕 FFI API: Call Action 0 (GET_PANEL_DATA) to get initial point metadata and values
+      // FFI API: Call Action 0 (GET_PANEL_DATA) to get initial point metadata and values
       const panelDataResponse = await ffiApi.ffiGetPanelData(panelId)
 
       if (!panelDataResponse || !panelDataResponse.data) {
-        LogUtil.Error('❌FFI API: GET_PANEL_DATA returned no data', { panelId })
+        LogUtil.Error('FFI API: GET_PANEL_DATA returned no data', { panelId })
         if (!hasExistingData) stopLoading()
         return []
       }
 
-      LogUtil.Info('✅FFI API: GET_PANEL_DATA response received', {
+      LogUtil.Info('FFI API: GET_PANEL_DATA response received', {
         hasInputs: !!panelDataResponse.data.inputs,
         hasOutputs: !!panelDataResponse.data.outputs,
         hasVariables: !!panelDataResponse.data.variables,
@@ -6443,7 +6443,7 @@
    */
   const fetchAllItemsDataBatch = async (dataClient: any, monitorConfigData: any, config: any): Promise<DataPoint[][]> => {
     try {
-      LogUtil.Info('📦 TrendLogChart: fetchAllItemsDataBatch called', {
+      LogUtil.Info('TrendLogChart: fetchAllItemsDataBatch called', {
         inputItemsCount: monitorConfigData.inputItems?.length || 0,
         panelId: config.panelId,
         timestamp: new Date().toISOString()
@@ -6479,25 +6479,25 @@
             itemIndex
           })
 
-          LogUtil.Info(`📦 Added item ${index} to batch request`, {
+          LogUtil.Info(`Added item ${index} to batch request`, {
             deviceIndex,
             deviceType,
             panelId: config.panelId
           })
         } else {
-          LogUtil.Warn(`⚠️ No matching device found for item ${index}`)
+          LogUtil.Warn(`No matching device found for item ${index}`)
           // Add placeholder for missing device
           itemConfigs.push(null)
         }
       })
 
       if (batchRequestData.length === 0) {
-        LogUtil.Warn('⚠️ No valid items for batch request')
+        LogUtil.Warn('No valid items for batch request')
         return []
       }
 
       // Send single batch GET_ENTRIES request for ALL items
-      LogUtil.Info('📡 Sending BATCH GET_ENTRIES request', {
+      LogUtil.Info('Sending BATCH GET_ENTRIES request', {
         itemCount: batchRequestData.length,
         requestData: batchRequestData
       })
@@ -6561,7 +6561,7 @@
    * This ensures we keep sending GET_ENTITIES messages even when monitorConfig is empty/loading
    */
   const sendGetEntitiesForDataSeries = async (): Promise<void> => {
-    LogUtil.Info('🚀 sendGetEntitiesForDataSeries CALLED - Fallback mode using dataseries', {
+    LogUtil.Info('sendGetEntitiesForDataSeries CALLED - Fallback mode using dataseries', {
       dataSeriesLength: dataSeries.value.length,
       timestamp: new Date().toISOString()
     })
@@ -6613,7 +6613,7 @@
         }
       })
 
-      LogUtil.Debug('📡 sendGetEntitiesForDataSeries: Sending GET_ENTITIES based on dataseries', {
+      LogUtil.Debug('sendGetEntitiesForDataSeries: Sending GET_ENTITIES based on dataseries', {
         itemCount: batchRequestData.length,
         panelId: currentPanelId,
         batchSample: batchRequestData.slice(0, 3),
@@ -6627,14 +6627,14 @@
 
       // Send LOGGING_DATA request
       if (dataClient.GetLoggingData) {
-        LogUtil.Info('📡 sendGetEntitiesForDataSeries: Sending LOGGING_DATA request (dataseries fallback)', {
+        LogUtil.Info('sendGetEntitiesForDataSeries: Sending LOGGING_DATA request (dataseries fallback)', {
           serialNumber: currentSN,
           seriesCount: dataSeries.value.length,
           timestamp: new Date().toISOString()
         })
         dataClient.GetLoggingData(currentSN)
       } else {
-        LogUtil.Error('❌sendGetEntitiesForDataSeries: GetLoggingData method not available')
+        LogUtil.Error('sendGetEntitiesForDataSeries: GetLoggingData method not available')
       }
     } catch (error) {
       LogUtil.Error('sendGetEntitiesForDataSeries: Error in dataseries fallback mode:', error)
@@ -6642,17 +6642,17 @@
   }
 
   /**
-   * 🆕 FFI API: Get logging data directly using synchronous FFI call
+   * FFI API: Get logging data directly using synchronous FFI call
    * Uses action 15 (LOGGING_DATA) - gets all inputs, outputs, variables in one call
    */
   /**
-   * 🆕 FFI API: Get real-time point data using action 17 (GET_WEBVIEW_LIST).
+   * FFI API: Get real-time point data using action 17 (GET_WEBVIEW_LIST).
    * Reads directly from the device — no FFI cache, so no startup stale-value spikes.
    * Calls are split by (panelId, entryType) so only the types actually on screen are fetched.
    * entryType: 1=INPUT (BAC_IN), 2=OUTPUT (BAC_OUT), 3=VARIABLE (BAC_VAR)
    */
   const sendPeriodicBatchRequest = async (monitorConfigData: any): Promise<void> => {
-    LogUtil.Info('🚀 sendPeriodicBatchRequest (FFI API action=17 GET_WEBVIEW_LIST)', {
+    LogUtil.Info('sendPeriodicBatchRequest (FFI API action=17 GET_WEBVIEW_LIST)', {
       hasMonitorConfig: !!monitorConfigData,
       inputItemsCount: monitorConfigData?.inputItems?.length || 0,
       timestamp: new Date().toISOString()
@@ -6668,11 +6668,30 @@
 
     try {
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
+      const urlSn = route.query.sn ? parseInt(route.query.sn as string) : 0
       const panelsList = T3000_Data.value.panelsList || []
       const mainPanelId = urlPanelId || (panelsList.length > 0 ? panelsList[0].panel_number : 0)
 
+      // Resolve the panel entry for a given panelId. For the MAIN panel prefer the
+      // URL-provided serial (authoritative) because several devices share panel_number=1
+      // and a panel_number lookup would pick the wrong serial/object_instance.
+      const resolvePanelEntry = (pid: number): any => {
+        if (urlSn && pid === mainPanelId) {
+          const bySn = panelsList.find((p: any) => p.serial_number === urlSn)
+          if (bySn) return bySn
+        }
+        return panelsList.find((p: any) => p.panel_number === pid || p.panel_id === pid || p.id === pid)
+      }
+
+      LogUtil.Info('[TrendLogChart] Action 17 panel resolution', {
+        urlPanelId,
+        urlSn,
+        panelsListCount: panelsList.length,
+        panels: panelsList.map((p: any) => ({ pn: p.panel_number, sn: p.serial_number, obj: p.object_instance })),
+      })
+
       if (!mainPanelId) {
-        LogUtil.Error('❌No panel ID available for GET_WEBVIEW_LIST')
+        LogUtil.Error('No panel ID available for GET_WEBVIEW_LIST')
         return
       }
 
@@ -6698,11 +6717,9 @@
         if (entryType < 0) continue
         const key = `${pid}_${entryType}`
         if (fetchSet.has(key)) continue
-        const panelEntry = panelsList.find(
-          (p: any) => p.panel_number === pid || p.panel_id === pid || p.id === pid
-        )
+        const panelEntry = resolvePanelEntry(pid)
         if (!panelEntry) {
-          LogUtil.Warn(`⚠️ sendPeriodicBatchRequest: panelId ${pid} not found in panelsList`)
+          LogUtil.Warn(`sendPeriodicBatchRequest: panelId ${pid} not found in panelsList`)
           continue
         }
         fetchSet.set(key, { panelId: pid, entryType, panel: panelEntry })
@@ -6710,20 +6727,18 @@
 
       // Fallback: when no series exist yet, fetch all types for the main panel
       if (fetchSet.size === 0) {
-        const panelEntry = panelsList.find(
-          (p: any) => p.panel_number === mainPanelId || p.panel_id === mainPanelId || p.id === mainPanelId
-        )
+        const panelEntry = resolvePanelEntry(mainPanelId)
         if (panelEntry) {
           for (const et of [0, 1, 2]) {  // BAC_OUT=0, BAC_IN=1, BAC_VAR=2
             fetchSet.set(`${mainPanelId}_${et}`, { panelId: mainPanelId, entryType: et, panel: panelEntry })
           }
         } else {
-          LogUtil.Error('❌sendPeriodicBatchRequest: main panel not found in panelsList, cannot call GET_WEBVIEW_LIST')
+          LogUtil.Error('sendPeriodicBatchRequest: main panel not found in panelsList, cannot call GET_WEBVIEW_LIST')
           return
         }
       }
 
-      LogUtil.Info('📡 FFI API ffiGetWebviewList (action=17)', {
+      LogUtil.Info('FFI API ffiGetWebviewList (action=17)', {
         combos: Array.from(fetchSet.keys()),
         totalCombos: fetchSet.size,
         timestamp: new Date().toISOString()
@@ -6735,14 +6750,17 @@
         Array.from(fetchSet.values()).map(async ({ panelId, entryType, panel }) => {
           const sn: number = panel.serial_number ?? panel.panel_serial_number ?? 0
           if (!sn) {
-            LogUtil.Warn(`⚠️ sendPeriodicBatchRequest: panelId ${panelId} missing serialNumber — skipping`)
+            LogUtil.Warn(`sendPeriodicBatchRequest: panelId ${panelId} missing serialNumber — skipping`)
             return [] as any[]
           }
           const objectInstance: number = panel.object_instance ?? panel.objectInstance ?? 0
           if (!objectInstance) {
-            LogUtil.Warn(`⚠️ sendPeriodicBatchRequest: panelId ${panelId} missing object_instance — skip Action 17 to avoid invalid payload`)
+            LogUtil.Warn(`sendPeriodicBatchRequest: panelId ${panelId} missing object_instance — skip Action 17 to avoid invalid payload`)
             return [] as any[]
           }
+          LogUtil.Info('[TrendLogChart] Action 17 payload', {
+            panelId, entryType, serialNumber: sn, objectInstance
+          })
           const resp = await ffiApi.ffiGetWebviewList(
             panelId,
             sn,
@@ -6767,18 +6785,18 @@
         if (result.status === 'fulfilled') {
           allPanelItems = allPanelItems.concat(result.value)
         } else {
-          LogUtil.Warn('⚠️ sendPeriodicBatchRequest: one combo fetch failed:', result.reason)
+          LogUtil.Warn('sendPeriodicBatchRequest: one combo fetch failed:', result.reason)
         }
       }
 
-      LogUtil.Debug('📊 Action 17 response received:', {
+      LogUtil.Debug('Action 17 response received:', {
         combosPolled: fetchSet.size,
         totalItems: allPanelItems.length,
         timestamp: new Date().toLocaleTimeString()
       })
 
       if (allPanelItems.length > 0) {
-        LogUtil.Info('📊 GET_WEBVIEW_LIST extracted items', {
+        LogUtil.Info('GET_WEBVIEW_LIST extracted items', {
           combosPolled: fetchSet.size,
           totalItems: allPanelItems.length
         })
@@ -6793,7 +6811,7 @@
           item.id
         )
 
-        LogUtil.Debug('📊 Action 17 processed:', {
+        LogUtil.Debug('Action 17 processed:', {
           totalItems: allPanelItems.length,
           validItems: validDataItems.length,
           willUpdate: validDataItems.length > 0,
@@ -6805,18 +6823,18 @@
           // Action 17 reads directly from the device — no FFI cache, so no startup skip needed.
           if (isRealTime.value) {
             // Live mode: update chart AND save to DB
-            LogUtil.Debug('🔍 Calling updateChartWithNewData with', validDataItems.length, 'items (action=17, no cache skip)')
+            LogUtil.Debug('Calling updateChartWithNewData with', validDataItems.length, 'items (action=17, no cache skip)')
             updateChartWithNewData(validDataItems, false, pollCycleId)
             // Batch save is done inside updateChartWithNewData - no duplicate call needed
           } else {
             // Custom date mode: save to DB only — don't touch chart display
-            LogUtil.Debug('🔍 Background save only (custom mode):', validDataItems.length, 'items')
+            LogUtil.Debug('Background save only (custom mode):', validDataItems.length, 'items')
             storeRealtimeDataToDatabase(validDataItems, pollCycleId).catch(err => {
               LogUtil.Warn('Background batch save (custom mode) failed (non-critical)', err)
             })
           }
         } else {
-          LogUtil.Debug('⚠️ No valid data items - chart will NOT be updated, only scrolled')
+          LogUtil.Debug('No valid data items - chart will NOT be updated, only scrolled')
         }
 
         lastSyncTime.value = new Date().toLocaleTimeString()
@@ -6824,14 +6842,14 @@
           hasConnectionError.value = false
         }
       } else {
-        LogUtil.Debug('⚠️ Action 17 returned no items across all combos', {
+        LogUtil.Debug('Action 17 returned no items across all combos', {
           combosPolled: fetchSet.size,
           timestamp: new Date().toLocaleTimeString()
         })
       }
 
     } catch (error) {
-      LogUtil.Error('❌FFI API (action=17) failed:', error)
+      LogUtil.Error('FFI API (action=17) failed:', error)
       hasConnectionError.value = true
     }
   }
@@ -6840,7 +6858,7 @@
    * Initialize data series from real T3000 monitor configuration
    */
   const initializeRealDataSeries = async () => {
-    LogUtil.Info('🔧 initializeRealDataSeries: Starting initialization', {
+    LogUtil.Info('initializeRealDataSeries: Starting initialization', {
       hasMonitorConfig: !!monitorConfig.value,
       monitorConfigData: monitorConfig.value,
       hasPanelsData: !!(T3000_Data.value.panelsData?.length),
@@ -6851,7 +6869,7 @@
 
     const monitorConfigData = monitorConfig.value
     if (!monitorConfigData) {
-      LogUtil.Warn('⚠️ initializeRealDataSeries: No monitor config available', {
+      LogUtil.Warn('initializeRealDataSeries: No monitor config available', {
         monitorConfig: monitorConfig.value,
         T3000DataExists: !!T3000_Data.value,
         propsItemData: !!props.itemData
@@ -6866,7 +6884,7 @@
     }
 
     try {
-      // 🆕 FIX: Create data series structure IMMEDIATELY from monitorConfig
+      // FIX: Create data series structure IMMEDIATELY from monitorConfig
       // Don't wait for real-time data - historical data load needs this structure
       const newDataSeries: SeriesConfig[] = []
 
@@ -6930,7 +6948,7 @@
       // CRITICAL FIX: Preserve existing historical data when initializing real-time series structure
       if (dataSeries.value.length > 0) {
         // If we already have data series (with historical data), preserve the historical data
-        LogUtil.Info('🔄 Preserving existing historical data while updating series structure', {
+        LogUtil.Info('Preserving existing historical data while updating series structure', {
           existingSeriesCount: dataSeries.value.length,
           existingDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
         })
@@ -6941,7 +6959,7 @@
           if (existingSeries && existingSeries.data && existingSeries.data.length > 0) {
             // Preserve historical data and update configuration
             newSeries.data = existingSeries.data
-            LogUtil.Info(`📈 Preserved ${existingSeries.data.length} historical data points for ${newSeries.name}`, {
+            LogUtil.Info(`Preserved ${existingSeries.data.length} historical data points for ${newSeries.name}`, {
               seriesId: newSeries.id,
               timeRange: existingSeries.data.length > 0 ? {
                 first: new Date(existingSeries.data[0].timestamp).toISOString(),
@@ -6960,11 +6978,11 @@
       // Update sync time since we successfully created series structure
       lastSyncTime.value = new Date().toLocaleTimeString()
 
-      // 🆕 NOW fetch real-time data in background to populate the series
+      // NOW fetch real-time data in background to populate the series
       // This happens AFTER series structure is created, so it won't block historical load
-      LogUtil.Info('📡 Fetching real-time data in background (non-blocking) - THIS WILL CALL ACTION 0')
+      LogUtil.Info('Fetching real-time data in background (non-blocking) - THIS WILL CALL ACTION 0')
       fetchRealTimeMonitorData().then(realTimeData => {
-        LogUtil.Info('✅fetchRealTimeMonitorData completed', {
+        LogUtil.Info('fetchRealTimeMonitorData completed', {
           hasData: !!realTimeData,
           dataLength: realTimeData?.length || 0,
           dataItemsCount: realTimeData ? realTimeData.reduce((sum, arr) => sum + arr.length, 0) : 0
@@ -6975,15 +6993,15 @@
             if (dataSeries.value[index] && itemData.length > 0) {
               const existingData = dataSeries.value[index].data || []
               dataSeries.value[index].data = mergeAndDeduplicate(existingData, itemData)
-              LogUtil.Info(`📡 Added ${itemData.length} real-time points to ${dataSeries.value[index].name}`);
+              LogUtil.Info(`Added ${itemData.length} real-time points to ${dataSeries.value[index].name}`);
             }
           })
           updateCharts()
         } else {
-          LogUtil.Warn('⚠️ fetchRealTimeMonitorData returned no data')
+          LogUtil.Warn('fetchRealTimeMonitorData returned no data')
         }
       }).catch(error => {
-        LogUtil.Error('❌fetchRealTimeMonitorData failed (will retry on next interval)', error)
+        LogUtil.Error('fetchRealTimeMonitorData failed (will retry on next interval)', error)
       })
 
     } catch (error) {
@@ -7044,7 +7062,7 @@
   }
 
   /**
-   * 🔍 DIAGNOSTIC: Analyze value scaling impact on chart visibility
+   * DIAGNOSTIC: Analyze value scaling impact on chart visibility
    * This helps identify why similar values appear as straight lines
    */
   const analyzeValueScaling = (values: number[], seriesName: string) => {
@@ -7056,7 +7074,7 @@
     const rawRange = Math.max(...rawValues) - Math.min(...rawValues)
     const scaledRange = Math.max(...scaledValues) - Math.min(...scaledValues)
 
-    LogUtil.Info(`📊 Value Scaling Analysis: ${seriesName}`, {
+    LogUtil.Info(`Value Scaling Analysis: ${seriesName}`, {
       rawValues: rawValues.slice(0, 5), // Show first 5 values
       scaledValues: scaledValues.slice(0, 5),
       rawRange,
@@ -7263,7 +7281,7 @@
    * Send GET_ENTRIES request for a single device
    */
   const sendGetEntriesRequest = async (dataClient: any, panelId: number, deviceIndex: number, deviceType: string): Promise<void> => {
-    LogUtil.Info('📡 TrendLogChart: sendGetEntriesRequest called', {
+    LogUtil.Info('TrendLogChart: sendGetEntriesRequest called', {
       panelId,
       deviceIndex,
       deviceType,
@@ -7307,7 +7325,7 @@
       // For batch requests, use the primary panelId from the first request
       const primaryPanelId = requests[0]?.panelId || null
 
-      LogUtil.Info('📡 TrendLogChart: sendBatchGetEntriesRequest called', {
+      LogUtil.Info('TrendLogChart: sendBatchGetEntriesRequest called', {
         primaryPanelId,
         requestCount: requests.length,
         requests
@@ -7361,7 +7379,7 @@
    * Real-time database storage is handled by the T3000_Data watcher instead.
    */
   const setupGetEntriesResponseHandlers = (dataClient: any) => {
-    LogUtil.Warn('⚠️ setupGetEntriesResponseHandlers called - this function does not work due to WebViewClient bound method references')
+    LogUtil.Warn('setupGetEntriesResponseHandlers called - this function does not work due to WebViewClient bound method references')
 
     if (!dataClient) {
       LogUtil.Error('No dataClient provided to setupGetEntriesResponseHandlers')
@@ -7373,7 +7391,7 @@
 
     // Create our custom handler
     dataClient.HandleGetEntriesRes = (msgData: any) => {
-      LogUtil.Info('📨 HandleGetEntriesRes CALLED', {
+      LogUtil.Info('HandleGetEntriesRes CALLED', {
         hasData: !!(msgData?.data),
         dataIsArray: Array.isArray(msgData?.data),
         dataLength: msgData?.data?.length || 0,
@@ -7394,7 +7412,7 @@
 
           // Process valid data for chart rendering
           if (validItems.length > 0) {
-            LogUtil.Info('🎯 GET_ENTRIES: Processing valid items', {
+            LogUtil.Info('GET_ENTRIES: Processing valid items', {
               validItemsCount: validItems.length,
               totalReceivedItems: msgData.data?.length || 0,
               sampleValidItem: validItems[0],
@@ -7404,7 +7422,7 @@
             updateChartWithNewData(validItems)
             // NOTE: storeRealtimeDataToDatabase is called inside updateChartWithNewData — no duplicate call needed here
           } else {
-            LogUtil.Warn('⚠️ GET_ENTRIES: No valid items to process', {
+            LogUtil.Warn('GET_ENTRIES: No valid items to process', {
               totalReceivedItems: msgData.data?.length || 0,
               allItems: msgData.data?.slice(0, 3) || [] // Show first 3 for debugging
             })
@@ -7469,7 +7487,7 @@
   }
 
   /**
-   * 🆕 CONTINUOUS MONITORING: Handle page visibility changes
+   * CONTINUOUS MONITORING: Handle page visibility changes
    * Auto-backfill missing data when user returns to TrendLog page
    */
   const handleVisibilityChange = async () => {
@@ -7480,7 +7498,7 @@
 
     if (document.hidden) {
       // Page became hidden - user navigated away
-      LogUtil.Info('👋 TrendLogChart: Page hidden - user navigated away', {
+      LogUtil.Info('TrendLogChart: Page hidden - user navigated away', {
         isRealTime: isRealTime.value,
         hasData: dataSeries.value.length > 0,
         timestamp: new Date().toISOString()
@@ -7497,7 +7515,7 @@
 
     // Only backfill if in real-time mode and we have existing data
     if (!isRealTime.value || dataSeries.value.length === 0) {
-      LogUtil.Info('⏭️ TrendLogChart: Skipping backfill (not in real-time mode or no data)')
+      LogUtil.Info('TrendLogChart: Skipping backfill (not in real-time mode or no data)')
       return
     }
 
@@ -7505,7 +7523,7 @@
       // Get latest timestamp from existing data
       const existingRange = getExistingDataTimeRange()
       if (!existingRange) {
-        LogUtil.Warn('⚠️ TrendLogChart: No existing data range, cannot backfill')
+        LogUtil.Warn('TrendLogChart: No existing data range, cannot backfill')
         return
       }
 
@@ -7522,12 +7540,12 @@
 
       // Only backfill if gap is significant (more than 10 seconds)
       if (gapSeconds < 10) {
-        LogUtil.Info('✅TrendLogChart: Gap too small, no backfill needed')
+        LogUtil.Info('TrendLogChart: Gap too small, no backfill needed')
         return
       }
 
       // Fetch missing data from database
-      LogUtil.Info('📥 TrendLogChart: Fetching missing data from database...', {
+      LogUtil.Info('TrendLogChart: Fetching missing data from database...', {
         fromTimestamp: new Date(lastTimestamp).toISOString(),
         toTimestamp: new Date(now).toISOString()
       })
@@ -7535,7 +7553,7 @@
       // Use existing loadHistoricalDataFromDatabase but with time range filter
       await backfillMissingData(lastTimestamp, now)
 
-      LogUtil.Info('✅TrendLogChart: Data backfill completed', {
+      LogUtil.Info('TrendLogChart: Data backfill completed', {
         newDataPoints: getExistingDataTimeRange()?.totalPoints || 0
       })
 
@@ -7543,19 +7561,19 @@
       updateCharts()
 
     } catch (error) {
-      LogUtil.Error('❌TrendLogChart: Error during data backfill', error)
+      LogUtil.Error('TrendLogChart: Error during data backfill', error)
     }
   }
 
   /**
-   * 🆕 CONTINUOUS MONITORING: Backfill missing data for a specific time range
+   * CONTINUOUS MONITORING: Backfill missing data for a specific time range
    */
   const backfillMissingData = async (fromTimestamp: number, toTimestamp: number) => {
     const deviceParams = extractDeviceParameters()
     const { sn: currentSN, panel_id: currentPanelId } = deviceParams
 
     if (!currentSN || !currentPanelId) {
-      LogUtil.Warn('⚠️ backfillMissingData: Missing device parameters')
+      LogUtil.Warn('backfillMissingData: Missing device parameters')
       return
     }
 
@@ -7614,7 +7632,7 @@
    * Load historical data from database based on current timebase
    */
   const loadHistoricalDataFromDatabase = async (forceReload: boolean = false) => {
-    LogUtil.Info('🔍 loadHistoricalDataFromDatabase CALLED', {
+    LogUtil.Info('loadHistoricalDataFromDatabase CALLED', {
       hasMonitorConfig: !!monitorConfig.value,
       monitorConfigInputItems: monitorConfig.value?.inputItems?.length || 0,
       dataSeriesLength: dataSeries.value.length,
@@ -7626,11 +7644,11 @@
     hasConnectionError.value = false
 
     try {
-      // 🆕 FIX: Use extractDeviceParameters for reliable device info from query params
+      // FIX: Use extractDeviceParameters for reliable device info from query params
       const deviceParams = extractDeviceParameters()
       const { sn: currentSN, panel_id: currentPanelId, trendlog_id } = deviceParams
 
-      LogUtil.Debug('🔧 loadHistoricalDataFromDatabase: Device parameters extraction', {
+      LogUtil.Debug('loadHistoricalDataFromDatabase: Device parameters extraction', {
         currentSN,
         currentPanelId,
         trendlog_id,
@@ -7639,7 +7657,7 @@
 
       if (!currentSN) {
         const errorMsg = 'No serial number available - cannot load historical data'
-        LogUtil.Error('❌loadHistoricalDataFromDatabase: No serial number from reliable sources', {
+        LogUtil.Error('loadHistoricalDataFromDatabase: No serial number from reliable sources', {
           queryParams: route.query,
           panelsList: T3000_Data.value.panelsList?.length || 0
         })
@@ -7649,7 +7667,7 @@
 
       if (!currentPanelId) {
         const errorMsg = 'No panel ID available - cannot load historical data'
-        LogUtil.Error('❌loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
+        LogUtil.Error('loadHistoricalDataFromDatabase: No panel ID from reliable sources', {
           queryParams: route.query,
           panelsList: T3000_Data.value.panelsList?.length || 0
         })
@@ -7657,12 +7675,12 @@
         throw new Error(errorMsg)
       }
 
-      // 🆕 FIX: Don't require monitorConfig - use dataseries as fallback
+      // FIX: Don't require monitorConfig - use dataseries as fallback
       const monitorConfigData = monitorConfig.value
       let shouldUseDataSeriesForPoints = false
 
       if (!monitorConfigData?.inputItems?.length) {
-        LogUtil.Info('🔄 loadHistoricalDataFromDatabase: No monitor config - will use existing dataseries for point info', {
+        LogUtil.Info('loadHistoricalDataFromDatabase: No monitor config - will use existing dataseries for point info', {
           dataSeriesLength: dataSeries.value.length,
           hasDataSeries: dataSeries.value.length > 0
         })
@@ -7670,7 +7688,7 @@
 
         // If no dataseries either, we can't determine what to load - just return empty gracefully
         if (dataSeries.value.length === 0) {
-          LogUtil.Info('ℹ️ loadHistoricalDataFromDatabase: No monitor config or dataseries yet - skipping load (component still initializing)', {
+          LogUtil.Info('ℹloadHistoricalDataFromDatabase: No monitor config or dataseries yet - skipping load (component still initializing)', {
             hasMonitorConfig: !!monitorConfigData,
             dataSeriesLength: dataSeries.value.length
           })
@@ -7692,13 +7710,13 @@
       }
 
       // Calculate time range based on current timebase with time offset support
-      // 🆕 FIX: Use the exact same time window as chart display for data consistency
+      // FIX: Use the exact same time window as chart display for data consistency
       const chartTimeWindow = getCurrentTimeWindow()
       const offsetStartTime = new Date(chartTimeWindow.min)
       const offsetEndTime = new Date(chartTimeWindow.max)
       const timeRangeMinutes = Math.round((offsetEndTime.getTime() - offsetStartTime.getTime()) / 60000)
 
-      // 🆕 SMART LOADING: Check if we already have data in this time range (unless force reload)
+      // SMART LOADING: Check if we already have data in this time range (unless force reload)
       const existingDataRange = !forceReload ? getExistingDataTimeRange() : null
       let actualStartTime = offsetStartTime
       let actualEndTime = offsetEndTime
@@ -7710,7 +7728,7 @@
         // deep history must not prevent loading history for the other series.
         const coverageStart = existingDataRange.latestEarliest
 
-        LogUtil.Info('📊 Existing data detected - optimizing load range', {
+        LogUtil.Info('Existing data detected - optimizing load range', {
           requestedRange: {
             start: offsetStartTime.toISOString(),
             end: offsetEndTime.toISOString(),
@@ -7726,20 +7744,20 @@
         // Only load data BEFORE the coverage start (the series with the least history)
         if (offsetStartTime.getTime() < coverageStart) {
           actualEndTime = new Date(coverageStart - 1000) // 1 second before coverage start
-          LogUtil.Info('🔍 Loading historical gap BEFORE existing data', {
+          LogUtil.Info('Loading historical gap BEFORE existing data', {
             gapStart: actualStartTime.toISOString(),
             gapEnd: actualEndTime.toISOString(),
             gapMinutes: Math.round((actualEndTime.getTime() - actualStartTime.getTime()) / 60000)
           })
         } else {
-          LogUtil.Info('✅All series have data covering the full window - skipping database load', {
+          LogUtil.Info('All series have data covering the full window - skipping database load', {
             requestedStart: offsetStartTime.toISOString(),
             coverageStart: new Date(coverageStart).toISOString()
           })
           return // No need to load anything
         }
       } else if (forceReload) {
-        LogUtil.Info('🔄 Force reload requested - skipping existing data optimization', {
+        LogUtil.Info('Force reload requested - skipping existing data optimization', {
           requestedRange: {
             start: offsetStartTime.toISOString(),
             end: offsetEndTime.toISOString(),
@@ -7766,12 +7784,12 @@
       const formattedStartTime = formatLocalTime(startTime)
       const formattedEndTime = formatLocalTime(endTime)
 
-      // 🆕 FIX: Create specific points list from available data sources
+      // FIX: Create specific points list from available data sources
       let specificPoints: Array<{ point_id: string, point_type: string, point_index: number, panel_id: number }> = []
 
       if (shouldUseDataSeriesForPoints) {
         // Method 1: Extract from existing data series (fallback when no monitorConfig)
-        LogUtil.Info('🔄 loadHistoricalDataFromDatabase: Extracting points from existing dataseries')
+        LogUtil.Info('loadHistoricalDataFromDatabase: Extracting points from existing dataseries')
 
         dataSeries.value.forEach((series, index) => {
           if (series.pointType !== undefined && series.pointNumber !== undefined) {
@@ -7792,13 +7810,13 @@
           }
         })
 
-        LogUtil.Debug('🔧 loadHistoricalDataFromDatabase: Points from dataseries', {
+        LogUtil.Debug('loadHistoricalDataFromDatabase: Points from dataseries', {
           pointsExtracted: specificPoints.length,
           samplePoints: specificPoints.slice(0, 3)
         })
       } else {
         // Method 2: Extract from monitor config (preferred when available)
-        LogUtil.Info('🔄 loadHistoricalDataFromDatabase: Extracting points from monitor config')
+        LogUtil.Info('loadHistoricalDataFromDatabase: Extracting points from monitor config')
 
         monitorConfigData.inputItems.forEach((inputItem: any, index: number) => {
           const pointTypeString = mapPointTypeFromNumber(inputItem.point_type)
@@ -7817,7 +7835,7 @@
           })
         })
 
-        LogUtil.Debug('🔧 loadHistoricalDataFromDatabase: Points from monitor config', {
+        LogUtil.Debug('loadHistoricalDataFromDatabase: Points from monitor config', {
           pointsExtracted: specificPoints.length,
           samplePoints: specificPoints.slice(0, 3)
         })
@@ -7825,7 +7843,7 @@
 
       // Fallback method: Use generic points if still no specific points found
       if (specificPoints.length === 0) {
-        LogUtil.Warn('⚠️ loadHistoricalDataFromDatabase: No points from dataseries or monitorConfig - using fallback points')
+        LogUtil.Warn('loadHistoricalDataFromDatabase: No points from dataseries or monitorConfig - using fallback points')
 
         // Try to extract from legacy dataseries format for backward compatibility
         if (dataSeries.value && dataSeries.value.length > 0) {
@@ -7871,7 +7889,7 @@
 
         // Final fallback: Use known working points if still nothing found
         if (specificPoints.length === 0) {
-          LogUtil.Warn('⚠️ loadHistoricalDataFromDatabase: Using minimal fallback points')
+          LogUtil.Warn('loadHistoricalDataFromDatabase: Using minimal fallback points')
           specificPoints = [
             { point_id: "VAR1", point_type: "VARIABLE", point_index: 0, panel_id: currentPanelId },
             { point_id: "VAR3", point_type: "VARIABLE", point_index: 2, panel_id: currentPanelId }
@@ -7879,7 +7897,7 @@
         }
       }
 
-      // 🆕 FIX: Extract trendlog ID from multiple sources
+      // FIX: Extract trendlog ID from multiple sources
       let trendlogId = deviceParams.trendlog_id?.toString() || '1' // Use from extractDeviceParameters first
 
       if (!deviceParams.trendlog_id && monitorConfigData?.id && typeof monitorConfigData.id === 'string') {
@@ -7892,7 +7910,7 @@
         }
       }
 
-      LogUtil.Debug('🔍 Trendlog ID extraction for historical data request:', {
+      LogUtil.Debug('Trendlog ID extraction for historical data request:', {
         fromExtractDeviceParams: deviceParams.trendlog_id,
         fromMonitorConfig: monitorConfigData?.id,
         finalTrendlogId: trendlogId,
@@ -7915,7 +7933,7 @@
         return entry?.serial_number || currentSN
       }
 
-      LogUtil.Debug('🔍 Historical data request (multi-panel):', {
+      LogUtil.Debug('Historical data request (multi-panel):', {
         timeRange: `${formattedStartTime} to ${formattedEndTime}`,
         timeRangeMinutes: timeRangeMinutes,
         panelCount: panelGroups.size,
@@ -7966,7 +7984,7 @@
             if (!resp || (resp as any)?.error) {
               // API returned null or an error object — this is a real failure
               if (pid === currentPanelId) primaryPanelApiFailed = true
-              LogUtil.Warn(`⚠️ History fetch failed for panel ${pid}`, (resp as any)?.error || 'null response')
+              LogUtil.Warn(`History fetch failed for panel ${pid}`, (resp as any)?.error || 'null response')
               return [] as any[]
             }
             const items: any[] = (resp.data as any)?.data || resp.data || []
@@ -7975,7 +7993,7 @@
           } catch (err) {
             // Network / fetch exception — real failure
             if (pid === currentPanelId) primaryPanelApiFailed = true
-            LogUtil.Warn(`⚠️ History fetch error for panel ${pid}`, err)
+            LogUtil.Warn(`History fetch error for panel ${pid}`, err)
             return [] as any[]
           }
         })
@@ -7992,7 +8010,7 @@
 
       // Check if response has no data
       if (!historyData || historyData.length === 0) {
-        LogUtil.Info('📭 No historical data available for the selected time range - keeping existing data', {
+        LogUtil.Info('No historical data available for the selected time range - keeping existing data', {
           timeRange: `${timeRangeMinutes} minutes`,
           timeRangeFormatted: `${formattedStartTime} to ${formattedEndTime}`,
           existingSeriesCount: dataSeries.value.length,
@@ -8013,24 +8031,24 @@
 
       // Data exists, process it
       if (historyData.length > 0) {
-        LogUtil.Info('📚 Historical data loaded:', {
+        LogUtil.Info('Historical data loaded:', {
           dataPointsCount: historyData.length,
           totalCount: historyData.length,
           timeRange: `${timeRangeMinutes} minutes`,
           actualTimeRange: `${formattedStartTime} to ${formattedEndTime}`
         })
 
-        // 🆕 If dataSeries is empty, create series from historical data
+        // If dataSeries is empty, create series from historical data
         if (dataSeries.value.length === 0) {
-          LogUtil.Info('📊 Creating series from historical data (no existing series)')
+          LogUtil.Info('Creating series from historical data (no existing series)')
           await createSeriesFromHistoricalData(historyData)
         }
 
-        // 🆕 Convert historical data to chart format and populate data series (now async)
+        // Convert historical data to chart format and populate data series (now async)
         await populateDataSeriesWithHistoricalData(historyData)
 
-        // 🆕 CRITICAL: Update charts immediately after historical data is populated
-        LogUtil.Info('🎨 Updating charts to display historical data', {
+        // CRITICAL: Update charts immediately after historical data is populated
+        LogUtil.Info('Updating charts to display historical data', {
           seriesCount: dataSeries.value.length,
           seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length,
           totalDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0),
@@ -8043,7 +8061,7 @@
         })
         updateCharts()
       } else {
-        LogUtil.Debug('📭 No historical data found for current timebase')
+        LogUtil.Debug('No historical data found for current timebase')
       }
 
     } catch (error) {
@@ -8069,7 +8087,7 @@
         }
       })
 
-      LogUtil.Info('📊 Creating series from historical data:', {
+      LogUtil.Info('Creating series from historical data:', {
         totalDataPoints: historicalData.length,
         uniquePoints: pointsMap.size,
         points: Array.from(pointsMap.keys())
@@ -8122,7 +8140,7 @@
       // Restore visibility for the current view
       restoreCurrentViewVisibility()
 
-      LogUtil.Info('✅Series created from historical data:', {
+      LogUtil.Info('Series created from historical data:', {
         seriesCount: newSeries.length,
         seriesNames: newSeries.map(s => s.name)
       })
@@ -8173,7 +8191,7 @@
     // Sort by timestamp
     merged.sort((a, b) => a.timestamp - b.timestamp)
 
-    LogUtil.Debug('🔄 Merge and deduplicate complete', {
+    LogUtil.Debug('Merge and deduplicate complete', {
       existingCount: existingData.length,
       newDataCount: newData.length,
       mergedCount: merged.length,
@@ -8187,7 +8205,7 @@
   /**
    * Populate data series with historical data from database
    * Now MERGES with existing data instead of replacing
-   * 🆕 ASYNC with yield points to prevent UI blocking
+   * ASYNC with yield points to prevent UI blocking
    */
   const populateDataSeriesWithHistoricalData = async (historicalData: any[]) => {
     try {
@@ -8203,7 +8221,7 @@
         dataByPoint.get(key)!.push(item)
       })
 
-      LogUtil.Info('🔍 Starting historical data population', {
+      LogUtil.Info('Starting historical data population', {
         totalHistoricalItems: historicalData.length,
         availableDataSeries: dataSeries.value.length,
         seriesIds: dataSeries.value.map(s => s.id),
@@ -8216,7 +8234,7 @@
         }))
       })
 
-      // 🆕 Process series asynchronously with yield points to prevent UI blocking
+      // Process series asynchronously with yield points to prevent UI blocking
       for (let seriesIndex = 0; seriesIndex < dataSeries.value.length; seriesIndex++) {
         const series = dataSeries.value[seriesIndex]
 
@@ -8229,7 +8247,7 @@
         const seriesKey = `${series.panelId ?? 'unknown'}_${series.id}_${mapPointTypeFromNumber(series.pointType || 1)}`
         const seriesHistoricalData = dataByPoint.get(seriesKey) || []
 
-        LogUtil.Info(`📊 Processing series ${seriesIndex}: ${series.name}`, {
+        LogUtil.Info(`Processing series ${seriesIndex}: ${series.name}`, {
           seriesId: series.id,
           seriesKey: seriesKey,
           panelId: series.panelId,
@@ -8243,7 +8261,7 @@
 
         if (seriesHistoricalData.length > 0) {
           // Convert to data points and sort by timestamp
-          // 🎯 Digital series: the Rust API always divides stored values by 1000 (analog convention),
+          // Digital series: the Rust API always divides stored values by 1000 (analog convention),
           // but digital values are stored as raw 0/1 (no ×1000 multiplier), so 1 becomes 0.001 which
           // fails the >0.5 threshold.  Use original_value (pre-scaling) for digital series.
           const isDigitalSeries = series.unitType === 'digital' || series.digital_analog === 0
@@ -8259,13 +8277,13 @@
             description: `Historical: ${item.point_id}`
           })).sort((a, b) => a.timestamp - b.timestamp)
 
-          // 🆕 MERGE instead of replace - preserves real-time data not yet in database
+          // MERGE instead of replace - preserves real-time data not yet in database
           const existingDataCount = series.data?.length || 0
           const beforeMerge = series.data?.length || 0
           series.data = mergeAndDeduplicate(series.data || [], dataPoints)
           const afterMerge = series.data.length
 
-          LogUtil.Info(`📈 HISTORY MERGED for ${series.name}:`, {
+          LogUtil.Info(`HISTORY MERGED for ${series.name}:`, {
             seriesIndex,
             seriesId: series.id,
             existingPointsBefore: existingDataCount,
@@ -8291,14 +8309,14 @@
             } : null
           })
         } else {
-          LogUtil.Warn(`📭 No historical data found for series: ${series.name}`, {
+          LogUtil.Warn(`No historical data found for series: ${series.name}`, {
             seriesKey,
             availableKeys: Array.from(dataByPoint.keys())
           })
         }
       } // End of for loop
 
-      LogUtil.Info('📊 Historical data population completed', {
+      LogUtil.Info('Historical data population completed', {
         seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
         totalSeries: dataSeries.value.length
       })
@@ -8381,7 +8399,7 @@
       const syncIntervalSeconds = totalSeconds > 0 ? Math.max(totalSeconds, 15) : 60
 
       /*
-      LogUtil.Debug('🕐 Calculating sync interval from T3000 config', {
+      LogUtil.Debug('Calculating sync interval from T3000 config', {
         dataSource,
         hourInterval,
         minuteInterval,
@@ -8400,7 +8418,7 @@
     const fallbackMs = updateInterval.value
     const fallbackSeconds = Math.round(fallbackMs / 1000)
 
-    LogUtil.Debug('🕐 Using fallback sync interval calculation', {
+    LogUtil.Debug('Using fallback sync interval calculation', {
       dataSource: 'updateInterval computed',
       fallbackMs,
       fallbackSeconds,
@@ -8412,14 +8430,14 @@
  * Store real-time data to database for historical usage
  */
   const storeRealtimeDataToDatabase = async (validDataItems: any[], pollCycleId?: string) => {
-    LogUtil.Debug('🔥 storeRealtimeDataToDatabase ENTRY', {
+    LogUtil.Debug('storeRealtimeDataToDatabase ENTRY', {
       itemsCount: validDataItems.length,
       firstItem: validDataItems[0],
       pollCycleId: pollCycleId || '(none)',
     })
 
     try {
-      LogUtil.Info('🔄 storeRealtimeDataToDatabase called', {
+      LogUtil.Info('storeRealtimeDataToDatabase called', {
         itemsCount: validDataItems.length,
         timestamp: new Date().toISOString(),
         sampleItems: validDataItems.slice(0, 2) // Show first 2 items for debugging
@@ -8433,7 +8451,7 @@
       const urlSerialNumber = route.query.sn ? parseInt(route.query.sn as string) : 0
       const currentSN = urlSerialNumber || (panelsList.length > 0 ? panelsList[0].serial_number : 0)
 
-      LogUtil.Debug('🔍 Serial Number Source Check', {
+      LogUtil.Debug('Serial Number Source Check', {
         urlSerialNumber,
         panelsListSN: panelsList.length > 0 ? panelsList[0].serial_number : 'N/A',
         finalSN: currentSN,
@@ -8441,7 +8459,7 @@
       })
 
       /*
-      LogUtil.Info('📊 Device info for storage', {
+      LogUtil.Info('Device info for storage', {
         panelsListLength: panelsList.length,
         currentPanelId,
         currentSN,
@@ -8495,7 +8513,7 @@
         return monitoredSeriesPanels.has(itemPanelId)
       })
 
-      LogUtil.Info('🔍 Filtered items for current device', {
+      LogUtil.Info('Filtered items for current device', {
         originalCount: validDataItems.length,
         filteredCount: currentDeviceItems.length,
         currentSN,
@@ -8504,7 +8522,7 @@
       })
 
       if (currentDeviceItems.length === 0) {
-        LogUtil.Warn('⚠️ No items match current device after filtering - skipping batch save')
+        LogUtil.Warn('No items match current device after filtering - skipping batch save')
         return
       }
 
@@ -8529,7 +8547,7 @@
         const syncInterval = getCurrentSyncInterval()
 
         /*
-        LogUtil.Debug('🔧 Processing item for database storage', {
+        LogUtil.Debug('Processing item for database storage', {
           pointId,
           rawPointType: item.point_type,
           mappedPointType: pointType,
@@ -8576,9 +8594,9 @@
           zeroValuesFromDevice += 1
         }
 
-        // 🔍 DEBUG: Log value selection for digital outputs
+        // DEBUG: Log value selection for digital outputs
         if (item.digital_analog === 0 && pointId.startsWith('OUT')) {
-          LogUtil.Debug(`🎯 Digital OUTPUT ${pointId}:`, {
+          LogUtil.Debug(`Digital OUTPUT ${pointId}:`, {
             digital_analog: item.digital_analog,
             control: item.control,
             value: item.value,
@@ -8611,14 +8629,14 @@
       }, [])
 
       if (skippedFallbackItems.length > 0) {
-        LogUtil.Warn('⚠️ Skipping realtime points with missing/invalid source values (fallback zeros not written)', {
+        LogUtil.Warn('Skipping realtime points with missing/invalid source values (fallback zeros not written)', {
           skippedCount: skippedFallbackItems.length,
           totalCandidateItems: currentDeviceItems.length,
           sampleSkipped: skippedFallbackItems.slice(0, 5)
         })
       }
 
-      LogUtil.Info('📏 Realtime payload quality for DB write', {
+      LogUtil.Info('Realtime payload quality for DB write', {
         totalCandidateItems: currentDeviceItems.length,
         acceptedPoints: realtimeDataPoints.length,
         skippedFallbackItems: skippedFallbackItems.length,
@@ -8627,13 +8645,13 @@
 
       // Store batch to database with detailed logging
       if (realtimeDataPoints.length > 0) {
-        LogUtil.Debug('🔥 About to call saveRealtimeBatch API', {
+        LogUtil.Debug('About to call saveRealtimeBatch API', {
           pointsCount: realtimeDataPoints.length,
           serialNumber: currentSN,
           firstPoint: realtimeDataPoints[0]
         })
 
-        LogUtil.Info('📤 Sending real-time batch to API', {
+        LogUtil.Info('Sending real-time batch to API', {
           pointsCount: realtimeDataPoints.length,
           serialNumber: currentSN,
           apiEndpoint: 'localhost:9103/api/trendlog/realtime/batch',
@@ -8665,7 +8683,7 @@
         })
         */
       } else {
-        LogUtil.Warn('⚠️ No valid data points to store', {
+        LogUtil.Warn('No valid data points to store', {
           originalItemsCount: validDataItems.length,
           serialNumber: currentSN
         })
@@ -8679,7 +8697,7 @@
    * Validate that filtering is working correctly by comparing data counts
    */
   const validateFilteringResults = (originalCount: number, filteredCount: number, chartSeriesCount: number) => {
-    LogUtil.Info('🔍 Filtering validation results', {
+    LogUtil.Info('Filtering validation results', {
       originalDataCount: originalCount,
       filteredDataCount: filteredCount,
       chartSeriesCount: chartSeriesCount,
@@ -8699,7 +8717,7 @@
   const updateChartWithNewData = (validDataItems: any[], skipDbSave = false, pollCycleId?: string) => {
     const traceId = trendlogTrace.getTraceId()
 
-    LogUtil.Debug('🔥 updateChartWithNewData CALLED', {
+    LogUtil.Debug('updateChartWithNewData CALLED', {
       itemsCount: validDataItems?.length || 0,
       hasDataSeries: !!dataSeries.value?.length,
       isRealTime: isRealTime.value,
@@ -8711,14 +8729,14 @@
     })
 
     if (!dataSeries.value?.length) {
-      LogUtil.Debug('📈 TrendLogChart: No series configured')
+      LogUtil.Debug('TrendLogChart: No series configured')
       return
     }
 
     const hasData = Array.isArray(validDataItems) && validDataItems.length > 0
 
     if (!hasData) {
-      LogUtil.Debug('📈 TrendLogChart: No new data points, but updating charts for time window scroll')
+      LogUtil.Debug('TrendLogChart: No new data points, but updating charts for time window scroll')
       // Skip data processing but still update charts for x-axis scroll
       if (isRealTime.value && analogChartInstance) {
         updateCharts()  // CRITICAL: Keeps x-axis scrolling
@@ -8762,7 +8780,7 @@
       })
     }
 
-    LogUtil.Debug('🔍 updateChartWithNewData matching attempt:', {
+    LogUtil.Debug('updateChartWithNewData matching attempt:', {
       seriesCount: dataSeries.value.length,
       incomingItemsCount: validDataItems.length,
       firstSeries: dataSeries.value[0] ? {
@@ -8780,7 +8798,7 @@
 
     // 🔎 DEBUG: Show ALL properties of first series to understand structure
     if (dataSeries.value[0]) {
-      LogUtil.Debug('🔎 First series FULL object:', dataSeries.value[0])
+      LogUtil.Debug('First series FULL object:', dataSeries.value[0])
     }
 
     const normalizeId = (value: any): string => String(value ?? '').trim().toUpperCase()
@@ -8791,7 +8809,7 @@
 
     // 🚀 OPTIMIZED APPROACH: Loop through dataSeries (14 max) instead of validDataItems (328)
     dataSeries.value.forEach((series, seriesIndex) => {
-      // 🔧 DEFENSIVE FIX: Reconstruct id and panelId from itemType if missing
+      // DEFENSIVE FIX: Reconstruct id and panelId from itemType if missing
       // itemType format: "144IN40" = panelId (144) + prefix (IN) + number (40)
       if ((!series.id || !series.panelId) && series.itemType && series.prefix) {
         const match = series.itemType.match(/^(\d+)([A-Z]+)(\d+)$/)
@@ -8801,7 +8819,7 @@
           const extractedNumber = match[3]
           const extractedId = `${extractedPrefix}${extractedNumber}`
 
-          LogUtil.Debug(`🔧 FIX: Reconstructing missing properties for series ${seriesIndex}:`, {
+          LogUtil.Debug(`FIX: Reconstructing missing properties for series ${seriesIndex}:`, {
             originalName: series.name,
             itemType: series.itemType,
             extractedPanelId,
@@ -8901,7 +8919,7 @@
         fallbackMatches++
       }
 
-      // 🎯 VALUE SELECTION: Use correct field based on digital_analog (per C struct definition)
+      // VALUE SELECTION: Use correct field based on digital_analog (per C struct definition)
       // digital_analog: 0=digital, 1=analog
       // For digital (digital_analog=0): use 'control' field (0=off, 1=on)
       // For analog (digital_analog=1): use 'value' field (int32_t)
@@ -8917,9 +8935,9 @@
         // Digital: use 'control' field (per Str_out_point struct)
         actualValue = matchedItem.control ?? matchedItem.value;
 
-        // 🔍 DEBUG: Log for digital outputs
+        // DEBUG: Log for digital outputs
         if (matchedItem.id && matchedItem.id.startsWith('OUT')) {
-          LogUtil.Debug(`📊 DISPLAY Digital OUTPUT ${matchedItem.id}:`, {
+          LogUtil.Debug(`DISPLAY Digital OUTPUT ${matchedItem.id}:`, {
             digital_analog: matchedItem.digital_analog,
             control: matchedItem.control,
             value: matchedItem.value,
@@ -8931,13 +8949,13 @@
 
       const rawValue = Number(actualValue)
       const safeRawValue = Number.isFinite(rawValue) ? rawValue : 0
-      // 🎯 CRITICAL: Don't scale digital values - control field is already 0 or 1
+      // CRITICAL: Don't scale digital values - control field is already 0 or 1
       // Only scale analog values (which are multiplied by 1000 in database)
       const scaledValue = isAnalogPoint ? scaleValueIfNeeded(safeRawValue) : safeRawValue
 
-      // 📊 VALUE PRECISION LOGGING: Track how scaling affects small variations
+      // VALUE PRECISION LOGGING: Track how scaling affects small variations
       if (safeRawValue >= 1000) {
-        LogUtil.Info(`🔍 Value Scaling Analysis for ${series.name}`, {
+        LogUtil.Info(`Value Scaling Analysis for ${series.name}`, {
           rawValue: safeRawValue,
           scaledValue,
           precisionLoss: safeRawValue - (scaledValue * 1000),
@@ -8959,7 +8977,7 @@
       series.data = series.data || []
 
       /*
-      LogUtil.Debug(`📊 Before adding batch point to ${series.name}:`, {
+      LogUtil.Debug(`Before adding batch point to ${series.name}:`, {
         existingDataCount: series.data.length,
         existingTimeRange: series.data.length > 0 ? {
           first: new Date(series.data[0].timestamp).toISOString(),
@@ -8977,7 +8995,7 @@
       if (existingIndex >= 0) {
         // Update existing data point
         series.data[existingIndex] = dataPoint
-        LogUtil.Debug(`🔄 Updated existing point in ${series.name}:`, {
+        LogUtil.Debug(`Updated existing point in ${series.name}:`, {
           timestamp: new Date(dataPoint.timestamp).toLocaleTimeString(),
           value: dataPoint.value,
           totalPoints: series.data.length
@@ -9000,7 +9018,7 @@
         })
       }
 
-      LogUtil.Debug(`📊 After adding batch point to ${series.name}:`, {
+      LogUtil.Debug(`After adding batch point to ${series.name}:`, {
         finalDataCount: series.data.length,
         finalTimeRange: series.data.length > 0 ? {
           first: new Date(series.data[0].timestamp).toISOString(),
@@ -9030,7 +9048,7 @@
         */
     })
 
-    LogUtil.Debug('📊 TrendLogChart: Data processing complete', {
+    LogUtil.Debug('TrendLogChart: Data processing complete', {
       matched,
       unmatched,
       totalSeries: dataSeries.value,
@@ -9070,7 +9088,7 @@
       })
     }
 
-    // 💾 Store real-time data to database if in real-time mode (async, non-blocking)
+    // Store real-time data to database if in real-time mode (async, non-blocking)
     // skipDbSave=true when called from T3000_Data watcher (action=0 snapshot data — must NOT be saved)
     if (!skipDbSave && isRealTime.value && validDataItems.length > 0) {
       // Fire and forget - don't await, don't block chart updates
@@ -9083,7 +9101,7 @@
     if (analogChartInstance) {
       updateCharts()
     } else {
-      LogUtil.Debug('⚠️ Chart instance not available for update')
+      LogUtil.Debug('Chart instance not available for update')
     }
   }
 
@@ -9101,14 +9119,14 @@
     return ranges[range] || 60
   }
 
-  // 🆕 OPTIMIZATION: Check if we can reuse existing data when changing timebase
+  // OPTIMIZATION: Check if we can reuse existing data when changing timebase
   const checkDataReuseOptimization = async (oldTimeBase: string, newTimeBase: string): Promise<boolean> => {
-    // 🆕 FIX: After exiting custom mode the first zoom must do a full reload, not a gap-only
+    // FIX: After exiting custom mode the first zoom must do a full reload, not a gap-only
     // load, to ensure all available DB data for the new timebase is fetched in one shot.
     // This prevents break lines caused by sparse data in the gap-only window.
     if (_justSwitchedFromCustom) {
       _justSwitchedFromCustom = false
-      LogUtil.Info('⚡ Skipping gap optimization: recently exited custom mode — doing full DB reload', {
+      LogUtil.Info('Skipping gap optimization: recently exited custom mode — doing full DB reload', {
         oldTimeBase,
         newTimeBase
       })
@@ -9159,9 +9177,9 @@
     return true
   }
 
-  // 🆕 OPTIMIZATION: Load only the missing historical data gap
+  // OPTIMIZATION: Load only the missing historical data gap
   const loadHistoricalDataGap = async (oldTimeBase: string, newTimeBase: string): Promise<void> => {
-    LogUtil.Info('🔍 Loading historical data gap for seamless timebase transition', {
+    LogUtil.Info('Loading historical data gap for seamless timebase transition', {
       oldTimeBase,
       newTimeBase,
       timeOffset: timeOffset.value
@@ -9180,7 +9198,7 @@
       const gapEndTime = new Date(offsetEndTime.getTime() - oldMinutes * 60 * 1000)
       const gapStartTime = new Date(gapEndTime.getTime() - gapMinutes * 60 * 1000)
 
-      LogUtil.Debug('🔧 Gap time calculation', {
+      LogUtil.Debug('Gap time calculation', {
         currentTime: currentTime.toISOString(),
         gapStartTime: gapStartTime.toISOString(),
         gapEndTime: gapEndTime.toISOString(),
@@ -9253,7 +9271,7 @@
 
       const gapDataResponse = await trendlogAPI.getTrendlogHistory(gapRequest)
 
-      LogUtil.Debug('📊 Gap data response', {
+      LogUtil.Debug('Gap data response', {
         dataCount: gapDataResponse?.data?.length || 0,
         timeRange: `${formattedStartTime} to ${formattedEndTime}`
       })
@@ -9267,10 +9285,10 @@
           totalDataPointsAfter: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
         })
       } else {
-        // 🆕 FIX: Gap query returned nothing (DB has no records for this older window).
+        // FIX: Gap query returned nothing (DB has no records for this older window).
         // Fall back to a full DB reload for the new timebase so the chart always shows
         // all available data instead of leaving an empty section.
-        LogUtil.Warn('⚠️ No gap data found — falling back to full DB reload for ' + newTimeBase, {
+        LogUtil.Warn('No gap data found — falling back to full DB reload for ' + newTimeBase, {
           gapStartTime: formattedStartTime,
           gapEndTime: formattedEndTime
         })
@@ -9285,7 +9303,7 @@
 
   // Helper function to process and prepend gap data to existing series
   const processAndPrependGapData = (gapData: any[]) => {
-    LogUtil.Debug('🔧 Processing gap data for prepending', { gapDataCount: gapData.length })
+    LogUtil.Debug('Processing gap data for prepending', { gapDataCount: gapData.length })
 
     const pointDataMap = new Map<string, any[]>()
 
@@ -9301,7 +9319,7 @@
     // Process each series and prepend gap data
     dataSeries.value.forEach(series => {
       if (!series.pointType || series.pointNumber === undefined) {
-        LogUtil.Debug(`⚠️ Skipping series - missing point info`, {
+        LogUtil.Debug(`Skipping series - missing point info`, {
           name: series.name,
           hasPointType: !!series.pointType,
           pointType: series.pointType,
@@ -9314,7 +9332,7 @@
       const pointId = generateDeviceId(series.pointType, series.pointNumber)
       const pointGapData = pointDataMap.get(pointId)
 
-      LogUtil.Debug(`🔍 Gap data lookup for ${series.name}`, {
+      LogUtil.Debug(`Gap data lookup for ${series.name}`, {
         seriesName: series.name,
         pointType: series.pointType,
         pointNumber: series.pointNumber,
@@ -9346,7 +9364,7 @@
 
           // Diagnostic logging for first item
           if (pointGapData.indexOf(item) === 0) {
-            LogUtil.Debug(`🔬 Gap data conversion sample for ${series.name}`, {
+            LogUtil.Debug(`Gap data conversion sample for ${series.name}`, {
               rawItem: item,
               timeField,
               timestamp,
@@ -9411,8 +9429,8 @@
 
     const monitorConfigData = monitorConfig.value
 
-    // 🔍 DIAGNOSTIC: Log detailed state when initializeData is called
-    LogUtil.Info('🔍 DIAGNOSTIC: initializeData state check', {
+    // DIAGNOSTIC: Log detailed state when initializeData is called
+    LogUtil.Info('DIAGNOSTIC: initializeData state check', {
       hasMonitorConfig: !!monitorConfigData,
       monitorConfigType: typeof monitorConfigData,
       hasInputItems: !!(monitorConfigData?.inputItems),
@@ -9425,11 +9443,11 @@
     if (monitorConfigData && monitorConfigData.inputItems && monitorConfigData.inputItems.length > 0) {
       try {
         // Try to load historical data - this will create series structure if successful
-        LogUtil.Info('🔧 Loading historical data from database')
+        LogUtil.Info('Loading historical data from database')
         const _histT0 = Date.now()
         await loadHistoricalDataFromDatabase()
         const _histElapsedMs = Date.now() - _histT0
-        LogUtil.Info('✅Historical data loaded successfully')
+        LogUtil.Info('Historical data loaded successfully')
         if (_initFlowId) {
           await _flowStep('history_load',
             `series=${dataSeries.value.length} pts=${dataSeries.value.reduce((s, x) => s + (x.data?.length ?? 0), 0)} elapsed=${_histElapsedMs}ms`,
@@ -9453,7 +9471,7 @@
         }
       }
     } else {
-      LogUtil.Info('📊 Empty State Configuration:', {
+      LogUtil.Info('Empty State Configuration:', {
         configExists: !!monitorConfigData,
         hasInputItems: !!(monitorConfigData?.inputItems),
         inputItemsLength: monitorConfigData?.inputItems?.length || 0,
@@ -9470,7 +9488,7 @@
       stopLoading()
     }  // If no data series available, chart will remain empty (no mock data generation)
     if (dataSeries.value.length === 0) {
-      LogUtil.Info('📊 TrendLogChart: No data series available - maintaining empty state', {
+      LogUtil.Info('TrendLogChart: No data series available - maintaining empty state', {
         dataSeriesLength: dataSeries.value.length,
         hasMonitorConfig: !!monitorConfig.value
       })
@@ -9479,19 +9497,19 @@
 
     // Skip data generation if there's a connection error - should show empty chart
     if (hasConnectionError.value) {
-      LogUtil.Info('📊 TrendLogChart: Skipping data generation - connection error (should show empty chart)')
+      LogUtil.Info('TrendLogChart: Skipping data generation - connection error (should show empty chart)')
       return
     }
 
     // Real data only - no synthetic data generation
-    LogUtil.Info('📊 TrendLogChart: Mock/demo data generation removed - chart will only show real data')
+    LogUtil.Info('TrendLogChart: Mock/demo data generation removed - chart will only show real data')
 
     // For real data series, update the charts
     updateCharts()
   }
 
   /**
-   * 🆕 FIX: Create temporary monitor config from props when monitorConfig is not ready yet
+   * FIX: Create temporary monitor config from props when monitorConfig is not ready yet
    * This prevents race conditions where dataseries exists but monitorConfig is still loading
    */
   const createTempMonitorConfigFromProps = () => {
@@ -9502,7 +9520,7 @@
       const panelId = props.itemData?.t3Entry?.pid
 
       if (!inputData?.length || !rangeData?.length || !monitorId) {
-        LogUtil.Warn('🔧 createTempMonitorConfigFromProps: Missing required props data', {
+        LogUtil.Warn('createTempMonitorConfigFromProps: Missing required props data', {
           hasInputData: !!inputData?.length,
           hasRangeData: !!rangeData?.length,
           hasMonitorId: !!monitorId,
@@ -9530,7 +9548,7 @@
         isTemporary: true // Flag to indicate this is temporary
       }
 
-      LogUtil.Info('🔧 createTempMonitorConfigFromProps: Created temporary config', {
+      LogUtil.Info('createTempMonitorConfigFromProps: Created temporary config', {
         tempConfigId: tempConfig.id,
         tempConfigPid: tempConfig.pid,
         inputItemsCount: tempConfig.inputItems.length,
@@ -9539,27 +9557,27 @@
 
       return tempConfig
     } catch (error) {
-      LogUtil.Error('🔧 createTempMonitorConfigFromProps: Failed to create temp config', error)
+      LogUtil.Error('createTempMonitorConfigFromProps: Failed to create temp config', error)
       return null
     }
   }
 
   const addRealtimeDataPoint = async () => {
-    // 🛡️CRITICAL: Wrap entire function in try-catch to ensure interval NEVER stops
+    // CRITICAL: Wrap entire function in try-catch to ensure interval NEVER stops
     // Even if any error occurs (network, parsing, backend errors), the interval must continue
     try {
-      LogUtil.Debug('🔍addRealtimeDataPoint FIRED at', new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds())
+      LogUtil.Debug('addRealtimeDataPoint FIRED at', new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds())
 
       // Background polling: always poll the device even in custom date range mode
       // so no data gaps occur in the DB. Chart visual update is skipped when !isRealTime.
       if (!isRealTime.value) {
-        LogUtil.Debug('🔍 Background polling (custom mode) - will save to DB, skip chart update')
+        LogUtil.Debug('Background polling (custom mode) - will save to DB, skip chart update')
         // Fall through — sendPeriodicBatchRequest will save only, not update chart
       }
 
       // Safety check: If no data series exist, skip processing
       if (dataSeries.value.length === 0) {
-        LogUtil.Debug('🔍EXIT: No data series exist')
+        LogUtil.Debug('EXIT: No data series exist')
         return
       }
 
@@ -9567,7 +9585,7 @@
       let monitorConfigData = monitorConfig.value
 
       if (!monitorConfigData) {
-        LogUtil.Warn('⚠️ addRealtimeDataPoint: monitorConfig missing, attempting in-tick recovery')
+        LogUtil.Warn('addRealtimeDataPoint: monitorConfig missing, attempting in-tick recovery')
 
         monitorConfigData = await getMonitorConfigFromT3000Data()
 
@@ -9577,38 +9595,38 @@
 
         if (monitorConfigData) {
           monitorConfig.value = monitorConfigData
-          LogUtil.Info('✅ addRealtimeDataPoint: monitorConfig recovered in polling tick', {
+          LogUtil.Info('addRealtimeDataPoint: monitorConfig recovered in polling tick', {
             pid: monitorConfigData.pid,
             inputItems: monitorConfigData.inputItems?.length || 0,
             dataIntervalMs: monitorConfigData.dataIntervalMs
           })
         } else {
-          LogUtil.Debug('🔍EXIT: No monitor config (recovery failed)')
+          LogUtil.Debug('EXIT: No monitor config (recovery failed)')
           return
         }
       }
 
-      LogUtil.Debug('🔍All checks passed - calling sendPeriodicBatchRequest')
+      LogUtil.Debug('All checks passed - calling sendPeriodicBatchRequest')
 
       try {
-        // 🆕 CRITICAL FIX: Load historical data on FIRST batch request
+        // CRITICAL FIX: Load historical data on FIRST batch request
         // This ensures history API is called when real-time monitoring starts
         if (!hasLoadedInitialHistory.value && monitorConfigData) {
-          LogUtil.Info('📚 addRealtimeDataPoint: First batch request - loading historical data before starting real-time updates')
+          LogUtil.Info('addRealtimeDataPoint: First batch request - loading historical data before starting real-time updates')
           hasLoadedInitialHistory.value = true // Set flag immediately to prevent duplicate calls
 
           try {
             await loadHistoricalDataFromDatabase()
-            LogUtil.Info('✅addRealtimeDataPoint: Historical data loaded successfully, now starting real-time updates')
+            LogUtil.Info('addRealtimeDataPoint: Historical data loaded successfully, now starting real-time updates')
           } catch (error) {
-            LogUtil.Warn('⚠️ addRealtimeDataPoint: Historical data load failed, continuing with real-time only', error)
+            LogUtil.Warn('addRealtimeDataPoint: Historical data load failed, continuing with real-time only', error)
           }
         }
 
         // Send batch GET_ENTRIES request for ALL items at once
-        LogUtil.Debug('📤 Sending batch request at', new Date().toLocaleTimeString())
+        LogUtil.Debug('Sending batch request at', new Date().toLocaleTimeString())
         await sendPeriodicBatchRequest(monitorConfigData)
-        LogUtil.Debug('📥 Batch request completed, waiting for T3000_Data watcher to process response...')
+        LogUtil.Debug('Batch request completed, waiting for T3000_Data watcher to process response...')
 
         // Note: Real data will come through T3000_Data watcher -> updateChartWithNewData
         // which calls updateChartWithNewData() to update dataSeries automatically
@@ -9634,9 +9652,9 @@
         updateCharts()
       }
     } catch (error) {
-      // 🛡️CRITICAL ERROR HANDLER: Catch ANY error to prevent interval from stopping
+      // CRITICAL ERROR HANDLER: Catch ANY error to prevent interval from stopping
       // This ensures the polling continues even if there are unexpected errors
-      LogUtil.Error('❌CRITICAL: addRealtimeDataPoint encountered unexpected error (interval will continue):', error)
+      LogUtil.Error('CRITICAL: addRealtimeDataPoint encountered unexpected error (interval will continue):', error)
       hasConnectionError.value = true
     }
   }
@@ -9656,7 +9674,7 @@
       // Canvas not ready yet - retry after a delay with limit
       if (chartCreationRetries < MAX_CHART_CREATION_RETRIES) {
         chartCreationRetries++
-        LogUtil.Debug(`⏸️ createAnalogChart - Canvas not ready, will retry in 100ms (attempt ${chartCreationRetries}/${MAX_CHART_CREATION_RETRIES})`)
+        LogUtil.Debug(`createAnalogChart - Canvas not ready, will retry in 100ms (attempt ${chartCreationRetries}/${MAX_CHART_CREATION_RETRIES})`)
         setTimeout(() => createAnalogChart(), 100)
       } else {
         LogUtil.Error(`createAnalogChart - Canvas not available after ${MAX_CHART_CREATION_RETRIES} attempts, giving up`)
@@ -9671,7 +9689,7 @@
       // Canvas exists but has zero dimensions - retry with limit
       if (chartCreationRetries < MAX_CHART_CREATION_RETRIES) {
         chartCreationRetries++
-        LogUtil.Debug(`⏸️ createAnalogChart - Canvas has zero dimensions, will retry in 100ms (attempt ${chartCreationRetries}/${MAX_CHART_CREATION_RETRIES})`)
+        LogUtil.Debug(`createAnalogChart - Canvas has zero dimensions, will retry in 100ms (attempt ${chartCreationRetries}/${MAX_CHART_CREATION_RETRIES})`)
         setTimeout(() => createAnalogChart(), 100)
       } else {
         LogUtil.Error(`createAnalogChart - Canvas has zero dimensions after ${MAX_CHART_CREATION_RETRIES} attempts, giving up`)
@@ -9686,7 +9704,7 @@
 
     const ctx = analogChartCanvas.value.getContext('2d')
     if (!ctx) {
-      LogUtil.Error('❌createAnalogChart - Failed to get 2D context')
+      LogUtil.Error('createAnalogChart - Failed to get 2D context')
       hasConnectionError.value = true
       stopLoading()
       return
@@ -9701,29 +9719,29 @@
       const config = getAnalogChartConfig()
       analogChartInstance = new Chart(ctx, config)
 
-      LogUtil.Info('✅createAnalogChart - Chart created successfully, now loading data', {
+      LogUtil.Info('createAnalogChart - Chart created successfully, now loading data', {
         canvasWidth: analogChartCanvas.value.offsetWidth,
         canvasHeight: analogChartCanvas.value.offsetHeight
       })
 
-      // 🆕 CRITICAL: After chart is created, if data series already exists, load history and update
+      // CRITICAL: After chart is created, if data series already exists, load history and update
       if (dataSeries.value.length > 0 && !hasLoadedInitialHistory.value) {
-        LogUtil.Info('📚 Chart ready - loading historical data now')
+        LogUtil.Info('Chart ready - loading historical data now')
         hasLoadedInitialHistory.value = true // Set immediately to prevent duplicate loads
         loadHistoricalDataFromDatabase().then(() => {
           updateCharts()
-          LogUtil.Info('✅Historical data loaded and displayed')
+          LogUtil.Info('Historical data loaded and displayed')
         }).catch(error => {
-          LogUtil.Error('❌Failed to load historical data', error)
+          LogUtil.Error('Failed to load historical data', error)
           hasLoadedInitialHistory.value = false // Reset on error so it can retry
         })
       } else if (dataSeries.value.some(s => s.data && s.data.length > 0)) {
         // Data already loaded, just update charts
-        LogUtil.Info('📊 Chart ready - data already exists, updating display')
+        LogUtil.Info('Chart ready - data already exists, updating display')
         updateCharts()
       }
     } catch (error) {
-      LogUtil.Error('❌createAnalogChart - Error creating chart:', error)
+      LogUtil.Error('createAnalogChart - Error creating chart:', error)
     }
   }
 
@@ -9754,10 +9772,10 @@
   const waitForCanvasAndUpdate = () => {
     // Simple check - charts should already exist
     if (analogChartCanvas.value && analogChartInstance) {
-      LogUtil.Info('✅Canvas and chart ready, updating with data')
+      LogUtil.Info('Canvas and chart ready, updating with data')
       updateCharts()
     } else {
-      LogUtil.Warn('⚠️ Chart not ready when trying to update', {
+      LogUtil.Warn('Chart not ready when trying to update', {
         hasCanvas: !!analogChartCanvas.value,
         hasChartInstance: !!analogChartInstance
       })
@@ -9769,34 +9787,34 @@
     const hasCanvas = !!analogChartCanvas.value
 
     if (!hasCanvas) {
-      LogUtil.Debug('⏸️ updateCharts: No canvas available yet, will retry in 100ms')
+      LogUtil.Debug('updateCharts: No canvas available yet, will retry in 100ms')
       setTimeout(() => {
         if (analogChartCanvas.value) {
-          LogUtil.Info('✅updateCharts: Canvas now available, proceeding with update')
+          LogUtil.Info('updateCharts: Canvas now available, proceeding with update')
           updateCharts()
         } else {
-          LogUtil.Warn('⚠️ updateCharts: No canvas still available after retry, giving up')
+          LogUtil.Warn('updateCharts: No canvas still available after retry, giving up')
         }
       }, 100)
       return
     }
 
-    // 🆕 FIX: Prevent multiple concurrent chart updates (critical for C++ WebView)
+    // FIX: Prevent multiple concurrent chart updates (critical for C++ WebView)
     if (chartUpdatePending) {
       chartUpdateQueued = true  // remember to re-run once current update finishes
-      LogUtil.Debug('⏸️ Chart update already pending, queuing for after completion')
+      LogUtil.Debug('Chart update already pending, queuing for after completion')
       return
     }
 
     chartUpdatePending = true
 
-    LogUtil.Info('🎨 updateCharts: Starting chart updates', {
+    LogUtil.Info('updateCharts: Starting chart updates', {
       hasAnalogChart: !!analogChartInstance,
       totalDataSeries: dataSeries.value.length,
       seriesWithData: dataSeries.value.filter(s => s.data.length > 0).length,
       visibleAnalogCount: visibleAnalogSeries.value.length,
       visibleDigitalCount: visibleDigitalSeries.value.length,
-      // 🚨 CRITICAL: Log individual series data counts
+      // CRITICAL: Log individual series data counts
       seriesDataCounts: dataSeries.value.map(s => ({
         name: s.name,
         id: s.id,
@@ -9808,11 +9826,11 @@
 
     // Ensure analog chart exists if we have visible analog series
     if (!analogChartInstance && (visibleAnalogSeries.value.length > 0 || visibleDigitalSeries.value.length > 0)) {
-      LogUtil.Info('🔄 updateCharts: Unified chart missing but we have visible series, recreating...')
+      LogUtil.Info('updateCharts: Unified chart missing but we have visible series, recreating...')
       createAnalogChart()
     }
 
-    // 🆕 FIX: Double-defer to prevent UI blocking in embedded C++ WebView
+    // FIX: Double-defer to prevent UI blocking in embedded C++ WebView
     // First defer breaks out of current call stack
     requestAnimationFrame(() => {
       // Second defer ensures browser message pump runs (critical for C++ embedding)
@@ -9821,10 +9839,10 @@
           // Update unified chart (analog + digital datasets in one pass)
           await updateAnalogChart()
         } catch (e) {
-          LogUtil.Warn('⚠️ updateCharts: error during chart update', e)
+          LogUtil.Warn('updateCharts: error during chart update', e)
         } finally {
           chartUpdatePending = false // Always reset, even on error
-          LogUtil.Info('🎨 updateCharts: Chart updates completed')
+          LogUtil.Info('updateCharts: Chart updates completed')
           if (chartUpdateQueued) {
             chartUpdateQueued = false
             updateCharts()
@@ -9836,7 +9854,7 @@
 
   const updateAnalogChart = async () => {
     if (!analogChartInstance) {
-      LogUtil.Debug('📊 updateAnalogChart: No analog chart instance available')
+      LogUtil.Debug('updateAnalogChart: No analog chart instance available')
       trendlogTrace.warn({
         flow: 'render',
         step: 'render_skipped',
@@ -9852,7 +9870,7 @@
 
     // Skip only when BOTH analog and digital have nothing to draw
     if (visibleAnalog.length === 0 && visibleAnalogSeries.value.length > 0 && !hasVisibleDigital) {
-      LogUtil.Debug('⏸️ updateAnalogChart: No analog data yet and no digital data — skipping to preserve existing chart')
+      LogUtil.Debug('updateAnalogChart: No analog data yet and no digital data — skipping to preserve existing chart')
       trendlogTrace.info({
         flow: 'render',
         step: 'render_skipped',
@@ -9867,7 +9885,7 @@
       return
     }
 
-    LogUtil.Info('📊 updateAnalogChart: Processing analog series', {
+    LogUtil.Info('updateAnalogChart: Processing analog series', {
       totalVisibleSeries: visibleAnalogSeries.value.length,
       seriesWithData: visibleAnalog.length,
       seriesDetails: visibleAnalogSeries.value.map(s => ({
@@ -9878,11 +9896,11 @@
       }))
     })
 
-    // 🆕 FIX: Process data asynchronously to prevent UI blocking
+    // FIX: Process data asynchronously to prevent UI blocking
     // Process each series sequentially with yield points for C++ WebView
     const datasets: any[] = []
 
-    // 🆕 ENHANCED MULTI-AXIS STRATEGY: Group by UNIT TYPE with color matching
+    // ENHANCED MULTI-AXIS STRATEGY: Group by UNIT TYPE with color matching
     // Each unit group's Y-axis will match the color of the FIRST series in that group
 
     const seriesInfo: {
@@ -10097,7 +10115,7 @@
       return band.virtualBase + BAND_MARGIN + tClamped * (BAND_SIZE - 2 * BAND_MARGIN)
     }
 
-    // 🆕 STEP 4: Create datasets with assigned yAxisID
+    // STEP 4: Create datasets with assigned yAxisID
     for (let i = 0; i < visibleAnalog.length; i++) {
       const series = visibleAnalog[i]
 
@@ -10177,7 +10195,7 @@
           const nv = Number(next.value)
           // Isolated spike: both jumps are large, but the two neighbors agree with each other
           if (Math.abs(v - pv) > spikeThreshold && Math.abs(v - nv) > spikeThreshold && Math.abs(pv - nv) <= spikeThreshold) {
-            LogUtil.Debug(`🔕 Spike suppressed in ${series.name} at ${new Date(pt.timestamp).toLocaleTimeString()}: value=${v}, neighbors=${pv}/${nv}, threshold=${spikeThreshold.toFixed(2)}`)
+            LogUtil.Debug(`Spike suppressed in ${series.name} at ${new Date(pt.timestamp).toLocaleTimeString()}: value=${v}, neighbors=${pv}/${nv}, threshold=${spikeThreshold.toFixed(2)}`)
             return { ...pt, value: null }
           }
           return pt
@@ -10228,7 +10246,7 @@
       }
 
       const realPoints = dataWithGaps.filter(d => d.y !== null)
-      LogUtil.Debug(`📊 Building dataset for ${series.name}:`, {
+      LogUtil.Debug(`Building dataset for ${series.name}:`, {
         rawDataPoints: series.data.length,
         filteredDataPoints: realPoints.length,
         dataWithGaps: dataWithGaps.length,
@@ -10405,14 +10423,14 @@
       })
     }
 
-    // 🆕 FIX: Check if chart still exists before updating (could be destroyed during async processing)
+    // FIX: Check if chart still exists before updating (could be destroyed during async processing)
     if (!analogChartInstance) {
-      LogUtil.Warn('⚠️ updateAnalogChart: Chart instance was destroyed during processing, skipping update')
+      LogUtil.Warn('updateAnalogChart: Chart instance was destroyed during processing, skipping update')
       return
     }
 
     // Batch update to minimize reflows
-    LogUtil.Info('🎨 About to set chart datasets:', {
+    LogUtil.Info('About to set chart datasets:', {
       datasetsCount: datasets.length,
       totalDataPoints: datasets.reduce((sum, ds) => sum + ds.data.length, 0),
       datasetDetails: datasets.map(ds => ({
@@ -10427,7 +10445,7 @@
       }))
     })
 
-    // 🆕 SAME-VALUE LINE DEDUP: if multiple series on the same axis are constant at
+    // SAME-VALUE LINE DEDUP: if multiple series on the same axis are constant at
     // an identical value, hide the duplicate lines visually (they'd overlap exactly).
     // The datasets stay in the array so crosshair tooltips still list all series.
     {
@@ -10567,7 +10585,7 @@
       analogXWindow.min = timeWindow.min
       analogXWindow.max = timeWindow.max
 
-      LogUtil.Debug('🔍Chart Time Window:', {
+      LogUtil.Debug('Chart Time Window:', {
         timeBase: timeBase.value,
         windowMin: new Date(timeWindow.min).toLocaleTimeString(),
         windowMax: new Date(timeWindow.max).toLocaleTimeString(),
@@ -10577,7 +10595,7 @@
         totalPoints: datasets.reduce((sum, ds) => sum + ds.data.length, 0)
       })
 
-      LogUtil.Info('✅Chart Time Window Set:', {
+      LogUtil.Info('Chart Time Window Set:', {
         timeBase: timeBase.value,
         customStartDate: customStartDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
         customEndDate: customEndDate.value?.format('YYYY-MM-DD HH:mm:ss') || null,
@@ -10609,14 +10627,14 @@
       }
     }
 
-    // 🆕 FIX: Final safety check before update operations
+    // FIX: Final safety check before update operations
     if (!analogChartInstance) {
-      LogUtil.Warn('⚠️ updateAnalogChart: Chart instance lost before final update, skipping')
+      LogUtil.Warn('updateAnalogChart: Chart instance lost before final update, skipping')
       return
     }
 
     // Log before update
-    LogUtil.Info('📊 updateAnalogChart: About to update chart', {
+    LogUtil.Info('updateAnalogChart: About to update chart', {
       datasetsCount: analogChartInstance.data.datasets.length,
       firstDatasetPoints: analogChartInstance.data.datasets[0]?.data.length || 0,
       totalPoints: analogChartInstance.data.datasets.reduce((sum, ds) => sum + ds.data.length, 0),
@@ -10633,7 +10651,7 @@
       }))
     })
 
-    // 🆕 FIX: Update chart without blocking UI thread
+    // FIX: Update chart without blocking UI thread
     // Using 'resize' mode forces Y-axis recalculation and header redraw
     // This ensures dynamic updates when zooming or changing time series
 
@@ -10641,7 +10659,7 @@
     // 'resize' mode skips afterDataLimits callbacks, causing Y-axis compression.
     // 'none' mode bypasses animations but triggers all scale callbacks including
     // afterDataLimits where y-axes read analogXWindow to filter visible points.
-    LogUtil.Debug('📊 Using update("none") to trigger afterDataLimits for y-axis rescale')
+    LogUtil.Debug('Using update("none") to trigger afterDataLimits for y-axis rescale')
     if (timeBase.value === '1d') {
       const xOpts = (analogChartInstance.options.scales?.x as any)
       if (xOpts?.ticks) {
@@ -10750,7 +10768,7 @@
 
   // New control functions - Updated to use timeOffset and regenerate data
   const restoreLiveMode = () => {
-    LogUtil.Info('🔴→🟢 Restoring live mode via Live tag click')
+    LogUtil.Info('→Restoring live mode via Live tag click')
     timeOffset.value = 0
     isRealTime.value = true
     dataSource.value = 'realtime'
@@ -10783,7 +10801,7 @@
     const leftCoverage = getExistingDataTimeRange()
     if (leftCoverage && leftCoverage.totalPoints > 0 &&
         leftCoverage.latestEarliest <= leftTargetWindow.min) {
-      LogUtil.Info('⚡ Scroll left: In-memory data covers window — skipping API call', {
+      LogUtil.Info('Scroll left: In-memory data covers window — skipping API call', {
         windowMin: new Date(leftTargetWindow.min).toISOString(),
         dataEarliest: new Date(leftCoverage.latestEarliest).toISOString(),
         timeOffset: timeOffset.value
@@ -10827,7 +10845,7 @@
     const rightCoverage = getExistingDataTimeRange()
     if (rightCoverage && rightCoverage.totalPoints > 0 &&
         rightCoverage.latestEarliest <= rightTargetWindow.min) {
-      LogUtil.Info('⚡ Scroll right: In-memory data covers window — skipping API call', {
+      LogUtil.Info('Scroll right: In-memory data covers window — skipping API call', {
         windowMin: new Date(rightTargetWindow.min).toISOString(),
         dataEarliest: new Date(rightCoverage.latestEarliest).toISOString(),
         timeOffset: timeOffset.value
@@ -10851,7 +10869,7 @@
     if (currentIndex > 0) {
       const newTimebase = timebaseProgression[currentIndex - 1]
 
-      // 🔧 FIX: Timebase only controls X-axis range, not real-time mode
+      // FIX: Timebase only controls X-axis range, not real-time mode
       // Real-time updates continue regardless of timebase selection
       // Just change timebase - let the watcher handle data loading with smart detection
       timeBase.value = newTimebase
@@ -10859,7 +10877,7 @@
         { previousTimebase: timebaseProgression[currentIndex], newTimebase, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
       ])
 
-      LogUtil.Info(`🔍 Zoom In: Changed timebase to ${newTimebase}`, {
+      LogUtil.Info(`Zoom In: Changed timebase to ${newTimebase}`, {
         autoScrollState: isRealTime.value,
         timeOffset: timeOffset.value,
         note: 'Timebase watcher will handle data loading'
@@ -10878,7 +10896,7 @@
     if (currentIndex >= 0 && currentIndex < timebaseProgression.length - 1) {
       const newTimebase = timebaseProgression[currentIndex + 1]
 
-      // 🔧 FIX: Timebase only controls X-axis range, not real-time mode
+      // FIX: Timebase only controls X-axis range, not real-time mode
       // Real-time updates continue regardless of timebase selection
       // Just change timebase - let the watcher handle data loading with smart detection
       timeBase.value = newTimebase
@@ -10886,7 +10904,7 @@
         { previousTimebase: timebaseProgression[currentIndex], newTimebase, timeOffset: timeOffset.value, isRealTime: isRealTime.value },
       ])
 
-      LogUtil.Info(`🔍 Zoom Out: Changed timebase to ${newTimebase}`, {
+      LogUtil.Info(`Zoom Out: Changed timebase to ${newTimebase}`, {
         autoScrollState: isRealTime.value,
         timeOffset: timeOffset.value,
         note: 'Timebase watcher will handle data loading'
@@ -10895,7 +10913,7 @@
   }
 
   const resetToDefaultTimebase = () => {
-    LogUtil.Info('🔄 Reset button clicked - preparing to reset to default timebase', {
+    LogUtil.Info('Reset button clicked - preparing to reset to default timebase', {
       currentTimeBase: timeBase.value,
       currentOffset: timeOffset.value,
       currentAutoScroll: isRealTime.value
@@ -10904,14 +10922,14 @@
     // Reset states first
     normalizeCustomModeForPresetSelection('5m')
     timeOffset.value = 0 // Reset time navigation as well
-    isRealTime.value = true // 🆕 FIX: Reset button should always turn Auto Scroll ON
+    isRealTime.value = true // FIX: Reset button should always turn Auto Scroll ON
 
     // Use nextTick to ensure DOM is stable before changing timeBase
     nextTick(() => {
       timeBase.value = '5m'
       ensureRealtimePollingActive('reset to default timebase')
 
-      LogUtil.Info('🔄 Reset to default timebase (5m) with Auto Scroll ON', {
+      LogUtil.Info('Reset to default timebase (5m) with Auto Scroll ON', {
         autoScrollState: isRealTime.value,
         note: 'Reset button always enables Auto Scroll for 5m timebase. Data reload handled by timeBase watch.'
       })
@@ -10925,7 +10943,7 @@
     const previousView = currentView.value
     currentView.value = viewNumber
 
-    LogUtil.Info(`🔄 Set View: Switching to View ${viewNumber}`, {
+    LogUtil.Info(`Set View: Switching to View ${viewNumber}`, {
       previousView,
       newView: viewNumber,
       viewType: viewNumber === 1 ? 'SHOW_ALL' : 'USER_SELECTED',
@@ -10955,7 +10973,7 @@
       // Never re-read viewSelections here: it can be stale and causes cross-panel interference.
       const trackedItems = viewTrackedSeries.value[viewNumber] || []
 
-      LogUtil.Info(`🔍 Set View: Applying View ${viewNumber} from viewTrackedSeries`, {
+      LogUtil.Info(`Set View: Applying View ${viewNumber} from viewTrackedSeries`, {
         viewNumber,
         trackedCount: trackedItems.length,
         trackedItems
@@ -10966,7 +10984,7 @@
         series.visible = trackedItems.includes(series.key)
 
         if (wasVisible !== series.visible) {
-          LogUtil.Debug(`👁Set View: Series visibility changed`, {
+          LogUtil.Debug(`Set View: Series visibility changed`, {
             seriesName: series.name,
             from: wasVisible,
             to: series.visible,
@@ -11045,7 +11063,7 @@
     }
   }
 
-  // Item tracking functions for View 2 & 3 - 🐛 FIXED: Made async to prevent race conditions
+  // Item tracking functions for View 2 & 3 - FIXED: Made async to prevent race conditions
   const toggleItemTracking = async (seriesName: string) => {
     if (isSavingSelections.value) {
       LogUtil.Info(`Toggle Item Tracking: Already saving, skipping duplicate request for "${seriesName}"`)
@@ -11056,7 +11074,7 @@
     const wasTracked = currentTracked.includes(seriesName)
     const series = dataSeries.value.find(s => s.key === seriesName)
 
-    LogUtil.Info(`🎯 Toggle Item Tracking: Starting for "${seriesName}"`, {
+    LogUtil.Info(`Toggle Item Tracking: Starting for "${seriesName}"`, {
       seriesName,
       currentView: currentView.value,
       wasTracked,
@@ -11097,8 +11115,8 @@
         changeDelta: wasTracked ? -1 : +1
       })
 
-      // 🐛 FIXED: Wait for database save to complete before updating view
-      LogUtil.Info(`💾 Toggle Item Tracking: Saving to database first...`, {
+      // FIXED: Wait for database save to complete before updating view
+      LogUtil.Info(`Toggle Item Tracking: Saving to database first...`, {
         seriesName,
         currentView: currentView.value,
         waitingForDbSave: true
@@ -11130,7 +11148,7 @@
       isSavingSelections.value = false
     }
 
-    LogUtil.Info(`🔄 Toggle Item Tracking: Complete for "${seriesName}"`, {
+    LogUtil.Info(`Toggle Item Tracking: Complete for "${seriesName}"`, {
       finalState: {
         viewNumber: currentView.value,
         totalTracked: afterTracked.length,
@@ -11144,7 +11162,7 @@
 
     const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
 
-    LogUtil.Info(`🗑Clear All Tracking: Clearing all selections for View ${currentView.value}`, {
+    LogUtil.Info(`Clear All Tracking: Clearing all selections for View ${currentView.value}`, {
       currentView: currentView.value,
       beforeCount,
       action: 'CLEAR_ALL',
@@ -11188,7 +11206,7 @@
     const allSeriesKeys = dataSeries.value.map(series => series.key)
     const beforeCount = (viewTrackedSeries.value[currentView.value] || []).length
 
-    LogUtil.Info(`📋 Select All Items: Selecting all available items for View ${currentView.value}`, {
+    LogUtil.Info(`Select All Items: Selecting all available items for View ${currentView.value}`, {
       currentView: currentView.value,
       beforeCount,
       afterCount: allSeriesKeys.length,
@@ -11243,7 +11261,7 @@
   const applyAndCloseDrawer = () => {
     const selectedItems = viewTrackedSeries.value[currentView.value] || []
 
-    LogUtil.Info(`🎯 Apply Selection: View ${currentView.value} drawer closing`, {
+    LogUtil.Info(`Apply Selection: View ${currentView.value} drawer closing`, {
       currentView: currentView.value,
       selectedItemsCount: selectedItems.length,
       selectedItems: selectedItems,
@@ -11260,16 +11278,16 @@
     })
   }
 
-  // ⌨️ Toggle keyboard shortcuts on/off
+  // Toggle keyboard shortcuts on/off
   const toggleKeyboard = () => {
     keyboardEnabled.value = !keyboardEnabled.value
-    LogUtil.Info(`⌨️ Keyboard shortcuts ${keyboardEnabled.value ? 'enabled' : 'disabled'}`, {
+    LogUtil.Info(`Keyboard shortcuts ${keyboardEnabled.value ? 'enabled' : 'disabled'}`, {
       keyboardEnabled: keyboardEnabled.value,
       method: 'CLICK_TOGGLE'
     })
   }
 
-  // ⌨️ Keyboard Navigation Handler
+  // Keyboard Navigation Handler
   const handleKeydown = async (event: KeyboardEvent) => {
     // Arrow keys and mouse wheel always work, regardless of keyboardEnabled
     const isNavigationKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.code)
@@ -11305,7 +11323,7 @@
       }, 500)
     }
 
-    LogUtil.Debug(`⌨️ Keyboard: Key pressed`, {
+    LogUtil.Debug(`Keyboard: Key pressed`, {
       code: event.code,
       key: event.key,
       keyboardEnabled: keyboardEnabled.value,
@@ -11320,27 +11338,27 @@
           keyboardEnabled.value = false
           selectedItemIndex.value = -1 // Also clear any selection
           lastKeyboardAction.value = null
-          LogUtil.Info('⌨️ Keyboard: Disabled via ESC', {
+          LogUtil.Info('Keyboard: Disabled via ESC', {
             action: 'DISABLE_KEYBOARD'
           })
         }
         // 2. If keyboard disabled, check for open popups to close
         else if (customDateModalVisible.value) {
           customDateModalVisible.value = false
-          LogUtil.Info('⌨️ Keyboard: Custom Date Modal closed via ESC', {
+          LogUtil.Info('Keyboard: Custom Date Modal closed via ESC', {
             action: 'CLOSE_DATE_MODAL'
           })
         }
         else if (showItemSelector.value) {
           showItemSelector.value = false
-          LogUtil.Info('⌨️ Keyboard: Item Selection Drawer closed via ESC', {
+          LogUtil.Info('Keyboard: Item Selection Drawer closed via ESC', {
             action: 'CLOSE_ITEM_DRAWER'
           })
         }
         // 3. If no popups open and keyboard disabled, enable keyboard shortcuts
         else {
           keyboardEnabled.value = true
-          LogUtil.Info('⌨️ Keyboard: Enabled via ESC', {
+          LogUtil.Info('Keyboard: Enabled via ESC', {
             action: 'ENABLE_KEYBOARD'
           })
         }
@@ -11349,7 +11367,7 @@
       case 'ArrowLeft': // Scroll left through time history
         if (!isRealTime.value) {
           moveTimeLeft()
-          LogUtil.Info(`⌨️ Keyboard: Arrow Left (Scroll Left)`, {
+          LogUtil.Info(`Keyboard: Arrow Left (Scroll Left)`, {
             action: 'SCROLL_TIME_LEFT'
           })
         }
@@ -11358,7 +11376,7 @@
       case 'ArrowRight': // Scroll right through time history
         if (!isRealTime.value) {
           moveTimeRight()
-          LogUtil.Info(`⌨️ Keyboard: Arrow Right (Scroll Right)`, {
+          LogUtil.Info(`Keyboard: Arrow Right (Scroll Right)`, {
             action: 'SCROLL_TIME_RIGHT'
           })
         }
@@ -11372,7 +11390,7 @@
               ? displayedSeries.value.length - 1
               : selectedItemIndex.value - 1
 
-            LogUtil.Info(`⌨️ Keyboard: Ctrl + Up (Navigate Up)`, {
+            LogUtil.Info(`Keyboard: Ctrl + Up (Navigate Up)`, {
               selectedIndex: selectedItemIndex.value,
               selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
             })
@@ -11381,12 +11399,12 @@
           // Plain Up: Zoom In
           if (canZoomIn.value) {
             zoomIn()
-            LogUtil.Info(`⌨️ Keyboard: Arrow Up (Zoom In)`, {
+            LogUtil.Info(`Keyboard: Arrow Up (Zoom In)`, {
               newTimebase: timeBase.value,
               canZoomInMore: canZoomIn.value
             })
           } else {
-            LogUtil.Info(`⌨️ Keyboard: Arrow Up blocked (already at minimum timebase)`, {
+            LogUtil.Info(`Keyboard: Arrow Up blocked (already at minimum timebase)`, {
               currentTimebase: timeBase.value
             })
           }
@@ -11401,7 +11419,7 @@
               ? 0
               : selectedItemIndex.value + 1
 
-            LogUtil.Info(`⌨️ Keyboard: Ctrl + Down (Navigate Down)`, {
+            LogUtil.Info(`Keyboard: Ctrl + Down (Navigate Down)`, {
               selectedIndex: selectedItemIndex.value,
               selectedItem: displayedSeries.value[selectedItemIndex.value]?.name
             })
@@ -11410,12 +11428,12 @@
           // Plain Down: Zoom Out
           if (canZoomOut.value) {
             zoomOut()
-            LogUtil.Info(`⌨️ Keyboard: Arrow Down (Zoom Out)`, {
+            LogUtil.Info(`Keyboard: Arrow Down (Zoom Out)`, {
               newTimebase: timeBase.value,
               canZoomOutMore: canZoomOut.value
             })
           } else {
-            LogUtil.Info(`⌨️ Keyboard: Arrow Down blocked (already at maximum timebase)`, {
+            LogUtil.Info(`Keyboard: Arrow Down blocked (already at maximum timebase)`, {
               currentTimebase: timeBase.value
             })
           }
@@ -11429,7 +11447,7 @@
 
           if (masterSeriesIndex >= 0) {
             toggleSeriesVisibility(masterSeriesIndex, null)
-            LogUtil.Info(`⌨️ Keyboard: Enter Toggle`, {
+            LogUtil.Info(`Keyboard: Enter Toggle`, {
               selectedIndex: selectedItemIndex.value,
               selectedItem: selectedSeries.name,
               nowVisible: dataSeries.value[masterSeriesIndex]?.visible
@@ -11440,7 +11458,7 @@
 
       default:
         // Handle item selection keys (1-9, A-E) - for left panel series
-        LogUtil.Debug(`⌨️ Keyboard: Checking default case for key "${event.code}"`, {
+        LogUtil.Debug(`Keyboard: Checking default case for key "${event.code}"`, {
           eventCode: event.code,
           hasMapping: !!keyboardItemMappings.value[event.code],
           allMappings: Object.keys(keyboardItemMappings.value),
@@ -11465,7 +11483,7 @@
               lastKeyboardAction.value = null
             }, 300)
 
-            LogUtil.Info(`⌨️ Keyboard: Toggled series visibility "${mapping.display}"`, {
+            LogUtil.Info(`Keyboard: Toggled series visibility "${mapping.display}"`, {
               key: mapping.display,
               itemName: mapping.item,
               itemIndex: mapping.index,
@@ -11474,14 +11492,14 @@
               nowVisible: dataSeries.value[masterSeriesIndex]?.visible
             })
           } else {
-            LogUtil.Warn(`⌨️ Keyboard: Series not found for key "${mapping.display}"`, {
+            LogUtil.Warn(`Keyboard: Series not found for key "${mapping.display}"`, {
               key: mapping.display,
               itemName: mapping.item,
               availableSeries: dataSeries.value.map(s => s.name)
             })
           }
         } else {
-          LogUtil.Debug(`⌨️ Keyboard: No mapping found for key "${event.code}"`, {
+          LogUtil.Debug(`Keyboard: No mapping found for key "${event.code}"`, {
             eventCode: event.code,
             availableMappings: Object.keys(keyboardItemMappings.value)
           })
@@ -11490,7 +11508,7 @@
     }
   }
 
-  // ⌨️ Helper functions for keyboard shortcuts display
+  // Helper functions for keyboard shortcuts display
   const getKeyboardShortcut = (seriesName: string): string | null => {
     const mapping = Object.values(keyboardItemMappings.value).find(m => m.item === seriesName)
     return mapping?.display || null
@@ -11509,7 +11527,7 @@
     const currentTracked = viewTrackedSeries.value[currentView.value] || []
     const wasTracked = currentTracked.includes(seriesName)
 
-    LogUtil.Info(`🗑Remove From Tracking: Removing "${seriesName}" from View ${currentView.value}`, {
+    LogUtil.Info(`Remove From Tracking: Removing "${seriesName}" from View ${currentView.value}`, {
       seriesName,
       currentView: currentView.value,
       wasTracked,
@@ -11545,14 +11563,14 @@
         })
       }
     } else {
-      LogUtil.Info(`ℹ️ Remove From Tracking: Item "${seriesName}" was not being tracked`)
+      LogUtil.Info(`ℹRemove From Tracking: Item "${seriesName}" was not being tracked`)
     }
   }
 
   const saveViewTracking = async (viewNumber: number, trackedSeries: string[]) => {
     const saveStartTime = Date.now()
 
-    LogUtil.Info(`💾 Save View Tracking: Starting save process`, {
+    LogUtil.Info(`Save View Tracking: Starting save process`, {
       viewNumber,
       trackedSeriesCount: trackedSeries.length,
       trackedSeries,
@@ -11562,8 +11580,8 @@
 
     try {
       if (viewNumber >= 2 && viewNumber <= 3) {
-        // 🆕 FFI Integration: Save to database for Views 2/3
-        LogUtil.Info(`🔄 Save View Tracking: Delegating to FFI save for View ${viewNumber}`)
+        // FFI Integration: Save to database for Views 2/3
+        LogUtil.Info(`Save View Tracking: Delegating to FFI save for View ${viewNumber}`)
 
         await saveFFIViewSelections(viewNumber)
 
@@ -11577,7 +11595,7 @@
         })
       } else {
         // View 1: No persistence needed (always shows all items)
-        LogUtil.Info(`📋 Save View Tracking: View ${viewNumber} skipped (no persistence needed)`, {
+        LogUtil.Info(`Save View Tracking: View ${viewNumber} skipped (no persistence needed)`, {
           viewNumber,
           reason: 'VIEW_1_SHOWS_ALL_ITEMS',
           trackedSeriesIgnored: trackedSeries.length
@@ -11598,9 +11616,9 @@
 
   const loadViewTracking = async () => {
     try {
-      // 🆕 FFI Integration: Load from database happens in initializeWithCompleteFFI()
+      // FFI Integration: Load from database happens in initializeWithCompleteFFI()
       // This function is kept for compatibility but the real loading happens in FFI init
-      LogUtil.Info('📋 View tracking loaded via FFI integration during initialization')
+      LogUtil.Info('View tracking loaded via FFI integration during initialization')
     } catch (error) {
       LogUtil.Error('Failed to load view tracking:', error)
     }
@@ -11648,13 +11666,13 @@
         await initializeData()
       }
 
-      // 🔥 FIX: Restart realtime updates if in realtime mode after timebase change.
+      // FIX: Restart realtime updates if in realtime mode after timebase change.
       // Recover monitor config first because custom-range flows may temporarily leave it unset.
       if (isRealTime.value) {
         let activeMonitorConfig = monitorConfig.value
 
         if (!activeMonitorConfig) {
-          LogUtil.Warn('⚠️ onTimeBaseChange: monitorConfig missing after timebase switch, attempting recovery')
+          LogUtil.Warn('onTimeBaseChange: monitorConfig missing after timebase switch, attempting recovery')
 
           activeMonitorConfig = await getMonitorConfigFromT3000Data()
 
@@ -11664,18 +11682,18 @@
 
           if (activeMonitorConfig) {
             monitorConfig.value = activeMonitorConfig
-            LogUtil.Info('✅ onTimeBaseChange: monitorConfig recovered for realtime restart', {
+            LogUtil.Info('onTimeBaseChange: monitorConfig recovered for realtime restart', {
               pid: activeMonitorConfig.pid,
               inputItems: activeMonitorConfig.inputItems?.length || 0,
               dataIntervalMs: activeMonitorConfig.dataIntervalMs
             })
           } else {
-            LogUtil.Warn('⚠️ onTimeBaseChange: monitorConfig recovery failed; skipping realtime restart')
+            LogUtil.Warn('onTimeBaseChange: monitorConfig recovery failed; skipping realtime restart')
           }
         }
 
         if (monitorConfig.value) {
-          LogUtil.Info('🔄 Restarting realtime updates after timebase change')
+          LogUtil.Info('Restarting realtime updates after timebase change')
           startRealTimeUpdates()
         }
       }
@@ -11801,7 +11819,7 @@
       customStartDate.value = startDateTime
       customEndDate.value = endDateTime
 
-      LogUtil.Info('📅 Custom Date Range Applied:', {
+      LogUtil.Info('Custom Date Range Applied:', {
         startDate: customStartDate.value.format('YYYY-MM-DD HH:mm:ss'),
         endDate: customEndDate.value.format('YYYY-MM-DD HH:mm:ss'),
         startTimestamp: customStartDate.value.valueOf(),
@@ -11814,7 +11832,7 @@
       timeBase.value = 'custom'
       isRealTime.value = false // Disable Auto Scroll for custom date ranges (historical data)
       customDateModalVisible.value = false
-      saveViewState() // 🆕 Persist custom date range to localStorage
+      saveViewState() // Persist custom date range to localStorage
       onCustomDateChange()
     } else {
       LogUtil.Warn('Custom date range incomplete - missing start or end date/time')
@@ -11874,7 +11892,7 @@
   }
 
   const onRealTimeToggle = (checked: boolean) => {
-    LogUtil.Info(`🔄 TrendLogModal: Auto Scroll toggle - ${checked ? 'ON' : 'OFF'}`, {
+    LogUtil.Info(`TrendLogModal: Auto Scroll toggle - ${checked ? 'ON' : 'OFF'}`, {
       currentDataSeriesLength: dataSeries.value.length,
       hasRealData: !!monitorConfig.value?.inputItems?.length,
       currentTimeBase: timeBase.value
@@ -11885,7 +11903,7 @@
 
       // If currently viewing custom date range, reset to 5 minutes timebase
       if (timeBase.value === 'custom') {
-        LogUtil.Info('🔄 Auto Scroll ON: Resetting from custom timebase to 5 minutes', {
+        LogUtil.Info('Auto Scroll ON: Resetting from custom timebase to 5 minutes', {
           previousTimeBase: timeBase.value,
           newTimeBase: '5m'
         })
@@ -11898,7 +11916,7 @@
     } else {
       // AUTO SCROLL OFF: Show historical data only (stop real-time updates)
       stopRealTimeUpdates()
-      LogUtil.Info('📊 TrendLogModal: Auto Scroll OFF - switching to historical data only')
+      LogUtil.Info('TrendLogModal: Auto Scroll OFF - switching to historical data only')
       // Keep existing data and configuration, just stop real-time polling
       // Historical data will remain visible
       initializeHistoricalData()
@@ -11906,7 +11924,7 @@
   }
 
   const initializeHistoricalData = async () => {
-    LogUtil.Info('📚 TLChart: Loading historical data only (Auto Scroll disabled)', {
+    LogUtil.Info('TLChart: Loading historical data only (Auto Scroll disabled)', {
       currentDataSeriesLength: dataSeries.value.length,
       hasMonitorConfig: !!monitorConfig.value,
       timeBase: timeBase.value
@@ -11918,7 +11936,7 @@
         startLoading()
 
         // Load historical data from database only
-        LogUtil.Info('📚 Loading historical data from database for current timebase')
+        LogUtil.Info('Loading historical data from database for current timebase')
         await loadHistoricalDataFromDatabase()
 
         // Update charts with historical data
@@ -11941,7 +11959,7 @@
         stopLoading()
       }
     } else {
-      LogUtil.Info('📊 No monitor configuration available for historical data')
+      LogUtil.Info('No monitor configuration available for historical data')
       const hasExistingData = dataSeries.value.some(s => s.data && s.data.length > 0)
       hasConnectionError.value = !hasExistingData
       if (!hasExistingData) {
@@ -11993,7 +12011,7 @@
   }
 
   const startRealTimeUpdates = () => {
-    LogUtil.Info('🔥 startRealTimeUpdates CALLED - Current interval ID:', realtimeInterval)
+    LogUtil.Info('startRealTimeUpdates CALLED - Current interval ID:', realtimeInterval)
 
     // Use monitor config data interval if available, otherwise fallback to default
     const monitorConfigData = monitorConfig.value
@@ -12004,7 +12022,7 @@
     // Avoid restart churn when callers invoke startRealTimeUpdates repeatedly
     // with the same effective interval during initialization.
     if (realtimeInterval && realtimeIntervalMs === dataInterval) {
-      LogUtil.Debug('⏭️ startRealTimeUpdates skipped - existing interval already matches requested cadence', {
+      LogUtil.Debug('startRealTimeUpdates skipped - existing interval already matches requested cadence', {
         intervalMs: dataInterval,
         intervalId: realtimeInterval
       })
@@ -12012,7 +12030,7 @@
     }
 
     if (realtimeInterval) {
-      LogUtil.Info('⚠️ Clearing existing interval:', realtimeInterval)
+      LogUtil.Info('Clearing existing interval:', realtimeInterval)
       clearInterval(realtimeInterval)
       realtimeInterval = null
     }
@@ -12029,12 +12047,12 @@
 
     realtimeInterval = setInterval(addRealtimeDataPoint, dataInterval)
     realtimeIntervalMs = dataInterval
-    LogUtil.Info('✅Interval created - ID:', realtimeInterval, '- fires every', dataInterval / 1000, 'seconds')
+    LogUtil.Info('Interval created - ID:', realtimeInterval, '- fires every', dataInterval / 1000, 'seconds')
   }
 
   const stopRealTimeUpdates = () => {
     if (realtimeInterval) {
-      LogUtil.Debug(`🛑 Stopping real-time updates for instance: ${instanceId}`)
+      LogUtil.Debug(`Stopping real-time updates for instance: ${instanceId}`)
       clearInterval(realtimeInterval)
       realtimeInterval = null
     }
@@ -12328,7 +12346,7 @@
       return points
     }
 
-    LogUtil.Debug('🔍 CUSTOM DATE PAYLOAD - Extracting points from dataSeries:', {
+    LogUtil.Debug('CUSTOM DATE PAYLOAD - Extracting points from dataSeries:', {
       totalSeries: dataSeries.value.length,
       seriesTypes: dataSeries.value.map(s => ({ name: s.name, itemType: s.itemType, unitType: s.unitType }))
     })
@@ -12336,7 +12354,7 @@
     LogUtil.Debug('= TLChart DataFlow: Extracting 14 panel items from series data')
 
     // Extract points from current series configuration
-    // 🔄 REFACTORED: Use same approach as loadHistoricalDataFromDatabase for consistency
+    // REFACTORED: Use same approach as loadHistoricalDataFromDatabase for consistency
     const deviceParams = extractDeviceParameters()
 
     dataSeries.value.forEach((series, index) => {
@@ -12353,7 +12371,7 @@
             panel_id: series.panelId || deviceParams.panel_id
           })
 
-          LogUtil.Debug('🔍Extracted point (method 1 - direct):', {
+          LogUtil.Debug('Extracted point (method 1 - direct):', {
             name: series.name,
             pointType: series.pointType,
             pointNumber: series.pointNumber,
@@ -12362,7 +12380,7 @@
         }
         // Method 2: Fallback to parsing itemType if pointType/pointNumber not available
         else {
-          LogUtil.Debug('⚠️ Series missing pointType/pointNumber, using itemType fallback:', series.name)
+          LogUtil.Debug('Series missing pointType/pointNumber, using itemType fallback:', series.name)
           const itemType = series.itemType || `${deviceParams.panel_id}VAR${index + 1}`
           const panelMatch = itemType.match(/^(\d+)/)
           const panelId = panelMatch ? parseInt(panelMatch[1]) : deviceParams.panel_id || 2
@@ -12416,7 +12434,7 @@
             panel_id: panelId
           })
 
-          LogUtil.Debug('🔍Extracted point (method 2 - itemType):', {
+          LogUtil.Debug('Extracted point (method 2 - itemType):', {
             name: series.name,
             itemType: itemType,
             result: { point_id: pointId, point_type: pointType, point_index: pointIndex }
@@ -12444,7 +12462,7 @@
     return points
   }
 
-  // 🆕 PERFORMANCE: Debounced wrapper to prevent rapid successive API calls
+  // PERFORMANCE: Debounced wrapper to prevent rapid successive API calls
   const debouncedFetchHistoricalData = (deviceParams: any, timeRanges: any) => {
     // Cancel any pending debounced fetch
     if (historyFetchDebounceTimeout) {
@@ -12491,7 +12509,7 @@
       const calculatedLimit = timeRanges.expectedDataPoints * pointCount * safetyMultiplier
       const finalLimit = Math.min(calculatedLimit, maxTotalRecords)
 
-      LogUtil.Debug('📊 TLChart DataFlow: Calculated query limit to ensure complete data:', {
+      LogUtil.Debug('TLChart DataFlow: Calculated query limit to ensure complete data:', {
         pointCount,
         expectedDataPointsPerPoint: timeRanges.expectedDataPoints,
         safetyMultiplier,
@@ -12540,7 +12558,7 @@
           pointDistribution.set(key, (pointDistribution.get(key) || 0) + 1)
         })
 
-        LogUtil.Debug('📊 TLChart DataFlow: Data distribution across points:', {
+        LogUtil.Debug('TLChart DataFlow: Data distribution across points:', {
           totalRecords: historyResponse.data.length,
           uniquePoints: pointDistribution.size,
           recordsPerPoint: Array.from(pointDistribution.entries()).map(([point, count]) => ({
@@ -12864,28 +12882,28 @@
   const initializeWithCompleteFFI = async () => {
     const { sn, panel_id, trendlog_id } = extractQueryParams()
 
-    // 🔥 DEBUG: Log extracted parameters
-    // LogUtil.Debug('🔥 FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
+    // DEBUG: Log extracted parameters
+    // LogUtil.Debug('FFI DEBUG: Extracted parameters', { sn, panel_id, trendlog_id, route_query: route.query })
 
     if (!sn || trendlog_id === null || trendlog_id === undefined) {
       LogUtil.Warn('FFI Initialization: Missing required parameters', { sn, panel_id, trendlog_id })
-      LogUtil.Debug('🔥 FFI DEBUG: Early return due to missing parameters')
+      LogUtil.Debug('FFI DEBUG: Early return due to missing parameters')
       return
     }
 
-    // LogUtil.Debug('🔥 FFI DEBUG: Parameters validation passed, proceeding with FFI call')
+    // LogUtil.Debug('FFI DEBUG: Parameters validation passed, proceeding with FFI call')
 
     try {
       ffiSyncStatus.value.syncing = true
       ffiSyncStatus.value.error = null
 
-      LogUtil.Info('🔄 FFI: Starting complete TrendLog sync', {
+      LogUtil.Info('FFI: Starting complete TrendLog sync', {
         device_id: sn,
         trendlog_id: trendlog_id
       })
 
       // Two-step FFI approach: 1) Create initial record (fast), 2) FFI sync (slower)
-      // LogUtil.Debug('🔥 FFI DEBUG: Starting two-step FFI initialization', {
+      // LogUtil.Debug('FFI DEBUG: Starting two-step FFI initialization', {
       //   device_id: sn,
       //   panel_id: panel_id,
       //   trendlog_id: trendlog_id,
@@ -12894,7 +12912,7 @@
 
       const completeResult = await trendlogAPI.initializeCompleteFFI(sn, panel_id, trendlog_id.toString(), chartTitle.value, _initFlowId ?? undefined)
 
-      // LogUtil.Debug('🔥 FFI DEBUG: Complete FFI result received', {
+      // LogUtil.Debug('FFI DEBUG: Complete FFI result received', {
       //   completeResult
       // })
 
@@ -12924,7 +12942,7 @@
       ffiSyncStatus.value.error = error.message
 
       // Continue with existing logic as fallback
-      LogUtil.Info('🔄 FFI: Falling back to existing logic')
+      LogUtil.Info('FFI: Falling back to existing logic')
       return null
     } finally {
       ffiSyncStatus.value.syncing = false
@@ -12938,7 +12956,7 @@
   const loadFFIViewSelections = async (trendlogId: string, serialNumber?: number, panelId?: number) => {
     const loadStartTime = Date.now()
 
-    LogUtil.Info(`🔄 FFI Load API: Starting to load selections for Views 2/3`, {
+    LogUtil.Info(`FFI Load API: Starting to load selections for Views 2/3`, {
       trendlogId,
       timestamp: new Date().toISOString()
     })
@@ -12948,7 +12966,7 @@
         const viewStartTime = Date.now()
         const apiUrl = `/api/t3_device/trendlogs/${trendlogId}/views/${viewNum}/selections`
 
-        LogUtil.Info(`📡 FFI Load API: Making GET request for View ${viewNum}`, {
+        LogUtil.Info(`FFI Load API: Making GET request for View ${viewNum}`, {
           url: apiUrl,
           method: 'GET',
           viewNumber: viewNum,
@@ -12959,7 +12977,7 @@
         const selections = await trendlogAPI.loadViewSelections(trendlogId, viewNum, serialNumber, panelId)
         const responseTime = Date.now() - viewStartTime
 
-        LogUtil.Info(`📈 FFI Load API: Response received for View ${viewNum}`, {
+        LogUtil.Info(`FFI Load API: Response received for View ${viewNum}`, {
           success: !!selections,
           selectionsCount: selections?.length || 0,
           responseTime: `${responseTime}ms`,
@@ -12969,7 +12987,7 @@
         if (selections) {
           viewSelections.value.set(viewNum, selections)
 
-          LogUtil.Info(`📋 FFI Load API: Selections data received for View ${viewNum}`, {
+          LogUtil.Info(`FFI Load API: Selections data received for View ${viewNum}`, {
             selectionsCount: selections.length,
             rawSelections: selections,
             responseTime: `${responseTime}ms`
@@ -12979,7 +12997,7 @@
           const trackedNames = selections
             .filter(s => s.is_selected)
             .map(selection => {
-              LogUtil.Debug(`🔍 FFI Load: Processing selection`, {
+              LogUtil.Debug(`FFI Load: Processing selection`, {
                 selection,
                 lookingFor: {
                   point_type: selection.point_type,
@@ -13003,7 +13021,7 @@
                 return matchingSeries.key
               }
 
-              LogUtil.Warn(`⚠️ FFI Load: No series found for selection`, {
+              LogUtil.Warn(`FFI Load: No series found for selection`, {
                 point_type: selection.point_type,
                 point_index: selection.point_index,
                 point_label: selection.point_label
@@ -13028,7 +13046,7 @@
             responseTime: `${responseTime}ms`
           })
         } else {
-          LogUtil.Info(`📋 FFI Load API: No existing selections for View ${viewNum} (expected for new views)`, {
+          LogUtil.Info(`FFI Load API: No existing selections for View ${viewNum} (expected for new views)`, {
             responseTime: `${responseTime}ms`,
             trendlogId: trendlogId,
             viewNumber: viewNum
@@ -13054,7 +13072,7 @@
         // Prioritize View 2 if it has data, otherwise use View 3
         const targetView = view2HasData ? 2 : 3
 
-        LogUtil.Info(`🔄 Auto-switching to View ${targetView} (has ${viewTrackedSeries.value[targetView]?.length} saved selections)`)
+        LogUtil.Info(`Auto-switching to View ${targetView} (has ${viewTrackedSeries.value[targetView]?.length} saved selections)`)
 
         // Switch to the view with data
         setView(targetView)
@@ -13076,14 +13094,14 @@
    * Save persistent view selections for Views 2/3
    */
   const saveFFIViewSelections = async (viewNumber: number) => {
-    LogUtil.Info(`🔧 FFI Save DEBUG: Function called`, {
+    LogUtil.Info(`FFI Save DEBUG: Function called`, {
       viewNumber,
       isValidView: viewNumber >= 2 && viewNumber <= 3,
       timestamp: new Date().toISOString()
     })
 
     if (viewNumber < 2 || viewNumber > 3) {
-      LogUtil.Debug(`🚫 FFI Save: Skipping View ${viewNumber} (only Views 2/3 supported)`)
+      LogUtil.Debug(`FFI Save: Skipping View ${viewNumber} (only Views 2/3 supported)`)
       return
     }
 
@@ -13091,7 +13109,7 @@
 
     try {
       const extractedParams = extractQueryParams()
-      LogUtil.Info(`🔧 FFI Save DEBUG: Extracted params`, {
+      LogUtil.Info(`FFI Save DEBUG: Extracted params`, {
         extractedParams,
         hasTrendlogId: !!extractedParams.trendlog_id,
         routeQuery: route.query
@@ -13110,7 +13128,7 @@
       }
 
       if (!trendlogId) {
-        LogUtil.Warn(`⚠️ FFI Save: No trendlog_id found for View ${viewNumber} - cannot save selections`, {
+        LogUtil.Warn(`FFI Save: No trendlog_id found for View ${viewNumber} - cannot save selections`, {
           extractedParams,
           routeQuery: route.query,
           propsItemData: props.itemData?.t3Entry || 'not available',
@@ -13120,7 +13138,7 @@
       }
       const trackedNames = viewTrackedSeries.value[viewNumber] || []
 
-      LogUtil.Info(`🔄 FFI Save API: Starting View ${viewNumber} save process`, {
+      LogUtil.Info(`FFI Save API: Starting View ${viewNumber} save process`, {
         viewNumber,
         trendlogId,
         trackedNamesCount: trackedNames.length,
@@ -13129,8 +13147,8 @@
         timestamp: new Date().toISOString()
       })
 
-      // 🔧 DEBUG: Check available series vs tracked names
-      LogUtil.Info(`🔧 FFI Save DEBUG: Series analysis`, {
+      // DEBUG: Check available series vs tracked names
+      LogUtil.Info(`FFI Save DEBUG: Series analysis`, {
         trackedNames,
         totalDataSeries: dataSeries.value.length,
         availableSeriesNames: dataSeries.value.map(s => s.name),
@@ -13144,13 +13162,13 @@
 
       // Convert tracked series names to API format using actual series data
       const selections = trackedNames.map(seriesName => {
-        LogUtil.Info(`🔧 FFI Save DEBUG: Processing series "${seriesName}"`)
+        LogUtil.Info(`FFI Save DEBUG: Processing series "${seriesName}"`)
 
         // Find the actual series to get correct point type and number
         const series = dataSeries.value.find(s => s.key === seriesName)
 
         if (!series) {
-          LogUtil.Warn(`⚠️ FFI Save: Series not found for name: ${seriesName}`, {
+          LogUtil.Warn(`FFI Save: Series not found for name: ${seriesName}`, {
             seriesName,
             totalAvailableSeries: dataSeries.value.length,
             availableSeriesNames: dataSeries.value.map(s => s.name),
@@ -13167,7 +13185,7 @@
           is_selected: true
         }
 
-        LogUtil.Debug(`📝 FFI Save: Mapped series to selection`, {
+        LogUtil.Debug(`FFI Save: Mapped series to selection`, {
           seriesName,
           selection,
           originalSeries: {
@@ -13183,7 +13201,7 @@
       const requestBody = { selections }
       const apiUrl = `/api/t3_device/trendlogs/${trendlogId}/views/${viewNumber}/selections`
 
-      LogUtil.Info(`📡 FFI Save API: Making POST request`, {
+      LogUtil.Info(`FFI Save API: Making POST request`, {
         url: apiUrl,
         method: 'POST',
         selectionsCount: selections.length,
@@ -13196,7 +13214,7 @@
         }))
       })
 
-      LogUtil.Info(`🚀 FFI Save DEBUG: About to make API request via trendlogAPI`, {
+      LogUtil.Info(`FFI Save DEBUG: About to make API request via trendlogAPI`, {
         trendlogId,
         viewNumber,
         selectionsCount: selections.length,
@@ -13207,14 +13225,14 @@
       // Use trendlogAPI with device context - this handles the correct port (9103) and multi-device support
       const success = await trendlogAPI.saveViewSelections(trendlogId, viewNumber, selections, extractedParams.sn, extractedParams.panel_id)
 
-      LogUtil.Info(`🚀 FFI Save DEBUG: API request completed`, {
+      LogUtil.Info(`FFI Save DEBUG: API request completed`, {
         requestCompleted: true,
         success: success
       })
 
       const responseTime = Date.now() - startTime
 
-      LogUtil.Info(`📈 FFI Save API: Response received`, {
+      LogUtil.Info(`FFI Save API: Response received`, {
         success: success,
         responseTime: `${responseTime}ms`,
         usedTrendlogAPI: true
@@ -13279,7 +13297,7 @@
       trendlog_id = 0
     }
 
-    LogUtil.Info(`🔧 FFI Params: Extracted query parameters`, {
+    LogUtil.Info(`FFI Params: Extracted query parameters`, {
       sn,
       panel_id,
       trendlog_id,
@@ -13755,7 +13773,7 @@
 
   // Chart Options Methods
   const onChartOptionChange = () => {
-    // 🆕 Defer auto-refresh to prevent UI blocking
+    // Defer auto-refresh to prevent UI blocking
     requestAnimationFrame(() => {
       if (analogChartInstance) {
         destroyAllCharts()
@@ -13802,7 +13820,7 @@
 
   // Watchers
   watch([showGrid, showLegend, smoothLines, showPoints], () => {
-    // 🆕 Defer chart recreation to prevent UI blocking
+    // Defer chart recreation to prevent UI blocking
     requestAnimationFrame(() => {
       if (analogChartInstance) {
         destroyAllCharts()
@@ -13830,7 +13848,7 @@
 
   // Watch for changes in visible analog series to ensure proper chart updates
   watch(visibleAnalogSeries, async (newSeries, oldSeries) => {
-    // LogUtil.Debug(`📊 visibleAnalogSeries watcher triggered`, {
+    // LogUtil.Debug(`visibleAnalogSeries watcher triggered`, {
     //   oldCount: oldSeries?.length || 0,
     //   newCount: newSeries.length,
     //   oldSeries: oldSeries?.map(s => s.name) || [],
@@ -13844,7 +13862,7 @@
     const hasVisibleSeries = newSeries.length > 0
 
     if (hadVisibleSeries !== hasVisibleSeries || newSeries.length !== oldSeries?.length) {
-      // LogUtil.Debug(`📊 Analog series visibility changed - recreating chart (like digital charts)`, {
+      // LogUtil.Debug(`Analog series visibility changed - recreating chart (like digital charts)`, {
       //   hadVisibleSeries,
       //   hasVisibleSeries,
       //   needsUpdate: true
@@ -13857,7 +13875,7 @@
       if (analogChartInstance) {
         analogChartInstance.destroy()
         analogChartInstance = null
-        // LogUtil.Debug(`📊 Destroyed existing analog chart instance`)
+        // LogUtil.Debug(`Destroyed existing analog chart instance`)
       }
 
       if (hasVisibleSeries || visibleDigitalSeries.value.length > 0) {
@@ -13868,7 +13886,7 @@
       }
       // else: no visible series at all — leave chart destroyed
     } else {
-      // LogUtil.Debug(`📊 No significant change in analog series visibility - skipping update`)
+      // LogUtil.Debug(`No significant change in analog series visibility - skipping update`)
     }
   }, { deep: true })// Remove modal visibility watcher since this is now always visible as a component
 
@@ -13960,20 +13978,20 @@
       if (dbStatusTimer) clearInterval(dbStatusTimer)
       dbStatusTimer = setInterval(checkDbStatus, DB_STATUS_POLL_MS)
 
-      // 🆕 FORCE: Always reset history flag on mount to ensure data loads
+      // FORCE: Always reset history flag on mount to ensure data loads
       hasLoadedInitialHistory.value = false
 
-      // 🆕 FIX: Clear existing data on page refresh to force reload from database
+      // FIX: Clear existing data on page refresh to force reload from database
       const hasStaleData = dataSeries.value.length > 0 && dataSeries.value.some(s => s.data?.length > 0)
       if (hasStaleData) {
-        LogUtil.Info('🔄 TrendLogChart: Clearing stale data from previous session on page refresh', {
+        LogUtil.Info('TrendLogChart: Clearing stale data from previous session on page refresh', {
           existingSeriesCount: dataSeries.value.length,
           existingDataPoints: dataSeries.value.reduce((sum, s) => sum + (s.data?.length || 0), 0)
         })
         dataSeries.value = []
       }
 
-      LogUtil.Info('🚀 TrendLogChart: Starting component initialization', {
+      LogUtil.Info('TrendLogChart: Starting component initialization', {
         hasProps: !!props,
         hasItemData: !!props.itemData,
         itemDataId: (props.itemData as any)?.t3Entry?.id,
@@ -13984,11 +14002,11 @@
         timestamp: new Date().toISOString()
       })
 
-      // 🆕 CONTINUOUS MONITORING: Listen for page visibility changes to auto-backfill missing data
+      // CONTINUOUS MONITORING: Listen for page visibility changes to auto-backfill missing data
       document.addEventListener('visibilitychange', handleVisibilityChange)
       LogUtil.Info('TrendLogChart: Continuous monitoring enabled - will backfill data gaps on return')
 
-      // 🆕 DATABASE PARTITIONING: Ensure required partitions exist when trendlog opens
+      // DATABASE PARTITIONING: Ensure required partitions exist when trendlog opens
       LogUtil.Info('TrendLogChart: Checking database partitions...')
       try {
         const partitionResult = await DatabaseConfigAPI.ensurePartitionsOnTrendlogOpen()
@@ -14000,19 +14018,19 @@
         })
 
         if (partitionResult.partitions_created > 0) {
-          LogUtil.Info(`📦 Created ${partitionResult.partitions_created} new partitions and migrated ${partitionResult.data_migrated_mb} MB of data`)
+          LogUtil.Info(`Created ${partitionResult.partitions_created} new partitions and migrated ${partitionResult.data_migrated_mb} MB of data`)
         }
       } catch (error) {
-        LogUtil.Warn('⚠️ TrendLogChart: Partition check failed (continuing with normal initialization)', error)
+        LogUtil.Warn('TrendLogChart: Partition check failed (continuing with normal initialization)', error)
       }
 
-      // 🆕 STEP 0: Call Action 0 (GET_PANEL_DATA) to get MON config from device cache.
+      // STEP 0: Call Action 0 (GET_PANEL_DATA) to get MON config from device cache.
       // NOTE: Action 17 (BAC_AMON=9) was previously used here but proved unstable on first load
       // because sn/objectinstance data may not yet be available in panelsList at mount time.
       // Action 0 is simpler and more reliable for initial config resolution.
       // TODO: Revisit Action 17 once panelsList population timing is guaranteed before onMounted.
       LogUtil.Debug('══════════════════════════════════════════════════════════════')
-      LogUtil.Debug('🔄 STEP 0: Calling Action 0 (GET_PANEL_DATA) to get monitor configuration')
+      LogUtil.Debug('STEP 0: Calling Action 0 (GET_PANEL_DATA) to get monitor configuration')
       LogUtil.Debug('══════════════════════════════════════════════════════════════')
 
       const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : null
@@ -14061,7 +14079,7 @@
 
           // === DIAGNOSTIC: dump all MON items to help debug mismatches ===
           const allMonItems = action0Items.filter((d: any) => d.type === 'MON' || d.type?.toUpperCase?.() === 'MON')
-          LogUtil.Info('🔍 STEP 0: Action 0 MON items', {
+          LogUtil.Info('STEP 0: Action 0 MON items', {
             totalItems: action0Items.length,
             monCount: allMonItems.length,
             monItems: allMonItems.map((d: any) => ({ type: d.type, index: d.index, id: d.id, num_inputs: d.num_inputs })),
@@ -14076,7 +14094,7 @@
             )
           )
           if (monFromAction0) {
-            LogUtil.Info('✅ STEP 0 (Action 0): found MON config', {
+            LogUtil.Info('STEP 0 (Action 0): found MON config', {
               id: monFromAction0.id,
               index: monFromAction0.index,
               inputCount: monFromAction0.input?.length ?? 0
@@ -14107,14 +14125,14 @@
               num_inputs: urlInputForFresh.length
             } : monFromAction0
 
-            LogUtil.Info('🔧 STEP 0: freshMonitorData set', {
+            LogUtil.Info('STEP 0: freshMonitorData set', {
               source: urlInputForFresh?.length ? 'url_filtered' : 'action0_raw',
               inputCount: freshMonitorData.value.input?.length ?? 0,
               num_inputs: freshMonitorData.value.num_inputs,
               action0RawCount: monFromAction0.input?.length ?? 0
             })
 
-            // 🆕 FIX: Build monitorConfig.value directly from Action 0 data
+            // FIX: Build monitorConfig.value directly from Action 0 data
             // getMonitorConfigFromT3000Data() relies on t3000DataManager which often isn't ready yet,
             // causing monitorConfig to stay null and addRealtimeDataPoint to exit every cycle.
             const urlInputItems = props.itemData?.t3Entry?.input || []
@@ -14152,7 +14170,7 @@
             // 2) Only use raw MON inputs when URL has no input definition at all
             if (builtInputItems.length === 0) {
               if (urlInputItems.length > 0) {
-                LogUtil.Warn('⚠️ STEP 0: URL↔MON input matching failed, using URL inputs as fallback to preserve intended point_number mapping', {
+                LogUtil.Warn('STEP 0: URL↔MON input matching failed, using URL inputs as fallback to preserve intended point_number mapping', {
                   urlInputCount: urlInputItems.length,
                   monInputCount: monInputs.length,
                   monitorId: monFromAction0.id,
@@ -14174,7 +14192,7 @@
                   }
                 }
               } else if (monInputs.length > 0) {
-                LogUtil.Warn('⚠️ STEP 0: URL has no input definition, using all MON inputs as fallback')
+                LogUtil.Warn('STEP 0: URL has no input definition, using all MON inputs as fallback')
                 for (let mi = 0; mi < monInputs.length; mi++) {
                   const inp = monInputs[mi]
                   if (inp && inp.panel !== undefined && inp.point_number !== undefined) {
@@ -14213,7 +14231,7 @@
                 originalConfig: monFromAction0
               }
 
-              LogUtil.Info('✅ STEP 0: Built monitorConfig from Action 0 data', {
+              LogUtil.Info('STEP 0: Built monitorConfig from Action 0 data', {
                 inputItemsCount: builtInputItems.length,
                 dataIntervalMs: intervalMs,
                 pid: monitorConfig.value.pid
@@ -14234,32 +14252,32 @@
               // Start real-time polling immediately since we have a valid config
               startRealTimeUpdates()
             } else {
-              LogUtil.Warn('⚠️ STEP 0: Could not build monitorConfig — no valid input items found')
+              LogUtil.Warn('STEP 0: Could not build monitorConfig — no valid input items found')
             }
 
             fetchFreshPointsForAllPanels()
-              .catch(err => LogUtil.Warn('⚠️ fetchFreshPointsForAllPanels (STEP 0) failed', err))
+              .catch(err => LogUtil.Warn('fetchFreshPointsForAllPanels (STEP 0) failed', err))
               .then(() => {
                 if (freshWebviewCache.value.size > 0) regenerateDataSeries()
               })
           } else {
-            LogUtil.Warn('⚠️ STEP 0: MON not found in Action 0 response for trendlog_id', urlTrendlogId, 'panelId', urlPanelId)
+            LogUtil.Warn('STEP 0: MON not found in Action 0 response for trendlog_id', urlTrendlogId, 'panelId', urlPanelId)
           }
         } catch (error) {
-          LogUtil.Error('❌ STEP 0: Action 0 (GET_PANEL_DATA) call failed', error)
+          LogUtil.Error('STEP 0: Action 0 (GET_PANEL_DATA) call failed', error)
         }
       } else {
-        LogUtil.Warn('⚠️ STEP 0: missing panel_id or trendlog_id in URL — skipping')
+        LogUtil.Warn('STEP 0: missing panel_id or trendlog_id in URL — skipping')
       }
 
-      // 🆕 FALLBACK: If STEP 0 didn't build monitorConfig (e.g. panel has no cached data,
+      // FALLBACK: If STEP 0 didn't build monitorConfig (e.g. panel has no cached data,
       // which happens for foreign-panel MONs), build it from URL all_data (props.itemData.t3Entry).
       if (!monitorConfig.value) {
         const propEntry = (props.itemData as any)?.t3Entry
         const propInputs = propEntry?.input
         const propRanges = propEntry?.range
         if (propInputs?.length > 0) {
-          LogUtil.Info('🔧 STEP 0 FALLBACK: Building monitorConfig from URL all_data (props.itemData.t3Entry)')
+          LogUtil.Info('STEP 0 FALLBACK: Building monitorConfig from URL all_data (props.itemData.t3Entry)')
           const fallbackInputItems: any[] = []
           const fallbackRanges: any[] = []
           for (let fi = 0; fi < propInputs.length; fi++) {
@@ -14294,7 +14312,7 @@
               dataIntervalMs: intervalMs,
               originalConfig: propEntry
             }
-            LogUtil.Info('✅ STEP 0 FALLBACK: Built monitorConfig from props', {
+            LogUtil.Info('STEP 0 FALLBACK: Built monitorConfig from props', {
               inputItemsCount: fallbackInputItems.length,
               dataIntervalMs: intervalMs,
               pid: monitorConfig.value.pid
@@ -14338,7 +14356,7 @@
         } : { reason: 'no_config' }
       )
 
-      LogUtil.Info('📊 TrendLogChart: Monitor config result', {
+      LogUtil.Info('TrendLogChart: Monitor config result', {
         hasMonitorConfig: !!monitorConfigData,
         monitorConfigType: typeof monitorConfigData,
         monitorConfigKeys: monitorConfigData ? Object.keys(monitorConfigData) : [],
@@ -14346,13 +14364,13 @@
       })
 
       if (monitorConfigData) {
-        // 🆕 FIX: Set monitorConfig BEFORE regenerating dataseries to prevent race condition
+        // FIX: Set monitorConfig BEFORE regenerating dataseries to prevent race condition
         monitorConfig.value = monitorConfigData
 
-        // 🔥 FIX: Restart real-time polling with the correct interval from the full config.
+        // FIX: Restart real-time polling with the correct interval from the full config.
         // tempMonitorConfig (set earlier from Action 17) may have had a different/missing dataIntervalMs.
         // Now that monitorConfig.value has the authoritative dataIntervalMs, restart the interval.
-        LogUtil.Info('🔄 Restarting real-time updates with full monitorConfig dataIntervalMs:', monitorConfigData.dataIntervalMs)
+        LogUtil.Info('Restarting real-time updates with full monitorConfig dataIntervalMs:', monitorConfigData.dataIntervalMs)
         startRealTimeUpdates()
         await _flowStep('realtime_start',
           `interval=${monitorConfigData.dataIntervalMs}ms pid=${monitorConfigData.pid} inputs=${monitorConfigData.inputItems?.length ?? 0}`,
@@ -14371,8 +14389,8 @@
         // Note: Historical data will be loaded later in initializeData() after dataseries is created
         // Don't load history here as dataseries structure doesn't exist yet
 
-        // 🆕 FFI Integration: Get complete TrendLog info from T3000 and save view selections
-        LogUtil.Info('🔄 TrendLogChart: Starting FFI integration for complete TrendLog info')
+        // FFI Integration: Get complete TrendLog info from T3000 and save view selections
+        LogUtil.Info('TrendLogChart: Starting FFI integration for complete TrendLog info')
         const ffiInfo = await initializeWithCompleteFFI()
 
         if (ffiInfo) {
@@ -14402,7 +14420,7 @@
           },
         })
       } else {
-        LogUtil.Warn('⚠️ TrendLogChart: No monitor config data available - keeping loading state')
+        LogUtil.Warn('TrendLogChart: No monitor config data available - keeping loading state')
         trendlogTrace.warn({
           traceId: initTraceId,
           flow: 'init',
@@ -14455,7 +14473,7 @@
     // Initialize multi-canvas charts
     nextTick(async () => {
       try {
-        LogUtil.Info('🔍 DIAGNOSTIC: nextTick callback STARTED', {
+        LogUtil.Info('DIAGNOSTIC: nextTick callback STARTED', {
         hasMonitorConfig: !!monitorConfig.value,
         monitorConfigInputItems: monitorConfig.value?.inputItems?.length || 0,
         dataSeriesLength: dataSeries.value.length,
@@ -14467,7 +14485,7 @@
         await new Promise(resolve => setTimeout(resolve, 150))
       }
 
-      // 🆕 FIX: Wait for canvas to be available in DOM
+      // FIX: Wait for canvas to be available in DOM
       let canvasWaitAttempts = 0
       while (!analogChartCanvas.value && canvasWaitAttempts < 20) {
         await new Promise(resolve => setTimeout(resolve, 50))
@@ -14475,7 +14493,7 @@
       }
 
       if (!analogChartCanvas.value) {
-        LogUtil.Error('❌Canvas not available after waiting, cannot create charts')
+        LogUtil.Error('Canvas not available after waiting, cannot create charts')
         // Don't return - show error message instead of blank page
         hasConnectionError.value = true
         stopLoading()
@@ -14483,7 +14501,7 @@
         return
       }
 
-      LogUtil.Info('✅Canvas ref available after', {
+      LogUtil.Info('Canvas ref available after', {
         attempts: canvasWaitAttempts,
         waitTime: `${canvasWaitAttempts * 50}ms`
       })
@@ -14493,14 +14511,14 @@
         await new Promise(resolve => setTimeout(resolve, 300))
       }
 
-      // 🆕 FIX: Create charts FIRST before loading any data
-      LogUtil.Info('🔍 STEP 1: Creating chart instances')
+      // FIX: Create charts FIRST before loading any data
+      LogUtil.Info('STEP 1: Creating chart instances')
       createCharts()
 
-      // 🆕 FIX: Wait a moment for charts to be fully initialized
+      // FIX: Wait a moment for charts to be fully initialized
       await new Promise(resolve => setTimeout(resolve, 50))
 
-      LogUtil.Info('🔍 STEP 2: Chart instances created, verifying', {
+      LogUtil.Info('STEP 2: Chart instances created, verifying', {
         hasAnalogChart: !!analogChartInstance
       })
       await _flowStep('chart_create',
@@ -14508,23 +14526,23 @@
         { hasAnalog: !!analogChartInstance, hasDigital: !!digitalChartInstance, canvasWaitMs: canvasWaitAttempts * 50 }
       )
 
-      // 🆕 FIX: Then load and display data
+      // FIX: Then load and display data
       // NOTE: Only initialize if series don't already exist (from panelsData watcher)
       if (dataSeries.value.length === 0) {
-        LogUtil.Info('🔍 STEP 3: Loading historical and real-time data')
-        // 🆕 Restore saved view state (timeBase, timeOffset) from localStorage before loading data
+        LogUtil.Info('STEP 3: Loading historical and real-time data')
+        // Restore saved view state (timeBase, timeOffset) from localStorage before loading data
         loadViewState()
         await initializeData()
-        LogUtil.Info('🔍 STEP 4: Data initialization completed', {
+        LogUtil.Info('STEP 4: Data initialization completed', {
           dataSeriesCount: dataSeries.value.length,
           seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
         })
       } else {
-        LogUtil.Info('✅STEP 3: Data series already initialized (via panelsData watcher), skipping initializeData', {
+        LogUtil.Info('STEP 3: Data series already initialized (via panelsData watcher), skipping initializeData', {
           dataSeriesCount: dataSeries.value.length,
           seriesWithData: dataSeries.value.filter(s => s.data && s.data.length > 0).length
         })
-        // 🆕 Still restore saved view state even when data was pre-loaded
+        // Still restore saved view state even when data was pre-loaded
         loadViewState()
       }
 
@@ -14532,9 +14550,9 @@
       // even when viewing a custom date range (isRealTime=false).
       startRealTimeUpdates()
 
-      // ⌨️ Setup keyboard navigation
+      // Setup keyboard navigation
       document.addEventListener('keydown', handleKeydown)
-      LogUtil.Info('⌨️ Keyboard: Navigation system initialized', {
+      LogUtil.Info('Keyboard: Navigation system initialized', {
         keyboardEnabled: keyboardEnabled.value,
         totalMappings: Object.keys(keyboardItemMappings.value).length,
         itemMappings: Object.entries(keyboardItemMappings.value).map(([code, mapping]) => ({
@@ -15063,9 +15081,9 @@
     stopRealTimeUpdates()
     destroyAllCharts()
 
-    // ⌨️ Cleanup keyboard navigation
+    // Cleanup keyboard navigation
     document.removeEventListener('keydown', handleKeydown)
-    LogUtil.Info('⌨️ Keyboard: Navigation system cleanup completed')
+    LogUtil.Info('Keyboard: Navigation system cleanup completed')
 
     // Cleanup visibility change listener
     document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -15088,7 +15106,7 @@
       dbStatusTimer = null
     }
 
-    // 🆕 Cleanup timebase change timeout and abort controller
+    // Cleanup timebase change timeout and abort controller
     if (timebaseChangeTimeout) {
       clearTimeout(timebaseChangeTimeout)
       timebaseChangeTimeout = null
@@ -15103,10 +15121,10 @@
     }
   })
 
-  // 🔥 HMR (Hot Module Reload) Cleanup - prevent multiple intervals when saving file
+  // HMR (Hot Module Reload) Cleanup - prevent multiple intervals when saving file
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {
-      LogUtil.Debug('🔥 HMR: Cleaning up old component instance to prevent duplicate intervals')
+      LogUtil.Debug('HMR: Cleaning up old component instance to prevent duplicate intervals')
       stopRealTimeUpdates()
       destroyAllCharts()
       if (dbStatusTimer) {
@@ -17076,7 +17094,7 @@
     font-weight: normal !important;
   }
 
-  /* ⌨️ Keyboard Navigation Styles */
+  /* Keyboard Navigation Styles */
   .keyboard-shortcut-badge {
     position: absolute;
     top: -2px;
