@@ -132,7 +132,7 @@ export const GraphicsPage: React.FC = () => {
             }
           }
         });
-        setMessage(`�?Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
+        setMessage(`Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
         LogUtil.Error('[GraphicsPage] Auto-refresh failed:', error);
         setMessage(`Failed to sync graphics: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
@@ -203,7 +203,7 @@ export const GraphicsPage: React.FC = () => {
         }
       });
 
-      setMessage(`�?Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
+      setMessage(`Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
 
       // Reload from database to show saved data
       await fetchGraphics();

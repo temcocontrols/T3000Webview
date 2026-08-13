@@ -222,7 +222,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
             // Auto-select first device if none is selected
             // Use same filtering & sorting as buildTreeStructure so selection matches the tree
-            const { selectedDevice, selectDevice, devices } = get();
+            const { selectedDevice, selectDevice, devices, deviceStatuses } = get();
 
             if (!selectedDevice && devices.length > 0) {
               // Match buildTreeStructure: filter unknown + sort alphabetically
@@ -231,16 +231,28 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               const knownDevices = devices.filter(d => !isUnknown(d));
               knownDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
 
-              // Try to restore last-selected device from localStorage first
+              // Prefer ONLINE devices for the default selection. Offline devices
+              // are hidden by default (the offline group starts collapsed), so
+              // selecting one would leave the tree with no visible selection.
+              const isOnline = (d: DeviceInfo) => deviceStatuses.get(d.serialNumber) === 'online';
+              const onlineDevices = knownDevices.filter(isOnline);
+
+              // Try to restore last-selected device from localStorage first,
+              // but only if it is still online (otherwise fall back to online).
               const lastSerial = localStorage.getItem('t3.lastSelectedDevice');
               const lastDevice = lastSerial
-                ? knownDevices.find(d => String(d.serialNumber) === lastSerial)
+                ? onlineDevices.find(d => String(d.serialNumber) === lastSerial)
                 : null;
 
               if (lastDevice) {
                 selectDevice(lastDevice);
               } else {
-                const firstDevice = knownDevices.length > 0 ? knownDevices[0] : null;
+                // Default to the first ONLINE device; fall back to the first
+                // known device when no online status is confirmed yet.
+                const firstDevice =
+                  onlineDevices.length > 0
+                    ? onlineDevices[0]
+                    : (knownDevices.length > 0 ? knownDevices[0] : null);
                 if (firstDevice) {
                   selectDevice(firstDevice);
                 }
@@ -582,7 +594,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           const variableCount = variablesResult.savedCount || variablesResult.itemCount || 0;
 
           setMessage(
-            `�?Synced ${device.nameShowOnTree}: ${inputCount} inputs, ${outputCount} outputs, ${variableCount} variables`,
+            `Synced ${device.nameShowOnTree}: ${inputCount} inputs, ${outputCount} outputs, ${variableCount} variables`,
             'success'
           );
         } catch (error) {

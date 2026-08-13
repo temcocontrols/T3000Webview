@@ -172,7 +172,7 @@ export const ProgramsPage: React.FC = () => {
 
         setMessage('Loading programs...', 'info');
         const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
-        setMessage(`�?Synced ${result.itemCount} programs`, 'success');
+        setMessage(`Synced ${result.itemCount} programs`, 'success');
 
         // Reload from database (data already saved by service)
         await fetchPrograms();
@@ -180,7 +180,7 @@ export const ProgramsPage: React.FC = () => {
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Failed to load programs';
         LogUtil.Error('[ProgramsPage] Auto-refresh failed:', error);
-        setMessage(`�?${errorMsg}`, 'error');
+        setMessage(`${errorMsg}`, 'error');
         // Don't reload from database on error - preserve existing programs
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
@@ -204,7 +204,7 @@ export const ProgramsPage: React.FC = () => {
     setMessage('Refreshing programs...', 'info');
     try {
       const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
-      setMessage(`�?Synced ${result.itemCount} programs`, 'success');
+      setMessage(`Synced ${result.itemCount} programs`, 'success');
 
       // Reload from database (data already saved by service)
       await fetchPrograms();
@@ -212,7 +212,7 @@ export const ProgramsPage: React.FC = () => {
       const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
       LogUtil.Error('[ProgramsPage] Failed to refresh from device:', error);
       setError(errorMsg);
-      setMessage('�?Refresh failed', 'error');
+      setMessage('Refresh failed', 'error');
       // Don't call fetchPrograms() on error - preserve existing programs in UI
     } finally {
       setRefreshing(false);
