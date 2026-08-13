@@ -3094,10 +3094,20 @@ impl T3000MainService {
                     info!("?? About to call HandleWebViewMsg with LOGGING_DATA action - Panel: {}, Serial: {}", panel_id_clone, serial_number_clone);
                     info!("?? Sending JSON to C++: {}", input_str);
 
-                    // Prepare buffer for response - very large buffer for up to 100 devices
-                    // Each device can be ~1MB, so 100 devices = ~100MB
-                    const BUFFER_SIZE: usize = 104857600; // 100MB buffer for maximum device capacity
-                    let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+                    // Prepare buffer for response. This DLL is built for i686 (32-bit),
+                    // so a 100MB allocation inside the ~2GB address space intermittently
+                    // fails and aborts T3000.exe via std::alloc::rust_oom. Actual
+                    // LOGGING_DATA responses are a few MB at most; the C++ bridge
+                    // returns -1 ("buffer too small") if a response ever exceeds this.
+                    // Allocate fallibly so a tight-memory failure returns an error
+                    // instead of killing the whole process.
+                    const BUFFER_SIZE: usize = 16 * 1024 * 1024; // 16MB
+                    let mut buffer: Vec<u8> = Vec::new();
+                    if buffer.try_reserve_exact(BUFFER_SIZE).is_err() {
+                        error!("Out of memory allocating FFI response buffer ({} bytes)", BUFFER_SIZE);
+                        return Err("Out of memory allocating FFI response buffer".to_string());
+                    }
+                    buffer.resize(BUFFER_SIZE, 0);
 
                     // Write input JSON to buffer
                     let input_bytes = input_str.as_bytes();

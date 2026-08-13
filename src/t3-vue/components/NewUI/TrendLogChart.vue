@@ -1351,7 +1351,8 @@
 
   // ── Time-unit value formatting ─────────────────────────────────────────────
   // T3000 "Time" points (unitCode 50) store a duration in seconds (e.g. 12557).
-  // Render them as HH:MM:SS everywhere instead of a raw number.
+  // Y-axis shows a plain number (5.32); the tooltip shows HH:MM:SS plus the
+  // magnitude unit (05:19:12 (5.32h)); the left panel shows HH:MM:SS.
   const isTimeSeries = (series?: any): boolean =>
     !!series && (series.unit === 'Time' || series.unitCode === 50)
 
@@ -1363,14 +1364,30 @@
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   }
 
-  // Compact duration for Y-axis ticks: picks the unit from the tick step so
-  // labels read "0h / 1h / 2h…", "0m / 15m…", or "0d / 1d…" instead of clock times.
-  const formatDurationTick = (seconds: number, step: number): string => {
-    const total = Math.max(0, Math.floor(Math.abs(seconds)))
-    if (step >= 86400) return `${Math.floor(total / 86400)}d`
-    if (step >= 3600) return `${Math.floor(total / 3600)}h`
-    if (step >= 60) return `${Math.floor(total / 60)}m`
-    return `${total}s`
+  // Strip trailing zeros (and a trailing dot) from a fixed-decimal string.
+  const trimFloat = (n: number, decimals: number): string =>
+    n.toFixed(decimals).replace(/\.?0+$/, '')
+
+  // Pick the most readable duration unit from the value's magnitude and return
+  // [scaledValue, unit, decimals] (e.g. 19152 s → [5.32, 'h', 2]).
+  const durationParts = (seconds: number): [number, string, number] => {
+    const s = Math.abs(seconds)
+    if (s >= 86400) return [s / 86400, 'd', 2]
+    if (s >= 3600)  return [s / 3600, 'h', 2]
+    if (s >= 60)    return [s / 60, 'm', 1]
+    return [s, 's', 0]
+  }
+
+  // "5.32h" — used in the tooltip so the magnitude unit is always visible.
+  const formatDurationWithUnit = (seconds: number): string => {
+    const [val, unit, decimals] = durationParts(seconds)
+    return trimFloat(val, decimals) + unit
+  }
+
+  // "5.32" — plain number for the Y-axis; the band is already labelled "Time".
+  const formatDurationAxis = (seconds: number): string => {
+    const [val, , decimals] = durationParts(seconds)
+    return trimFloat(val, decimals)
   }
 
   // Helper function to extract digital states from unit string
@@ -4181,8 +4198,8 @@
     let maxChars = 4
     if (bands.length) {
       bands.forEach((band: any) => {
-        const range = band.realMax - band.realMin
         const fmt = (v: number) => {
+          if (band.unit === 'Time') return formatDurationAxis(v)
           const r = Math.round(v)
           if (Math.abs(r) >= 1_000_000) return (r / 1_000_000).toFixed(1) + 'M'
           if (Math.abs(r) >= 10_000)    return (r / 1_000).toFixed(0) + 'K'
@@ -4682,7 +4699,7 @@
                     }
                   }
                   const isTime = isTimeSeries(series)
-                  const value = isTime ? formatTimeHHMMSS(displayVal) : displayVal.toFixed(2)
+                  const value = isTime ? `${formatTimeHHMMSS(displayVal)} (${formatDurationWithUnit(displayVal)})` : displayVal.toFixed(2)
                   const unit = series?.unit || ''
                   valueText = unit === 'Unused' ? `: ${value}` : `: ${value} ${unit}`
                 }
@@ -5005,7 +5022,7 @@
               const step = band.step
               // Snap to nearest step multiple to eliminate float drift from reverse-transform
               const snapped = Math.round(realV / step) * step
-              if (band.unit === 'Time') return formatDurationTick(snapped, step)
+              if (band.unit === 'Time') return formatDurationAxis(snapped)
               const decimals = step < 1 ? Math.max(1, Math.ceil(-Math.log10(step))) : 0
               if (Math.abs(snapped) >= 1_000_000) return (snapped / 1_000_000).toFixed(1) + 'M'
               if (Math.abs(snapped) >= 10_000)    return (snapped / 1_000).toFixed(0) + 'K'
@@ -10057,7 +10074,7 @@
       // Snap realMin/realMax to nice step boundaries so tick labels always
       // include the min and max of the visible range (e.g. 0→500 instead of 0→450).
       // Time bands use time-friendly steps so HH:MM:SS labels land on round times.
-      const isTimeBand = items[0]?.unit === 'Time'
+      const isTimeBand = isTimeSeries(items[0]?.series)
       const niceSteps = isTimeBand
         ? [1, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400]
         : [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
@@ -10111,8 +10128,40 @@
         }
       }
 
+      // ── Time bands: tight auto-zoom around the logged values ────────────────
+      // The generic snapping above anchors on value magnitude, which for a
+      // long-running time counter produces a huge 0-based axis and a flat line.
+      // Recompute a tight [min−pad, max+pad] range with HH:MM:SS tick steps so
+      // the per-interval drift becomes a visible slope.
+      if (isTimeBand) {
+        const dataMin = allVals.length ? Math.min(...allVals) : 0
+        const dataMax = allVals.length ? Math.max(...allVals) : 60
+        const span = dataMax - dataMin
+        // Best-effort sampling interval = median gap between consecutive values.
+        let interval = 60
+        if (allVals.length >= 2) {
+          const sorted = allVals.slice().sort((a, b) => a - b)
+          const gaps: number[] = []
+          for (let gi = 1; gi < sorted.length; gi++) gaps.push(sorted[gi] - sorted[gi - 1])
+          gaps.sort((a, b) => a - b)
+          interval = gaps[Math.floor(gaps.length / 2)] || 60
+        }
+        // pad = max(1 interval, 5% span), minimum 30s; constant → ±60s.
+        const pad = span === 0 ? 60 : Math.max(interval, span * 0.05, 30)
+        realMin = Math.max(0, dataMin - pad)
+        realMax = dataMax + pad
+
+        const timeSteps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400]
+        const target = (realMax - realMin) / 5
+        step = timeSteps.find(s => s >= target) ?? timeSteps[timeSteps.length - 1]
+        // Snap outward to step multiples so HH:MM:SS labels land on round times.
+        realMin = Math.floor(realMin / step) * step
+        realMax = Math.ceil(realMax / step) * step
+        if ((realMax - realMin) / step < 2) realMax = realMin + step * 2
+      }
+
       return {
-        unit: items[0].unit || groupKey,
+        unit: isTimeBand ? 'Time' : (items[0].unit || groupKey),
         colors: items.map(it => it.color),
         realMin, realMax,
         virtualBase: analogOffset + i * BAND_SIZE,  // shifted to make room for digital zone
