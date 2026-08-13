@@ -1349,6 +1349,30 @@
     return resolveRange(device.range)
   }
 
+  // ── Time-unit value formatting ─────────────────────────────────────────────
+  // T3000 "Time" points (unitCode 50) store a duration in seconds (e.g. 12557).
+  // Render them as HH:MM:SS everywhere instead of a raw number.
+  const isTimeSeries = (series?: any): boolean =>
+    !!series && (series.unit === 'Time' || series.unitCode === 50)
+
+  const formatTimeHHMMSS = (seconds: number): string => {
+    const total = Math.max(0, Math.floor(Math.abs(seconds)))
+    const h = Math.floor(total / 3600)
+    const m = Math.floor((total % 3600) / 60)
+    const s = total % 60
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
+
+  // Compact duration for Y-axis ticks: picks the unit from the tick step so
+  // labels read "0h / 1h / 2h…", "0m / 15m…", or "0d / 1d…" instead of clock times.
+  const formatDurationTick = (seconds: number, step: number): string => {
+    const total = Math.max(0, Math.floor(Math.abs(seconds)))
+    if (step >= 86400) return `${Math.floor(total / 86400)}d`
+    if (step >= 3600) return `${Math.floor(total / 3600)}h`
+    if (step >= 60) return `${Math.floor(total / 60)}m`
+    return `${total}s`
+  }
+
   // Helper function to extract digital states from unit string
   const getDigitalStatesFromUnit = (unit: string): [string, string] | undefined => {
     return unit.includes('/') ? unit.split('/') as [string, string] : undefined
@@ -4651,7 +4675,8 @@
                       displayVal = band.realMin + (rawY - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
                     }
                   }
-                  const value = displayVal.toFixed(2)
+                  const isTime = isTimeSeries(series)
+                  const value = isTime ? formatTimeHHMMSS(displayVal) : displayVal.toFixed(2)
                   const unit = series?.unit || ''
                   valueText = unit === 'Unused' ? `: ${value}` : `: ${value} ${unit}`
                 }
@@ -4974,6 +4999,7 @@
               const step = band.step
               // Snap to nearest step multiple to eliminate float drift from reverse-transform
               const snapped = Math.round(realV / step) * step
+              if (band.unit === 'Time') return formatDurationTick(snapped, step)
               const decimals = step < 1 ? Math.max(1, Math.ceil(-Math.log10(step))) : 0
               if (Math.abs(snapped) >= 1_000_000) return (snapped / 1_000_000).toFixed(1) + 'M'
               if (Math.abs(snapped) >= 10_000)    return (snapped / 1_000).toFixed(0) + 'K'
@@ -10024,7 +10050,11 @@
 
       // Snap realMin/realMax to nice step boundaries so tick labels always
       // include the min and max of the visible range (e.g. 0→500 instead of 0→450).
-      const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+      // Time bands use time-friendly steps so HH:MM:SS labels land on round times.
+      const isTimeBand = items[0]?.unit === 'Time'
+      const niceSteps = isTimeBand
+        ? [1, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400]
+        : [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
       const rawRange = realMax - realMin
       const rangeStep = niceSteps.find(s => s >= Math.max(rawRange, 0.001) / 5) ?? niceSteps[niceSteps.length - 1]
       // Minimum "visually round" step for the value magnitude — labels should land
@@ -13318,6 +13348,8 @@
       const digitalStates = getDigitalStatesFromRange(series.unitCode || 1)
       const stateText = digitalStates[stateIndex]
       return `${stateText} (${lastValue})`
+    } else if (isTimeSeries(series)) {
+      return formatTimeHHMMSS(lastValue)
     } else {
       return lastValue.toFixed(2)
     }
@@ -13333,6 +13365,8 @@
       const highCount = data.filter(p => p.value === 1).length
       const percentage = (highCount / data.length) * 100
       return `${percentage.toFixed(1)}% High`
+    } else if (isTimeSeries(series)) {
+      return formatTimeHHMMSS(avg)
     } else {
       return avg.toFixed(2)
     }
@@ -13348,6 +13382,8 @@
       const digitalStates = getDigitalStatesFromRange(series.unitCode || 1)
       const stateText = digitalStates[stateIndex]
       return `${stateText} (${min})`
+    } else if (isTimeSeries(series)) {
+      return formatTimeHHMMSS(min)
     } else {
       return min.toFixed(2)
     }
@@ -13363,6 +13399,8 @@
       const digitalStates = getDigitalStatesFromRange(series.unitCode || 1)
       const stateText = digitalStates[stateIndex]
       return `${stateText} (${max})`
+    } else if (isTimeSeries(series)) {
+      return formatTimeHHMMSS(max)
     } else {
       return max.toFixed(2)
     }
