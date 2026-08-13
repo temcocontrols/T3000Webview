@@ -6,7 +6,7 @@
  *   2. External API (Anthropic Claude, Google Gemini) — customer's own API key
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Button,
   Input,
@@ -92,51 +92,111 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [fetchingModels, setFetchingModels] = useState(false);
 
-  const fetchModels = useCallback(async (ep: string, key?: string) => {
+  // Sequence number + AbortController: only the LATEST fetch may update state.
+  // This prevents a slow in-flight request (e.g. from a down/slow saved URL)
+  // from overwriting the results of a newer request after the user edits the URL.
+  const abortRef = useRef<AbortController | null>(null);
+  const fetchSeqRef = useRef(0);
+
+  const fetchModels = useCallback(async (ep: string, key?: string, autoSelectFirst = false) => {
     if (!ep.trim()) return;
+    abortRef.current?.abort();
+    const seq = ++fetchSeqRef.current;
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setFetchingModels(true);
     try {
       const res = await fetch(`${ep.trimEnd('/')}/models`, {
         headers: key ? { Authorization: `Bearer ${key}` } : {},
+        signal: controller.signal,
       });
+      if (seq !== fetchSeqRef.current) return; // superseded — ignore
       if (res.ok) {
         const data = await res.json();
         const models: string[] = (data.data || [])
           .map((m: any) => m.id || m.name || '')
           .filter(Boolean);
+        if (seq !== fetchSeqRef.current) return;
         setAvailableModels(models);
-        if (models.length > 0 && !model.trim()) {
+        if (autoSelectFirst) {
+          // URL changed: always select the first model, clearing the previous one
+          setModel(models.length > 0 ? models[0] : '');
+        } else if (models.length > 0 && !model.trim()) {
           setModel(models[0]);
         }
       } else {
         setAvailableModels([]);
+        if (autoSelectFirst) {
+          setModel(''); // stale model from the previous URL no longer applies
+        }
       }
     } catch {
+      if (seq !== fetchSeqRef.current) return; // aborted or superseded — ignore
       setAvailableModels([]);
+      if (autoSelectFirst) {
+        setModel('');
+      }
     } finally {
-      setFetchingModels(false);
+      if (seq === fetchSeqRef.current) {
+        setFetchingModels(false);
+      }
     }
   }, [model]);
 
-  // When endpoint changes, fetch available models (model is set by provider switch or user input)
+  // Fetch available models when the drawer opens (local provider) or the
+  // endpoint changes. Debounced so typing a URL doesn't fire a request per
+  // keystroke, and guarded so each endpoint is fetched only once per open.
+  const lastFetchedEndpointRef = useRef<string>('');
+  const debounceRef = useRef<number | undefined>(undefined);
+
   useEffect(() => {
-    if (endpoint.trim()) {
+    window.clearTimeout(debounceRef.current);
+    if (!open || provider !== 'local') return;
+    const ep = endpoint.trim();
+    if (!ep) return;
+
+    debounceRef.current = window.setTimeout(() => {
+      if (lastFetchedEndpointRef.current === ep) return;
+      // Initial open: keep the saved URL/model as-is — don't fetch or show a
+      // loading flash. Only fetch on first-time setup (no saved model) so the
+      // dropdown can still populate. A real URL change always fetches.
+      const isUrlChange = lastFetchedEndpointRef.current !== '';
+      lastFetchedEndpointRef.current = ep;
+      if (!isUrlChange) {
+        if (model.trim()) {
+          return;
+        }
+        setTestResult('idle');
+        fetchModels(ep, apiKey, false);
+        return;
+      }
+      // URL change: clear the previous model now (input shows empty while
+      // loading) and auto-select the first model from the new list.
+      setModel('');
       setTestResult('idle');
-      fetchModels(endpoint, apiKey);
+      fetchModels(ep, apiKey, true);
+    }, 400);
+
+    return () => window.clearTimeout(debounceRef.current);
+  }, [open, provider, endpoint, apiKey, fetchModels]);
+
+  // Reset the guard when the drawer closes so reopening re-fetches models,
+  // and abort any in-flight fetch on unmount.
+  useEffect(() => {
+    if (!open) {
+      lastFetchedEndpointRef.current = '';
     }
-  }, [endpoint]);
+  }, [open]);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   // When model changes, reset test result
   useEffect(() => {
     setTestResult('idle');
   }, [model]);
-
-  // Fetch models when drawer opens for local provider
-  useEffect(() => {
-    if (open && provider === 'local') {
-      fetchModels(endpoint);
-    }
-  }, [open, provider, endpoint, fetchModels]);
 
   // Sync from parent on open
   useEffect(() => {
