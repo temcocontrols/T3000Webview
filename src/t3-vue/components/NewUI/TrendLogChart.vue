@@ -4663,16 +4663,22 @@
                 } else {
                   const series = visibleAnalogSeries.value.find(s => s.name === label)
                   lineColor = point.dataset.borderColor || series?.color || '#333333'
-                  // Reverse-transform virtual Y back to real value
-                  let displayVal = rawY
-                  const bands = yBandInfo.value
-                  const analogOffset = unifiedAnalogOffset.value
-                  if (bands.length > 0 && rawY != null) {
-                    const bi = Math.max(0, Math.min(bands.length - 1, Math.floor((rawY - analogOffset) / BAND_SIZE)))
-                    const band = bands[bi]
-                    if (band) {
-                      const range = band.realMax - band.realMin
-                      displayVal = band.realMin + (rawY - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
+                  // Prefer the real value stored on the data point — the band
+                  // transform clamps out-of-range values, so reverse-transforming
+                  // rawY can show the band edge instead of the true value.
+                  let displayVal = point.raw?.real
+                  if (displayVal == null) {
+                    // Fallback: reverse-transform virtual Y back to real value.
+                    displayVal = rawY
+                    const bands = yBandInfo.value
+                    const analogOffset = unifiedAnalogOffset.value
+                    if (bands.length > 0 && rawY != null) {
+                      const bi = Math.max(0, Math.min(bands.length - 1, Math.floor((rawY - analogOffset) / BAND_SIZE)))
+                      const band = bands[bi]
+                      if (band) {
+                        const range = band.realMax - band.realMin
+                        displayVal = band.realMin + (rawY - band.virtualBase - BAND_MARGIN) / (BAND_SIZE - 2 * BAND_MARGIN) * range
+                      }
                     }
                   }
                   const isTime = isTimeSeries(series)
@@ -10246,7 +10252,7 @@
           if (lastRealX !== null && (pt.timestamp - lastRealX) > gapThresholdMs) {
             dataWithGaps.push({ x: (lastRealX + pt.timestamp) / 2, y: null })
           }
-          dataWithGaps.push({ x: pt.timestamp, y: toVirtual(Number(pt.value), bandIdx) })
+          dataWithGaps.push({ x: pt.timestamp, y: toVirtual(Number(pt.value), bandIdx), real: Number(pt.value) })
           lastRealX = pt.timestamp
           j++
         } else {
