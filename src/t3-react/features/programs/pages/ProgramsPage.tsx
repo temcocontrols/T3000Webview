@@ -70,7 +70,9 @@ interface ProgramPoint {
 }
 
 export const ProgramsPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, treeData, selectDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [programs, setPrograms] = useState<ProgramPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,8 +100,9 @@ export const ProgramsPage: React.FC = () => {
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false);
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -274,7 +277,8 @@ export const ProgramsPage: React.FC = () => {
   // Register CSV export/import handlers with global context (Tools menu)
   useRegisterCsvHandlers(handleExport, handleImport);
 
-  // Auto-scroll handlers
+  // [DISABLED] Auto-scroll handlers — commented out for now.
+  /*
   const loadNextDevice = useCallback(async () => {
     const nextDevice = getNextDevice();
     if (!nextDevice) return;
@@ -302,15 +306,16 @@ export const ProgramsPage: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, programs.length, loadNextDevice]);
+  */
 
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Inline editing handlers
   const handleCellDoubleClick = (item: ProgramPoint, field: string, currentValue: string) => {
@@ -791,8 +796,9 @@ export const ProgramsPage: React.FC = () => {
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    onScroll={handleScroll}
-                    onWheel={handleWheel}
+                    // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                    // onScroll={handleScroll}
+                    // onWheel={handleWheel}
                   >
                   <DataGrid
                     key={sortKey}

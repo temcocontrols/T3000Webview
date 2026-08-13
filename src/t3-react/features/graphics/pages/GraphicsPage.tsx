@@ -41,7 +41,9 @@ import { parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
 
 export const GraphicsPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, treeData, selectDevice, getFilteredDevices } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [graphics, setGraphics] = useState<Graphic[]>([]);
@@ -54,8 +56,9 @@ export const GraphicsPage: React.FC = () => {
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false);
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -144,7 +147,8 @@ export const GraphicsPage: React.FC = () => {
     checkAndRefresh();
   }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchGraphics, graphics.length, setMessage]);
 
-  // Load next device in tree (auto-scroll feature)
+  // [DISABLED] Auto-scroll to next device when reaching bottom — commented out for now.
+  /*
   const loadNextDevice = useCallback(() => {
     const nextDevice = getNextDevice();
     if (nextDevice) {
@@ -178,6 +182,7 @@ export const GraphicsPage: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, graphics.length, loadNextDevice]);
+  */
 
   // Refresh all graphics from device using Action 17
   const handleRefreshFromDevice = async () => {
@@ -217,10 +222,10 @@ export const GraphicsPage: React.FC = () => {
     if (selectedDevice && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   const handleExport = () => {
     if (graphics.length === 0) return;
@@ -512,8 +517,9 @@ export const GraphicsPage: React.FC = () => {
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    onScroll={handleScroll}
-                    onWheel={handleWheel}
+                    // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                    // onScroll={handleScroll}
+                    // onWheel={handleWheel}
                   >
                   <DataGrid
                       key={sortKey}
@@ -550,13 +556,14 @@ export const GraphicsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Auto-load indicator */}
+                {/* [DISABLED] Auto-load indicator — commented out for now.
                 {isLoadingNextDevice && (
                   <div className={styles.autoLoadIndicator}>
                     <Spinner size="tiny" />
                     <Text size={200}>Loading next device...</Text>
                   </div>
                 )}
+                */}
 
               </div>
             </div>
