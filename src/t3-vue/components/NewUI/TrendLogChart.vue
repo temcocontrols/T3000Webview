@@ -8371,61 +8371,30 @@
    * Uses hour_interval_time, minute_interval_time, second_interval_time
    */
   const getCurrentSyncInterval = (): number => {
-    // Try multiple data sources for T3000 interval configuration
-    let intervalConfig = null
-    let dataSource = 'fallback'
-
-    // Priority 1: monitorConfig.value (from T3000 system)
-    if (monitorConfig.value) {
-      intervalConfig = monitorConfig.value
-      dataSource = 'monitorConfig'
-    }
-    // Priority 2: props.itemData.t3Entry (from item configuration)
-    else if (props.itemData?.t3Entry) {
-      intervalConfig = props.itemData.t3Entry
-      dataSource = 'itemData.t3Entry'
+    // The C++ monitor config interval (hour/min/sec) is already normalized into
+    // monitorConfig.dataIntervalMs by STEP 0 / calculateT3000Interval. Use it first
+    // so the saved sync_interval always matches the real Action 17 polling cadence.
+    // (Previously this read hour/minute/second_interval_time off monitorConfig, but
+    // monitorConfig only carries dataIntervalMs — so it silently returned the 60s
+    // fallback instead of the C++-configured interval.)
+    if (monitorConfig.value?.dataIntervalMs) {
+      const secs = Math.round(monitorConfig.value.dataIntervalMs / 1000)
+      if (secs > 0) return secs
     }
 
-    if (intervalConfig) {
-      // Extract T3000 interval fields
-      const hourInterval = intervalConfig.hour_interval_time || 0
-      const minuteInterval = intervalConfig.minute_interval_time || 0
-      const secondInterval = intervalConfig.second_interval_time || 0
-
-      // Calculate total seconds using T3000 fields (same logic as calculateT3000Interval)
+    // Fallback 1: raw C++ interval fields from the URL all_data (itemData.t3Entry)
+    if (props.itemData?.t3Entry) {
+      const hourInterval = props.itemData.t3Entry.hour_interval_time || 0
+      const minuteInterval = props.itemData.t3Entry.minute_interval_time || 0
+      const secondInterval = props.itemData.t3Entry.second_interval_time || 0
       const totalSeconds = (hourInterval * 3600) + (minuteInterval * 60) + secondInterval
-
-      // Use calculated interval if > 0, otherwise fallback to default
-      const syncIntervalSeconds = totalSeconds > 0 ? Math.max(totalSeconds, 15) : 60
-
-      /*
-      LogUtil.Debug('Calculating sync interval from T3000 config', {
-        dataSource,
-        hourInterval,
-        minuteInterval,
-        secondInterval,
-        totalSeconds,
-        syncIntervalSeconds,
-        timeBase: timeBase.value,
-        configExists: !!intervalConfig
-      })
-      */
-
-      return syncIntervalSeconds
+      if (totalSeconds > 0) return Math.max(totalSeconds, 15)
     }
 
-    // Fallback: Use updateInterval calculation and convert to seconds
+    // Fallback 2: derive from the updateInterval computed (also C++-derived)
     const fallbackMs = updateInterval.value
     const fallbackSeconds = Math.round(fallbackMs / 1000)
-
-    LogUtil.Debug('Using fallback sync interval calculation', {
-      dataSource: 'updateInterval computed',
-      fallbackMs,
-      fallbackSeconds,
-      timeBase: timeBase.value
-    })
-
-    return fallbackSeconds
+    return Math.max(fallbackSeconds, 15)
   }/**
  * Store real-time data to database for historical usage
  */

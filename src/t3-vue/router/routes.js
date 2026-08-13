@@ -56,10 +56,22 @@ function getTimeoutForComponent(name) {
     'SVGEditor': 25000,
     'MainLayout': 20000,
     'HvacIndexPage': 20000,
-    'TrendLogIndexPage': 25000  // 25 seconds for TrendLogIndexPage (complex dependencies)
+    'TrendLogIndexPage': 25000, // 25 seconds for TrendLogIndexPage (complex dependencies)
+    'IndexPageSocket': 30000,   // Trend Log Beta page (loads TrendLogChart.vue + Chart.js + Ant icons)
+    'TrendLogLayout': 20000     // Trend Log Beta layout wrapper
   };
 
-  return heavyComponents[name] || 15000; // Default 15 seconds
+  const baseTimeout = heavyComponents[name] || 15000; // Default 15 seconds
+
+  // In dev, Vite compiles lazy routes (and their dependency graph) on demand,
+  // so a cold first load can exceed 15s. Bump the budget so Vue's
+  // defineAsyncComponent doesn't abort with "timed out after 15000ms"
+  // (which then requires a refresh to succeed once Vite has cached the modules).
+  if (import.meta.env.DEV) {
+    return Math.max(baseTimeout, 30000);
+  }
+
+  return baseTimeout;
 }
 
 // Enhanced component loader with retry logic

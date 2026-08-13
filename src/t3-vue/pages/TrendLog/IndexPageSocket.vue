@@ -421,7 +421,7 @@ const initializeT3000Data = async () => {
     T3000_Data.value.loadingPanel = panel_id
 
     // Step 1: Action 4 - GET_PANELS_LIST (via FFI HTTP, replaces WebSocket GetPanelsList)
-    LogUtil.Info('[IndexPage] Action 4 GET_PANELS_LIST via FFI API', { panel_id, sn })
+    LogUtil.Info('[IndexPage] Action 4 GET_PANELS_LIST via FFI API', { panel_id, sn });
     const panelsListResponse = await ffiApi.ffiGetPanelsList()
 
     if (panelsListResponse) {
@@ -434,13 +434,14 @@ const initializeT3000Data = async () => {
         : (panelsListResponse.data ?? panelsListResponse.panels ?? [])
       if (Array.isArray(rawList) && rawList.length > 0) {
         rawList.forEach((p: any) => {
-          if (!p || !p.panel_number) return
+          if (!p || !p.serial_number) return
+          // Key by serial_number (UNIQUE) — NOT panel_number, because multiple
+          // physical devices can report panel_number=1 and we must keep each one.
           const existing = T3000_Data.value.panelsList.find(
-            (x: any) => x.panel_number === p.panel_number
+            (x: any) => x.serial_number === p.serial_number
           )
           if (existing) {
-            // Update serial_number in case it changed
-            existing.serial_number = p.serial_number ?? existing.serial_number
+            existing.panel_number = p.panel_number ?? existing.panel_number
             existing.object_instance = p.object_instance ?? existing.object_instance
             existing.panel_name = p.panel_name ?? existing.panel_name
           } else {

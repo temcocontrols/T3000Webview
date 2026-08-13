@@ -182,13 +182,38 @@ export function useT3000FfiApi() {
     }
   }
 
-  // HTTP retry wrapper
+  // Backend warmup codes: the Rust FFI middleware returns HTTP 200 with one of
+  // these while T3000.exe's C++ state is still initializing (first ~3-4s after
+  // the FFI function is loaded). They must be retried, not treated as success.
+  const WARMUP_CODES = ['T3000_WARMUP', 'T3000_PANELS_WARMUP']
+  const WARMUP_TIMEOUT_MS = 10000 // C++ init window is ~3-4s, give it 10s
+
+  const isWarmupResponse = (data: any): boolean =>
+    !!data && typeof data === 'object' && WARMUP_CODES.includes(data.code)
+
+  // HTTP retry wrapper (also retries backend warmup responses)
   const callWithRetry = async (payload: any): Promise<any> => {
     let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= apiConfig.retryAttempts; attempt++) {
       try {
-        return await callFfiApi(payload)
+        const data = await callFfiApi(payload)
+
+        if (isWarmupResponse(data)) {
+          lastError = new Error(data.error || data.code)
+          const deadline = Date.now() + WARMUP_TIMEOUT_MS
+          while (Date.now() < deadline) {
+            LogUtil.Warn(`FFI backend warming up (${data.code}) — retrying shortly...`)
+            await new Promise(resolve => setTimeout(resolve, apiConfig.retryDelay))
+            const retried = await callFfiApi(payload)
+            if (!isWarmupResponse(retried)) {
+              return retried
+            }
+          }
+          throw lastError
+        }
+
+        return data
       } catch (error) {
         lastError = error as Error
         if (attempt < apiConfig.retryAttempts) {
