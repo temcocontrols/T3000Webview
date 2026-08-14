@@ -388,97 +388,42 @@ pub fn copy_t3_device_database_if_not_exists() -> Result<(), Box<dyn std::error:
     // Determine if force copy is needed
     let should_force_copy = need_update && !update_status;
 
-    // Handle force copy mode - clean all database files and copy fresh
+    // Handle force copy mode - copy to temp first, then swap only on success.
+    // This prevents deleting the working database if the source is locked.
     if should_force_copy {
-        t3_enhanced_logging("[RELOAD] Force copy mode enabled - removing existing database files...");
+        t3_enhanced_logging("[RELOAD] Force copy mode enabled — copying to temp file first...");
 
-        // Remove primary destination
-        if destination_db_path.exists() {
-            fs::remove_file(destination_db_path)?;
-            t3_enhanced_logging(&format!("   [OK] Removed existing file: {:?}", destination_db_path));
+        let tmp_path = destination_db_path.with_extension("db-tmp");
+
+        // Try copy to temp file first (source may be locked)
+        match copy_database_with_retry(&source_db_path, &tmp_path, 5) {
+            Ok(bytes) => {
+                t3_enhanced_logging(&format!("   [OK] Copied {} bytes to temp file", bytes));
+
+                // Remove old destination
+                if destination_db_path.exists() {
+                    let _ = fs::remove_file(destination_db_path);
+                }
+                // Swap temp → destination
+                match fs::rename(&tmp_path, destination_db_path) {
+                    Ok(_) => t3_enhanced_logging("   [OK] Swapped temp file to destination"),
+                    Err(e) => {
+                        t3_enhanced_logging(&format!("   [WARN] Rename failed: {}. Temp file preserved at {:?}", e, tmp_path));
+                    }
+                }
+            }
+            Err(e) => {
+                t3_enhanced_logging(&format!("   [WARN] Force copy skipped — source unavailable: {}", e));
+                // Clean up temp file if it was partially created
+                let _ = fs::remove_file(&tmp_path);
+            }
         }
 
-        // Remove WAL and SHM files for main database
+        // Clean up WAL/SHM files (safe — destination still exists if copy failed)
         let wal_path = destination_db_path.with_extension("db-wal");
         let shm_path = destination_db_path.with_extension("db-shm");
-        if wal_path.exists() {
-            match fs::remove_file(&wal_path) {
-                Ok(_) => t3_enhanced_logging(&format!("   [OK] Removed WAL file: {:?}", wal_path)),
-                Err(e) => t3_enhanced_logging(&format!("   [WARNING] Could not remove WAL: {}", e)),
-            }
-        }
-        if shm_path.exists() {
-            match fs::remove_file(&shm_path) {
-                Ok(_) => t3_enhanced_logging(&format!("   [OK] Removed SHM file: {:?}", shm_path)),
-                Err(e) => t3_enhanced_logging(&format!("   [WARNING] Could not remove SHM: {}", e)),
-            }
-        }
-
-        // Remove all files with prefix "webview_t3_device_" in destination directory (partition files)
-        if let Some(dest_dir) = destination_db_path.parent() {
-            if dest_dir.exists() {
-                match fs::read_dir(dest_dir) {
-                    Ok(entries) => {
-                        for entry in entries.flatten() {
-                            let path = entry.path();
-                            if let Some(filename) = path.file_name() {
-                                if let Some(name_str) = filename.to_str() {
-                                    if name_str.starts_with("webview_t3_device_") {
-                                        match fs::remove_file(&path) {
-                                            Ok(_) => t3_enhanced_logging(&format!("   [OK] Removed partition file: {:?}", path)),
-                                            Err(e) => t3_enhanced_logging(&format!("   [WARNING] Could not remove {:?}: {}", path, e)),
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => t3_enhanced_logging(&format!("   [WARNING] Could not read directory {:?}: {}", dest_dir, e)),
-                }
-            }
-        }
-
-        // Remove alternative locations that might exist
-        let alt_locations = [
-            Path::new("Database/webview_t3_device.db"),
-            Path::new("../Database/webview_t3_device.db"),
-            Path::new("../../api/Database/webview_t3_device.db"),
-        ];
-
-        for alt_path in &alt_locations {
-            if alt_path.exists() && alt_path.canonicalize().ok() != destination_db_path.canonicalize().ok() {
-                match fs::remove_file(alt_path) {
-                    Ok(_) => t3_enhanced_logging(&format!("   [OK] Removed existing file: {:?}", alt_path)),
-                    Err(e) => t3_enhanced_logging(&format!("   [WARNING] Could not remove {:?}: {}", alt_path, e)),
-                }
-            }
-
-            // Also remove files with prefix in alternative locations
-            if let Some(alt_dir) = alt_path.parent() {
-                if alt_dir.exists() {
-                    match fs::read_dir(alt_dir) {
-                        Ok(entries) => {
-                            for entry in entries.flatten() {
-                                let path = entry.path();
-                                if let Some(filename) = path.file_name() {
-                                    if let Some(name_str) = filename.to_str() {
-                                        if name_str.starts_with("webview_t3_device_") {
-                                            match fs::remove_file(&path) {
-                                                Ok(_) => t3_enhanced_logging(&format!("   [OK] Removed file with prefix: {:?}", path)),
-                                                Err(e) => t3_enhanced_logging(&format!("   [WARNING] Could not remove {:?}: {}", path, e)),
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Err(_) => {} // Silently skip if directory doesn't exist
-                    }
-                }
-            }
-        }
-
-        t3_enhanced_logging("   All existing webview_t3_device.db and webview_t3_device_* files removed");
+        if wal_path.exists() { let _ = fs::remove_file(&wal_path); }
+        if shm_path.exists() { let _ = fs::remove_file(&shm_path); }
     } else if need_update && update_status {
         t3_enhanced_logging("[INFO] Database update already completed");
         t3_enhanced_logging(&format!("   Version: {}", db_version));
@@ -677,10 +622,14 @@ pub async fn initialize_t3_device_database() -> Result<(), Box<dyn std::error::E
     crate::server::debug_log("initialize_t3_device_database: START");
     if USE_DYNAMIC_DATABASE_CREATION {
         t3_enhanced_logging("[GEAR] Using Option 2: Dynamic database creation from embedded SQL");
-        start_database_service_dynamic().await?;
+        if let Err(e) = start_database_service_dynamic().await {
+            t3_enhanced_logging(&format!("[WARN] Dynamic DB creation failed (non-fatal): {}", e));
+        }
     } else {
         t3_enhanced_logging("[GEAR] Using Option 1: Copy pre-built database from ResourceFile");
-        start_database_service().await?;
+        if let Err(e) = start_database_service().await {
+            t3_enhanced_logging(&format!("[WARN] Database copy failed (non-fatal, migrations will still run): {}", e));
+        }
     }
     crate::server::debug_log("initialize_t3_device_database: DB init done, running migrations...");
     run_t3_device_migrations().await?;
@@ -784,7 +733,7 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
     use sea_orm::*;
 
     let conn = establish_connection().await?;
-    crate::database_management::sync_health::ensure_app_log_table(&conn).await;
+    crate::server_db::sync_health::ensure_app_log_table(&conn).await;
     crate::logging::service::emit_app_log(
         &conn,
         "info",
@@ -890,7 +839,7 @@ pub async fn cleanup_orphaned_migrations() -> Result<(), Box<dyn std::error::Err
 
     drop(conn);
     if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-        crate::database_management::sync_health::ensure_app_log_table(&db).await;
+        crate::server_db::sync_health::ensure_app_log_table(&db).await;
         crate::logging::service::emit_app_log(
             &db,
             "info",
@@ -910,7 +859,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
     // First, cleanup any orphaned migration records
     if let Err(e) = cleanup_orphaned_migrations().await {
         if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-            crate::database_management::sync_health::ensure_app_log_table(&db).await;
+            crate::server_db::sync_health::ensure_app_log_table(&db).await;
             crate::logging::service::emit_app_log(
                 &db,
                 "warn",
@@ -927,7 +876,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
     match has_pending_migrations().await {
         Ok(true) => {
             if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-                crate::database_management::sync_health::ensure_app_log_table(&db).await;
+                crate::server_db::sync_health::ensure_app_log_table(&db).await;
                 crate::logging::service::emit_app_log(
                     &db,
                     "info",
@@ -943,7 +892,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
                 Ok(_) => {
                     // Activity Log: migration success
                     if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-                        crate::database_management::sync_health::ensure_app_log_table(&db).await;
+                        crate::server_db::sync_health::ensure_app_log_table(&db).await;
                         crate::logging::service::emit_app_log(
                             &db, "info", "MAINTENANCE", Some("migration"), None,
                             "DB migrations applied successfully", None,
@@ -953,7 +902,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
                 Err(e) => {
                     // Activity Log: migration warning
                     if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-                        crate::database_management::sync_health::ensure_app_log_table(&db).await;
+                        crate::server_db::sync_health::ensure_app_log_table(&db).await;
                         crate::logging::service::emit_app_log(
                             &db, "warn", "MAINTENANCE", Some("migration"), None,
                             "DB migration warning",
@@ -968,7 +917,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
         },
         Ok(false) => {
             if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-                crate::database_management::sync_health::ensure_app_log_table(&db).await;
+                crate::server_db::sync_health::ensure_app_log_table(&db).await;
                 crate::logging::service::emit_app_log(
                     &db,
                     "info",
@@ -983,7 +932,7 @@ pub async fn run_migrations_if_pending() -> Result<(), Box<dyn std::error::Error
         },
         Err(e) => {
             if let Ok(db) = crate::db_connection::establish_t3_device_connection().await {
-                crate::database_management::sync_health::ensure_app_log_table(&db).await;
+                crate::server_db::sync_health::ensure_app_log_table(&db).await;
                 crate::logging::service::emit_app_log(
                     &db,
                     "warn",

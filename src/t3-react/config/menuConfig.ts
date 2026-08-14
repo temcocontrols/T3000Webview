@@ -696,6 +696,13 @@ const haystackMenu: MenuItem = {
       action: () => { window.location.hash = '#/t3000/custom-tags'; },
       icon: 'Tag',
     },
+    {
+      id: 'haystack-auto-tagging',
+      label: 'Auto-Tagging & MCP',
+      type: 'item',
+      action: () => { window.location.hash = '#/t3000/auto-tagging'; },
+      icon: 'Flash',
+    },
   ],
 };
 
@@ -744,6 +751,40 @@ const simulatorMenu: MenuItem = {
 };
 
 /**
+ * AI Assistant Menu
+ */
+const aiAssistantMenu: MenuItem = {
+  id: 'ai-assistant',
+  label: 'AI Assistant',
+  type: 'submenu',
+  children: [
+    {
+      id: 'ai-chat',
+      label: 'Open AI Chat',
+      type: 'item',
+      action: () => {
+        window.dispatchEvent(new CustomEvent('t3-open-ai-chat'));
+      },
+      icon: 'Chat',
+    },
+    {
+      id: 'ai-divider',
+      label: '',
+      type: 'divider',
+    },
+    {
+      id: 'ai-settings',
+      label: 'Settings...',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/ai-chat';
+      },
+      icon: 'Settings',
+    },
+  ],
+};
+
+/**
  * Top Menu Configuration
  * Export array of all top-level menus
  */
@@ -758,6 +799,7 @@ export const topMenuConfig: MenuItem[] = [
   developerMenu,
   haystackMenu,
   simulatorMenu,
+  aiAssistantMenu,
 ];
 
 /**

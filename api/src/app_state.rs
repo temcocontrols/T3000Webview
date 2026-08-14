@@ -87,7 +87,7 @@ pub struct T3AppState {
     /// MSSQL connection pool (only set when active backend is MSSQL).
     /// The 80+ route files use SeaORM via t3_device_conn. For MSSQL,
     /// MSSQL-specific service code uses this pool via `mssql_queries` functions.
-    pub mssql_pool: Option<crate::database_management::mssql_queries::MssqlPool>,
+    pub mssql_pool: Option<crate::server_db::mssql_queries::MssqlPool>,
     /// Whether server DB is enabled (from setting.ini [ServerDatabase] enabled=)
     pub server_db_enabled: bool,
     /// PC role when server DB is active: "server" (writes FFI to server) or "client"
@@ -224,7 +224,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
     // ---- Step 3: Connect to the active backend based on INI + DB_BACKEND_CONFIG ----
     // When server DB is enabled (INI enabled=1), read DB_BACKEND_CONFIG and connect
     // to the server backend (PG / MySQL / MSSQL). When disabled, use local SQLite.
-    let mut mssql_pool: Option<crate::database_management::mssql_queries::MssqlPool> = None;
+    let mut mssql_pool: Option<crate::server_db::mssql_queries::MssqlPool> = None;
     let mut server_db_connected = false;
     let t3_device_conn: Option<DatabaseConnection> = if ini_cfg.enabled {
         // Server DB mode: attempt server backend connection
@@ -232,7 +232,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
             let cfg_guard = lcfg.lock().await;
             match establish_device_conn_from_config(&*cfg_guard).await {
                 Ok((device_conn, config)) => {
-                    if config.backend_type == crate::database_management::db_backend_config::BackendType::Sqlite {
+                    if config.backend_type == crate::server_db::db_backend_config::BackendType::Sqlite {
                         crate::logging::service::emit_app_log(
                             &conn,
                             "warn",

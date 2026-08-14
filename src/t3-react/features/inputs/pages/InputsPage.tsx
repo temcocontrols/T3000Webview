@@ -87,7 +87,9 @@ interface InputPoint {
 }
 
 const InputsPageDesktop: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [inputs, setInputs] = useState<InputPoint[]>([]);
@@ -101,8 +103,9 @@ const InputsPageDesktop: React.FC = () => {
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false); // Track if user is already at bottom
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false); // Track if user is already at bottom
   const savedScrollPosition = useRef<number>(0); // Save scroll position for restoration
 
   // Auto-select first device on page load - DISABLED
@@ -331,7 +334,8 @@ const InputsPageDesktop: React.FC = () => {
   // Register CSV export/import handlers with global context (Tools menu)
   useRegisterCsvHandlers(handleExport, handleImport);
 
-  // Auto-scroll to next device when reaching bottom
+  // [DISABLED] Auto-scroll to next device when reaching bottom — commented out for now.
+  /*
   const loadNextDevice = useCallback(async () => {
     const nextDevice = getNextDevice();
 
@@ -381,17 +385,17 @@ const InputsPageDesktop: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, inputs.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top when device changes
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
-      // Use smooth scroll for auto-loaded devices, instant for manual selection
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Restore scroll position after data refresh (but not on device change)
   useEffect(() => {
@@ -1375,8 +1379,9 @@ const InputsPageDesktop: React.FC = () => {
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    onScroll={handleScroll}
-                    onWheel={handleWheel}
+                    // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                    // onScroll={handleScroll}
+                    // onWheel={handleWheel}
                   >
                     <DataGrid
                       key={sortKey}
@@ -1422,13 +1427,14 @@ const InputsPageDesktop: React.FC = () => {
                     </DataGridBody>
                   </DataGrid>
 
-                  {/* Loading Next Device Indicator */}
+                  {/* [DISABLED] Loading Next Device Indicator — commented out for now.
                   {isLoadingNextDevice && (
                     <div className={styles.autoLoadIndicator}>
                       <Spinner size="tiny" />
                       <Text size={200} weight="regular">Loading next device...</Text>
                     </div>
                   )}
+                  */}
                   </div>
                 )}
 

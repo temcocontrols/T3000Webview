@@ -198,3 +198,25 @@
   padding: 0 0px !important;
   gap: 0px !important;
 }
+
+/* Offline "show more" group — hyperlink style */
+.offlineGroupItem {
+  cursor: pointer !important;
+}
+
+.offlineGroupItem:hover,
+.offlineGroupItem:active {
+  background-color: transparent !important;
+  border-left-color: transparent !important;
+}
+
+.offlineGroupItem :global(.fui-TreeItemLayout__main) {
+  font-size: 11px !important;
+  color: #0078d4 !important;
+  line-height: 1.4 !important;
+}
+
+.offlineGroupItem:hover :global(.fui-TreeItemLayout__main) {
+  color: #005a9e !important;
+  text-decoration: underline;
+}

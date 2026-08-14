@@ -18,6 +18,7 @@ const ProgramsPage = lazy(() => import('../pages').then(m => ({ default: m.Progr
 const PIDLoopsPage = lazy(() => import('../pages').then(m => ({ default: m.PIDLoopsPage })));
 const GraphicsPage = lazy(() => import('../pages').then(m => ({ default: m.GraphicsPage })));
 const HaystackTagsPage = lazy(() => import('../pages').then(m => ({ default: m.HaystackTagsPage })));
+const AutoTaggingMcpPage = lazy(() => import('../pages').then(m => ({ default: m.AutoTaggingMcpPage })));
 const SchedulesPage = lazy(() => import('../pages').then(m => ({ default: m.SchedulesPage })));
 const HolidaysPage = lazy(() => import('../pages').then(m => ({ default: m.HolidaysPage })));
 const TrendLogsPage = lazy(() => import('../pages').then(m => ({ default: m.TrendLogsPage })));
@@ -199,6 +200,12 @@ export const t3000Routes: T3000Route[] = [
     element: HaystackTagsPage,
     title: 'Haystack Tags',
     shortcut: 'Alt+Y',
+    requiresDevice: false,
+  },
+  {
+    path: '/t3000/auto-tagging',
+    element: AutoTaggingMcpPage,
+    title: 'Auto-Tagging & MCP',
     requiresDevice: false,
   },
   {

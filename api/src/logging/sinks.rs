@@ -162,7 +162,7 @@ pub fn spawn_mssql_sink(
 ) -> bool {
     if let Some(pool) = crate::server_db_writer::get_server_mssql_pool() {
         tokio::spawn(async move {
-            let _ = crate::database_management::mssql_queries::insert_app_log(
+            let _ = crate::server_db::mssql_queries::insert_app_log(
                 pool,
                 ts_unix,
                 &ts_fmt,

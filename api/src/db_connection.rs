@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::database_management::db_backend_config::{
+use crate::server_db::db_backend_config::{
     self, BackendConfig, BackendType,
 };
 use crate::device_db_conn::DeviceDbConn;
@@ -166,7 +166,7 @@ pub async fn establish_device_conn_from_config(
         BackendType::Mssql => {
             db_backend_config::validate_config(&config)?;
             let tib_config = db_backend_config::build_mssql_config(&config)?;
-            let pool = crate::database_management::mssql_queries::create_mssql_pool(tib_config, 10)
+            let pool = crate::server_db::mssql_queries::create_mssql_pool(tib_config, 10)
                 .await
                 .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
             Ok((DeviceDbConn::new_mssql(pool), config))
@@ -218,7 +218,7 @@ pub async fn validate_device_conn_ready(
         DeviceDbConn::SeaOrm { conn, backend_type } => {
             validate_seaorm_backend_schema(conn, *backend_type).await
         }
-        DeviceDbConn::Mssql { pool } => crate::database_management::mssql_queries::validate_t3000_schema(pool)
+        DeviceDbConn::Mssql { pool } => crate::server_db::mssql_queries::validate_t3000_schema(pool)
             .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() }),
     }

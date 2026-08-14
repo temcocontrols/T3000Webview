@@ -8,7 +8,7 @@
  * - User profile
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Menu,
   MenuTrigger,
@@ -100,6 +100,8 @@ import { menuConfig } from '@t3-react/config/menuConfig';
 import { MenuAction } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
 import { useAuthStore } from '@t3-react/store';
+import { useUIStore } from '@t3-react/store/uiStore';
+import { useChatStore } from '@t3-react/store/chatStore';
 import { t3000Routes } from '@t3-react/app/router/routes';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
 import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
@@ -235,6 +237,22 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+  },
+  chatToggleBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '32px',
+    height: '32px',
+    borderRadius: '6px',
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+    color: 'var(--t3-color-header-text)',
+    marginRight: '4px',
+    '&:hover': {
+      backgroundColor: 'rgba(255,255,255,0.1)',
+    },
   },
   menuPopover: {
     minWidth: '300px',
@@ -656,6 +674,20 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     await logout();
     navigate('/login');
   };
+
+  // Listen for "Open AI Chat" menu event
+  const setChatMode = useUIStore((s) => s.setChatMode);
+  useEffect(() => {
+    const handler = () => {
+      if (window.location.hash.includes('/ai-chat')) {
+        const prev = useChatStore.getState().previousPageHash?.replace(/^#/, '') || '/t3000/dashboard';
+        navigate(prev.startsWith('/') ? prev : `/${prev}`);
+      }
+      setChatMode('sidebar');
+    };
+    window.addEventListener('t3-open-ai-chat', handler);
+    return () => window.removeEventListener('t3-open-ai-chat', handler);
+  }, [setChatMode, navigate]);
 
   return (
     <div className={styles.header}>

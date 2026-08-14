@@ -9,7 +9,7 @@
 //! The caller (`sync_logging_data_static`) just calls `writer.*()` methods;
 //! it does NOT need to know which backend is active.
 
-use crate::database_management::mssql_queries::{self, MssqlPool};
+use crate::server_db::mssql_queries::{self, MssqlPool};
 use crate::db_connection::establish_device_conn_for_sync;
 use crate::error::AppError;
 use sea_orm::DatabaseConnection;

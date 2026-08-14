@@ -59,7 +59,9 @@ interface HolidayPoint {
 }
 
 export const HolidaysPage: React.FC = () => {
-  const { selectedDevice, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, selectDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [holidays, setHolidays] = useState<HolidayPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,8 +79,9 @@ export const HolidaysPage: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false);
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -254,7 +257,8 @@ export const HolidaysPage: React.FC = () => {
     }
   };
 
-  // Auto-scroll navigation handlers
+  // [DISABLED] Auto-scroll navigation handlers — commented out for now.
+  /*
   const loadNextDevice = useCallback(() => {
     const nextDevice = getNextDevice();
     if (nextDevice) {
@@ -288,16 +292,17 @@ export const HolidaysPage: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, holidays.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top after device change
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Display holidays with search filtering
   const displayHolidays = React.useMemo(() => {
@@ -637,8 +642,9 @@ export const HolidaysPage: React.FC = () => {
                 <div
                   ref={scrollContainerRef}
                   className={styles.scrollContainer}
-                  onScroll={handleScroll}
-                  onWheel={handleWheel}
+                  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                  // onScroll={handleScroll}
+                  // onWheel={handleWheel}
                 >
                   <DataGrid
                     key={sortKey}
@@ -691,12 +697,14 @@ export const HolidaysPage: React.FC = () => {
                   )}
                   */}
 
+                  {/* [DISABLED] Auto-load indicator — commented out for now.
                   {isLoadingNextDevice && (
                     <div className={styles.autoLoadIndicator}>
                       <Spinner size="tiny" />
                       <Text>Loading next device...</Text>
                     </div>
                   )}
+                  */}
                 </div>
               )}
 

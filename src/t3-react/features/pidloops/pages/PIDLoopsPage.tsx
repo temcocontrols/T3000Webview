@@ -64,7 +64,9 @@ interface PIDController {
 }
 
 const PIDLoopsPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, selectDevice, getFilteredDevices } = useDeviceTreeStore();
   const [pidLoops, setPidLoops] = useState<PIDController[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,8 +83,9 @@ const PIDLoopsPage: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false);
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false);
 
   // Create empty rows when no data exists
   const displayPidLoops = useMemo(() => {
@@ -362,7 +365,8 @@ const PIDLoopsPage: React.FC = () => {
     }
   };
 
-  // Auto-scroll navigation handlers
+  // [DISABLED] Auto-scroll navigation handlers — commented out for now.
+  /*
   const loadNextDevice = useCallback(() => {
     const nextDevice = getNextDevice();
     if (nextDevice) {
@@ -396,16 +400,17 @@ const PIDLoopsPage: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, isLoading, pidLoops.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top after device change
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Column definitions
   const columns: TableColumnDefinition<PIDController>[] = useMemo(() => [
@@ -839,8 +844,9 @@ const PIDLoopsPage: React.FC = () => {
           <div
             ref={scrollContainerRef}
             className={styles.scrollContainer}
-            onScroll={handleScroll}
-            onWheel={handleWheel}
+            // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+            // onScroll={handleScroll}
+            // onWheel={handleWheel}
           >
             <DataGrid
               key={sortKey}
@@ -894,12 +900,14 @@ const PIDLoopsPage: React.FC = () => {
             )}
             */}
 
+            {/* [DISABLED] Auto-load indicator — commented out for now.
             {isLoadingNextDevice && (
               <div className={styles.autoLoadIndicator}>
                 <Spinner size="tiny" />
                 <Text>Loading next device...</Text>
               </div>
             )}
+            */}
           </div>
         )}
 

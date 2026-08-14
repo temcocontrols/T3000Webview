@@ -194,8 +194,33 @@ export class DeviceApiService {
   }
 
   /**
-   * Scan for devices on network
-   * Maps to C++ network scanning threads
+   * Run UDP LAN scan (command 0x64/0x65) and refresh all device info in DB.
+   * Returns the complete updated device list with all fields from the scan.
+   */
+  static async scanAndRefreshDevices(timeout: number = 8): Promise<DevicesResponse> {
+    try {
+      const response = await fetch(`${this.baseUrl}/devices/scan-refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeout }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+      }
+      const data = await response.json();
+      const transformedDevices = (data.devices || [])
+        .map(transformDeviceData)
+        .filter((d: DeviceInfo) => Number.isFinite(d.serialNumber));
+      return { ...data, devices: transformedDevices };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Scan for devices on network (legacy — use scanAndRefreshDevices instead)
+   * @deprecated Use scanAndRefreshDevices() which returns full device info via UDP scan
    */
   static async scanDevices(options: ScanOptions = {}): Promise<DeviceInfo[]> {
     try {

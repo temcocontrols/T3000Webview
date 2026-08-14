@@ -128,6 +128,7 @@ export interface DeviceWithStats extends DeviceInfo {
 export interface DevicesResponse {
   devices: DeviceWithStats[];
   total: number;
+  scanned?: number;         // devices found by UDP scan (scan-refresh only)
   message: string;
 }
 

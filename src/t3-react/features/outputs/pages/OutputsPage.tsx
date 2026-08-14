@@ -88,7 +88,9 @@ interface OutputPoint {
 }
 
 const OutputsPageDesktop: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [outputs, setOutputs] = useState<OutputPoint[]>([]);
@@ -102,8 +104,9 @@ const OutputsPageDesktop: React.FC = () => {
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false); // Track if user is already at bottom
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false); // Track if user is already at bottom
 
   // Auto-select first device on page load - DISABLED
   // TreePanel's loadDevicesWithSync already handles auto-selection
@@ -320,7 +323,8 @@ const OutputsPageDesktop: React.FC = () => {
   // Register CSV export/import handlers with global context (Tools menu)
   useRegisterCsvHandlers(handleExport, handleImport);
 
-  // Auto-scroll to next device when reaching bottom
+  // [DISABLED] Auto-scroll to next device when reaching bottom — commented out for now.
+  /*
   const loadNextDevice = useCallback(async () => {
     const nextDevice = getNextDevice();
 
@@ -370,17 +374,17 @@ const OutputsPageDesktop: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, outputs.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top when device changes
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
-      // Use smooth scroll for auto-loaded devices, instant for manual selection
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Inline editing handlers
   const handleCellDoubleClick = (item: OutputPoint, field: string, currentValue: string) => {
@@ -586,13 +590,13 @@ const OutputsPageDesktop: React.FC = () => {
     if (!selectedDevice?.serialNumber) return;
     let cancelled = false;
     fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
-      if (cancelled) return;
+      if (cancelled || !Array.isArray(all)) return;
       setPointTags(all.map(t => ({
         pointType: t.point_type,
         pointIndex: t.point_index,
         tagName: t.tag_name,
       })));
-    });
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, [selectedDevice?.serialNumber]);
 
@@ -1391,8 +1395,9 @@ const OutputsPageDesktop: React.FC = () => {
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    onScroll={handleScroll}
-                    onWheel={handleWheel}
+                    // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                    // onScroll={handleScroll}
+                    // onWheel={handleWheel}
                   >
                     <DataGrid
                       key={sortKey}
@@ -1438,13 +1443,14 @@ const OutputsPageDesktop: React.FC = () => {
                       </DataGridBody>
                     </DataGrid>
 
-                    {/* Loading Next Device Indicator */}
+                    {/* [DISABLED] Loading Next Device Indicator — commented out for now.
                     {isLoadingNextDevice && (
                       <div className={styles.autoLoadIndicator}>
                         <Spinner size="tiny" />
                         <Text size={200} weight="regular">Loading next device...</Text>
                       </div>
                     )}
+                    */}
 
                     {/* No Data Message - Show below grid when empty */}
                     {/* {outputs.length === 0 && (

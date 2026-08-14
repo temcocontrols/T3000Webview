@@ -11,8 +11,8 @@ use crate::entity::t3_device::{
     devices, input_points, output_points, trendlog_data_detail, trendlog_data_sync_metadata,
     variable_points,
 };
-use crate::database_management::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
-use crate::database_management::mssql_queries;
+use crate::server_db::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
+use crate::server_db::mssql_queries;
 use crate::error::AppError;
 use crate::logger::ServiceLogger;
 use crate::t3_device::trendlog_parent_cache::{ParentKey, TrendlogParentCache};
@@ -615,7 +615,7 @@ impl T3000MainService {
         } else {
             "center_db=disabled (standalone)".to_string()
         };
-        crate::database_management::sync_health::ensure_app_log_table(&self.db).await;
+        crate::server_db::sync_health::ensure_app_log_table(&self.db).await;
         crate::logging::service::emit_app_log(
             &self.db,
             "info",
@@ -1325,15 +1325,15 @@ impl T3000MainService {
             return Ok(true);
         }
 
-        let active_cfg = crate::database_management::db_backend_config::load_active_config(local_db)
+        let active_cfg = crate::server_db::db_backend_config::load_active_config(local_db)
             .await
             .map_err(|e| format!("load_active_backend_config failed: {}", e))?;
 
         match active_cfg.backend_type {
-            crate::database_management::db_backend_config::BackendType::Mssql => {
-                let tib = crate::database_management::db_backend_config::build_mssql_config(&active_cfg)
+            crate::server_db::db_backend_config::BackendType::Mssql => {
+                let tib = crate::server_db::db_backend_config::build_mssql_config(&active_cfg)
                     .map_err(|e| format!("build_mssql_config failed: {}", e))?;
-                let pool = crate::database_management::mssql_queries::create_mssql_pool(tib, 5)
+                let pool = crate::server_db::mssql_queries::create_mssql_pool(tib, 5)
                     .await
                     .map_err(|e| format!("create_mssql_pool failed: {}", e))?;
 
@@ -1361,7 +1361,7 @@ impl T3000MainService {
             e
         })?;
 
-        crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
+        crate::server_db::sync_health::ensure_app_log_table(&local_db).await;
 
         // Start TRENDLOG_BACKEND flow (total_steps=0 = variable; actual count depends on rediscovery path)
         let t_cycle = std::time::Instant::now();
@@ -3094,10 +3094,20 @@ impl T3000MainService {
                     info!("?? About to call HandleWebViewMsg with LOGGING_DATA action - Panel: {}, Serial: {}", panel_id_clone, serial_number_clone);
                     info!("?? Sending JSON to C++: {}", input_str);
 
-                    // Prepare buffer for response - very large buffer for up to 100 devices
-                    // Each device can be ~1MB, so 100 devices = ~100MB
-                    const BUFFER_SIZE: usize = 104857600; // 100MB buffer for maximum device capacity
-                    let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+                    // Prepare buffer for response. This DLL is built for i686 (32-bit),
+                    // so a 100MB allocation inside the ~2GB address space intermittently
+                    // fails and aborts T3000.exe via std::alloc::rust_oom. Actual
+                    // LOGGING_DATA responses are a few MB at most; the C++ bridge
+                    // returns -1 ("buffer too small") if a response ever exceeds this.
+                    // Allocate fallibly so a tight-memory failure returns an error
+                    // instead of killing the whole process.
+                    const BUFFER_SIZE: usize = 16 * 1024 * 1024; // 16MB
+                    let mut buffer: Vec<u8> = Vec::new();
+                    if buffer.try_reserve_exact(BUFFER_SIZE).is_err() {
+                        error!("Out of memory allocating FFI response buffer ({} bytes)", BUFFER_SIZE);
+                        return Err("Out of memory allocating FFI response buffer".to_string());
+                    }
+                    buffer.resize(BUFFER_SIZE, 0);
 
                     // Write input JSON to buffer
                     let input_bytes = input_str.as_bytes();
@@ -4079,7 +4089,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? INPUT point {}:{} UPDATED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "INPUTS",
                     serial_number,
@@ -4140,7 +4150,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? INPUT point {}:{} INSERTED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "INPUTS",
                     serial_number,
@@ -4223,7 +4233,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? OUTPUT point {}:{} UPDATED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "OUTPUTS",
                     serial_number,
@@ -4284,7 +4294,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? OUTPUT point {}:{} INSERTED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "OUTPUTS",
                     serial_number,
@@ -4372,7 +4382,7 @@ impl T3000MainService {
                     "? VARIABLE point {}:{} UPDATED",
                     serial_number, point.index
                 );
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "VARIABLES",
                     serial_number,
@@ -4436,7 +4446,7 @@ impl T3000MainService {
                     "? VARIABLE point {}:{} INSERTED",
                     serial_number, point.index
                 );
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "VARIABLES",
                     serial_number,
@@ -4717,10 +4727,10 @@ impl T3000MainService {
     async fn replicate_all_data_to_mssql(
         local_db: &DatabaseConnection,
         serial_numbers: &[i32],
-        pool: &crate::database_management::mssql_queries::MssqlPool,
+        pool: &crate::server_db::mssql_queries::MssqlPool,
         sync_interval_secs: u64,
     ) -> Result<(u64, u64, u64, u64), AppError> {
-        use crate::database_management::mssql_queries;
+        use crate::server_db::mssql_queries;
         use crate::entity::t3_device::{trendlog_data, trendlog_data_detail};
 
         let mut dev_count: u64 = 0;

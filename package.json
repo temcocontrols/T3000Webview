@@ -10,7 +10,7 @@
     "format": "prettier --write \"**/*.{js,vue,css,html,md,json}\" --ignore-path .gitignore",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 quasar build",
     "build:analyze": "cross-env NODE_OPTIONS=--max-old-space-size=8192 ANALYZE=true quasar build",
-    "client-dev": "quasar dev",
+    "client-dev": "cross-env NODE_OPTIONS=--max-old-space-size=8192 quasar dev",
     "api-dev": "cd api && cargo watch -x \"run --example run_server\"",
     "api": "cd api && cargo run --example run_server",
     "api-t3000-debug": "cd api && cargo build --example run_server && copy .\\target\\debug\\examples\\run_server.exe \"C:\\QN\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\\\" && powershell -Command \"[Console]::OutputEncoding = [Text.Encoding]::UTF8; & 'C:\\QN\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug\\run_server.exe' 2>&1 | Tee-Object 'C:\\QN\\temcocontrols\\T3Copilot\\Debug-Log\\api-t3000-debug-server.log'\"",
