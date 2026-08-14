@@ -132,14 +132,16 @@
         <!-- Export Options -->
         <a-flex align="center" class="control-group export-options">
           <a-dropdown placement="bottomRight">
-            <a-button size="small" style="display: flex; align-items: center; padding: 0px 5px; font-size: 11px;">
-              <ExportOutlined style="margin-right: 4px;" />
-              <span>Export</span>
-              <DownOutlined style="margin-left: 4px;" />
+            <a-button size="small" :loading="isExporting" style="display: flex; align-items: center; padding: 0px 5px; font-size: 11px;">
+              <template v-if="!isExporting" #icon>
+                <ExportOutlined />
+              </template>
+              <span>{{ isExporting ? `Exporting ${exportingFormat}…` : 'Export' }}</span>
+              <DownOutlined v-if="!isExporting" style="margin-left: 4px;" />
             </a-button>
             <template #overlay>
               <a-menu class="export-options-menu" @click="handleExportMenu">
-                <a-menu-item key="png">
+                <a-menu-item key="png" :disabled="isExporting">
                   <FileImageOutlined />
                   Export as PNG
                 </a-menu-item>
@@ -148,11 +150,11 @@
                   Export as JPG
                 </a-menu-item> -->
                 <a-menu-divider />
-                <a-menu-item key="csv">
+                <a-menu-item key="csv" :disabled="isExporting">
                   <FileExcelOutlined />
                   Export Data (CSV)
                 </a-menu-item>
-                <a-menu-item key="json">
+                <a-menu-item key="json" :disabled="isExporting">
                   <FileTextOutlined />
                   Export Data (JSON)
                 </a-menu-item>
@@ -1552,6 +1554,10 @@
   const isOptimizing = ref(false)
   const isSaving = ref(false)
   const isCleaningUp = ref(false)
+
+  // Export progress state: drives the Export button spinner + top-right toast
+  const isExporting = ref(false)
+  const exportingFormat = ref<string | null>(null)
 
   // Database files data (loaded from API)
   const databaseFiles = ref([])
@@ -12200,19 +12206,55 @@
     }
   }
 
+  // Unified export feedback: top-right corner toast via AntD `notification`
+  // (default `message` appears top-center and is easy to miss).
+  const notifyExport = (
+    type: 'success' | 'warning' | 'error',
+    title: string,
+    description?: string
+  ) => {
+    const options = {
+      message: title,
+      description,
+      placement: 'topRight' as const,
+      duration: 3,
+      style: { maxWidth: 320 }
+    }
+    if (type === 'success') notification.success(options)
+    else if (type === 'warning') notification.warning(options)
+    else notification.error(options)
+  }
+
+  // Wraps an export so the Export button shows a spinner while work is in
+  // progress and blocks overlapping exports.
+  const runExport = async (format: string, fn: () => void | Promise<void>) => {
+    if (isExporting.value) return
+    isExporting.value = true
+    exportingFormat.value = format
+    // Yield to the browser so the Export button spinner actually paints before
+    // the (potentially CPU-heavy) export work starts.
+    await new Promise(resolve => setTimeout(resolve, 50))
+    try {
+      await fn()
+    } finally {
+      isExporting.value = false
+      exportingFormat.value = null
+    }
+  }
+
   const handleExportMenu = ({ key }: { key: string }) => {
     switch (key) {
       case 'png':
-        exportChartPNG()
+        runExport('PNG', exportChartPNG)
         break
       case 'jpg':
-        exportChartJPG()
+        runExport('JPG', exportChartJPG)
         break
       case 'csv':
-        exportData()
+        runExport('CSV', exportData)
         break
       case 'json':
-        exportDataJSON()
+        runExport('JSON', exportDataJSON)
         break
     }
   }
@@ -13492,7 +13534,7 @@
     const activeSeriesData = dataSeries.value.filter(s => s.visible && !s.isEmpty)
 
     if (activeSeriesData.length === 0) {
-      message.warning('No visible data series to export')
+      notifyExport('warning', 'Nothing to export', 'No visible data series to export')
       return
     }
 
@@ -13556,8 +13598,6 @@
     link.download = `${chartTitle.value}_AllSeries_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.csv`
     link.href = URL.createObjectURL(blob)
     link.click()
-
-    message.success(`Data exported successfully (${activeSeriesData.length} series, ${sortedTimestamps.length} data points)`)
   }
 
   // Multi-Canvas Export with Background Color Support
@@ -13670,15 +13710,14 @@
       }
 
       // Download the composite image
+      const fileName = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.png`
       const link = document.createElement('a')
-      link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.png`
+      link.download = fileName
       link.href = compositeCanvas.toDataURL('image/png', 1.0)
       link.click()
-
-      message.success('PNG exported')
     } catch (error) {
       LogUtil.Error('Error exporting PNG:', error)
-      message.error('PNG export failed')
+      notifyExport('error', 'Export failed', 'PNG export failed')
     }
   }
 
@@ -13782,15 +13821,14 @@
         currentY += scaledHeight + 10 // Reduced padding between charts
       }
 
+      const fileName = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.jpg`
       const link = document.createElement('a')
-      link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.jpg`
+      link.download = fileName
       link.href = compositeCanvas.toDataURL('image/jpeg', 0.9)
       link.click()
-
-      message.success('JPG exported')
     } catch (error) {
       LogUtil.Error('Error exporting JPG:', error)
-      message.error('JPG export failed')
+      notifyExport('error', 'Export failed', 'JPG export failed')
     }
   }
 
@@ -13805,7 +13843,7 @@
     const activeSeriesData = dataSeries.value.filter(s => s.visible && !s.isEmpty)
 
     if (activeSeriesData.length === 0) {
-      message.warning('No visible data series to export')
+      notifyExport('warning', 'Nothing to export', 'No visible data series to export')
       return
     }
 
@@ -13871,8 +13909,6 @@
     link.download = `${chartTitle.value}_AllSeries_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.json`
     link.href = URL.createObjectURL(blob)
     link.click()
-
-    message.success(`Data exported as JSON successfully (${activeSeriesData.length} series, ${allTimestamps.length} total data points)`)
   }
 
   // Chart Options Methods
