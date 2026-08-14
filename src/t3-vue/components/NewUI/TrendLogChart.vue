@@ -198,7 +198,7 @@
     <!-- Empty state for View 2 & 3 with no tracked items -->
     <div v-if="currentView !== 1 && !hasTrackedItems" class="empty-tracking-state">
       <div class="empty-content">
-        <div class="empty-icon">📊</div>
+        <div class="empty-icon"><LineChartOutlined /></div>
         <div class="empty-title">{{ currentView === 2 ? 'Custom View 2' : 'Custom View 3' }}</div>
         <div class="empty-description">
           Select items to track to start monitoring specific data points.
@@ -17426,16 +17426,16 @@
   }
 
   .empty-icon {
-    font-size: 36px;
-    margin-bottom: 16px;
-    opacity: 0.6;
+    font-size: 26px;
+    margin-bottom: 12px;
+    color: #bfbfbf;
   }
 
   .empty-title {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     color: #262626;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .empty-description {
@@ -17446,14 +17446,14 @@
   }
 
   .select-items-btn {
-    height: 32px !important;
-    padding: 0 16px !important;
-    font-size: 14px !important;
+    height: 24px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
     font-weight: normal !important;
   }
 
   .select-items-btn span {
-    font-size: 14px !important;
+    font-size: 12px !important;
     font-weight: normal !important;
   }
 
