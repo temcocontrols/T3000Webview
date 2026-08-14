@@ -64,7 +64,7 @@ class HvConstant {
     Error: true,           // Console - undefined = auto-detect (always true), false = force disable
     FileLogging: false,    // File logging - undefined = enabled, false = disabled locally
     Trace: {
-      enabled: true,
+      enabled: false,
       profile: 'baseline',
       featureFilter: [],
       stepMode: 'summary',

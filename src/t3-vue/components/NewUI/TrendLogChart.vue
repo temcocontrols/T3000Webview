@@ -1376,8 +1376,13 @@
   }
 
   // Strip trailing zeros (and a trailing dot) from a fixed-decimal string.
-  const trimFloat = (n: number, decimals: number): string =>
-    n.toFixed(decimals).replace(/\.?0+$/, '')
+  // Only trim when a decimal point is present — otherwise "30".toFixed(0) becomes
+  // "3" because the optional "." in /\.?0+$/ lets the regex eat the trailing
+  // zero of a whole number (e.g. 30s → "3s").
+  const trimFloat = (n: number, decimals: number): string => {
+    const fixed = n.toFixed(decimals)
+    return fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed
+  }
 
   // Pick the most readable duration unit from the value's magnitude and return
   // [scaledValue, unit, decimals] (e.g. 19152 s → [5.32, 'h', 2]).
@@ -1385,7 +1390,7 @@
     const s = Math.abs(seconds)
     if (s >= 86400) return [s / 86400, 'd', 2]
     if (s >= 3600)  return [s / 3600, 'h', 2]
-    if (s >= 60)    return [s / 60, 'm', 1]
+    if (s >= 60)    return [s / 60, 'm', 2]
     return [s, 's', 0]
   }
 
@@ -1395,13 +1400,15 @@
     return trimFloat(val, decimals) + unit
   }
 
-  // "11.9" / "12.0" — plain 1-decimal number for the Y-axis; the band is already
-  // labelled "Time". Always one decimal for hour/minute magnitudes so adjacent
-  // ticks never render the same label.
-  const formatDurationAxis = (seconds: number): string => {
+  // Compact duration for the Y-axis. Uses ONE unit for the whole axis (picked
+  // from the band's tick step) but NO unit suffix — labels stay numeric and
+  // never mix units (e.g. "30" seconds next to "1.0" minutes becomes 30/60/90).
+  const formatDurationAxis = (seconds: number, step?: number): string => {
     const s = Math.abs(seconds)
-    if (s >= 3600) return (s / 3600).toFixed(1)
-    if (s >= 60)   return (s / 60).toFixed(1)
+    const unitStep = step ?? (s >= 3600 ? 3600 : s >= 60 ? 60 : 1)
+    if (unitStep >= 86400) return trimFloat(s / 86400, 1)
+    if (unitStep >= 3600)  return trimFloat(s / 3600, 1)
+    if (unitStep >= 60)    return trimFloat(s / 60, 1)
     return Math.round(s).toString()
   }
 
@@ -4228,7 +4235,7 @@
     if (bands.length) {
       bands.forEach((band: any) => {
         const fmt = (v: number) => {
-          if (band.unit === 'Time') return formatDurationAxis(v)
+          if (band.unit === 'Time') return formatDurationAxis(v, band.step)
           const r = Math.round(v)
           if (Math.abs(r) >= 1_000_000) return (r / 1_000_000).toFixed(1) + 'M'
           if (Math.abs(r) >= 10_000)    return (r / 1_000).toFixed(0) + 'K'
@@ -4728,6 +4735,17 @@
                     }
                   }
                   const isTime = isTimeSeries(series)
+                  if (isTime) {
+                    LogUtil.Info('[TimeFmt] tooltip input', {
+                      displayVal,
+                      pointRawReal: point.raw?.real,
+                      unit: series?.unit,
+                      unitCode: series?.unitCode,
+                      seriesName: label,
+                      hhmmss: formatTimeHHMMSS(displayVal),
+                      duration: formatDurationWithUnit(displayVal)
+                    })
+                  }
                   const value = isTime ? `${formatTimeHHMMSS(displayVal)} (${formatDurationWithUnit(displayVal)})` : displayVal.toFixed(2)
                   const unit = series?.unit || ''
                   valueText = unit === 'Unused' ? `: ${value}` : `: ${value} ${unit}`
@@ -5051,7 +5069,7 @@
               const step = band.step
               // Snap to nearest step multiple to eliminate float drift from reverse-transform
               const snapped = Math.round(realV / step) * step
-              if (band.unit === 'Time') return formatDurationAxis(snapped)
+              if (band.unit === 'Time') return formatDurationAxis(snapped, band.step)
               const decimals = step < 1 ? Math.max(1, Math.ceil(-Math.log10(step))) : 0
               if (Math.abs(snapped) >= 1_000_000) return (snapped / 1_000_000).toFixed(1) + 'M'
               if (Math.abs(snapped) >= 10_000)    return (snapped / 1_000).toFixed(0) + 'K'
@@ -13471,7 +13489,7 @@
       const stateText = digitalStates[stateIndex]
       return `${stateText} (${lastValue})`
     } else if (isTimeSeries(series)) {
-      return formatTimeHHMMSS(lastValue)
+      return formatDurationWithUnit(lastValue)
     } else {
       return lastValue.toFixed(2)
     }
@@ -13488,7 +13506,7 @@
       const percentage = (highCount / data.length) * 100
       return `${percentage.toFixed(1)}% High`
     } else if (isTimeSeries(series)) {
-      return formatTimeHHMMSS(avg)
+      return formatDurationWithUnit(avg)
     } else {
       return avg.toFixed(2)
     }
@@ -13505,7 +13523,7 @@
       const stateText = digitalStates[stateIndex]
       return `${stateText} (${min})`
     } else if (isTimeSeries(series)) {
-      return formatTimeHHMMSS(min)
+      return formatDurationWithUnit(min)
     } else {
       return min.toFixed(2)
     }
@@ -13522,7 +13540,7 @@
       const stateText = digitalStates[stateIndex]
       return `${stateText} (${max})`
     } else if (isTimeSeries(series)) {
-      return formatTimeHHMMSS(max)
+      return formatDurationWithUnit(max)
     } else {
       return max.toFixed(2)
     }
