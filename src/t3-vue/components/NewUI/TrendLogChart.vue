@@ -2039,12 +2039,18 @@
     // num_inputs are active. Cap the loop to num_inputs to match T3000 native display.
     const numInputs: number | undefined = freshMonitorData.value?.num_inputs ?? (props.itemData as any)?.t3Entry?.num_inputs
 
-    LogUtil.Info('generateDataSeries: data source', {
+    const inputSourceName = (freshInput?.length)
+      ? 'freshMonitorData (Action 0 MON config, filtered by URL all_data)'
+      : 'URL all_data (props.itemData.t3Entry, decoded by IndexPageSocket)'
+    LogUtil.Info('[TrendLogChart] data source', {
+      inputSource: inputSourceName,
       usingFreshMonitorData: !!(freshInput?.length),
       freshInputLength: freshInput?.length ?? 0,
       propsInputLength: (props.itemData as any)?.t3Entry?.input?.length ?? 0,
       numInputs,
-      freshMonitorId: freshMonitorData.value?.id ?? null
+      freshMonitorId: freshMonitorData.value?.id ?? null,
+      panelsDataLength: T3000_Data.value.panelsData?.length ?? 0,
+      freshWebviewCacheSize: freshWebviewCache.value.size
     })
 
     if (!inputData?.length || !rangeData?.length) {
@@ -2085,13 +2091,27 @@
       const unit = getUnitFromPanelData(panelId, pointType, pointNumber)
       const description = getDeviceDescription(panelId, pointType, pointNumber)
 
-      // FILTER OUT DEMO/PLACEHOLDER DATA
-      // 1. Panel 0 with no description → demo/placeholder
-      // 2. Demo/test/sample patterns → skip
-      // 3. "(P0)" patterns → skip
-      // Note: getDeviceDescription now always returns a name for real devices
-      // (falls back to "{panelId}-{id}"), so "no description" only happens
-      // when the device isn't found at all (timing / panel not loaded yet).
+      // ── Item resolution trace: how each MON input maps to a chart series ──
+      LogUtil.Info('[TrendLogChart] input item', {
+        index,
+        rawPanel: rawPanelId,
+        resolvedPanelId: panelId,
+        pointType,
+        pointNumber,
+        category: pointTypeInfo?.category,
+        idToFind: pointTypeInfo?.category ? `${pointTypeInfo.category}${pointNumber + 1}` : '',
+        description,
+        unit,
+        digitalAnalog,
+        panelsDataReady
+      })
+
+      // FILTER: skip only truly unresolvable points.
+      // Demo/placeholder filtering was removed — the component only consumes real
+      // T3000 device data (URL all_data / Action 0 / Action 17), and those legacy
+      // patterns already dropped a real point ("Time Test1" matched "test").
+      // "No description" means getDeviceDescription could not resolve the point
+      // (panel offline / not cached yet / foreign panel), so skip it.
 
       if (!description && panelId === 0) {
         continue; // Placeholder data (no description + panel 0)
@@ -2100,15 +2120,6 @@
       if (!description) {
         // Device not found — panel may be offline or not yet cached. Skip.
         continue;
-      }
-
-      // Check for demo/test patterns in the description
-      if (/demo|test|sample/i.test(description)) {
-        continue; // Explicit demo data
-      }
-
-      if (description.includes('(P0)') || description.match(/^\d+\s*\([P]\d+\)$/)) {
-        continue; // Demo/placeholder pattern
       }
 
       // Only include items with valid data
@@ -2172,9 +2183,9 @@
     // During startup, generateDataSeries can run before panelsData is available.
     // Downgrade that transient "0 valid" state to debug to reduce noise.
     if (!panelsDataReady && validSeries.length === 0) {
-      LogUtil.Debug('TrendLogChart: Generated series with filtering (startup warmup)', generatedSeriesSummary)
+      LogUtil.Debug('[TrendLogChart] series result (startup warmup)', generatedSeriesSummary)
     } else {
-      LogUtil.Info('TrendLogChart: Generated series with filtering', generatedSeriesSummary)
+      LogUtil.Info('[TrendLogChart] series result', generatedSeriesSummary)
     }
 
     return validSeries
@@ -2212,7 +2223,7 @@
 
       const panelsList: any[] = T3000_Data.value.panelsList || []
       if (!panelsList.length) {
-        LogUtil.Warn('fetchFreshPointsForAllPanels: panelsList empty, cannot look up objectinstance')
+        LogUtil.Warn('[TrendLogChart] fetch fresh points: panelsList empty, cannot look up objectinstance')
         return
       }
 
@@ -2243,7 +2254,7 @@
         if (fetchSet.has(key)) continue
         const panelEntry = resolvePanelEntry(panelId)
         if (!panelEntry) {
-          LogUtil.Warn(`fetchFreshPointsForAllPanels: panelId ${panelId} not found in panelsList`)
+          LogUtil.Warn(`[TrendLogChart] fetch fresh points: panelId ${panelId} not found in panelsList`)
           continue
         }
         fetchSet.set(key, { panelId, entryType, panel: panelEntry })
@@ -2251,7 +2262,7 @@
 
       if (!fetchSet.size) return
 
-      LogUtil.Info(`fetchFreshPointsForAllPanels: fetching ${fetchSet.size} panel/type combo(s) via Action 17`, {
+      LogUtil.Info(`[TrendLogChart] fetch fresh points via Action 17 (${fetchSet.size} combos)`, {
         combos: Array.from(fetchSet.keys())
       })
 
@@ -2260,12 +2271,12 @@
         try {
           const sn: number = panel.serial_number ?? panel.panel_serial_number ?? 0
           if (!sn) {
-            LogUtil.Warn(`fetchFreshPointsForAllPanels: panelId ${panelId} missing serialNumber — skipping`)
+            LogUtil.Warn(`[TrendLogChart] fetch fresh points: panelId ${panelId} missing serialNumber — skipping`)
             return
           }
           const objectInstance: number = panel.object_instance ?? panel.objectInstance ?? 0
           if (!objectInstance) {
-            LogUtil.Warn(`fetchFreshPointsForAllPanels: panelId ${panelId} missing object_instance — skip Action 17 to avoid invalid payload`)
+            LogUtil.Warn(`[TrendLogChart] fetch fresh points: panelId ${panelId} missing object_instance — skip Action 17 to avoid invalid payload`)
             return
           }
           const resp = await ffiApi.ffiGetWebviewList(
@@ -2286,17 +2297,17 @@
             newCache.set(cacheKey, { ...pt, pid: fixedPid })
           }
           freshWebviewCache.value = newCache
-          LogUtil.Info(`fetchFreshPointsForAllPanels: cached ${deviceData.length} points for panelId=${panelId} entryType=${entryType}`)
+          LogUtil.Info(`[TrendLogChart] fresh cache populated: panelId=${panelId} entryType=${entryType} points=${deviceData.length}`)
         } catch (err) {
-          LogUtil.Warn(`fetchFreshPointsForAllPanels: failed for panelId=${panelId} entryType=${entryType}`, err)
+          LogUtil.Warn(`[TrendLogChart] fetch fresh points failed: panelId=${panelId} entryType=${entryType}`, err)
         }
       })
 
       await Promise.allSettled(fetchPromises)
 
-      LogUtil.Info(`fetchFreshPointsForAllPanels: total cached entries = ${freshWebviewCache.value.size}`)
+      LogUtil.Info(`[TrendLogChart] fresh cache total = ${freshWebviewCache.value.size}`)
     } catch (err) {
-      LogUtil.Warn('fetchFreshPointsForAllPanels: unexpected error', err)
+      LogUtil.Warn('[TrendLogChart] fetch fresh points: unexpected error', err)
     }
   }
 
@@ -2466,9 +2477,24 @@
     }
   }, { immediate: true, deep: true })
 
-  // Watch dataSeries for updates
+  // Watch dataSeries for updates — this is what the left panel renders.
   watch(dataSeries, (newSeries, oldSeries) => {
-    // Series updated, reactive changes handled automatically
+    LogUtil.Info('[TrendLogChart] left panel series', {
+      seriesCount: newSeries.length,
+      analogCount: newSeries.filter(s => s.unitType === 'analog').length,
+      digitalCount: newSeries.filter(s => s.unitType === 'digital').length,
+      series: newSeries.map(s => ({
+        name: s.name,
+        id: s.id,
+        panelId: s.panelId,
+        unitType: s.unitType,
+        unit: s.unit,
+        pointType: s.pointType,
+        pointNumber: s.pointNumber,
+        key: s.key,
+        visible: s.visible
+      }))
+    })
   }, { deep: true })
 
   // FIX: Watch monitorConfig and ensure dataseries consistency
@@ -14247,7 +14273,7 @@
 
           // === DIAGNOSTIC: dump all MON items to help debug mismatches ===
           const allMonItems = action0Items.filter((d: any) => d.type === 'MON' || d.type?.toUpperCase?.() === 'MON')
-          LogUtil.Info('STEP 0: Action 0 MON items', {
+          LogUtil.Info('[TrendLogChart] Action 0 MON items', {
             totalItems: action0Items.length,
             monCount: allMonItems.length,
             monItems: allMonItems.map((d: any) => ({ type: d.type, index: d.index, id: d.id, num_inputs: d.num_inputs })),
@@ -14262,7 +14288,7 @@
             )
           )
           if (monFromAction0) {
-            LogUtil.Info('STEP 0 (Action 0): found MON config', {
+            LogUtil.Info('[TrendLogChart] MON config from Action 0', {
               id: monFromAction0.id,
               index: monFromAction0.index,
               inputCount: monFromAction0.input?.length ?? 0
@@ -14293,8 +14319,8 @@
               num_inputs: urlInputForFresh.length
             } : monFromAction0
 
-            LogUtil.Info('STEP 0: freshMonitorData set', {
-              source: urlInputForFresh?.length ? 'url_filtered' : 'action0_raw',
+            LogUtil.Info('[TrendLogChart] freshMonitorData source', {
+              source: urlInputForFresh?.length ? 'URL all_data (filtered)' : 'Action 0 MON (raw)',
               inputCount: freshMonitorData.value.input?.length ?? 0,
               num_inputs: freshMonitorData.value.num_inputs,
               action0RawCount: monFromAction0.input?.length ?? 0
@@ -14424,7 +14450,7 @@
             }
 
             fetchFreshPointsForAllPanels()
-              .catch(err => LogUtil.Warn('fetchFreshPointsForAllPanels (STEP 0) failed', err))
+              .catch(err => LogUtil.Warn('[TrendLogChart] fetch fresh points (STEP 0) failed', err))
               .then(() => {
                 if (freshWebviewCache.value.size > 0) regenerateDataSeries()
               })
