@@ -299,25 +299,19 @@
                     <div class="empty-state-icon">
                       <DisconnectOutlined :style="{ fontSize: '22px' }" />
                     </div>
-                    <div class="empty-state-text">Panel offline</div>
+                    <div class="empty-state-text">No series to display</div>
                     <div class="empty-state-subtitle">
-                      <template v-if="offlineReferencedPanels.length === 1">
-                        Points for this trend log are on panel {{ offlineReferencedPanels[0] }}, which is offline — no data can be read from it.
-                      </template>
-                      <template v-else>
-                        Points for this trend log are on panels {{ offlineReferencedPanels.join(', ') }}, which are offline — no data can be read from them.
-                      </template>
+                      The points for this trend log are on an offline panel.
                     </div>
                   </template>
                   <!-- Case 2: general no-data state -->
                   <template v-else>
                     <div class="empty-state-icon">
-                      <BarChartOutlined :style="{ fontSize: '22px' }" />
+                      <DisconnectOutlined :style="{ fontSize: '22px' }" />
                     </div>
-                    <div class="empty-state-text">No data available</div>
+                    <div class="empty-state-text">No series to display</div>
                     <div class="empty-state-subtitle">
                       No data has been recorded for this trend log yet.
-                      Points will appear here as soon as data is collected.
                     </div>
                   </template>
                   <div class="empty-state-actions" style="margin-top: 16px;">
@@ -528,14 +522,23 @@
                   </template>
                 </div>
               </template>
+              <template v-else-if="dataSeries.length === 0">
+                <div class="empty-state-text">
+                  <span class="empty-state-icon">
+                    <DisconnectOutlined :style="{ fontSize: '16px' }" />
+                  </span>
+                  No data available
+                </div>
+                <div class="empty-state-subtitle">This trend log may not be configured, or may not be recording any data yet.</div>
+              </template>
               <template v-else>
                 <div class="empty-state-text">
                   <span class="empty-state-icon">
-                    <LineChartOutlined :style="{ fontSize: '16px' }" />
+                    <EyeInvisibleOutlined :style="{ fontSize: '16px' }" />
                   </span>
-                  No series enabled
+                  No series selected
                 </div>
-                <div class="empty-state-subtitle">Enable series from the left panel to see charts</div>
+                <div class="empty-state-subtitle">All series are hidden. Enable at least one series in the left panel to display it here.</div>
               </template>
             </div>
           </div>
@@ -1067,6 +1070,7 @@
     ExportOutlined,
     ImportOutlined,
     FunctionOutlined,
+    InboxOutlined,
     FileImageOutlined,
     FileOutlined,
     FileTextOutlined,
@@ -1081,6 +1085,7 @@
     DatabaseOutlined,
     SaveOutlined,
     ExclamationCircleOutlined,
+    EyeInvisibleOutlined,
     ThunderboltOutlined,
     ThunderboltFilled,
     DeleteOutlined
