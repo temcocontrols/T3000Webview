@@ -209,21 +209,27 @@
       </div>
     </div> <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
     <div v-if="currentView === 1 || (currentView !== 1 && hasTrackedItems)" class="timeseries-container">
-      <!-- Global loading indicator -->
-      <div v-show="shouldShowLoading" class="global-loading-indicator">
-        <a-spin size="small" />
-        <span style="margin-left: 8px;">Loading trendlog data...</span>
-      </div>
-
-      <!-- UNIFIED CHART AREA (Analog + Digital in one Chart.js canvas) -->
-      <div v-if="showAnalogArea || showDigitalArea" class="analog-area">
-        <div class="left-panel">
-          <!-- Loading overlay - inside left panel, only shows after 300ms delay -->
-          <div v-if="showLoadingOverlay" class="loading-overlay">
-            <a-spin size="large" />
-            <div class="loading-text">Loading trend log data...</div>
+      <!-- Chart-level loading / empty state (no series yet — keeps the page from going blank) -->
+      <div v-if="!showAnalogArea && !showDigitalArea" class="chart-state">
+        <template v-if="shouldShowLoading">
+          <LoadingOutlined class="chart-state-loading-icon" />
+          <div class="chart-state-title">Loading data...</div>
+          <div class="chart-state-subtitle">Retrieving monitor points from device...</div>
+        </template>
+        <template v-else>
+          <WifiOutlined class="chart-state-icon" />
+          <div class="chart-state-title">No data available</div>
+          <div class="chart-state-subtitle">
+            The monitored device may be offline or not yet connected.
+            No live data is available at this time.
           </div>
-
+          <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" class="chart-state-action">
+            <ReloadOutlined /> Refresh Data
+          </a-button>
+        </template>
+      </div>
+      <div v-else class="analog-area">
+        <div class="left-panel">
           <!-- Data Series - Analog + Digital -->
           <div class="control-section">
             <div class="data-series-header">
@@ -295,28 +301,26 @@
               </div>
             </div>
             <div class="series-list">
+              <!-- Loading skeleton when no series have loaded yet -->
+              <div v-if="shouldShowLoading && analogSeriesList.length === 0 && digitalSeriesList.length === 0" class="series-skeleton">
+                <div class="skeleton-row" style="width: 82%;"></div>
+                <div class="skeleton-row" style="width: 68%;"></div>
+                <div class="skeleton-row" style="width: 74%;"></div>
+                <div class="skeleton-row" style="width: 60%;"></div>
+                <div class="skeleton-row" style="width: 78%;"></div>
+              </div>
               <!-- Empty state when no valid data series available -->
-              <div v-if="analogSeriesList.length === 0 && digitalSeriesList.length === 0" class="series-empty-state">
+              <div v-else-if="analogSeriesList.length === 0 && digitalSeriesList.length === 0" class="series-empty-state">
                 <div class="empty-state-content">
-                  <div v-if="shouldShowLoading" class="empty-state-icon">
-                    <a-spin size="small" />
-                  </div>
-                  <div v-else class="empty-state-icon">
+                  <div class="empty-state-icon">
                     <WifiOutlined :style="{ fontSize: '22px', color: '#bfbfbf' }" />
                   </div>
-
-                  <div v-if="shouldShowLoading" class="empty-state-text">Loading monitor data...</div>
-                  <div v-else class="empty-state-text">No data available</div>
-
-                  <div v-if="shouldShowLoading" class="empty-state-subtitle">
-                    Retrieving monitor points from device...
-                  </div>
-                  <div v-else class="empty-state-subtitle">
+                  <div class="empty-state-text">No data available</div>
+                  <div class="empty-state-subtitle">
                     The monitored device may be offline or not yet connected.
                     No live data is available at this time.
                   </div>
-
-                  <div v-if="!shouldShowLoading" class="empty-state-actions" style="margin-top: 16px;">
+                  <div class="empty-state-actions" style="margin-top: 16px;">
                     <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" style="font-size: 12px;">
                       <ReloadOutlined :style="{ fontSize: '12px', verticalAlign: 'middle' }" /> Refresh Data
                     </a-button>
@@ -492,6 +496,11 @@
         <!-- Right Panel: Unified Chart (analog + digital in one canvas) -->
         <div class="right-panel">
           <div class="oscilloscope-container">
+            <!-- Floating loading pill (overlays the chart area, no layout shift) -->
+            <div v-show="shouldShowLoading" class="loading-pill">
+              <a-spin size="small" />
+              <span>Loading data...</span>
+            </div>
             <!-- Always render canvas for chart initialization, hide with CSS when no visible series -->
             <div class="combined-analog-chart" :style="{ display: (visibleAnalogSeries.length > 0 || visibleDigitalSeries.length > 0) ? 'block' : 'none' }">
               <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
@@ -12217,8 +12226,9 @@
       message: title,
       description,
       placement: 'topRight' as const,
-      duration: 3,
-      style: { maxWidth: 320 }
+      duration: 2.5,
+      class: 'trendlog-export-notice',
+      style: { maxWidth: 260 }
     }
     if (type === 'success') notification.success(options)
     else if (type === 'warning') notification.warning(options)
@@ -13616,7 +13626,7 @@
       }
 
       if (charts.length === 0) {
-        message.warning('No charts available to export')
+        notifyExport('warning', 'Nothing to export', 'No charts available to export')
         return
       }
 
@@ -13736,7 +13746,7 @@
       }
 
       if (charts.length === 0) {
-        message.warning('No charts available to export')
+        notifyExport('warning', 'Nothing to export', 'No charts available to export')
         return
       }
 
@@ -15282,18 +15292,87 @@
 </script>
 
 <style scoped>
-  /* Global loading indicator */
-  .global-loading-indicator {
-    background: linear-gradient(to right, #e6f7ff, #bae7ff);
-    border-bottom: 2px solid #1890ff;
-    padding: 10px 16px;
+  /* Floating loading pill — overlays the chart area without shifting layout */
+  .loading-pill {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
     display: flex;
     align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
-    font-size: 13px;
+    gap: 8px;
+    padding: 6px 14px;
+    background: #ffffff;
+    border: 1px solid #91d5ff;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.18);
+    font-size: 12px;
     font-weight: 500;
     color: #096dd9;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  /* Chart-level loading / empty state (shown when there are no series yet) */
+  .chart-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    background: #ffffff;
+  }
+
+  .chart-state-icon {
+    font-size: 28px;
+    color: #bfbfbf;
+  }
+
+  .chart-state-loading-icon {
+    font-size: 28px;
+    color: #1890ff;
+  }
+
+  .chart-state-title {
+    margin-top: 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #262626;
+  }
+
+  .chart-state-subtitle {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #8c8c8c;
+    text-align: center;
+    max-width: 420px;
+    line-height: 1.5;
+  }
+
+  .chart-state-action {
+    margin-top: 16px;
+  }
+
+  /* Left-panel loading skeleton */
+  .series-skeleton {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .skeleton-row {
+    height: 14px;
+    border-radius: 4px;
+    background: #f0f0f0;
+    animation: skeletonPulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes skeletonPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
   }
 
   .timeseries-container {
@@ -16899,6 +16978,25 @@
 </style>
 
 <style>
+  /* Compact export toast notifications (top-right corner) */
+  .trendlog-export-notice {
+    padding: 8px 12px !important;
+  }
+
+  .trendlog-export-notice .ant-notification-notice-message {
+    font-size: 13px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .trendlog-export-notice .ant-notification-notice-description {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+
+  .trendlog-export-notice .ant-notification-notice-icon {
+    font-size: 16px !important;
+  }
+
   .t3-timeseries-modal .ant-dropdown-menu-title-content {
     font-size: 12px !important;
   }
