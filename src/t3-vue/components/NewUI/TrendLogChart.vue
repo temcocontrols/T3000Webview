@@ -1384,10 +1384,14 @@
     return trimFloat(val, decimals) + unit
   }
 
-  // "5.32" — plain number for the Y-axis; the band is already labelled "Time".
+  // "11.9" / "12.0" — plain 1-decimal number for the Y-axis; the band is already
+  // labelled "Time". Always one decimal for hour/minute magnitudes so adjacent
+  // ticks never render the same label.
   const formatDurationAxis = (seconds: number): string => {
-    const [val, , decimals] = durationParts(seconds)
-    return trimFloat(val, decimals)
+    const s = Math.abs(seconds)
+    if (s >= 3600) return (s / 3600).toFixed(1)
+    if (s >= 60)   return (s / 60).toFixed(1)
+    return Math.round(s).toString()
   }
 
   // Helper function to extract digital states from unit string
@@ -2703,6 +2707,16 @@
       _justSwitchedFromCustom = true
       return // Exit early - onTimeBaseChange handles everything
     }
+
+    // RESET ON TIME BASE CHANGE: Always return to the latest window (live mode)
+    // so the previous scroll position is never carried into the new range. This
+    // prevents landing on an empty region after switching timebases.
+    timeOffset.value = 0
+    isRealTime.value = true
+    LogUtil.Info('Timebase change: reset to latest window (live mode)', {
+      oldTimeBase,
+      newTimeBase
+    })
 
     // DEBOUNCE: Cancel previous pending timebase change
     if (timebaseChangeTimeout) {
@@ -5974,35 +5988,29 @@
   const timeOffset = ref(0) // Offset in minutes from current time
 
   /**
-   * Solution 3: compute the rounded-up right edge for the X-axis.
-   * - Under 1h (5m / 10m / 30m): round up to the next minute ending in 0 or 5.
-   * - 1h and above: round up to the next full :00 hour.
+   * Compute the rounded-up right edge for the X-axis.
+   * Rounds up to the next tick-step boundary of the timebase (the same
+   * granularity the axis uses), keeping labels clean without overshooting
+   * to a far-future hour that would cut off recent data.
    * - If nowMs is already exactly on a boundary the boundary itself is returned
    *   ONLY when there is no sub-minute remainder; otherwise advance to the next boundary.
    */
   const computeRightEdge = (nowMs: number, tb: string): number => {
-    const UNDER_HOUR = ['5m', '10m', '30m']
+    // Round the right edge UP to the next tick-step boundary for this timebase
+    // (the same granularity the X axis actually uses), NOT to a far-future hour.
+    // This keeps tick labels clean while the window still ends close to "now",
+    // so recent data is never cut off when switching to a longer timebase.
+    const stepMinutes = getXAxisTickConfig(tb).stepMinutes
     const d = new Date(nowMs)
-    if (UNDER_HOUR.includes(tb)) {
-      // Round up to next minute ending in 0 or 5
-      const minutes = d.getMinutes()
-      const seconds = d.getSeconds()
-      const ms = d.getMilliseconds()
-      const mod = minutes % 5
-      let addMin = mod === 0 ? 0 : (5 - mod)
-      // If already on a 0/5 boundary but sub-minute time exists, advance to next boundary
-      if (addMin === 0 && (seconds > 0 || ms > 0)) addMin = 5
-      d.setMinutes(minutes + addMin, 0, 0)
-      return d.getTime()
-    } else {
-      // Round up to next full :00 hour
-      const minutes = d.getMinutes()
-      const seconds = d.getSeconds()
-      const ms = d.getMilliseconds()
-      if (minutes === 0 && seconds === 0 && ms === 0) return d.getTime()
-      d.setHours(d.getHours() + 1, 0, 0, 0)
-      return d.getTime()
-    }
+    const totalMinutes = d.getHours() * 60 + d.getMinutes()
+    const mod = totalMinutes % stepMinutes
+    let addMin = mod === 0 ? 0 : (stepMinutes - mod)
+    // If already on a step boundary but sub-minute time exists, advance one step
+    const seconds = d.getSeconds()
+    const ms = d.getMilliseconds()
+    if (addMin === 0 && (seconds > 0 || ms > 0)) addMin = stepMinutes
+    d.setMinutes(d.getMinutes() + addMin, 0, 0)
+    return d.getTime()
   }
 
   // Add helper to get current time window with proper alignment (Solution 3)
@@ -6028,10 +6036,12 @@
       }
     }
 
-    // Solution 3: right edge = current time rounded forward to the nearest clean boundary.
-    // timeOffset shifts the "effective now" for historical navigation.
-    const nowMs = Date.now() + timeOffset.value * 60 * 1000
-    const maxTime = computeRightEdge(nowMs, timeBase.value)
+    // Right edge anchored to wall-clock "now" so the X-axis right end always
+    // shows the current time (rounded up to the tick step = a little headroom).
+    // timeOffset shifts "now" for history browsing. In live mode (offset 0) the
+    // window slides right as real time advances and new points land at the right.
+    const anchorMs = Date.now() + timeOffset.value * 60 * 1000
+    const maxTime = computeRightEdge(anchorMs, timeBase.value)
 
     const rangeMinutes = getTimeRangeMinutes(timeBase.value)
     const minTime = maxTime - rangeMinutes * 60 * 1000
@@ -10151,10 +10161,15 @@
         realMin = Math.max(0, dataMin - pad)
         realMax = dataMax + pad
 
+        // Tick steps must be at least the 1-decimal display resolution so labels
+        // stay distinct: hours → 0.1h (360s), minutes → 0.1m (6s), else whole
+        // seconds. Steps below this would round to duplicate axis labels.
+        const displayRes = realMax >= 3600 ? 360 : realMax >= 60 ? 6 : 1
         const timeSteps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400]
+          .filter(s => s >= displayRes)
         const target = (realMax - realMin) / 5
         step = timeSteps.find(s => s >= target) ?? timeSteps[timeSteps.length - 1]
-        // Snap outward to step multiples so HH:MM:SS labels land on round times.
+        // Snap outward to step multiples so 1-decimal labels land on round values.
         realMin = Math.floor(realMin / step) * step
         realMax = Math.ceil(realMax / step) * step
         if ((realMax - realMin) / step < 2) realMax = realMin + step * 2
