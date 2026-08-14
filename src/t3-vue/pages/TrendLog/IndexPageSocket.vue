@@ -379,21 +379,22 @@ const ffiApi = useT3000FfiApi()
 
 // Helper: load one panel's device data into T3000_Data.panelsData
 const loadPanelData = async (targetPanelId: number): Promise<void> => {
-  const response = await ffiApi.ffiGetPanelData(targetPanelId)
+  // Resolve which device this panel belongs to BEFORE the Action 0 call, so we can
+  // pass the explicit serial and read the correct device (multiple devices can share
+  // the same panel_number). The main panel uses the authoritative URL serial.
+  const urlSn = route.query.sn ? Number(route.query.sn) : null
+  const urlPanelId = route.query.panel_id ? Number(route.query.panel_id) : null
+  let snForPanel: number | null = null
+  if (urlSn != null && targetPanelId === urlPanelId) {
+    snForPanel = urlSn
+  } else {
+    const entry = T3000_Data.value.panelsList?.find((p: any) => p.panel_number === targetPanelId)
+    snForPanel = entry?.serial_number ?? null
+  }
+  const response = await ffiApi.ffiGetPanelData(targetPanelId, snForPanel ?? undefined)
   if (response && response.data) {
-    // Resolve which device this panel belongs to and tag each point with its
-    // serial_number, so downstream lookups (names/units/digital-analog) can
-    // disambiguate devices that share the same panel_number. The main panel uses
-    // the authoritative URL serial; foreign panels use the panelsList entry.
-    const urlSn = route.query.sn ? Number(route.query.sn) : null
-    const urlPanelId = route.query.panel_id ? Number(route.query.panel_id) : null
-    let snForPanel: number | null = null
-    if (urlSn != null && targetPanelId === urlPanelId) {
-      snForPanel = urlSn
-    } else {
-      const entry = T3000_Data.value.panelsList?.find((p: any) => p.panel_number === targetPanelId)
-      snForPanel = entry?.serial_number ?? null
-    }
+    // Tag each point with its serial_number, so downstream lookups
+    // (names/units/digital-analog) can disambiguate devices sharing a panel_number.
     const points = snForPanel != null
       ? response.data.map((pt: any) => ({ ...pt, serial_number: snForPanel }))
       : response.data

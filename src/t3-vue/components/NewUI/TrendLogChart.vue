@@ -529,7 +529,7 @@
                   </span>
                   No data available
                 </div>
-                <div class="empty-state-subtitle">This trend log may not be configured, or may not be recording any data yet.</div>
+                <div class="empty-state-subtitle">This trend log may not be configured, may have outdated configuration, or may not be recording any data yet.</div>
               </template>
               <template v-else>
                 <div class="empty-state-text">
@@ -14356,7 +14356,7 @@
 
       if (urlPanelId !== null && urlTrendlogId !== null) {
         try {
-          const action0Resp = await ffiApi.ffiGetPanelData(urlPanelId)
+          const action0Resp = await ffiApi.ffiGetPanelData(urlPanelId, urlSn ?? undefined)
           const action0Items: any[] = action0Resp?.data ?? []
           // Robust MON lookup: T3000 may use 0-based OR 1-based d.index.
           // Also match by d.id (e.g., "MON2") as the most reliable fallback.
@@ -14403,17 +14403,22 @@
             // the correct series count, while still taking fresh intervals/status from Action 0.
             const urlInputForFresh = (props.itemData as any)?.t3Entry?.input as any[] | undefined
             const urlRangeForFresh = (props.itemData as any)?.t3Entry?.range as any[] | undefined
+            // When the URL all_data has no input points, do NOT fall back to the raw
+            // Action 0 MON slots — those can be stale/phantom (e.g. the trend log was
+            // reconfigured after the URL snapshot, or the points belong to a different
+            // device). Keep freshMonitorData null so generateDataSeries returns [] and
+            // the "No series to display" empty state shows.
             freshMonitorData.value = (urlInputForFresh?.length) ? {
               ...monFromAction0,
               input: urlInputForFresh,
               range: urlRangeForFresh?.length ? urlRangeForFresh : monFromAction0.range,
               num_inputs: urlInputForFresh.length
-            } : monFromAction0
+            } : null
 
             LogUtil.Info('[TrendLogChart] freshMonitorData source', {
-              source: urlInputForFresh?.length ? 'URL all_data (filtered)' : 'Action 0 MON (raw)',
-              inputCount: freshMonitorData.value.input?.length ?? 0,
-              num_inputs: freshMonitorData.value.num_inputs,
+              source: urlInputForFresh?.length ? 'URL all_data (filtered)' : 'none (URL input empty)',
+              inputCount: freshMonitorData.value?.input?.length ?? 0,
+              num_inputs: freshMonitorData.value?.num_inputs ?? 0,
               action0RawCount: monFromAction0.input?.length ?? 0
             })
 
@@ -14450,9 +14455,9 @@
               }
             }
 
-            // Fallback priority when Action 0 MON input mapping does not match URL configuration:
-            // 1) Prefer URL inputs (user-opened trendlog selection) to avoid wrong point_number remap
-            // 2) Only use raw MON inputs when URL has no input definition at all
+            // Fallback: when the URL↔MON mapping fails but the URL DOES have inputs, use
+            // the URL inputs as-is (preserving the intended point_number mapping). When the
+            // URL has no inputs at all, generate nothing — do NOT fall back to raw MON slots.
             if (builtInputItems.length === 0) {
               if (urlInputItems.length > 0) {
                 LogUtil.Warn('STEP 0: URL↔MON input matching failed, using URL inputs as fallback to preserve intended point_number mapping', {
@@ -14476,22 +14481,8 @@
                     builtRanges.push(urlRangeItems[ui] || 0)
                   }
                 }
-              } else if (monInputs.length > 0) {
-                LogUtil.Warn('STEP 0: URL has no input definition, using all MON inputs as fallback')
-                for (let mi = 0; mi < monInputs.length; mi++) {
-                  const inp = monInputs[mi]
-                  if (inp && inp.panel !== undefined && inp.point_number !== undefined) {
-                    builtInputItems.push({
-                      panel: inp.panel,
-                      point_number: inp.point_number,
-                      index: mi,
-                      point_type: inp.point_type,
-                      network: inp.network,
-                      sub_panel: inp.sub_panel
-                    })
-                    builtRanges.push((monFromAction0.range && monFromAction0.range[mi]) || 0)
-                  }
-                }
+              } else {
+                LogUtil.Warn('STEP 0: URL has no input definition — no series will be generated')
               }
             }
 

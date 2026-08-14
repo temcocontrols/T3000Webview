@@ -254,12 +254,17 @@ export function useT3000FfiApi() {
   }
 
   /// GetPanelData - Action 0 (same as WebSocket)
-  const ffiGetPanelData = async (panelId: number): Promise<any> => {
+  const ffiGetPanelData = async (panelId: number, serialNumber?: number): Promise<any> => {
     isLoading.value = true
     error.value = null
 
     try {
       const payload = createMessagePayload(MessageType.GET_PANEL_DATA, panelId)
+      // Multiple devices can share the same panel_number. When an explicit serial is
+      // given, override the auto-derived value so Action 0 reads the correct device.
+      if (serialNumber) {
+        payload.serialNumber = serialNumber
+      }
       LogUtil.Debug('📡 FFI API Call - Action 0 (GET_PANEL_DATA)', {
         action: 0,
         panelId,
