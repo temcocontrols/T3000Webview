@@ -209,26 +209,8 @@
       </div>
     </div> <!-- Show timeseries container only for View 1, or View 2/3 with selected items -->
     <div v-if="currentView === 1 || (currentView !== 1 && hasTrackedItems)" class="timeseries-container">
-      <!-- Chart-level loading / empty state (no series yet — keeps the page from going blank) -->
-      <div v-if="!showAnalogArea && !showDigitalArea" class="chart-state">
-        <template v-if="shouldShowLoading">
-          <LoadingOutlined class="chart-state-loading-icon" />
-          <div class="chart-state-title">Loading data...</div>
-          <div class="chart-state-subtitle">Retrieving monitor points from device...</div>
-        </template>
-        <template v-else>
-          <WifiOutlined class="chart-state-icon" />
-          <div class="chart-state-title">No data available</div>
-          <div class="chart-state-subtitle">
-            The monitored device may be offline or not yet connected.
-            No live data is available at this time.
-          </div>
-          <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" class="chart-state-action">
-            <ReloadOutlined /> Refresh Data
-          </a-button>
-        </template>
-      </div>
-      <div v-else class="analog-area">
+      <!-- Both panels always render so their empty/offline states stay visible -->
+      <div class="analog-area">
         <div class="left-panel">
           <!-- Data Series - Analog + Digital -->
           <div class="control-section">
@@ -312,14 +294,32 @@
               <!-- Empty state when no valid data series available -->
               <div v-else-if="analogSeriesList.length === 0 && digitalSeriesList.length === 0" class="series-empty-state">
                 <div class="empty-state-content">
-                  <div class="empty-state-icon">
-                    <WifiOutlined :style="{ fontSize: '22px', color: '#bfbfbf' }" />
-                  </div>
-                  <div class="empty-state-text">No data available</div>
-                  <div class="empty-state-subtitle">
-                    The monitored device may be offline or not yet connected.
-                    No live data is available at this time.
-                  </div>
+                  <!-- Case 1: the monitor's points live on a panel that is offline -->
+                  <template v-if="offlineReferencedPanels.length > 0">
+                    <div class="empty-state-icon">
+                      <DisconnectOutlined :style="{ fontSize: '22px' }" />
+                    </div>
+                    <div class="empty-state-text">Panel offline</div>
+                    <div class="empty-state-subtitle">
+                      <template v-if="offlineReferencedPanels.length === 1">
+                        Points for this trend log are on panel {{ offlineReferencedPanels[0] }}, which is offline — no data can be read from it.
+                      </template>
+                      <template v-else>
+                        Points for this trend log are on panels {{ offlineReferencedPanels.join(', ') }}, which are offline — no data can be read from them.
+                      </template>
+                    </div>
+                  </template>
+                  <!-- Case 2: general no-data state -->
+                  <template v-else>
+                    <div class="empty-state-icon">
+                      <BarChartOutlined :style="{ fontSize: '22px' }" />
+                    </div>
+                    <div class="empty-state-text">No data available</div>
+                    <div class="empty-state-subtitle">
+                      No data has been recorded for this trend log yet.
+                      Points will appear here as soon as data is collected.
+                    </div>
+                  </template>
                   <div class="empty-state-actions" style="margin-top: 16px;">
                     <a-button type="primary" @click="manualRefresh" :loading="isLoading" size="small" style="font-size: 12px;">
                       <ReloadOutlined :style="{ fontSize: '12px', verticalAlign: 'middle' }" /> Refresh Data
@@ -496,8 +496,8 @@
         <!-- Right Panel: Unified Chart (analog + digital in one canvas) -->
         <div class="right-panel">
           <div class="oscilloscope-container">
-            <!-- Floating loading pill (overlays the chart area, no layout shift) -->
-            <div v-show="shouldShowLoading" class="loading-pill">
+            <!-- Floating loading pill (overlays the chart while refreshing WITH existing series) -->
+            <div v-show="shouldShowLoading && (visibleAnalogSeries.length > 0 || visibleDigitalSeries.length > 0)" class="loading-pill">
               <a-spin size="small" />
               <span>Loading data...</span>
             </div>
@@ -505,13 +505,38 @@
             <div class="combined-analog-chart" :style="{ display: (visibleAnalogSeries.length > 0 || visibleDigitalSeries.length > 0) ? 'block' : 'none' }">
               <canvas ref="analogChartCanvas" id="analog-chart"></canvas>
             </div>
-            <!-- Show empty state when no series are visible (user disabled all) -->
+            <!-- Loading / empty state when no series are visible (initial load, offline, or disabled all) -->
             <div v-if="visibleAnalogSeries.length === 0 && visibleDigitalSeries.length === 0" class="empty-chart-message">
-              <div class="empty-state-text">
-                <span class="empty-state-icon">🔍</span>
-                No series enabled
-              </div>
-              <div class="empty-state-subtitle">Enable series from the left panel to see charts</div>
+              <template v-if="shouldShowLoading">
+                <LoadingOutlined class="chart-state-loading-icon" />
+                <div class="chart-state-title">Loading data...</div>
+                <div class="chart-state-subtitle">Retrieving monitor points from device...</div>
+              </template>
+              <template v-else-if="offlineReferencedPanels.length > 0">
+                <div class="empty-state-text">
+                  <span class="empty-state-icon">
+                    <DisconnectOutlined :style="{ fontSize: '16px' }" />
+                  </span>
+                  Panel offline
+                </div>
+                <div class="empty-state-subtitle">
+                  <template v-if="offlineReferencedPanels.length === 1">
+                    Points for this trend log are on panel {{ offlineReferencedPanels[0] }}, which is offline — no data can be read from it.
+                  </template>
+                  <template v-else>
+                    Points for this trend log are on panels {{ offlineReferencedPanels.join(', ') }}, which are offline — no data can be read from them.
+                  </template>
+                </div>
+              </template>
+              <template v-else>
+                <div class="empty-state-text">
+                  <span class="empty-state-icon">
+                    <LineChartOutlined :style="{ fontSize: '16px' }" />
+                  </span>
+                  No series enabled
+                </div>
+                <div class="empty-state-subtitle">Enable series from the left panel to see charts</div>
+              </template>
             </div>
           </div>
         </div>
@@ -1773,6 +1798,7 @@
   const dataSource = ref<'realtime' | 'api'>('realtime') // Track data source for timebase changes
   const hasConnectionError = ref(false) // Track connection errors for UI display
   const hasLoadedInitialHistory = ref(false) // Track if initial history has been loaded
+  const hasConfirmedNoData = ref(false) // Set true once a load attempt finds no data (e.g. offline panel)
   const realtimePollCount = ref(0) // Count action=17 polls since page load (kept for reference; no startup skip needed)
 
   interface DbStatusState {
@@ -1899,7 +1925,20 @@
       const bySn = panelsList.find((p: any) => p.serial_number === urlSn)
       if (bySn) return bySn
     }
-    return panelsList.find((p: any) => p.panel_number === pid || p.panel_id === pid || p.id === pid)
+    const found = panelsList.find((p: any) => p.panel_number === pid || p.panel_id === pid || p.id === pid)
+    if (found) return found
+
+    // Fallback: unknown panel number (e.g. a MON on panel 13 watching points on
+    // sibling panel 12). panelsList only reports each device's PRIMARY panel_number,
+    // but one device can host multiple panels. Reuse the URL device's serial_number
+    // and object_instance so Action 17 can still query that panel on the same device.
+    if (urlSn) {
+      const mainBySn = panelsList.find((p: any) => p.serial_number === urlSn)
+      if (mainBySn) {
+        return { ...mainBySn, panel_number: pid, panel_id: pid }
+      }
+    }
+    return undefined
   }
 
   // Serial number for a panel (0 if unknown).
@@ -2050,7 +2089,19 @@
       numInputs,
       freshMonitorId: freshMonitorData.value?.id ?? null,
       panelsDataLength: T3000_Data.value.panelsData?.length ?? 0,
-      freshWebviewCacheSize: freshWebviewCache.value.size
+      freshWebviewCacheSize: freshWebviewCache.value.size,
+      // ── Raw data for verification against the C++ side ──
+      urlParams: {
+        panel_id: route.query.panel_id ?? null,
+        sn: route.query.sn ?? null,
+        trendlog_id: route.query.trendlog_id ?? null
+      },
+      urlInputs: (props.itemData as any)?.t3Entry?.input ?? null,
+      urlRanges: (props.itemData as any)?.t3Entry?.range ?? null,
+      freshInputs: freshInput?.length ? freshInput : null,
+      freshRanges: freshRange?.length ? freshRange : null,
+      rawInputs: inputData ?? null,
+      rawRanges: rangeData ?? null
     })
 
     if (!inputData?.length || !rangeData?.length) {
@@ -3740,6 +3791,33 @@
     return (inputData && inputData.length > 0) && dataSeries.value.length === 0
   })
 
+  // Panels referenced by the current monitor config that are NOT present in the
+  // discovered device list (panelsList) — i.e. offline / unreachable. Used to show a
+  // specific "panel offline" message in the right panel instead of the generic empty state.
+  const offlineReferencedPanels = computed(() => {
+    const inputData = freshMonitorData.value?.input ?? props.itemData?.t3Entry?.input
+    if (!inputData?.length) return [] as number[]
+
+    const panelsList = T3000_Data.value.panelsList || []
+    const urlPanelId = route.query.panel_id ? parseInt(route.query.panel_id as string) : 0
+    const urlSn = route.query.sn ? parseInt(route.query.sn as string) : 0
+
+    const uniquePids = new Set<number>()
+    for (const item of inputData) {
+      const rawPanelId: number = item.panel
+      const pid = rawPanelId === 0 ? urlPanelId : rawPanelId
+      if (pid > 0) uniquePids.add(pid)
+    }
+
+    return Array.from(uniquePids).filter((pid) => {
+      // The URL main panel is resolved by serial and treated as online.
+      if (urlSn && pid === urlPanelId) return false
+      return !panelsList.some((p: any) =>
+        p.panel_number === pid || p.panel_id === pid || p.id === pid
+      )
+    })
+  })
+
   // Enhanced loading state - show loading when waiting for valid T3000 device data
   // Show global loading when:
   // 1. Actually loading (isLoading is true) OR
@@ -3750,7 +3828,10 @@
     // Never show the global spinner when the chart already has rendered data (timebase/zoom refetch).
     // Only show it on the very first load when there are truly no series yet.
     const hasAnyRenderedData = dataSeries.value.some(s => s.data && s.data.length > 0)
-    const result = (isLoading.value && !hasAnyRenderedData) || (noDataYet && noConfirmedError)
+    // Keep showing loading while a fetch is in-flight, and only stop the spinner once
+    // a load attempt has CONFIRMED there is no data (e.g. referenced panel offline).
+    const result = (isLoading.value && !hasAnyRenderedData) ||
+      (noDataYet && noConfirmedError && !hasConfirmedNoData.value)
 
     LogUtil.Debug('shouldShowLoading:', result, {
       isLoading: isLoading.value,
@@ -3758,6 +3839,7 @@
       noConfirmedError,
       hasTimeout: showLoadingTimeout.value,
       hasError: hasConnectionError.value,
+      hasConfirmedNoData: hasConfirmedNoData.value,
       seriesCount: analogSeriesList.value.length
     })
     return result
@@ -7788,6 +7870,8 @@
 
     // Clear connection error flag when starting to load data
     hasConnectionError.value = false
+    // A new load attempt starts — unmark "confirmed no data" so the spinner can show again.
+    hasConfirmedNoData.value = false
 
     try {
       // FIX: Use extractDeviceParameters for reliable device info from query params
@@ -8168,6 +8252,8 @@
 
         // Clear connection error - successful API response with no data is NOT an error
         hasConnectionError.value = false
+        // Mark "no data" as confirmed so the loading indicator stops (e.g. offline panel).
+        hasConfirmedNoData.value = true
 
         // Stop loading indicator
         stopLoading()
@@ -15684,7 +15770,6 @@
 
   .empty-state-icon {
     /* font-size: 48px; */
-    opacity: 0.5;
     margin-right: 5px;
   }
 
