@@ -49,24 +49,30 @@ interface Props {
 
 // ── Provider presets ──
 
-const PROVIDER_PRESETS: Record<ProviderType, { label: string; desc: string; defaultEndpoint: string; defaultModel: string }> = {
+const PROVIDER_PRESETS: Record<ProviderType, { label: string; desc: string; defaultEndpoint: string; defaultModel: string; endpointPlaceholder: string; modelPlaceholder: string }> = {
   local: {
     label: 'Local Model',
     desc: 'Run a model on your own machine — no internet required after download.',
-    defaultEndpoint: 'http://localhost:11434/v1',
-    defaultModel: 'llama3.1:8b',
+    defaultEndpoint: '',
+    defaultModel: '',
+    endpointPlaceholder: 'http://localhost:11434/v1',
+    modelPlaceholder: 'llama3.1:8b',
   },
   anthropic: {
     label: 'Anthropic Claude',
     desc: 'Claude API — requires your own API key from console.anthropic.com',
     defaultEndpoint: 'https://api.anthropic.com/v1',
-    defaultModel: 'claude-3-5-sonnet-20241022',
+    defaultModel: '',
+    endpointPlaceholder: 'https://api.anthropic.com/v1',
+    modelPlaceholder: 'claude-3-5-sonnet-20241022',
   },
   gemini: {
     label: 'Google Gemini',
     desc: 'Gemini API — requires your own API key from aistudio.google.com',
     defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
-    defaultModel: 'gemini-2.0-flash',
+    defaultModel: '',
+    endpointPlaceholder: 'https://generativelanguage.googleapis.com/v1beta',
+    modelPlaceholder: 'gemini-2.0-flash',
   },
 };
 
@@ -215,8 +221,8 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
     setProvider(p);
     // Restore last-used settings for this provider, falling back to defaults
     const cached = providerCache[p];
-    setEndpoint(cached?.endpoint ?? PROVIDER_PRESETS[p].defaultEndpoint);
-    setModel(cached?.model ?? PROVIDER_PRESETS[p].defaultModel);
+    setEndpoint(cached?.endpoint || PROVIDER_PRESETS[p].defaultEndpoint);
+    setModel(cached?.model || PROVIDER_PRESETS[p].defaultModel);
     setApiKey(cached?.apiKey ?? '');
     setTestResult('idle');
   }, [providerCache]);
@@ -337,8 +343,8 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
                     onClick={() => {
                       setProvider(key);
                       const cached = providerCache[key];
-                      setEndpoint(cached?.endpoint ?? p.defaultEndpoint);
-                      setModel(cached?.model ?? p.defaultModel);
+                      setEndpoint(cached?.endpoint || p.defaultEndpoint);
+                      setModel(cached?.model || p.defaultModel);
                       setApiKey(cached?.apiKey ?? '');
                       setTestResult('idle');
                     }}
@@ -481,7 +487,7 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
               <Textarea
                 value={endpoint}
                 onChange={(e) => setEndpoint(e.currentTarget.value)}
-                placeholder="https://your-llm-server:port/v1"
+                placeholder={preset.endpointPlaceholder}
                 resize="vertical"
                 rows={2}
                 style={{
@@ -496,7 +502,7 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
               <Input
                 value={model}
                 onChange={(e) => setModel(e.currentTarget.value)}
-                placeholder={fetchingModels ? 'Fetching models...' : 'model-name'}
+                placeholder={fetchingModels ? 'Fetching models...' : preset.modelPlaceholder}
                 style={{ height: 38 }}
               />
             </Field>
@@ -548,7 +554,7 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
                 appearance="outline"
                 size="small"
                 onClick={handleTest}
-                disabled={testing || !endpoint}
+                disabled={testing || !endpoint.trim() || !model.trim()}
                 style={{ width: '100%', height: 30 }}
               >
                 {testing ? (

@@ -84,10 +84,31 @@ pub async fn handle_ai_chat(
     Json(req): Json<ChatRequest>,
 ) -> impl IntoResponse {
     let session_manager = SESSION_MANAGER.clone();
-    let session = session_manager.create_or_resume(&req).await;
 
     // Create a channel for streaming events
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Result<Event, std::convert::Infallible>>();
+
+    // Reject unconfigured requests before starting a chat — emit one SSE error
+    // event and close the stream.
+    let has_endpoint = req
+        .settings
+        .as_ref()
+        .and_then(|s| s.endpoint.as_deref())
+        .map(|e| e.trim())
+        .filter(|e| !e.is_empty())
+        .is_some();
+    if req.model.trim().is_empty() || !has_endpoint {
+        let _ = tx.send(Ok(Event::default().data(
+            serde_json::to_string(&StreamEvent::Error {
+                message: "AI assistant is not configured. Set your endpoint URL and model name in Settings.".to_string(),
+            })
+            .unwrap_or_else(|_| r#"{"event":"error","data":{"message":"AI assistant is not configured."}}"#.to_string()),
+        )));
+        drop(tx);
+        return Sse::new(UnboundedReceiverStream::new(rx));
+    }
+
+    let session = session_manager.create_or_resume(&req).await;
 
     // Spawn the chat processing task
     let state_clone = state.clone();
@@ -647,9 +668,10 @@ pub async fn handle_get_settings() -> impl IntoResponse {
         Ok(settings) => Json(settings),
         Err(_) => Json(json!({
             "provider": "local",
-            "model": "llama3.1:8b",
-            "endpoint": "http://localhost:11434/v1",
-            "api_key": ""
+            "model": "",
+            "endpoint": "",
+            "api_key": "",
+            "configured": false
         })),
     }
 }

@@ -30,8 +30,8 @@ import styles from '../AiChat.module.css';
 
 const DEFAULT_SETTINGS: AiProviderSettings = {
   provider: 'local',
-  endpoint: 'http://localhost:11434/v1',
-  model: 'llama3.1:8b',
+  endpoint: '',
+  model: '',
   apiKey: '',
 };
 
@@ -40,10 +40,13 @@ const PROVIDER_CACHE_KEY = 't3.ai.providerCache';
 
 type ProviderCache = Record<ProviderType, Pick<AiProviderSettings, 'endpoint' | 'model' | 'apiKey'>>;
 
+// No fallback values — a fresh install must be configured by the user.
+const EMPTY_PROVIDER = { endpoint: '', model: '', apiKey: '' };
+
 const DEFAULT_CACHE: ProviderCache = {
-  local: { endpoint: 'http://localhost:11434/v1', model: 'llama3.1:8b', apiKey: '' },
-  anthropic: { endpoint: 'https://api.anthropic.com/v1', model: 'claude-3-5-sonnet-20241022', apiKey: '' },
-  gemini: { endpoint: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-2.0-flash', apiKey: '' },
+  local: { ...EMPTY_PROVIDER },
+  anthropic: { ...EMPTY_PROVIDER },
+  gemini: { ...EMPTY_PROVIDER },
 };
 
 const loadProviderCache = (): ProviderCache => {
@@ -88,6 +91,11 @@ const saveSettings = (s: AiProviderSettings) => {
   } catch {}
 };
 
+// "Configured" means both endpoint and model are filled in. Used to gate chat
+// sending and to show the first-run configuration banner.
+const isSettingsConfigured = (s: AiProviderSettings) =>
+  (s.endpoint || '').trim() !== '' && (s.model || '').trim() !== '';
+
 interface ChatPanelProps {
   variant?: 'full' | 'panel';
 }
@@ -102,6 +110,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const [clearAllOpen, setClearAllOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
   const [providerCache, setProviderCache] = useState<ProviderCache>(loadProviderCache);
+  const isConfigured = isSettingsConfigured(aiSettings);
   const navigate = useNavigate();
   const setChatMode = useUIStore((s) => s.setChatMode);
   const setPreviousPageHash = useChatStore((s) => s.setPreviousPageHash);
@@ -193,16 +202,27 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
     }
   }, [isNearBottom, scrollToBottom]);
 
+  const handleSendMessage = useCallback(
+    (content: string) => {
+      if (!isConfigured) {
+        setSettingsOpen(true);
+        return;
+      }
+      sendMessage(content);
+    },
+    [isConfigured, sendMessage],
+  );
+
   const handleSelectQuestion = useCallback(
-    (question: string) => sendMessage(question),
-    [sendMessage],
+    (question: string) => handleSendMessage(question),
+    [handleSendMessage],
   );
 
   const hasMessages = messages.length > 0;
   const showStreamingBubble = isStreaming && (streamingText || streamingSteps.length > 0 || Object.keys(activeToolCalls).length > 0);
   const showThinkingIndicator = isStreaming && !streamingText && streamingSteps.length === 0 && Object.keys(activeToolCalls).length === 0;
 
-  const providerLabel = `${aiSettings.provider}:${aiSettings.model}`;
+  const providerLabel = isConfigured ? `${aiSettings.provider}:${aiSettings.model}` : 'Not configured';
 
   const activeSessionTitle = activeSessionId
     ? sessions.find((s) => s.id === activeSessionId)?.title || ''
@@ -306,6 +326,31 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
           </div>
         )}
 
+        {/* ── Not-configured banner (fresh install) ── */}
+        {!isConfigured && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              margin: '8px 16px 8px',
+              padding: '8px 12px',
+              borderLeft: '2px solid #0078d4',
+              background: '#f0f6ff',
+              fontSize: 12,
+              color: '#323130',
+            }}
+          >
+            <span style={{ flex: 1, lineHeight: 1.5 }}>
+              <strong>AI assistant is not configured.</strong>{' '}
+              Set your endpoint URL and model name to get started.
+            </span>
+            <Button size="small" appearance="primary" onClick={() => setSettingsOpen(true)}>
+              Configure
+            </Button>
+          </div>
+        )}
+
       {/* ── Messages area ── */}
       <div className={styles.messagesArea} ref={messagesContainerRef}>
         {!hasMessages ? (
@@ -364,11 +409,17 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
 
       {/* ── Input bar ── */}
       <ChatInput
-        onSend={sendMessage}
+        onSend={handleSendMessage}
         onAbort={abort}
         isStreaming={isStreaming}
         onResize={handleInputResize}
-        placeholder={isPanel ? 'Ask anything — AI can make mistakes. Verify critical data.' : undefined}
+        placeholder={
+          !isConfigured
+            ? 'Configure your AI endpoint and model to start chatting…'
+            : isPanel
+              ? 'Ask anything — AI can make mistakes. Verify critical data.'
+              : undefined
+        }
       />
 
       {/* ── Model info + disclaimer (hidden in panel mode) ── */}

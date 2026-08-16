@@ -17,8 +17,8 @@ export interface AiSettings {
 
 const DEFAULT_SETTINGS: AiSettings = {
   provider: 'local',
-  model: 'llama3.1:8b',
-  endpoint: 'http://localhost:11434/v1',
+  model: '',
+  endpoint: '',
   apiKey: '',
 };
 

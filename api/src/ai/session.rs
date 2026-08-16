@@ -83,7 +83,7 @@ impl SessionManager {
             .settings
             .as_ref()
             .and_then(|s| s.endpoint.clone())
-            .unwrap_or_else(|| "http://localhost:11434/v1".to_string());
+            .unwrap_or_default();
 
         let api_key = req
             .settings
