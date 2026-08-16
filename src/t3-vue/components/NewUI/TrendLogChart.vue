@@ -1430,16 +1430,19 @@
     return trimFloat(val, decimals) + unit
   }
 
-  // Compact duration for the Y-axis. Uses ONE unit for the whole axis (picked
-  // from the band's tick step) but NO unit suffix — labels stay numeric and
-  // never mix units (e.g. "30" seconds next to "1.0" minutes becomes 30/60/90).
-  const formatDurationAxis = (seconds: number, step?: number): string => {
+  // Compact duration for the Y-axis. Uses ONE unit for the whole axis so labels
+  // stay numeric and never mix units (e.g. "30" seconds next to "1.0" minutes
+  // becomes 30/60/90). The unit is anchored on the band's max value so it
+  // matches the tooltip's magnitude unit (4536 s → "1.3" next to
+  // "01:15:36 (1.26h)") instead of the tick step — a tight range around a large
+  // value would otherwise force the axis into minutes (70/80/90) while the
+  // tooltip shows hours.
+  const formatDurationAxis = (seconds: number, step?: number, unitAnchorSeconds?: number): string => {
     const s = Math.abs(seconds)
-    const unitStep = step ?? (s >= 3600 ? 3600 : s >= 60 ? 60 : 1)
-    if (unitStep >= 86400) return trimFloat(s / 86400, 1)
-    if (unitStep >= 3600)  return trimFloat(s / 3600, 1)
-    if (unitStep >= 60)    return trimFloat(s / 60, 1)
-    return Math.round(s).toString()
+    const anchor = Math.abs(unitAnchorSeconds ?? step ?? s)
+    const divisor = anchor >= 86400 ? 86400 : anchor >= 3600 ? 3600 : anchor >= 60 ? 60 : 1
+    if (divisor === 1) return Math.round(s).toString()
+    return trimFloat(s / divisor, 1)
   }
 
   // Helper function to extract digital states from unit string
@@ -4348,7 +4351,7 @@
     if (bands.length) {
       bands.forEach((band: any) => {
         const fmt = (v: number) => {
-          if (band.unit === 'Time') return formatDurationAxis(v, band.step)
+          if (band.unit === 'Time') return formatDurationAxis(v, band.step, band.realMax)
           const r = Math.round(v)
           if (Math.abs(r) >= 1_000_000) return (r / 1_000_000).toFixed(1) + 'M'
           if (Math.abs(r) >= 10_000)    return (r / 1_000).toFixed(0) + 'K'
@@ -5182,7 +5185,7 @@
               const step = band.step
               // Snap to nearest step multiple to eliminate float drift from reverse-transform
               const snapped = Math.round(realV / step) * step
-              if (band.unit === 'Time') return formatDurationAxis(snapped, band.step)
+              if (band.unit === 'Time') return formatDurationAxis(snapped, band.step, band.realMax)
               const decimals = step < 1 ? Math.max(1, Math.ceil(-Math.log10(step))) : 0
               if (Math.abs(snapped) >= 1_000_000) return (snapped / 1_000_000).toFixed(1) + 'M'
               if (Math.abs(snapped) >= 10_000)    return (snapped / 1_000).toFixed(0) + 'K'

@@ -133,7 +133,7 @@ pub async fn emit_app_log(
 }
 
 /// Read `log.global.enabled` from APPLICATION_CONFIG.
-/// Returns `true` (logging on) when no key exists yet.
+/// Returns `false` (logging off) when no key exists yet.
 pub async fn load_global_logging_enabled(db: &DatabaseConnection) -> bool {
     let sql = "SELECT config_value FROM APPLICATION_CONFIG \
                WHERE config_key = 'log.global.enabled' LIMIT 1";
@@ -150,6 +150,6 @@ pub async fn load_global_logging_enabled(db: &DatabaseConnection) -> bool {
             let v: String = r.try_get("", "config_value").unwrap_or_default();
             v.trim() != "false" && v.trim() != "0"
         }
-        None => true, // default: logging enabled
+        None => false, // default: logging disabled
     }
 }

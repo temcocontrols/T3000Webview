@@ -195,6 +195,19 @@ impl MigrationTrait for Migration {
             "ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN source TEXT NOT NULL DEFAULT 'migration'",
         ).await;
 
+        // 1c. Ensure range-rule columns exist (same idempotent pattern — a previous
+        //     run of this migration created the table without them, which broke
+        //     list_rules ORDER BY and the range-rule seeds).
+        let _ = db.execute_unprepared(
+            "ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN point_type TEXT",
+        ).await;
+        let _ = db.execute_unprepared(
+            "ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN digital_analog INTEGER",
+        ).await;
+        let _ = db.execute_unprepared(
+            "ALTER TABLE HAYSTACK_AUTO_TAGGING_RULES ADD COLUMN range_value INTEGER",
+        ).await;
+
         // 2. Add brick_class column to existing table (idempotent — may already exist)
         let _ = db.execute_unprepared(
             "ALTER TABLE HAYSTACK_POINT_TAGS ADD COLUMN brick_class TEXT",
@@ -350,10 +363,13 @@ INSERT OR IGNORE INTO HAYSTACK_AUTO_TAGGING_RULES (rule_name,category,pattern,ha
 ('range:var-dig-0','range',NULL,'point,sp,binary',NULL,NULL,NULL,'VARIABLE',0,0,'migration',400),
 ('range:var-ana-0','range',NULL,'point,sp,analog',NULL,NULL,NULL,'VARIABLE',1,0,'migration',401);
 "#;
-        for line in range_sql.lines() {
-            let trimmed = line.trim();
-            if !trimmed.is_empty() && !trimmed.starts_with("--") && !trimmed.starts_with("INSERT OR IGNORE") {
-                let _ = db.execute_unprepared(trimmed).await;
+        // Execute each complete INSERT statement (split on ';'). The raw string also
+        // contains a legacy orphaned tuple block with a different column layout — skip
+        // anything that is not a full "INSERT OR IGNORE" statement.
+        for stmt in range_sql.split(';') {
+            let trimmed = stmt.trim();
+            if trimmed.starts_with("INSERT OR IGNORE") {
+                db.execute_unprepared(trimmed).await?;
             }
         }
 

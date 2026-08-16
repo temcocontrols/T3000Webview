@@ -636,12 +636,7 @@ const useStyles = makeStyles({
   },
 });
 
-interface LogSettingsTabProps {
-  mainView: 'default' | 'files' | 'flows';
-  onMainViewChange: (view: 'default' | 'files' | 'flows') => void;
-}
-
-export const LogSettingsTab: React.FC<LogSettingsTabProps> = ({ mainView, onMainViewChange }) => {
+export const LogSettingsTab: React.FC = () => {
   const s = useStyles();
   const [settings, setSettings] = useState<LogCategoryConfig[]>([]);
   const [traceConfig, setTraceConfig] = useState<TraceRuntimeConfig>(() => loadTraceRuntimeConfig());
@@ -653,6 +648,10 @@ export const LogSettingsTab: React.FC<LogSettingsTabProps> = ({ mainView, onMain
   const [traceSaved, setTraceSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offlineMode, setOfflineMode] = useState(false);
+  const [profile, setProfile] = useState('baseline');
+  const [profileApplying, setProfileApplying] = useState(false);
+  const [profileInfo, setProfileInfo] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   const load = async () => {
     setLoading(true);
@@ -674,7 +673,64 @@ export const LogSettingsTab: React.FC<LogSettingsTabProps> = ({ mainView, onMain
     }
   };
 
-  useEffect(() => { load(); }, []);
+  const loadProfile = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/logs/profile/current`);
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.ok !== false) {
+        setProfile(json.profile ?? 'baseline');
+        setProfileInfo(json.profile ? `Active: ${json.profile}` : '');
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const applyProfile = async (name: string) => {
+    setProfileApplying(true);
+    setProfileInfo('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/logs/profile/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: name }),
+      });
+      const json = await res.json();
+      if (json.ok === false) {
+        setProfileInfo(json.error || 'Failed to apply profile');
+      } else {
+        setProfileInfo(`Active: ${name}`);
+        await load(); // refresh category policies from the applied profile
+      }
+    } catch {
+      setProfileInfo('Failed to apply profile');
+    } finally {
+      setProfileApplying(false);
+    }
+  };
+
+  const resetProfile = async () => {
+    setProfileApplying(true);
+    setProfileInfo('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/logs/profile/disable`, { method: 'POST' });
+      const json = await res.json();
+      if (json.ok !== false) {
+        setProfile('baseline');
+        setProfileInfo('Reset to baseline');
+        await load();
+      } else {
+        setProfileInfo(json.error || 'Failed to reset profile');
+      }
+    } catch {
+      setProfileInfo('Failed to reset profile');
+    } finally {
+      setProfileApplying(false);
+    }
+  };
+
+  useEffect(() => { load(); loadProfile(); }, []);
 
   useEffect(() => {
     setTraceConfig(loadTraceRuntimeConfig());
@@ -689,6 +745,10 @@ export const LogSettingsTab: React.FC<LogSettingsTabProps> = ({ mainView, onMain
 
   const updateMinLevels = (category: string, levels: LogLevel[]) => {
     update(category, { minLevel: serializeMinLevels(levels) });
+  };
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
   };
 
   const save = async () => {
@@ -769,16 +829,29 @@ export const LogSettingsTab: React.FC<LogSettingsTabProps> = ({ mainView, onMain
           {traceSaved && (
             <Badge appearance="filled" color="success" size="small">Trace Applied</Badge>
           )}
-          <Select
-            size="small"
-            value={mainView}
-            onChange={(_, d) => onMainViewChange(d.value as 'default' | 'files' | 'flows')}
-            style={{ minWidth: '110px', fontSize: '12px', marginLeft: 'auto' }}
-          >
-            <option value="default">Default</option>
-            <option value="files">File Mode</option>
-            <option value="flows">Flow Mode</option>
-          </Select>
+        </div>
+
+        <div className={s.tracePanel}>
+          <Text size={400} weight="semibold" className={s.globalPolicyTitle}>Log Profile</Text>
+          <Text size={100} className={s.levelHint}>
+            One-click presets that set all category policies at once. Use the per-category switches below for fine-tuning.
+          </Text>
+          <div className={s.traceRow}>
+            <Select size="small" value={profile} onChange={(_, d) => setProfile(d.value)} style={{ minWidth: '170px' }}>
+              <option value="baseline">Baseline (default)</option>
+              <option value="trendlog-trace">TrendLog Trace</option>
+              <option value="ffi-stale-trace">FFI Stale Trace</option>
+              <option value="ui-trace">UI Trace</option>
+            </Select>
+            <Button size="small" appearance="primary" onClick={() => applyProfile(profile)} disabled={profileApplying}>
+              Apply
+            </Button>
+            <Button size="small" appearance="subtle" onClick={resetProfile} disabled={profileApplying}>
+              Reset Baseline
+            </Button>
+            {profileApplying && <Spinner size="tiny" />}
+          </div>
+          {profileInfo && <Text size={100} className={s.traceStatusValue}>{profileInfo}</Text>}
         </div>
 
         <div className={s.infoBar}>
@@ -914,7 +987,15 @@ export const LogSettingsTab: React.FC<LogSettingsTabProps> = ({ mainView, onMain
                           <Text size={100} className={s.descriptionCell}>{cfg.description}</Text>
                         </div>
                       </label>
+                      <span
+                        className={s.detailPill}
+                        style={{ cursor: 'pointer', flexShrink: 0 }}
+                        onClick={() => toggleCategory(cfg.category)}
+                      >
+                        <Text size={100}>{expandedCategories[cfg.category] ? '▲ Hide' : '▼ Details'}</Text>
+                      </span>
                     </div>
+                    {expandedCategories[cfg.category] && (
                     <div className={s.rowBottom}>
                       <div className={s.policyGroups}>
                         <div className={s.policyGroup}>
@@ -982,6 +1063,7 @@ export const LogSettingsTab: React.FC<LogSettingsTabProps> = ({ mainView, onMain
                         </div>
                       </div>
                     </div>
+                    )}
                   </div>
                 ))}
               </div>
