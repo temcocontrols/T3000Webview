@@ -667,7 +667,8 @@ const VariablesPageDesktop: React.FC = () => {
     let cancelled = false;
     fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
       if (cancelled) return;
-      setPointTags(all.map(t => ({
+      const tags = Array.isArray(all?.tags) ? all.tags : [];
+      setPointTags(tags.map(t => ({
         pointType: t.point_type,
         pointIndex: t.point_index,
         tagName: t.tag_name,
@@ -776,8 +777,8 @@ const VariablesPageDesktop: React.FC = () => {
   const allVariables = React.useMemo(() => [...variables, ...pvariables], [variables, pvariables]);
 
   // Counts for badge labels
-  const varCount  = React.useMemo(() => allVariables.filter(v => !isPvar(v)).length, [allVariables]);
-  const pvarCount = React.useMemo(() => allVariables.filter(v =>  isPvar(v)).length, [allVariables]);
+  const varCount = React.useMemo(() => allVariables.filter(v => !isPvar(v)).length, [allVariables]);
+  const pvarCount = React.useMemo(() => allVariables.filter(v => isPvar(v)).length, [allVariables]);
 
   // Display data with 18 empty rows when no variables
   const displayVariables = React.useMemo(() => {
@@ -993,7 +994,7 @@ const VariablesPageDesktop: React.FC = () => {
     // 5. Value
     createTableColumn<VariablePoint>({
       columnId: 'value',
-      compare: (a, b) => { const av = parseFloat(a.fValue||'0'); const bv = parseFloat(b.fValue||'0'); return av - bv; },
+      compare: (a, b) => { const av = parseFloat(a.fValue || '0'); const bv = parseFloat(b.fValue || '0'); return av - bv; },
       renderHeaderCell: () => <span>Value</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
@@ -1345,14 +1346,14 @@ const VariablesPageDesktop: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid �?show once device is selected AND initial load is done OR we have data */ }
+                {/* Data Grid �?show once device is selected AND initial load is done OR we have data */}
                 {selectedDevice && (!loading || hasEverLoadedData.current) && (!loadingPvars || hasEverLoadedData.current) && (
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
-                    // onScroll={handleScroll}
-                    // onWheel={handleWheel}
+                  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                  // onScroll={handleScroll}
+                  // onWheel={handleWheel}
                   >
                     <DataGrid
                       key={sortKey}

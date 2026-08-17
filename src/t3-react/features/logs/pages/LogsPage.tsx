@@ -555,7 +555,7 @@ export const LogsPage: React.FC = () => {
   const [mainView, setMainView] = useState<'default' | 'files' | 'flows'>('default');
 
   // Log Everything master toggle
-  const [loggingEnabled, setLoggingEnabled] = useState(true);
+  const [loggingEnabled, setLoggingEnabled] = useState(false);
   const [logToggleLoading, setLogToggleLoading] = useState(false);
 
   // SQL Server status
@@ -643,7 +643,7 @@ export const LogsPage: React.FC = () => {
       const res = await fetch(`${API_BASE_URL}/api/logs/enabled`);
       if (!res.ok) return;
       const json: { enabled: boolean } = await res.json();
-      setLoggingEnabled(json.enabled ?? true);
+      setLoggingEnabled(json.enabled ?? false);
     } catch {
       // ignore
     }
@@ -834,6 +834,18 @@ export const LogsPage: React.FC = () => {
             {loggingEnabled ? 'Disable Logging' : 'Enable Logging'}
           </span>
         </div>
+
+        {/* View-mode selector */}
+        <Select
+          size="small"
+          value={mainView}
+          onChange={(_, d) => handleMainViewChange(d.value as 'default' | 'files' | 'flows')}
+          style={{ minWidth: '110px', fontSize: '12px' }}
+        >
+          <option value="default">Default</option>
+          <option value="files">File Mode</option>
+          <option value="flows">Flow Mode</option>
+        </Select>
 
         {/* Advanced drawer trigger */}
         <Button
@@ -1093,7 +1105,7 @@ export const LogsPage: React.FC = () => {
         </DrawerHeader>
         <DrawerBody className={s.drawerBody}>
           <div className={s.advancedTabContent}>
-            <LogSettingsTab mainView={mainView} onMainViewChange={handleMainViewChange} />
+            <LogSettingsTab />
           </div>
         </DrawerBody>
       </Drawer>

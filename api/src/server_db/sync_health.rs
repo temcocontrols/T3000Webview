@@ -1720,7 +1720,7 @@ async fn get_logging_enabled(
 ) -> Result<Json<serde_json::Value>> {
     let db = match get_local_log_db_conn(&state).await {
         Some(d) => d,
-        None => return Ok(Json(serde_json::json!({ "enabled": true }))),
+        None => return Ok(Json(serde_json::json!({ "enabled": false }))),
     };
     let enabled = crate::logging::service::load_global_logging_enabled(&db).await;
     Ok(Json(serde_json::json!({ "enabled": enabled })))

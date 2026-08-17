@@ -36,7 +36,7 @@ interface TreeToolbarProps {
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
-  const { expandAll, collapseAll, viewMode, setViewMode, loadDevicesWithSync, scanForDevices } = useDeviceTreeStore();
+  const { expandAll, collapseAll, viewMode, setViewMode, scanForDevices } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -59,11 +59,9 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     }
   };
 
-  const handleToggleViewMode = async () => {
+  const handleToggleViewMode = () => {
     const newMode = viewMode === 'equipment' ? 'projectPoint' : 'equipment';
     setViewMode(newMode);
-    // Trigger full sync to load the device tree view
-    await loadDevicesWithSync({ skipInitialFetch: true });
   };
 
   const handleToggleExpandCollapse = () => {

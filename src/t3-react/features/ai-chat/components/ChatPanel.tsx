@@ -16,6 +16,7 @@ import { ArrowDownRegular, BotSparkleRegular, AddRegular, WrenchRegular, Setting
 import { useAiChatStream } from '../hooks/useAiChatStream';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useMcpServers } from '../hooks/useMcpServers';
+import { API_BASE_URL } from '../../../config/constants';
 import { useChatStore } from '../../../store/chatStore';
 import { useUIStore } from '../../../store/uiStore';
 import { ChatMessage } from './ChatMessage';
@@ -30,8 +31,8 @@ import styles from '../AiChat.module.css';
 
 const DEFAULT_SETTINGS: AiProviderSettings = {
   provider: 'local',
-  endpoint: 'http://localhost:11434/v1',
-  model: 'llama3.1:8b',
+  endpoint: '',
+  model: '',
   apiKey: '',
 };
 
@@ -40,10 +41,13 @@ const PROVIDER_CACHE_KEY = 't3.ai.providerCache';
 
 type ProviderCache = Record<ProviderType, Pick<AiProviderSettings, 'endpoint' | 'model' | 'apiKey'>>;
 
+// No fallback values — a fresh install must be configured by the user.
+const EMPTY_PROVIDER = { endpoint: '', model: '', apiKey: '' };
+
 const DEFAULT_CACHE: ProviderCache = {
-  local: { endpoint: 'http://localhost:11434/v1', model: 'llama3.1:8b', apiKey: '' },
-  anthropic: { endpoint: 'https://api.anthropic.com/v1', model: 'claude-3-5-sonnet-20241022', apiKey: '' },
-  gemini: { endpoint: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-2.0-flash', apiKey: '' },
+  local: { ...EMPTY_PROVIDER },
+  anthropic: { ...EMPTY_PROVIDER },
+  gemini: { ...EMPTY_PROVIDER },
 };
 
 const loadProviderCache = (): ProviderCache => {
@@ -86,7 +90,24 @@ const saveSettings = (s: AiProviderSettings) => {
     cache[s.provider] = { endpoint: s.endpoint, model: s.model, apiKey: s.apiKey || '' };
     saveProviderCache(cache);
   } catch {}
+
+  // Persist to the backend too, so settings survive across browsers/machines.
+  fetch(`${API_BASE_URL}/api/ai/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      provider: s.provider,
+      model: s.model,
+      endpoint: s.endpoint,
+      api_key: s.apiKey || '',
+    }),
+  }).catch(() => {});
 };
+
+// "Configured" means both endpoint and model are filled in. Used to gate chat
+// sending and to show the first-run configuration banner.
+const isSettingsConfigured = (s: AiProviderSettings) =>
+  (s.endpoint || '').trim() !== '' && (s.model || '').trim() !== '';
 
 interface ChatPanelProps {
   variant?: 'full' | 'panel';
@@ -102,6 +123,47 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const [clearAllOpen, setClearAllOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
   const [providerCache, setProviderCache] = useState<ProviderCache>(loadProviderCache);
+  const isConfigured = isSettingsConfigured(aiSettings);
+
+  // Load server-persisted settings on first mount. If the backend has a saved
+  // configuration, use it and mirror it into localStorage so the UI stays
+  // consistent. Otherwise keep the locally-saved (or empty) settings.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/ai/settings`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (cancelled) return;
+        const endpoint = typeof data?.endpoint === 'string' ? data.endpoint : '';
+        const model = typeof data?.model === 'string' ? data.model : '';
+        if (!endpoint.trim() || !model.trim()) return;
+        const provider: ProviderType =
+          data?.provider === 'anthropic' || data?.provider === 'gemini' || data?.provider === 'local'
+            ? data.provider
+            : 'local';
+        const serverSettings: AiProviderSettings = {
+          provider,
+          endpoint,
+          model,
+          apiKey: typeof data?.api_key === 'string' ? data.api_key : '',
+        };
+        setAiSettings(serverSettings);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(serverSettings));
+        const cache = loadProviderCache();
+        cache[serverSettings.provider] = {
+          endpoint: serverSettings.endpoint,
+          model: serverSettings.model,
+          apiKey: serverSettings.apiKey || '',
+        };
+        saveProviderCache(cache);
+        setProviderCache(loadProviderCache());
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const navigate = useNavigate();
   const setChatMode = useUIStore((s) => s.setChatMode);
   const setPreviousPageHash = useChatStore((s) => s.setPreviousPageHash);
@@ -193,16 +255,27 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
     }
   }, [isNearBottom, scrollToBottom]);
 
+  const handleSendMessage = useCallback(
+    (content: string) => {
+      if (!isConfigured) {
+        setSettingsOpen(true);
+        return;
+      }
+      sendMessage(content);
+    },
+    [isConfigured, sendMessage],
+  );
+
   const handleSelectQuestion = useCallback(
-    (question: string) => sendMessage(question),
-    [sendMessage],
+    (question: string) => handleSendMessage(question),
+    [handleSendMessage],
   );
 
   const hasMessages = messages.length > 0;
   const showStreamingBubble = isStreaming && (streamingText || streamingSteps.length > 0 || Object.keys(activeToolCalls).length > 0);
   const showThinkingIndicator = isStreaming && !streamingText && streamingSteps.length === 0 && Object.keys(activeToolCalls).length === 0;
 
-  const providerLabel = `${aiSettings.provider}:${aiSettings.model}`;
+  const providerLabel = isConfigured ? `${aiSettings.provider}:${aiSettings.model}` : 'Not configured';
 
   const activeSessionTitle = activeSessionId
     ? sessions.find((s) => s.id === activeSessionId)?.title || ''
@@ -306,6 +379,31 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
           </div>
         )}
 
+        {/* ── Not-configured banner (fresh install) ── */}
+        {!isConfigured && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              margin: '8px 16px 8px',
+              padding: '8px 12px',
+              borderLeft: '2px solid #0078d4',
+              background: '#f0f6ff',
+              fontSize: 12,
+              color: '#323130',
+            }}
+          >
+            <span style={{ flex: 1, lineHeight: 1.5 }}>
+              <strong>AI assistant is not configured.</strong>{' '}
+              Set your endpoint URL and model name to get started.
+            </span>
+            <Button size="small" appearance="primary" onClick={() => setSettingsOpen(true)}>
+              Configure
+            </Button>
+          </div>
+        )}
+
       {/* ── Messages area ── */}
       <div className={styles.messagesArea} ref={messagesContainerRef}>
         {!hasMessages ? (
@@ -364,11 +462,17 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
 
       {/* ── Input bar ── */}
       <ChatInput
-        onSend={sendMessage}
+        onSend={handleSendMessage}
         onAbort={abort}
         isStreaming={isStreaming}
         onResize={handleInputResize}
-        placeholder={isPanel ? 'Ask anything — AI can make mistakes. Verify critical data.' : undefined}
+        placeholder={
+          !isConfigured
+            ? 'Configure your AI endpoint and model to start chatting…'
+            : isPanel
+              ? 'Ask anything — AI can make mistakes. Verify critical data.'
+              : undefined
+        }
       />
 
       {/* ── Model info + disclaimer (hidden in panel mode) ── */}
