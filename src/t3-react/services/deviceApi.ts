@@ -50,6 +50,7 @@ function transformDeviceData(device: any): DeviceInfo {
     bacnetIpPort: source.bacnetIpPort ?? source.BACnet_IP_Port,
     connectionType: source.connectionType ?? source.Connection_Type,
     showLabelName,
+    parentSerialNumber: source.parentSerialNumber ?? source.parent_serial_number ?? source.Parent_Serial_Number ?? source.noteParentSerialNumber ?? 0,
     status: source.status ?? source.Status ?? 'unknown',
     statusHistory: source.statusHistory ?? [false, false, false, false, false],
     protocol: source.protocol ?? 'Native',

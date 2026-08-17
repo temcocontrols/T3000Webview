@@ -42,6 +42,12 @@ const cleanDeviceName = (name: string | undefined | null, fallback: string = 'Un
   return cleaned || fallback;
 };
 
+// A sub-device has a non-zero parent serial (it lives on its parent's subnet
+// and is not directly addressable). Hidden from the tree until the UI supports
+// nesting them under their parent like C++ does.
+const isSubDevice = (d: DeviceInfo): boolean =>
+  Number(d.parentSerialNumber ?? d.noteParentSerialNumber ?? 0) > 0;
+
 // Prevent duplicate bursts when multiple components trigger fetches at the same time.
 let fetchDevicesInFlight: Promise<void> | null = null;
 let scanInProgress = false;
@@ -228,7 +234,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               // Match buildTreeStructure: filter unknown + sort alphabetically
               const isUnknown = (d: DeviceInfo) =>
                 !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
-              const knownDevices = devices.filter(d => !isUnknown(d));
+              const knownDevices = devices.filter(d => !isUnknown(d) && !isSubDevice(d));
               knownDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
 
               // Prefer ONLINE devices for the default selection. Offline devices
@@ -743,6 +749,10 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
         filteredDevices = filteredDevices.filter(d => !isUnknownDevice(d));
 
+        // Hide sub-devices (parent serial != 0): they are reached through their
+        // parent and are not directly addressable via GET_WEBVIEW_LIST.
+        filteredDevices = filteredDevices.filter(d => !isSubDevice(d));
+
         // Split into online (top) and offline (collapsible group at bottom)
         const byName = (a: DeviceInfo, b: DeviceInfo) => a.nameShowOnTree.localeCompare(b.nameShowOnTree);
         const onlineDevices = filteredDevices
@@ -945,7 +955,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           const selectedStatus = deviceStatuses.get(selectedDevice.serialNumber);
           if (selectedStatus !== 'online') {
             const onlineDevices = devices
-              .filter((d) => deviceStatuses.get(d.serialNumber) === 'online')
+              .filter((d) => !isSubDevice(d) && deviceStatuses.get(d.serialNumber) === 'online')
               .sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
             if (onlineDevices.length > 0) {
               get().selectNode(`device-${onlineDevices[0].serialNumber}`);
@@ -993,6 +1003,9 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             (d) => d.mainBuildingName === filterBuilding || d.buildingName === filterBuilding
           );
         }
+
+        // Hide sub-devices — only top-level (parent) devices are navigable.
+        filteredDevices = filteredDevices.filter(d => !isSubDevice(d));
 
         // Sort: online first, then offline; alphabetically within each group
         const statusRank = (d: DeviceInfo): number => {

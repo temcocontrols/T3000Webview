@@ -590,13 +590,14 @@ const OutputsPageDesktop: React.FC = () => {
     if (!selectedDevice?.serialNumber) return;
     let cancelled = false;
     fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
-      if (cancelled || !Array.isArray(all)) return;
-      setPointTags(all.map(t => ({
+      if (cancelled) return;
+      const tags = Array.isArray(all?.tags) ? all.tags : [];
+      setPointTags(tags.map(t => ({
         pointType: t.point_type,
         pointIndex: t.point_index,
         tagName: t.tag_name,
       })));
-    }).catch(() => {});
+    }).catch(() => { });
     return () => { cancelled = true; };
   }, [selectedDevice?.serialNumber]);
 
@@ -1395,9 +1396,9 @@ const OutputsPageDesktop: React.FC = () => {
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
-                    // onScroll={handleScroll}
-                    // onWheel={handleWheel}
+                  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                  // onScroll={handleScroll}
+                  // onWheel={handleWheel}
                   >
                     <DataGrid
                       key={sortKey}
@@ -1414,7 +1415,7 @@ const OutputsPageDesktop: React.FC = () => {
                         output: { idealWidth: 65, minWidth: 55 },
                         fullLabel: { idealWidth: 165, minWidth: 80 },
                         label: { idealWidth: 125, minWidth: 50 },
-                        autoManual: { idealWidth: 82, minWidth: 60  },
+                        autoManual: { idealWidth: 82, minWidth: 60 },
                         hoaSwitch: { idealWidth: 90, minWidth: 65 },
                         value: { idealWidth: 120, minWidth: 80 },
                         units: { idealWidth: 105, minWidth: 50 },

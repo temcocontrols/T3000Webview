@@ -76,6 +76,7 @@ export interface DeviceInfo {
 
   // Hierarchy relationships
   noteParentSerialNumber?: number;   // Parent device serial number
+  parentSerialNumber?: number;       // Parent device serial (0 = top-level; from LAN scan)
   panelNumber?: number;              // Panel number
   subnetPort?: number;               // 1=Main, 2=Zigbee, 3=Sub
   subnetBaudrate?: number;           // Subnet baudrate

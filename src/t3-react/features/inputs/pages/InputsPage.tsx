@@ -602,13 +602,13 @@ const InputsPageDesktop: React.FC = () => {
       setInputs(prevInputs =>
         prevInputs.map(input =>
           input.serialNumber === editingCell.serialNumber &&
-          input.inputIndex === editingCell.inputIndex
+            input.inputIndex === editingCell.inputIndex
             ? {
-                ...input,
-                [editingCell.field]: editingCell.field === 'fValue'
-                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
-                  : editValue
-              }
+              ...input,
+              [editingCell.field]: editingCell.field === 'fValue'
+                ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                : editValue
+            }
             : input
         )
       );
@@ -647,7 +647,8 @@ const InputsPageDesktop: React.FC = () => {
     let cancelled = false;
     fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
       if (cancelled) return;
-      setPointTags(all.map(t => ({
+      const tags = Array.isArray(all?.tags) ? all.tags : [];
+      setPointTags(tags.map(t => ({
         pointType: t.point_type,
         pointIndex: t.point_index,
         tagName: t.tag_name,
@@ -712,7 +713,7 @@ const InputsPageDesktop: React.FC = () => {
       setInputs(prevInputs =>
         prevInputs.map(input =>
           input.serialNumber === selectedInputForRange.serialNumber &&
-          input.inputIndex === selectedInputForRange.inputIndex
+            input.inputIndex === selectedInputForRange.inputIndex
             ? { ...input, range: newRange.toString(), rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : input
         )
@@ -837,8 +838,8 @@ const InputsPageDesktop: React.FC = () => {
       renderHeaderCell: () => <span>Full Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.inputIndex === item.inputIndex &&
-                          editingCell?.field === 'fullLabel';
+          editingCell?.inputIndex === item.inputIndex &&
+          editingCell?.field === 'fullLabel';
 
         return (
           <TableCellLayout>
@@ -890,8 +891,8 @@ const InputsPageDesktop: React.FC = () => {
       renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.inputIndex === item.inputIndex &&
-                          editingCell?.field === 'label';
+          editingCell?.inputIndex === item.inputIndex &&
+          editingCell?.field === 'label';
 
         return (
           <TableCellLayout>
@@ -1026,8 +1027,8 @@ const InputsPageDesktop: React.FC = () => {
       renderHeaderCell: () => <span>Value</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.inputIndex === item.inputIndex &&
-                          editingCell?.field === 'fValue';
+          editingCell?.inputIndex === item.inputIndex &&
+          editingCell?.field === 'fValue';
 
         return (
           <TableCellLayout>
@@ -1273,70 +1274,70 @@ const InputsPageDesktop: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
-              <>
-              <div className={styles.toolbar}>
-                <div className={styles.toolbarContainer}>
-                  {/* Search Input Box */}
-                  <div className={styles.searchInputWrapper}>
-                    <SearchRegular className={styles.searchIcon} />
-                    <input
-                      className={styles.searchInput}
-                      type="text"
-                      placeholder="Search by label, value, ID, tag…"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      spellCheck="false"
-                      role="searchbox"
-                      aria-label="Search inputs by label, value, ID, tag"
-                    />
-                  </div>
+                <>
+                  <div className={styles.toolbar}>
+                    <div className={styles.toolbarContainer}>
+                      {/* Search Input Box */}
+                      <div className={styles.searchInputWrapper}>
+                        <SearchRegular className={styles.searchIcon} />
+                        <input
+                          className={styles.searchInput}
+                          type="text"
+                          placeholder="Search by label, value, ID, tag…"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                          spellCheck="false"
+                          role="searchbox"
+                          aria-label="Search inputs by label, value, ID, tag"
+                        />
+                      </div>
 
-                  {/* Refresh Button - Refresh from Device */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all inputs from device"
-                    aria-label="Refresh"
-                  >
-                    <ArrowClockwiseRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-                  </button>
+                      {/* Refresh Button - Refresh from Device */}
+                      <button
+                        className={styles.toolbarButton}
+                        onClick={handleRefreshFromDevice}
+                        disabled={refreshing}
+                        title="Refresh all inputs from device"
+                        aria-label="Refresh"
+                      >
+                        <ArrowClockwiseRegular />
+                        <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                      </button>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
+                      <div className={styles.toolbarSeparator} role="separator" />
 
-                  {/* Info Button with Tooltip */}
-                  <Tooltip
-                    content={`Showing input points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured input points including digital and analog sensors, their current values, calibration settings, and operational status.`}
-                    relationship="description"
-                  >
-                    <button
-                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
-                      title="Information"
-                      aria-label="Information about this page"
-                    >
-                      <InfoRegular />
-                    </button>
-                  </Tooltip>
+                      {/* Info Button with Tooltip */}
+                      <Tooltip
+                        content={`Showing input points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured input points including digital and analog sensors, their current values, calibration settings, and operational status.`}
+                        relationship="description"
+                      >
+                        <button
+                          className={`${styles.toolbarButton} ${styles.marginLeft8}`}
+                          title="Information"
+                          aria-label="Information about this page"
+                        >
+                          <InfoRegular />
+                        </button>
+                      </Tooltip>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
+                      <div className={styles.toolbarSeparator} role="separator" />
 
-                  {/* <PageSyncStatus
+                      {/* <PageSyncStatus
                     dataType="INPUTS"
                     serialNumber={selectedDevice.serialNumber.toString()}
                     onRefresh={handleRefreshFromDevice}
                   /> */}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
-              {/* ========================================
+                  {/* ========================================
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div className={styles.noPadding}>
-                <hr className={styles.overviewHr} />
-              </div>
-              </>
+                  <div className={styles.noPadding}>
+                    <hr className={styles.overviewHr} />
+                  </div>
+                </>
               )}
 
               {/* ========================================
@@ -1379,9 +1380,9 @@ const InputsPageDesktop: React.FC = () => {
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
-                    // onScroll={handleScroll}
-                    // onWheel={handleWheel}
+                  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                  // onScroll={handleScroll}
+                  // onWheel={handleWheel}
                   >
                     <DataGrid
                       key={sortKey}
@@ -1409,25 +1410,25 @@ const InputsPageDesktop: React.FC = () => {
                         tags: { idealWidth: 190, minWidth: 80 },
                       }}
                     >
-                    <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
-                      <DataGridRow>
-                        {({ renderHeaderCell }) => (
-                          <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-                        )}
-                      </DataGridRow>
-                    </DataGridHeader>
-                    <DataGridBody<InputPoint>>
-                      {({ item, rowId }) => (
-                        <DataGridRow<InputPoint> key={rowId}>
-                          {({ renderCell }) => (
-                            <DataGridCell>{renderCell(item)}</DataGridCell>
+                      <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
+                        <DataGridRow>
+                          {({ renderHeaderCell }) => (
+                            <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
                           )}
                         </DataGridRow>
-                      )}
-                    </DataGridBody>
-                  </DataGrid>
+                      </DataGridHeader>
+                      <DataGridBody<InputPoint>>
+                        {({ item, rowId }) => (
+                          <DataGridRow<InputPoint> key={rowId}>
+                            {({ renderCell }) => (
+                              <DataGridCell>{renderCell(item)}</DataGridCell>
+                            )}
+                          </DataGridRow>
+                        )}
+                      </DataGridBody>
+                    </DataGrid>
 
-                  {/* [DISABLED] Loading Next Device Indicator — commented out for now.
+                    {/* [DISABLED] Loading Next Device Indicator — commented out for now.
                   {isLoadingNextDevice && (
                     <div className={styles.autoLoadIndicator}>
                       <Spinner size="tiny" />
