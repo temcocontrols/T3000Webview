@@ -26,7 +26,6 @@ import {
 } from '@fluentui/react-components';
 import {
   BuildingRegular,
-  Checkmark20Regular,
   CaretRight16Regular,
   CaretDown16Regular,
 } from '@fluentui/react-icons';
@@ -70,9 +69,6 @@ const getPointTypeIcon = (pointType: string) => {
   return <img src={`/assets/t3icon/toolbar/${name}.svg`} className={styles.icon} alt={pointType} />;
 };
 
-/**
- * Map route to point type for selection
- */
 const getPointTypeFromRoute = (pathname: string): string | null => {
   if (pathname.includes('/inputs')) return 'inputs';
   if (pathname.includes('/outputs')) return 'outputs';
@@ -104,15 +100,39 @@ const getRouteFromPointType = (pointType: string): string => {
   return routeMap[pointType] || '/t3000/dashboard';
 };
 
-/**
- * Status icon component
- */
-const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
-  if (status === 'online') {
-    return <Checkmark20Regular className={styles.statusOnline} />;
+const getTreeNodeValue = (node: any, parentSerial?: number): string => {
+  if (node?.node_type === 'device') {
+    return `device:${Number(node.serial_number) || 0}`;
   }
-  // return <CircleFilled className={styles.statusOffline} />;
-  return <></>;
+  if (node?.node_type === 'point_type') {
+    return `device:${parentSerial || 0}:point-type:${node.point_type}`;
+  }
+  return `${node?.node_type || 'node'}:${node?.name || 'unknown'}`;
+};
+
+const getSelectionPath = (rootNode: any, targetValue: string): string[] => {
+  const path: string[] = [];
+
+  const walk = (node: any, parentSerial?: number): boolean => {
+    const nodeValue = getTreeNodeValue(node, parentSerial);
+    path.push(nodeValue);
+    if (nodeValue === targetValue) return true;
+
+    const deviceSerial = node?.node_type === 'device' ? Number(node.serial_number) || 0 : parentSerial;
+    for (const child of node?.children || []) {
+      if (walk(child, deviceSerial)) return true;
+    }
+
+    path.pop();
+    return false;
+  };
+
+  return walk(rootNode) ? path : [getTreeNodeValue(rootNode)];
+};
+
+const hasTreeNode = (rootNode: any, targetValue: string): boolean => {
+  const path = getSelectionPath(rootNode, targetValue);
+  return path[path.length - 1] === targetValue;
 };
 
 /**
@@ -121,11 +141,12 @@ const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
 const ProjectDeviceNode: React.FC<{
   node: any;
   level: number;
-  selectedPointType: string | null;
+  selectedItem: string | null;
   onNavigate: (pointType: string) => void;
+  onSelectItem: (value: string) => void;
   status: DeviceStatus;
 }> = React.memo(
-  ({ node, level, selectedPointType, onNavigate, status }) => {
+  ({ node, level, selectedItem, onNavigate, onSelectItem, status }) => {
     const {
       connectDevice,
       deleteDevice,
@@ -135,12 +156,11 @@ const ProjectDeviceNode: React.FC<{
       selectDevice,
       devices,
     } = useDeviceTreeStore();
-    const selectedDevice = useDeviceTreeStore((s) => s.selectedDevice);
-
     const hasChildren = node.children && node.children.length > 0;
 
     const serialNumber = Number(node.serial_number) || 0;
-    const isSelected = !!selectedDevice && selectedDevice.serialNumber === serialNumber;
+    const nodeValue = getTreeNodeValue(node);
+    const isSelected = selectedItem === nodeValue;
     const realDevice = devices.find((d) => d.serialNumber === serialNumber);
     const deviceInfo: DeviceInfo = realDevice
       ? { ...realDevice, status }
@@ -232,24 +252,27 @@ const ProjectDeviceNode: React.FC<{
           onCheckStatus={handleCheckStatus}
         >
           <div ref={rowRef} style={{ width: '100%', height: '100%' }}>
-            <TreeItem itemType="branch" value={node.name}>
+            <TreeItem itemType="branch" value={nodeValue}>
               <TreeItemLayout
                 className={`${isSelected ? styles.treeItemSelected : styles.treeItemNormal} ${styles.nodeDevice} ${styles[`level${level}`] || ''}`}
                 style={{ '--tree-level': level } as React.CSSProperties}
                 iconBefore={<BuildingRegular style={{ color: '#605e5c', width: '20px', height: '20px' }} />}
-                aside={<StatusIcon status={status} />}
+                onClick={() => onSelectItem(nodeValue)}
+                // aside={<StatusIcon status={status} />}
               >
                 {node.name}
               </TreeItemLayout>
               {hasChildren && (
                 <Tree>
-                  {node.children.map((child: any, index: number) => (
+                  {node.children.map((child: any) => (
                     <ProjectTreeNode
-                      key={`${child.name}-${index}`}
+                      key={getTreeNodeValue(child, serialNumber)}
                       node={child}
                       level={level + 1}
-                      selectedPointType={selectedPointType}
+                      parentSerial={serialNumber}
+                      selectedItem={selectedItem}
                       onNavigate={handlePointTypeNavigate}
+                      onSelectItem={onSelectItem}
                     />
                   ))}
                 </Tree>
@@ -315,10 +338,12 @@ ProjectDeviceNode.displayName = 'ProjectDeviceNode';
 const ProjectTreeNode: React.FC<{
   node: any;
   level: number;
-  selectedPointType: string | null;
+  parentSerial?: number;
+  selectedItem: string | null;
   onNavigate: (pointType: string) => void;
+  onSelectItem: (value: string) => void;
 }> = React.memo(
-  ({ node, level, selectedPointType, onNavigate }) => {
+  ({ node, level, parentSerial, selectedItem, onNavigate, onSelectItem }) => {
     const showOfflineDevices = useDeviceTreeStore((s) => s.showOfflineDevices);
     const toggleShowOfflineDevices = useDeviceTreeStore((s) => s.toggleShowOfflineDevices);
     const storeDevices = useDeviceTreeStore((s) => s.devices);
@@ -327,19 +352,21 @@ const ProjectTreeNode: React.FC<{
 
     // Point type node — uppercase label, aligned count, no percent bar
     if (node.node_type === 'point_type') {
-      const isSelected = node.point_type === selectedPointType;
+      const nodeValue = getTreeNodeValue(node, parentSerial);
+      const isSelected = selectedItem === nodeValue;
       const label = POINT_TYPE_LABELS[node.point_type] || node.name;
       const used = node.used ?? 0;
       const total = node.total ?? 0;
 
       const handleClick = () => {
+        onSelectItem(nodeValue);
         if (node.point_type) {
           onNavigate(node.point_type);
         }
       };
 
       return (
-        <TreeItem itemType="leaf" value={node.name}>
+        <TreeItem itemType="leaf" value={nodeValue}>
           <TreeItemLayout
             className={`${isSelected ? styles.treeItemSelected : styles.treeItemNormal} ${styles.nodePointType} ${styles[`level${level}`] || ''}`}
             style={{ '--tree-level': level, cursor: 'pointer' } as React.CSSProperties}
@@ -380,13 +407,14 @@ const ProjectTreeNode: React.FC<{
 
       return (
         <>
-          {onlineDevices.map((child, index) => (
+          {onlineDevices.map((child) => (
             <ProjectDeviceNode
-              key={`${child.name}-${index}`}
+              key={getTreeNodeValue(child)}
               node={child}
               level={level + 1}
-              selectedPointType={selectedPointType}
+              selectedItem={selectedItem}
               onNavigate={onNavigate}
+              onSelectItem={onSelectItem}
               status={statusOf(child)}
             />
           ))}
@@ -411,13 +439,14 @@ const ProjectTreeNode: React.FC<{
                 </TreeItemLayout>
               </TreeItem>
 
-              {showOfflineDevices && offlineDevices.map((child, index) => (
+              {showOfflineDevices && offlineDevices.map((child) => (
                 <ProjectDeviceNode
-                  key={`${child.name}-off-${index}`}
+                  key={`${getTreeNodeValue(child)}-offline`}
                   node={child}
                   level={level + 1}
-                  selectedPointType={selectedPointType}
+                  selectedItem={selectedItem}
                   onNavigate={onNavigate}
+                  onSelectItem={onSelectItem}
                   status={statusOf(child)}
                 />
               ))}
@@ -429,22 +458,24 @@ const ProjectTreeNode: React.FC<{
 
     // Root node (Point List)
     return (
-      <TreeItem itemType="branch" value={node.name}>
+      <TreeItem itemType="branch" value={getTreeNodeValue(node)}>
         <TreeItemLayout
-          className={`${styles.treeItemNormal} ${styles.nodeRoot} ${styles[`level${level}`] || ''}`}
+          className={`${selectedItem === getTreeNodeValue(node) ? styles.treeItemSelected : styles.treeItemNormal} ${styles.nodeRoot} ${styles[`level${level}`] || ''}`}
           style={{ '--tree-level': level } as React.CSSProperties}
+          onClick={() => onSelectItem(getTreeNodeValue(node))}
         >
           {node.name}
         </TreeItemLayout>
         {hasChildren && (
           <Tree>
-            {node.children.map((child: any, index: number) => (
+            {node.children.map((child: any) => (
               <ProjectTreeNode
-                key={`${child.name}-${index}`}
+                key={getTreeNodeValue(child)}
                 node={child}
                 level={level + 1}
-                selectedPointType={selectedPointType}
+                selectedItem={selectedItem}
                 onNavigate={onNavigate}
+                onSelectItem={onSelectItem}
               />
             ))}
           </Tree>
@@ -459,15 +490,23 @@ const ProjectTreeNode: React.FC<{
  */
 export const ProjectPointTree: React.FC = () => {
   const { projectTreeData, projectTreeLoading, projectTreeError, fetchProjectPointTree } = useDeviceTreeStore();
+  const selectedDevice = useDeviceTreeStore((s) => s.selectedDevice);
   const [openItems, setOpenItems] = useState<string[]>([]);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const selectedPointType = getPointTypeFromRoute(location.pathname);
 
   const handleNavigate = (pointType: string) => {
     const route = getRouteFromPointType(pointType);
     navigate(route);
   };
+
+  const handleSelectItem = useCallback((value: string) => {
+    setSelectedItem(value);
+    if (projectTreeData) {
+      setOpenItems(getSelectionPath(projectTreeData, value));
+    }
+  }, [projectTreeData]);
 
   useEffect(() => {
     if (!projectTreeData && !projectTreeLoading) {
@@ -475,11 +514,29 @@ export const ProjectPointTree: React.FC = () => {
     }
   }, [projectTreeData, projectTreeLoading]);
 
+  useEffect(() => {
+    if (!projectTreeData || !selectedDevice) return;
+
+    const deviceValue = `device:${selectedDevice.serialNumber}`;
+    const pointType = getPointTypeFromRoute(location.pathname);
+    const pointValue = pointType
+      ? `device:${selectedDevice.serialNumber}:point-type:${pointType}`
+      : null;
+    const initialValue = pointValue && hasTreeNode(projectTreeData, pointValue)
+      ? pointValue
+      : deviceValue;
+
+    if (!hasTreeNode(projectTreeData, initialValue)) return;
+
+    setSelectedItem(initialValue);
+    setOpenItems(getSelectionPath(projectTreeData, initialValue));
+  }, [location.pathname, projectTreeData, selectedDevice?.serialNumber]);
+
   // Auto-expand the selected device (or the first device) when tree data loads.
   // Only root + selected device are expanded, so all other device branches stay collapsed.
   useEffect(() => {
     if (projectTreeData && openItems.length === 0) {
-      const itemsToExpand: string[] = [projectTreeData.name];
+      const itemsToExpand: string[] = [getTreeNodeValue(projectTreeData)];
 
       // Flatten: skip "System List" → go directly to devices
       const children = projectTreeData.children || [];
@@ -498,7 +555,7 @@ export const ProjectPointTree: React.FC = () => {
           ? validDevices.find((d: any) => Number(d.serial_number) === selectedDevice.serialNumber)
           : null;
         const target = selected || validDevices[0];
-        itemsToExpand.push(target.name);
+        itemsToExpand.push(getTreeNodeValue(target));
       }
 
       setOpenItems(itemsToExpand);
@@ -535,13 +592,14 @@ export const ProjectPointTree: React.FC = () => {
     <div className={styles.container}>
       <Tree
         openItems={openItems}
-        onOpenChange={(_, data) => setOpenItems(data.openItems as string[])}
+        onOpenChange={(_, data) => setOpenItems(Array.from(data.openItems) as string[])}
       >
         <ProjectTreeNode
           node={projectTreeData}
           level={0}
-          selectedPointType={selectedPointType}
+          selectedItem={selectedItem}
           onNavigate={handleNavigate}
+          onSelectItem={handleSelectItem}
         />
       </Tree>
     </div>
