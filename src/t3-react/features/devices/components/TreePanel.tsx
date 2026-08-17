@@ -29,7 +29,7 @@ import styles from './TreePanel.module.css';
  * TreePanel Component
  */
 export const TreePanel: React.FC = () => {
-  const { viewMode, fetchDevices, loadDevicesWithSync, isLoading, error, devices, treeData } = useDeviceTreeStore();
+  const { viewMode, fetchDevices, loadDevicesWithSync, fetchProjectPointTree, isLoading, error, devices, treeData } = useDeviceTreeStore();
   const [showFilter, setShowFilter] = React.useState(false);
   const hasInitialized = React.useRef(false);
 
@@ -56,6 +56,9 @@ export const TreePanel: React.FC = () => {
 
       // First, check database
       await fetchDevices();
+
+      // Prefetch the project point tree so switching views is instant (no loading flash)
+      fetchProjectPointTree();
 
       // If database is empty, auto-sync from T3000 (Action 4 + UDP scan)
       const { devices } = useDeviceTreeStore.getState();
