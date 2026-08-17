@@ -17,6 +17,15 @@ import {
   Tree,
   TreeItem,
   TreeItemLayout,
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogTrigger,
+  Button,
+  Input,
 } from '@fluentui/react-components';
 import {
   Dismiss20Regular,
@@ -70,6 +79,11 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
     connectDevice,
   } = useDeviceTreeStore();
 
+  // Edit Label dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [editDevice, setEditDevice] = useState<NonNullable<TreeNode['data']> | null>(null);
+
   const isOfflineGroup = node.id === 'offline-group';
 
   const handleOpenChange = useCallback(
@@ -108,12 +122,20 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
 
   const handleEdit = useCallback((device: typeof node.data) => {
     if (device) {
-      const newLabel = window.prompt('Enter new label:', device.nameShowOnTree);
-      if (newLabel && newLabel !== device.nameShowOnTree) {
-        updateDevice(device.serialNumber, { nameShowOnTree: newLabel });
-      }
+      setEditDevice(device);
+      setEditValue(device.nameShowOnTree || device.productName || '');
+      setEditOpen(true);
     }
-  }, [updateDevice]);
+  }, []);
+
+  const handleSaveLabel = useCallback(() => {
+    const newLabel = editValue.trim();
+    if (editDevice && newLabel && newLabel !== (editDevice.nameShowOnTree || '')) {
+      updateDevice(editDevice.serialNumber, { nameShowOnTree: newLabel });
+    }
+    setEditOpen(false);
+    setEditDevice(null);
+  }, [editValue, editDevice, updateDevice]);
 
   const handleCheckStatus = useCallback((device: typeof node.data) => {
     if (device) {
@@ -258,6 +280,31 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
           </TreeItem>
         </div>
       </TreeContextMenu>
+
+      {/* Edit Label dialog */}
+      <Dialog open={editOpen} onOpenChange={(_e, data) => setEditOpen(data.open)}>
+        <DialogSurface style={{ width: 360, maxWidth: 'calc(100vw - 32px)', fontSize: 12 }}>
+          <DialogBody style={{ fontSize: 12, margin: -5 }}>
+            <DialogTitle style={{ fontSize: 13 }}>Edit Label</DialogTitle>
+            <DialogContent style={{ fontSize: 12, marginTop: -12 }}>
+              <Input
+                value={editValue}
+                onChange={(e) => setEditValue(e.currentTarget.value)}
+                placeholder="Device label"
+                style={{ width: '100%', marginTop: 12, fontSize: 12 }}
+              />
+            </DialogContent>
+            <DialogActions style={{ marginTop: 12, fontSize: 12 }}>
+              <DialogTrigger disableButtonEnhancement>
+                <Button appearance="secondary" size="medium" style={{ fontSize: 12, fontWeight: 500 }}>Cancel</Button>
+              </DialogTrigger>
+              <Button appearance="primary" size="medium" onClick={handleSaveLabel} disabled={!editValue.trim()} style={{ fontSize: 12, fontWeight: 500 }}>
+                Save
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
       {detailsOpen && detailsPos && isSelected && hasDeviceInfo && createPortal(
         <div

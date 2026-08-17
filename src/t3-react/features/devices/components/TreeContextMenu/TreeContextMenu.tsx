@@ -18,11 +18,11 @@ import {
   MenuTrigger,
 } from '@fluentui/react-components';
 import {
-  Open20Regular,
-  Delete20Regular,
-  Edit20Regular,
-  Copy20Regular,
-  WifiSettings20Regular,
+  Open16Regular,
+  Delete16Regular,
+  Edit16Regular,
+  Copy16Regular,
+  Status16Regular,
 } from '@fluentui/react-icons';
 import type { DeviceInfo } from '../../../../types/device';
 
@@ -94,9 +94,9 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
 
   return (
     <Menu
-      openOnContext
       open={open}
       onOpenChange={(_e, data) => setOpen(data.open)}
+      positioning={{ position: 'after', offset: { mainAxis: -30 } }}
     >
       <MenuTrigger disableButtonEnhancement>
         <div
@@ -112,25 +112,25 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
 
       <MenuPopover>
         <MenuList>
-          <MenuItem icon={<Open20Regular />} onClick={handleOpen}>
+          <MenuItem icon={<Open16Regular />} onClick={handleOpen} style={{ fontSize: 12 }}>
             Open Device
           </MenuItem>
 
-          <MenuItem icon={<Edit20Regular />} onClick={handleEdit}>
+          <MenuItem icon={<Edit16Regular />} onClick={handleEdit} style={{ fontSize: 12 }}>
             Edit Label
           </MenuItem>
 
           {device.ipAddress && (
-            <MenuItem icon={<Copy20Regular />} onClick={handleCopyIP}>
+            <MenuItem icon={<Copy16Regular />} onClick={handleCopyIP} style={{ fontSize: 12 }}>
               Copy IP Address
             </MenuItem>
           )}
 
-          <MenuItem icon={<WifiSettings20Regular />} onClick={handleCheckStatus}>
+          <MenuItem icon={<Status16Regular />} onClick={handleCheckStatus} style={{ fontSize: 12 }}>
             Check Status
           </MenuItem>
 
-          <MenuItem icon={<Delete20Regular />} onClick={handleDelete}>
+          <MenuItem icon={<Delete16Regular />} onClick={handleDelete} style={{ fontSize: 12 }}>
             Delete Device
           </MenuItem>
         </MenuList>
