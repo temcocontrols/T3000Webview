@@ -16,6 +16,7 @@ import { ArrowDownRegular, BotSparkleRegular, AddRegular, WrenchRegular, Setting
 import { useAiChatStream } from '../hooks/useAiChatStream';
 import { useChatHistory } from '../hooks/useChatHistory';
 import { useMcpServers } from '../hooks/useMcpServers';
+import { API_BASE_URL } from '../../../config/constants';
 import { useChatStore } from '../../../store/chatStore';
 import { useUIStore } from '../../../store/uiStore';
 import { ChatMessage } from './ChatMessage';
@@ -89,6 +90,18 @@ const saveSettings = (s: AiProviderSettings) => {
     cache[s.provider] = { endpoint: s.endpoint, model: s.model, apiKey: s.apiKey || '' };
     saveProviderCache(cache);
   } catch {}
+
+  // Persist to the backend too, so settings survive across browsers/machines.
+  fetch(`${API_BASE_URL}/api/ai/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      provider: s.provider,
+      model: s.model,
+      endpoint: s.endpoint,
+      api_key: s.apiKey || '',
+    }),
+  }).catch(() => {});
 };
 
 // "Configured" means both endpoint and model are filled in. Used to gate chat
@@ -111,6 +124,46 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(loadSettings);
   const [providerCache, setProviderCache] = useState<ProviderCache>(loadProviderCache);
   const isConfigured = isSettingsConfigured(aiSettings);
+
+  // Load server-persisted settings on first mount. If the backend has a saved
+  // configuration, use it and mirror it into localStorage so the UI stays
+  // consistent. Otherwise keep the locally-saved (or empty) settings.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/ai/settings`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (cancelled) return;
+        const endpoint = typeof data?.endpoint === 'string' ? data.endpoint : '';
+        const model = typeof data?.model === 'string' ? data.model : '';
+        if (!endpoint.trim() || !model.trim()) return;
+        const provider: ProviderType =
+          data?.provider === 'anthropic' || data?.provider === 'gemini' || data?.provider === 'local'
+            ? data.provider
+            : 'local';
+        const serverSettings: AiProviderSettings = {
+          provider,
+          endpoint,
+          model,
+          apiKey: typeof data?.api_key === 'string' ? data.api_key : '',
+        };
+        setAiSettings(serverSettings);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(serverSettings));
+        const cache = loadProviderCache();
+        cache[serverSettings.provider] = {
+          endpoint: serverSettings.endpoint,
+          model: serverSettings.model,
+          apiKey: serverSettings.apiKey || '',
+        };
+        saveProviderCache(cache);
+        setProviderCache(loadProviderCache());
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const navigate = useNavigate();
   const setChatMode = useUIStore((s) => s.setChatMode);
   const setPreviousPageHash = useChatStore((s) => s.setPreviousPageHash);
