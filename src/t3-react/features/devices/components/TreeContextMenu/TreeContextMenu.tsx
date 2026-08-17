@@ -85,27 +85,15 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
     setOpen(false);
   };
 
-  // Handle right-click to open menu
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setOpen(true);
-  };
-
   return (
     <Menu
       open={open}
       onOpenChange={(_e, data) => setOpen(data.open)}
+      openOnContext
       positioning={{ position: 'after', offset: { mainAxis: -30 } }}
     >
       <MenuTrigger disableButtonEnhancement>
-        <div
-          onContextMenu={(e) => {
-            e.stopPropagation();
-            handleContextMenu(e);
-          }}
-          style={{ width: '100%', height: '100%' }}
-        >
+        <div style={{ width: '100%', height: '100%' }}>
           {children}
         </div>
       </MenuTrigger>

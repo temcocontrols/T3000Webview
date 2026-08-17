@@ -26,6 +26,8 @@ import {
   DialogTrigger,
   Button,
   Input,
+  Popover,
+  PopoverSurface,
 } from '@fluentui/react-components';
 import {
   Dismiss20Regular,
@@ -44,6 +46,18 @@ const renderDetailValue = (value: string | number | null | undefined): string =>
     return 'N/A';
   }
   return String(value);
+};
+
+// Find the first device leaf node in the tree (used to restore selection after delete)
+const findFirstDeviceNode = (nodes: TreeNode[]): TreeNode | null => {
+  for (const node of nodes) {
+    if (node.data) return node;
+    if (node.children) {
+      const found = findFirstDeviceNode(node.children);
+      if (found) return found;
+    }
+  }
+  return null;
 };
 
 const DeviceDetailsTooltip: React.FC<{ device: NonNullable<TreeNode['data']> }> = ({ device }) => (
@@ -84,6 +98,9 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
   const [editValue, setEditValue] = useState('');
   const [editDevice, setEditDevice] = useState<NonNullable<TreeNode['data']> | null>(null);
 
+  // Delete confirmation (Fluent Popover anchored above the item)
+  const [deleteTarget, setDeleteTarget] = useState<NonNullable<TreeNode['data']> | null>(null);
+
   const isOfflineGroup = node.id === 'offline-group';
 
   const handleOpenChange = useCallback(
@@ -115,10 +132,29 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
   }, [connectDevice]);
 
   const handleDelete = useCallback((device: typeof node.data) => {
-    if (device && window.confirm(`Delete device ${device.nameShowOnTree}?`)) {
-      deleteDevice(device.serialNumber);
+    if (device) {
+      setDeleteTarget(device);
     }
-  }, [deleteDevice]);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeleteTarget(null);
+    try {
+      await deleteDevice(deleteTarget.serialNumber);
+      const { treeData, selectNode: selectFirst } = useDeviceTreeStore.getState();
+      const firstDeviceNode = findFirstDeviceNode(treeData);
+      if (firstDeviceNode) {
+        selectFirst(firstDeviceNode.id);
+      }
+    } catch {
+      // Error already surfaced by the store
+    }
+  }, [deleteTarget, deleteDevice]);
+
+  const handleCancelDelete = useCallback(() => {
+    setDeleteTarget(null);
+  }, []);
 
   const handleEdit = useCallback((device: typeof node.data) => {
     if (device) {
@@ -280,6 +316,26 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
           </TreeItem>
         </div>
       </TreeContextMenu>
+
+      {/* Delete confirmation (Fluent Popover, haystack style) */}
+      <Popover
+        open={!!deleteTarget}
+        onOpenChange={(_e, data) => { if (!data.open) setDeleteTarget(null); }}
+        positioning={{ target: rowRef.current, position: 'above', align: 'start' }}
+      >
+        <PopoverSurface style={{ maxWidth: 340, padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+            Delete "{deleteTarget?.nameShowOnTree || deleteTarget?.productName || ''}"?
+          </div>
+          <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginBottom: 16 }}>
+            This action cannot be undone.
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button size="small" onClick={handleCancelDelete}>Cancel</Button>
+            <Button size="small" appearance="primary" style={{ background: '#d32f2f' }} onClick={handleConfirmDelete}>Delete</Button>
+          </div>
+        </PopoverSurface>
+      </Popover>
 
       {/* Edit Label dialog */}
       <Dialog open={editOpen} onOpenChange={(_e, data) => setEditOpen(data.open)}>
