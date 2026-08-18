@@ -473,6 +473,19 @@ impl T3DeviceService {
         Ok(result.rows_affected > 0)
     }
 
+    /// Pick the host PC IP to record as `pc_ip_address` for a discovered device.
+    /// Mirrors C++ `temp.NetCard_Address = local_enthernet_ip`: each device gets
+    /// the local adapter IP on the same subnet as the device (fallback: first
+    /// local IP).
+    fn pick_pc_ip(device_ip: &str, local_ips: &[String]) -> Option<String> {
+        let dev_net = device_ip.rsplit_once('.').map(|(net, _)| net);
+        local_ips
+            .iter()
+            .find(|ip| ip.rsplit_once('.').map(|(net, _)| net) == dev_net)
+            .or_else(|| local_ips.first())
+            .cloned()
+    }
+
     /// Run UDP LAN scan and upsert discovered devices into DEVICES table.
     /// Returns the updated device list with separate scanned vs. DB counts.
     pub async fn scan_and_refresh(
@@ -483,6 +496,9 @@ impl T3DeviceService {
 
         let now = chrono::Utc::now().to_rfc3339();
         let scan_result = scanner::scan_network(timeout_secs).await;
+        // Local IPs used for scanning — the host PC IP recorded as pc_ip_address
+        // (mirrors C++ `temp.NetCard_Address = local_enthernet_ip`).
+        let local_ips: Vec<String> = scan_result.local_ips.clone();
 
         // Track which serials were found in this scan
         let mut seen_serials: Vec<i32> = Vec::new();
@@ -515,6 +531,7 @@ impl T3DeviceService {
                 active.is_online = Set(Some(1));
                 active.last_checked = Set(Some(now.clone()));
                 active.bautrate = Set(Some(dev.ip_address.clone()));
+                active.pc_ip_address = Set(Self::pick_pc_ip(&dev.ip_address, &local_ips));
                 let _ = active.update(db).await;
             } else {
                 // Insert new device
@@ -540,6 +557,7 @@ impl T3DeviceService {
                     is_online: Set(Some(1)),
                     last_checked: Set(Some(now.clone())),
                     bautrate: Set(Some(dev.ip_address.clone())),
+                    pc_ip_address: Set(Self::pick_pc_ip(&dev.ip_address, &local_ips)),
                     ..Default::default()
                 };
                 let _ = devices::Entity::insert(active).exec(db).await;
