@@ -69,11 +69,32 @@ export function useChatHistory(): UseChatHistoryReturn {
       });
       if (!res.ok) return [];
       const data = await res.json();
-      return (data.messages || []).map((m: any) => ({
-        role: m.role as 'user' | 'assistant' | 'system',
-        content: m.content,
-        timestamp: Date.now(),
-      }));
+      return (data.messages || [])
+        .filter((m: any) => {
+          // Skip internal tool-result messages and the persona/system prompt —
+          // neither is shown in the live chat, so don't clutter loaded history.
+          if (m.role === 'tool') return false;
+          if (m.role === 'system' && typeof m.content === 'string' && /^You are a/i.test(m.content)) return false;
+          return true;
+        })
+        .map((m: any): ChatMessage => {
+        const ui = m.ui && typeof m.ui === 'object' ? m.ui : {};
+        const msg: ChatMessage = {
+          role: m.role as 'user' | 'assistant' | 'system',
+          content: m.content,
+          timestamp: Date.now(),
+        };
+        // Restore thinking / tool-call / message-block state (persisted in the
+        // `ui` blob; also accept legacy top-level fields for older session files).
+        if (Array.isArray(ui.thinkingSteps)) msg.thinkingSteps = ui.thinkingSteps;
+        if (Array.isArray(ui.toolCalls)) msg.toolCalls = ui.toolCalls;
+        if (Array.isArray(ui.messageBlocks)) msg.messageBlocks = ui.messageBlocks;
+        if (ui.thinking && typeof ui.thinking === 'object') msg.thinking = ui.thinking;
+        if (Array.isArray(m.thinkingSteps) && !msg.thinkingSteps) msg.thinkingSteps = m.thinkingSteps;
+        if (Array.isArray(m.toolCalls) && !msg.toolCalls) msg.toolCalls = m.toolCalls;
+        if (Array.isArray(m.messageBlocks) && !msg.messageBlocks) msg.messageBlocks = m.messageBlocks;
+        return msg;
+      });
     } catch {
       return [];
     } finally {

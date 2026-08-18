@@ -236,12 +236,21 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: state.sessionId,
-          messages: state.messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-            thinkingSteps: m.thinkingSteps || undefined,
-            toolCalls: m.toolCalls || undefined,
-          })),
+          messages: state.messages.map((m) => {
+            const hasUi = !!(m.thinkingSteps || m.toolCalls || m.messageBlocks || m.thinking);
+            return {
+              role: m.role,
+              content: m.content,
+              ui: hasUi
+                ? {
+                    thinkingSteps: m.thinkingSteps,
+                    toolCalls: m.toolCalls,
+                    messageBlocks: m.messageBlocks,
+                    thinking: m.thinking,
+                  }
+                : undefined,
+            };
+          }),
         }),
       });
       onSaved?.();
@@ -552,6 +561,12 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
             { role: 'system', content: `No response received from the LLM server at ${s.endpoint || 'the configured endpoint'}.\nCheck that it is running and the URL is correct, then try again.`, timestamp: Date.now() },
           ]);
         }
+
+        // Persist the full conversation (with thinking steps, tool-call records
+        // and message blocks) to the backend session file so loaded history
+        // replays the original thinking details. (The backend auto-save only
+        // stores what it built internally — it has no thinking data.)
+        saveCurrentToBackend();
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           const currentText = useChatStore.getState().streamingText;

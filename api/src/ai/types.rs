@@ -33,6 +33,12 @@ pub struct Message {
     pub tool_calls: Option<Vec<ToolCall>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
+    /// Opaque frontend UI state — thinking steps, tool-call records and
+    /// message blocks. Round-tripped verbatim between the webview and the
+    /// session file so loaded history replays thinking details. Never sent
+    /// to the LLM (providers build their request bodies from explicit fields).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub ui: Option<serde_json::Value>,
 }
 
 /// A tool call requested by the LLM.

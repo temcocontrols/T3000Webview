@@ -199,6 +199,7 @@ async fn process_chat(
             name: None,
             tool_calls: None,
             tool_call_id: None,
+            ui: None,
         }];
         msgs.extend(session.messages.clone());
         msgs
@@ -290,6 +291,7 @@ async fn process_chat(
                     name: None,
                     tool_calls: None,
                     tool_call_id: None,
+                    ui: None,
                 });
             }
 
@@ -403,6 +405,7 @@ async fn process_chat(
             content: String::new(),
             name: None,
             tool_calls: Some(openai_tool_calls),
+            ui: None,
             tool_call_id: None,
         });
 
@@ -419,6 +422,7 @@ async fn process_chat(
                 content: result.clone(),
                 name: tool_name,
                 tool_calls: None,
+                ui: None,
                 tool_call_id: Some(tc_id.clone()),
             });
         }
