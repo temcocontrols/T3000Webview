@@ -18,7 +18,7 @@
  * - Data Grid (fxc-gc-dataGrid) with thead/tbody structure
  */
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DataGrid,
   DataGridHeader,
@@ -59,7 +59,7 @@ import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsCo
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import { TagsColumnCell, fetchTagsForDevice } from '../components/TagsColumnCell';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
-import { isSubDevice, getPointCount, MIN_POINT_SUPPORT } from '../../devices/lib/deviceSupport';
+import { isSubDevice } from '../../devices/lib/deviceSupport';
 import { NotSupportedBanner } from '@t3-react/shared/components/NotSupportedBanner';
 
 // Types based on Rust entity (input_points.rs)
@@ -103,12 +103,9 @@ const InputsPageDesktop: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false); // true after fetchInputs completes for current device
   const deviceRefreshedRef = useRef<number | null>(null); // stores serialNumber to prevent StrictMode double-fire
 
-  // ── Not-supported detection (old / sub-devices without input points) ──
+  // ── Not-supported detection (sub-devices without input points) ──
   const isSubDeviceDevice = !!selectedDevice && isSubDevice(selectedDevice);
-  const likelyUnsupportedInput = useMemo(
-    () => !!selectedDevice && getPointCount(selectedDevice, 'input') < MIN_POINT_SUPPORT,
-    [selectedDevice]
-  );
+  const toolbarDisabled = isSubDeviceDevice;
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1307,6 +1304,7 @@ const InputsPageDesktop: React.FC = () => {
                         <input
                           className={styles.searchInput}
                           type="text"
+                          disabled={toolbarDisabled}
                           placeholder="Search by label, value, ID, tag…"
                           value={searchQuery}
                           onChange={handleSearchChange}
@@ -1320,7 +1318,7 @@ const InputsPageDesktop: React.FC = () => {
                       <button
                         className={styles.toolbarButton}
                         onClick={handleRefreshFromDevice}
-                        disabled={refreshing}
+                        disabled={refreshing || toolbarDisabled}
                         title="Refresh all inputs from device"
                         aria-label="Refresh"
                       >
@@ -1337,6 +1335,7 @@ const InputsPageDesktop: React.FC = () => {
                       >
                         <button
                           className={`${styles.toolbarButton} ${styles.marginLeft8}`}
+                          disabled={toolbarDisabled}
                           title="Information"
                           aria-label="Information about this page"
                         >
@@ -1389,16 +1388,10 @@ const InputsPageDesktop: React.FC = () => {
                   </div>
                 )}
 
-                {/* Device Selected but No Data / Not Supported */}
+                {/* Device Selected but No Data / Not Supported (sub-device) */}
                 {selectedDevice && !loading && inputs.length === 0 && (
                   isSubDeviceDevice ? (
                     <NotSupportedBanner pointType="Inputs" deviceName={selectedDevice.nameShowOnTree} />
-                  ) : likelyUnsupportedInput && autoRefreshed ? (
-                    <NotSupportedBanner
-                      pointType="Inputs"
-                      deviceName={selectedDevice.nameShowOnTree}
-                      reason="The device reports no input points (older hardware)."
-                    />
                   ) : (
                     <div className={styles.noData}>
                       <div className={styles.centerText}>

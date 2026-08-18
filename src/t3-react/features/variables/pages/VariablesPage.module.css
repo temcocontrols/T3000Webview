@@ -171,6 +171,12 @@
     outline: none;
   }
 
+  .searchInput:disabled {
+    background: #f3f2f1;
+    color: #a19f9d;
+    cursor: not-allowed;
+  }
+
 /* Blade Description */
 .bladeDescription {
   padding: 0;
@@ -672,6 +678,11 @@
     .varRadio:hover .varRadioCircle {
       border-color: #0f6cbd;
     }
+
+  .varRadio:disabled {
+    color: #a19f9d;
+    cursor: not-allowed;
+  }
 
 .varRadioActive {
   color: #0f6cbd;

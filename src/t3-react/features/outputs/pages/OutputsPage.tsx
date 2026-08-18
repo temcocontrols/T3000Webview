@@ -18,7 +18,7 @@
  * - Data Grid (fxc-gc-dataGrid) with thead/tbody structure
  */
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
 import { OutputsPageMobile } from '@t3-mobile/features/outputs/pages/OutputsPageMobile';
 import {
@@ -59,7 +59,7 @@ import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsCo
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import { TagsColumnCell, fetchTagsForDevice } from '../../inputs/components/TagsColumnCell';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
-import { isSubDevice, getPointCount, MIN_POINT_SUPPORT } from '../../devices/lib/deviceSupport';
+import { isSubDevice } from '../../devices/lib/deviceSupport';
 import { NotSupportedBanner } from '@t3-react/shared/components/NotSupportedBanner';
 
 // Types based on Rust entity (output_points.rs)
@@ -104,12 +104,9 @@ const OutputsPageDesktop: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
 
-  // ── Not-supported detection (old / sub-devices without output points) ──
+  // ── Not-supported detection (sub-devices without output points) ──
   const isSubDeviceDevice = !!selectedDevice && isSubDevice(selectedDevice);
-  const likelyUnsupportedOutput = useMemo(
-    () => !!selectedDevice && getPointCount(selectedDevice, 'output') < MIN_POINT_SUPPORT,
-    [selectedDevice]
-  );
+  const toolbarDisabled = isSubDeviceDevice;
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1333,6 +1330,7 @@ const OutputsPageDesktop: React.FC = () => {
                         <input
                           className={styles.searchInput}
                           type="text"
+                          disabled={toolbarDisabled}
                           placeholder="Search by label, value, ID, tag…"
                           value={searchQuery}
                           onChange={handleSearchChange}
@@ -1346,7 +1344,7 @@ const OutputsPageDesktop: React.FC = () => {
                       <button
                         className={styles.toolbarButton}
                         onClick={handleRefreshFromDevice}
-                        disabled={refreshing}
+                        disabled={refreshing || toolbarDisabled}
                         title="Refresh all outputs from device"
                         aria-label="Refresh"
                       >
@@ -1363,6 +1361,7 @@ const OutputsPageDesktop: React.FC = () => {
                       >
                         <button
                           className={`${styles.toolbarButton} ${styles.marginLeft8}`}
+                          disabled={toolbarDisabled}
                           title="Information"
                           aria-label="Information about this page"
                         >
@@ -1415,17 +1414,13 @@ const OutputsPageDesktop: React.FC = () => {
                   </div>
                 )}
 
-                {/* Not Supported (old / sub-device) — show banner instead of grid */}
-                {selectedDevice && !loading && (isSubDeviceDevice || (likelyUnsupportedOutput && outputs.length === 0 && autoRefreshed)) && (
-                  <NotSupportedBanner
-                    pointType="Outputs"
-                    deviceName={selectedDevice.nameShowOnTree}
-                    reason={isSubDeviceDevice ? undefined : 'The device reports no output points (older hardware).'}
-                  />
+                {/* Not Supported (sub-device) — show banner instead of grid */}
+                {selectedDevice && !loading && isSubDeviceDevice && (
+                  <NotSupportedBanner pointType="Outputs" deviceName={selectedDevice.nameShowOnTree} />
                 )}
 
                 {/* Data Grid - Always show with header (even when there's an error) */}
-                {selectedDevice && !loading && !(isSubDeviceDevice || (likelyUnsupportedOutput && outputs.length === 0 && autoRefreshed)) && (
+                {selectedDevice && !loading && !isSubDeviceDevice && (
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
