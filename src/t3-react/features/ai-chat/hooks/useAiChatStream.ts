@@ -154,6 +154,50 @@ function toolDescription(name: string): string {
   return `Calling ${short}\u2026`;
 }
 
+/**
+ * Build a user-friendly system message when the LLM request fails.
+ * Detects HTTP 5xx (server down/starting up/overloaded), connection-level
+ * failures (refused/timeout/DNS), and generic provider errors so the user
+ * knows to check the server before continuing.
+ */
+function buildServerErrorNotice(errorMsg: string, endpoint: string): string {
+  const stripped = errorMsg.replace(/^Error:\s*/i, '').trim();
+  const endpointLabel = endpoint || 'the configured endpoint';
+
+  // HTTP 5xx returned by the LLM server (502 Bad Gateway, 503, 500, 504, ...)
+  const statusMatch = stripped.match(/\b(5\d\d)\b/);
+  if (statusMatch) {
+    return (
+      `The LLM server returned HTTP ${statusMatch[1]} — it may be down, still starting up, or overloaded.\n` +
+      `Please check that the server is running before continuing, then try again.\n\n` +
+      `Endpoint: ${endpointLabel}\n` +
+      `Details: ${stripped}`
+    );
+  }
+
+  // Connection-level failures (refused, timeout, DNS, unreachable, ...)
+  if (/connect|refused|timeout|timed out|dns|unreachable|no route|econnrefused|econnreset|failed to/i.test(stripped)) {
+    return (
+      `Could not reach the LLM server at ${endpointLabel} — it may be down or unreachable.\n` +
+      `Please check that the server is running before continuing, then try again.\n\n` +
+      `Endpoint: ${endpointLabel}\n` +
+      `Details: ${stripped}`
+    );
+  }
+
+  // Generic provider-side error (e.g. "Provider error: ...")
+  if (/provider error/i.test(stripped)) {
+    return (
+      `The LLM request failed on the server side — the server may be down, overloaded, or misconfigured.\n` +
+      `Please check its status before continuing, then try again.\n\n` +
+      `Endpoint: ${endpointLabel}\n` +
+      `Details: ${stripped}`
+    );
+  }
+
+  return `Error: ${stripped}`;
+}
+
 // ── Hook ──
 
 export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => void): UseAiChatStreamReturn {
@@ -467,8 +511,10 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
         // Flush final block
         flushBlock();
 
-        // Finalize assistant message
-        if (assistantContent || toolCallRecords.length > 0 || steps.length > 0) {
+        const hasAssistantContent = !!(assistantContent || toolCallRecords.length > 0 || steps.length > 0);
+
+        // Finalize assistant message (if the model produced anything)
+        if (hasAssistantContent) {
           const assistantMsg: ChatMessage = {
             role: 'assistant',
             content: assistantContent,
@@ -478,26 +524,32 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
             timestamp: Date.now(),
           };
           storeSetMessages((prev) => [...prev, assistantMsg]);
-
-          // Deferred error — show after assistant message, not before
-          if (pendingError) {
-            storeSetMessages((prev) => [
-              ...prev,
-              { role: 'system', content: pendingError, timestamp: Date.now() },
-            ]);
-          }
         }
 
-        // Show warning AFTER the assistant message — but only if no pending error already covers it
-        if (truncated && !pendingError) {
+        // Error / empty-response handling.
+        // If the upstream LLM server is down, the backend emits an SSE `error`
+        // event but no text/steps/tool-calls — we must surface it anyway so the
+        // user doesn't get a silent empty reply.
+        if (pendingError) {
+          storeSetMessages((prev) => [
+            ...prev,
+            { role: 'system', content: buildServerErrorNotice(pendingError, s.endpoint || ''), timestamp: Date.now() },
+          ]);
+        } else if (truncated) {
           storeSetMessages((prev) => [
             ...prev,
             { role: 'system', content: 'Unable to complete your request — token limit reached.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/', timestamp: Date.now() },
           ]);
-        } else if (!receivedDone && !pendingError && (assistantContent || steps.length > 0)) {
+        } else if (!receivedDone && hasAssistantContent) {
           storeSetMessages((prev) => [
             ...prev,
             { role: 'system', content: 'Unable to complete your request — connection interrupted.\nTry again, start a new chat, or increase the local model token limit. If it persists, post and seek help at https://forums.temcocontrols.com/', timestamp: Date.now() },
+          ]);
+        } else if (!receivedDone && !hasAssistantContent) {
+          // Stream closed with no data at all — typically a down/unreachable server.
+          storeSetMessages((prev) => [
+            ...prev,
+            { role: 'system', content: `No response received from the LLM server at ${s.endpoint || 'the configured endpoint'}.\nCheck that it is running and the URL is correct, then try again.`, timestamp: Date.now() },
           ]);
         }
       } catch (err: unknown) {
