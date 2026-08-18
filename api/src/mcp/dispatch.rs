@@ -741,6 +741,17 @@ pub async fn execute_tool(
 
         "t3000_device_list" => {
             let filter_name = args.get("filter_name").and_then(|v| v.as_str()).map(String::from);
+            let refresh = args.get("refresh").and_then(|v| v.as_bool()).unwrap_or(false);
+            
+            // If refresh is requested, perform a network scan first to update device list
+            if refresh {
+                tracing::info!("[mcp] Device list refresh requested, performing network scan");
+                // Perform network scan to refresh device information
+                let scan_result = crate::lan_scan::scanner::scan_network(8).await;
+                // The scan result is already stored in the database via FFI sync service
+                // We don't need to process the results here, they're handled by the sync service
+            }
+            
             let devices = T3DeviceService::get_all_devices_with_stats(db)
                 .await
                 .map_err(|e| format!("Failed to list devices: {}", e))?;
@@ -770,6 +781,7 @@ pub async fn execute_tool(
                         "room": d.device.room_name,
                         "is_online": d.device.is_online,
                         "last_checked": d.device.last_checked,
+                        "refreshed": refresh,
                     })
                 })
                 .collect();

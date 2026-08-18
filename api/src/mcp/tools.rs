@@ -177,13 +177,17 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_device_list",
         title: "List Devices",
-        description: "Enumerate all devices with serial numbers, names, types, point counts, building, floor, room, and online/offline status (is_online) from the latest LAN scan.",
+        description: "Enumerate all devices with serial numbers, names, types, point counts, building, floor, room, and online/offline status (is_online) from the latest LAN scan. Use refresh=true to trigger a network scan to update device information.",
         input_schema: json!({
             "type": "object",
             "properties": {
                 "filter_name": {
                     "type": "string",
                     "description": "Optional: filter devices by name substring"
+                },
+                "refresh": {
+                    "type": "boolean",
+                    "description": "Optional: trigger network scan to refresh device information"
                 }
             }
         }),

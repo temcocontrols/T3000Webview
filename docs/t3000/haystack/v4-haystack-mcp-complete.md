@@ -76,7 +76,7 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
 
 | # | Tool | Input | Output |
 |---|---|---|---|
-| 11 | `t3000_device_list` | `filter_name?: string` | `[{ serial, name, device_type, input_count, output_count, variable_count, online }]` |
+| 11 | `t3000_device_list` | `filter_name?: string`, `refresh?: boolean` | `[{ serial, name, device_type, input_count, output_count, variable_count, online, last_checked, refreshed }]` |
 | 12 | `t3000_device_get_points` | `serial_number: int`, `point_type?: "INPUT"\|"OUTPUT"\|"VARIABLE"` | `[{ point_type, point_index, label, engineering_units, haystack_tags, brick_class }]` |
 | 13 | `t3000_point_get_metadata` | `serial_number: int`, `point_type: string`, `point_index: int` | `{ serial_number, point_type, point_index, label, engineering_units, range_low, range_high, description, haystack_tags, brick_class, digital_analog }` |
 | 14 | `t3000_metadata_search` | `query: string`, `serial_numbers?: int[]`, `point_types?: string[]`, `limit?: int` | `[{ serial_number, point_type, point_index, label, haystack_tags, brick_class }]` |

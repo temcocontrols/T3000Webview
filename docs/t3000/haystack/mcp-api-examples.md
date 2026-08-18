@@ -172,7 +172,7 @@ Brick is a formal ontology for buildings (brickschema.org). After auto-tagging, 
 
 ### `t3000_device_list` — Enumerate all devices
 
-Get every T3000 device in the system with serial number, name, device type, building/floor/room, and counts of INPUT, OUTPUT, and VARIABLE points. Optionally filter by device name substring.
+Get every T3000 device in the system with serial number, name, device type, building/floor/room, and counts of INPUT, OUTPUT, and VARIABLE points. Optionally filter by device name substring or refresh the device list to discover new devices on the network.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -191,6 +191,12 @@ Get every T3000 device in the system with serial number, name, device type, buil
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **How many devices are in this system?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Refresh device list to discover new devices**
 
 </div>
 
