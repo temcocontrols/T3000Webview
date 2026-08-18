@@ -1,6 +1,6 @@
 ## VS Code Copilot MCP Setup
 
-> ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp)
+> ⬅️ [Back to MCP Server tab](/#/t3000/ai-assistant/mcp)
 
 Connect VS Code Copilot to the T3000 MCP server to let Copilot query devices, read/write points, and manage Haystack tags.
 
