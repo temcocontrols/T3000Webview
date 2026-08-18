@@ -18,7 +18,7 @@
  * - Data Grid (fxc-gc-dataGrid) with thead/tbody structure
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useResponsive } from '@t3-shared/core/hooks/useResponsive';
 import { OutputsPageMobile } from '@t3-mobile/features/outputs/pages/OutputsPageMobile';
 import {
@@ -59,6 +59,8 @@ import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsCo
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import { TagsColumnCell, fetchTagsForDevice } from '../../inputs/components/TagsColumnCell';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { isSubDevice, getPointCount, MIN_POINT_SUPPORT } from '../../devices/lib/deviceSupport';
+import { NotSupportedBanner } from '@t3-react/shared/components/NotSupportedBanner';
 
 // Types based on Rust entity (output_points.rs)
 interface OutputPoint {
@@ -102,6 +104,13 @@ const OutputsPageDesktop: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
 
+  // ── Not-supported detection (old / sub-devices without output points) ──
+  const isSubDeviceDevice = !!selectedDevice && isSubDevice(selectedDevice);
+  const likelyUnsupportedOutput = useMemo(
+    () => !!selectedDevice && getPointCount(selectedDevice, 'output') < MIN_POINT_SUPPORT,
+    [selectedDevice]
+  );
+
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
@@ -131,6 +140,16 @@ const OutputsPageDesktop: React.FC = () => {
   const fetchOutputs = useCallback(async () => {
     if (!selectedDevice) {
       setOutputs([]);
+      return;
+    }
+
+    if (isSubDevice(selectedDevice)) {
+      // Sub-devices manage their points through the parent — not supported here.
+      setOutputs([]);
+      setLoading(false);
+      setDbChecked(true);
+      setAutoRefreshed(true);
+      fetchingRef.current = false;
       return;
     }
 
@@ -174,7 +193,12 @@ const OutputsPageDesktop: React.FC = () => {
 
   // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
-    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (!selectedDevice) return;
+    if (isSubDevice(selectedDevice)) {
+      setAutoRefreshed(true);
+      return;
+    }
+    if (!dbChecked || loading || autoRefreshed) return;
     if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
@@ -1391,8 +1415,17 @@ const OutputsPageDesktop: React.FC = () => {
                   </div>
                 )}
 
+                {/* Not Supported (old / sub-device) — show banner instead of grid */}
+                {selectedDevice && !loading && (isSubDeviceDevice || (likelyUnsupportedOutput && outputs.length === 0 && autoRefreshed)) && (
+                  <NotSupportedBanner
+                    pointType="Outputs"
+                    deviceName={selectedDevice.nameShowOnTree}
+                    reason={isSubDeviceDevice ? undefined : 'The device reports no output points (older hardware).'}
+                  />
+                )}
+
                 {/* Data Grid - Always show with header (even when there's an error) */}
-                {selectedDevice && !loading && (
+                {selectedDevice && !loading && !(isSubDeviceDevice || (likelyUnsupportedOutput && outputs.length === 0 && autoRefreshed)) && (
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}

@@ -18,7 +18,7 @@
  * - Data Grid (fxc-gc-dataGrid) with thead/tbody structure
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   DataGrid,
   DataGridHeader,
@@ -59,6 +59,8 @@ import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsCo
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import { TagsColumnCell, fetchTagsForDevice } from '../components/TagsColumnCell';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { isSubDevice, getPointCount, MIN_POINT_SUPPORT } from '../../devices/lib/deviceSupport';
+import { NotSupportedBanner } from '@t3-react/shared/components/NotSupportedBanner';
 
 // Types based on Rust entity (input_points.rs)
 interface InputPoint {
@@ -101,6 +103,13 @@ const InputsPageDesktop: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false); // true after fetchInputs completes for current device
   const deviceRefreshedRef = useRef<number | null>(null); // stores serialNumber to prevent StrictMode double-fire
 
+  // ── Not-supported detection (old / sub-devices without input points) ──
+  const isSubDeviceDevice = !!selectedDevice && isSubDevice(selectedDevice);
+  const likelyUnsupportedInput = useMemo(
+    () => !!selectedDevice && getPointCount(selectedDevice, 'input') < MIN_POINT_SUPPORT,
+    [selectedDevice]
+  );
+
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
@@ -131,6 +140,16 @@ const InputsPageDesktop: React.FC = () => {
   const fetchInputs = useCallback(async () => {
     if (!selectedDevice) {
       setInputs([]);
+      return;
+    }
+
+    if (isSubDevice(selectedDevice)) {
+      // Sub-devices manage their points through the parent — not supported here.
+      setInputs([]);
+      setLoading(false);
+      setDbChecked(true);
+      setAutoRefreshed(true);
+      fetchingRef.current = false;
       return;
     }
 
@@ -175,7 +194,12 @@ const InputsPageDesktop: React.FC = () => {
   // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
     // Wait until DB fetch has completed for this device before deciding to auto-refresh
-    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (!selectedDevice) return;
+    if (isSubDevice(selectedDevice)) {
+      setAutoRefreshed(true);
+      return;
+    }
+    if (!dbChecked || loading || autoRefreshed) return;
     // Prevent StrictMode double-fire: skip if we already handled this device's serial number
     if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
@@ -1365,15 +1389,25 @@ const InputsPageDesktop: React.FC = () => {
                   </div>
                 )}
 
-                {/* Device Selected but No Data */}
+                {/* Device Selected but No Data / Not Supported */}
                 {selectedDevice && !loading && inputs.length === 0 && (
-                  <div className={styles.noData}>
-                    <div className={styles.centerText}>
-                      <Text size={400} weight="semibold">No inputs found</Text>
-                      <br />
-                      <Text size={200}>This device has no configured input points</Text>
+                  isSubDeviceDevice ? (
+                    <NotSupportedBanner pointType="Inputs" deviceName={selectedDevice.nameShowOnTree} />
+                  ) : likelyUnsupportedInput && autoRefreshed ? (
+                    <NotSupportedBanner
+                      pointType="Inputs"
+                      deviceName={selectedDevice.nameShowOnTree}
+                      reason="The device reports no input points (older hardware)."
+                    />
+                  ) : (
+                    <div className={styles.noData}>
+                      <div className={styles.centerText}>
+                        <Text size={400} weight="semibold">No inputs found</Text>
+                        <br />
+                        <Text size={200}>This device has no configured input points</Text>
+                      </div>
                     </div>
-                  </div>
+                  )
                 )}
 
                 {selectedDevice && !loading && inputs.length > 0 && (

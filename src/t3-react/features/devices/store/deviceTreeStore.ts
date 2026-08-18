@@ -238,20 +238,23 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               // Match buildTreeStructure: filter unknown + sort alphabetically
               const isUnknown = (d: DeviceInfo) =>
                 !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
-              const knownDevices = devices.filter(d => !isUnknown(d) && !isSubDevice(d));
-              knownDevices.sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree));
+              const knownDevices = devices.filter(d => !isUnknown(d));
+              // Prefer top-level (parent) devices for the default selection;
+              // sub-devices are reachable through their parent in the tree.
+              const parentsOnly = knownDevices.filter(d => !isSubDevice(d));
+              const selectionPool = parentsOnly.length > 0 ? parentsOnly : knownDevices;
 
               // Prefer ONLINE devices for the default selection. Offline devices
               // are hidden by default (the offline group starts collapsed), so
               // selecting one would leave the tree with no visible selection.
               const isOnline = (d: DeviceInfo) => deviceStatuses.get(d.serialNumber) === 'online';
-              const onlineDevices = knownDevices.filter(isOnline);
+              const onlineDevices = selectionPool.filter(isOnline);
 
               // Restore the last-selected device (online OR offline) so the user
               // returns to the same device after a page reload.
               const lastSerial = localStorage.getItem('t3.lastSelectedDevice');
               const lastDevice = lastSerial
-                ? knownDevices.find(d => String(d.serialNumber) === lastSerial)
+                ? selectionPool.find(d => String(d.serialNumber) === lastSerial)
                 : null;
 
               if (lastDevice) {
@@ -268,7 +271,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                 const firstDevice =
                   onlineDevices.length > 0
                     ? onlineDevices[0]
-                    : (knownDevices.length > 0 ? knownDevices[0] : null);
+                    : (selectionPool.length > 0 ? selectionPool[0] : null);
                 if (firstDevice) {
                   selectDevice(firstDevice);
                 }
@@ -523,8 +526,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                   name &&
                   name !== '(Unknown)' &&
                   name !== 'Unknown' &&
-                  !/^Device \d+$/.test(name) &&
-                  !isSubDevice(d)
+                  !/^Device \d+$/.test(name)
                 );
               };
               const stillSelected =
@@ -783,18 +785,39 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           !d.nameShowOnTree || d.nameShowOnTree === 'Unknown' || d.nameShowOnTree === '(Unknown)';
         filteredDevices = filteredDevices.filter(d => !isUnknownDevice(d));
 
-        // Hide sub-devices (parent serial != 0): they are reached through their
-        // parent and are not directly addressable via GET_WEBVIEW_LIST.
-        filteredDevices = filteredDevices.filter(d => !isSubDevice(d));
-
-        // Split into online (top) and offline (collapsible group at bottom)
+        // Split into online (top) and offline (collapsible group at bottom).
+        // Sub-devices follow their parent's bucket; orphan sub-devices (parent
+        // missing from this view) use their own status.
         const byName = (a: DeviceInfo, b: DeviceInfo) => a.nameShowOnTree.localeCompare(b.nameShowOnTree);
-        const onlineDevices = filteredDevices
-          .filter((d) => deviceStatuses.get(d.serialNumber) === 'online')
-          .sort(byName);
-        const offlineDevices = filteredDevices
-          .filter((d) => deviceStatuses.get(d.serialNumber) !== 'online')
-          .sort(byName);
+        const isTopLevelDevice = (d: DeviceInfo) => Number(d.parentSerialNumber ?? d.noteParentSerialNumber ?? 0) <= 0;
+        const subByParent = new Map<number, DeviceInfo[]>();
+        const topLevelDevices: DeviceInfo[] = [];
+        filteredDevices.forEach((d) => {
+          const pid = Number(d.parentSerialNumber ?? d.noteParentSerialNumber ?? 0);
+          if (pid > 0) {
+            if (!subByParent.has(pid)) subByParent.set(pid, []);
+            subByParent.get(pid)!.push(d);
+          } else {
+            topLevelDevices.push(d);
+          }
+        });
+        const isTopOnline = (d: DeviceInfo) => deviceStatuses.get(d.serialNumber) === 'online';
+        const onlineDevices: DeviceInfo[] = [];
+        const offlineDevices: DeviceInfo[] = [];
+        const topLevelSerials = new Set(topLevelDevices.map((d) => d.serialNumber));
+        topLevelDevices.forEach((d) => {
+          const bucket = isTopOnline(d) ? onlineDevices : offlineDevices;
+          bucket.push(d, ...(subByParent.get(d.serialNumber) || []));
+        });
+        // Orphan sub-devices whose parent is missing from this view
+        filteredDevices.forEach((d) => {
+          const pid = Number(d.parentSerialNumber ?? d.noteParentSerialNumber ?? 0);
+          if (pid > 0 && !topLevelSerials.has(pid)) {
+            (isTopOnline(d) ? onlineDevices : offlineDevices).push(d);
+          }
+        });
+        onlineDevices.sort(byName);
+        offlineDevices.sort(byName);
 
         // Use treeBuilder utility to construct tree (online devices only at top)
         const treeNodes = buildTreeFromDevices(onlineDevices, expandedNodes, deviceStatuses);
