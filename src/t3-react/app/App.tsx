@@ -442,6 +442,14 @@ export const App: React.FC = () => {
                     </React.Suspense>
                   }
                 />
+                <Route
+                  path="ai-assistant/mcp"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <McpServerPage />
+                    </React.Suspense>
+                  }
+                />
 
                 {/* Develop Routes - Special layout with left navigation */}
               </Route>
@@ -453,14 +461,6 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <AiChatPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="ai-assistant/mcp"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <McpServerPage />
                     </React.Suspense>
                   }
                 />

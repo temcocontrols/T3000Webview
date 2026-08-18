@@ -218,11 +218,11 @@ const McpTab: React.FC = () => {
             <tr><td><code>t3000_describe_tool</code></td><td>Get full schema and description for any tool</td><td>tool_name: string</td></tr>
 
             <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Data &amp; Metadata</td></tr>
-            <tr><td><code>t3000_device_list</code></td><td>List all devices with serial, name, type, point counts</td><td>filter_name?: string</td></tr>
-            <tr><td><code>t3000_device_get_points</code></td><td>Get all points for a device with tags and Brick class</td><td>serial_number: int<br/>point_type?: INPUT|OUTPUT|VARIABLE</td></tr>
-            <tr><td><code>t3000_point_get_metadata</code></td><td>Full metadata: label, units, range, tags, Brick class</td><td>serial_number, point_type, point_index</td></tr>
+            <tr><td><code>t3000_device_list</code></td><td>Enumerate all devices with serial, name, type, point counts, building/floor/room, and online/offline status</td><td>filter_name?: string<br/>refresh?: boolean</td></tr>
+            <tr><td><code>t3000_device_get_points</code></td><td>Get all points for a device with labels, engineering units, range, digital/analog, tags, and Brick class</td><td>serial_number: int<br/>point_type?: INPUT|OUTPUT|VARIABLE</td></tr>
+            <tr><td><code>t3000_point_get_metadata</code></td><td>Full metadata: label, units, range, digital/analog, description, current value, tags, Brick class</td><td>serial_number, point_type, point_index</td></tr>
             <tr><td><code>t3000_metadata_search</code></td><td>Search points across devices by label text</td><td>query: string<br/>serial_numbers?, point_types?, limit?</td></tr>
-            <tr><td><code>t3000_point_search</code></td><td>Semantic search across points by tag, label, or Brick class</td><td>query: string<br/>serial_numbers?, point_types?, limit?</td></tr>
+            <tr><td><code>t3000_point_search</code></td><td>Semantic search across points by tag, label, or Brick class</td><td>query: string<br/>serial_numbers?, limit?</td></tr>
 
             <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Operational</td></tr>
             <tr><td><code>t3000_point_read</code></td><td>Read current value of a single point</td><td>serial_number, point_type, point_index</td></tr>
