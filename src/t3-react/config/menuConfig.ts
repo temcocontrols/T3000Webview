@@ -698,7 +698,7 @@ const haystackMenu: MenuItem = {
     },
     {
       id: 'haystack-auto-tagging',
-      label: 'Auto-Tagging & MCP',
+      label: 'Auto-Tagging',
       type: 'item',
       action: () => { window.location.hash = '#/t3000/auto-tagging'; },
       icon: 'Flash',
@@ -771,6 +771,15 @@ const aiAssistantMenu: MenuItem = {
       id: 'ai-divider',
       label: '',
       type: 'divider',
+    },
+    {
+      id: 'ai-mcp-server',
+      label: 'MCP Server',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/ai-assistant/mcp';
+      },
+      icon: 'Flash',
     },
     {
       id: 'ai-settings',

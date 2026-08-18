@@ -162,6 +162,9 @@ const TrendChartPage = React.lazy(() =>
 const AiChatPage = React.lazy(() =>
   import('../features/ai-chat').then((m) => ({ default: m.AiChatPage }))
 );
+const McpServerPage = React.lazy(() =>
+  import('../features/ai-chat').then((m) => ({ default: m.McpServerPage }))
+);
 
 /**
  * Protected Route Wrapper
@@ -450,6 +453,14 @@ export const App: React.FC = () => {
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <AiChatPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="ai-assistant/mcp"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <McpServerPage />
                     </React.Suspense>
                   }
                 />
