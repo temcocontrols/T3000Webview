@@ -65,12 +65,21 @@ impl LlmProvider for GeminiProvider {
                         } else {
                             serde_json::from_str(&tc.function.arguments).unwrap_or(json!({}))
                         };
-                        parts.push(json!({
-                            "functionCall": {
-                                "name": tc.function.name,
-                                "args": args
-                            }
-                        }));
+                        let mut fc = json!({
+                            "name": tc.function.name,
+                            "args": args
+                        });
+                        if !tc.id.is_empty() {
+                            fc["id"] = json!(tc.id);
+                        }
+                        let mut part = json!({ "functionCall": fc });
+                        // Gemini thinking models attach a thoughtSignature to
+                        // functionCall parts; it must be echoed back on the next
+                        // turn or the API rejects the request with a 400 error.
+                        if let Some(sig) = &tc.function.thought_signature {
+                            part["thoughtSignature"] = json!(sig);
+                        }
+                        parts.push(part);
                     }
                 }
             }
@@ -257,12 +266,29 @@ impl GeminiProvider {
                             if let Some(fc) = part.get("functionCall") {
                                 let name = fc["name"].as_str().unwrap_or("").to_string();
                                 let args = fc.get("args").map(|a| a.to_string()).unwrap_or_default();
+                                // Gemini thinking models attach a thoughtSignature
+                                // sibling to functionCall parts; it must be echoed
+                                // back or the API rejects the next request (400).
+                                let id = fc
+                                    .get("id")
+                                    .and_then(|i| i.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
+                                let thought_signature = part
+                                    .get("thoughtSignature")
+                                    .and_then(|s| s.as_str())
+                                    .map(|s| s.to_string());
                                 if !name.is_empty() {
                                     *had_tool_calls = true;
                                     let _ = tx.send(StreamEvent::ToolCall {
-                                        id: format!("gemini-{}", name),
+                                        id: if id.is_empty() {
+                                            format!("gemini-{}", name)
+                                        } else {
+                                            id
+                                        },
                                         name,
                                         arguments: args,
+                                        thought_signature,
                                     });
                                 }
                             }

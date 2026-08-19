@@ -220,6 +220,7 @@ impl LlmProvider for AnthropicProvider {
                                         id,
                                         name,
                                         arguments: std::mem::take(&mut tool_args_buf),
+                                        thought_signature: None,
                                     });
                                 }
                                 in_tool_use = false;
@@ -241,6 +242,7 @@ impl LlmProvider for AnthropicProvider {
                     id,
                     name,
                     arguments: tool_args_buf,
+                    thought_signature: None,
                 });
             }
         }

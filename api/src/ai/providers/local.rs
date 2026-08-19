@@ -152,7 +152,7 @@ impl LocalProvider {
                     if data == "[DONE]" {
                         if let Some((id, name, args)) = tool_call_buf.take() {
                             if is_valid_tool_args(&args) {
-                                let _ = tx.send(StreamEvent::ToolCall { id, name, arguments: args });
+                                let _ = tx.send(StreamEvent::ToolCall { id, name, arguments: args, thought_signature: None });
                                 tool_call_count += 1;
                                 has_tool_calls = true;
                             }
@@ -246,7 +246,7 @@ impl LocalProvider {
 
         if let Some((id, name, args)) = tool_call_buf.take() {
             if is_valid_tool_args(&args) {
-                let _ = tx.send(StreamEvent::ToolCall { id, name, arguments: args });
+                let _ = tx.send(StreamEvent::ToolCall { id, name, arguments: args, thought_signature: None });
                 tool_call_count += 1;
                 has_tool_calls = true;
             }

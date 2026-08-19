@@ -241,14 +241,15 @@ async fn process_chat(
         drop(inner_tx);
 
         // ── Forward events to SSE in real-time while tracking tool calls ──
-        let mut tool_call_records: Vec<(String, String, String)> = vec![];
+        // (id, name, args, gemini thought_signature)
+        let mut tool_call_records: Vec<(String, String, String, Option<String>)> = vec![];
         let mut assistant_text = String::new();
 
         while let Some(event) = inner_rx.recv().await {
             // Track tool calls for the loop decision
             match &event {
-                StreamEvent::ToolCall { id, name, arguments } => {
-                    tool_call_records.push((id.clone(), name.clone(), arguments.clone()));
+                StreamEvent::ToolCall { id, name, arguments, thought_signature } => {
+                    tool_call_records.push((id.clone(), name.clone(), arguments.clone(), thought_signature.clone()));
                 }
                 StreamEvent::TextDelta { content } => {
                     assistant_text.push_str(content);
@@ -337,7 +338,7 @@ async fn process_chat(
         let mut tool_results: Vec<(String, String)> = vec![];  // (id, result)
         let tool_start = std::time::Instant::now();
 
-        for (tc_id, tc_name, tc_args) in &tool_call_records {
+        for (tc_id, tc_name, tc_args, _thought_signature) in &tool_call_records {
             let tc_start = std::time::Instant::now();
             info!("[AI] Tool {}/{}: {} args={}", tool_results.len() + 1, tool_call_records.len(), tc_name, tc_args);
 
@@ -390,12 +391,13 @@ async fn process_chat(
         // Build assistant message with tool calls for the next iteration
         let openai_tool_calls: Vec<super::types::ToolCall> = tool_call_records
             .iter()
-            .map(|(id, name, args)| super::types::ToolCall {
+            .map(|(id, name, args, thought_signature)| super::types::ToolCall {
                 id: id.clone(),
                 call_type: "function".to_string(),
                 function: super::types::FunctionCall {
                     name: name.clone(),
                     arguments: args.clone(),
+                    thought_signature: thought_signature.clone(),
                 },
             })
             .collect();
@@ -412,7 +414,7 @@ async fn process_chat(
         // Build a lookup of tc_id → name from the tool_call_records
         let name_map: std::collections::HashMap<&str, &str> = tool_call_records
             .iter()
-            .map(|(id, name, _)| (id.as_str(), name.as_str()))
+            .map(|(id, name, _, _)| (id.as_str(), name.as_str()))
             .collect();
 
         for (tc_id, result) in &tool_results {

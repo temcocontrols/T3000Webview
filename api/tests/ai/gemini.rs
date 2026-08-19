@@ -121,10 +121,49 @@ fn emits_tool_call() {
     assert!(final_text.is_empty());
 
     match rx.try_recv().unwrap() {
-        StreamEvent::ToolCall { id, name, arguments } => {
+        StreamEvent::ToolCall { id, name, arguments, thought_signature } => {
             assert_eq!(id, "gemini-get_weather");
             assert_eq!(name, "get_weather");
             assert_eq!(arguments, r#"{"city":"SF"}"#);
+            assert!(thought_signature.is_none());
+        }
+        other => panic!("expected ToolCall, got {:?}", other),
+    }
+}
+
+#[test]
+fn captures_thought_signature_with_tool_call() {
+    // The streaming response the model actually produced: a functionCall part
+    // with a thoughtSignature sibling. The signature must be captured so it can
+    // be echoed back on the next request.
+    let parsed = json!({
+        "candidates": [{
+            "content": {
+                "parts": [{
+                    "functionCall": { "name": "t3000_device_current", "args": {}, "id": "call_499646" },
+                    "thoughtSignature": "Ev0ECvoE..."
+                }],
+                "role": "model"
+            },
+            "index": 0
+        }]
+    });
+
+    let (tx, mut rx) = channel();
+    let mut final_text = String::new();
+    let mut had_tool_calls = false;
+
+    GeminiProvider::handle_candidate(&parsed, &mut final_text, &mut had_tool_calls, &tx);
+    drop(tx);
+
+    assert!(had_tool_calls);
+
+    match rx.try_recv().unwrap() {
+        StreamEvent::ToolCall { id, name, arguments, thought_signature } => {
+            assert_eq!(id, "call_499646");
+            assert_eq!(name, "t3000_device_current");
+            assert_eq!(arguments, "{}");
+            assert_eq!(thought_signature.as_deref(), Some("Ev0ECvoE..."));
         }
         other => panic!("expected ToolCall, got {:?}", other),
     }
