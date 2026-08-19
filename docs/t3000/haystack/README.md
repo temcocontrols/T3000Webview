@@ -8,6 +8,7 @@
 | [ai-llm-api-integration.md](./ai-llm-api-integration.md) | **AI** — Connect T3000 to cloud LLM APIs (Anthropic Claude, Google Gemini) |
 | [ai-local-llm-server.md](./ai-local-llm-server.md) | **AI** — Run a local LLM server (Ollama, vLLM, LM Studio, llama.cpp) and connect T3000 |
 | [mcp-api-examples.md](./mcp-api-examples.md) | **Examples** — Natural-language prompts for all 25 MCP tools, organized by category |
+| [fdd-native-engine.md](./fdd-native-engine.md) | **Design (proposed)** — Native Rust FDD engine with DB-managed rules for proactive fault detection |
 | [mcp-vscode-copilot.md](./mcp-vscode-copilot.md) | **Setup** — Connect VS Code Copilot to the T3000 MCP server |
 | [mcp-claude-desktop.md](./mcp-claude-desktop.md) | **Setup** — Connect Claude Desktop (and Cursor, Cline, Continue.dev) to the T3000 MCP server |
 | [v3-haystack-auto-tagging-mcp.md](./v3-haystack-auto-tagging-mcp.md) | **Implemented (v3)** — Auto-Tagging rules engine + 7-tool MCP server design |
