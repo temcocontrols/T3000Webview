@@ -6,4 +6,5 @@
 //! Run with: cargo test --test mcp_test
 //! Run DB-dependent tests: cargo test --test mcp_test -- --ignored
 
+#[path = "mcp/mod.rs"]
 mod mcp;

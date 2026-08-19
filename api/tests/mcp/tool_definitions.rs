@@ -14,8 +14,8 @@ fn all_tools() -> &'static [t3_webview_api::mcp::ToolDef] {
 fn test_tool_count_is_60() {
     let count = all_tools().len();
     assert_eq!(
-        count, 60,
-        "Expected 60 MCP tools, found {}. If you added/removed tools, update this test.",
+        count, 62,
+        "Expected 62 MCP tools, found {}. If you added/removed tools, update this test.",
         count
     );
 }
