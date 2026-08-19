@@ -208,6 +208,11 @@ impl GeminiProvider {
     }
 
     /// Shared POST + status check for both streaming and non-streaming calls.
+    ///
+    /// The Gemini API intermittently drops connections under load, so transient
+    /// transport failures (connection reset / timeout / TLS) are retried a couple
+    /// of times with short exponential backoff. HTTP-level errors (429, 400, ...)
+    /// are NOT retried — they surface immediately with their body.
     async fn send_request(
         client: &Client,
         url: &str,
@@ -215,25 +220,55 @@ impl GeminiProvider {
         api_key: Option<&str>,
     ) -> Result<reqwest::Response, AiError> {
         let key = api_key.unwrap_or("");
-        let response = client
-            .post(url)
-            .header("Content-Type", "application/json")
-            .header("x-goog-api-key", key)
-            .json(body)
-            .send()
-            .await
-            .map_err(|e| AiError::Provider(format!("Failed to connect to Gemini: {}", e)))?;
+        // Initial call + one retry on transient connection failure (2 total).
+        let attempts = 2;
+        let mut last_err: Option<AiError> = None;
 
-        let status = response.status();
-        tracing::info!("[Gemini HTTP] url={} status={} headers={:?}", url, status, response.headers());
-        if !status.is_success() {
-            let body_text = response.text().await.unwrap_or_default();
-            return Err(AiError::Provider(format!(
-                "Gemini returned {}: {}",
-                status, body_text
-            )));
+        for attempt in 0..attempts {
+            let response = match client
+                .post(url)
+                .header("Content-Type", "application/json")
+                .header("x-goog-api-key", key)
+                .json(body)
+                .send()
+                .await
+            {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::warn!(
+                        "[Gemini] connect attempt {}/{} failed for {}: {}",
+                        attempt + 1,
+                        attempts,
+                        url,
+                        e
+                    );
+                    last_err = Some(AiError::Provider(format!(
+                        "Failed to connect to Gemini: {}",
+                        e
+                    )));
+                    if attempt + 1 < attempts {
+                        // Single retry — wait 500ms before it.
+                        tokio::time::sleep(std::time::Duration::from_millis(500 * (1 << attempt))).await;
+                    }
+                    continue;
+                }
+            };
+
+            let status = response.status();
+            tracing::info!("[Gemini HTTP] url={} status={} headers={:?}", url, status, response.headers());
+            if !status.is_success() {
+                let body_text = response.text().await.unwrap_or_default();
+                return Err(AiError::Provider(format!(
+                    "Gemini returned {}: {}",
+                    status, body_text
+                )));
+            }
+            return Ok(response);
         }
-        Ok(response)
+
+        Err(last_err.unwrap_or_else(|| {
+            AiError::Provider("Failed to connect to Gemini".to_string())
+        }))
     }
 
     /// Extract text deltas / tool calls from a Gemini response object.
