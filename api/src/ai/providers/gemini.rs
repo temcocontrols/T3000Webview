@@ -45,7 +45,6 @@ impl LlmProvider for GeminiProvider {
 
         // Build Gemini contents array
         let mut contents: Vec<Value> = Vec::new();
-        // System instruction — Gemini uses systemInstruction at top level
         let mut system_instruction: Option<String> = None;
 
         for m in messages {
@@ -56,12 +55,10 @@ impl LlmProvider for GeminiProvider {
 
             let mut parts: Vec<Value> = Vec::new();
 
-            // Text content
             if !m.content.is_empty() {
                 parts.push(json!({"text": m.content}));
             }
 
-            // Tool calls from assistant
             if m.role == "assistant" {
                 if let Some(ref tcs) = m.tool_calls {
                     for tc in tcs {
@@ -80,16 +77,14 @@ impl LlmProvider for GeminiProvider {
                 }
             }
 
-            // Tool results
             if m.role == "tool" {
-                let result: Value = serde_json::from_str(&m.content).unwrap_or(json!({"result": m.content}));
+                let result: Value = serde_json::from_str(&m.content)
+                    .unwrap_or(json!({"result": m.content}));
                 let func_name = m.name.as_deref().unwrap_or("unknown");
                 parts.push(json!({
                     "functionResponse": {
                         "name": func_name,
-                        "response": {
-                            "content": result
-                        }
+                        "response": { "content": result }
                     }
                 }));
             }
@@ -99,7 +94,6 @@ impl LlmProvider for GeminiProvider {
                 _ => "user",
             };
 
-            // Merge with previous message if same role (Gemini requires alternating roles)
             if let Some(last) = contents.last_mut() {
                 if last["role"].as_str() == Some(role) {
                     if let Some(existing_parts) = last.get_mut("parts").and_then(|p| p.as_array_mut()) {
@@ -109,10 +103,7 @@ impl LlmProvider for GeminiProvider {
                 }
             }
 
-            contents.push(json!({
-                "role": role,
-                "parts": parts
-            }));
+            contents.push(json!({ "role": role, "parts": parts }));
         }
 
         let mut body = json!({
@@ -124,14 +115,10 @@ impl LlmProvider for GeminiProvider {
         });
 
         if let Some(sys) = system_instruction {
-            body["systemInstruction"] = json!({
-                "parts": [{ "text": sys }]
-            });
+            body["systemInstruction"] = json!({ "parts": [{ "text": sys }] });
         }
         if !function_declarations.is_empty() {
-            body["tools"] = json!([{
-                "functionDeclarations": function_declarations
-            }]);
+            body["tools"] = json!([{ "functionDeclarations": function_declarations }]);
         }
 
         let client = Client::builder()
@@ -150,8 +137,10 @@ impl LlmProvider for GeminiProvider {
             .map_err(|e| AiError::Provider(format!("Failed to connect to Gemini: {}", e)))?;
 
         let status = response.status();
+        tracing::info!("[Gemini HTTP] status={} headers={:?}", status, response.headers());
         if !status.is_success() {
             let body_text = response.text().await.unwrap_or_default();
+            let _ = tx.send(StreamEvent::Error { message: body_text.clone() });
             return Err(AiError::Provider(format!(
                 "Gemini returned {}: {}",
                 status, body_text
@@ -161,11 +150,10 @@ impl LlmProvider for GeminiProvider {
         // Parse SSE stream
         let mut stream = response.bytes_stream();
         let mut buffer = String::new();
-        let mut tool_name_buf: Option<String> = None;
+        let mut final_text = String::new();
 
         while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result
-                .map_err(|e| AiError::Stream(format!("Stream read error: {}", e)))?;
+            let chunk = chunk_result.map_err(|e| AiError::Stream(format!("Stream read error: {}", e)))?;
             let chunk_str = String::from_utf8_lossy(&chunk);
             buffer.push_str(&chunk_str);
 
@@ -179,32 +167,27 @@ impl LlmProvider for GeminiProvider {
                         continue;
                     }
                     let data = &line[6..];
+                    tracing::info!("[Gemini SSE raw] {}", data);
+
                     let parsed: Value = match serde_json::from_str(data) {
                         Ok(v) => v,
                         Err(_) => continue,
                     };
 
-                    // Gemini wraps in candidates array
                     if let Some(candidates) = parsed.get("candidates").and_then(|c| c.as_array()) {
                         for candidate in candidates {
+                            // Text parts
                             if let Some(content) = candidate.get("content") {
                                 if let Some(parts) = content.get("parts").and_then(|p| p.as_array()) {
                                     for part in parts {
-                                        // Text
                                         if let Some(text) = part.get("text").and_then(|t| t.as_str()) {
-                                            let _ = tx.send(StreamEvent::TextDelta {
-                                                content: text.to_string(),
-                                            });
+                                            final_text.push_str(text);
+                                            let _ = tx.send(StreamEvent::TextDelta { content: text.to_string() });
                                         }
-
-                                        // Function call
                                         if let Some(fc) = part.get("functionCall") {
                                             let name = fc["name"].as_str().unwrap_or("").to_string();
                                             let args = fc.get("args").map(|a| a.to_string()).unwrap_or_default();
-
                                             if !name.is_empty() {
-                                                // Use tool name as ID
-                                                tool_name_buf = Some(name.clone());
                                                 let _ = tx.send(StreamEvent::ToolCall {
                                                     id: format!("gemini-{}", name),
                                                     name,
@@ -215,12 +198,41 @@ impl LlmProvider for GeminiProvider {
                                     }
                                 }
                             }
+
+                            // FinishReason
+                            if let Some(finish) = candidate.get("finishReason").and_then(|f| f.as_str()) {
+                                tracing::info!("[Gemini finishReason] {}", finish);
+                                let _ = tx.send(StreamEvent::Done {
+                                    session_id: "gemini".into(),
+                                    finish_reason: Some(if finish.is_empty() { "stop".into() } else { finish.to_string() }),
+                                });
+                            }
+
+                            // SafetyRatings
+                            if let Some(safety) = candidate.get("safetyRatings") {
+                                tracing::warn!("[Gemini safetyRatings] {}", safety);
+                                let _ = tx.send(StreamEvent::Error {
+                                    message: format!("Gemini blocked output: {}", safety),
+                                });
+                            }
                         }
                     }
                 }
             }
         }
 
-        Ok(None)
+        // Always emit Done at end
+        let _ = tx.send(StreamEvent::Done {
+            session_id: "gemini".into(),
+            finish_reason: Some("stop".into()),
+        });
+
+        if final_text.is_empty() {
+            let _ = tx.send(StreamEvent::Error {
+                message: "Gemini returned no output.".into(),
+            });
+        }
+
+        Ok(Some(final_text))
     }
 }

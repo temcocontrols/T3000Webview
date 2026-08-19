@@ -113,10 +113,23 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
 
     setFetchingModels(true);
     try {
-      const res = await fetch(`${ep.trimEnd('/')}/models`, {
-        headers: key ? { Authorization: `Bearer ${key}` } : {},
+      // Detect Gemini endpoint
+      const isGemini = ep.includes("generativelanguage.googleapis.com");
+
+      // Build URL and headers depending on API type
+      const url = isGemini
+        ? `${ep.trimEnd('/')}/models?key=${key}`
+        : `${ep.trimEnd('/')}/models`;
+
+      const headers = isGemini
+        ? {} // Gemini uses query param only
+        : key ? { Authorization: `Bearer ${key}` } : {};
+
+      const res = await fetch(url, {
+        headers,
         signal: controller.signal,
       });
+
       if (seq !== fetchSeqRef.current) return; // superseded — ignore
       if (res.ok) {
         const data = await res.json();
@@ -149,6 +162,7 @@ export const SettingsDrawer: React.FC<Props> = ({ open, settings, providerCache,
       }
     }
   }, [model]);
+
 
   // Fetch available models when the drawer opens (local provider) or the
   // endpoint changes. Debounced so typing a URL doesn't fire a request per
