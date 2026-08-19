@@ -581,7 +581,7 @@ const OutputsPageDesktop: React.FC = () => {
       setEditingCell(null);
     } catch (error) {
       LogUtil.Error('Failed to update:', error);
-      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setMessage(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -687,7 +687,7 @@ const OutputsPageDesktop: React.FC = () => {
       );
     } catch (error) {
       LogUtil.Error('Failed to update Range:', error);
-      alert(`Failed to update Range: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setMessage(`Failed to update Range: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -970,7 +970,7 @@ const OutputsPageDesktop: React.FC = () => {
             );
           } catch (error) {
             LogUtil.Error('Failed to update Auto/Man:', error);
-            alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            setMessage(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
           }
         };
 
