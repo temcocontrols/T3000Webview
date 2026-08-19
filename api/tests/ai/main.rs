@@ -10,3 +10,4 @@ mod doc_parser;
 mod tool_coverage;
 mod doc_guide;
 mod llm_plain_english;
+mod gemini;

@@ -175,6 +175,16 @@ function buildServerErrorNotice(errorMsg: string, endpoint: string): string {
     );
   }
 
+  // HTTP 429 — rate limited / quota exceeded (common with the Gemini free tier)
+  if (/\b429\b/.test(stripped)) {
+    return (
+      `The LLM provider rate-limited this request (HTTP 429) — you may have hit your daily quota.\n` +
+      `Wait a bit and try again, upgrade your plan, or check https://ai.google.dev/gemini-api/docs/rate-limits.\n\n` +
+      `Endpoint: ${endpointLabel}\n` +
+      `Details: ${stripped}`
+    );
+  }
+
   // Connection-level failures (refused, timeout, DNS, unreachable, ...)
   if (/connect|refused|timeout|timed out|dns|unreachable|no route|econnrefused|econnreset|failed to/i.test(stripped)) {
     return (
