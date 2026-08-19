@@ -88,6 +88,8 @@ export interface UseAiChatStreamReturn {
 const TOOL_DESCRIPTIONS: Record<string, string> = {
   t3000_device_list: 'Scanning building device inventory\u2026',
   t3000_device_get_points: 'Reading point configuration\u2026',
+  t3000_device_get: 'Querying device information\u2026',
+  t3000_device_delete: 'Deleting device\u2026',
   t3000_device_refresh: 'Refreshing live data from controller\u2026',
   t3000_device_control: 'Sending control command\u2026',
   t3000_device_current: 'Setting active device context\u2026',

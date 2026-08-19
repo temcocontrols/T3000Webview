@@ -219,6 +219,7 @@ const McpTab: React.FC = () => {
 
             <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Data &amp; Metadata</td></tr>
             <tr><td><code>t3000_device_list</code></td><td>Enumerate all devices with serial, name, type, point counts, building/floor/room, and online/offline status</td><td>filter_name?: string<br/>refresh?: boolean</td></tr>
+            <tr><td><code>t3000_device_get</code></td><td>Query a single device's full record by serial number</td><td>serial_number: int</td></tr>
             <tr><td><code>t3000_device_get_points</code></td><td>Get all points for a device with labels, engineering units, range, digital/analog, tags, and Brick class</td><td>serial_number: int<br/>point_type?: INPUT|OUTPUT|VARIABLE</td></tr>
             <tr><td><code>t3000_point_get_metadata</code></td><td>Full metadata: label, units, range, digital/analog, description, current value, tags, Brick class</td><td>serial_number, point_type, point_index</td></tr>
             <tr><td><code>t3000_metadata_search</code></td><td>Search points across devices by label text</td><td>query: string<br/>serial_numbers?, point_types?, limit?</td></tr>
@@ -248,6 +249,7 @@ const McpTab: React.FC = () => {
             <tr><td><code>t3000_trendlog_list</code></td><td>List available trend logs for a device</td><td>serial_number: int</td></tr>
             <tr><td><code>t3000_trendlog_export</code></td><td>Export trend log data as CSV/JSON file</td><td>serial_number: int<br/>format?: string</td></tr>
             <tr><td><code>t3000_device_refresh</code></td><td>Refresh device data from the controller</td><td>serial_number: int</td></tr>
+            <tr><td><code>t3000_device_delete</code></td><td>Delete a device record (confirm:true required)</td><td>serial_number: int<br/>confirm: boolean</td></tr>
             <tr><td><code>t3000_schedule_list</code></td><td>List all schedules for a device</td><td>serial_number: int</td></tr>
 
             <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Settings</td></tr>
@@ -333,8 +335,9 @@ const promptCategories: PromptCategory[] = [
     ]
   },
   {
-    name: 'Data & Discovery', tools: 5, items: [
+    name: 'Data & Discovery', tools: 6, items: [
       { prompt: 'List all T3000 devices', tool: 't3000_device_list', desc: 'Enumerate all devices with serials and point counts' },
+      { prompt: 'Get the full details for device 233626', tool: 't3000_device_get', desc: 'Query a single device record' },
       { prompt: 'Show me the input points for device T3-NB-ESP', tool: 't3000_device_get_points', desc: 'Get all inputs on a device' },
       { prompt: 'Get full metadata for input 0 on device 240488', tool: 't3000_point_get_metadata', desc: 'Label, units, range, tags, Brick class' },
       { prompt: 'Search for points labeled temperature', tool: 't3000_metadata_search', desc: 'Cross-device label search' },
@@ -370,8 +373,9 @@ const promptCategories: PromptCategory[] = [
     ]
   },
   {
-    name: 'Device Operations', tools: 4, items: [
+    name: 'Device Operations', tools: 5, items: [
       { prompt: 'List trend logs on device 233626', tool: 't3000_trendlog_list', desc: 'Enumerate available trend logs' },
+      { prompt: 'Delete device 233626 from the project', tool: 't3000_device_delete', desc: 'Remove a device record (confirm required)' },
       { prompt: 'Export trend log data from device 240488', tool: 't3000_trendlog_export', desc: 'Export trend data as CSV/JSON' },
       { prompt: 'Refresh data from device 237219', tool: 't3000_device_refresh', desc: 'Re-sync device data from controller' },
       { prompt: 'Show me the schedules on device 233626', tool: 't3000_schedule_list', desc: 'List all schedules for a device' },

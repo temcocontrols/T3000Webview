@@ -2279,6 +2279,46 @@ pub async fn execute_tool(
             Ok(json!({"success": true, "category": category, "updated_fields": fields.len(), "timestamp": now}).to_string())
         }
 
+        "t3000_device_get" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            match T3DeviceService::get_device_by_id(db, serial).await {
+                Ok(Some(device)) => {
+                    let value = serde_json::to_value(&device)
+                        .map_err(|e| format!("Serialize error: {}", e))?;
+                    Ok(json!({
+                        "device": value,
+                        "found": true
+                    }).to_string())
+                }
+                Ok(None) => Err(format!("Device with serial_number {} not found", serial)),
+                Err(e) => Err(format!("Failed to query device: {}", e)),
+            }
+        }
+
+        "t3000_device_delete" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !confirm {
+                return Err("device_delete requires confirm: true for safety".to_string());
+            }
+
+            match T3DeviceService::delete_device(db, serial).await {
+                Ok(true) => Ok(json!({
+                    "success": true,
+                    "serial_number": serial,
+                    "message": "Device deleted successfully",
+                    "timestamp": Utc::now().to_rfc3339()
+                }).to_string()),
+                Ok(false) => Err(format!("Device with serial_number {} not found", serial)),
+                Err(e) => Err(format!("Failed to delete device: {}", e)),
+            }
+        }
+
         "t3000_device_control" => {
             use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
 

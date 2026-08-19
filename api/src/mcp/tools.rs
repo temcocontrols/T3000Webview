@@ -212,6 +212,40 @@ lazy_static::lazy_static! {
         }),
     },
     ToolDef {
+        name: "t3000_device_get",
+        title: "Get Device Info",
+        description: "Query a single device by serial number and return its full record: serial, name, product type, IP address, building/floor/room, online/offline status, panel and network info, and timestamps.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_device_delete",
+        title: "Delete Device",
+        description: "Delete a device and its database record by serial number. Destructive and irreversible — requires confirm: true. Only the local T3000 database record is removed; the physical controller is unaffected.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": {
+                    "type": "integer",
+                    "description": "Device serial number"
+                },
+                "confirm": {
+                    "type": "boolean",
+                    "description": "Must be true to delete the device"
+                }
+            },
+            "required": ["serial_number", "confirm"]
+        }),
+    },
+    ToolDef {
         name: "t3000_point_get_metadata",
         title: "Get Point Metadata",
         description: "Get complete metadata for one point: label, engineering units, range, digital/analog type, description, current value, Haystack tags, and Brick class.",

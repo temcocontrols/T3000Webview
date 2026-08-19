@@ -454,6 +454,7 @@ const WRITE_TOOLS: &[&str] = &[
     "t3000_point_write_batch",
     "t3000_settings_write",
     "t3000_device_control",
+    "t3000_device_delete",
 ];
 
 fn is_write_tool(name: &str) -> bool {
