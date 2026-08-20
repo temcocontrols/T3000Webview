@@ -248,6 +248,16 @@ export const toolbarConfig: ToolbarButton[] = [
     action: 'refresh',
     shortcut: 'F5',
   },
+  // {
+  //   id: 'toolbar-haystack-tags',
+  //   icon: TagRegular,
+  //   label: 'Haystack Tags',
+  //   tooltip: 'Haystack Tags [ Alt-Y ]',
+  //   description: 'Semantic tagging system for points',
+  //   action: 'openWindow',
+  //   route: '/t3000/haystack-tags',
+  //   shortcut: 'Alt+Y',
+  // }
 ];
 
 /**

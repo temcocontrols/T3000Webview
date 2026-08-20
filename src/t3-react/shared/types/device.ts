@@ -57,7 +57,9 @@ export interface DeviceInfo {
   connectionType?: string;           // Connection_Type (DHCP, Static, etc.)
 
   // Device status
-  status: DeviceStatus;              // online/offline/unknown
+  status: DeviceStatus;              // online/offline/unknown (runtime, not persisted)
+  isOnline?: boolean;                // Persisted online flag (0/1 from DB, survives refresh)
+  lastChecked?: string;              // ISO 8601 timestamp of last status check
   statusHistory: boolean[];          // Last 5 connection attempts
 
   // Device details
@@ -74,6 +76,7 @@ export interface DeviceInfo {
 
   // Hierarchy relationships
   noteParentSerialNumber?: number;   // Parent device serial number
+  parentSerialNumber?: number;       // Parent device serial (0 = top-level; from LAN scan)
   panelNumber?: number;              // Panel number
   subnetPort?: number;               // 1=Main, 2=Zigbee, 3=Sub
   subnetBaudrate?: number;           // Subnet baudrate
@@ -126,6 +129,7 @@ export interface DeviceWithStats extends DeviceInfo {
 export interface DevicesResponse {
   devices: DeviceWithStats[];
   total: number;
+  scanned?: number;         // devices found by UDP scan (scan-refresh only)
   message: string;
 }
 

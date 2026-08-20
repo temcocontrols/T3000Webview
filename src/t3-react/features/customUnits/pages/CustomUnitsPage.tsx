@@ -22,6 +22,7 @@ import {
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 import { API_BASE_URL } from '@t3-react/config/constants';
 import styles from './CustomUnitsPage.module.css';
 
@@ -105,6 +106,8 @@ const CustomUnitsPage: React.FC = () => {
   const handleRefresh = () => {
     fetchCustomUnits();
   };
+
+  usePageRefresh(handleRefresh);
 
   // Handle cell edit
   const handleCellClick = (rowIndex: number, columnId: string, currentValue: string | number) => {

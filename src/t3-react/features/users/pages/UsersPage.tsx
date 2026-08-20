@@ -23,6 +23,7 @@ import {
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 import { API_BASE_URL } from '@t3-react/config/constants';
 import styles from './UsersPage.module.css';
 
@@ -109,6 +110,8 @@ const UsersPage: React.FC = () => {
   const handleRefresh = () => {
     fetchUsers();
   };
+
+  usePageRefresh(handleRefresh);
 
   // Handle cell edit
   const handleCellClick = (rowIndex: number, columnId: string, currentValue: string | number) => {

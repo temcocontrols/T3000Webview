@@ -17,11 +17,11 @@ static SERVER_DB: OnceCell<ServerDbWriter> = OnceCell::new();
 /// Runtime-reconnected MSSQL pool — set after a startup failure when the center DB
 /// becomes reachable later (e.g. SQL Server was starting up when the service started).
 /// Only the first successful set takes effect; subsequent calls are no-ops.
-static RECONNECT_POOL: OnceCell<crate::database_management::mssql_queries::MssqlPool> = OnceCell::new();
+static RECONNECT_POOL: OnceCell<crate::server_db::mssql_queries::MssqlPool> = OnceCell::new();
 
 /// Store a runtime-reconnected MSSQL pool.
 /// Call this from the health-check path after a probe confirms the center DB is reachable.
-pub fn set_reconnect_mssql_pool(pool: crate::database_management::mssql_queries::MssqlPool) {
+pub fn set_reconnect_mssql_pool(pool: crate::server_db::mssql_queries::MssqlPool) {
     let _ = RECONNECT_POOL.set(pool);
 }
 
@@ -30,7 +30,7 @@ pub struct ServerDbWriter {
     /// SeaORM connection to the server DB (PG/MySQL). None if MSSQL.
     pub conn: Option<Arc<Mutex<DatabaseConnection>>>,
     /// MSSQL pool (if the server DB is MSSQL). None if SeaORM backend.
-    pub mssql_pool: Option<crate::database_management::mssql_queries::MssqlPool>,
+    pub mssql_pool: Option<crate::server_db::mssql_queries::MssqlPool>,
     /// PC role: "server" or "client"
     pub role: String,
     /// Whether server DB is actually enabled
@@ -40,7 +40,7 @@ pub struct ServerDbWriter {
 /// Initialize the global server DB writer. Called once during startup.
 pub fn init_server_db_writer(
     conn: Option<Arc<Mutex<DatabaseConnection>>>,
-    mssql_pool: Option<crate::database_management::mssql_queries::MssqlPool>,
+    mssql_pool: Option<crate::server_db::mssql_queries::MssqlPool>,
     role: String,
     enabled: bool,
 ) {
@@ -86,7 +86,7 @@ pub fn get_server_conn() -> Option<&'static Arc<Mutex<DatabaseConnection>>> {
 ///
 /// Checks the startup-initialized pool first; falls back to the runtime-reconnect pool
 /// (set when the center DB was unreachable at startup but became available later).
-pub fn get_server_mssql_pool() -> Option<&'static crate::database_management::mssql_queries::MssqlPool> {
+pub fn get_server_mssql_pool() -> Option<&'static crate::server_db::mssql_queries::MssqlPool> {
     // Primary: startup-initialized pool
     if let Some(pool) = SERVER_DB.get().and_then(|w| {
         if w.enabled && w.role == "server" { w.mssql_pool.as_ref() } else { None }

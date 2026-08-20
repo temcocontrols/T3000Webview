@@ -3,8 +3,6 @@
  * Handles view-related operations matching C++ T3000 View menu
  */
 
-import { API_BASE_URL } from '../config/constants';
-
 export interface ViewState {
   toolBarVisible: boolean;
   buildingPaneVisible: boolean;
@@ -44,12 +42,13 @@ export const setTheme = async (theme: ViewState['theme']): Promise<void> => {
 };
 
 /**
- * Refresh view (F2)
+ * Refresh view (F2) — trigger UDP scan + tree reload via deviceTreeStore
  */
 export const refreshView = async (): Promise<void> => {
-  // Trigger refresh event
-  window.dispatchEvent(new CustomEvent('view-refresh'));
-  // Could also reload data from backend if needed
+  // Delegate to deviceTreeStore.scanForDevices which shows status bar messages
+  // and updates the tree with online devices after the scan completes.
+  const { useDeviceTreeStore } = await import('../features/devices/store/deviceTreeStore');
+  useDeviceTreeStore.getState().scanForDevices({ timeout: 8 }).catch(() => {});
 };
 
 /**

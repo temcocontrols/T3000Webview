@@ -277,7 +277,7 @@ pub async fn save_refreshed_trendlogs(
 }
 
 async fn mirror_trendlogs_to_mssql(
-    pool: &crate::database_management::mssql_queries::MssqlPool,
+    pool: &crate::server_db::mssql_queries::MssqlPool,
     serial: i32,
     items: &[Value],
 ) -> Result<i32, String> {
@@ -337,7 +337,7 @@ async fn mirror_trendlogs_to_mssql(
             .map(|v| v as i32);
         let status = get_string_value(item, "status", "status");
 
-        if let Err(e) = crate::database_management::mssql_queries::upsert_trendlog(
+        if let Err(e) = crate::server_db::mssql_queries::upsert_trendlog(
             pool,
             serial,
             panel_id,
@@ -423,7 +423,7 @@ async fn mirror_trendlogs_to_mssql(
                 .map(|s| s.to_string())
                 .unwrap_or(fallback_label);
 
-            if let Err(e) = crate::database_management::mssql_queries::upsert_trendlog_input(
+            if let Err(e) = crate::server_db::mssql_queries::upsert_trendlog_input(
                 pool,
                 serial,
                 panel_id,

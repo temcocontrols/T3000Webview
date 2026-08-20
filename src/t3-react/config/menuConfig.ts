@@ -660,6 +660,49 @@ const developerMenu: MenuItem = {
       action: () => window.location.hash = '#/t3000/develop/logs',
       icon: 'CalendarDataBar',
     },
+    {
+      id: 'dev-divider-2',
+      type: 'divider',
+    },
+    {
+      id: 'dev-fluentui-v9',
+      label: 'FluentUI v9',
+      type: 'item',
+      action: () => window.location.hash = '#/t3000/developer/fluentui-v9',
+      icon: 'WindowDevTools',
+    },
+  ],
+};
+
+/**
+ * Haystack Menu
+ */
+const haystackMenu: MenuItem = {
+  id: 'haystack',
+  label: 'Haystack',
+  type: 'submenu',
+  children: [
+    {
+      id: 'haystack-tag-library',
+      label: 'Standard Tags',
+      type: 'item',
+      action: () => { window.location.hash = '#/t3000/haystack-tags'; },
+      icon: 'Tag',
+    },
+    {
+      id: 'haystack-custom-tags',
+      label: 'Custom Tags',
+      type: 'item',
+      action: () => { window.location.hash = '#/t3000/custom-tags'; },
+      icon: 'Tag',
+    },
+    {
+      id: 'haystack-auto-tagging',
+      label: 'Auto-Tagging',
+      type: 'item',
+      action: () => { window.location.hash = '#/t3000/auto-tagging'; },
+      icon: 'Flash',
+    },
   ],
 };
 
@@ -708,6 +751,49 @@ const simulatorMenu: MenuItem = {
 };
 
 /**
+ * AI Assistant Menu
+ */
+const aiAssistantMenu: MenuItem = {
+  id: 'ai-assistant',
+  label: 'AI Assistant',
+  type: 'submenu',
+  children: [
+    {
+      id: 'ai-chat',
+      label: 'Open AI Chat',
+      type: 'item',
+      action: () => {
+        window.dispatchEvent(new CustomEvent('t3-open-ai-chat'));
+      },
+      icon: 'Chat',
+    },
+    {
+      id: 'ai-divider',
+      label: '',
+      type: 'divider',
+    },
+    {
+      id: 'ai-mcp-server',
+      label: 'MCP Server',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/ai-assistant/mcp';
+      },
+      icon: 'Flash',
+    },
+    {
+      id: 'ai-settings',
+      label: 'Settings...',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/ai-chat';
+      },
+      icon: 'Settings',
+    },
+  ],
+};
+
+/**
  * Top Menu Configuration
  * Export array of all top-level menus
  */
@@ -720,7 +806,9 @@ export const topMenuConfig: MenuItem[] = [
   miscMenu,
   helpMenu,
   developerMenu,
+  haystackMenu,
   simulatorMenu,
+  aiAssistantMenu,
 ];
 
 /**

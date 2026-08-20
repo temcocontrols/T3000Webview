@@ -29,6 +29,9 @@ export interface UiState {
   leftPanelWidth: number;
   rightPanelWidth: number;
 
+  // AI Chat mode
+  chatMode: 'full' | 'sidebar' | 'hidden';
+
   // Dialog/Modal state
   activeDialog: DialogState | null;
   dialogStack: DialogState[];
@@ -66,6 +69,9 @@ export interface UiState {
   // Layout
   toggleFullscreen: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
+
+  // AI Chat mode
+  setChatMode: (mode: 'full' | 'sidebar' | 'hidden') => void;
 
   // Mobile / tablet nav drawer
   openDrawer: () => void;
@@ -109,7 +115,7 @@ const initialState: Omit<UiState, keyof {
   windowHistory: [WINDOW_IDS.HOME],
   isLeftPanelVisible: true,
   isRightPanelVisible: false,
-  leftPanelWidth: 250,
+  leftPanelWidth: 220,
   rightPanelWidth: 300,
   activeDialog: null,
   dialogStack: [],
@@ -117,6 +123,7 @@ const initialState: Omit<UiState, keyof {
   theme: 'light',
   isDrawerOpen: false,
   globalMessage: null,
+  chatMode: 'hidden',
 };
 
 export const useUIStore = create<UiState>()(
@@ -244,6 +251,10 @@ export const useUIStore = create<UiState>()(
 
         setTheme: (theme: 'light' | 'dark') => {
           set({ theme });
+        },
+
+        setChatMode: (mode: 'full' | 'sidebar' | 'hidden') => {
+          set({ chatMode: mode });
         },
 
         // Mobile / tablet nav drawer

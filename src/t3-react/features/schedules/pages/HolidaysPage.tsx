@@ -35,10 +35,8 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   InfoRegular,
 } from '@fluentui/react-icons';
@@ -48,6 +46,8 @@ import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefr
 import styles from './HolidaysPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Types based on C++ BacnetAnnualRoutine structure
 interface HolidayPoint {
@@ -60,7 +60,9 @@ interface HolidayPoint {
 }
 
 export const HolidaysPage: React.FC = () => {
-  const { selectedDevice, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, selectDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [holidays, setHolidays] = useState<HolidayPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,15 +72,17 @@ export const HolidaysPage: React.FC = () => {
   const [editingCell, setEditingCell] = useState<{ serialNumber: number; holidayId: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [autoRefreshed, setAutoRefreshed] = useState(false);
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false);
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -113,7 +117,7 @@ export const HolidaysPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load holidays';
       setError(errorMessage);
-      console.error('Error fetching holidays:', err);
+      LogUtil.Error('Error fetching holidays:', err);
       // DON'T clear holidays on database fetch error - preserve what we have
     } finally {
       setLoading(false);
@@ -141,21 +145,18 @@ export const HolidaysPage: React.FC = () => {
 
       // Check if database has holiday data
       if (holidays.length > 0) {
-        console.log('🔄 Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('🔄 Database empty, auto-refreshing holidays from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
         const result = await PanelDataRefreshService.refreshAllHolidays(serial);
-        console.log('✅ Auto-refresh result:', result);
         // Data already saved by service, just reload from database
         await fetchHolidays();
         setAutoRefreshed(true);
       } catch (err) {
-        console.error('❌ Auto-refresh failed:', err);
+        LogUtil.Error('Auto-refresh failed:', err);
       }
     };
 
@@ -177,18 +178,18 @@ export const HolidaysPage: React.FC = () => {
 
     try {
       const serial = selectedDevice.serialNumber;
-      console.log('🔄 Refreshing all holidays from device...');
       const result = await PanelDataRefreshService.refreshAllHolidays(serial);
-      console.log('✅ Device refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchHolidays();
     } catch (err) {
-      console.error('❌ Refresh from device failed:', err);
+      LogUtil.Error('Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
     } finally {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Refresh single holiday from device (Trigger #3 - Per-row icon)
   const handleRefreshSingleHoliday = async (item: HolidayPoint) => {
@@ -200,14 +201,12 @@ export const HolidaysPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       const holidayIndex = parseInt(item.holidayId);
-      console.log(`🔄 Refreshing single holiday from device: ${holidayIndex}`);
 
       const result = await PanelDataRefreshService.refreshSingleHoliday(serial, holidayIndex);
-      console.log('✅ Single holiday refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchHolidays();
     } catch (err) {
-      console.error('❌ Single holiday refresh failed:', err);
+      LogUtil.Error('Single holiday refresh failed:', err);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -250,16 +249,19 @@ export const HolidaysPage: React.FC = () => {
     setSearchQuery(event.target.value);
   };
 
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
-  // Auto-scroll navigation handlers
+  // [DISABLED] Auto-scroll navigation handlers — commented out for now.
+  /*
   const loadNextDevice = useCallback(() => {
     const nextDevice = getNextDevice();
     if (nextDevice) {
@@ -293,31 +295,37 @@ export const HolidaysPage: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, holidays.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top after device change
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
-  // Display holidays with empty rows when no data (show 10 empty rows)
+  // Display holidays with search filtering
   const displayHolidays = React.useMemo(() => {
+    let filtered = holidays;
+    if (searchQuery.trim() && holidays.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = holidays.filter(h =>
+        (h.holidayId || '').toLowerCase().includes(q) ||
+        (h.fullLabel || '').toLowerCase().includes(q) ||
+        (h.label || '').toLowerCase().includes(q) ||
+        (h.value || '').toLowerCase().includes(q)
+      );
+    }
     if (holidays.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
-        serialNumber: 0,
-        holidayId: '',
-        fullLabel: '',
-        autoManual: '',
-        value: '',
-        label: '',
+      return Array(18).fill(null).map(() => ({
+        serialNumber: 0, holidayId: '', fullLabel: '', autoManual: '', value: '', label: '',
       } as HolidayPoint));
     }
-    return holidays;
-  }, [holidays]);
+    return filtered;
+  }, [holidays, searchQuery]);
 
   // Helper to check if row is an empty placeholder
   const isEmptyRow = (holiday: HolidayPoint) => {
@@ -339,7 +347,6 @@ export const HolidaysPage: React.FC = () => {
     setIsSaving(true);
     try {
       // TODO: Implement API call to save
-      console.log('Saving:', editingCell, editValue);
 
       // Update local state
       setHolidays(prevHolidays =>
@@ -352,7 +359,7 @@ export const HolidaysPage: React.FC = () => {
 
       setEditingCell(null);
     } catch (error) {
-      console.error('Error saving:', error);
+      LogUtil.Error('Error saving:', error);
     } finally {
       setIsSaving(false);
     }
@@ -378,7 +385,6 @@ export const HolidaysPage: React.FC = () => {
       )
     );
 
-    console.log('Toggle Auto/Manual:', item.holidayId, newValue);
     // TODO: Call API to update
   };
 
@@ -388,14 +394,7 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'holidayId',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('holidayId')}>
-          <span>Holiday</span>
-          {sortColumn === 'holidayId' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>NUM</span>
       ),
       renderCell: (item) => {
         const isRefreshing = item.holidayId && refreshingItems.has(item.holidayId);
@@ -427,14 +426,7 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'fullLabel',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'fullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Full Label</span>
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
@@ -500,14 +492,7 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'value',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Value</span>
       ),
       renderCell: (item) => (
         <TableCellLayout>
@@ -520,14 +505,7 @@ export const HolidaysPage: React.FC = () => {
     createTableColumn<HolidayPoint>({
       columnId: 'label',
       renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
+        <span>Label</span>
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
@@ -614,8 +592,8 @@ export const HolidaysPage: React.FC = () => {
                   title="Refresh from Device"
                   aria-label="Refresh from Device"
                 >
-                  <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
-                  <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                  <ArrowClockwiseRegular className={refreshing ? styles.rotating : ''} />
+                  <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                 </button>
 
                 <div className={styles.toolbarSeparator} role="separator" />
@@ -667,13 +645,20 @@ export const HolidaysPage: React.FC = () => {
                 <div
                   ref={scrollContainerRef}
                   className={styles.scrollContainer}
-                  onScroll={handleScroll}
-                  onWheel={handleWheel}
+                  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                  // onScroll={handleScroll}
+                  // onWheel={handleWheel}
                 >
                   <DataGrid
+                    key={sortKey}
                     items={displayHolidays}
                     columns={columns}
                     sortable
+                    sortState={sortState}
+                    onSortChange={handleSortChange}
+                    resizableColumns
+                    resizableColumnsOptions={{ autoFitColumns: false }}
+                    style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                   >
                     <DataGridHeader>
                       <DataGridRow>
@@ -715,12 +700,14 @@ export const HolidaysPage: React.FC = () => {
                   )}
                   */}
 
+                  {/* [DISABLED] Auto-load indicator — commented out for now.
                   {isLoadingNextDevice && (
                     <div className={styles.autoLoadIndicator}>
                       <Spinner size="tiny" />
                       <Text>Loading next device...</Text>
                     </div>
                   )}
+                  */}
                 </div>
               )}
 

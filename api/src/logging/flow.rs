@@ -32,6 +32,9 @@ struct FlowInner {
     pub flow_id: String,
     pub flow_type: String,
     seq: AtomicI64,
+    /// When false, all writes (T3_FLOW insert, steps, payload files) are skipped —
+    /// set from the global logging kill switch (log.global.enabled).
+    enabled: bool,
 }
 
 impl FlowHandle {
@@ -52,40 +55,47 @@ impl FlowHandle {
         total_steps: i64,
         meta: Option<&str>,
     ) -> Self {
+        // Respect the global logging kill switch (log.global.enabled). When logging is
+        // disabled, this handle becomes a no-op: no T3_FLOW row, no steps, no payload files.
+        let enabled = crate::logging::service::load_global_logging_enabled(db).await;
+
         let flow_id = Uuid::new_v4().to_string();
         let now = Local::now().timestamp_millis();
         let hostname = hostname();
 
-        let sql = format!(
-            "INSERT INTO T3_FLOW \
-             (flow_id, flow_type, trigger_src, started_at, status, hostname, total_steps, meta) \
-             VALUES ('{}','{}','{}',{},'running','{}',{},{})",
-            esc(&flow_id),
-            esc(flow_type),
-            esc(trigger_src),
-            now,
-            esc(&hostname),
-            total_steps,
-            meta.map(|s| format!("'{}'", esc(s))).unwrap_or_else(|| "NULL".into()),
-        );
+        if enabled {
+            let sql = format!(
+                "INSERT INTO T3_FLOW \
+                 (flow_id, flow_type, trigger_src, started_at, status, hostname, total_steps, meta) \
+                 VALUES ('{}','{}','{}',{},'running','{}',{},{})",
+                esc(&flow_id),
+                esc(flow_type),
+                esc(trigger_src),
+                now,
+                esc(&hostname),
+                total_steps,
+                meta.map(|s| format!("'{}'", esc(s))).unwrap_or_else(|| "NULL".into()),
+            );
 
-        if let Err(e) = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql)).await {
-            eprintln!("[flow] INSERT T3_FLOW failed: {}", e);
+            if let Err(e) = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql)).await {
+                eprintln!("[flow] INSERT T3_FLOW failed: {}", e);
+            }
+
+            // Trim to cap
+            let trim_sql = format!(
+                "DELETE FROM T3_FLOW WHERE id NOT IN \
+                 (SELECT id FROM T3_FLOW ORDER BY started_at DESC LIMIT {})",
+                FLOW_ROW_CAP
+            );
+            let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, trim_sql)).await;
         }
-
-        // Trim to cap
-        let trim_sql = format!(
-            "DELETE FROM T3_FLOW WHERE id NOT IN \
-             (SELECT id FROM T3_FLOW ORDER BY started_at DESC LIMIT {})",
-            FLOW_ROW_CAP
-        );
-        let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, trim_sql)).await;
 
         FlowHandle {
             inner: Arc::new(FlowInner {
                 flow_id,
                 flow_type: flow_type.to_string(),
                 seq: AtomicI64::new(0),
+                enabled,
             }),
         }
     }
@@ -126,6 +136,9 @@ impl FlowHandle {
         message: &str,
         details: Option<&str>,
     ) {
+        if !self.inner.enabled {
+            return;
+        }
         let seq = self.inner.seq.fetch_add(1, Ordering::Relaxed);
         self.insert_step(db, seq, step_name, level, source, status, duration_ms, message,
             details, None).await;
@@ -148,6 +161,9 @@ impl FlowHandle {
         message: &str,
         details: Option<&str>,
     ) {
+        if !self.inner.enabled {
+            return;
+        }
         let seq = self.inner.seq.fetch_add(1, Ordering::Relaxed);
         let payload_ref = write_detail_file(&self.inner.flow_id, seq, details).await;
         let message_with_ref = match payload_ref.as_deref() {
@@ -211,6 +227,9 @@ impl FlowHandle {
 
     /// Mark the flow as finished. `status` should be `"ok"` or `"error"`.
     pub async fn done(&self, db: &DatabaseConnection, status: &str) {
+        if !self.inner.enabled {
+            return;
+        }
         let now = Local::now().timestamp_millis();
         let sql = format!(
             "UPDATE T3_FLOW SET status = '{}', ended_at = {} WHERE flow_id = '{}'",
@@ -228,7 +247,7 @@ impl FlowHandle {
 // File writer for FFI steps
 // ---------------------------------------------------------------------------
 
-/// Write `details` to `T3WebLog/YYYY-MM/MMDD/{flow_id}_{seq}.txt`.
+/// Write `details` to `T3Web/logs/YYYY-MM/MMDD/{flow_id}_{seq}.txt`.
 /// Returns the file path on success, or `None` if `details` is empty or write fails.
 async fn write_detail_file(
     flow_id: &str,
@@ -243,8 +262,7 @@ async fn write_detail_file(
     let now = Local::now();
     let month = now.format("%Y-%m").to_string();
     let day   = now.format("%m%d").to_string();
-    let runtime_path = crate::constants::get_t3000_runtime_path();
-    let dir = runtime_path.join("T3WebLog").join(&month).join(&day);
+    let dir = crate::constants::get_t3000_log_path().join(&month).join(&day);
     let file_name = format!("{}_{}.txt", flow_id, seq);
     let file_path = dir.join(&file_name);
 

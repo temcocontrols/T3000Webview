@@ -800,6 +800,23 @@
 .colLabel { width: 72px; }
 .colFullLabel { width: 96px; }
 .colTags { width: 320px; }
+.colBrick { width: 180px; }
+
+.brickClassInput {
+  width: 100%;
+  padding: 2px 6px;
+  border: 1px solid #d1d1d1;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: monospace;
+  background: #fff;
+}
+
+.brickClassInput:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
 
 .pointTable th:nth-child(2),
 .pointTable td:nth-child(2) {

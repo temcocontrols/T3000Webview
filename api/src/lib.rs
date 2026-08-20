@@ -1,7 +1,7 @@
 use std::panic;
 use utils::{copy_database_if_not_exists, SHUTDOWN_CHANNEL};
 use db_connection::establish_t3_device_connection;
-use database_management::partition_monitor_service;
+use server_db::partition_monitor_service;
 
 pub mod app_state;
 pub mod auth;
@@ -18,16 +18,27 @@ pub mod file;
 pub mod log;
 pub mod logging;
 pub mod logger;
-pub mod modbus_register;
+pub mod reg_defs;
 pub mod server;
 pub mod user;
 pub mod utils;
 
 // Database management modules
-pub mod database_management;
+pub mod server_db;
+
+// MCP (Model Context Protocol) server — JSON-RPC 2.0 + 45+ tools
+pub mod mcp;
+
+// LAN scan — pure-Rust UDP broadcast scanner (0x64/0x65 protocol)
+pub mod lan_scan;
 
 // T3000 device modules
 pub mod t3_device;
+pub mod haystack;
+pub mod ai;
+
+// Fault Detection & Diagnostics (native Rust engine, DB-managed rules)
+pub mod fdd;
 pub mod t3_socket;
 
 // Developer tools modules
@@ -189,6 +200,9 @@ async fn run_flow_cleanup() {
 }
 
 pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
+    crate::server::debug_log("start_all_services: ENTERED");
+    crate::server::init_tracing();
+
     // Log to file for headless service
     let startup_msg = format!("T3000 WebView Service initializing - HTTP (9103) + WebSocket (9104) + Auto-Sync (T3000.db → webview_t3_device.db)");
 

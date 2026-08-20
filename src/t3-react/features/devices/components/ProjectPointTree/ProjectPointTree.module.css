@@ -8,6 +8,8 @@
   overflow-y: auto;
   background-color: #ffffff;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
 }
 
 /* ── Fluent overrides — scoped to .container so Equipment View is unaffected ── */
@@ -44,6 +46,28 @@
 .treeItemNormal:hover {
   background-color: #f3f2f1;
   border-left-color: #8a8886;
+}
+
+/* Offline "show more" group — hyperlink style */
+.offlineGroupItem {
+  cursor: pointer !important;
+}
+
+.offlineGroupItem:hover,
+.offlineGroupItem:active {
+  background-color: transparent !important;
+  border-left-color: transparent !important;
+}
+
+.offlineGroupItem :global(.fui-TreeItemLayout__main) {
+  font-size: 11px !important;
+  color: #0078d4 !important;
+  line-height: 1.4 !important;
+}
+
+.offlineGroupItem:hover :global(.fui-TreeItemLayout__main) {
+  color: #005a9e !important;
+  text-decoration: underline;
 }
 
 /* Tree Item Styling */

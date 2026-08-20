@@ -29,12 +29,13 @@ import {
   TableCellLayout,
   TableColumnDefinition,
   createTableColumn,
+  Badge,
   Spinner,
   Text,
   Tooltip,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SettingsRegular,
   SearchRegular,
   ErrorCircleRegular,
@@ -44,24 +45,44 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './NetworkPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
-// Network interface based on C++ Subnetwork structure and device network fields
+// Network item matching C++ NC table: Item, Product Type, Subnet, Serial NO., Address, Status, Time Since
 interface NetworkItem {
-  networkId: string;              // Network ID
-  networkNumber?: number;         // Network number from devices table
-  buildingName?: string;          // Building/subnet name
-  deviceCount?: number;           // Number of devices on this network
-  status?: string;                // Network status (Online/Offline)
-  protocol?: string;              // Protocol (BACnet IP/MSTP)
-  description?: string;           // Network description
+  row?: number;
+  productType?: string;
+  subnet?: number;
+  serialNo?: number;
+  address?: number;
+  status?: string;
+  timeSince?: string;
 }
 
 export const NetworkPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice } = useDeviceTreeStore();
+  const { selectedDevice, treeData, selectDevice, devices: allDevices, deviceStatuses } = useDeviceTreeStore();
 
   const [networks, setNetworks] = useState<NetworkItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
+
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
+    } else {
+      setSortState(newState);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
 
   // Auto-select first device on page load if none selected
   useEffect(() => {
@@ -84,25 +105,24 @@ export const NetworkPage: React.FC = () => {
     }
   }, [selectedDevice, treeData, selectDevice]);
 
-  // Fetch networks for selected device
+  // Fetch network sub-devices from NC Modbus register 7000+
+  // C++ reads: Read_Multi(deviceId, szNode, REG_7002, 20) for each node
+  // Columns: Item, Product Type, Subnet, Serial NO., Address, Status, Time Since
   const fetchNetworks = useCallback(async () => {
-    if (!selectedDevice) {
-      setNetworks([]);
-      return;
-    }
-
     setLoading(true);
     setError(null);
-
     try {
-      // Network data will come from device aggregation or routing tables
-      // For now, since no specific network endpoint exists, return empty until implemented
+      if (!selectedDevice) {
+        setNetworks([]);
+        setLoading(false);
+        return;
+      }
+      // TODO: Implement FFI call to read Modbus registers 7000+ from the NC
+      // Requires new FFI action for READ_MULTI_HOLDING_REGISTERS
       setNetworks([]);
+      setError('Network sub-device scanning not yet implemented. Requires FFI Modbus register read support for register 7000+.');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load networks';
-      setError(errorMessage);
-      console.error('Error fetching networks:', err);
-      // DON'T clear networks on database fetch error - preserve what we have
+      setError(err instanceof Error ? err.message : 'Failed to load network data');
     } finally {
       setLoading(false);
     }
@@ -117,33 +137,35 @@ export const NetworkPage: React.FC = () => {
     fetchNetworks();
   };
 
+  usePageRefresh(handleRefresh);
+
   const handleExport = () => {
     if (networks.length === 0) return;
     const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<NetworkItem>[] = [
-      { header: 'Network ID', accessor: n => n.networkId },
-      { header: 'Number', accessor: n => n.networkNumber },
-      { header: 'Building Name', accessor: n => n.buildingName },
-      { header: 'Devices', accessor: n => n.deviceCount },
+      { header: 'Item', accessor: n => n.row },
+      { header: 'Product Type', accessor: n => n.productType },
+      { header: 'Subnet', accessor: n => n.subnet },
+      { header: 'Serial NO.', accessor: n => n.serialNo },
+      { header: 'Address', accessor: n => n.address },
       { header: 'Status', accessor: n => n.status },
-      { header: 'Protocol', accessor: n => n.protocol },
-      { header: 'Description', accessor: n => n.description },
+      { header: 'Time Since', accessor: n => n.timeSince },
     ];
-    exportToCsv(networks, csvColumns, `networks_${selectedDevice?.serialNumber || 'export'}.csv`);
+    exportToCsv(networks, csvColumns, `network_${selectedDevice?.serialNumber || 'export'}.csv`);
   };
 
   const handleImport = async (file: File) => {
     const { headers, rows } = await parseCsvFile(file);
     if (rows.length === 0) return;
     const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<NetworkItem>[] = [
-      { header: 'Network ID', accessor: n => n.networkId, setter: (n, v) => { n.networkId = v; } },
-      { header: 'Number', accessor: n => n.networkNumber, setter: (n, v) => { n.networkNumber = parseInt(v) || 0; } },
-      { header: 'Building Name', accessor: n => n.buildingName, setter: (n, v) => { n.buildingName = v; } },
-      { header: 'Devices', accessor: n => n.deviceCount, setter: (n, v) => { n.deviceCount = parseInt(v) || 0; } },
+      { header: 'Item', accessor: n => n.row, setter: (n, v) => { n.row = parseInt(v) || 0; } },
+      { header: 'Product Type', accessor: n => n.productType, setter: (n, v) => { n.productType = v; } },
+      { header: 'Subnet', accessor: n => n.subnet, setter: (n, v) => { n.subnet = parseInt(v) || 0; } },
+      { header: 'Serial NO.', accessor: n => n.serialNo, setter: (n, v) => { n.serialNo = parseInt(v) || 0; } },
+      { header: 'Address', accessor: n => n.address, setter: (n, v) => { n.address = parseInt(v) || 0; } },
       { header: 'Status', accessor: n => n.status, setter: (n, v) => { n.status = v; } },
-      { header: 'Protocol', accessor: n => n.protocol, setter: (n, v) => { n.protocol = v; } },
-      { header: 'Description', accessor: n => n.description, setter: (n, v) => { n.description = v; } },
+      { header: 'Time Since', accessor: n => n.timeSince, setter: (n, v) => { n.timeSince = v; } },
     ];
-    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ networkId: '' } as NetworkItem));
+    const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ row: 0 } as NetworkItem));
     setNetworks(imported);
   };
 
@@ -154,110 +176,77 @@ export const NetworkPage: React.FC = () => {
     console.log('Settings clicked');
   };
 
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
-  // Display networks with empty rows when no data (show 10 empty rows)
+  // Display networks with empty rows when no data
   const displayNetworks = React.useMemo(() => {
+    let filtered = networks;
+    if (searchQuery.trim() && networks.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = networks.filter(n =>
+        String(n.serialNo || '').includes(q) ||
+        (n.productType || '').toLowerCase().includes(q) ||
+        String(n.subnet || '').includes(q) ||
+        (n.status || '').toLowerCase().includes(q)
+      );
+    }
     if (networks.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
-        networkId: '',
-        networkNumber: undefined,
-        buildingName: '',
-        deviceCount: undefined,
-        status: '',
-        protocol: '',
-        description: '',
+      return Array(10).fill(null).map(() => ({
+        row: undefined, productType: '', subnet: undefined,
+        serialNo: undefined, address: undefined, status: '', timeSince: '',
       } as NetworkItem));
     }
-    return networks;
-  }, [networks]);
+    return filtered;
+  }, [networks, searchQuery]);
 
   // Helper to check if row is an empty placeholder
   const isEmptyRow = (network: NetworkItem) => {
-    return !network.networkId && networks.length === 0;
+    return !network.row && networks.length === 0;
   };
 
-  // Column definitions for network topology
+  // Column definitions matching C++: Item, Product Type, Subnet, Serial NO., Address, Status, Time Since
   const columns: TableColumnDefinition<NetworkItem>[] = useMemo(() => [
-    // Column 0: Network ID
     createTableColumn<NetworkItem>({
-      columnId: 'networkId',
-      renderHeaderCell: () => <span>Network ID</span>,
-      renderCell: (network) => (
-        <TableCellLayout>
-          {!isEmptyRow(network) && network.networkId}
-        </TableCellLayout>
-      ),
+      columnId: 'row',
+      renderHeaderCell: () => <span>Item</span>,
+      renderCell: (n) => <TableCellLayout>{!isEmptyRow(n) && n.row}</TableCellLayout>,
     }),
-
-    // Column 1: Network Number
     createTableColumn<NetworkItem>({
-      columnId: 'networkNumber',
-      renderHeaderCell: () => <span>Number</span>,
-      renderCell: (network) => (
-        <TableCellLayout>
-          {!isEmptyRow(network) && (network.networkNumber ?? '---')}
-        </TableCellLayout>
-      ),
+      columnId: 'productType',
+      renderHeaderCell: () => <span>Product Type</span>,
+      renderCell: (n) => <TableCellLayout>{!isEmptyRow(n) && (n.productType || '---')}</TableCellLayout>,
     }),
-
-    // Column 2: Building Name
     createTableColumn<NetworkItem>({
-      columnId: 'buildingName',
-      renderHeaderCell: () => <span>Building Name</span>,
-      renderCell: (network) => (
-        <TableCellLayout>
-          {!isEmptyRow(network) && (network.buildingName || '---')}
-        </TableCellLayout>
-      ),
+      columnId: 'subnet',
+      renderHeaderCell: () => <span>Subnet</span>,
+      renderCell: (n) => <TableCellLayout>{!isEmptyRow(n) && (n.subnet ?? '---')}</TableCellLayout>,
     }),
-
-    // Column 3: Device Count
     createTableColumn<NetworkItem>({
-      columnId: 'deviceCount',
-      renderHeaderCell: () => <span>Devices</span>,
-      renderCell: (network) => (
-        <TableCellLayout>
-          {!isEmptyRow(network) && (network.deviceCount ?? 0)}
-        </TableCellLayout>
-      ),
+      columnId: 'serialNo',
+      renderHeaderCell: () => <span>Serial NO.</span>,
+      renderCell: (n) => <TableCellLayout>{!isEmptyRow(n) && (n.serialNo ?? '---')}</TableCellLayout>,
     }),
-
-    // Column 4: Status
+    createTableColumn<NetworkItem>({
+      columnId: 'address',
+      renderHeaderCell: () => <span>Address</span>,
+      renderCell: (n) => <TableCellLayout>{!isEmptyRow(n) && (n.address ?? '---')}</TableCellLayout>,
+    }),
     createTableColumn<NetworkItem>({
       columnId: 'status',
       renderHeaderCell: () => <span>Status</span>,
-      renderCell: (network) => (
-        <TableCellLayout>
-          {!isEmptyRow(network) && (network.status || '---')}
-        </TableCellLayout>
-      ),
+      renderCell: (n) => {
+        if (isEmptyRow(n)) return <TableCellLayout />;
+        return (
+          <TableCellLayout>
+            <Badge appearance="filled" color={n.status === 'On line' ? 'success' : 'warning'}>
+              {n.status || '---'}
+            </Badge>
+          </TableCellLayout>
+        );
+      },
     }),
-
-    // Column 5: Protocol
     createTableColumn<NetworkItem>({
-      columnId: 'protocol',
-      renderHeaderCell: () => <span>Protocol</span>,
-      renderCell: (network) => (
-        <TableCellLayout>
-          {!isEmptyRow(network) && (network.protocol || '---')}
-        </TableCellLayout>
-      ),
-    }),
-
-    // Column 6: Description
-    createTableColumn<NetworkItem>({
-      columnId: 'description',
-      renderHeaderCell: () => <span>Description</span>,
-      renderCell: (network) => (
-        <TableCellLayout>
-          {!isEmptyRow(network) && (network.description || '---')}
-        </TableCellLayout>
-      ),
+      columnId: 'timeSince',
+      renderHeaderCell: () => <span>Time Since</span>,
+      renderCell: (n) => <TableCellLayout>{!isEmptyRow(n) && (n.timeSince || '---')}</TableCellLayout>,
     }),
   ], []);
 
@@ -319,8 +308,8 @@ export const NetworkPage: React.FC = () => {
                     title="Refresh"
                     aria-label="Refresh"
                   >
-                    <ArrowSyncRegular />
-                    <span>Refresh</span>
+                    <ArrowClockwiseRegular className={loading ? styles.rotating : ''} />
+                    <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />
@@ -382,9 +371,15 @@ export const NetworkPage: React.FC = () => {
                 {selectedDevice && !loading && (
                   <>
                     <DataGrid
+                      key={sortKey}
                       items={displayNetworks}
                       columns={columns}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

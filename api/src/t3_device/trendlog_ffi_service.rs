@@ -4,8 +4,7 @@
 // - Related input/output/variable points (from Point_Net inputs array)
 // - Real-time status and data management
 
-use std::ffi::CStr;
-use std::os::raw::{c_char, c_int, c_uchar};
+use std::os::raw::{c_char, c_int};
 use sea_orm::*;
 use sea_orm::prelude::Expr;
 use sea_orm::ActiveValue::NotSet;
@@ -45,37 +44,6 @@ fn emit_ffi_log_sync(category: &str, message: &str, level: LogLevel) {
     });
 }
 
-// Maximum points in a TrendLog monitor (from T3000 C++)
-pub const MAX_POINTS_IN_MONITOR: usize = 14;
-
-// FFI structure matching T3000 C++ Point_Net
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct PointNet {
-    pub number: c_uchar,        // Point number
-    pub point_type: c_uchar,    // Point type (INPUT/OUTPUT/VARIABLE)
-    pub panel: c_uchar,         // Panel ID
-    pub sub_panel: c_uchar,     // Sub-panel ID
-    pub network: c_uchar,       // Network ID
-}
-
-// FFI structure matching T3000 C++ Str_monitor_point
-#[repr(C)]
-#[derive(Debug, Clone)]
-pub struct StrMonitorPoint {
-    pub label: [c_char; 9],                                     // 9 bytes: TrendLog label
-    pub inputs: [PointNet; MAX_POINTS_IN_MONITOR],              // 70 bytes: Point array
-    pub range: [c_uchar; MAX_POINTS_IN_MONITOR],                // 14 bytes: Range array
-    pub second_interval_time: c_uchar,                          // 1 byte: Seconds (0-59)
-    pub minute_interval_time: c_uchar,                          // 1 byte: Minutes (0-59)
-    pub hour_interval_time: c_uchar,                            // 1 byte: Hours (0-255)
-    pub max_time_length: c_uchar,                               // Max time length
-    pub num_inputs: c_uchar,                                    // Total number of points (bit 0-3)
-    pub an_inputs: c_uchar,                                     // Analog inputs (bit 4-7)
-    pub status: c_uchar,                                        // Status: 0=OFF, 1=ON
-    pub next_sample_time: c_int,                                // Next sample time
-}
-
 // Link to T3000.exe functions - requires T3000.exe to be running
 #[link(name = "kernel32")]
 extern "system" {
@@ -89,11 +57,8 @@ extern "system" {
 
 // T3000 FFI function types
 type PostRefreshMessageFn = unsafe extern "C" fn(c_int, c_int, c_int, c_int) -> c_int;
-type GetMonitorBlockDataFn = unsafe extern "C" fn(c_int, c_int, *mut StrMonitorPoint) -> c_int;
-type T3000GetMonitorCountFn = unsafe extern "C" fn(c_int) -> c_int;
-type T3000GetMonitorByIdFn = unsafe extern "C" fn(c_int, c_int, *mut StrMonitorPoint) -> c_int;
-type T3000IsDeviceOnlineFn = unsafe extern "C" fn(c_int) -> c_int;
-type T3000ConnectToDeviceFn = unsafe extern "C" fn(c_int) -> c_int;
+type BacnetWebViewGetTrendlogEntryFn = unsafe extern "C" fn(c_int, c_int, *mut c_char, c_int) -> c_int;
+type BacnetWebViewGetTrendlogListFn = unsafe extern "C" fn(c_int, *mut c_char, c_int) -> c_int;
 
 /// Check if T3000.exe is running and accessible for FFI operations
 fn check_t3000_availability() -> Result<(), String> {
@@ -103,12 +68,13 @@ fn check_t3000_availability() -> Result<(), String> {
             return Err("T3000.exe is not running or not accessible. Please ensure T3000 Building Automation software is started and connected to your device.".to_string());
         }
 
-        // Check if key functions are available
-        let device_online_func = GetProcAddress(handle, b"T3000_IsDeviceOnline\0".as_ptr());
-        let connect_func = GetProcAddress(handle, b"T3000_ConnectToDevice\0".as_ptr());
+        // Check that the exported trendlog bridge is available. We probe the
+        // symbol that is actually present in T3000.exe's export table
+        // (T3000_IsDeviceOnline / T3000_ConnectToDevice are NOT exported).
+        let entry_func = GetProcAddress(handle, b"BacnetWebView_GetTrendlogEntry\0".as_ptr());
 
-        if device_online_func.is_null() || connect_func.is_null() {
-            return Err("T3000.exe is running but required FFI functions are not available. Please update T3000 software or check compatibility.".to_string());
+        if entry_func.is_null() {
+            return Err("T3000.exe is running but the BacnetWebView_GetTrendlogEntry export is not available. Please update T3000 software or check compatibility.".to_string());
         }
 
         let _ = emit_ffi_log_sync("T3_FFI", "[OK] T3000.exe is available and ready for FFI operations", LogLevel::Info);
@@ -136,96 +102,48 @@ unsafe fn Post_Refresh_Message(device_id: c_int, point_type: c_int, start_instan
     func(device_id, point_type, start_instance, end_instance)
 }
 
+/// Fetch a single TrendLog entry from T3000.exe as JSON via the exported
+/// `BacnetWebView_GetTrendlogEntry` bridge. Matches the C++ signature:
+///   int BacnetWebView_GetTrendlogEntry(int panel_id, int monitor_index, char* buffer, int buffer_size)
+/// Returns the JSON byte length (>0) on success, or <=0 on failure.
 #[allow(non_snake_case)]
-unsafe fn GetMonitorBlockData(device_id: c_int, monitor_index: c_int, monitor_data: *mut StrMonitorPoint) -> c_int {
+unsafe fn BacnetWebView_GetTrendlogEntry(panel_id: c_int, monitor_index: c_int, buffer: *mut c_char, buffer_size: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
         println!("T3000.exe not found - returning error");
-        return 0;
+        return -1;
     }
 
-    let func_ptr = GetProcAddress(handle, b"GetMonitorBlockData\0".as_ptr());
+    let func_ptr = GetProcAddress(handle, b"BacnetWebView_GetTrendlogEntry\0".as_ptr());
     if func_ptr.is_null() {
-        println!("GetMonitorBlockData function not found");
-        return 0;
+        println!("BacnetWebView_GetTrendlogEntry function not found");
+        return -1;
     }
 
-    let func: GetMonitorBlockDataFn = std::mem::transmute(func_ptr);
-    func(device_id, monitor_index, monitor_data)
+    let func: BacnetWebViewGetTrendlogEntryFn = std::mem::transmute(func_ptr);
+    func(panel_id, monitor_index, buffer, buffer_size)
 }
 
+/// Fetch the full TrendLog list from T3000.exe as JSON via the exported
+/// `BacnetWebView_GetTrendlogList` bridge. Matches the C++ signature:
+///   int BacnetWebView_GetTrendlogList(int panel_id, char* result_buffer, int buffer_size)
+/// Returns the JSON byte length (>0) on success, or <=0 on failure.
 #[allow(non_snake_case)]
-unsafe fn T3000_GetMonitorCount(device_id: c_int) -> c_int {
+unsafe fn BacnetWebView_GetTrendlogList(panel_id: c_int, buffer: *mut c_char, buffer_size: c_int) -> c_int {
     let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
     if handle.is_null() {
         println!("T3000.exe not found - returning error");
-        return 0;
+        return -1;
     }
 
-    let func_ptr = GetProcAddress(handle, b"T3000_GetMonitorCount\0".as_ptr());
+    let func_ptr = GetProcAddress(handle, b"BacnetWebView_GetTrendlogList\0".as_ptr());
     if func_ptr.is_null() {
-        println!("T3000_GetMonitorCount function not found");
-        return 0;
+        println!("BacnetWebView_GetTrendlogList function not found");
+        return -1;
     }
 
-    let func: T3000GetMonitorCountFn = std::mem::transmute(func_ptr);
-    func(device_id)
-}
-
-#[allow(dead_code)]
-#[allow(non_snake_case)]
-unsafe fn T3000_GetMonitorById(device_id: c_int, monitor_id: c_int, monitor_data: *mut StrMonitorPoint) -> c_int {
-    let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
-    if handle.is_null() {
-        println!("T3000.exe not found - returning error");
-        return 0;
-    }
-
-    let func_ptr = GetProcAddress(handle, b"T3000_GetMonitorById\0".as_ptr());
-    if func_ptr.is_null() {
-        println!("T3000_GetMonitorById function not found");
-        return 0;
-    }
-
-    let func: T3000GetMonitorByIdFn = std::mem::transmute(func_ptr);
-    func(device_id, monitor_id, monitor_data)
-}
-
-#[allow(non_snake_case)]
-unsafe fn T3000_IsDeviceOnline(device_id: c_int) -> c_int {
-    let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
-    if handle.is_null() {
-        let _ = emit_ffi_log_sync("T3_FFI", "[ERROR] T3000.exe not found in memory - T3000 application may not be running", LogLevel::Error);
-        return 0;
-    }
-
-    let func_ptr = GetProcAddress(handle, b"T3000_IsDeviceOnline\0".as_ptr());
-    if func_ptr.is_null() {
-        let _ = emit_ffi_log_sync("T3_FFI", "[ERROR] T3000_IsDeviceOnline function not found in T3000.exe", LogLevel::Error);
-        return 0;
-    }
-
-    let _ = emit_ffi_log_sync("T3_FFI", &format!("[CHECK] Checking device {} online status via T3000.exe", device_id), LogLevel::Info);
-    let func: T3000IsDeviceOnlineFn = std::mem::transmute(func_ptr);
-    func(device_id)
-}
-
-#[allow(non_snake_case)]
-unsafe fn T3000_ConnectToDevice(device_id: c_int) -> c_int {
-    let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
-    if handle.is_null() {
-        let _ = emit_ffi_log_sync("T3_FFI", "[ERROR] T3000.exe not found in memory - T3000 application may not be running", LogLevel::Error);
-        return 0;
-    }
-
-    let func_ptr = GetProcAddress(handle, b"T3000_ConnectToDevice\0".as_ptr());
-    if func_ptr.is_null() {
-        println!("T3000_ConnectToDevice function not found");
-        return 0;
-    }
-
-    let func: T3000ConnectToDeviceFn = std::mem::transmute(func_ptr);
-    func(device_id)
+    let func: BacnetWebViewGetTrendlogListFn = std::mem::transmute(func_ptr);
+    func(panel_id, buffer, buffer_size)
 }
 
 // Processed TrendLog information for database storage
@@ -946,22 +864,10 @@ impl TrendLogFFIService {
             return Self::create_fallback_trendlog_info(device_id, trendlog_id, db).await;
         }
 
-        // 1. Ensure device is connected
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[CHECK] Checking T3000 device connection...", LogLevel::Info);
-        let device_online = unsafe { T3000_IsDeviceOnline(device_id as c_int) };
-        if device_online == 0 {
-            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[WARN] Device {} is offline, attempting to connect...", device_id), LogLevel::Warn);
-            // Try to connect
-            let connect_result = unsafe { T3000_ConnectToDevice(device_id as c_int) };
-            if connect_result == 0 {
-                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[ERROR] Failed to connect to T3000 device {}", device_id), LogLevel::Error);
-                return Err(AppError::InternalError("Failed to connect to T3000 device".to_string()));
-            } else {
-                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Successfully connected to T3000 device {}", device_id), LogLevel::Info);
-            }
-        } else {
-            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Device {} is online", device_id), LogLevel::Info);
-        }
+        // 1. (device online/connect checks removed — T3000_IsDeviceOnline and
+        //    T3000_ConnectToDevice are not exported from T3000.exe; the
+        //    BacnetWebView_GetTrendlogEntry call below reports device state
+        //    through its return code / JSON instead.)
 
         // 2. Parse TrendLog ID to get monitor index
         let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[PARSE] Parsing TrendLog ID: {} -> monitor index", trendlog_id), LogLevel::Info);
@@ -972,35 +878,32 @@ impl TrendLogFFIService {
             })?;
         let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Monitor index: {}", monitor_index), LogLevel::Info);
 
-        // 3. Get monitor data from T3000 via FFI
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[CALL] Calling GetMonitorBlockData(device={}, monitor={})", device_id, monitor_index), LogLevel::Info);
-        let mut monitor_data = StrMonitorPoint {
-            label: [0; 9],
-            inputs: [PointNet { number: 0, point_type: 0, panel: 0, sub_panel: 0, network: 0 }; MAX_POINTS_IN_MONITOR],
-            range: [0; MAX_POINTS_IN_MONITOR],
-            second_interval_time: 0,
-            minute_interval_time: 0,
-            hour_interval_time: 0,
-            max_time_length: 0,
-            num_inputs: 0,
-            an_inputs: 0,
-            status: 0,
-            next_sample_time: 0,
-        };
-
+        // 3. Fetch the monitor entry from T3000 via the exported JSON bridge.
+        //    (Replaces the old GetMonitorBlockData FFI call, whose C++ signature is
+        //    a 7-arg Bacnet network send — not a StrMonitorPoint filler.)
+        let panel_id: i32 = 1; // Default panel ID (matches legacy FFI behavior)
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[CALL] Calling BacnetWebView_GetTrendlogEntry(panel={}, monitor={})", panel_id, monitor_index), LogLevel::Info);
+        const ENTRY_BUFFER_SIZE: usize = 65536; // 64KB is plenty for a single monitor entry
+        let mut entry_buffer: Vec<u8> = vec![0; ENTRY_BUFFER_SIZE];
         let ffi_result = unsafe {
-            GetMonitorBlockData(device_id as c_int, monitor_index, &mut monitor_data as *mut StrMonitorPoint)
+            BacnetWebView_GetTrendlogEntry(
+                panel_id as c_int,
+                monitor_index,
+                entry_buffer.as_mut_ptr() as *mut c_char,
+                ENTRY_BUFFER_SIZE as c_int,
+            )
         };
 
-        if ffi_result == 0 {
-            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[ERROR] GetMonitorBlockData failed for device {} monitor {}", device_id, monitor_index), LogLevel::Error);
+        if ffi_result <= 0 {
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[ERROR] BacnetWebView_GetTrendlogEntry failed for device {} monitor {} (result {})", device_id, monitor_index, ffi_result), LogLevel::Error);
             return Err(AppError::FfiError("Failed to retrieve TrendLog data from T3000".to_string()));
         }
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] GetMonitorBlockData successful, result code: {}", ffi_result), LogLevel::Info);
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] BacnetWebView_GetTrendlogEntry returned {} bytes", ffi_result), LogLevel::Info);
 
-        // 4. Process the FFI monitor data
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[PROCESS] Processing raw monitor data into TrendLogInfo structure...", LogLevel::Info);
-        let trendlog_info = Self::process_monitor_data(device_id as i32, trendlog_id, &monitor_data)?;
+        // 4. Parse the JSON response into TrendLogInfo
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[PROCESS] Parsing monitor entry JSON into TrendLogInfo...", LogLevel::Info);
+        let entry_json = String::from_utf8_lossy(&entry_buffer[..ffi_result as usize]).to_string();
+        let trendlog_info = Self::parse_trendlog_entry_json(device_id as i32, trendlog_id, &entry_json)?;
 
         // 5. Save to database
         let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[SAVE] Saving TrendLog info to database...", LogLevel::Info);
@@ -1014,88 +917,85 @@ impl TrendLogFFIService {
         Ok(trendlog_info)
     }
 
-    /// Process raw FFI monitor data into structured TrendLogInfo
-    fn process_monitor_data(
+    /// Parse the JSON returned by BacnetWebView_GetTrendlogEntry into TrendLogInfo.
+    /// Response shape:
+    /// { "success": bool, "panel_id": int, "monitor_index": int,
+    ///   "trendlog": { "label", "interval_seconds", "status", "status_code",
+    ///                 "num_inputs", "an_inputs", "data_size_kb", "data_size_text",
+    ///                 "inputs": [ { "panel", "sub_panel", "point_type",
+    ///                               "point_number", "network", "range" } ] } }
+    fn parse_trendlog_entry_json(
         serial_number: i32,
         trendlog_id: &str,
-        monitor_data: &StrMonitorPoint
+        entry_json: &str,
     ) -> Result<TrendLogInfo, AppError> {
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", "[INFO] Processing raw StrMonitorPoint data:", LogLevel::Info);
+        let parsed: serde_json::Value = serde_json::from_str(entry_json)
+            .map_err(|e| {
+                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[ERROR] Failed to parse trendlog entry JSON: {}", e), LogLevel::Error);
+                AppError::ParseError(format!("Failed to parse trendlog entry JSON: {}", e))
+            })?;
 
-        // Convert C string label to Rust String
-        let label_cstr = unsafe { CStr::from_ptr(monitor_data.label.as_ptr()) };
-        let trendlog_label = label_cstr.to_string_lossy().to_string();
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Label: '{}'", trendlog_label), LogLevel::Info);
+        let success = parsed.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+        if !success {
+            let err = parsed.get("error").and_then(|v| v.as_str()).unwrap_or("unknown error");
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[ERROR] TrendLog entry sync reported failure: {}", err), LogLevel::Error);
+            return Err(AppError::FfiError(format!("TrendLog entry sync failed: {}", err)));
+        }
 
-        // Calculate interval in minutes
-        let interval_minutes = monitor_data.hour_interval_time as i32 * 60
-            + monitor_data.minute_interval_time as i32
-            + (monitor_data.second_interval_time as f32 / 60.0) as i32;
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Interval: {}h:{}m:{}s = {} minutes",
-            monitor_data.hour_interval_time, monitor_data.minute_interval_time, monitor_data.second_interval_time, interval_minutes), LogLevel::Info);
+        let trendlog = &parsed["trendlog"];
+        let trendlog_label = trendlog.get("label").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let interval_seconds = trendlog.get("interval_seconds").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+        let status = trendlog.get("status").and_then(|v| v.as_str()).unwrap_or("OFF").to_string();
+        let num_inputs = trendlog.get("num_inputs").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+        let analog_inputs = trendlog.get("an_inputs").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+        let panel_id = parsed.get("panel_id").and_then(|v| v.as_i64()).unwrap_or(1) as i32;
+        let data_size_kb = trendlog.get("data_size_text")
+            .and_then(|v| v.as_str())
+            .map(|s| format!("{}KB", s))
+            .unwrap_or_else(|| "0KB".to_string());
 
-        // Convert status
-        let status = if monitor_data.status == 1 { "ON".to_string() } else { "OFF".to_string() };
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Status: {} (raw: {})", status, monitor_data.status), LogLevel::Info);
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Buffer: max_time_length = {}, num_inputs = {}, an_inputs = {}",
-            monitor_data.max_time_length, monitor_data.num_inputs, monitor_data.an_inputs), LogLevel::Info);
-
-        // Process related points
         let mut related_points = Vec::new();
-        let num_inputs = monitor_data.num_inputs.min(MAX_POINTS_IN_MONITOR as u8) as usize;
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Processing {} input points:", num_inputs), LogLevel::Info);
-
-        for i in 0..num_inputs {
-            let point = &monitor_data.inputs[i];
-            if point.panel > 0 && point.point_type > 0 {  // Valid point
-                // PointNet point_type is 1-based offset from BAC_* constants:
-                // BAC_OUT=0 -> point_type=1 (OUTPUT), BAC_IN=1 -> point_type=2 (INPUT), BAC_VAR=2 -> point_type=3 (VARIABLE)
-                let point_type = match point.point_type {
-                    1 => "OUTPUT",
-                    2 => "INPUT",
-                    3 => "VARIABLE",
-                    _ => "UNKNOWN",
-                }.to_string();
-
-                let point_label = format!("{}_{}",
-                    match point.point_type { 1 => "OUT", 2 => "IN", 3 => "VAR", _ => "UNK" },
-                    point.number
-                );
-
-                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("    Point {}: {} #{} (Panel {}, Network {}, Range {})",
-                    i+1, point_type, point.number, point.panel, point.network, monitor_data.range[i]), LogLevel::Info);
-
-                related_points.push(RelatedPointInfo {
-                    point_type,
-                    point_index: point.number.to_string(),
-                    point_panel: point.panel.to_string(),
-                    point_label,
-                    network: point.network,
-                    range_value: monitor_data.range[i],
-                });
-            } else {
-                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("    Point {}: EMPTY (panel={}, type={})",
-                    i+1, point.panel, point.point_type), LogLevel::Info);
+        if let Some(inputs) = trendlog.get("inputs").and_then(|v| v.as_array()) {
+            for input in inputs {
+                let panel = input.get("panel").and_then(|v| v.as_i64()).unwrap_or(0);
+                let point_type = input.get("point_type").and_then(|v| v.as_i64()).unwrap_or(0);
+                let point_number = input.get("point_number").and_then(|v| v.as_i64()).unwrap_or(0);
+                if panel > 0 && point_type > 0 {
+                    // PointNet point_type is 1-based offset from BAC_* constants:
+                    // BAC_OUT=0 -> 1 (OUTPUT), BAC_IN=1 -> 2 (INPUT), BAC_VAR=2 -> 3 (VARIABLE)
+                    let point_type_str = match point_type {
+                        1 => "OUTPUT",
+                        2 => "INPUT",
+                        3 => "VARIABLE",
+                        _ => "UNKNOWN",
+                    };
+                    let point_label = format!("{}_{}",
+                        match point_type { 1 => "OUT", 2 => "IN", 3 => "VAR", _ => "UNK" },
+                        point_number
+                    );
+                    related_points.push(RelatedPointInfo {
+                        point_type: point_type_str.to_string(),
+                        point_index: point_number.to_string(),
+                        point_panel: panel.to_string(),
+                        point_label,
+                        network: input.get("network").and_then(|v| v.as_i64()).unwrap_or(1) as u8,
+                        range_value: input.get("range").and_then(|v| v.as_i64()).unwrap_or(0) as u8,
+                    });
+                }
             }
         }
 
-        // Calculate estimated data size
-        let estimated_size_kb = format!("{}KB",
-            (num_inputs * monitor_data.max_time_length as usize * 4) / 1024
-        );
-        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("  [INFO] Estimated data size: {}", estimated_size_kb), LogLevel::Info);
-
         let trendlog_info = TrendLogInfo {
             serial_number,
-            panel_id: 1, // Default panel ID from FFI data
+            panel_id,
             trendlog_id: trendlog_id.to_string(),
-            trendlog_label: trendlog_label.clone(),
-            interval_seconds: interval_minutes * 60, // Convert minutes to seconds for storage
-            status: status.clone(),
-            num_inputs: num_inputs as i32,
-            analog_inputs: monitor_data.an_inputs as i32,
-            buffer_size: Some(monitor_data.max_time_length as i32),
-            data_size_kb: estimated_size_kb,
+            trendlog_label,
+            interval_seconds,
+            status,
+            num_inputs,
+            analog_inputs,
+            buffer_size: None,
+            data_size_kb,
             related_points,
         };
 
@@ -1216,20 +1116,44 @@ impl TrendLogFFIService {
 
 
 
-    /// Get all available TrendLog IDs for a device from T3000 via FFI
+    /// Get all available TrendLog IDs for a device from T3000 via FFI.
+    /// Uses the exported BacnetWebView_GetTrendlogList bridge (the old
+    /// T3000_GetMonitorCount symbol is not exported and always returned 0).
     pub async fn get_available_trendlogs(device_id: u32) -> Result<Vec<String>, AppError> {
-        let device_online = unsafe { T3000_IsDeviceOnline(device_id as c_int) };
-        if device_online == 0 {
-            return Err(AppError::FfiError("Device not online".to_string()));
+        // (device-online check removed — T3000_IsDeviceOnline is not exported;
+        //  BacnetWebView_GetTrendlogList below reports device state via its return code.)
+        const LIST_BUFFER_SIZE: usize = 65536; // 64KB — plenty for a monitor list
+        let mut list_buffer: Vec<u8> = vec![0; LIST_BUFFER_SIZE];
+        let ffi_result = unsafe {
+            BacnetWebView_GetTrendlogList(
+                1, // Default panel ID (matches legacy behavior)
+                list_buffer.as_mut_ptr() as *mut c_char,
+                LIST_BUFFER_SIZE as c_int,
+            )
+        };
+        if ffi_result <= 0 {
+            let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[ERROR] BacnetWebView_GetTrendlogList failed (result {})", ffi_result), LogLevel::Error);
+            return Err(AppError::FfiError("Failed to retrieve TrendLog list from T3000".to_string()));
         }
 
-        let monitor_count = unsafe { T3000_GetMonitorCount(device_id as c_int) };
+        let json_str = String::from_utf8_lossy(&list_buffer[..ffi_result as usize]).to_string();
+        let parsed: serde_json::Value = serde_json::from_str(&json_str)
+            .map_err(|e| {
+                let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[ERROR] Failed to parse trendlog list JSON: {}", e), LogLevel::Error);
+                AppError::ParseError(format!("Failed to parse trendlog list JSON: {}", e))
+            })?;
+
         let mut trendlog_ids = Vec::new();
-
-        for i in 0..monitor_count {
-            trendlog_ids.push(format!("MONITOR{}", i + 1));
+        if let Some(trendlogs) = parsed.get("trendlogs").and_then(|v| v.as_array()) {
+            for entry in trendlogs {
+                if let Some(num) = entry.get("num").and_then(|v| v.as_i64()) {
+                    // Preserve the legacy "MONITOR{n}" 1-based convention consumed by sync_complete_trendlog_info.
+                    trendlog_ids.push(format!("MONITOR{}", num + 1));
+                }
+            }
         }
 
+        let _ = emit_ffi_log_sync("T3_Webview_TRL_FFI", &format!("[OK] Retrieved {} available TrendLog IDs for device {}", trendlog_ids.len(), device_id), LogLevel::Info);
         Ok(trendlog_ids)
     }
 

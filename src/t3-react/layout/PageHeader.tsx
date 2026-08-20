@@ -50,6 +50,13 @@ const useStyles = makeStyles({
     letterSpacing: '0.3px',
     lineHeight: '16px',
   },
+  pageSubtitle: {
+    fontSize: '11px',
+    fontWeight: '400',
+    color: '#605e5c',
+    margin: 0,
+    lineHeight: '14px',
+  },
   deviceInfo: {
     display: 'flex',
     alignItems: 'center',
@@ -105,7 +112,7 @@ interface PageHeaderProps {
 /**
  * Route to breadcrumb mapping
  */
-const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> = {
+const routeToBreadcrumb: Record<string, { label: string; segments?: string[]; subtitle?: string }> = {
   '/t3000/dashboard': { label: 'Dashboard', segments: ['Dashboard'] },
   '/t3000/inputs': { label: 'Inputs', segments: ['Inputs'] },
   '/t3000/outputs': { label: 'Outputs', segments: ['Outputs'] },
@@ -128,6 +135,8 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> 
   '/t3000/users': { label: 'Users', segments: ['Users'] },
   '/t3000/custom-units': { label: 'Custom Units', segments: ['Custom Units'] },
   '/t3000/tstat10-simulator': { label: 'Tstat10 Simulator', segments: ['Simulator'] },
+  '/t3000/haystack-tags': { label: 'Standard Tags', segments: ['Haystack'] },
+  '/t3000/custom-tags': { label: 'Custom Tags', segments: ['Haystack'] },
   '/t3000/hvac-designer': { label: 'HVAC Designer', segments: ['HVAC Designer'] },
   '/t3000/documentation': { label: 'Documentation', segments: ['Documentation'] },
   '/t3000/database/config': { label: 'Database Configuration', segments: ['Database', 'Configuration'] },
@@ -136,6 +145,9 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[] }> 
   '/t3000/develop/database': { label: 'Database Viewer', segments: ['Developer', 'Database Viewer'] },
   '/t3000/develop/transport': { label: 'Transport Tester', segments: ['Developer', 'Transport Tester'] },
   '/t3000/develop/logs': { label: 'T3000 Logs', segments: ['Developer', 'T3000 Logs'] },
+  '/t3000/developer/fluentui-v9': { label: 'FluentUI v9', segments: ['Developer', 'FluentUI v9'] },
+  '/t3000/auto-tagging': { label: 'Auto-Tagging', segments: ['Haystack'], subtitle: 'Manage regex-based rules for automatic Haystack tagging and Brick classification.' },
+  '/t3000/ai-assistant/mcp': { label: 'MCP Server', segments: ['AI Assistant'], subtitle: 'Connect LLM agents (Claude Desktop, VS Code Copilot, Cursor) to the T3000 MCP server on port 9103. Browse available tools and copy natural-language prompts.' },
 };
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => {
@@ -152,6 +164,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
   const breadcrumbInfo = routeToBreadcrumb[location.pathname];
   const pageTitle = title || breadcrumbInfo?.label || 'T3000';
   const segments = breadcrumbInfo?.segments || ['T3000'];
+  const subtitle = breadcrumbInfo?.subtitle;
 
   // Determine page data type (for breadcrumb / title only)
   const dataTypeByRoute: Record<string, string> = {
@@ -174,7 +187,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, syncConfig }) => 
     <div className={styles.container}>
       <div className={styles.breadcrumbSection}>
         <div className={styles.pageHeaderBar}></div>
-        <h1 className={styles.pageTitle}>{pageTitle.toUpperCase()}</h1>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <h1 className={styles.pageTitle}>{pageTitle.toUpperCase()}</h1>
+          {subtitle && <p className={styles.pageSubtitle}>{subtitle}</p>}
+        </div>
 
       </div>
       {/* Slot for page-specific actions (filled via React portal) */}

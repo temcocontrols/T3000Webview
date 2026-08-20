@@ -110,6 +110,16 @@ export const docStructure: DocSection[] = [
       { title: 'Device Settings Structure', path: 't3000/building-platform/device-settings-structure' },
     ],
   },
+  {
+    title: 'Haystack & MCP',
+    icon: 'Sparkle',
+    items: [
+      { title: 'Claude Desktop Setup', path: 't3000/haystack/mcp-claude-desktop' },
+      { title: 'VS Code Copilot Setup', path: 't3000/haystack/mcp-vscode-copilot' },
+      { title: 'MCP API Examples', path: 't3000/haystack/mcp-api-examples' },
+      { title: 'FDD Native Engine (Design)', path: 't3000/haystack/fdd-native-engine' },
+    ],
+  },
 ];
 
 /**

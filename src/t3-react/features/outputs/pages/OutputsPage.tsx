@@ -40,10 +40,8 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SearchRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   ErrorCircleRegular,
   SaveRegular,
   InfoRegular,
@@ -59,6 +57,11 @@ import { PageSyncStatus } from '@t3-react/shared/components/PageSyncStatus';
 import styles from './OutputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { TagsColumnCell, fetchTagsForDevice } from '../../inputs/components/TagsColumnCell';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
+import { isSubDevice } from '../../devices/lib/deviceSupport';
+import { NotSupportedBanner } from '@t3-react/shared/components/NotSupportedBanner';
 
 // Types based on Rust entity (output_points.rs)
 interface OutputPoint {
@@ -88,7 +91,9 @@ interface OutputPoint {
 }
 
 const OutputsPageDesktop: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [outputs, setOutputs] = useState<OutputPoint[]>([]);
@@ -100,10 +105,15 @@ const OutputsPageDesktop: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
 
+  // ── Not-supported detection (sub-devices without output points) ──
+  const isSubDeviceDevice = !!selectedDevice && isSubDevice(selectedDevice);
+  const toolbarDisabled = isSubDeviceDevice;
+
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false); // Track if user is already at bottom
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false); // Track if user is already at bottom
 
   // Auto-select first device on page load - DISABLED
   // TreePanel's loadDevicesWithSync already handles auto-selection
@@ -113,16 +123,9 @@ const OutputsPageDesktop: React.FC = () => {
     if (!selectedDevice && treeData.length > 0) {
       // Get the first device from filtered devices list (respects current filters)
       const filteredDevices = getFilteredDevices();
-      console.log('[OutputsPage] Auto-select check:', {
-        hasSelectedDevice: !!selectedDevice,
-        treeDataLength: treeData.length,
-        filteredDevicesCount: filteredDevices.length,
-        filteredDevicesList: filteredDevices.map(d => `${d.nameShowOnTree} (SN: ${d.serialNumber})`),
-      });
 
       if (filteredDevices.length > 0) {
         const firstDevice = filteredDevices[0];
-        console.log(`[OutputsPage] Auto-selecting first device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
         selectDevice(firstDevice);
       }
     }
@@ -135,6 +138,16 @@ const OutputsPageDesktop: React.FC = () => {
   const fetchOutputs = useCallback(async () => {
     if (!selectedDevice) {
       setOutputs([]);
+      return;
+    }
+
+    if (isSubDevice(selectedDevice)) {
+      // Sub-devices manage their points through the parent — not supported here.
+      setOutputs([]);
+      setLoading(false);
+      setDbChecked(true);
+      setAutoRefreshed(true);
+      fetchingRef.current = false;
       return;
     }
 
@@ -158,7 +171,7 @@ const OutputsPageDesktop: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load outputs';
       setError(errorMessage);
-      console.error('Error fetching outputs:', err);
+      LogUtil.Error('Error fetching outputs:', err);
     } finally {
       setLoading(false);
       setDbChecked(true);
@@ -178,19 +191,22 @@ const OutputsPageDesktop: React.FC = () => {
 
   // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
-    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (!selectedDevice) return;
+    if (isSubDevice(selectedDevice)) {
+      setAutoRefreshed(true);
+      return;
+    }
+    if (!dbChecked || loading || autoRefreshed) return;
     if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (outputs.length > 0) {
-        console.log('[OutputsPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('[OutputsPage] Database empty, auto-refreshing from device...');
       setLoading(true);
 
       try {
@@ -204,10 +220,9 @@ const OutputsPageDesktop: React.FC = () => {
             }
           }
         });
-        console.log('[OutputsPage] Auto-refresh result:', result);
         setMessage(`✓ Synced ${result.itemCount} outputs from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
-        console.error('[OutputsPage] Auto-refresh failed:', error);
+        LogUtil.Error('[OutputsPage] Auto-refresh failed:', error);
         setMessage(`Failed to sync outputs: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       } finally {
         // Always reload from database to show what was actually saved
@@ -235,7 +250,6 @@ const OutputsPageDesktop: React.FC = () => {
     setMessage('Refreshing outputs from device...', 'info');
 
     try {
-      console.log('[OutputsPage] Refreshing all outputs from device via FFI...');
       // Pass loading callback to show loading state during Action 17 FFI call
       const result = await PanelDataRefreshService.refreshFromDevice({
         serialNumber: selectedDevice.serialNumber,
@@ -246,10 +260,9 @@ const OutputsPageDesktop: React.FC = () => {
           }
         }
       });
-      console.log('[OutputsPage] Refresh result:', result);
       setMessage(result.message, 'success');
     } catch (error) {
-      console.error('[OutputsPage] Failed to refresh from device:', error);
+      LogUtil.Error('[OutputsPage] Failed to refresh from device:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
       setError(errorMsg);
       setMessage(errorMsg, 'error');
@@ -260,26 +273,26 @@ const OutputsPageDesktop: React.FC = () => {
     }
   };
 
+  usePageRefresh(handleRefreshFromDevice);
+
   // Refresh single output from device (Trigger #3: Per-row refresh icon)
   const handleRefreshSingleOutput = async (outputIndex: string) => {
     if (!selectedDevice) return;
 
     const index = parseInt(outputIndex, 10);
     if (isNaN(index)) {
-      console.error('[OutputsPage] Invalid output index:', outputIndex);
+      LogUtil.Error('[OutputsPage] Invalid output index:', outputIndex);
       return;
     }
 
     setRefreshingItems(prev => new Set(prev).add(outputIndex));
     try {
-      console.log(`[OutputsPage] Refreshing output ${index} from device via FFI...`);
       const result = await PanelDataRefreshService.refreshSingleOutput(selectedDevice.serialNumber, index);
-      console.log('[OutputsPage] Refresh result:', result);
 
       // Reload data from database after save
       await fetchOutputs();
     } catch (error) {
-      console.error(`[OutputsPage] Failed to refresh output ${index}:`, error);
+      LogUtil.Error(`[OutputsPage] Failed to refresh output ${index}:`, error);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -334,16 +347,15 @@ const OutputsPageDesktop: React.FC = () => {
   // Register CSV export/import handlers with global context (Tools menu)
   useRegisterCsvHandlers(handleExport, handleImport);
 
-  // Auto-scroll to next device when reaching bottom
+  // [DISABLED] Auto-scroll to next device when reaching bottom — commented out for now.
+  /*
   const loadNextDevice = useCallback(async () => {
     const nextDevice = getNextDevice();
 
     if (!nextDevice) {
-      console.log('[OutputsPage] No next device available');
       return;
     }
 
-    console.log(`[OutputsPage] Auto-loading next device: ${nextDevice.nameShowOnTree} (SN: ${nextDevice.serialNumber})`);
     setIsLoadingNextDevice(true);
 
     // Switch device (this will trigger fetchOutputs via useEffect)
@@ -368,7 +380,6 @@ const OutputsPageDesktop: React.FC = () => {
     if (isAtBottom && outputs.length > 0) {
       // Mark that we're at bottom
       isAtBottomRef.current = true;
-      console.log('[OutputsPage] Reached bottom, scroll again to load next device');
     } else {
       // Not at bottom anymore, reset the flag
       isAtBottomRef.current = false;
@@ -383,22 +394,21 @@ const OutputsPageDesktop: React.FC = () => {
 
     // If user is scrolling down (deltaY > 0) and already at bottom, load next device
     if (e.deltaY > 0 && isAtBottomRef.current) {
-      console.log('[OutputsPage] User scrolled down while at bottom, loading next device');
       isAtBottomRef.current = false; // Reset
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, outputs.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top when device changes
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
-      // Use smooth scroll for auto-loaded devices, instant for manual selection
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Inline editing handlers
   const handleCellDoubleClick = (item: OutputPoint, field: string, currentValue: string) => {
@@ -416,7 +426,6 @@ const OutputsPageDesktop: React.FC = () => {
     currentOutput: OutputPoint
   ) => {
     try {
-      console.log(`[FFI Action 16] Updating ${field} on device - Output ${outputIndex} (SN: ${serialNumber})`);
 
       // Build FFI message for UPDATE_WEBVIEW_LIST (Action 16)
       const ffiMessage = {
@@ -440,7 +449,6 @@ const OutputsPageDesktop: React.FC = () => {
         high_voltage: parseInt(currentOutput.highVoltage || '0', 10),
       };
 
-      console.log('[FFI Action 16] Sending to device:', ffiMessage);
 
       const response = await fetch(`${API_BASE_URL}/api/t3000/ffi/call`, {
         method: 'POST',
@@ -454,10 +462,9 @@ const OutputsPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[FFI Action 16] Device updated successfully:', result);
       return result;
     } catch (error) {
-      console.error('[FFI Action 16] Device update failed:', error);
+      LogUtil.Error('[FFI Action 16] Device update failed:', error);
       throw error;
     }
   };
@@ -471,7 +478,6 @@ const OutputsPageDesktop: React.FC = () => {
     currentOutput: OutputPoint
   ) => {
     try {
-      console.log(`[Database] Updating ${field} in database - Output ${outputIndex} (SN: ${serialNumber})`);
 
       const payload = {
         fullLabel: field === 'fullLabel' ? newValue : (currentOutput.fullLabel || ''),
@@ -503,10 +509,9 @@ const OutputsPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Database] Database updated successfully:', result);
       return result;
     } catch (error) {
-      console.error('[Database] Database update failed:', error);
+      LogUtil.Error('[Database] Database update failed:', error);
       throw error;
     }
   };
@@ -527,8 +532,6 @@ const OutputsPageDesktop: React.FC = () => {
     try {
       // Process for all editable fields
       if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual', 'lowVoltage', 'highVoltage'].includes(editingCell.field)) {
-        console.log(`=== Updating ${editingCell.field} (Two-Step Process) ===`);
-        console.log(`Device: ${selectedDevice.serialNumber}, Output: ${editingCell.outputIndex}, New Value: "${editValue}"`);
 
         // Find the current output data
         const currentOutput = outputs.find(
@@ -543,7 +546,6 @@ const OutputsPageDesktop: React.FC = () => {
         const panelId = selectedDevice.panelId || 1;
 
         // Step 1: Update device FIRST using FFI (Action 16)
-        console.log('Step 1/2: Updating device via FFI...');
         await updateDeviceUsingFFI(
           panelId,
           selectedDevice.serialNumber,
@@ -552,10 +554,8 @@ const OutputsPageDesktop: React.FC = () => {
           editValue,
           currentOutput
         );
-        console.log('✅ Device updated successfully');
 
         // Step 2: Update database SECOND
-        console.log('Step 2/2: Updating database...');
         await updateDatabaseOnly(
           selectedDevice.serialNumber,
           editingCell.outputIndex,
@@ -563,31 +563,28 @@ const OutputsPageDesktop: React.FC = () => {
           editValue,
           currentOutput
         );
-        console.log('✅ Database updated successfully');
 
-        console.log(`✅ ${editingCell.field} updated successfully (device + database)!`);
       }
 
       // Update local state optimistically
       setOutputs(prevOutputs =>
         prevOutputs.map(output =>
           output.serialNumber === editingCell.serialNumber &&
-          output.outputIndex === editingCell.outputIndex
+            output.outputIndex === editingCell.outputIndex
             ? {
-                ...output,
-                [editingCell.field]: editingCell.field === 'fValue'
-                  ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
-                  : editValue
-              }
+              ...output,
+              [editingCell.field]: editingCell.field === 'fValue'
+                ? (parseFloat(editValue || '0') * 1000).toString()  // Convert back to raw value for storage
+                : editValue
+            }
             : output
         )
       );
 
-      console.log('Updated', editingCell.field, ':', editValue, 'for', editingCell);
       setEditingCell(null);
     } catch (error) {
-      console.error('Failed to update:', error);
-      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      LogUtil.Error('Failed to update:', error);
+      setMessage(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -610,6 +607,24 @@ const OutputsPageDesktop: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Point tags for tag-based search filtering
+  const [pointTags, setPointTags] = useState<{ pointType: string; pointIndex: string; tagName: string }[]>([]);
+
+  useEffect(() => {
+    if (!selectedDevice?.serialNumber) return;
+    let cancelled = false;
+    fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
+      if (cancelled) return;
+      const tags = Array.isArray(all?.tags) ? all.tags : [];
+      setPointTags(tags.map(t => ({
+        pointType: t.point_type,
+        pointIndex: t.point_index,
+        tagName: t.tag_name,
+      })));
+    }).catch(() => { });
+    return () => { cancelled = true; };
+  }, [selectedDevice?.serialNumber]);
+
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{ serialNumber: number; outputIndex: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -629,7 +644,6 @@ const OutputsPageDesktop: React.FC = () => {
     if (!selectedOutput) return;
 
     try {
-      console.log(`[Action 16] Updating Range for Output ${selectedOutput.outputIndex} (SN: ${selectedOutput.serialNumber}), New DigitalAnalog: ${newDigitalAnalog}`);
 
       // Action 16 requires ALL fields
       const payload = {
@@ -648,7 +662,6 @@ const OutputsPageDesktop: React.FC = () => {
         calibrationL: parseInt(String(selectedOutput.calibrationL || '0')),
       };
 
-      console.log('[Action 16] Full payload:', payload);
 
       const response = await fetch(
         `${API_BASE_URL}/api/t3_device/outputs/${selectedOutput.serialNumber}/${selectedOutput.outputIndex}`,
@@ -665,72 +678,74 @@ const OutputsPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Action 16] Range updated successfully:', result);
 
       // Update local state optimistically
       setOutputs(prevOutputs =>
         prevOutputs.map(output =>
           output.serialNumber === selectedOutput.serialNumber &&
-          output.outputIndex === selectedOutput.outputIndex
+            output.outputIndex === selectedOutput.outputIndex
             ? { ...output, range: newRange.toString(), rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : output
         )
       );
     } catch (error) {
-      console.error('Failed to update Range:', error);
-      alert(`Failed to update Range: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      LogUtil.Error('Failed to update Range:', error);
+      setMessage(`Failed to update Range: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    console.log('Search query:', e.target.value);
   };
 
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
-
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  // Controlled sort state for asc→desc→clear
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
-  // Display data with 10 empty rows when no outputs
+  // Display data with search and tag filtering
   const displayOutputs = React.useMemo(() => {
+    let filtered = outputs;
+
+    if (searchQuery.trim() && outputs.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = outputs.filter(v => {
+        if (
+          (v.label || '').toLowerCase().includes(q) ||
+          (v.fullLabel || '').toLowerCase().includes(q) ||
+          String(v.outputId || '').toLowerCase().includes(q) ||
+          String(v.outputIndex || '').toLowerCase().includes(q) ||
+          (v.fValue ? (parseFloat(v.fValue) / 1000).toFixed(2) : '').includes(q)
+        ) return true;
+        const outTags = pointTags.filter(
+          t => t.pointType === 'OUTPUT' && t.pointIndex === (v.outputIndex || '')
+        );
+        return outTags.some(t => t.tagName.toLowerCase().includes(q));
+      });
+    }
+
     if (outputs.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
+      return Array(18).fill(null).map(() => ({
         serialNumber: selectedDevice?.serialNumber || 0,
-        outputId: '',
-        outputIndex: '',
-        panel: '',
-        fullLabel: '',
-        autoManual: '',
-        hwSwitchStatus: '',
-        fValue: '',
-        units: '',
-        range: '',
-        rangeField: '',
-        lowVoltage: '',
-        highVoltage: '',
-        pwmPeriod: '',
-        calibrationH: '',
-        calibrationL: '',
-        calibrationSign: '',
-        control: '',
-        status: '',
-        signalType: '',
-        digitalAnalog: '',
-        label: '',
-        typeField: '',
+        outputId: '', outputIndex: '', panel: '', fullLabel: '', autoManual: '',
+        hwSwitchStatus: '', fValue: '', units: '', range: '', rangeField: '',
+        lowVoltage: '', highVoltage: '', pwmPeriod: '', calibrationH: '',
+        calibrationL: '', calibrationSign: '', control: '', status: '',
+        signalType: '', digitalAnalog: '', label: '', typeField: '',
       }));
     }
-    return outputs;
-  }, [outputs, selectedDevice]);
+    return filtered;
+  }, [outputs, selectedDevice, searchQuery, pointTags]);
 
   // Helper to identify empty rows
   const isEmptyRow = (item: OutputPoint) => !item.outputIndex && !item.outputId && outputs.length === 0;
@@ -752,16 +767,8 @@ const OutputsPageDesktop: React.FC = () => {
     // 2. Output (Index/ID)
     createTableColumn<OutputPoint>({
       columnId: 'output',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('output')}>
-          <span>Output</span>
-          {sortColumn === 'output' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.outputId || a.outputIndex || ''), String(b.outputId || b.outputIndex || '')),
+      renderHeaderCell: () => <span>Output</span>,
       renderCell: (item) => {
         const isRefreshing = refreshingItems.has(item.outputIndex || '');
 
@@ -794,20 +801,12 @@ const OutputsPageDesktop: React.FC = () => {
     // 3. Full Label
     createTableColumn<OutputPoint>({
       columnId: 'fullLabel',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('fullLabel')}>
-          <span>Full Label</span>
-          {sortColumn === 'fullLabel' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.fullLabel || ''), String(b.fullLabel || '')),
+      renderHeaderCell: () => <span>Full Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'fullLabel';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'fullLabel';
 
         return (
           <TableCellLayout>
@@ -855,20 +854,12 @@ const OutputsPageDesktop: React.FC = () => {
     // 4. Label (short label)
     createTableColumn<OutputPoint>({
       columnId: 'label',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('label')}>
-          <span>Label</span>
-          {sortColumn === 'label' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.label || ''), String(b.label || '')),
+      renderHeaderCell: () => <span>Label</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'label';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'label';
 
         return (
           <TableCellLayout>
@@ -928,7 +919,6 @@ const OutputsPageDesktop: React.FC = () => {
 
         const handleToggle = async () => {
           const newValue = !isAuto ? '1' : '0';
-          console.log('Auto/Man toggled:', item.serialNumber, item.outputIndex, newValue);
 
           try {
             // Find the current output data to pass all fields for Action 16
@@ -956,7 +946,6 @@ const OutputsPageDesktop: React.FC = () => {
               calibrationL: parseInt(String(currentOutput.calibrationL || '0')),
             };
 
-            console.log('[Action 16] Updating Auto/Man:', payload);
 
             const response = await fetch(
               `${API_BASE_URL}/api/t3_device/outputs/${item.serialNumber}/${item.outputIndex}`,
@@ -973,7 +962,6 @@ const OutputsPageDesktop: React.FC = () => {
             }
 
             const result = await response.json();
-            console.log('[Action 16] Auto/Man updated successfully:', result);
 
             // Update local state optimistically
             setOutputs(prevOutputs =>
@@ -984,8 +972,8 @@ const OutputsPageDesktop: React.FC = () => {
               )
             );
           } catch (error) {
-            console.error('Failed to update Auto/Man:', error);
-            alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            LogUtil.Error('Failed to update Auto/Man:', error);
+            setMessage(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
           }
         };
 
@@ -1045,20 +1033,12 @@ const OutputsPageDesktop: React.FC = () => {
     // 7. Value
     createTableColumn<OutputPoint>({
       columnId: 'value',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} style={{ justifyContent: 'flex-end', width: '100%' }} onClick={() => handleSort('value')}>
-          <span>Value</span>
-          {sortColumn === 'value' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => { const av = parseFloat(a.fValue || '0'); const bv = parseFloat(b.fValue || '0'); return av - bv; },
+      renderHeaderCell: () => <span>Value</span>,
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'fValue';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'fValue';
 
         return (
           <TableCellLayout>
@@ -1109,16 +1089,8 @@ const OutputsPageDesktop: React.FC = () => {
     // 8. Units
     createTableColumn<OutputPoint>({
       columnId: 'units',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('units')}>
-          <span>Units</span>
-          {sortColumn === 'units' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.units || ''), String(b.units || '')),
+      renderHeaderCell: () => <span>Units</span>,
       renderCell: (item) => {
         const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
         const digitalAnalog = parseInt(item.digitalAnalog || '0', 10);
@@ -1138,18 +1110,9 @@ const OutputsPageDesktop: React.FC = () => {
       compare: (a, b) => {
         const aVal = a.range || '';
         const bVal = b.range || '';
-        return aVal.localeCompare(bVal);
+        return new Intl.Collator(undefined, { numeric: true }).compare(aVal, bVal);
       },
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('range')}>
-          <span>Range</span>
-          {sortColumn === 'range' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
+      renderHeaderCell: () => <span>Range</span>,
       renderCell: (item) => {
         // Parse range value and digital_analog type
         const rangeValue = parseInt(item.rangeField || item.range || '0', 10);
@@ -1179,8 +1142,8 @@ const OutputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'lowVoltage';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'lowVoltage';
 
         return (
           <TableCellLayout>
@@ -1221,8 +1184,8 @@ const OutputsPageDesktop: React.FC = () => {
       ),
       renderCell: (item) => {
         const isEditing = editingCell?.serialNumber === item.serialNumber &&
-                          editingCell?.outputIndex === item.outputIndex &&
-                          editingCell?.field === 'highVoltage';
+          editingCell?.outputIndex === item.outputIndex &&
+          editingCell?.field === 'highVoltage';
 
         return (
           <TableCellLayout>
@@ -1255,51 +1218,34 @@ const OutputsPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 13. Status
-    createTableColumn<OutputPoint>({
-      columnId: 'status',
-      renderHeaderCell: () => (
-        <div className={styles.headerCellSort} onClick={() => handleSort('status')}>
-          <span>Status</span>
-          {sortColumn === 'status' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular className={styles.sortIconFaded} />
-          )}
-        </div>
-      ),
-      renderCell: (item) => {
-        // Map status codes to readable text
-        // Common status codes: 0 = Normal/OK, 64 = Normal, other values may indicate errors
-        let statusText = 'Normal';
-        let statusColor: 'success' | 'danger' | 'warning' = 'success';
-
-        const statusValue = item.status?.toString();
-        if (statusValue === '0' || statusValue === '64') {
-          statusText = 'Normal';
-          statusColor = 'success';
-        } else if (statusValue && statusValue !== 'online' && statusValue !== 'normal') {
-          statusText = `Code ${statusValue}`;
-          statusColor = 'warning';
-        } else if (statusValue?.toLowerCase() === 'online' || statusValue?.toLowerCase() === 'normal') {
-          statusText = 'Normal';
-          statusColor = 'success';
-        }
-
-        return (
-          <TableCellLayout>
-            {!isEmptyRow(item) && (
-              <Badge
-                appearance="filled"
-                color={statusColor}
-              >
-                {statusText}
-              </Badge>
-            )}
-          </TableCellLayout>
-        );
-      },
-    }),
+    // 13. Status �?commented out
+    // createTableColumn<OutputPoint>({
+    //   columnId: 'status',
+    //   compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.status || ''), String(b.status || '')),
+    //   renderHeaderCell: () => <span>Status</span>,
+    //   renderCell: (item) => {
+    //     let statusText = 'Normal';
+    //     let statusColor: 'success' | 'danger' | 'warning' = 'success';
+    //     const statusValue = item.status?.toString();
+    //     if (statusValue === '0' || statusValue === '64') {
+    //       statusText = 'Normal';
+    //       statusColor = 'success';
+    //     } else if (statusValue && statusValue !== 'online' && statusValue !== 'normal') {
+    //       statusText = `Code ${statusValue}`;
+    //       statusColor = 'warning';
+    //     } else if (statusValue?.toLowerCase() === 'online' || statusValue?.toLowerCase() === 'normal') {
+    //       statusText = 'Normal';
+    //       statusColor = 'success';
+    //     }
+    //     return (
+    //       <TableCellLayout>
+    //         {!isEmptyRow(item) && (
+    //           <Badge appearance="filled" color={statusColor}>{statusText}</Badge>
+    //         )}
+    //       </TableCellLayout>
+    //     );
+    //   },
+    // }),
     // 14. Type
     createTableColumn<OutputPoint>({
       columnId: 'signalType',
@@ -1318,6 +1264,29 @@ const OutputsPageDesktop: React.FC = () => {
               </span>
             )}
           </TableCellLayout>
+        );
+      },
+    }),
+    // TAGS
+    createTableColumn<OutputPoint>({
+      columnId: 'tags',
+      renderHeaderCell: () => (
+        <div className={styles.headerCell}><span>TAGS</span></div>
+      ),
+      renderCell: (item) => {
+        if (isEmptyRow(item)) return <TableCellLayout>—</TableCellLayout>;
+        const idx = item.outputIndex || '';
+        const pid = `dev${item.serialNumber}.out${idx}`;
+        return (
+          <TagsColumnCell
+            serialNumber={item.serialNumber}
+            pointType="OUTPUT"
+            pointIndex={idx}
+            pointId={pid}
+            pointLabel={item.label || item.fullLabel || `OUT${idx}`}
+            deviceName={selectedDevice?.nameShowOnTree || selectedDevice?.productName}
+            isEmpty={isEmptyRow(item)}
+          />
         );
       },
     }),
@@ -1355,70 +1324,72 @@ const OutputsPageDesktop: React.FC = () => {
                   Matches: ext-overview-assistant-toolbar
                   ======================================== */}
               {selectedDevice && (
-              <>
-              <div className={styles.toolbar}>
-                <div className={styles.toolbarContainer}>
-                  {/* Search Input Box */}
-                  <div className={styles.searchInputWrapper}>
-                    <SearchRegular className={styles.searchIcon} />
-                    <input
-                      className={styles.searchInput}
-                      type="text"
-                      placeholder="Search outputs..."
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      spellCheck="false"
-                      role="searchbox"
-                      aria-label="Search outputs"
-                    />
-                  </div>
+                <>
+                  <div className={styles.toolbar}>
+                    <div className={styles.toolbarContainer}>
+                      {/* Search Input Box */}
+                      <div className={styles.searchInputWrapper}>
+                        <SearchRegular className={styles.searchIcon} />
+                        <input
+                          className={styles.searchInput}
+                          type="text"
+                          disabled={toolbarDisabled}
+                          placeholder="Search by label, value, ID, tag…"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                          spellCheck="false"
+                          role="searchbox"
+                          aria-label="Search outputs by label, value, ID, tag"
+                        />
+                      </div>
 
-                  {/* Refresh Button */}
-                  <button
-                    className={styles.toolbarButton}
-                    onClick={handleRefreshFromDevice}
-                    disabled={refreshing}
-                    title="Refresh all outputs from device"
-                    aria-label="Refresh from Device"
-                  >
-                    <ArrowSyncRegular />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
-                  </button>
+                      {/* Refresh Button */}
+                      <button
+                        className={styles.toolbarButton}
+                        onClick={handleRefreshFromDevice}
+                        disabled={refreshing || toolbarDisabled}
+                        title="Refresh all outputs from device"
+                        aria-label="Refresh"
+                      >
+                        <ArrowClockwiseRegular />
+                        <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                      </button>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
+                      <div className={styles.toolbarSeparator} role="separator" />
 
-                  {/* Info Button with Tooltip */}
-                  <Tooltip
-                    content={`Showing output points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured output points including digital and analog outputs, their current values, voltage settings, and operational status.`}
-                    relationship="description"
-                  >
-                    <button
-                      className={`${styles.toolbarButton} ${styles.marginLeft8}`}
-                      title="Information"
-                      aria-label="Information about this page"
-                    >
-                      <InfoRegular />
-                    </button>
-                  </Tooltip>
+                      {/* Info Button with Tooltip */}
+                      <Tooltip
+                        content={`Showing output points for ${selectedDevice.nameShowOnTree} (SN: ${selectedDevice.serialNumber}). This table displays all configured output points including digital and analog outputs, their current values, voltage settings, and operational status.`}
+                        relationship="description"
+                      >
+                        <button
+                          className={`${styles.toolbarButton} ${styles.marginLeft8}`}
+                          disabled={toolbarDisabled}
+                          title="Information"
+                          aria-label="Information about this page"
+                        >
+                          <InfoRegular />
+                        </button>
+                      </Tooltip>
 
-                  <div className={styles.toolbarSeparator} role="separator" />
+                      <div className={styles.toolbarSeparator} role="separator" />
 
-                  {/* <PageSyncStatus
+                      {/* <PageSyncStatus
                     dataType="OUTPUTS"
                     serialNumber={selectedDevice.serialNumber.toString()}
                     onRefresh={handleRefreshFromDevice}
                   /> */}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
-              {/* ========================================
+                  {/* ========================================
                   HORIZONTAL DIVIDER
                   Matches: ext-overview-hr
                   ======================================== */}
-              <div className={styles.noPadding}>
-                <hr className={styles.overviewHr} />
-              </div>
-              </>
+                  <div className={styles.noPadding}>
+                    <hr className={styles.overviewHr} />
+                  </div>
+                </>
               )}
 
               {/* ========================================
@@ -1446,20 +1417,47 @@ const OutputsPageDesktop: React.FC = () => {
                   </div>
                 )}
 
+                {/* Not Supported (sub-device) — show banner instead of grid */}
+                {selectedDevice && !loading && isSubDeviceDevice && (
+                  <NotSupportedBanner pointType="Outputs" deviceName={selectedDevice.nameShowOnTree} />
+                )}
+
                 {/* Data Grid - Always show with header (even when there's an error) */}
-                {selectedDevice && !loading && (
+                {selectedDevice && !loading && !isSubDeviceDevice && (
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    onScroll={handleScroll}
-                    onWheel={handleWheel}
+                  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                  // onScroll={handleScroll}
+                  // onWheel={handleWheel}
                   >
                     <DataGrid
+                      key={sortKey}
                       items={displayOutputs}
                       columns={columns}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
+                      columnSizingOptions={{
+                        panel: { idealWidth: 50, minWidth: 40 },
+                        output: { idealWidth: 65, minWidth: 55 },
+                        fullLabel: { idealWidth: 165, minWidth: 80 },
+                        label: { idealWidth: 125, minWidth: 50 },
+                        autoManual: { idealWidth: 82, minWidth: 60 },
+                        hoaSwitch: { idealWidth: 90, minWidth: 65 },
+                        value: { idealWidth: 120, minWidth: 80 },
+                        units: { idealWidth: 105, minWidth: 50 },
+                        range: { idealWidth: 100, minWidth: 65 },
+                        lowVoltage: { idealWidth: 65, minWidth: 50 },
+                        highVoltage: { idealWidth: 65, minWidth: 50 },
+                        signalType: { idealWidth: 70, minWidth: 55 },
+                        tags: { idealWidth: 180, minWidth: 80 },
+                      }}
                     >
-                      <DataGridHeader>
+                      <DataGridHeader style={{ backgroundColor: '#e0e0e0' }}>
                         <DataGridRow>
                           {({ renderHeaderCell }) => (
                             <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
@@ -1477,13 +1475,14 @@ const OutputsPageDesktop: React.FC = () => {
                       </DataGridBody>
                     </DataGrid>
 
-                    {/* Loading Next Device Indicator */}
+                    {/* [DISABLED] Loading Next Device Indicator — commented out for now.
                     {isLoadingNextDevice && (
                       <div className={styles.autoLoadIndicator}>
                         <Spinner size="tiny" />
                         <Text size={200} weight="regular">Loading next device...</Text>
                       </div>
                     )}
+                    */}
 
                     {/* No Data Message - Show below grid when empty */}
                     {/* {outputs.length === 0 && (

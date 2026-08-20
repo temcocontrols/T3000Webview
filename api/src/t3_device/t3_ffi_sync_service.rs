@@ -11,8 +11,8 @@ use crate::entity::t3_device::{
     devices, input_points, output_points, trendlog_data_detail, trendlog_data_sync_metadata,
     variable_points,
 };
-use crate::database_management::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
-use crate::database_management::mssql_queries;
+use crate::server_db::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
+use crate::server_db::mssql_queries;
 use crate::error::AppError;
 use crate::logger::ServiceLogger;
 use crate::t3_device::trendlog_parent_cache::{ParentKey, TrendlogParentCache};
@@ -615,7 +615,7 @@ impl T3000MainService {
         } else {
             "center_db=disabled (standalone)".to_string()
         };
-        crate::database_management::sync_health::ensure_app_log_table(&self.db).await;
+        crate::server_db::sync_health::ensure_app_log_table(&self.db).await;
         crate::logging::service::emit_app_log(
             &self.db,
             "info",
@@ -695,7 +695,7 @@ impl T3000MainService {
             // If startup sync failed, retry once after a short delay before entering the normal 900s cycle.
             // This avoids waiting 900s when T3000 just needed a bit more time to initialize.
             if !startup_sync_ok && is_running.load(Ordering::Relaxed) {
-                task_logger.info("?? Startup sync failed �� retrying in 60 seconds (short retry before normal 900s cycle)...");
+                task_logger.info("?? Startup sync failed — retrying in 60 seconds (short retry before normal 900s cycle)...");
                 sleep(Duration::from_secs(60)).await;
                 if is_running.load(Ordering::Relaxed) {
                     task_logger.info("?? Short retry: Calling sync_logging_data_static...");
@@ -732,7 +732,7 @@ impl T3000MainService {
                 if current_sync_interval != config.sync_interval_secs {
                     let old_interval = config.sync_interval_secs;
                     task_logger.info(&format!(
-                        "?? Sync interval updated: {}s ({} min) �� {}s ({} min)",
+                        "?? Sync interval updated: {}s ({} min) → {}s ({} min)",
                         config.sync_interval_secs,
                         config.sync_interval_secs / 60,
                         current_sync_interval,
@@ -757,7 +757,7 @@ impl T3000MainService {
                     let mut interval = REDISCOVER_INTERVAL_SECS.write().await;
                     if *interval != current_rediscover_interval {
                         task_logger.info(&format!(
-                            "?? Rediscover interval updated: {}s ({} min) �� {}s ({} min)",
+                            "?? Rediscover interval updated: {}s ({} min) → {}s ({} min)",
                             *interval,
                             *interval / 60,
                             current_rediscover_interval,
@@ -788,9 +788,9 @@ impl T3000MainService {
                         None,
                     ).await;
                     if let Err(e) = Self::sync_logging_data_static(config.clone()).await {
-                        task_logger.error(&format!("? [CYCLE #{}] Periodic sync failed: {} �� will retry next cycle", cycle_count, e));
+                        task_logger.error(&format!("? [CYCLE #{}] Periodic sync failed: {} — will retry next cycle", cycle_count, e));
                     } else {
-                        task_logger.info(&format!("? [CYCLE #{}] Sync cycle completed �� sleeping {}s", cycle_count, config.sync_interval_secs));
+                        task_logger.info(&format!("? [CYCLE #{}] Sync cycle completed — sleeping {}s", cycle_count, config.sync_interval_secs));
                     }
                 } else {
                     crate::logging::service::emit_app_log(
@@ -1325,15 +1325,15 @@ impl T3000MainService {
             return Ok(true);
         }
 
-        let active_cfg = crate::database_management::db_backend_config::load_active_config(local_db)
+        let active_cfg = crate::server_db::db_backend_config::load_active_config(local_db)
             .await
             .map_err(|e| format!("load_active_backend_config failed: {}", e))?;
 
         match active_cfg.backend_type {
-            crate::database_management::db_backend_config::BackendType::Mssql => {
-                let tib = crate::database_management::db_backend_config::build_mssql_config(&active_cfg)
+            crate::server_db::db_backend_config::BackendType::Mssql => {
+                let tib = crate::server_db::db_backend_config::build_mssql_config(&active_cfg)
                     .map_err(|e| format!("build_mssql_config failed: {}", e))?;
-                let pool = crate::database_management::mssql_queries::create_mssql_pool(tib, 5)
+                let pool = crate::server_db::mssql_queries::create_mssql_pool(tib, 5)
                     .await
                     .map_err(|e| format!("create_mssql_pool failed: {}", e))?;
 
@@ -1361,7 +1361,7 @@ impl T3000MainService {
             e
         })?;
 
-        crate::database_management::sync_health::ensure_app_log_table(&local_db).await;
+        crate::server_db::sync_health::ensure_app_log_table(&local_db).await;
 
         // Start TRENDLOG_BACKEND flow (total_steps=0 = variable; actual count depends on rediscovery path)
         let t_cycle = std::time::Instant::now();
@@ -1385,7 +1385,7 @@ impl T3000MainService {
         if crate::app_state::is_sampling_paused() {
             let reason = crate::app_state::get_pause_reason().unwrap_or_default();
             sync_logger.warn(&format!(
-                "??  Sampling paused �� probing center DB before this cycle: {}",
+                "??  Sampling paused — probing center DB before this cycle: {}",
                 reason
             ));
 
@@ -1419,7 +1419,7 @@ impl T3000MainService {
                     // fall-through: skip the duplicate "Sampling active" step below
                 }
                 Ok(false) => {
-                    sync_logger.warn("??  Sampling remains paused �� skipping this cycle");
+                    sync_logger.warn("??  Sampling remains paused — skipping this cycle");
                     sync_flow.step(&local_db, "sampling_check", "warn", "ffi_sync", "skip", 0,
                         "Sampling paused �� cycle skipped", None).await;
                     sync_flow.done(&local_db, "skip").await;
@@ -1427,7 +1427,7 @@ impl T3000MainService {
                 }
                 Err(e) => {
                     sync_logger.warn(&format!(
-                        "??  Auto-resume probe failed �� skipping cycle: {}",
+                        "??  Auto-resume probe failed — skipping cycle: {}",
                         e
                     ));
                     sync_flow.step(&local_db, "sampling_check", "warn", "ffi_sync", "skip", 0,
@@ -1489,7 +1489,7 @@ impl T3000MainService {
                 super::sync_writer::SyncWriter::Sqlite(db)
                     if db.get_database_backend() == sea_orm::DatabaseBackend::Sqlite
             ) {
-                let reason = "Center DB mode is enabled but center DB is currently unavailable �� skipping this cycle, will retry next cycle";
+                let reason = "Center DB mode is enabled but center DB is currently unavailable — skipping this cycle, will retry next cycle";
                 sync_logger.warn(&format!("?? {}", reason));
                 crate::logging::service::emit_app_log(
                     &local_db,
@@ -1630,7 +1630,7 @@ impl T3000MainService {
             Self::update_last_rediscover_time().await;
 
             sync_logger.info(&format!(
-                "? FULL REDISCOVERY: {} device(s) cached �� SNs: {}",
+                "? FULL REDISCOVERY: {} device(s) cached — SNs: {}",
                 panels.len(),
                 panels.iter().map(|p| p.serial_number.to_string()).collect::<Vec<_>>().join(", ")
             ));
@@ -1813,7 +1813,7 @@ impl T3000MainService {
                     panels = match Self::get_panels_list_via_ffi().await {
                         Ok(p) => p,
                         Err(e) => {
-                            sync_logger.error(&format!("? Forced rediscovery GET_PANELS_LIST failed: {} �� skipping cycle, will retry next cycle", e));
+                            sync_logger.error(&format!("? Forced rediscovery GET_PANELS_LIST failed: {} — skipping cycle, will retry next cycle", e));
                             crate::logging::service::emit_app_log(
                                 &local_db, "warn", "POLL", Some("ffi_sync"), None,
                                 "GET_PANELS_LIST failed (forced rediscovery) �� sync cycle skipped, will retry",
@@ -1867,7 +1867,7 @@ impl T3000MainService {
         {
             Ok(result) => result.last_insert_id,
             Err(e) => {
-                sync_logger.error(&format!("? Failed to create sync metadata (non-fatal): {} �� continuing sync cycle", e));
+                sync_logger.error(&format!("? Failed to create sync metadata (non-fatal): {} — continuing sync cycle", e));
                 0 // fallback ID; only used for legacy metadata tracking
             }
         };
@@ -1952,7 +1952,7 @@ impl T3000MainService {
                 Some(oi) if oi > 0 => oi,
                 _ => {
                     sync_logger.warn(&format!(
-                        "?? Skipping device SN:{} �� object_instance is None or 0 (required for GET_WEBVIEW_LIST action 17)",
+                        "?? Skipping device SN:{} — object_instance is None or 0 (required for GET_WEBVIEW_LIST action 17)",
                         panel_info.serial_number
                     ));
                     sync_flow.step(&local_db, "device_skip", "warn", "ffi_sync", "skip", 0,
@@ -2294,7 +2294,7 @@ impl T3000MainService {
             successful_devices += 1;
             let device_duration = device_start_time.elapsed();
             sync_logger.info(&format!(
-                "? [{}/{}] Device SN={} Panel#{} '{}' done in {:?} �� IN={} OUT={} VAR={}",
+                "? [{}/{}] Device SN={} Panel#{} '{}' done in {:?} — IN={} OUT={} VAR={}",
                 successful_devices, total_devices,
                 serial_number, panel_info.panel_number, panel_info.panel_name,
                 device_duration,
@@ -2322,7 +2322,7 @@ impl T3000MainService {
                     format!("failed={} skipped={}", failed_devices, skipped_devices)
                 };
                 sync_logger.error(&format!(
-                    "? CYCLE SUMMARY: 0/{} devices synced �� ALL FAILED (skipped={} failed={})",
+                    "? CYCLE SUMMARY: 0/{} devices synced — ALL FAILED (skipped={} failed={})",
                     total_devices, skipped_devices, failed_devices
                 ));
                 crate::logging::service::emit_app_log(
@@ -2976,7 +2976,7 @@ impl T3000MainService {
                         if result > 0 {
                             // Code > 0 with no data = device offline / no points for this entry type.
                             // Return an empty JSON array so the caller saves zero points (not an error).
-                            info!("??  GET_WEBVIEW_LIST action 17 code {} �� empty buffer, returning empty list", result);
+                            info!("??  GET_WEBVIEW_LIST action 17 code {} — empty buffer, returning empty list", result);
                             return Ok("[]".to_string());
                         }
                         return Err("HandleWebViewMsg (action 17) returned empty response".to_string());
@@ -3094,10 +3094,20 @@ impl T3000MainService {
                     info!("?? About to call HandleWebViewMsg with LOGGING_DATA action - Panel: {}, Serial: {}", panel_id_clone, serial_number_clone);
                     info!("?? Sending JSON to C++: {}", input_str);
 
-                    // Prepare buffer for response - very large buffer for up to 100 devices
-                    // Each device can be ~1MB, so 100 devices = ~100MB
-                    const BUFFER_SIZE: usize = 104857600; // 100MB buffer for maximum device capacity
-                    let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+                    // Prepare buffer for response. This DLL is built for i686 (32-bit),
+                    // so a 100MB allocation inside the ~2GB address space intermittently
+                    // fails and aborts T3000.exe via std::alloc::rust_oom. Actual
+                    // LOGGING_DATA responses are a few MB at most; the C++ bridge
+                    // returns -1 ("buffer too small") if a response ever exceeds this.
+                    // Allocate fallibly so a tight-memory failure returns an error
+                    // instead of killing the whole process.
+                    const BUFFER_SIZE: usize = 16 * 1024 * 1024; // 16MB
+                    let mut buffer: Vec<u8> = Vec::new();
+                    if buffer.try_reserve_exact(BUFFER_SIZE).is_err() {
+                        error!("Out of memory allocating FFI response buffer ({} bytes)", BUFFER_SIZE);
+                        return Err("Out of memory allocating FFI response buffer".to_string());
+                    }
+                    buffer.resize(BUFFER_SIZE, 0);
 
                     // Write input JSON to buffer
                     let input_bytes = input_str.as_bytes();
@@ -3919,7 +3929,7 @@ impl T3000MainService {
         let point_idx = point_json.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
         if point_idx == 0 {
             info!(
-                "?? [{}] idx=0 raw JSON: cal_h={:?}, cal_l={:?}, cal_sign={:?}, filter={:?}, control={:?} �� parsed: cal_h={}, cal_l={}, sign={}, filter={:?}, control={:?}",
+                "?? [{}] idx=0 raw JSON: cal_h={:?}, cal_l={:?}, cal_sign={:?}, filter={:?}, control={:?} → parsed: cal_h={}, cal_l={}, sign={}, filter={:?}, control={:?}",
                 point_type, cal_h_raw, cal_l_raw, cal_sign_raw, filter_raw, control_raw,
                 cal_h, cal_l, cal_sign, filter_val, control_val
             );
@@ -4079,7 +4089,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? INPUT point {}:{} UPDATED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "INPUTS",
                     serial_number,
@@ -4140,7 +4150,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? INPUT point {}:{} INSERTED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "INPUTS",
                     serial_number,
@@ -4223,7 +4233,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? OUTPUT point {}:{} UPDATED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "OUTPUTS",
                     serial_number,
@@ -4284,7 +4294,7 @@ impl T3000MainService {
                     })?;
 
                 info!("? OUTPUT point {}:{} INSERTED", serial_number, point.index);
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "OUTPUTS",
                     serial_number,
@@ -4372,7 +4382,7 @@ impl T3000MainService {
                     "? VARIABLE point {}:{} UPDATED",
                     serial_number, point.index
                 );
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "VARIABLES",
                     serial_number,
@@ -4436,7 +4446,7 @@ impl T3000MainService {
                     "? VARIABLE point {}:{} INSERTED",
                     serial_number, point.index
                 );
-                if let Err(e) = crate::t3_device::haystack_tags_service::auto_tag_point(
+                if let Err(e) = crate::haystack::tags_service::auto_tag_point(
                     txn,
                     "VARIABLES",
                     serial_number,
@@ -4717,10 +4727,10 @@ impl T3000MainService {
     async fn replicate_all_data_to_mssql(
         local_db: &DatabaseConnection,
         serial_numbers: &[i32],
-        pool: &crate::database_management::mssql_queries::MssqlPool,
+        pool: &crate::server_db::mssql_queries::MssqlPool,
         sync_interval_secs: u64,
     ) -> Result<(u64, u64, u64, u64), AppError> {
-        use crate::database_management::mssql_queries;
+        use crate::server_db::mssql_queries;
         use crate::entity::t3_device::{trendlog_data, trendlog_data_detail};
 
         let mut dev_count: u64 = 0;

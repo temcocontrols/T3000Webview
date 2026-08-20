@@ -1,0 +1,32 @@
+/* FluentUIV9Page — Layout */
+
+.container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Left Sidebar ── */
+.sidebar {
+  width: 120px;
+  min-width: 120px;
+  background-color: #fafafa;
+  border-right: 1px solid #edebe9;
+  padding: 6px;
+}
+
+.navItem {
+  justify-content: flex-start;
+  width: 100%;
+  padding: 5px 10px;
+  font-size: 13px;
+  border-radius: 4px;
+}
+
+/* ── Right Content ── */
+.content {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 8px 12px;
+}

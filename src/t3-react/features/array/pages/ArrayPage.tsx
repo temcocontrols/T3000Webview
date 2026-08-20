@@ -14,7 +14,7 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SettingsRegular,
   SearchRegular,
   ErrorCircleRegular,
@@ -25,6 +25,7 @@ import { API_BASE_URL } from '@t3-react/config/constants';
 import styles from './ArrayPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Array interface matching C++ CBacnetArray structure (4 columns)
 interface ArrayItem {
@@ -40,6 +41,25 @@ const ArrayPage: React.FC = () => {
   const [arrays, setArrays] = useState<ArrayItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
+
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
+    } else {
+      setSortState(newState);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
 
   // Auto-select first device on page load if none selected
   useEffect(() => {
@@ -101,6 +121,8 @@ const ArrayPage: React.FC = () => {
     fetchArrays();
   };
 
+  usePageRefresh(handleRefresh);
+
   const handleExport = () => {
     if (arrays.length === 0) return;
     const csvColumns: import('@t3-react/shared/utils/csvUtils').CsvColumn<ArrayItem>[] = [
@@ -132,24 +154,24 @@ const ArrayPage: React.FC = () => {
     console.log('Settings clicked');
   };
 
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
   // Display arrays with empty rows when no data (show 10 empty rows)
   const displayArrays = React.useMemo(() => {
+    let filtered = arrays;
+    if (searchQuery.trim() && arrays.length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = arrays.filter(a =>
+        (a.item || '').toLowerCase().includes(q) ||
+        (a.array_name || '').toLowerCase().includes(q) ||
+        (a.value || '').toLowerCase().includes(q)
+      );
+    }
     if (arrays.length === 0) {
-      return Array(18).fill(null).map((_, index) => ({
-        item: '',
-        array_name: '',
-        length: '',
-        value: '',
+      return Array(18).fill(null).map(() => ({
+        item: '', array_name: '', length: '', value: '',
       } as ArrayItem));
     }
-    return arrays;
-  }, [arrays]);
+    return filtered;
+  }, [arrays, searchQuery]);
 
   // Helper to check if row is an empty placeholder
   const isEmptyRow = (arrayItem: ArrayItem) => {
@@ -261,8 +283,8 @@ const ArrayPage: React.FC = () => {
                     title="Refresh"
                     aria-label="Refresh"
                   >
-                    <ArrowSyncRegular />
-                    <span>Refresh</span>
+                    <ArrowClockwiseRegular className={loading ? styles.rotating : ''} />
+                    <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />
@@ -324,9 +346,15 @@ const ArrayPage: React.FC = () => {
                 {selectedDevice && !loading && (
                   <>
                     <DataGrid
+                      key={sortKey}
                       items={displayArrays}
                       columns={columns}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

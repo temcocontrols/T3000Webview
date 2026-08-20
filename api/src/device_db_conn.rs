@@ -8,10 +8,10 @@
 
 use sea_orm::DatabaseConnection;
 
-use crate::database_management::mssql_queries::MssqlPool;
+use crate::server_db::mssql_queries::MssqlPool;
 
 /// Supported database backend types (re-exported from db_backend_config)
-pub use crate::database_management::db_backend_config::BackendType;
+pub use crate::server_db::db_backend_config::BackendType;
 
 /// Unified device database connection wrapper.
 ///

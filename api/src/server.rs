@@ -25,29 +25,33 @@ use crate::{
     utils::{SHUTDOWN_CHANNEL, SPA_DIR},
 };
 
-use super::modbus_register::routes::modbus_register_routes;
+use super::reg_defs::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
-const DEBUG_LOG_NAME: &str = "t3-webview-api-dll.log";
+pub(crate) const DEBUG_LOG_NAME: &str = "t3-webview-api-dll.log";
 
-/// Write a line to both console and the debug log file (if enabled).
-/// Used for messages that bypass the tracing subscriber (e.g. ServiceLogger, println!).
+/// Write a line to both console and the debug log file — only when debug_log=1 in setting.ini.
+/// In production (debug_log=0), this is a complete no-op — zero overhead.
+/// Uses tracing-compatible format: YYYY-MM-DDTHH:MM:SS.ffffffZ  INFO t3_webview_api: msg
 pub(crate) fn debug_log(msg: &str) {
-    println!("{}", msg);
-    if crate::ini_config::read_debug_log_flag() {
-        if let Ok(mut f) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(DEBUG_LOG_NAME)
-        {
-            let _ = std::io::Write::write_all(&mut f, msg.as_bytes());
-            let _ = std::io::Write::write_all(&mut f, b"\n");
-        }
+    if !crate::ini_config::read_debug_log_flag() {
+        return;
+    }
+    let ts = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.6fZ");
+    let line = format!("{}  INFO t3_webview_api: {}", ts, msg);
+    println!("{}", line);
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(DEBUG_LOG_NAME)
+    {
+        let _ = std::io::Write::write_all(&mut f, line.as_bytes());
+        let _ = std::io::Write::write_all(&mut f, b"\n");
     }
 }
 
 /// Writes to two outputs simultaneously — console + file.
-struct TeeWriter<A: std::io::Write, B: std::io::Write> {
+pub(crate) struct TeeWriter<A: std::io::Write, B: std::io::Write> {
     a: A,
     b: B,
 }
@@ -67,6 +71,25 @@ impl<A: std::io::Write, B: std::io::Write> std::io::Write for TeeWriter<A, B> {
     fn flush(&mut self) -> std::io::Result<()> {
         self.a.flush()?;
         self.b.flush()
+    }
+}
+
+/// Initialize tracing subscriber — console (always), plus file if debug_log=1 in setting.ini.
+/// Safe to call multiple times; subsequent calls are no-ops.
+pub(crate) fn init_tracing() {
+    let enable = crate::ini_config::read_debug_log_flag();
+    if enable {
+        if let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(DEBUG_LOG_NAME) {
+            let tee = TeeWriter::new(std::io::stdout(), f);
+            tracing_subscriber::fmt().with_ansi(false)
+                .with_writer(std::sync::Mutex::new(tee)).try_init().ok();
+        } else {
+            tracing_subscriber::fmt().with_ansi(false)
+                .with_writer(std::io::stdout).try_init().ok();
+        }
+    } else {
+        tracing_subscriber::fmt().with_ansi(false)
+            .with_writer(std::io::stdout).try_init().ok();
     }
 }
 
@@ -153,7 +176,7 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
     };
 
     // Start heartbeat task for server/client registry
-    crate::database_management::registry_service::start_heartbeat_task(app_state.clone());
+    crate::server_db::registry_service::start_heartbeat_task(app_state.clone());
 
     Ok(Router::new()
         .nest(
@@ -167,7 +190,7 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
                 .with_state(original_state)
                 .merge(
                     // Data Sync Metadata API routes with T3AppState
-                    crate::database_management::data_sync_endpoints::create_sync_status_routes()
+                    crate::server_db::data_sync_endpoints::create_sync_status_routes()
                         .with_state(app_state.clone())
                 )
         )
@@ -176,23 +199,29 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         // T3000 FFI API routes with T3AppState
         .merge(crate::t3_device::t3_ffi_api_service::create_ffi_api_routes())
         // Database Management routes with T3AppState
-        .merge(crate::database_management::endpoints::database_management_routes())
+        .merge(crate::server_db::endpoints::server_db_routes())
         // Application Configuration API routes
-        .merge(crate::database_management::config_api::config_routes())
+        .merge(crate::server_db::config_api::config_routes())
         // Database Backend Configuration API routes
-        .merge(crate::database_management::db_backend_routes::db_backend_routes())
+        .merge(crate::server_db::db_backend_routes::db_backend_routes())
         // Server DB Status route (server/client mode)
         .merge(crate::web_routing::server_db_routes())
         // Server/Client Registry routes (heartbeat + listing)
-        .merge(crate::database_management::registry_service::registry_routes())
+        .merge(crate::server_db::registry_service::registry_routes())
         // Sync Health + Event Log routes
-        .merge(crate::database_management::sync_health::sync_health_routes())
+        .merge(crate::server_db::sync_health::sync_health_routes())
         // Developer Tools routes
         .nest("/api/develop", crate::t3_develop::create_develop_routes())
         // Flow log routes
         .merge(crate::logging::flow_api::flow_routes())
         // Haystack Tags API routes (v2)
-        .merge(crate::t3_device::haystack_tags_routes::create_haystack_tags_routes())
+        .merge(crate::haystack::tags_routes::create_haystack_tags_routes())
+        // Haystack Auto-tagging routes (v3)
+        .merge(crate::haystack::auto_tagging_routes::create_auto_tagging_routes())
+        // MCP Server routes (JSON-RPC over HTTP)
+        .merge(crate::mcp::server::create_mcp_routes())
+        // AI Chat routes (SSE streaming + tool-call loop)
+        .merge(crate::ai::create_ai_routes())
         // Point Sets API routes (DB-backed)
         .merge(crate::t3_device::point_sets_routes::create_point_sets_routes())
         // Server local-time endpoint (for client timezone alignment)
@@ -216,47 +245,7 @@ pub async fn server_start(
 
     logger.info("T3000 WebView HTTP API Service Starting on port 9103...");
     debug_log("T3000 WebView HTTP API Service Starting on port 9103...");
-
-    // Initialize basic tracing — always console, optionally + file.
-    // Set debug_log=1 in setting.ini (any section) to enable file logging.
-    let enable_debug_log = crate::ini_config::read_debug_log_flag();
-
-    if enable_debug_log {
-        match std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(DEBUG_LOG_NAME)
-        {
-            Ok(log_file) => {
-                let tee = TeeWriter::new(std::io::stdout(), log_file);
-                tracing_subscriber::fmt()
-                    .with_ansi(false)
-                    .with_writer(std::sync::Mutex::new(tee))
-                    .try_init()
-                    .ok();
-                logger.info(&format!("Tracing initialized — console + {}", DEBUG_LOG_NAME));
-            }
-            Err(e) => {
-                // File log failed — fall back to console only, do not crash
-                tracing_subscriber::fmt()
-                    .with_ansi(false)
-                    .with_writer(std::io::stdout)
-                    .try_init()
-                    .ok();
-                logger.warn(&format!(
-                    "File log unavailable ({}), tracing initialized — console only",
-                    e
-                ));
-            }
-        }
-    } else {
-        tracing_subscriber::fmt()
-            .with_ansi(false)
-            .with_writer(std::io::stdout)
-            .try_init()
-            .ok();
-        logger.info("Tracing initialized — console only");
-    }
+    init_tracing();
 
     // Load environment variables from .env file
     dotenvy::dotenv().ok();

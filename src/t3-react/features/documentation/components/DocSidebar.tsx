@@ -20,6 +20,7 @@ import {
   BookOpenRegular,
   ChevronDoubleDownRegular,
   ChevronDoubleUpRegular,
+  SparkleRegular,
 } from '@fluentui/react-icons';
 import { docStructure } from '../utils/docStructure';
 import { legacyDocsStructure } from '../utils/legacyDocsStructure';
@@ -114,6 +115,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
     AppsList: <AppsListRegular />,
     Code: <CodeRegular />,
     BookOpen: <BookOpenRegular />,
+    Sparkle: <SparkleRegular />,
   };
 
   return (

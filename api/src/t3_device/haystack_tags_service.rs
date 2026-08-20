@@ -60,6 +60,7 @@ pub struct BatchPointTagUpdate {
     pub add_tags: Option<Vec<String>>,
     pub remove_tags: Option<Vec<String>>,
     pub set_tags: Option<Vec<String>>,
+    pub brick_class: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -387,6 +388,33 @@ pub async fn batch_update_point_tags(
                 }
             }
         }
+
+        // Apply brick_class — manual assignment (auto_assigned=0)
+        if let Some(ref bc) = update.brick_class {
+            let bc_trimmed = bc.trim();
+            if bc_trimmed.is_empty() || bc_trimmed.eq_ignore_ascii_case("none") {
+                let _ = db.execute(Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    "DELETE FROM HAYSTACK_POINT_BRICK_CLASS WHERE serial_number = ? AND point_type = ? AND point_index = ? AND auto_assigned = 0",
+                    vec![
+                        update.serial_number.into(),
+                        update.point_type.clone().into(),
+                        update.point_index.clone().into(),
+                    ],
+                )).await;
+            } else {
+                let _ = db.execute(Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    "INSERT OR REPLACE INTO HAYSTACK_POINT_BRICK_CLASS (serial_number, point_type, point_index, brick_class, auto_assigned) VALUES (?, ?, ?, ?, 0)",
+                    vec![
+                        update.serial_number.into(),
+                        update.point_type.clone().into(),
+                        update.point_index.clone().into(),
+                        bc_trimmed.to_string().into(),
+                    ],
+                )).await;
+            }
+        }
     }
     Ok(())
 }
@@ -526,4 +554,185 @@ pub async fn auto_tag_point(
         )).await;
     }
     Ok(())
+}
+
+/// Force re-derive tags for all points on the given devices.
+/// Clears existing point tags first, then reads device points and auto-tags them.
+pub async fn rebuild_tags_for_serials(
+    db: &impl ConnectionTrait,
+    serial_numbers: &[i32],
+) -> Result<usize, String> {
+    if serial_numbers.is_empty() {
+        return Ok(0);
+    }
+
+    let sn_list = serial_numbers
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+
+    // 1. Delete existing point tags for these serials
+    db.execute(Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        &format!(
+            "DELETE FROM haystack_point_tags WHERE serial_number IN ({})",
+            sn_list
+        ),
+    ))
+    .await
+    .map_err(|e| format!("Failed to clear tags: {}", e))?;
+
+    // 2. Read inputs, outputs, variables for these serials
+    let mut tagged = 0usize;
+
+    // Inputs
+    let input_rows = db
+        .query_all(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            &format!(
+                "SELECT SerialNumber, Input_Index, Full_Label, Label, Digital_Analog, Units \
+                 FROM INPUTS WHERE SerialNumber IN ({})",
+                sn_list
+            ),
+        ))
+        .await
+        .map_err(|e| format!("Failed to read inputs: {}", e))?;
+
+    for row in &input_rows {
+        let sn: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
+        let idx_str: Option<String> = row.try_get("", "Input_Index").ok();
+        let idx: i32 = idx_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
+        let full_label: Option<String> = row.try_get("", "Full_Label").ok();
+        let label: Option<String> = row.try_get("", "Label").ok();
+        let da: Option<i32> = row.try_get("", "Digital_Analog").ok();
+        let units: Option<String> = row.try_get("", "Units").ok();
+        let lbl = full_label.as_deref().or(label.as_deref());
+        auto_tag_point(db, "INPUTS", sn, idx as u32, lbl, da, units.as_deref()).await?;
+        tagged += 1;
+    }
+
+    // Outputs
+    let output_rows = db
+        .query_all(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            &format!(
+                "SELECT SerialNumber, Output_Index, Full_Label, Label, Digital_Analog, Units \
+                 FROM OUTPUTS WHERE SerialNumber IN ({})",
+                sn_list
+            ),
+        ))
+        .await
+        .map_err(|e| format!("Failed to read outputs: {}", e))?;
+
+    for row in &output_rows {
+        let sn: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
+        let idx_str: Option<String> = row.try_get("", "Output_Index").ok();
+        let idx: i32 = idx_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
+        let full_label: Option<String> = row.try_get("", "Full_Label").ok();
+        let label: Option<String> = row.try_get("", "Label").ok();
+        let da: Option<i32> = row.try_get("", "Digital_Analog").ok();
+        let units: Option<String> = row.try_get("", "Units").ok();
+        let lbl = full_label.as_deref().or(label.as_deref());
+        auto_tag_point(db, "OUTPUTS", sn, idx as u32, lbl, da, units.as_deref()).await?;
+        tagged += 1;
+    }
+
+    // Variables
+    let var_rows = db
+        .query_all(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            &format!(
+                "SELECT SerialNumber, Variable_Index, Full_Label, Label, Digital_Analog, Units \
+                 FROM VARIABLES WHERE SerialNumber IN ({})",
+                sn_list
+            ),
+        ))
+        .await
+        .map_err(|e| format!("Failed to read variables: {}", e))?;
+
+    for row in &var_rows {
+        let sn: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
+        let idx_str: Option<String> = row.try_get("", "Variable_Index").ok();
+        let idx: i32 = idx_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
+        let full_label: Option<String> = row.try_get("", "Full_Label").ok();
+        let label: Option<String> = row.try_get("", "Label").ok();
+        let da: Option<i32> = row.try_get("", "Digital_Analog").ok();
+        let units: Option<String> = row.try_get("", "Units").ok();
+        let lbl = full_label.as_deref().or(label.as_deref());
+        auto_tag_point(db, "VARIABLES", sn, idx as u32, lbl, da, units.as_deref()).await?;
+        tagged += 1;
+    }
+
+    Ok(tagged)
+}
+
+/// Parse official Project Haystack defs.json and re-seed standard tags.
+pub async fn reseed_standard_tags(db: &impl ConnectionTrait, defs_json: &serde_json::Value) -> Result<usize, String> {
+    // Clear existing standard tags and relations
+    db.execute(Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "DELETE FROM haystack_tag_relations WHERE tag_name IN (SELECT tag_name FROM haystack_tags WHERE category = 'haystack')",
+    ))
+    .await
+    .map_err(|e| format!("Failed to clear relations: {}", e))?;
+
+    db.execute(Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        "DELETE FROM haystack_tags WHERE category = 'haystack'",
+    ))
+    .await
+    .map_err(|e| format!("Failed to clear standard tags: {}", e))?;
+
+    let rows = defs_json["rows"].as_array()
+        .ok_or("Invalid defs.json: missing rows array")?;
+
+    let mut count = 0usize;
+    let mut relations: Vec<(String, String)> = Vec::new();
+
+    for row in rows {
+        let def_val = row["def"]["val"].as_str()
+            .or_else(|| row["def"].as_str())
+            .unwrap_or("");
+        if def_val.is_empty() { continue; }
+
+        let doc = row["doc"].as_str().unwrap_or("");
+
+        // Insert tag
+        let escaped_name = def_val.replace('\'', "''");
+        let escaped_doc = doc.replace('\'', "''");
+        db.execute(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            &format!("INSERT OR IGNORE INTO haystack_tags (tag_name, doc, category, deprecated, source) VALUES ('{}', '{}', 'haystack', 0, 'v4')", escaped_name, escaped_doc),
+        ))
+        .await
+        .map_err(|e| format!("Failed to insert '{}': {}", def_val, e))?;
+        count += 1;
+
+        // Collect parent relations from "is" array
+        if let Some(parents) = row["is"].as_array() {
+            for parent in parents {
+                let p = parent["val"].as_str()
+                    .or_else(|| parent.as_str())
+                    .unwrap_or("");
+                if !p.is_empty() {
+                    relations.push((def_val.to_string(), p.to_string()));
+                }
+            }
+        }
+    }
+
+    // Insert relations
+    for (child, parent) in &relations {
+        let c = child.replace('\'', "''");
+        let p = parent.replace('\'', "''");
+        db.execute(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            &format!("INSERT OR IGNORE INTO haystack_tag_relations (tag_name, parent_tag) VALUES ('{}', '{}')", c, p),
+        ))
+        .await
+        .map_err(|e| format!("Failed to insert relation {}→{}: {}", child, parent, e))?;
+    }
+
+    Ok(count)
 }

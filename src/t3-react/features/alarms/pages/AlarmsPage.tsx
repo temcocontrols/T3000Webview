@@ -22,16 +22,13 @@ import {
 } from '@fluentui/react-components';
 import {
   ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SettingsRegular,
   SearchRegular,
-  ArrowClockwise24Regular,
   Save24Regular,
   Dismiss24Regular,
   CheckmarkCircle24Regular,
   ErrorCircleRegular,
-  ArrowSortUpRegular,
-  ArrowSortDownRegular,
-  ArrowSortRegular,
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
@@ -40,6 +37,8 @@ import { AlarmRefreshApi } from '../services/alarmRefreshApi';
 import styles from './AlarmsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Alarm interface matching ALARMS entity and C++ BacnetAlarmLog (7 columns)
 interface Alarm {
@@ -71,8 +70,9 @@ const AlarmsPageDesktop: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editedValues, setEditedValues] = useState<Record<string, Partial<Alarm>>>({});
   const [hasChanges, setHasChanges] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'ascending' | 'descending'>('ascending');
+  const [sortState, setSortState] = useState<{ sortColumn: string; sortDirection: 'ascending' | 'descending' } | undefined>();
+  const [sortKey, setSortKey] = useState(0);
+  const prevSortRef = React.useRef<{ sortColumn: string; sortDirection: string } | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
@@ -114,7 +114,6 @@ const AlarmsPageDesktop: React.FC = () => {
   useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSettings = () => {
-    console.log('Settings clicked');
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,7 +158,7 @@ const AlarmsPageDesktop: React.FC = () => {
       const result = await response.json();
       setAlarms(result.data || []);
     } catch (err) {
-      console.error('Error fetching alarms:', err);
+      LogUtil.Error('Error fetching alarms:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch alarms');
       setAlarms([]);
     } finally {
@@ -186,15 +185,13 @@ const AlarmsPageDesktop: React.FC = () => {
     const checkAndRefresh = async () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
-      console.log('🔄 Auto-refreshing alarms from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
         const response = await AlarmRefreshApi.refreshAllFromDevice(serial);
-        console.log('✅ Auto-refresh response:', response);
         await fetchAlarms();
         setAutoRefreshed(true);
       } catch (err) {
-        console.error('❌ Auto-refresh failed:', err);
+        LogUtil.Error('Auto-refresh failed:', err);
       }
     };
 
@@ -209,17 +206,17 @@ const AlarmsPageDesktop: React.FC = () => {
 
     try {
       const serial = selectedDevice.serialNumber;
-      console.log('🔄 Refreshing all alarms from device...');
       const response = await AlarmRefreshApi.refreshAllFromDevice(serial);
-      console.log('✅ Device refresh response:', response);
       await fetchAlarms();
     } catch (err) {
-      console.error('❌ Refresh from device failed:', err);
+      LogUtil.Error('Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
     } finally {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Refresh single alarm from device (Trigger #3 - Per-row icon)
   const handleRefreshSingleAlarm = async (item: Alarm) => {
@@ -231,13 +228,11 @@ const AlarmsPageDesktop: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       const alarmIndex = parseInt(item.alarm_id);
-      console.log(`🔄 Refreshing single alarm from device: ${alarmIndex}`);
 
       const response = await AlarmRefreshApi.refreshSingleFromDevice(serial, alarmIndex);
-      console.log('✅ Single alarm refresh response:', response);
       await fetchAlarms();
     } catch (err) {
-      console.error('❌ Single alarm refresh failed:', err);
+      LogUtil.Error('Single alarm refresh failed:', err);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -270,11 +265,10 @@ const AlarmsPageDesktop: React.FC = () => {
     setIsSaving(true);
     try {
       // TODO: Implement batch save when API is ready
-      console.log('Saving changes:', editedValues);
       setEditedValues({});
       setHasChanges(false);
     } catch (error) {
-      console.error('Error saving changes:', error);
+      LogUtil.Error('Error saving changes:', error);
     } finally {
       setIsSaving(false);
     }
@@ -296,16 +290,16 @@ const AlarmsPageDesktop: React.FC = () => {
   // Handle Delete
   const handleDelete = (alarm: Alarm) => {
     // TODO: Implement delete logic
-    console.log('Delete alarm:', alarm.alarm_id);
   };
 
-  // Sort handler
-  const handleSort = (columnId: string) => {
-    if (sortColumn === columnId) {
-      setSortDirection(sortDirection === 'ascending' ? 'descending' : 'ascending');
+  const handleSortChange = (_e: any, newState: { sortColumn: string; sortDirection: 'ascending' | 'descending' }) => {
+    const prev = prevSortRef.current;
+    prevSortRef.current = newState;
+    if (prev?.sortColumn === newState.sortColumn && prev?.sortDirection === 'descending' && newState.sortDirection === 'ascending') {
+      setSortState(undefined);
+      setSortKey(k => k + 1);
     } else {
-      setSortColumn(columnId);
-      setSortDirection('ascending');
+      setSortState(newState);
     }
   };
 
@@ -335,16 +329,7 @@ const AlarmsPageDesktop: React.FC = () => {
     createTableColumn<Alarm>({
       columnId: 'alarm_id',
       compare: (a, b) => Number(a.alarm_id) - Number(b.alarm_id),
-      renderHeaderCell: () => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleSort('alarm_id')}>
-          <span>NUM</span>
-          {sortColumn === 'alarm_id' ? (
-            sortDirection === 'ascending' ? <ArrowSortUpRegular /> : <ArrowSortDownRegular />
-          ) : (
-            <ArrowSortRegular style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ),
+      renderHeaderCell: () => <span>NUM</span>,
       renderCell: (alarm) => {
         const isRefreshing = alarm.alarm_id && refreshingItems.has(alarm.alarm_id);
         return (
@@ -530,8 +515,8 @@ const AlarmsPageDesktop: React.FC = () => {
                     title="Refresh from Device"
                     aria-label="Refresh from Device"
                   >
-                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
-                    <span>{refreshing ? 'Refreshing...' : 'Refresh from Device'}</span>
+                    <ArrowClockwiseRegular className={refreshing ? styles.rotating : ''} />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />
@@ -617,9 +602,15 @@ const AlarmsPageDesktop: React.FC = () => {
                 {selectedDevice && !isLoading && !error && (
                   <>
                     <DataGrid
+                      key={sortKey}
                       items={displayAlarms}
                       columns={columns}
                       sortable
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      resizableColumns
+                      resizableColumnsOptions={{ autoFitColumns: false }}
+                      style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
                     >
                       <DataGridHeader>
                         <DataGridRow>

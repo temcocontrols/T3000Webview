@@ -8,7 +8,7 @@
  * - User profile
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Menu,
   MenuTrigger,
@@ -93,12 +93,15 @@ import {
   NetworkCheckRegular,
   HistoryRegular,
   CalendarDataBar28Regular,
+  TagRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
 import { MenuAction } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
-import { useAuthStore } from '@t3-react/store';
+import { useAuthStore, useStatusBarStore } from '@t3-react/store';
+import { useUIStore } from '@t3-react/store/uiStore';
+import { useChatStore } from '@t3-react/store/chatStore';
 import { t3000Routes } from '@t3-react/app/router/routes';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
 import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
@@ -112,6 +115,17 @@ import { useHelpMenu } from '@t3-react/shared/hooks/useHelpMenu';
 import { useDeviceData } from '@t3-react/shared/hooks/useDeviceData';
 import { useCsvOperations } from '@t3-react/shared/context/CsvOperationsContext';
 import type { DeviceInfo } from '@t3-react/shared/types/device';
+import { LogUtil } from '@/lib/t3-hvac';
+
+// Routes whose page handles the global "Refresh Data" toolbar action via
+// usePageRefresh. Other pages get a "no refreshable data" status message.
+const REFRESHABLE_PATHS = [
+  '/t3000/inputs', '/t3000/outputs', '/t3000/variables', '/t3000/programs',
+  '/t3000/schedules', '/t3000/holidays', '/t3000/pidloops', '/t3000/graphics',
+  '/t3000/trendlogs', '/t3000/alarms', '/t3000/settings', '/t3000/network',
+  '/t3000/array', '/t3000/tables', '/t3000/users', '/t3000/custom-units',
+  '/t3000/discover', '/t3000/buildings',
+];
 
 const useStyles = makeStyles({
   header: {
@@ -235,6 +249,22 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '8px',
   },
+  chatToggleBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '32px',
+    height: '32px',
+    borderRadius: '6px',
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+    color: 'var(--t3-color-header-text)',
+    marginRight: '4px',
+    '&:hover': {
+      backgroundColor: 'rgba(255,255,255,0.1)',
+    },
+  },
   menuPopover: {
     minWidth: '300px',
   },
@@ -271,7 +301,6 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   const { handlers: fileHandlers, state: fileState } = useFileMenu(
     (message) => {
       // Show success notification
-      console.log('✅ File operation success:', message);
       // TODO: Show toast notification
     },
     (error) => {
@@ -285,12 +314,10 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   const { handlers: toolsHandlers, state: toolsState } = useToolsMenu(
     (message) => {
       // Show success notification
-      console.log('✅ Tools operation success:', message);
       // TODO: Show toast notification
     },
     (error) => {
       // Show error notification
-      console.error('❌ Tools operation error:', error);
       // TODO: Show error toast
     }
   );
@@ -313,7 +340,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   // CSV operations (global context — Export/Import to CSV)
   const { triggerExport, triggerImport, isExportAvailable, isImportAvailable } = useCsvOperations();
 
-  console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
+  // console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
 
   // Helper function to convert TreeNode to DeviceInfo
   const convertTreeNodeToDeviceInfo = (node: any): DeviceInfo => ({
@@ -336,7 +363,6 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     if (typeof action === 'function') {
       action();
     } else {
-      console.log('Menu action:', action);
 
       // Handle specific menu actions
       switch (action) {
@@ -547,7 +573,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           break;
         // Add other menu actions as needed
         default:
-          console.log('Unhandled menu action:', action);
+          break;
       }
     }
   };
@@ -631,13 +657,14 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       'NetworkCheck': NetworkCheckRegular,
       'History': HistoryRegular,
       'CalendarDataBar': CalendarDataBar28Regular,
+      'Tag': TagRegular,
     };
     return iconMap[icon];
   };
 
   // Handle toolbar button click
   const handleToolbarClick = (item: any) => {
-    console.log('Toolbar button clicked:', item);
+
 
     if (item.windowId !== undefined) {
       // Navigate to window by windowId
@@ -646,10 +673,27 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
         navigate(route.path);
       }
     } else if (item.action === 'refresh') {
-      // Refresh current page
-      window.location.reload();
+      // Silent per-page refresh — dispatch an event the ACTIVE page listens to
+      // (usePageRefresh) instead of reloading the whole SPA (no flash). The page
+      // handler updates the bottom status bar itself. Non-data pages get a hint.
+      const hash = window.location.hash.replace(/^#/, '');
+      const status = useStatusBarStore.getState();
+      if (REFRESHABLE_PATHS.some((p) => hash.startsWith(p))) {
+        status.setMessage('Refreshing current page...', 'info');
+        window.dispatchEvent(new CustomEvent('t3-page-refresh'));
+        // Safety net: if no page posted its own status (e.g. DB-only pages that
+        // refresh silently), clear the "Refreshing..." placeholder.
+        window.setTimeout(() => {
+          const s = useStatusBarStore.getState();
+          if (s.message === 'Refreshing current page...') {
+            s.setMessage('Refreshed', 'success');
+          }
+        }, 2000);
+      } else {
+        status.setMessage('No refreshable data on this page', 'info');
+      }
     } else {
-      console.warn('Unhandled toolbar action:', item);
+      LogUtil.Warn('Unhandled toolbar action:', item);
     }
   };
 
@@ -658,6 +702,20 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     await logout();
     navigate('/login');
   };
+
+  // Listen for "Open AI Chat" menu event
+  const setChatMode = useUIStore((s) => s.setChatMode);
+  useEffect(() => {
+    const handler = () => {
+      if (window.location.hash.includes('/ai-chat')) {
+        const prev = useChatStore.getState().previousPageHash?.replace(/^#/, '') || '/t3000/dashboard';
+        navigate(prev.startsWith('/') ? prev : `/${prev}`);
+      }
+      setChatMode('sidebar');
+    };
+    window.addEventListener('t3-open-ai-chat', handler);
+    return () => window.removeEventListener('t3-open-ai-chat', handler);
+  }, [setChatMode, navigate]);
 
   return (
     <div className={styles.header}>

@@ -17,13 +17,24 @@ import {
   Tree,
   TreeItem,
   TreeItemLayout,
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogTrigger,
+  Button,
+  Input,
+  Popover,
+  PopoverSurface,
 } from '@fluentui/react-components';
 import {
-  Checkmark20Regular,
   Dismiss20Regular,
   Info20Regular,
-  Warning20Regular,
   Desktop20Regular,
+  CaretRight16Regular,
+  CaretDown16Regular,
 } from '@fluentui/react-icons';
 import type { TreeNode } from '../../../../shared/types/device';
 import { useDeviceTreeStore } from '../../store/deviceTreeStore';
@@ -35,6 +46,18 @@ const renderDetailValue = (value: string | number | null | undefined): string =>
     return 'N/A';
   }
   return String(value);
+};
+
+// Find the first device leaf node in the tree (used to restore selection after delete)
+const findFirstDeviceNode = (nodes: TreeNode[]): TreeNode | null => {
+  for (const node of nodes) {
+    if (node.data) return node;
+    if (node.children) {
+      const found = findFirstDeviceNode(node.children);
+      if (found) return found;
+    }
+  }
+  return null;
 };
 
 const DeviceDetailsTooltip: React.FC<{ device: NonNullable<TreeNode['data']> }> = ({ device }) => (
@@ -55,35 +78,6 @@ const DeviceDetailsTooltip: React.FC<{ device: NonNullable<TreeNode['data']> }> 
 );
 
 /**
- * Status icon component - Azure Portal style
- */
-const StatusIcon: React.FC<{ status: 'online' | 'offline' | 'unknown'; isSelected?: boolean; isUnknownDevice?: boolean }> = ({ status, isSelected, isUnknownDevice }) => {
-  const iconStyle = {
-    width: '16px',
-    height: '16px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  };
-
-  const color = isSelected ? '#0078d4' : undefined;
-  const warningColor = isUnknownDevice ? '#d29200' : undefined;
-
-  if (isUnknownDevice) {
-    return <Info20Regular style={{ ...iconStyle, color: warningColor || '#d29200' }} />;
-  }
-
-  switch (status) {
-    case 'online':
-      return <Checkmark20Regular style={{ ...iconStyle, color: color || '#107C10' }} />;
-    case 'offline':
-      return <Dismiss20Regular style={{ ...iconStyle, color: color || '#a80000' }} />;
-    default:
-      return <Info20Regular style={{ ...iconStyle, color: color || '#0f6cbd' }} />;
-  }
-};
-
-/**
  * Recursive tree node renderer
  */
 const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ node, level }) => {
@@ -92,11 +86,22 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
     expandNode,
     collapseNode,
     selectNode,
+    toggleShowOfflineDevices,
     deleteDevice,
     updateDevice,
     checkDeviceStatus,
     connectDevice,
   } = useDeviceTreeStore();
+
+  // Edit Label dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [editDevice, setEditDevice] = useState<NonNullable<TreeNode['data']> | null>(null);
+
+  // Delete confirmation (Fluent Popover anchored above the item)
+  const [deleteTarget, setDeleteTarget] = useState<NonNullable<TreeNode['data']> | null>(null);
+
+  const isOfflineGroup = node.id === 'offline-group';
 
   const handleOpenChange = useCallback(
     (_event: unknown, data: { open: boolean }) => {
@@ -110,8 +115,12 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
   );
 
   const handleClick = useCallback(() => {
+    if (isOfflineGroup) {
+      toggleShowOfflineDevices();
+      return;
+    }
     selectNode(node.id);
-  }, [node.id, selectNode]);
+  }, [isOfflineGroup, node.id, selectNode, toggleShowOfflineDevices]);
 
   // Context menu handlers
   const handleOpen = useCallback((device: typeof node.data) => {
@@ -123,19 +132,46 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
   }, [connectDevice]);
 
   const handleDelete = useCallback((device: typeof node.data) => {
-    if (device && window.confirm(`Delete device ${device.nameShowOnTree}?`)) {
-      deleteDevice(device.serialNumber);
+    if (device) {
+      setDeleteTarget(device);
     }
-  }, [deleteDevice]);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeleteTarget(null);
+    try {
+      await deleteDevice(deleteTarget.serialNumber);
+      const { treeData, selectNode: selectFirst } = useDeviceTreeStore.getState();
+      const firstDeviceNode = findFirstDeviceNode(treeData);
+      if (firstDeviceNode) {
+        selectFirst(firstDeviceNode.id);
+      }
+    } catch {
+      // Error already surfaced by the store
+    }
+  }, [deleteTarget, deleteDevice]);
+
+  const handleCancelDelete = useCallback(() => {
+    setDeleteTarget(null);
+  }, []);
 
   const handleEdit = useCallback((device: typeof node.data) => {
     if (device) {
-      const newLabel = window.prompt('Enter new label:', device.nameShowOnTree);
-      if (newLabel && newLabel !== device.nameShowOnTree) {
-        updateDevice(device.serialNumber, { nameShowOnTree: newLabel });
-      }
+      setEditDevice(device);
+      setEditValue(device.nameShowOnTree || device.productName || '');
+      setEditOpen(true);
     }
-  }, [updateDevice]);
+  }, []);
+
+  const handleSaveLabel = useCallback(() => {
+    const newLabel = editValue.trim();
+    if (editDevice && newLabel && newLabel !== (editDevice.nameShowOnTree || '')) {
+      updateDevice(editDevice.serialNumber, { nameShowOnTree: newLabel });
+    }
+    setEditOpen(false);
+    setEditDevice(null);
+  }, [editValue, editDevice, updateDevice]);
 
   const handleCheckStatus = useCallback((device: typeof node.data) => {
     if (device) {
@@ -187,12 +223,40 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
     };
   }, []);
 
-  // Show info icon for ALL selected devices with data; online/offline keep their status icon too
+  // Aside: info icon only when selected (right side, triggers tooltip on hover)
   const asideContent = isSelected ? (
     <span className={styles.deviceInfoIcon}>
-      <StatusIcon status={node.status ?? 'unknown'} isSelected={isSelected} isUnknownDevice={isUnknownDevice} />
+      <Info20Regular style={{ width: '16px', height: '16px', color: '#0f6cbd' }} />
     </span>
   ) : undefined;
+
+  // Prefix icon: red X for offline (always red, even when selected), default desktop for others
+  const isOffline = node.status === 'offline';
+  const prefixIcon = isOffline
+    ? <Dismiss20Regular data-offline="true" style={{ color: '#a80000', width: '16px', height: '16px', flexShrink: 0 }} />
+    : <Desktop20Regular style={{ color: '#605e5c', width: '16px', height: '16px' }} />;
+
+  // Offline group node — renders as a leaf (identical indent/icon position as
+  // device items) with a "▶" caret; its devices are flat siblings in the tree.
+  if (isOfflineGroup) {
+    return (
+      <TreeItem itemType="leaf" value={node.id}>
+        <TreeItemLayout
+          onClick={handleClick}
+          selector={null}
+          iconBefore={
+            node.expanded
+              ? <CaretDown16Regular style={{ color: '#0078d4', width: '16px', height: '16px' }} />
+              : <CaretRight16Regular style={{ color: '#0078d4', width: '16px', height: '16px' }} />
+          }
+          className={`${styles.treeItemNormal} ${styles.offlineGroupItem}`}
+          style={{ '--tree-level': level } as React.CSSProperties}
+        >
+          {node.label}
+        </TreeItemLayout>
+      </TreeItem>
+    );
+  }
 
   // Building/subnet node
   if (node.type === 'building' && node.children) {
@@ -219,7 +283,8 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
     );
   }
 
-  // Device leaf node with context menu
+  // Device node — leaf, or branch when it has sub-device children
+  const hasSubDevices = !!node.children && node.children.length > 0;
   return (
     <>
       <TreeContextMenu
@@ -237,21 +302,75 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
           onMouseLeave={isSelected && hasDeviceInfo ? closeDetailsPopover : undefined}
         >
           <TreeItem
-            itemType="leaf"
+            itemType={hasSubDevices ? 'branch' : 'leaf'}
             value={node.id}
+            open={hasSubDevices ? node.expanded : undefined}
+            onOpenChange={hasSubDevices ? handleOpenChange : undefined}
           >
             <TreeItemLayout
               onClick={handleClick}
-              iconBefore={<Desktop20Regular style={{ color: '#605e5c', width: '16px', height: '16px' }} />}
+              iconBefore={prefixIcon}
               aside={asideContent}
-              className={isSelected ? styles.treeItemSelected : styles.treeItemNormal}
+              className={`${isSelected ? styles.treeItemSelected : styles.treeItemNormal} ${styles.deviceTreeItem}`}
               style={{ '--tree-level': level } as React.CSSProperties}
             >
               {node.label}
             </TreeItemLayout>
+            {hasSubDevices && (
+              <Tree>
+                {node.children!.map((child) => (
+                  <TreeNodeItem key={child.id} node={child} level={level + 1} />
+                ))}
+              </Tree>
+            )}
           </TreeItem>
         </div>
       </TreeContextMenu>
+
+      {/* Delete confirmation (Fluent Popover, haystack style) */}
+      <Popover
+        open={!!deleteTarget}
+        onOpenChange={(_e, data) => { if (!data.open) setDeleteTarget(null); }}
+        positioning={{ target: rowRef.current, position: 'above', align: 'start' }}
+      >
+        <PopoverSurface style={{ maxWidth: 340, padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+            Delete "{deleteTarget?.nameShowOnTree || deleteTarget?.productName || ''}"?
+          </div>
+          <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginBottom: 16 }}>
+            This action cannot be undone.
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button size="small" onClick={handleCancelDelete}>Cancel</Button>
+            <Button size="small" appearance="primary" style={{ background: '#d32f2f' }} onClick={handleConfirmDelete}>Delete</Button>
+          </div>
+        </PopoverSurface>
+      </Popover>
+
+      {/* Edit Label dialog */}
+      <Dialog open={editOpen} onOpenChange={(_e, data) => setEditOpen(data.open)}>
+        <DialogSurface style={{ width: 360, maxWidth: 'calc(100vw - 32px)', fontSize: 12 }}>
+          <DialogBody style={{ fontSize: 12, margin: -5 }}>
+            <DialogTitle style={{ fontSize: 13 }}>Edit Label</DialogTitle>
+            <DialogContent style={{ fontSize: 12, marginTop: -12 }}>
+              <Input
+                value={editValue}
+                onChange={(e) => setEditValue(e.currentTarget.value)}
+                placeholder="Device label"
+                style={{ width: '100%', marginTop: 12, fontSize: 12 }}
+              />
+            </DialogContent>
+            <DialogActions style={{ marginTop: 12, fontSize: 12 }}>
+              <DialogTrigger disableButtonEnhancement>
+                <Button appearance="secondary" size="medium" style={{ fontSize: 12, fontWeight: 500 }}>Cancel</Button>
+              </DialogTrigger>
+              <Button appearance="primary" size="medium" onClick={handleSaveLabel} disabled={!editValue.trim()} style={{ fontSize: 12, fontWeight: 500 }}>
+                Save
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
       {detailsOpen && detailsPos && isSelected && hasDeviceInfo && createPortal(
         <div

@@ -13,6 +13,7 @@ import { NotificationProvider } from '../shared/components/NotificationCenter';
 import { CsvOperationsProvider } from '../shared/context/CsvOperationsContext';
 import { MainLayout } from '../layout/MainLayout';
 import { MinimalLayout } from '../layout/MinimalLayout';
+import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
 import styles from './App.module.css';
 
 // Lazy load pages from features
@@ -94,6 +95,15 @@ const DiscoverPage = React.lazy(() =>
 const BuildingsPage = React.lazy(() =>
   import('../features/buildings/pages/BuildingsPage').then((m) => ({ default: m.BuildingsPage }))
 );
+const HaystackTagsPage = React.lazy(() =>
+  import('../features/haystack/pages/HaystackTagsPage').then((m) => ({ default: m.HaystackTagsPage }))
+);
+const CustomTagsPage = React.lazy(() =>
+  import('../features/haystack/pages/CustomTagsPage').then((m) => ({ default: m.CustomTagsPage }))
+);
+const AutoTaggingMcpPage = React.lazy(() =>
+  import('../features/haystack/pages/AutoTaggingMcpPage')
+);
 const Tstat10SimulatorPage = React.lazy(() =>
   Promise.all([
     import('../features/tstat10-simulator/pages/Tstat10SimulatorPage').then(m => m.Tstat10SimulatorPage),
@@ -116,6 +126,9 @@ const HvacDesignerPage = React.lazy(() =>
 );
 const DocumentationPage = React.lazy(() =>
   import('../features/documentation/pages/DocumentationPage').then((m) => ({ default: m.DocumentationPage }))
+);
+const FluentUIV9Page = React.lazy(() =>
+  import('../features/developer/pages/FluentUIV9Page').then((m) => ({ default: m.FluentUIV9Page }))
 );
 
 // Develop section - special layout
@@ -146,6 +159,12 @@ const DatabaseConfigPage = React.lazy(() =>
 const TrendChartPage = React.lazy(() =>
   import('../features/trendlogs/pages/TrendChartPage').then((m) => ({ default: m.TrendChartPage }))
 );
+const AiChatPage = React.lazy(() =>
+  import('../features/ai-chat').then((m) => ({ default: m.AiChatPage }))
+);
+const McpServerPage = React.lazy(() =>
+  import('../features/ai-chat').then((m) => ({ default: m.McpServerPage }))
+);
 
 /**
  * Protected Route Wrapper
@@ -167,8 +186,17 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
  */
 export const App: React.FC = () => {
   const [theme] = React.useState<'light' | 'dark'>('light');
+  const fetchDevices = useDeviceTreeStore((s) => s.fetchDevices);
 
-  console.log('🚀 React App component rendering...');
+  // Listen for view-refresh event (from Header refresh button / F2)
+  React.useEffect(() => {
+    const handler = () => {
+      fetchDevices();
+    };
+    window.addEventListener('view-refresh', handler);
+    return () => window.removeEventListener('view-refresh', handler);
+  }, [fetchDevices]);
+
 
   return (
     <div className={styles.appContainer}>
@@ -366,6 +394,14 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
+                  path="developer/fluentui-v9"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <FluentUIV9Page />
+                    </React.Suspense>
+                  }
+                />
+                <Route
                   path="database/config"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
@@ -382,12 +418,52 @@ export const App: React.FC = () => {
                     </React.Suspense>
                   }
                 />
+                <Route
+                  path="haystack-tags"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <HaystackTagsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="custom-tags"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <CustomTagsPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="auto-tagging"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <AutoTaggingMcpPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="ai-assistant/mcp"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <McpServerPage />
+                    </React.Suspense>
+                  }
+                />
 
                 {/* Develop Routes - Special layout with left navigation */}
               </Route>
 
-              {/* HVAC Designer, Documentation & Trend Chart - Minimal layout with just top menu bar */}
+              {/* HVAC Designer, Documentation & AI Chat - Minimal layout with just top menu bar */}
               <Route path="/t3000" element={<MinimalLayout />}>
+                <Route
+                  path="ai-chat"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <AiChatPage />
+                    </React.Suspense>
+                  }
+                />
                 <Route
                   path="trends/chart"
                   element={
