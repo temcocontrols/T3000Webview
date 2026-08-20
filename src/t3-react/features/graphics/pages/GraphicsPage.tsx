@@ -38,9 +38,13 @@ import { useStatusBarStore } from '../../../store/statusBarStore';
 import styles from './GraphicsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 export const GraphicsPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, treeData, selectDevice, getFilteredDevices } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [graphics, setGraphics] = useState<Graphic[]>([]);
@@ -53,22 +57,17 @@ export const GraphicsPage: React.FC = () => {
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false);
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
     if (!selectedDevice && treeData.length > 0) {
       const filteredDevices = getFilteredDevices();
-      console.log('[GraphicsPage] Auto-select check:', {
-        hasSelectedDevice: !!selectedDevice,
-        treeDataLength: treeData.length,
-        filteredDevicesCount: filteredDevices.length,
-      });
 
       if (filteredDevices.length > 0) {
         const firstDevice = filteredDevices[0];
-        console.log(`[GraphicsPage] Auto-selecting first device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
         selectDevice(firstDevice);
       }
     }
@@ -90,7 +89,7 @@ export const GraphicsPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load graphics';
       setError(errorMessage);
-      console.error('Error fetching graphics:', err);
+      LogUtil.Error('Error fetching graphics:', err);
     } finally {
       setLoading(false);
       setDbChecked(true);
@@ -116,12 +115,10 @@ export const GraphicsPage: React.FC = () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (graphics.length > 0) {
-        console.log('[GraphicsPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('[GraphicsPage] Database empty, auto-refreshing from device using Action 17...');
       setLoading(true);
 
       try {
@@ -136,9 +133,9 @@ export const GraphicsPage: React.FC = () => {
             }
           }
         });
-        setMessage(`✓ Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
+        setMessage(`Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
-        console.error('[GraphicsPage] Auto-refresh failed:', error);
+        LogUtil.Error('[GraphicsPage] Auto-refresh failed:', error);
         setMessage(`Failed to sync graphics: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       } finally {
         // Always reload from database to show what was actually saved
@@ -151,7 +148,8 @@ export const GraphicsPage: React.FC = () => {
     checkAndRefresh();
   }, [dbChecked, loading, selectedDevice, autoRefreshed, fetchGraphics, graphics.length, setMessage]);
 
-  // Load next device in tree (auto-scroll feature)
+  // [DISABLED] Auto-scroll to next device when reaching bottom — commented out for now.
+  /*
   const loadNextDevice = useCallback(() => {
     const nextDevice = getNextDevice();
     if (nextDevice) {
@@ -185,6 +183,7 @@ export const GraphicsPage: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, graphics.length, loadNextDevice]);
+  */
 
   // Refresh all graphics from device using Action 17
   const handleRefreshFromDevice = async () => {
@@ -192,7 +191,6 @@ export const GraphicsPage: React.FC = () => {
 
     setRefreshing(true);
     try {
-      console.log('[GraphicsPage] Refreshing graphics from device using Action 17...');
 
       // Use PanelDataRefreshService with Action 17 (GET_WEBVIEW_LIST)
       // EntryType.GROUP = 10 (BAC_GRP)
@@ -206,12 +204,12 @@ export const GraphicsPage: React.FC = () => {
         }
       });
 
-      setMessage(`✓ Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
+      setMessage(`Synced ${result.itemCount} graphics from ${selectedDevice.nameShowOnTree}`, 'success');
 
       // Reload from database to show saved data
       await fetchGraphics();
     } catch (error) {
-      console.error('[GraphicsPage] Refresh failed:', error);
+      LogUtil.Error('[GraphicsPage] Refresh failed:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to refresh graphics';
       setError(errorMsg);
       setMessage(`Failed to sync graphics: ${errorMsg}`, 'error');
@@ -220,15 +218,17 @@ export const GraphicsPage: React.FC = () => {
     }
   };
 
+  usePageRefresh(handleRefreshFromDevice);
+
   // Auto-scroll to top after device change
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   const handleExport = () => {
     if (graphics.length === 0) return;
@@ -278,12 +278,6 @@ export const GraphicsPage: React.FC = () => {
     // Construct the webview URL for this graphic
     const webviewUrl = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/graphics/${graphic.Graphic_ID}/webview`;
 
-    console.log('🖼️ [GraphicsPage] Opening webview for graphic:', {
-      serialNumber: selectedDevice.serialNumber,
-      graphicId: graphic.Graphic_ID,
-      label: graphic.Label,
-      url: webviewUrl,
-    });
 
     // Open in a new window/tab
     window.open(webviewUrl, '_blank');
@@ -464,7 +458,7 @@ export const GraphicsPage: React.FC = () => {
                     disabled={refreshing}
                     title="Refresh all graphics from device"
                   >
-                    <ArrowSyncRegular />
+                    <ArrowClockwiseRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
@@ -526,8 +520,9 @@ export const GraphicsPage: React.FC = () => {
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    onScroll={handleScroll}
-                    onWheel={handleWheel}
+                    // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                    // onScroll={handleScroll}
+                    // onWheel={handleWheel}
                   >
                   <DataGrid
                       key={sortKey}
@@ -564,13 +559,14 @@ export const GraphicsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Auto-load indicator */}
+                {/* [DISABLED] Auto-load indicator — commented out for now.
                 {isLoadingNextDevice && (
                   <div className={styles.autoLoadIndicator}>
                     <Spinner size="tiny" />
                     <Text size={200}>Loading next device...</Text>
                   </div>
                 )}
+                */}
 
               </div>
             </div>

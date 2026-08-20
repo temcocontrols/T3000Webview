@@ -70,3 +70,16 @@
 .activeButton svg {
   color: #0078d4 !important;
 }
+
+.spinIcon {
+  animation: treeToolbarSpin 0.9s linear infinite;
+}
+
+@keyframes treeToolbarSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

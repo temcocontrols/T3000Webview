@@ -41,6 +41,8 @@ import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefr
 import styles from './SchedulesPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Types based on Rust entity (schedules.rs) and C++ BacnetWeeklyRoutine structure
 interface SchedulePoint {
@@ -63,7 +65,9 @@ interface SchedulePoint {
 }
 
 export const SchedulesPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, selectDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [schedules, setSchedules] = useState<SchedulePoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -78,8 +82,9 @@ export const SchedulesPage: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false);
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -109,7 +114,6 @@ export const SchedulesPage: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('Schedules API response:', result);
 
       if (result.data && Array.isArray(result.data)) {
         setSchedules(result.data);
@@ -118,7 +122,7 @@ export const SchedulesPage: React.FC = () => {
         setSchedules([]);
       }
     } catch (err) {
-      console.error('Error fetching schedules:', err);
+      LogUtil.Error('Error fetching schedules:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch schedules');
       // DON'T clear schedules on database fetch error - preserve what we have
     } finally {
@@ -148,21 +152,18 @@ export const SchedulesPage: React.FC = () => {
 
       // Check if database has schedule data
       if (schedules.length > 0) {
-        console.log('🔄 Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('🔄 Database empty, auto-refreshing schedules from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
         const result = await PanelDataRefreshService.refreshAllSchedules(serial);
-        console.log('✅ Auto-refresh result:', result);
         // Data already saved by service, just reload from database
         await fetchSchedules();
         setAutoRefreshed(true);
       } catch (err) {
-        console.error('❌ Auto-refresh failed:', err);
+        LogUtil.Error('Auto-refresh failed:', err);
       }
     };
 
@@ -183,18 +184,18 @@ export const SchedulesPage: React.FC = () => {
 
     try {
       const serial = selectedDevice.serialNumber;
-      console.log('🔄 Refreshing all schedules from device...');
       const result = await PanelDataRefreshService.refreshAllSchedules(serial);
-      console.log('✅ Device refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchSchedules();
     } catch (err) {
-      console.error('❌ Refresh from device failed:', err);
+      LogUtil.Error('Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
     } finally {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Refresh single schedule from device (Trigger #3 - Per-row icon)
   const handleRefreshSingleSchedule = async (item: SchedulePoint) => {
@@ -206,14 +207,12 @@ export const SchedulesPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       const scheduleIndex = parseInt(item.scheduleId);
-      console.log(`🔄 Refreshing single schedule from device: ${scheduleIndex}`);
 
       const result = await PanelDataRefreshService.refreshSingleSchedule(serial, scheduleIndex);
-      console.log('✅ Single schedule refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchSchedules();
     } catch (err) {
-      console.error('❌ Single schedule refresh failed:', err);
+      LogUtil.Error('Single schedule refresh failed:', err);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -275,7 +274,8 @@ export const SchedulesPage: React.FC = () => {
     }
   };
 
-  // Auto-scroll navigation handlers
+  // [DISABLED] Auto-scroll navigation handlers — commented out for now.
+  /*
   const loadNextDevice = useCallback(() => {
     const nextDevice = getNextDevice();
     if (nextDevice) {
@@ -309,16 +309,17 @@ export const SchedulesPage: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, schedules.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top after device change
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Display schedules with empty rows when no data (show 10 empty rows)
   const displaySchedules = React.useMemo(() => {
@@ -363,7 +364,6 @@ export const SchedulesPage: React.FC = () => {
       )
     );
 
-    console.log('Toggle Auto/Manual:', item.scheduleId, newValue);
     // TODO: Call API to update auto_manual value
   };
 
@@ -572,7 +572,7 @@ export const SchedulesPage: React.FC = () => {
                     title="Refresh from Device"
                     aria-label="Refresh from Device"
                   >
-                    <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                    <ArrowClockwiseRegular className={refreshing ? styles.rotating : ''} />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
@@ -634,8 +634,9 @@ export const SchedulesPage: React.FC = () => {
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    onScroll={handleScroll}
-                    onWheel={handleWheel}
+                    // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                    // onScroll={handleScroll}
+                    // onWheel={handleWheel}
                   >
                   <DataGrid
                     key={sortKey}
@@ -688,12 +689,14 @@ export const SchedulesPage: React.FC = () => {
                   )}
                   */}
 
+                  {/* [DISABLED] Auto-load indicator — commented out for now.
                   {isLoadingNextDevice && (
                     <div className={styles.autoLoadIndicator}>
                       <Spinner size="tiny" />
                       <Text>Loading next device...</Text>
                     </div>
                   )}
+                  */}
                 </div>
               )}
 

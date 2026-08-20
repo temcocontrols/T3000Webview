@@ -36,15 +36,21 @@ interface TreeToolbarProps {
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
-  const { expandAll, collapseAll, viewMode, setViewMode, loadDevicesWithSync } = useDeviceTreeStore();
+  const { expandAll, collapseAll, viewMode, setViewMode, scanForDevices } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const handleRefresh = async () => {
+    if (isRefreshing) return;
     setIsRefreshing(true);
     try {
-      await loadDevicesWithSync({ skipInitialFetch: true });
+      // --- OLD: full FFI sync (Action 4 = GET_PANELS_LIST) -----------------
+      // Commented out for rollback. Action 4 returns stale C++ cached data,
+      // so the refresh icon now uses the UDP network scan below instead.
+      // await loadDevicesWithSync({ skipInitialFetch: true });
+      // ---------------------------------------------------------------------
+      await scanForDevices({ timeout: 8 });
     } catch (err) {
       console.error('Failed to refresh devices:', err);
       setMessage('Failed to refresh device list. Please try again.', 'error');
@@ -53,11 +59,9 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     }
   };
 
-  const handleToggleViewMode = async () => {
+  const handleToggleViewMode = () => {
     const newMode = viewMode === 'equipment' ? 'projectPoint' : 'equipment';
     setViewMode(newMode);
-    // Trigger full sync to load the device tree view
-    await loadDevicesWithSync({ skipInitialFetch: true });
   };
 
   const handleToggleExpandCollapse = () => {
@@ -80,14 +84,14 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
       <Toolbar aria-label="Device tree toolbar" size="small">
 
         <Tooltip
-          content="Sync devices from T3000 — fetches the device list via FFI, saves all devices to the database, and refreshes the tree"
+          content="Scan the network for T3000 devices (UDP) and update online/offline status"
           relationship="label"
           positioning="below-start"
           size="small"
         >
           <ToolbarButton
-            aria-label="Sync devices from T3000"
-            icon={<ArrowSyncRegular fontSize={18} />}
+            aria-label="Scan network for T3000 devices"
+            icon={<ArrowSyncRegular fontSize={18} className={isRefreshing ? styles.spinIcon : undefined} />}
             onClick={handleRefresh}
             appearance="subtle"
             disabled={isRefreshing}

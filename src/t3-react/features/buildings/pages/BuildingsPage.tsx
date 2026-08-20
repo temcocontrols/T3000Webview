@@ -6,7 +6,7 @@
  * Based on standardized InputsPage structure
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   DataGrid,
   DataGridHeader,
@@ -21,66 +21,77 @@ import {
   Text,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   AddRegular,
   DeleteRegular,
   SearchRegular,
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 import { API_BASE_URL } from '@t3-react/config/constants';
 import styles from './BuildingsPage.module.css';
 
-// Types based on C++ Building_Config struct
+// Types matching C++ Building_Config struct
 interface Building {
-  id?: number;
   buildingName?: string;
   protocol?: string;
-  ipAddress?: string;
-  ipPort?: string;
-  comPort?: string;
-  baudRate?: string;
-  buildingPath?: string;
+  deviceCount?: number;
+  onlineCount?: number;
+  offlineCount?: number;
 }
 
 export const BuildingsPage: React.FC = () => {
   const { selectedDevice } = useDeviceTreeStore();
   const [buildings, setBuildings] = useState<Building[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch buildings
-  const fetchBuildings = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const url = `/api/buildings`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch buildings: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setBuildings(data.buildings || []);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load buildings';
-      setError(errorMessage);
-      console.error('Error fetching buildings:', err);
-    } finally {
-      setLoading(false);
-    }
+  // Auto-load on mount
+  React.useEffect(() => {
+    handleRefresh();
   }, []);
 
-  // Handlers
+  // Refresh: reload from DB API
   const handleRefresh = async () => {
+    setLoading(true);
     setRefreshing(true);
-    await fetchBuildings();
-    setRefreshing(false);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/t3_device/devices`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const devices = data.devices || [];
+      const buildingMap = new Map<string, { online: number; offline: number; protocols: Set<string> }>();
+      devices.forEach((d: any) => {
+        const pn = (d.productName || '').trim();
+        if (!pn || pn === '(Unknown)' || pn === 'Unknown') return; // skip hidden
+        const name = d.buildingName || d.mainBuildingName || 'Default';
+        if (!buildingMap.has(name)) {
+          buildingMap.set(name, { online: 0, offline: 0, protocols: new Set() });
+        }
+        const b = buildingMap.get(name)!;
+        if (d.isOnline === 1 || d.isOnline === true) b.online++; else b.offline++;
+        if (d.connectionType) b.protocols.add(d.connectionType);
+      });
+      setBuildings(Array.from(buildingMap.entries()).map(([name, info]) => ({
+        buildingName: name,
+        protocol: Array.from(info.protocols).join(', ') || '---',
+        deviceCount: info.online + info.offline,
+        onlineCount: info.online,
+        offlineCount: info.offline,
+      })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load buildings');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
+
+  usePageRefresh(handleRefresh);
 
   const handleAdd = () => {
     console.log('Add building');
@@ -252,8 +263,8 @@ export const BuildingsPage: React.FC = () => {
                     disabled={refreshing}
                     aria-label="Refresh"
                   >
-                    <ArrowSyncRegular />
-                    <span>Refresh</span>
+                    <ArrowClockwiseRegular className={refreshing ? styles.rotating : ''} />
+                    <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

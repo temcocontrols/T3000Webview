@@ -3,6 +3,7 @@
 
 use sea_orm::{ConnectionTrait, DbErr, Statement};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
 // ── Types ──
 
@@ -59,6 +60,7 @@ pub struct BatchPointTagUpdate {
     pub add_tags: Option<Vec<String>>,
     pub remove_tags: Option<Vec<String>>,
     pub set_tags: Option<Vec<String>>,
+    pub brick_class: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -386,6 +388,33 @@ pub async fn batch_update_point_tags(
                 }
             }
         }
+
+        // Apply brick_class — manual assignment (auto_assigned=0)
+        if let Some(ref bc) = update.brick_class {
+            let bc_trimmed = bc.trim();
+            if bc_trimmed.is_empty() || bc_trimmed.eq_ignore_ascii_case("none") {
+                let _ = db.execute(Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    "DELETE FROM HAYSTACK_POINT_BRICK_CLASS WHERE serial_number = ? AND point_type = ? AND point_index = ? AND auto_assigned = 0",
+                    vec![
+                        update.serial_number.into(),
+                        update.point_type.clone().into(),
+                        update.point_index.clone().into(),
+                    ],
+                )).await;
+            } else {
+                let _ = db.execute(Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    "INSERT OR REPLACE INTO HAYSTACK_POINT_BRICK_CLASS (serial_number, point_type, point_index, brick_class, auto_assigned) VALUES (?, ?, ?, ?, 0)",
+                    vec![
+                        update.serial_number.into(),
+                        update.point_type.clone().into(),
+                        update.point_index.clone().into(),
+                        bc_trimmed.to_string().into(),
+                    ],
+                )).await;
+            }
+        }
     }
     Ok(())
 }
@@ -572,7 +601,8 @@ pub async fn rebuild_tags_for_serials(
 
     for row in &input_rows {
         let sn: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
-        let idx: i32 = row.try_get("", "Input_Index").unwrap_or(0);
+        let idx_str: Option<String> = row.try_get("", "Input_Index").ok();
+        let idx: i32 = idx_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
         let full_label: Option<String> = row.try_get("", "Full_Label").ok();
         let label: Option<String> = row.try_get("", "Label").ok();
         let da: Option<i32> = row.try_get("", "Digital_Analog").ok();
@@ -597,7 +627,8 @@ pub async fn rebuild_tags_for_serials(
 
     for row in &output_rows {
         let sn: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
-        let idx: i32 = row.try_get("", "Output_Index").unwrap_or(0);
+        let idx_str: Option<String> = row.try_get("", "Output_Index").ok();
+        let idx: i32 = idx_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
         let full_label: Option<String> = row.try_get("", "Full_Label").ok();
         let label: Option<String> = row.try_get("", "Label").ok();
         let da: Option<i32> = row.try_get("", "Digital_Analog").ok();
@@ -622,7 +653,8 @@ pub async fn rebuild_tags_for_serials(
 
     for row in &var_rows {
         let sn: i32 = row.try_get("", "SerialNumber").unwrap_or(0);
-        let idx: i32 = row.try_get("", "Variable_Index").unwrap_or(0);
+        let idx_str: Option<String> = row.try_get("", "Variable_Index").ok();
+        let idx: i32 = idx_str.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
         let full_label: Option<String> = row.try_get("", "Full_Label").ok();
         let label: Option<String> = row.try_get("", "Label").ok();
         let da: Option<i32> = row.try_get("", "Digital_Analog").ok();

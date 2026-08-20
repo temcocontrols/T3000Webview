@@ -10,7 +10,7 @@ import T3Gv from '../../Data/T3Gv';
 import EvtUtil from "../../Event/EvtUtil";
 import DynamicGuides from "../../Model/DynamicGuides";
 import SelectionAttr from "../../Model/SelectionAttr";
-import T3Util from "../../Util/T3Util";
+import LogUtil from "../../Util/LogUtil";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import ObjectUtil from "../Data/ObjectUtil";
@@ -28,10 +28,10 @@ import ToolActUtil from "./ToolActUtil";
 import TextUtil from './TextUtil';
 import DynamicUtil from './DynamicUtil';
 import T3Clipboard from '../Clipboard/T3Clipboard';
+import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 import QuasarUtil from '../Quasar/QuasarUtil';
 import EvtOpt from '../../Event/EvtOpt';
 import '../../Util/T3Hammer';
-import LogUtil from '../../Util/LogUtil';
 
 class DrawUtil {
 
@@ -66,6 +66,10 @@ class DrawUtil {
       $(window).unbind('click');
       $(window).unbind('mousemove', EvtUtil.Evt_MouseStampObjectMove);
       T3Gv.opt.WorkAreaHammer.enable(true);
+      // Re-attach dragstart handler we removed in MouseDrawNewShape
+      if (T3Gv.opt.WorkAreaHammer.on) {
+        T3Gv.opt.WorkAreaHammer.on('dragstart', EvtUtil.Evt_WorkAreaHammerDragStart);
+      }
     }
 
     // Reset all stamp-related properties
@@ -77,6 +81,19 @@ class DrawUtil {
     T3Gv.opt.stampHCenter = false;
     T3Gv.opt.stampVCenter = false;
     T3Gv.opt.stampSticky = false;
+
+    // Restore or clear status bar after stamp cancellation
+    const selId = SelectUtil.GetTargetSelect();
+    if (selId >= 0) {
+      const selObj = ObjectUtil.GetObjectPtr(selId, true);
+      if (selObj?.Frame) {
+        setStatusName(selObj.ShapeType || 'Shape');
+        setStatusPos(selObj.Frame.x, selObj.Frame.y, selObj.Frame.x + selObj.Frame.width, selObj.Frame.y + selObj.Frame.height, selObj.Frame.width, selObj.Frame.height);
+      }
+    } else {
+      setStatusName('');
+      setStatusPos(0, 0, 0, 0, 0, 0);
+    }
 
     LogUtil.Debug("O.Opt CancelObjectStamp - Output: Object stamp canceled");
   }
@@ -259,8 +276,8 @@ class DrawUtil {
 
       // Register event handlers for shape dragging
       T3Gv.opt.mainAppHammer.on('mousemove', EvtUtil.Evt_StampObjectDrag);
-      // T3Gv.opt.mainAppHammer.on('dragend', T3Gv.Evt_StampObjectDragEnd);
-      T3Gv.opt.mainAppHammer.on('mouseup', T3Gv.Evt_StampObjectDragEnd);
+      T3Gv.opt.mainAppHammer.on('dragend', T3Gv.Evt_StampObjectDragEnd);
+      // T3Gv.opt.mainAppHammer.on('mouseup', T3Gv.Evt_StampObjectDragEnd);  // T3Hammer doesn't emit 'mouseup' — use 'dragend' instead
       // T3Gv.opt.mainAppHammer.on('click', T3Gv.Evt_StampObjectDragEnd);
 
       // Initialize tracking and prepare for movement
@@ -352,8 +369,15 @@ class DrawUtil {
       OptCMUtil.SetEditMode(NvConstant.EditState.Stamp, CursorConstant.CursorType.Stamp);
     }
 
-    // Disable WorkAreaHammer to prevent conflicts with stamp operation
+    // Disable WorkAreaHammer to prevent conflicts with stamp operation.
+    // enable(false) blocks NEW gesture detection but in-flight gestures
+    // (already recognized 'dragstart') still fire asynchronously. We must
+    // remove the handler entirely to prevent Evt_WorkAreaHammerDragStart
+    // from calling EndStampSession during stamp.
     T3Gv.opt.WorkAreaHammer.enable(false);
+    if (T3Gv.opt.WorkAreaHammer.off) {
+      T3Gv.opt.WorkAreaHammer.off('dragstart', EvtUtil.Evt_WorkAreaHammerDragStart);
+    }
 
     // Bind mouse event handlers for stamping operation
     $(window).bind('mousemove', EvtUtil.Evt_MouseStampObjectMove);
@@ -501,6 +525,10 @@ class DrawUtil {
       $(window).unbind('click');
       $(window).unbind('mousemove', EvtUtil.Evt_MouseStampObjectMove);
       T3Gv.opt.WorkAreaHammer.enable(true);
+      // Re-attach dragstart handler we removed in MouseDrawNewShape
+      if (T3Gv.opt.WorkAreaHammer.on) {
+        T3Gv.opt.WorkAreaHammer.on('dragstart', EvtUtil.Evt_WorkAreaHammerDragStart);
+      }
 
       // Build selection list
       if (!isTextOnlyObject) {
@@ -1133,6 +1161,13 @@ class DrawUtil {
           DynamicUtil.DynamicSnapsUpdateGuides(dynamicGuides, snapTargetId, positionedRect);
         }
       }
+    }
+
+    // Update status bar with live x,y,w,h during stamp
+    if (drawingObject) {
+      const dims = drawingObject.GetDimensionsForDisplay();
+      setStatusName(T3Gv.opt.drawShape?.ShapeType || drawingObject.ShapeType || '');
+      setStatusPos(dims.x, dims.y, dims.x + (dims.w ?? dims.width), dims.y + (dims.h ?? dims.height), dims.w ?? dims.width, dims.h ?? dims.height);
     }
 
     LogUtil.Debug("O.Opt StampObjectMoveCommon - Output: Object positioned at", currentPosition);
@@ -2401,6 +2436,11 @@ class DrawUtil {
     }
 
     QuasarUtil.UpdateCurrentObjectPos(objCoords);
+    if (objCoords) {
+      const selObj = ObjectUtil.GetObjectPtr(SelectUtil.GetTargetSelect(), false);
+      if (selObj?.ShapeType) setStatusName(selObj.ShapeType);
+      setStatusPos(objCoords.x, objCoords.y, objCoords.x + objCoords.width, objCoords.y + objCoords.height, objCoords.width, objCoords.height);
+    }
     EvtOpt.toolOpt.SaveAct();
 
     LogUtil.Debug('= U.UIUtil QuasarUtil.UpdateCurrentObjectPos', true, objCoords, objCoords.x, objCoords.y, objCoords.width, objCoords.height);

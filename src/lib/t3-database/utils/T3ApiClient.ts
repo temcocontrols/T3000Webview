@@ -27,10 +27,6 @@ export class HttpClient {
     // Request interceptor
     this.axiosInstance.interceptors.request.use(
       (request) => {
-        // Log requests in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[HTTP] ${request.method?.toUpperCase()} ${request.url}`);
-        }
         return request;
       },
       (error) => {

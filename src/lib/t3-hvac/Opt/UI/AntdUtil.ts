@@ -7,7 +7,6 @@ import { AdjustVlScrollHeight } from '../../Data/T3Data';
 import Hvac from '../../Hvac';
 import DocUtil from '../../Doc/DocUtil';
 import T3Gv from '../../Data/T3Gv';
-import T3Util from '../../Util/T3Util';
 import LogUtil from '../../Util/LogUtil';
 
 class AntdUtil {

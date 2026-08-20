@@ -9,7 +9,6 @@ import PolyList from "../../Model/PolyList";
 import PolySeg from "../../Model/PolySeg";
 import LogUtil from '../../Util/LogUtil';
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import Utils3 from "../../Util/Utils3";

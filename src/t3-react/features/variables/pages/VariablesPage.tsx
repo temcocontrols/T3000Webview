@@ -54,6 +54,10 @@ import styles from './VariablesPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import { TagsColumnCell, fetchTagsForDevice } from '../../inputs/components/TagsColumnCell';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
+import { isSubDevice } from '../../devices/lib/deviceSupport';
+import { NotSupportedBanner } from '@t3-react/shared/components/NotSupportedBanner';
 
 // Types based on Rust entity (variable_points.rs)
 interface VariablePoint {
@@ -80,7 +84,9 @@ interface VariablePoint {
 }
 
 const VariablesPageDesktop: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [variables, setVariables] = useState<VariablePoint[]>([]);
@@ -95,10 +101,15 @@ const VariablesPageDesktop: React.FC = () => {
   const deviceRefreshedRef = useRef<number | null>(null);
   const hasEverLoadedData = useRef(false);
 
+  // ── Not-supported detection (sub-devices without variable points) ──
+  const isSubDeviceDevice = !!selectedDevice && isSubDevice(selectedDevice);
+  const toolbarDisabled = isSubDeviceDevice;
+
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false); // Track if user is already at bottom
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false); // Track if user is already at bottom
 
   // Auto-select first device on page load - DISABLED
   // TreePanel's loadDevicesWithSync already handles auto-selection
@@ -108,16 +119,9 @@ const VariablesPageDesktop: React.FC = () => {
     if (!selectedDevice && treeData.length > 0) {
       // Get the first device from filtered devices list (respects current filters)
       const filteredDevices = getFilteredDevices();
-      console.log('[VariablesPage] Auto-select check:', {
-        hasSelectedDevice: !!selectedDevice,
-        treeDataLength: treeData.length,
-        filteredDevicesCount: filteredDevices.length,
-        filteredDevicesList: filteredDevices.map(d => `${d.nameShowOnTree} (SN: ${d.serialNumber})`),
-      });
 
       if (filteredDevices.length > 0) {
         const firstDevice = filteredDevices[0];
-        console.log(`[VariablesPage] Auto-selecting first device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
         selectDevice(firstDevice);
       }
     }
@@ -130,6 +134,17 @@ const VariablesPageDesktop: React.FC = () => {
   const fetchVariables = useCallback(async () => {
     if (!selectedDevice) {
       setVariables([]);
+      return;
+    }
+
+    if (isSubDevice(selectedDevice)) {
+      // Sub-devices manage their points through the parent — not supported here.
+      setVariables([]);
+      setLoading(false);
+      setDbChecked(true);
+      setAutoRefreshed(true);
+      hasEverLoadedData.current = true;
+      fetchingRef.current = false;
       return;
     }
 
@@ -159,7 +174,7 @@ const VariablesPageDesktop: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load variables';
       setError(errorMessage);
-      console.error('Error fetching variables:', err);
+      LogUtil.Error('Error fetching variables:', err);
     } finally {
       setLoading(false);
       setDbChecked(true);
@@ -230,14 +245,11 @@ const VariablesPageDesktop: React.FC = () => {
           const data = await response.json();
           if (data?.program_variables?.length) {
             setPvariables(data.program_variables);
-            console.log('[VariablesPage] PVARs fetched via Action 19:', data.program_variables.length);
             return;
           }
         }
         // Fall through to mock if empty or failed
-        console.log('[VariablesPage] Action 19 returned no data, using mock PVARs');
       } catch (_err) {
-        console.log('[VariablesPage] Action 19 not available, using mock PVARs:', _err);
       }
 
       // Mock fallback
@@ -262,21 +274,24 @@ const VariablesPageDesktop: React.FC = () => {
     hasEverLoadedData.current = false;
   }, [selectedDevice?.serialNumber]);
 
-  // Auto-refresh once per device — matches InputsPage pattern exactly
+  // Auto-refresh once per device �?matches InputsPage pattern exactly
   useEffect(() => {
-    if (!dbChecked || loading || loadingPvars || !selectedDevice || autoRefreshed) return;
+    if (!selectedDevice) return;
+    if (isSubDevice(selectedDevice)) {
+      setAutoRefreshed(true);
+      return;
+    }
+    if (!dbChecked || loading || loadingPvars || autoRefreshed) return;
     if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (variables.length > 0 || pvariables.length > 0) {
-        console.log('[VariablesPage] Data already present, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('[VariablesPage] No data at all, auto-refreshing from device...');
       setLoading(true);
 
       try {
@@ -285,10 +300,9 @@ const VariablesPageDesktop: React.FC = () => {
           type: 'variable',
           onLoadingChange: (l) => { if (l) setMessage(`Loading variables from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info'); }
         });
-        console.log('[VariablesPage] Auto-refresh result:', result);
         setMessage(`\u2713 Synced ${result.itemCount} variables from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (err) {
-        console.error('[VariablesPage] Auto-refresh failed:', err);
+        LogUtil.Error('[VariablesPage] Auto-refresh failed:', err);
       } finally {
         await fetchVariables();
         await fetchPvariables();
@@ -315,7 +329,6 @@ const VariablesPageDesktop: React.FC = () => {
     setMessage('Refreshing variables from device...', 'info');
 
     try {
-      console.log('[VariablesPage] Refreshing all variables from device via FFI...');
       // Pass loading callback to show loading state during Action 17 FFI call
       const result = await PanelDataRefreshService.refreshFromDevice({
         serialNumber: selectedDevice.serialNumber,
@@ -326,10 +339,9 @@ const VariablesPageDesktop: React.FC = () => {
           }
         }
       });
-      console.log('[VariablesPage] Refresh result:', result);
       setMessage(result.message, 'success');
     } catch (error) {
-      console.error('[VariablesPage] Failed to refresh from device:', error);
+      LogUtil.Error('[VariablesPage] Failed to refresh from device:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
       setError(errorMsg);
       setMessage(errorMsg, 'error');
@@ -341,26 +353,26 @@ const VariablesPageDesktop: React.FC = () => {
     }
   };
 
+  usePageRefresh(handleRefreshFromDevice);
+
   // Refresh single variable from device (Trigger #3: Per-row refresh icon)
   const handleRefreshSingleVariable = async (variableIndex: string) => {
     if (!selectedDevice) return;
 
     const index = parseInt(variableIndex, 10);
     if (isNaN(index)) {
-      console.error('[VariablesPage] Invalid variable index:', variableIndex);
+      LogUtil.Error('[VariablesPage] Invalid variable index:', variableIndex);
       return;
     }
 
     setRefreshingItems(prev => new Set(prev).add(variableIndex));
     try {
-      console.log(`[VariablesPage] Refreshing variable ${index} from device via FFI...`);
       const result = await PanelDataRefreshService.refreshSingleVariable(selectedDevice.serialNumber, index);
-      console.log('[VariablesPage] Refresh result:', result);
 
       // Reload data from database after save
       await fetchVariables();
     } catch (error) {
-      console.error(`[VariablesPage] Failed to refresh variable ${index}:`, error);
+      LogUtil.Error(`[VariablesPage] Failed to refresh variable ${index}:`, error);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -413,16 +425,15 @@ const VariablesPageDesktop: React.FC = () => {
   // Register CSV export/import handlers with global context (Tools menu)
   useRegisterCsvHandlers(handleExport, handleImport);
 
-  // Auto-scroll to next device when reaching bottom
+  // [DISABLED] Auto-scroll to next device when reaching bottom — commented out for now.
+  /*
   const loadNextDevice = useCallback(async () => {
     const nextDevice = getNextDevice();
 
     if (!nextDevice) {
-      console.log('[VariablesPage] No next device available');
       return;
     }
 
-    console.log(`[VariablesPage] Auto-loading next device: ${nextDevice.nameShowOnTree} (SN: ${nextDevice.serialNumber})`);
     setIsLoadingNextDevice(true);
 
     // Switch device (this will trigger fetchVariables via useEffect)
@@ -447,7 +458,6 @@ const VariablesPageDesktop: React.FC = () => {
     if (isAtBottom && variables.length > 0) {
       // Mark that we're at bottom
       isAtBottomRef.current = true;
-      console.log('[VariablesPage] Reached bottom, scroll again to load next device');
     } else {
       // Not at bottom anymore, reset the flag
       isAtBottomRef.current = false;
@@ -462,22 +472,21 @@ const VariablesPageDesktop: React.FC = () => {
 
     // If user is scrolling down (deltaY > 0) and already at bottom, load next device
     if (e.deltaY > 0 && isAtBottomRef.current) {
-      console.log('[VariablesPage] User scrolled down while at bottom, loading next device');
       isAtBottomRef.current = false; // Reset
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, variables.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top when device changes
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
-      // Use smooth scroll for auto-loaded devices, instant for manual selection
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Inline editing handlers
   const handleCellDoubleClick = (item: VariablePoint, field: string, currentValue: string) => {
@@ -495,7 +504,6 @@ const VariablesPageDesktop: React.FC = () => {
     currentVariable: any
   ) => {
     try {
-      console.log(`[FFI Action 16] Updating ${field} on device - Variable ${variableIndex} (SN: ${serialNumber})`);
 
       // Build FFI message for UPDATE_WEBVIEW_LIST (Action 16)
       const ffiMessage = {
@@ -518,7 +526,6 @@ const VariablesPageDesktop: React.FC = () => {
         decom: 0,
       };
 
-      console.log('[FFI Action 16] Sending to device:', ffiMessage);
 
       const response = await fetch(`${API_BASE_URL}/api/t3000/ffi/call`, {
         method: 'POST',
@@ -532,10 +539,9 @@ const VariablesPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[FFI Action 16] Device updated successfully:', result);
       return result;
     } catch (error) {
-      console.error('[FFI Action 16] Device update failed:', error);
+      LogUtil.Error('[FFI Action 16] Device update failed:', error);
       throw error;
     }
   };
@@ -549,7 +555,6 @@ const VariablesPageDesktop: React.FC = () => {
     currentVariable: any
   ) => {
     try {
-      console.log(`[Database] Updating ${field} in database - Variable ${variableIndex} (SN: ${serialNumber})`);
 
       const payload = {
         fullLabel: field === 'fullLabel' ? newValue : (currentVariable.fullLabel || ''),
@@ -580,10 +585,9 @@ const VariablesPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Database] Database updated successfully:', result);
       return result;
     } catch (error) {
-      console.error('[Database] Database update failed:', error);
+      LogUtil.Error('[Database] Database update failed:', error);
       throw error;
     }
   };
@@ -604,8 +608,6 @@ const VariablesPageDesktop: React.FC = () => {
     try {
       // Process for all editable fields
       if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual'].includes(editingCell.field)) {
-        console.log(`=== Updating ${editingCell.field} (Two-Step Process) ===`);
-        console.log(`Device: ${selectedDevice.serialNumber}, Variable: ${editingCell.variableIndex}, New Value: "${editValue}"`);
 
         // Find the current variable data
         const currentVariable = variables.find(
@@ -620,7 +622,6 @@ const VariablesPageDesktop: React.FC = () => {
         const panelId = selectedDevice.panelId || 1;
 
         // Step 1: Update device FIRST using FFI (Action 16)
-        console.log('Step 1/2: Updating device via FFI...');
         await updateDeviceUsingFFI(
           panelId,
           selectedDevice.serialNumber,
@@ -629,10 +630,8 @@ const VariablesPageDesktop: React.FC = () => {
           editValue,
           currentVariable
         );
-        console.log('✅ Device updated successfully');
 
         // Step 2: Update database SECOND
-        console.log('Step 2/2: Updating database...');
         await updateDatabaseOnly(
           selectedDevice.serialNumber,
           editingCell.variableIndex,
@@ -640,9 +639,7 @@ const VariablesPageDesktop: React.FC = () => {
           editValue,
           currentVariable
         );
-        console.log('✅ Database updated successfully');
 
-        console.log(`✅ ${editingCell.field} updated successfully (device + database)!`);
       }
 
       // Update local state optimistically
@@ -660,11 +657,10 @@ const VariablesPageDesktop: React.FC = () => {
         )
       );
 
-      console.log('Updated', editingCell.field, ':', editValue, 'for', editingCell);
       setEditingCell(null);
     } catch (error) {
-      console.error('Failed to update:', error);
-      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      LogUtil.Error('Failed to update:', error);
+      setMessage(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -696,7 +692,8 @@ const VariablesPageDesktop: React.FC = () => {
     let cancelled = false;
     fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
       if (cancelled) return;
-      setPointTags(all.map(t => ({
+      const tags = Array.isArray(all?.tags) ? all.tags : [];
+      setPointTags(tags.map(t => ({
         pointType: t.point_type,
         pointIndex: t.point_index,
         tagName: t.tag_name,
@@ -705,7 +702,7 @@ const VariablesPageDesktop: React.FC = () => {
     return () => { cancelled = true; };
   }, [selectedDevice?.serialNumber]);
 
-  // VAR / PVAR filter — two mutually exclusive options
+  // VAR / PVAR filter �?two mutually exclusive options
   const [activeFilter, setActiveFilter] = useState<'VARS' | 'PVARS'>('VARS');
 
   // Determine if a variable is a PVAR by its id or typeField
@@ -734,7 +731,6 @@ const VariablesPageDesktop: React.FC = () => {
     if (!selectedVariableForRange) return;
 
     try {
-      console.log(`[Action 16] Updating Range/Units for Variable ${selectedVariableForRange.variableIndex} (SN: ${selectedVariableForRange.serialNumber}), New DigitalAnalog: ${newDigitalAnalog}`);
 
       // Action 16 requires ALL fields
       const payload = {
@@ -751,7 +747,6 @@ const VariablesPageDesktop: React.FC = () => {
         calibrationL: parseInt(String(selectedVariableForRange.calibrationL || '0')),
       };
 
-      console.log('[Action 16] Full payload:', payload);
 
       const response = await fetch(
         `${API_BASE_URL}/api/t3_device/variables/${selectedVariableForRange.serialNumber}/${selectedVariableForRange.variableIndex}`,
@@ -768,7 +763,6 @@ const VariablesPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Action 16] Range/Units updated successfully:', result);
 
       // Update local state optimistically
       setVariables(prevVariables =>
@@ -780,14 +774,13 @@ const VariablesPageDesktop: React.FC = () => {
         )
       );
     } catch (error) {
-      console.error('Failed to update Range/Units:', error);
-      alert(`Failed to update Range/Units: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      LogUtil.Error('Failed to update Range/Units:', error);
+      setMessage(`Failed to update Range/Units: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    console.log('Search query:', e.target.value);
   };
 
   // Controlled sort state for asc→desc→clear
@@ -809,8 +802,8 @@ const VariablesPageDesktop: React.FC = () => {
   const allVariables = React.useMemo(() => [...variables, ...pvariables], [variables, pvariables]);
 
   // Counts for badge labels
-  const varCount  = React.useMemo(() => allVariables.filter(v => !isPvar(v)).length, [allVariables]);
-  const pvarCount = React.useMemo(() => allVariables.filter(v =>  isPvar(v)).length, [allVariables]);
+  const varCount = React.useMemo(() => allVariables.filter(v => !isPvar(v)).length, [allVariables]);
+  const pvarCount = React.useMemo(() => allVariables.filter(v => isPvar(v)).length, [allVariables]);
 
   // Display data with 18 empty rows when no variables
   const displayVariables = React.useMemo(() => {
@@ -827,7 +820,7 @@ const VariablesPageDesktop: React.FC = () => {
       ? allVariables.filter(v => !isPvar(v))
       : allVariables.filter(v => isPvar(v));
 
-    // Search filter — match against label, full label, ID, value, and tags
+    // Search filter �?match against label, full label, ID, value, and tags
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(v => {
@@ -848,7 +841,7 @@ const VariablesPageDesktop: React.FC = () => {
     }
 
     if (filtered.length === 0 && allVariables.length > 0) {
-      return []; // No results — show empty but not placeholder rows
+      return []; // No results �?show empty but not placeholder rows
     }
     if (allVariables.length === 0) {
       return Array(18).fill(null).map(() => ({ ...emptyTemplate }));
@@ -1026,7 +1019,7 @@ const VariablesPageDesktop: React.FC = () => {
     // 5. Value
     createTableColumn<VariablePoint>({
       columnId: 'value',
-      compare: (a, b) => { const av = parseFloat(a.fValue||'0'); const bv = parseFloat(b.fValue||'0'); return av - bv; },
+      compare: (a, b) => { const av = parseFloat(a.fValue || '0'); const bv = parseFloat(b.fValue || '0'); return av - bv; },
       renderHeaderCell: () => <span>Value</span>,
       renderCell: (item) => {
         if (isEmptyRow(item)) {
@@ -1127,7 +1120,6 @@ const VariablesPageDesktop: React.FC = () => {
 
         const handleToggle = async () => {
           const newValue = !isAuto ? '1' : '0';
-          console.log('Auto/Man toggled:', item.serialNumber, item.variableIndex, newValue);
 
           try {
             // Find the current variable data to pass all fields for Action 16
@@ -1154,7 +1146,6 @@ const VariablesPageDesktop: React.FC = () => {
               calibrationL: parseInt(String(currentVariable.calibrationL || '0')),
             };
 
-            console.log('[Action 16] Updating Auto/Man:', payload);
 
             const response = await fetch(
               `${API_BASE_URL}/api/t3_device/variables/${item.serialNumber}/${item.variableIndex}`,
@@ -1171,7 +1162,6 @@ const VariablesPageDesktop: React.FC = () => {
             }
 
             const result = await response.json();
-            console.log('[Action 16] Auto/Man updated successfully:', result);
 
             // Update local state optimistically
             setVariables(prevVariables =>
@@ -1182,8 +1172,8 @@ const VariablesPageDesktop: React.FC = () => {
               )
             );
           } catch (error) {
-            console.error('Failed to update Auto/Man:', error);
-            alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            LogUtil.Error('Failed to update Auto/Man:', error);
+            setMessage(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
           }
         };
 
@@ -1268,6 +1258,7 @@ const VariablesPageDesktop: React.FC = () => {
                         <input
                           className={styles.searchInput}
                           type="text"
+                          disabled={toolbarDisabled}
                           placeholder="Search variables by label, value, tags ..."
                           value={searchQuery}
                           onChange={handleSearchChange}
@@ -1286,6 +1277,7 @@ const VariablesPageDesktop: React.FC = () => {
                           aria-checked={activeFilter === 'VARS'}
                           className={`${styles.varRadio} ${activeFilter === 'VARS' ? styles.varRadioActive : ''}`}
                           onClick={() => setActiveFilter('VARS')}
+                          disabled={toolbarDisabled}
                           title="Vars: Regular system variables. These are global values used across the device."
                         >
                           <span className={styles.varRadioCircle} />
@@ -1297,6 +1289,7 @@ const VariablesPageDesktop: React.FC = () => {
                           aria-checked={activeFilter === 'PVARS'}
                           className={`${styles.varRadio} ${activeFilter === 'PVARS' ? styles.varRadioActive : ''}`}
                           onClick={() => setActiveFilter('PVARS')}
+                          disabled={toolbarDisabled}
                           title="PVars: Program variables. These are local values used inside control programs (e.g., timers, counters, setpoints)."
                         >
                           <span className={styles.varRadioCircle} />
@@ -1311,7 +1304,7 @@ const VariablesPageDesktop: React.FC = () => {
                       <button
                         className={styles.toolbarButton}
                         onClick={handleRefreshFromDevice}
-                        disabled={refreshing}
+                        disabled={refreshing || toolbarDisabled}
                         title="Refresh all variables from device"
                         aria-label="Refresh"
                       >
@@ -1329,6 +1322,7 @@ const VariablesPageDesktop: React.FC = () => {
                         <button
                           // className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                           className={`${styles.toolbarButton}`}
+                          disabled={toolbarDisabled}
                           title="Information"
                           aria-label="Information about this page"
                         >
@@ -1362,7 +1356,7 @@ const VariablesPageDesktop: React.FC = () => {
                   ======================================== */}
               <div className={styles.dockingBody}>
 
-                {/* Loading State — only on first load */}
+                {/* Loading State �?only on first load */}
                 {(loading || loadingPvars) && !hasEverLoadedData.current && (
                   <div className={styles.loadingBar}>
                     <Spinner size="tiny" />
@@ -1381,13 +1375,21 @@ const VariablesPageDesktop: React.FC = () => {
                   </div>
                 )}
 
-                {/* Data Grid — show once device is selected AND initial load is done OR we have data */ }
-                {selectedDevice && (!loading || hasEverLoadedData.current) && (!loadingPvars || hasEverLoadedData.current) && (
+                {/* Not Supported (sub-device) — show banner instead of grid */}
+                {selectedDevice && (!loading || hasEverLoadedData.current) && (!loadingPvars || hasEverLoadedData.current) &&
+                  isSubDeviceDevice && (
+                    <NotSupportedBanner pointType="Variables" deviceName={selectedDevice.nameShowOnTree} />
+                  )}
+
+                {/* Data Grid �?show once device is selected AND initial load is done OR we have data */}
+                {selectedDevice && (!loading || hasEverLoadedData.current) && (!loadingPvars || hasEverLoadedData.current) &&
+                  !isSubDeviceDevice && (
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    onScroll={handleScroll}
-                    onWheel={handleWheel}
+                  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                  // onScroll={handleScroll}
+                  // onWheel={handleWheel}
                   >
                     <DataGrid
                       key={sortKey}
@@ -1428,13 +1430,14 @@ const VariablesPageDesktop: React.FC = () => {
                       </DataGridBody>
                     </DataGrid>
 
-                    {/* Loading Next Device Indicator */}
+                    {/* [DISABLED] Loading Next Device Indicator — commented out for now.
                     {isLoadingNextDevice && (
                       <div className={styles.autoLoadIndicator}>
                         <Spinner size="tiny" />
                         <Text size={200} weight="regular">Loading next device...</Text>
                       </div>
                     )}
+                    */}
 
                     {/* No Data Message - Show below grid when empty */}
                     {/* {variables.length === 0 && (

@@ -65,7 +65,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onSummary }) => 
           if (!r.ok) return { ok: false, items: [] as Activity[] };
           const data: SyncStatus[] = await r.json();
           const items = data.map((s) => ({
-            id: `${dev.serialNumber}-${s.dataType}`,
+            id: `${dev.serialNumber}-${s.dataType}-${s.id}`,
             device: dev.nameShowOnTree,
             dataType: s.dataType,
             timestamp: s.syncTimeFmt,

@@ -12,14 +12,13 @@ import Instance from '../Data/Instance/Instance';
 import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
 import PolyUtil from '../Opt/Opt/PolyUtil';
 import HookUtil from '../Opt/Opt/HookUtil';
-import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a line shape in the T3000 HVAC drawing system.

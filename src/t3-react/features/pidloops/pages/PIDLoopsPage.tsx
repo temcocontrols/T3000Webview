@@ -35,6 +35,8 @@ import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefr
 import styles from './PIDLoopsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // PID Controller interface matching PID_TABLE entity
 interface PIDController {
@@ -63,7 +65,9 @@ interface PIDController {
 }
 
 const PIDLoopsPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, selectDevice, getFilteredDevices } = useDeviceTreeStore();
   const [pidLoops, setPidLoops] = useState<PIDController[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,8 +84,9 @@ const PIDLoopsPage: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false);
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false);
 
   // Create empty rows when no data exists
   const displayPidLoops = useMemo(() => {
@@ -140,23 +145,18 @@ const PIDLoopsPage: React.FC = () => {
   const fetchPidLoops = useCallback(async () => {
     if (!selectedDevice) return;
 
-    console.log('Fetching PID loops for device:', selectedDevice.serialNumber);
     setIsLoading(true);
     setError(null);
     try {
       // Using generic table API since no specific PID endpoint exists yet
       const url = `${API_BASE_URL}/api/t3_device/devices/${selectedDevice.serialNumber}/table/PID_TABLE`;
-      console.log('Fetching from URL:', url);
       const response = await fetch(url);
-      console.log('Response status:', response.status);
       if (!response.ok) throw new Error('Failed to fetch PID loops');
 
       const result = await response.json();
-      console.log('API response:', result);
-      console.log('Data array:', result.data);
       setPidLoops(result.data || []);
     } catch (error) {
-      console.error('Error fetching PID loops:', error);
+      LogUtil.Error('Error fetching PID loops:', error);
       setError(error instanceof Error ? error.message : 'Failed to load PID loops');
     } finally {
       setIsLoading(false);
@@ -185,19 +185,16 @@ const PIDLoopsPage: React.FC = () => {
       try {
         // Check if database has PID loop data
         if (pidLoops.length > 0) {
-          console.log('[PIDLoopsPage] Database has data, skipping auto-refresh');
           setAutoRefreshed(true);
           return;
         }
 
-        console.log('[PIDLoopsPage] Database empty, auto-refreshing from device...');
         const result = await PanelDataRefreshService.refreshAllPidLoops(selectedDevice.serialNumber);
-        console.log('[PIDLoopsPage] Auto-refresh result:', result);
         // Data already saved by service, just reload from database
         await fetchPidLoops();
         setAutoRefreshed(true);
       } catch (error) {
-        console.error('[PIDLoopsPage] Auto-refresh failed:', error);
+        LogUtil.Error('[PIDLoopsPage] Auto-refresh failed:', error);
         // Don't reload from database on error - preserve existing PID loops
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
@@ -229,11 +226,10 @@ const PIDLoopsPage: React.FC = () => {
     setIsSaving(true);
     try {
       // TODO: Implement batch save when API is ready
-      console.log('Saving changes:', editedValues);
       setEditedValues({});
       setHasChanges(false);
     } catch (error) {
-      console.error('Error saving changes:', error);
+      LogUtil.Error('Error saving changes:', error);
     } finally {
       setIsSaving(false);
     }
@@ -258,13 +254,11 @@ const PIDLoopsPage: React.FC = () => {
 
     setRefreshing(true);
     try {
-      console.log('[PIDLoopsPage] Refreshing all PID loops from device...');
       const result = await PanelDataRefreshService.refreshAllPidLoops(selectedDevice.serialNumber);
-      console.log('[PIDLoopsPage] Refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchPidLoops();
     } catch (error) {
-      console.error('[PIDLoopsPage] Failed to refresh from device:', error);
+      LogUtil.Error('[PIDLoopsPage] Failed to refresh from device:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh from device');
       // Don't call fetchPidLoops() on error - preserve existing PID loops in UI
     } finally {
@@ -272,25 +266,25 @@ const PIDLoopsPage: React.FC = () => {
     }
   };
 
+  usePageRefresh(handleRefreshFromDevice);
+
   // Refresh single PID loop from device (Trigger #3: Per-row refresh icon)
   const handleRefreshSinglePidLoop = async (loopField: string) => {
     if (!selectedDevice) return;
 
     const index = parseInt(loopField, 10);
     if (isNaN(index)) {
-      console.error('[PIDLoopsPage] Invalid loop field:', loopField);
+      LogUtil.Error('[PIDLoopsPage] Invalid loop field:', loopField);
       return;
     }
 
     setRefreshingItems(prev => new Set(prev).add(loopField));
     try {
-      console.log(`[PIDLoopsPage] Refreshing PID loop ${index} from device...`);
       const result = await PanelDataRefreshService.refreshSinglePidLoop(selectedDevice.serialNumber, index);
-      console.log('[PIDLoopsPage] Refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchPidLoops();
     } catch (error) {
-      console.error(`[PIDLoopsPage] Failed to refresh PID loop ${index}:`, error);
+      LogUtil.Error(`[PIDLoopsPage] Failed to refresh PID loop ${index}:`, error);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -348,7 +342,6 @@ const PIDLoopsPage: React.FC = () => {
 
   // Handle settings
   const handleSettings = () => {
-    console.log('Settings clicked');
     // TODO: Implement settings dialog
   };
 
@@ -375,7 +368,8 @@ const PIDLoopsPage: React.FC = () => {
     }
   };
 
-  // Auto-scroll navigation handlers
+  // [DISABLED] Auto-scroll navigation handlers — commented out for now.
+  /*
   const loadNextDevice = useCallback(() => {
     const nextDevice = getNextDevice();
     if (nextDevice) {
@@ -409,16 +403,17 @@ const PIDLoopsPage: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, isLoading, pidLoops.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top after device change
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Column definitions
   const columns: TableColumnDefinition<PIDController>[] = useMemo(() => [
@@ -847,13 +842,14 @@ const PIDLoopsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Data Grid - Always show with header */}
-        {selectedDevice && !isLoading && !error && (
+        {/* Data Grid - Always show with header, even on error */}
+        {selectedDevice && !isLoading && (
           <div
             ref={scrollContainerRef}
             className={styles.scrollContainer}
-            onScroll={handleScroll}
-            onWheel={handleWheel}
+            // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+            // onScroll={handleScroll}
+            // onWheel={handleWheel}
           >
             <DataGrid
               key={sortKey}
@@ -907,12 +903,14 @@ const PIDLoopsPage: React.FC = () => {
             )}
             */}
 
+            {/* [DISABLED] Auto-load indicator — commented out for now.
             {isLoadingNextDevice && (
               <div className={styles.autoLoadIndicator}>
                 <Spinner size="tiny" />
                 <Text>Loading next device...</Text>
               </div>
             )}
+            */}
           </div>
         )}
 

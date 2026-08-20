@@ -6,7 +6,7 @@ import Element from './B.Element';
 // import { useQuasar } from 'quasar';
 // Placeholder: Quasar not used in React
 const useQuasar: any = () => ({ notify: () => {}, dialog: {} });
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents an SVG foreignObject element that can contain HTML content, including Vue components.
@@ -116,7 +116,7 @@ class ForeignObject extends Element {
         }
       });
     } catch (error) {
-      T3Util.Error('= b.ForeignObject: MountVueComponent/ Failed to mount Vue component:', error);
+      LogUtil.Error('= b.ForeignObject: MountVueComponent/ Failed to mount Vue component:', error);
     }
 
     return this;

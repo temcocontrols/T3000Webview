@@ -1,3 +1,8 @@
+/**
+ * DEPRECATED: This page is not currently used in the UI.
+ * Haystack tag + Brick class management has moved to /t3000/haystack-tags.
+ * The route and logic are kept intact for potential future use.
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 import { FilterRegular } from '@fluentui/react-icons';
 import {
@@ -30,6 +35,7 @@ interface UnifiedPoint {
   units?: string | null;
   fValue?: string | null;
   rangeField?: string | null;
+  brickClass?: string | null;
 }
 
 const pointTypeEndpoint: Record<PointType, string> = {
@@ -116,6 +122,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
   const [pointSearch, setPointSearch] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [pointTags, setPointTags] = useState<Record<string, string[]>>({});
+  const [pointBrickClasses, setPointBrickClasses] = useState<Record<string, string>>({});
   const [statusBar, setStatusBar] = useState<{ type: 'info' | 'success' | 'error'; message: string } | null>(null);
   const [rebuildInProgress, setRebuildInProgress] = useState(false);
   const [loadRevision, setLoadRevision] = useState(0);
@@ -226,6 +233,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
         const merged = settled.flat();
 
         const haystackByPointKey: Record<string, string[]> = {};
+        const brickClassByPointKey: Record<string, string> = {};
         try {
           const haystackResponse = await fetch(`${API_BASE_URL}/api/haystack/point-tags/read`, {
             method: 'POST',
@@ -260,9 +268,36 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
           console.warn('Failed to load backend Haystack tags; using derived tags only:', error);
         }
 
+        // Load brick classes
+        try {
+          const bcResponse = await fetch(`${API_BASE_URL}/api/haystack/auto-tagging/brick-classes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ serialNumbers: selectedDevices.map(d => d.serialNumber) }),
+          });
+          if (bcResponse.ok) {
+            const bcPayload = await bcResponse.json();
+            const entries: any[] = Array.isArray(bcPayload?.entries) ? bcPayload.entries : [];
+            entries.forEach((entry: any) => {
+              const sn = Number(entry?.serial_number ?? 0);
+              const pt = String(entry?.point_type ?? '').trim().toUpperCase();
+              const pi = String(entry?.point_index ?? '').trim();
+              const bc = String(entry?.brick_class ?? '').trim();
+              if (!sn || !pt || !pi || !bc) return;
+              const mappedType = pt === 'INPUT' ? 'input' : pt === 'OUTPUT' ? 'output' : pt === 'VARIABLE' ? 'variable' : null;
+              if (!mappedType) return;
+              const key = `${sn}:${mappedType}:${pi}`;
+              brickClassByPointKey[key] = bc;
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to load brick classes:', error);
+        }
+
         if (!cancelled) {
           setAllPoints(merged);
           setSelectedPointKeys(new Set());
+          setPointBrickClasses(brickClassByPointKey);
           setPointTags(() => {
             const next: Record<string, string[]> = {};
             // Track which point keys have an explicit DB entry (even if empty after a Clear All).
@@ -489,6 +524,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
         point_index: p.index,
         point_id: `dev${p.serial}.${p.type === 'input' ? 'in' : p.type === 'output' ? 'out' : 'var'}${p.index}`,
         set_tags: tagsSnapshot[p.key] ?? [],
+        brick_class: pointBrickClasses[p.key] ?? undefined,
       }));
     if (updates.length === 0) return;
     const response = await fetch(`${API_BASE_URL}/api/haystack/point-tags/write`, {
@@ -831,6 +867,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
                   <col className={styles.colLabel} />
                   <col className={styles.colFullLabel} />
                   <col className={styles.colTags} />
+                  <col className={styles.colBrick} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -867,6 +904,7 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
                     <th>Label</th>
                     <th>Full Label</th>
                     <th>Tags</th>
+                    <th>Brick Class</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -911,6 +949,15 @@ export const TrendPolicyPage: React.FC<TrendPolicyPageProps> = (_props) => {
                               );
                             })()}
                           </div>
+                        </td>
+                        <td>
+                          <input
+                            className={styles.brickClassInput}
+                            value={pointBrickClasses[p.key] || ''}
+                            onChange={e => setPointBrickClasses(prev => ({ ...prev, [p.key]: e.target.value }))}
+                            placeholder="—"
+                            title="Brick class (e.g. Supply_Air_Temperature_Sensor). Clear to remove."
+                          />
                         </td>
                       </tr>
                     );

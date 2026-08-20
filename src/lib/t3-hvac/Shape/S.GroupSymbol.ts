@@ -17,11 +17,10 @@ import StateConstant from '../Data/State/StateConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import TextConstant from '../Data/Constant/TextConstant';
 import StyleConstant from '../Data/Constant/StyleConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import DSUtil from '../Opt/DS/DSUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import OptCMUtil from '../Opt/Opt/OptCMUtil';
-import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a group symbol that contains multiple shapes treated as a single entity.

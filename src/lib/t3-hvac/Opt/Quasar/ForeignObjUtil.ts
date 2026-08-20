@@ -8,7 +8,6 @@ const VueCircle: any = null;
 const ObjectType2: any = null;
 const ObjectType3: any = null;
 import QuasarUtil from "./QuasarUtil";
-import T3Util from "../../Util/T3Util";
 import LogUtil from "../../Util/LogUtil";
 
 class ForeignObjUtil {

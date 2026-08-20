@@ -95,7 +95,7 @@ pub async fn create_initial_trendlog(
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
     // ── MSSQL branch ──
     if let Some(pool) = &app_state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let info = mssql_trendlog_service::create_initial_trendlog_info(pool, serial_number, 1, &trendlog_id, None)
             .await
             .map_err(|e| AppError::InternalError(format!("MSSQL trendlog init: {}", e)))?;
@@ -143,7 +143,7 @@ pub async fn create_initial_trendlog_frontend_pattern(
 
     // ── MSSQL branch ──
     if let Some(pool) = &app_state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let info = mssql_trendlog_service::create_initial_trendlog_info(
             pool, request.device_id, request.panel_id, &trendlog_id, request.chart_title.as_deref(),
         )
@@ -211,7 +211,7 @@ pub async fn sync_detailed_trendlog(
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
     // ── MSSQL branch — FFI sync not applicable, return existing info ──
     if let Some(pool) = &app_state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let info = mssql_trendlog_service::create_initial_trendlog_info(pool, serial_number, 1, &trendlog_id, None)
             .await
             .map_err(|e| AppError::InternalError(format!("MSSQL sync: {}", e)))?;
@@ -250,7 +250,7 @@ pub async fn sync_trendlog_with_ffi(
 ) -> Result<Json<TrendLogFFIResponse>, AppError> {
     // ── MSSQL branch — FFI sync not applicable, return existing info ──
     if let Some(pool) = &app_state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let info = mssql_trendlog_service::create_initial_trendlog_info(pool, serial_number, 1, &trendlog_id, None)
             .await
             .map_err(|e| AppError::InternalError(format!("MSSQL sync: {}", e)))?;
@@ -299,7 +299,7 @@ pub async fn sync_trendlog_frontend_pattern(
 
     // ── MSSQL branch ──
     if let Some(pool) = &app_state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let info = mssql_trendlog_service::create_initial_trendlog_info(
             pool, request.device_id, request.panel_id, &trendlog_id, request.chart_title.as_deref(),
         )
@@ -370,7 +370,7 @@ pub async fn get_view_selections(
 
     // ── MSSQL branch ──
     if let Some(pool) = &app_state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let sels = mssql_trendlog_service::get_view_selections(pool, serial_number, 1, &trendlog_id, view_number)
             .await
             .map_err(|e| AppError::InternalError(format!("MSSQL view selections: {}", e)))?;
@@ -402,7 +402,7 @@ pub async fn save_view_selections(
 
     // ── MSSQL branch ──
     if let Some(pool) = &app_state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let sels: Vec<mssql_trendlog_service::ViewSelectionInput> = request.selections.into_iter().map(|s| {
             mssql_trendlog_service::ViewSelectionInput {
                 point_type: s.point_type,
@@ -438,7 +438,7 @@ pub async fn get_trendlog_info(
 ) -> Result<Json<Option<TrendLogInfo>>, AppError> {
     // ── MSSQL branch ──
     if let Some(pool) = &app_state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let info = mssql_trendlog_service::get_trendlog_info(pool, &trendlog_id)
             .await
             .map_err(|e| AppError::InternalError(format!("MSSQL trendlog info: {}", e)))?;
@@ -479,7 +479,7 @@ pub async fn get_view_selections_frontend(
 
     // ── MSSQL branch ──
     if let Some(pool) = &app_state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let sels = mssql_trendlog_service::get_view_selections(pool, serial_number, panel_id, &trendlog_id, view_number)
             .await
             .map_err(|e| AppError::InternalError(format!("MSSQL view selections: {}", e)))?;
@@ -526,7 +526,7 @@ pub async fn save_view_selections_frontend(
 
     // ── MSSQL branch ──
     if let Some(pool) = &app_state.mssql_pool {
-        use crate::database_management::mssql_trendlog_service;
+        use crate::server_db::mssql_trendlog_service;
         let sels: Vec<mssql_trendlog_service::ViewSelectionInput> = request.selections.into_iter().map(|s| {
             mssql_trendlog_service::ViewSelectionInput {
                 point_type: s.point_type,

@@ -3,7 +3,6 @@ import { appState, T3000_Data, ranges, library, savedNotify, isBuiltInEdge, appS
 // import { toRaw } from 'vue'
 // Placeholder: Vue toRaw - returns raw object
 const toRaw = (val: any) => val;
-import T3Util from '../../Util/T3Util';
 import LogUtil from '../../Util/LogUtil';
 
 class IdxUtils {

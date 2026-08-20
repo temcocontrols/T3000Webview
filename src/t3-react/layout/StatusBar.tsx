@@ -48,8 +48,8 @@ const useStyles = makeStyles({
     flexShrink: 0,
   },
   connectionPane: {
-    width: '220px',
-    minWidth: '220px',
+    width: '240px',
+    minWidth: '240px',
     flexShrink: 0,
   },
   protocolPane: {

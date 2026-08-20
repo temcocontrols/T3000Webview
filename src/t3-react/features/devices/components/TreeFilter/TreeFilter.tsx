@@ -10,7 +10,6 @@ import {
   SearchBox,
   Dropdown,
   Option,
-  Checkbox,
   Button,
 } from '@fluentui/react-components';
 import { Dismiss20Regular } from '@fluentui/react-icons';
@@ -25,12 +24,10 @@ export const TreeFilter: React.FC = () => {
     filterText,
     filterProtocol,
     filterBuilding,
-    showOfflineOnly,
     buildings,
     setFilterText,
     setFilterProtocol,
     setFilterBuilding,
-    setShowOfflineOnly,
     clearFilters,
   } = useDeviceTreeStore();
 
@@ -48,8 +45,7 @@ export const TreeFilter: React.FC = () => {
   const hasActiveFilters =
     filterText !== '' ||
     filterProtocol !== 'All' ||
-    filterBuilding !== 'All' ||
-    showOfflineOnly;
+    filterBuilding !== 'All';
 
   return (
     <div className={styles.container}>
@@ -96,14 +92,6 @@ export const TreeFilter: React.FC = () => {
           </Option>
         ))}
       </Dropdown>
-
-      {/* Offline only checkbox */}
-      <Checkbox
-        label="Offline only"
-        checked={showOfflineOnly}
-        onChange={(_, data) => setShowOfflineOnly(data.checked as boolean)}
-        className={styles.checkbox}
-      />
 
       {/* Clear filters button */}
       {hasActiveFilters && (

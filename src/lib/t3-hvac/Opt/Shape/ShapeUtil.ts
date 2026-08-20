@@ -25,7 +25,6 @@ import LayerUtil from '../Opt/LayerUtil'
 import UIUtil from '../UI/UIUtil'
 import DataOpt from '../Data/DataOpt'
 import TextUtil from '../Opt/TextUtil'
-import T3Util from '../../Util/T3Util'
 import LogUtil from '../../Util/LogUtil'
 import T3Constant from '../../Data/Constant/T3Constant'
 
@@ -585,7 +584,7 @@ class ShapeUtil {
         jsonData = storageKeyOrData;
       }
     } catch (error) {
-      T3Util.Error("= u.ShapeUtil: ReadBuffer/ Error parsing JSON data:", error);
+      LogUtil.Error("= u.ShapeUtil: ReadBuffer/ Error parsing JSON data:", error);
       result.error = ShapeUtil.Errors.UnknownFile;
       return result.error;
     }
@@ -902,7 +901,7 @@ class ShapeUtil {
 
       return result.error;
     } catch (error) {
-      T3Util.Error("= u.ShapeUtil: ReadSymbolFromBufferComplete/ Error processing JSON data:", error);
+      LogUtil.Error("= u.ShapeUtil: ReadSymbolFromBufferComplete/ Error processing JSON data:", error);
       result.error = ShapeUtil.Errors.BadFormat;
       return result.error;
     }
@@ -1297,7 +1296,7 @@ class ShapeUtil {
       return (isSelectOnly || returnRawData) ? jsonString : storageKey;
 
     } catch (error) {
-      T3Util.Error("= u.ShapeUtil: WriteBuffer/ Error serializing drawing to JSON:", error);
+      LogUtil.Error("= u.ShapeUtil: WriteBuffer/ Error serializing drawing to JSON:", error);
       return null;
     }
   }

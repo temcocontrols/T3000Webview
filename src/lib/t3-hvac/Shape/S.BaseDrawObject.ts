@@ -34,7 +34,7 @@ import TextUtil from '../Opt/Opt/TextUtil'
 import PolygonConstant from '../Opt/Polygon/PolygonConstant'
 import RulerUtil from '../Opt/UI/RulerUtil'
 import UIUtil from '../Opt/UI/UIUtil'
-import T3Util from '../Util/T3Util'
+import LogUtil from '../Util/LogUtil'
 import Utils1 from '../Util/Utils1'
 import Utils2 from "../Util/Utils2"
 import Utils3 from "../Util/Utils3"
@@ -44,7 +44,6 @@ import LayerUtil from '../Opt/Opt/LayerUtil'
 import SelectUtil from '../Opt/Opt/SelectUtil'
 import BlobBytes from '../Model/BlobBytes'
 import PolyUtil from '../Opt/Opt/PolyUtil'
-import LogUtil from '../Util/LogUtil';
 
 /**
  * BaseDrawObject is the fundamental class for all drawable elements within the T3000 HVAC system.
@@ -1419,7 +1418,7 @@ class BaseDrawObject {
       const newBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.NotesObject, textObj);
 
       if (newBlock === null) {
-        T3Util.Error("= s.BaseDrawObject: SetNoteContent error: null new text block allocation");
+        LogUtil.Error("= s.BaseDrawObject: SetNoteContent error: null new text block allocation");
         throw "error: AddNewObject got a null new text block allocation";
       }
 

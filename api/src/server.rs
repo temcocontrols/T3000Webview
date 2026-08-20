@@ -25,7 +25,7 @@ use crate::{
     utils::{SHUTDOWN_CHANNEL, SPA_DIR},
 };
 
-use super::modbus_register::routes::modbus_register_routes;
+use super::reg_defs::routes::modbus_register_routes;
 use super::user::routes::user_routes;
 
 pub(crate) const DEBUG_LOG_NAME: &str = "t3-webview-api-dll.log";
@@ -199,7 +199,7 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
     };
 
     // Start heartbeat task for server/client registry
-    crate::database_management::registry_service::start_heartbeat_task(app_state.clone());
+    crate::server_db::registry_service::start_heartbeat_task(app_state.clone());
 
     Ok(Router::new()
         .nest(
@@ -213,7 +213,7 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
                 .with_state(original_state)
                 .merge(
                     // Data Sync Metadata API routes with T3AppState
-                    crate::database_management::data_sync_endpoints::create_sync_status_routes()
+                    crate::server_db::data_sync_endpoints::create_sync_status_routes()
                         .with_state(app_state.clone())
                 )
         )
@@ -224,23 +224,29 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         // Bridge API for EEZ Studio web frontend file operations
         .merge(crate::eez_studio::bridge_routes(Router::<T3AppState>::new()))
         // Database Management routes with T3AppState
-        .merge(crate::database_management::endpoints::database_management_routes())
+        .merge(crate::server_db::endpoints::server_db_routes())
         // Application Configuration API routes
-        .merge(crate::database_management::config_api::config_routes())
+        .merge(crate::server_db::config_api::config_routes())
         // Database Backend Configuration API routes
-        .merge(crate::database_management::db_backend_routes::db_backend_routes())
+        .merge(crate::server_db::db_backend_routes::db_backend_routes())
         // Server DB Status route (server/client mode)
         .merge(crate::web_routing::server_db_routes())
         // Server/Client Registry routes (heartbeat + listing)
-        .merge(crate::database_management::registry_service::registry_routes())
+        .merge(crate::server_db::registry_service::registry_routes())
         // Sync Health + Event Log routes
-        .merge(crate::database_management::sync_health::sync_health_routes())
+        .merge(crate::server_db::sync_health::sync_health_routes())
         // Developer Tools routes
         .nest("/api/develop", crate::t3_develop::create_develop_routes())
         // Flow log routes
         .merge(crate::logging::flow_api::flow_routes())
         // Haystack Tags API routes (v2)
-        .merge(crate::t3_device::haystack_tags_routes::create_haystack_tags_routes())
+        .merge(crate::haystack::tags_routes::create_haystack_tags_routes())
+        // Haystack Auto-tagging routes (v3)
+        .merge(crate::haystack::auto_tagging_routes::create_auto_tagging_routes())
+        // MCP Server routes (JSON-RPC over HTTP)
+        .merge(crate::mcp::server::create_mcp_routes())
+        // AI Chat routes (SSE streaming + tool-call loop)
+        .merge(crate::ai::create_ai_routes())
         // Point Sets API routes (DB-backed)
         .merge(crate::t3_device::point_sets_routes::create_point_sets_routes())
         // Server local-time endpoint (for client timezone alignment)

@@ -15,6 +15,9 @@ interface HvacDesignerState {
   // Viewport state
   viewport: ViewportState;
 
+  // Zoom display value (synced from library's IdxPage.zoom)
+  zoomValue: number;
+
   // Shapes
   shapes: Shape[];
 
@@ -50,6 +53,7 @@ interface HvacDesignerState {
 interface HvacDesignerActions {
   // Canvas actions
   setZoom: (zoom: number) => void;
+  setZoomValue: (zoom: number) => void;
   setPan: (x: number, y: number) => void;
   setGridSize: (size: number) => void;
   toggleGrid: () => void;
@@ -121,6 +125,7 @@ const initialViewportState: ViewportState = {
 
 const initialState: HvacDesignerState = {
   viewport: initialViewportState,
+  zoomValue: 100,
   shapes: [],
   selectedShapeIds: [],
   clipboard: [],
@@ -161,6 +166,11 @@ export const useHvacDesignerStore = create<HvacDesignerState & HvacDesignerActio
       setZoom: (zoom) =>
         set((state) => {
           state.viewport.zoom = Math.max(0.1, Math.min(5, zoom));
+        }),
+
+      setZoomValue: (zoom) =>
+        set((state) => {
+          state.zoomValue = zoom;
         }),
 
       setPan: (x, y) =>

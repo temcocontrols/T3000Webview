@@ -11,7 +11,7 @@ import Utils2 from '../Util/Utils2'
 import DocConfig from '../Model/DocConfig'
 import OptConstant from '../Data/Constant/OptConstant'
 import CursorConstant from '../Data/Constant/CursorConstant'
-import T3Util from '../Util/T3Util'
+import LogUtil from '../Util/LogUtil'
 import ObjectUtil from '../Opt/Data/ObjectUtil'
 import MouseUtil from '../Event/MouseUtil'
 import SelectUtil from '../Opt/Opt/SelectUtil'
@@ -19,7 +19,6 @@ import RulerUtil from '../Opt/UI/RulerUtil'
 import UIUtil from '../Opt/UI/UIUtil'
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil'
 import DataOpt from '../Opt/Data/DataOpt'
-import LogUtil from '../Util/LogUtil'
 import HvConstant from '../Data/Constant/HvConstant'
 import { zoomScale } from '../Data/Constant/RefConstant'
 import RefUtil from '../Opt/Tool/RefUtil'
@@ -116,6 +115,10 @@ class DocUtil {
   public printHandler: any = null;
   public inZoomIdle: boolean = false;
 
+  // Debounce timer for resize events (prevents firing on every pixel)
+  private _resizeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private static readonly RESIZE_DEBOUNCE_MS = 100;
+
   constructor() {
     this.InitDocConfig();
     this.rulerConfig = new RulerConfig();
@@ -168,89 +171,106 @@ class DocUtil {
   }
 
   /**
-   * Initializes the document work area with SVG components and rulers
-   * Sets up event handlers, creates layers, and configures initial display settings
+   * Initializes the document work area with SVG components and rulers.
+   * Sets up event handlers, creates layers, and configures initial display settings.
+   * Wrapped in try/catch to surface initialization failures to the caller.
+   *
    * @param workAreaConfig - Configuration object for the work area
-   * @returns void
+   * @param isReInitialize - Whether this is a re-initialization (skips SVG doc creation)
+   * @throws {Error} If required DOM elements are missing or SVG initialization fails
    */
   InitializeWorkArea(workAreaConfig: any, isReInitialize = false): void {
     LogUtil.Info("= u.DocUtil: InitializeWorkArea - Input:", workAreaConfig);
 
-    // Use provided configuration or defaults
-    workAreaConfig = workAreaConfig || {};
+    try {
+      // Use provided configuration or defaults
+      workAreaConfig = workAreaConfig || {};
 
-    // Set up DOM element IDs with provided values or defaults
-    this.workAreaId = workAreaConfig.workAreaId || '#document-area';
-    this.svgAreaId = workAreaConfig.svgAreaId || '#svg-area';
-    this.hRulerAreaId = workAreaConfig.hRulerAreaId || '#h-ruler';
-    this.vRulerAreaId = workAreaConfig.vRulerAreaId || '#v-ruler';
-    this.cRulerAreaId = workAreaConfig.cRulerAreaId || '#c-ruler';
+      // Set up DOM element IDs with provided values or defaults
+      this.workAreaId = workAreaConfig.workAreaId || '#document-area';
+      this.svgAreaId = workAreaConfig.svgAreaId || '#svg-area';
+      this.hRulerAreaId = workAreaConfig.hRulerAreaId || '#h-ruler';
+      this.vRulerAreaId = workAreaConfig.vRulerAreaId || '#v-ruler';
+      this.cRulerAreaId = workAreaConfig.cRulerAreaId || '#c-ruler';
 
-    // Initialize document-related properties
+      // Validate that the SVG area element exists before proceeding
+      const svgElement = document.querySelector(this.svgAreaId);
+      if (!svgElement) {
+        throw new Error(
+          `InitializeWorkArea: SVG area element not found. ` +
+          `Expected selector "${this.svgAreaId}". ` +
+          `Ensure the DOM element exists before calling InitializeWorkArea.`
+        );
+      }
 
-    if (!isReInitialize) {
-      this.svgDoc = null;
-      this.hRulerDoc = null;
-      this.vRulerDoc = null;
+      // Initialize document-related properties
+      if (!isReInitialize) {
+        this.svgDoc = null;
+        this.hRulerDoc = null;
+        this.vRulerDoc = null;
+      }
+
+      this.rulerVis = true;
+      this.gridVis = true;
+      this.gridLayer = '_doc_grid';
+      this.pageDividerLayer = '_doc_page_divider';
+      this.backgroundLayer = '_background';
+      this.backgroundElem = null;
+      this.scaleToFit = false;
+      this.scaleToPage = false;
+      this.scrollWidth = 0;
+      this.printHandler = null;
+
+      // Bind window resize event handler
+      $(window).bind('resize', this, function (event) {
+        event.data.HandleResizeEvent();
+      });
+
+      // Bind scroll event handler to SVG area
+      $(this.svgAreaId).bind('scroll', this, function (event) {
+        event.data.HandleScrollEvent();
+      });
+
+      // Initialize ruler configuration
+      this.rulerConfig = new RulerConfig();
+      this.rulerConfig.denom = RulerUtil.GetFractionDenominator();
+      this.UpdateRulerVisibility();
+
+      // Bind mouse move event handler
+      $(window).bind('mousemove', EvtUtil.Evt_MouseMove);
+
+      if (!isReInitialize) {
+        // Initialize SVG area with the configuration
+        this.InitSvgArea(workAreaConfig);
+      }
+
+      // Initialize UI components visibility and content
+      this.UpdateGridVisibility();
+
+      if (!isReInitialize) {
+        this.SetUpRulers();
+      }
+
+      this.UpdateGrid();
+      this.UpdatePageDivider();
+      this.UpdateWorkArea();
+
+      LogUtil.Debug("= U.DocUtil: InitializeWorkArea - Output:", {
+        workAreaId: this.workAreaId,
+        svgAreaId: this.svgAreaId,
+        hRulerAreaId: this.hRulerAreaId,
+        vRulerAreaId: this.vRulerAreaId,
+        cRulerAreaId: this.cRulerAreaId,
+        gridLayer: this.gridLayer,
+        pageDividerLayer: this.pageDividerLayer,
+        backgroundLayer: this.backgroundLayer,
+        scaleToFit: this.scaleToFit,
+        scaleToPage: this.scaleToPage
+      });
+    } catch (error) {
+      LogUtil.Error("= U.DocUtil: InitializeWorkArea - FAILED:", error);
+      throw error;
     }
-
-    this.rulerVis = true;
-    this.gridVis = true;
-    this.gridLayer = '_doc_grid';
-    this.pageDividerLayer = '_doc_page_divider';
-    this.backgroundLayer = '_background';
-    this.backgroundElem = null;
-    this.scaleToFit = false;
-    this.scaleToPage = false;
-    this.scrollWidth = 0;
-    this.printHandler = null;
-
-    // Bind window resize event handler
-    $(window).bind('resize', this, function (event) {
-      event.data.HandleResizeEvent();
-    });
-
-    // Bind scroll event handler to SVG area
-    $(this.svgAreaId).bind('scroll', this, function (event) {
-      event.data.HandleScrollEvent();
-    });
-
-    // Initialize ruler configuration
-    this.rulerConfig = new RulerConfig();
-    this.rulerConfig.denom = RulerUtil.GetFractionDenominator();
-    this.UpdateRulerVisibility();
-
-    // Bind mouse move event handler
-    $(window).bind('mousemove', EvtUtil.Evt_MouseMove);
-
-    if (!isReInitialize) {
-      // Initialize SVG area with the configuration
-      this.InitSvgArea(workAreaConfig);
-    }
-
-    // Initialize UI components visibility and content
-    this.UpdateGridVisibility();
-
-    if (!isReInitialize) {
-      this.SetUpRulers();
-    }
-
-    this.UpdateGrid();
-    this.UpdatePageDivider();
-    this.UpdateWorkArea();
-
-    LogUtil.Debug("= U.DocUtil: InitializeWorkArea - Output:", {
-      workAreaId: this.workAreaId,
-      svgAreaId: this.svgAreaId,
-      hRulerAreaId: this.hRulerAreaId,
-      vRulerAreaId: this.vRulerAreaId,
-      cRulerAreaId: this.cRulerAreaId,
-      gridLayer: this.gridLayer,
-      pageDividerLayer: this.pageDividerLayer,
-      backgroundLayer: this.backgroundLayer,
-      scaleToFit: this.scaleToFit,
-      scaleToPage: this.scaleToPage
-    });
   }
 
   /**
@@ -631,14 +651,20 @@ class DocUtil {
   }
 
   /**
-   * Handles window resize events by updating the work area layout
-   * Ensures the document display adjusts correctly when browser window is resized
+   * Handles window resize events with debouncing.
+   * Debounced at 100ms to avoid expensive UpdateWorkArea() recalculation
+   * on every pixel during drag-resize. Fires once after resizing stops.
    * @returns void
    */
   HandleResizeEvent(): void {
-    // Update work area dimensions and layout
-    this.UpdateWorkArea();
-    LogUtil.Debug("= u.DocUtil: HandleResizeEvent/ - Input/Output: Work area updated");
+    if (this._resizeDebounceTimer !== null) {
+      clearTimeout(this._resizeDebounceTimer);
+    }
+    this._resizeDebounceTimer = setTimeout(() => {
+      this._resizeDebounceTimer = null;
+      this.UpdateWorkArea();
+      LogUtil.Debug("= u.DocUtil: HandleResizeEvent/ - Input/Output: Work area updated (debounced)");
+    }, DocUtil.RESIZE_DEBOUNCE_MS);
   }
 
   /**
@@ -648,6 +674,10 @@ class DocUtil {
    * @returns void
    */
   HandleScrollEvent(): void {
+    if (!this.svgDoc) {
+      LogUtil.Debug("= U.DocUtil: HandleScrollEvent - SKIP (svgDoc is null, not yet initialized)");
+      return;
+    }
     LogUtil.Debug("= U.DocUtil: HandleScrollEvent - Input: Handling scroll event");
 
     // Get initial work area to access current scroll positions

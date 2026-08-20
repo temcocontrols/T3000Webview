@@ -171,27 +171,29 @@
           <!-- Export Options -->
           <a-flex align="center" class="control-group export-options">
             <a-dropdown placement="bottomRight">
-              <a-button size="small" style="display: flex; align-items: center;">
-                <ExportOutlined style="margin-right: 4px;" />
-                <span>Export</span>
-                <DownOutlined style="margin-left: 4px;" />
+              <a-button size="small" :loading="isExporting" style="display: flex; align-items: center;">
+                <template v-if="!isExporting" #icon>
+                  <ExportOutlined />
+                </template>
+                <span>{{ isExporting ? `Exporting ${exportingFormat}…` : 'Export' }}</span>
+                <DownOutlined v-if="!isExporting" style="margin-left: 4px;" />
               </a-button>
               <template #overlay>
                 <a-menu class="export-options-menu" @click="handleExportMenu">
-                  <a-menu-item key="png">
+                  <a-menu-item key="png" :disabled="isExporting">
                     <FileImageOutlined />
                     Export as PNG
                   </a-menu-item>
-                  <a-menu-item key="jpg">
+                  <a-menu-item key="jpg" :disabled="isExporting">
                     <FileImageOutlined />
                     Export as JPG
                   </a-menu-item>
                   <a-menu-divider />
-                  <a-menu-item key="csv">
+                  <a-menu-item key="csv" :disabled="isExporting">
                     <FileExcelOutlined />
                     Export Data (CSV)
                   </a-menu-item>
-                  <a-menu-item key="json">
+                  <a-menu-item key="json" :disabled="isExporting">
                     <FileTextOutlined />
                     Export Data (JSON)
                   </a-menu-item>
@@ -406,7 +408,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { message, notification } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
 import Chart from 'chart.js/auto'
 import 'chartjs-adapter-date-fns'
@@ -705,6 +707,9 @@ const updateInterval = computed(() => {
 })
 
 const isLoading = ref(false)
+// Export progress state: drives the Export button spinner + top-right toast
+const isExporting = ref(false)
+const exportingFormat = ref<string | null>(null)
 const showGrid = ref(true)
 const showLegend = ref(false)  // Hide legend by default to give more space to chart
 const smoothLines = ref(false)
@@ -3739,19 +3744,36 @@ const handleAllMenu = ({ key }: { key: string }) => {
   }
 }
 
+// Wraps an export so the Export button shows a spinner while work is in
+// progress and blocks overlapping exports.
+const runExport = async (format: string, fn: () => void | Promise<void>) => {
+  if (isExporting.value) return
+  isExporting.value = true
+  exportingFormat.value = format
+  // Yield to the browser so the Export button spinner actually paints before
+  // the (potentially CPU-heavy) export work starts.
+  await new Promise(resolve => setTimeout(resolve, 50))
+  try {
+    await fn()
+  } finally {
+    isExporting.value = false
+    exportingFormat.value = null
+  }
+}
+
 const handleExportMenu = ({ key }: { key: string }) => {
   switch (key) {
     case 'png':
-      exportChartPNG()
+      runExport('PNG', exportChartPNG)
       break
     case 'jpg':
-      exportChartJPG()
+      runExport('JPG', exportChartJPG)
       break
     case 'csv':
-      exportData()
+      runExport('CSV', exportData)
       break
     case 'json':
-      exportDataJSON()
+      runExport('JSON', exportDataJSON)
       break
   }
 }
@@ -3872,31 +3894,27 @@ const exportData = () => {
   link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.csv`
   link.href = URL.createObjectURL(blob)
   link.click()
-
-  // message.success('Data exported successfully')
 }
 
 // Additional Export Methods
 const exportChartPNG = () => {
   if (!chartInstance) return
 
+  const fileName = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.png`
   const link = document.createElement('a')
-  link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.png`
+  link.download = fileName
   link.href = chartInstance.toBase64Image('image/png', 1.0)
   link.click()
-
-  // message.success('Chart exported as PNG successfully')
 }
 
 const exportChartJPG = () => {
   if (!chartInstance) return
 
+  const fileName = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.jpg`
   const link = document.createElement('a')
-  link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.jpg`
+  link.download = fileName
   link.href = chartInstance.toBase64Image('image/jpeg', 0.9)
   link.click()
-
-  // message.success('Chart exported as JPG successfully')
 }
 
 const exportChartSVG = () => {
@@ -3934,8 +3952,6 @@ const exportDataJSON = () => {
   link.download = `${chartTitle.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.json`
   link.href = URL.createObjectURL(blob)
   link.click()
-
-  // message.success('Data exported as JSON successfully')
 }
 
 // Chart Options Methods

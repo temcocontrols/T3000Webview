@@ -17,8 +17,17 @@ let isInitialized = false;
  * Only mounts React app when on /t3000/* routes
  */
 export function initializeReactApp() {
-  if (!isReactRoute() || isInitialized) return;
+  // Check if current route should be handled by React
+  if (!isReactRoute()) {
+    return;
+  }
 
+  // Prevent multiple initializations
+  if (isInitialized) {
+    return;
+  }
+
+  // Check if React root element exists
   const rootElement = document.getElementById('t3000-react-root');
   if (!rootElement) return;
 

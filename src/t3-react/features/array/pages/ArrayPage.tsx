@@ -14,7 +14,7 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
+  ArrowClockwiseRegular,
   SettingsRegular,
   SearchRegular,
   ErrorCircleRegular,
@@ -25,6 +25,7 @@ import { API_BASE_URL } from '@t3-react/config/constants';
 import styles from './ArrayPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Array interface matching C++ CBacnetArray structure (4 columns)
 interface ArrayItem {
@@ -119,6 +120,8 @@ const ArrayPage: React.FC = () => {
   const handleRefresh = () => {
     fetchArrays();
   };
+
+  usePageRefresh(handleRefresh);
 
   const handleExport = () => {
     if (arrays.length === 0) return;
@@ -280,8 +283,8 @@ const ArrayPage: React.FC = () => {
                     title="Refresh"
                     aria-label="Refresh"
                   >
-                    <ArrowSyncRegular />
-                    <span>Refresh</span>
+                    <ArrowClockwiseRegular className={loading ? styles.rotating : ''} />
+                    <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
                   <div className={styles.toolbarSeparator} role="separator" />

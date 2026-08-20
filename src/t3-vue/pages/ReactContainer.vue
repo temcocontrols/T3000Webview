@@ -16,7 +16,6 @@ import { initializeReactApp } from '@/boot/react';
 
 // Initialize React app after Vue has mounted this component
 onMounted(() => {
-  console.log('🎯 ReactContainer mounted, initializing React app...');
   // Small delay to ensure DOM is ready
   setTimeout(() => {
     initializeReactApp();

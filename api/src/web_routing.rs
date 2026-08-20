@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 use tracing::{info, warn};
 
 use crate::app_state::T3AppState;
-use crate::database_management::db_backend_config::{self, BackendConfig, BackendType};
+use crate::server_db::db_backend_config::{self, BackendConfig, BackendType};
 
 const CENTER_DB_HEALTH_TIMEOUT: Duration = Duration::from_secs(2);
 const CENTER_DB_HEALTH_TOTAL_TIMEOUT: Duration = Duration::from_secs(4);
@@ -101,8 +101,8 @@ async fn validate_mssql_schema_with_timeout(config: tiberius::Config) -> Result<
     match tokio::time::timeout(
         CENTER_DB_HEALTH_TIMEOUT,
         async move {
-            let pool = crate::database_management::mssql_queries::create_mssql_pool(config, 1).await?;
-            crate::database_management::mssql_queries::validate_t3000_schema(&pool).await
+            let pool = crate::server_db::mssql_queries::create_mssql_pool(config, 1).await?;
+            crate::server_db::mssql_queries::validate_t3000_schema(&pool).await
         },
     )
     .await
@@ -343,7 +343,7 @@ pub async fn resolve_server_db_status(state: &T3AppState) -> ServerDbStatus {
         if let Some(cfg) = active_config.as_ref() {
             if matches!(cfg.backend_type, BackendType::Mssql) {
                 if let Ok(tib) = db_backend_config::build_mssql_config(cfg) {
-                    match crate::database_management::mssql_queries::create_mssql_pool(tib, 5).await {
+                    match crate::server_db::mssql_queries::create_mssql_pool(tib, 5).await {
                         Ok(pool) => {
                             crate::server_db_writer::set_reconnect_mssql_pool(pool);
                             crate::app_state::set_sampling_active();

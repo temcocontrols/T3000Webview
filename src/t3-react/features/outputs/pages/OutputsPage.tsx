@@ -58,6 +58,10 @@ import styles from './OutputsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import { TagsColumnCell, fetchTagsForDevice } from '../../inputs/components/TagsColumnCell';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
+import { isSubDevice } from '../../devices/lib/deviceSupport';
+import { NotSupportedBanner } from '@t3-react/shared/components/NotSupportedBanner';
 
 // Types based on Rust entity (output_points.rs)
 interface OutputPoint {
@@ -87,7 +91,9 @@ interface OutputPoint {
 }
 
 const OutputsPageDesktop: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
 
   const [outputs, setOutputs] = useState<OutputPoint[]>([]);
@@ -99,10 +105,15 @@ const OutputsPageDesktop: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
 
+  // ── Not-supported detection (sub-devices without output points) ──
+  const isSubDeviceDevice = !!selectedDevice && isSubDevice(selectedDevice);
+  const toolbarDisabled = isSubDeviceDevice;
+
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false); // Track if user is already at bottom
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false); // Track if user is already at bottom
 
   // Auto-select first device on page load - DISABLED
   // TreePanel's loadDevicesWithSync already handles auto-selection
@@ -112,16 +123,9 @@ const OutputsPageDesktop: React.FC = () => {
     if (!selectedDevice && treeData.length > 0) {
       // Get the first device from filtered devices list (respects current filters)
       const filteredDevices = getFilteredDevices();
-      console.log('[OutputsPage] Auto-select check:', {
-        hasSelectedDevice: !!selectedDevice,
-        treeDataLength: treeData.length,
-        filteredDevicesCount: filteredDevices.length,
-        filteredDevicesList: filteredDevices.map(d => `${d.nameShowOnTree} (SN: ${d.serialNumber})`),
-      });
 
       if (filteredDevices.length > 0) {
         const firstDevice = filteredDevices[0];
-        console.log(`[OutputsPage] Auto-selecting first device: ${firstDevice.nameShowOnTree} (SN: ${firstDevice.serialNumber})`);
         selectDevice(firstDevice);
       }
     }
@@ -134,6 +138,16 @@ const OutputsPageDesktop: React.FC = () => {
   const fetchOutputs = useCallback(async () => {
     if (!selectedDevice) {
       setOutputs([]);
+      return;
+    }
+
+    if (isSubDevice(selectedDevice)) {
+      // Sub-devices manage their points through the parent — not supported here.
+      setOutputs([]);
+      setLoading(false);
+      setDbChecked(true);
+      setAutoRefreshed(true);
+      fetchingRef.current = false;
       return;
     }
 
@@ -157,7 +171,7 @@ const OutputsPageDesktop: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load outputs';
       setError(errorMessage);
-      console.error('Error fetching outputs:', err);
+      LogUtil.Error('Error fetching outputs:', err);
     } finally {
       setLoading(false);
       setDbChecked(true);
@@ -177,19 +191,22 @@ const OutputsPageDesktop: React.FC = () => {
 
   // Auto-refresh once per device - ONLY if database is empty after initial DB fetch
   useEffect(() => {
-    if (!dbChecked || loading || !selectedDevice || autoRefreshed) return;
+    if (!selectedDevice) return;
+    if (isSubDevice(selectedDevice)) {
+      setAutoRefreshed(true);
+      return;
+    }
+    if (!dbChecked || loading || autoRefreshed) return;
     if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
       deviceRefreshedRef.current = selectedDevice.serialNumber;
 
       if (outputs.length > 0) {
-        console.log('[OutputsPage] Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('[OutputsPage] Database empty, auto-refreshing from device...');
       setLoading(true);
 
       try {
@@ -203,10 +220,9 @@ const OutputsPageDesktop: React.FC = () => {
             }
           }
         });
-        console.log('[OutputsPage] Auto-refresh result:', result);
         setMessage(`✓ Synced ${result.itemCount} outputs from ${selectedDevice.nameShowOnTree}`, 'success');
       } catch (error) {
-        console.error('[OutputsPage] Auto-refresh failed:', error);
+        LogUtil.Error('[OutputsPage] Auto-refresh failed:', error);
         setMessage(`Failed to sync outputs: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       } finally {
         // Always reload from database to show what was actually saved
@@ -234,7 +250,6 @@ const OutputsPageDesktop: React.FC = () => {
     setMessage('Refreshing outputs from device...', 'info');
 
     try {
-      console.log('[OutputsPage] Refreshing all outputs from device via FFI...');
       // Pass loading callback to show loading state during Action 17 FFI call
       const result = await PanelDataRefreshService.refreshFromDevice({
         serialNumber: selectedDevice.serialNumber,
@@ -245,10 +260,9 @@ const OutputsPageDesktop: React.FC = () => {
           }
         }
       });
-      console.log('[OutputsPage] Refresh result:', result);
       setMessage(result.message, 'success');
     } catch (error) {
-      console.error('[OutputsPage] Failed to refresh from device:', error);
+      LogUtil.Error('[OutputsPage] Failed to refresh from device:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
       setError(errorMsg);
       setMessage(errorMsg, 'error');
@@ -259,26 +273,26 @@ const OutputsPageDesktop: React.FC = () => {
     }
   };
 
+  usePageRefresh(handleRefreshFromDevice);
+
   // Refresh single output from device (Trigger #3: Per-row refresh icon)
   const handleRefreshSingleOutput = async (outputIndex: string) => {
     if (!selectedDevice) return;
 
     const index = parseInt(outputIndex, 10);
     if (isNaN(index)) {
-      console.error('[OutputsPage] Invalid output index:', outputIndex);
+      LogUtil.Error('[OutputsPage] Invalid output index:', outputIndex);
       return;
     }
 
     setRefreshingItems(prev => new Set(prev).add(outputIndex));
     try {
-      console.log(`[OutputsPage] Refreshing output ${index} from device via FFI...`);
       const result = await PanelDataRefreshService.refreshSingleOutput(selectedDevice.serialNumber, index);
-      console.log('[OutputsPage] Refresh result:', result);
 
       // Reload data from database after save
       await fetchOutputs();
     } catch (error) {
-      console.error(`[OutputsPage] Failed to refresh output ${index}:`, error);
+      LogUtil.Error(`[OutputsPage] Failed to refresh output ${index}:`, error);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -333,16 +347,15 @@ const OutputsPageDesktop: React.FC = () => {
   // Register CSV export/import handlers with global context (Tools menu)
   useRegisterCsvHandlers(handleExport, handleImport);
 
-  // Auto-scroll to next device when reaching bottom
+  // [DISABLED] Auto-scroll to next device when reaching bottom — commented out for now.
+  /*
   const loadNextDevice = useCallback(async () => {
     const nextDevice = getNextDevice();
 
     if (!nextDevice) {
-      console.log('[OutputsPage] No next device available');
       return;
     }
 
-    console.log(`[OutputsPage] Auto-loading next device: ${nextDevice.nameShowOnTree} (SN: ${nextDevice.serialNumber})`);
     setIsLoadingNextDevice(true);
 
     // Switch device (this will trigger fetchOutputs via useEffect)
@@ -367,7 +380,6 @@ const OutputsPageDesktop: React.FC = () => {
     if (isAtBottom && outputs.length > 0) {
       // Mark that we're at bottom
       isAtBottomRef.current = true;
-      console.log('[OutputsPage] Reached bottom, scroll again to load next device');
     } else {
       // Not at bottom anymore, reset the flag
       isAtBottomRef.current = false;
@@ -382,22 +394,21 @@ const OutputsPageDesktop: React.FC = () => {
 
     // If user is scrolling down (deltaY > 0) and already at bottom, load next device
     if (e.deltaY > 0 && isAtBottomRef.current) {
-      console.log('[OutputsPage] User scrolled down while at bottom, loading next device');
       isAtBottomRef.current = false; // Reset
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, outputs.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top when device changes
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
-      // Use smooth scroll for auto-loaded devices, instant for manual selection
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Inline editing handlers
   const handleCellDoubleClick = (item: OutputPoint, field: string, currentValue: string) => {
@@ -415,7 +426,6 @@ const OutputsPageDesktop: React.FC = () => {
     currentOutput: OutputPoint
   ) => {
     try {
-      console.log(`[FFI Action 16] Updating ${field} on device - Output ${outputIndex} (SN: ${serialNumber})`);
 
       // Build FFI message for UPDATE_WEBVIEW_LIST (Action 16)
       const ffiMessage = {
@@ -439,7 +449,6 @@ const OutputsPageDesktop: React.FC = () => {
         high_voltage: parseInt(currentOutput.highVoltage || '0', 10),
       };
 
-      console.log('[FFI Action 16] Sending to device:', ffiMessage);
 
       const response = await fetch(`${API_BASE_URL}/api/t3000/ffi/call`, {
         method: 'POST',
@@ -453,10 +462,9 @@ const OutputsPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[FFI Action 16] Device updated successfully:', result);
       return result;
     } catch (error) {
-      console.error('[FFI Action 16] Device update failed:', error);
+      LogUtil.Error('[FFI Action 16] Device update failed:', error);
       throw error;
     }
   };
@@ -470,7 +478,6 @@ const OutputsPageDesktop: React.FC = () => {
     currentOutput: OutputPoint
   ) => {
     try {
-      console.log(`[Database] Updating ${field} in database - Output ${outputIndex} (SN: ${serialNumber})`);
 
       const payload = {
         fullLabel: field === 'fullLabel' ? newValue : (currentOutput.fullLabel || ''),
@@ -502,10 +509,9 @@ const OutputsPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Database] Database updated successfully:', result);
       return result;
     } catch (error) {
-      console.error('[Database] Database update failed:', error);
+      LogUtil.Error('[Database] Database update failed:', error);
       throw error;
     }
   };
@@ -526,8 +532,6 @@ const OutputsPageDesktop: React.FC = () => {
     try {
       // Process for all editable fields
       if (selectedDevice && ['fullLabel', 'label', 'fValue', 'range', 'autoManual', 'lowVoltage', 'highVoltage'].includes(editingCell.field)) {
-        console.log(`=== Updating ${editingCell.field} (Two-Step Process) ===`);
-        console.log(`Device: ${selectedDevice.serialNumber}, Output: ${editingCell.outputIndex}, New Value: "${editValue}"`);
 
         // Find the current output data
         const currentOutput = outputs.find(
@@ -542,7 +546,6 @@ const OutputsPageDesktop: React.FC = () => {
         const panelId = selectedDevice.panelId || 1;
 
         // Step 1: Update device FIRST using FFI (Action 16)
-        console.log('Step 1/2: Updating device via FFI...');
         await updateDeviceUsingFFI(
           panelId,
           selectedDevice.serialNumber,
@@ -551,10 +554,8 @@ const OutputsPageDesktop: React.FC = () => {
           editValue,
           currentOutput
         );
-        console.log('✅ Device updated successfully');
 
         // Step 2: Update database SECOND
-        console.log('Step 2/2: Updating database...');
         await updateDatabaseOnly(
           selectedDevice.serialNumber,
           editingCell.outputIndex,
@@ -562,9 +563,7 @@ const OutputsPageDesktop: React.FC = () => {
           editValue,
           currentOutput
         );
-        console.log('✅ Database updated successfully');
 
-        console.log(`✅ ${editingCell.field} updated successfully (device + database)!`);
       }
 
       // Update local state optimistically
@@ -582,11 +581,10 @@ const OutputsPageDesktop: React.FC = () => {
         )
       );
 
-      console.log('Updated', editingCell.field, ':', editValue, 'for', editingCell);
       setEditingCell(null);
     } catch (error) {
-      console.error('Failed to update:', error);
-      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      LogUtil.Error('Failed to update:', error);
+      setMessage(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -617,12 +615,13 @@ const OutputsPageDesktop: React.FC = () => {
     let cancelled = false;
     fetchTagsForDevice(selectedDevice.serialNumber).then((all) => {
       if (cancelled) return;
-      setPointTags(all.map(t => ({
+      const tags = Array.isArray(all?.tags) ? all.tags : [];
+      setPointTags(tags.map(t => ({
         pointType: t.point_type,
         pointIndex: t.point_index,
         tagName: t.tag_name,
       })));
-    });
+    }).catch(() => { });
     return () => { cancelled = true; };
   }, [selectedDevice?.serialNumber]);
 
@@ -645,7 +644,6 @@ const OutputsPageDesktop: React.FC = () => {
     if (!selectedOutput) return;
 
     try {
-      console.log(`[Action 16] Updating Range for Output ${selectedOutput.outputIndex} (SN: ${selectedOutput.serialNumber}), New DigitalAnalog: ${newDigitalAnalog}`);
 
       // Action 16 requires ALL fields
       const payload = {
@@ -664,7 +662,6 @@ const OutputsPageDesktop: React.FC = () => {
         calibrationL: parseInt(String(selectedOutput.calibrationL || '0')),
       };
 
-      console.log('[Action 16] Full payload:', payload);
 
       const response = await fetch(
         `${API_BASE_URL}/api/t3_device/outputs/${selectedOutput.serialNumber}/${selectedOutput.outputIndex}`,
@@ -681,7 +678,6 @@ const OutputsPageDesktop: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log('[Action 16] Range updated successfully:', result);
 
       // Update local state optimistically
       setOutputs(prevOutputs =>
@@ -693,14 +689,13 @@ const OutputsPageDesktop: React.FC = () => {
         )
       );
     } catch (error) {
-      console.error('Failed to update Range:', error);
-      alert(`Failed to update Range: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      LogUtil.Error('Failed to update Range:', error);
+      setMessage(`Failed to update Range: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    console.log('Search query:', e.target.value);
   };
 
   // Controlled sort state for asc→desc→clear
@@ -924,7 +919,6 @@ const OutputsPageDesktop: React.FC = () => {
 
         const handleToggle = async () => {
           const newValue = !isAuto ? '1' : '0';
-          console.log('Auto/Man toggled:', item.serialNumber, item.outputIndex, newValue);
 
           try {
             // Find the current output data to pass all fields for Action 16
@@ -952,7 +946,6 @@ const OutputsPageDesktop: React.FC = () => {
               calibrationL: parseInt(String(currentOutput.calibrationL || '0')),
             };
 
-            console.log('[Action 16] Updating Auto/Man:', payload);
 
             const response = await fetch(
               `${API_BASE_URL}/api/t3_device/outputs/${item.serialNumber}/${item.outputIndex}`,
@@ -969,7 +962,6 @@ const OutputsPageDesktop: React.FC = () => {
             }
 
             const result = await response.json();
-            console.log('[Action 16] Auto/Man updated successfully:', result);
 
             // Update local state optimistically
             setOutputs(prevOutputs =>
@@ -980,8 +972,8 @@ const OutputsPageDesktop: React.FC = () => {
               )
             );
           } catch (error) {
-            console.error('Failed to update Auto/Man:', error);
-            alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            LogUtil.Error('Failed to update Auto/Man:', error);
+            setMessage(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
           }
         };
 
@@ -1226,7 +1218,7 @@ const OutputsPageDesktop: React.FC = () => {
         );
       },
     }),
-    // 13. Status — commented out
+    // 13. Status �?commented out
     // createTableColumn<OutputPoint>({
     //   columnId: 'status',
     //   compare: (a, b) => new Intl.Collator(undefined, { numeric: true }).compare(String(a.status || ''), String(b.status || '')),
@@ -1341,6 +1333,7 @@ const OutputsPageDesktop: React.FC = () => {
                         <input
                           className={styles.searchInput}
                           type="text"
+                          disabled={toolbarDisabled}
                           placeholder="Search by label, value, ID, tag…"
                           value={searchQuery}
                           onChange={handleSearchChange}
@@ -1354,7 +1347,7 @@ const OutputsPageDesktop: React.FC = () => {
                       <button
                         className={styles.toolbarButton}
                         onClick={handleRefreshFromDevice}
-                        disabled={refreshing}
+                        disabled={refreshing || toolbarDisabled}
                         title="Refresh all outputs from device"
                         aria-label="Refresh"
                       >
@@ -1371,6 +1364,7 @@ const OutputsPageDesktop: React.FC = () => {
                       >
                         <button
                           className={`${styles.toolbarButton} ${styles.marginLeft8}`}
+                          disabled={toolbarDisabled}
                           title="Information"
                           aria-label="Information about this page"
                         >
@@ -1423,13 +1417,19 @@ const OutputsPageDesktop: React.FC = () => {
                   </div>
                 )}
 
+                {/* Not Supported (sub-device) — show banner instead of grid */}
+                {selectedDevice && !loading && isSubDeviceDevice && (
+                  <NotSupportedBanner pointType="Outputs" deviceName={selectedDevice.nameShowOnTree} />
+                )}
+
                 {/* Data Grid - Always show with header (even when there's an error) */}
-                {selectedDevice && !loading && (
+                {selectedDevice && !loading && !isSubDeviceDevice && (
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    onScroll={handleScroll}
-                    onWheel={handleWheel}
+                  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                  // onScroll={handleScroll}
+                  // onWheel={handleWheel}
                   >
                     <DataGrid
                       key={sortKey}
@@ -1446,7 +1446,7 @@ const OutputsPageDesktop: React.FC = () => {
                         output: { idealWidth: 65, minWidth: 55 },
                         fullLabel: { idealWidth: 165, minWidth: 80 },
                         label: { idealWidth: 125, minWidth: 50 },
-                        autoManual: { idealWidth: 82, minWidth: 60  },
+                        autoManual: { idealWidth: 82, minWidth: 60 },
                         hoaSwitch: { idealWidth: 90, minWidth: 65 },
                         value: { idealWidth: 120, minWidth: 80 },
                         units: { idealWidth: 105, minWidth: 50 },
@@ -1475,13 +1475,14 @@ const OutputsPageDesktop: React.FC = () => {
                       </DataGridBody>
                     </DataGrid>
 
-                    {/* Loading Next Device Indicator */}
+                    {/* [DISABLED] Loading Next Device Indicator — commented out for now.
                     {isLoadingNextDevice && (
                       <div className={styles.autoLoadIndicator}>
                         <Spinner size="tiny" />
                         <Text size={200} weight="regular">Loading next device...</Text>
                       </div>
                     )}
+                    */}
 
                     {/* No Data Message - Show below grid when empty */}
                     {/* {outputs.length === 0 && (

@@ -22,6 +22,10 @@ export { HolidaysPage } from '../../features/schedules/pages/HolidaysPage';
 
 // Haystack
 export { HaystackTagsPage } from '../../features/haystack/pages/HaystackTagsPage';
+export { default as AutoTaggingMcpPage } from '../../features/haystack/pages/AutoTaggingMcpPage';
+
+// AI Assistant
+export { default as McpServerPage } from '../../features/ai-chat/pages/McpServerPage';
 
 // Monitoring
 export { TrendLogsPage } from '../../features/trendlogs/pages/TrendlogsPage';

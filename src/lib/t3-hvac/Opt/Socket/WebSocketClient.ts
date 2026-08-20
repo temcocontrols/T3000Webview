@@ -4,10 +4,9 @@ import MessageType from "./MessageType"
 import MessageModel from "./MessageModel"
 import IdxUtils from '../Common/IdxUtils'
 import Utils1 from "../../Util/Utils1"
-import T3Util from "../../Util/T3Util"
+import LogUtil from "../../Util/LogUtil"
 import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg, locked, rulersGridVisible } from '../../Data/T3Data'
 import T3UIUtil from "../UI/T3UIUtil"
-import LogUtil from "../../Util/LogUtil"
 
 class WebSocketClient {
 
@@ -105,7 +104,7 @@ class WebSocketClient {
   }
 
   private onError(event: Event) {
-    T3Util.Error('= ws: onError/', event);
+    LogUtil.Error('= ws: onError/', event);
 
     const errorMsg = `Load device data failed, please check whether the T3000 application is running or not.`;
     T3UIUtil.ShowWebSocketError(errorMsg);
@@ -718,7 +717,7 @@ class WebSocketClient {
 
       LogUtil.Debug('= ========================');
     } catch (error) {
-      T3Util.Error('= ws: processMessage/ failed to parse | process data:', error);
+      LogUtil.Error('= ws: processMessage/ failed to parse | process data:', error);
     }
   }
 
@@ -1269,7 +1268,7 @@ class WebSocketClient {
 
   handleError(messageData) {
     if (!messageData && !messageData.error) return;
-    T3Util.Error('= ws: handleError/ messageData:', messageData);
+    LogUtil.Error('= ws: handleError/ messageData:', messageData);
 
     const errorMsg = messageData?.error ?? "";
     const isSpecial = messageData.action === MessageType.GET_PANEL_DATA_RES || messageData.action === MessageType.GET_INITIAL_DATA_RES || messageData.action === MessageType.GET_PANELS_LIST_RES;

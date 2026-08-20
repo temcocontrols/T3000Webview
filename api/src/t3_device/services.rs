@@ -76,14 +76,20 @@ pub struct CreateDeviceRequest {
     #[serde(rename = "Connection_Type", alias = "connectionType", alias = "protocol")]
     pub connection_type: Option<String>,           // T3000: Connection_Type (String type)
 
-    // Additional fields from frontend that may be sent but not stored
-    #[serde(skip_deserializing)]
-    pub last_online_time: Option<i64>,             // Timestamp - not in DEVICES table yet
-    #[serde(skip_deserializing)]
-    pub is_online: Option<bool>,                   // Online status - not in DEVICES table yet
+    // Additional fields from frontend
+    #[serde(rename = "is_online", alias = "isOnline")]
+    pub is_online: Option<i32>,                    // 0 = offline, 1 = online (set by FFI scan)
+    #[serde(rename = "last_checked", alias = "lastChecked")]
+    pub last_checked: Option<String>,              // ISO 8601 timestamp
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Result of a UDP LAN scan + DB refresh operation.
+pub struct ScanAndRefreshResult {
+    pub devices: Vec<DeviceWithStats>,
+    pub scanned_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateDeviceRequest {
     #[serde(rename = "PanelId")]
     pub panel_id: Option<i32>,                      // T3000: PanelId (new column for panel identification)
@@ -125,6 +131,10 @@ pub struct UpdateDeviceRequest {
     pub show_label_name: Option<String>,           // T3000: Show_Label_Name (String type)
     #[serde(rename = "Connection_Type")]
     pub connection_type: Option<String>,           // T3000: Connection_Type (String type)
+    #[serde(rename = "is_online")]
+    pub is_online: Option<i32>,                    // 0 = offline, 1 = online
+    #[serde(rename = "last_checked")]
+    pub last_checked: Option<String>,              // ISO 8601 timestamp
 }
 
 pub struct T3DeviceService;
@@ -315,6 +325,13 @@ impl T3DeviceService {
             if device_data.connection_type.is_some() {
                 device.connection_type = Set(device_data.connection_type);
             }
+            // Always update online status when called from FFI scan
+            if device_data.is_online.is_some() {
+                device.is_online = Set(device_data.is_online);
+            }
+            if device_data.last_checked.is_some() {
+                device.last_checked = Set(device_data.last_checked);
+            }
 
             let mut updated_device = device.update(db).await?;
             updated_device.clean_all_fields();
@@ -356,6 +373,9 @@ impl T3DeviceService {
                 bacnet_ip_port: Set(device_data.bacnet_ip_port),
                 show_label_name: Set(device_data.show_label_name),
                 connection_type: Set(device_data.connection_type),
+                is_online: Set(device_data.is_online),
+                last_checked: Set(device_data.last_checked),
+                ..Default::default()
             };
 
             let mut device = new_device.insert(db).await?;
@@ -433,6 +453,12 @@ impl T3DeviceService {
         if let Some(connection_type) = device_data.connection_type {
             device.connection_type = Set(Some(connection_type));
         }
+        if let Some(is_online) = device_data.is_online {
+            device.is_online = Set(Some(is_online));
+        }
+        if let Some(last_checked) = device_data.last_checked {
+            device.last_checked = Set(Some(last_checked));
+        }
 
         let updated_device = device.update(db).await?;
         Ok(Some(updated_device))
@@ -445,5 +471,131 @@ impl T3DeviceService {
             .await?;
 
         Ok(result.rows_affected > 0)
+    }
+
+    /// Pick the host PC IP to record as `pc_ip_address` for a discovered device.
+    /// Mirrors C++ `temp.NetCard_Address = local_enthernet_ip`: each device gets
+    /// the local adapter IP on the same subnet as the device (fallback: first
+    /// local IP).
+    fn pick_pc_ip(device_ip: &str, local_ips: &[String]) -> Option<String> {
+        let dev_net = device_ip.rsplit_once('.').map(|(net, _)| net);
+        local_ips
+            .iter()
+            .find(|ip| ip.rsplit_once('.').map(|(net, _)| net) == dev_net)
+            .or_else(|| local_ips.first())
+            .cloned()
+    }
+
+    /// Run UDP LAN scan and upsert discovered devices into DEVICES table.
+    /// Returns the updated device list with separate scanned vs. DB counts.
+    pub async fn scan_and_refresh(
+        db: &DatabaseConnection,
+        timeout_secs: u64,
+    ) -> Result<ScanAndRefreshResult, AppError> {
+        use crate::lan_scan::scanner;
+
+        let now = chrono::Utc::now().to_rfc3339();
+        let scan_result = scanner::scan_network(timeout_secs).await;
+        // Local IPs used for scanning — the host PC IP recorded as pc_ip_address
+        // (mirrors C++ `temp.NetCard_Address = local_enthernet_ip`).
+        let local_ips: Vec<String> = scan_result.local_ips.clone();
+
+        // Track which serials were found in this scan
+        let mut seen_serials: Vec<i32> = Vec::new();
+
+        for dev in &scan_result.devices {
+            let sn = dev.serial_number as i32;
+            seen_serials.push(sn);
+
+            let existing = devices::Entity::find_by_id(sn).one(db).await?;
+
+            if existing.is_some() {
+                // Update existing device
+                let mut active: devices::ActiveModel = existing.unwrap().into();
+                active.product_name = Set(Some(dev.product_name.clone()));
+                active.product_id = Set(Some(dev.product_id as i32));
+                active.product_class_id = Set(Some(dev.product_id as i32));
+                active.ip_address = Set(Some(dev.ip_address.clone()));
+                active.modbus_port = Set(Some(dev.modbus_port));
+                active.modbus_address = Set(Some(dev.modbus_id));
+                active.panel_number = Set(Some(dev.panel_number as i32));
+                active.show_label_name = Set(Some(dev.panel_name.clone()));
+                active.object_instance = Set(Some(dev.object_instance as i32));
+                active.firmware_version = Set(Some(dev.firmware_version as f64));
+                active.hardware_version = Set(Some(dev.hardware_version as i32));
+                active.parent_serial_number = Set(Some(dev.parent_serial as i32));
+                active.subnet_protocol = Set(Some(dev.subnet_protocol as i32));
+                active.command_version = Set(dev.command_version.map(|v| v as i32));
+                active.minitype = Set(dev.minitype.map(|v| v as i32));
+                active.bacnet_ip_port = Set(Some(dev.bacnetip_port));
+                active.is_online = Set(Some(1));
+                active.last_checked = Set(Some(now.clone()));
+                active.bautrate = Set(Some(dev.ip_address.clone()));
+                active.pc_ip_address = Set(Self::pick_pc_ip(&dev.ip_address, &local_ips));
+                let _ = active.update(db).await;
+            } else {
+                // Insert new device
+                let active = devices::ActiveModel {
+                    serial_number: Set(sn),
+                    product_name: Set(Some(dev.product_name.clone())),
+                    product_id: Set(Some(dev.product_id as i32)),
+                    product_class_id: Set(Some(dev.product_id as i32)),
+                    ip_address: Set(Some(dev.ip_address.clone())),
+                    modbus_port: Set(Some(dev.modbus_port)),
+                    modbus_address: Set(Some(dev.modbus_id)),
+                    panel_number: Set(Some(dev.panel_number as i32)),
+                    show_label_name: Set(Some(dev.panel_name.clone())),
+                    screen_name: Set(Some(dev.panel_name.clone())),
+                    object_instance: Set(Some(dev.object_instance as i32)),
+                    firmware_version: Set(Some(dev.firmware_version as f64)),
+                    hardware_version: Set(Some(dev.hardware_version as i32)),
+                    parent_serial_number: Set(Some(dev.parent_serial as i32)),
+                    subnet_protocol: Set(Some(dev.subnet_protocol as i32)),
+                    command_version: Set(dev.command_version.map(|v| v as i32)),
+                    minitype: Set(dev.minitype.map(|v| v as i32)),
+                    bacnet_ip_port: Set(Some(dev.bacnetip_port)),
+                    is_online: Set(Some(1)),
+                    last_checked: Set(Some(now.clone())),
+                    bautrate: Set(Some(dev.ip_address.clone())),
+                    pc_ip_address: Set(Self::pick_pc_ip(&dev.ip_address, &local_ips)),
+                    ..Default::default()
+                };
+                let _ = devices::Entity::insert(active).exec(db).await;
+            }
+        }
+
+        // Mark devices not seen in this scan as offline
+        if !seen_serials.is_empty() {
+            let all_devices = devices::Entity::find().all(db).await?;
+            for device in all_devices {
+                if !seen_serials.contains(&device.serial_number) {
+                    let mut active: devices::ActiveModel = device.into();
+                    active.is_online = Set(Some(0));
+                    active.last_checked = Set(Some(now.clone()));
+                    let _ = active.update(db).await;
+                }
+            }
+        }
+
+        // Return fresh device list with scan count
+        match Self::get_all_devices_with_stats(db).await {
+            Ok(devices) => Ok(ScanAndRefreshResult {
+                scanned_count: seen_serials.len(),
+                devices,
+            }),
+            Err(e) => {
+                tracing::error!("[lan_scan] get_all_devices_with_stats failed: {:?}", e);
+                // Fallback: return devices without point counts
+                let all_devices = devices::Entity::find().all(db).await
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|mut d| { d.clean_all_fields(); DeviceWithStats { device: d, input_count: 0, output_count: 0, variable_count: 0, total_points: 0 } })
+                    .collect();
+                Ok(ScanAndRefreshResult {
+                    scanned_count: seen_serials.len(),
+                    devices: all_devices,
+                })
+            }
+        }
     }
 }

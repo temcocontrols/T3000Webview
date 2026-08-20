@@ -21,6 +21,7 @@
   background-color: #e1e1e1;
   border-right: 1px solid #d0d0d0;
   border-bottom: 1px solid #d0d0d0;
+  box-sizing: content-box;
 }
 
 .rulerHorizontal {
@@ -33,6 +34,7 @@
   user-select: none;
   background-color: #e1e1e1;
   border-bottom: 1px solid #d0d0d0;
+  box-sizing: content-box;
 }
 
 .rulerVertical {
@@ -45,6 +47,7 @@
   user-select: none;
   background-color: #e1e1e1;
   border-right: 1px solid #d0d0d0;
+  box-sizing: content-box;
 }
 
 .svgArea {

@@ -7,7 +7,6 @@ import Instance from '../Data/Instance/Instance';
 import NvConstant from '../Data/Constant/NvConstant'
 import PolygonConstant from '../Opt/Polygon/PolygonConstant';
 import OptConstant from '../Data/Constant/OptConstant';
-import T3Util from '../Util/T3Util';
 import LogUtil from '../Util/LogUtil';
 import Utils1 from '../Util/Utils1';
 
@@ -133,10 +132,10 @@ class ForeignObject extends BaseShape {
               foreignObject.MountVueComponent(component, this.vueProps);
             })
             .catch(err => {
-              T3Util.Error(`= s.ForeignObject CreateShape Failed to load component: ${componentName}`, err);
+              LogUtil.Error(`= s.ForeignObject CreateShape Failed to load component: ${componentName}`, err);
             });
         } else {
-          T3Util.Error(`= s.ForeignObject CreateShape Component not found in registry: ${componentName}`);
+          LogUtil.Error(`= s.ForeignObject CreateShape Component not found in registry: ${componentName}`);
         }
       } else if (this.vueComponent && typeof this.vueComponent === 'object') {
         // Direct component reference - check if it has required methods
@@ -167,12 +166,12 @@ class ForeignObject extends BaseShape {
                 foreignObject.MountVueComponent(component, this.vueProps);
               })
               .catch(err => {
-                T3Util.Error(`= s.ForeignObject CreateShape Failed to load component by name: ${componentName}`, err);
+                LogUtil.Error(`= s.ForeignObject CreateShape Failed to load component by name: ${componentName}`, err);
               });
           }
         }
       } else {
-        T3Util.Error("= s.ForeignObject CreateShape Invalid vue component provided:", this.vueComponent);
+        LogUtil.Error("= s.ForeignObject CreateShape Invalid vue component provided:", this.vueComponent);
       }
     }
 

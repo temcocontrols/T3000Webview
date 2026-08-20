@@ -43,7 +43,9 @@ CREATE TABLE IF NOT EXISTS DEVICES (
     modbus_port INTEGER,                       -- C++ Modbus port from reg[25] (MODBUS_PORT)
     bacnet_ip_port INTEGER,                    -- C++ BACnet IP port from reg[23] (BACNET_IP_PORT)
     show_label_name TEXT,                      -- C++ Device display name (panel_name from LOGGING_DATA)
-    connection_type TEXT                       -- C++ Connection type (Serial/Ethernet/BACnet/Modbus)
+    connection_type TEXT,                      -- C++ Connection type (Serial/Ethernet/BACnet/Modbus)
+    is_online INTEGER DEFAULT 0,              -- Online status (0=offline/unknown, 1=online, set by FFI Action 4)
+    last_checked TEXT                          -- ISO 8601 timestamp of last online-status check
 );
 
 -- INPUTS table (Original T3000 input points table)
@@ -151,7 +153,38 @@ CREATE TABLE IF NOT EXISTS HAYSTACK_POINT_TAGS (
 CREATE INDEX IF NOT EXISTS idx_hpt_serial ON HAYSTACK_POINT_TAGS (serial_number);
 CREATE INDEX IF NOT EXISTS idx_hpt_tag ON HAYSTACK_POINT_TAGS (tag_name);
 
--- PROGRAMS table (Original T3000 programs table)
+-- FDD (Fault Detection & Diagnostics) rule registry
+-- Rules are managed at runtime; the seed inserts defaults on first run (see api/src/fdd/rules.rs).
+CREATE TABLE IF NOT EXISTS FDD_RULES (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_id        TEXT NOT NULL UNIQUE,
+    rule_name      TEXT NOT NULL,
+    category       TEXT,
+    description    TEXT,
+    rule_kind      TEXT NOT NULL,
+    required_roles TEXT,
+    params_json    TEXT,
+    severity       TEXT DEFAULT 'warning',
+    enabled        BOOLEAN DEFAULT 1,
+    created_at     TEXT DEFAULT (datetime('now')),
+    updated_at     TEXT DEFAULT (datetime('now'))
+);
+
+-- FDD findings — persisted fault detections (optional but recommended)
+CREATE TABLE IF NOT EXISTS FDD_FINDINGS (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_serial INTEGER NOT NULL,
+    equipment     TEXT,
+    rule_id       TEXT NOT NULL,
+    rule_name     TEXT,
+    severity      TEXT,
+    fault_hours   REAL,
+    evidence      TEXT,
+    created_at    TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_fdd_findings_device ON FDD_FINDINGS (device_serial);
+CREATE INDEX IF NOT EXISTS idx_fdd_findings_rule ON FDD_FINDINGS (rule_id);
+CREATE INDEX IF NOT EXISTS idx_fdd_findings_created ON FDD_FINDINGS (created_at);
 -- Optimized schema - removed unused BinaryArray field
 CREATE TABLE IF NOT EXISTS PROGRAMS (
     SerialNumber INTEGER NOT NULL,             -- C++ SerialNumber (references DEVICES.SerialNumber)

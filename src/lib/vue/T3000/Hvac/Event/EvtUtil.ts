@@ -1041,7 +1041,7 @@ class EvtUtil {
       const yOffset = clientY - windowCoordinates.y;
 
       // Adjust scroll position
-      const svgArea = $('#svgarea');
+      const svgArea = $('#svg-area');
       const scrollLeft = svgArea.scrollLeft();
       const scrollTop = svgArea.scrollTop();
 
@@ -1178,7 +1178,7 @@ class EvtUtil {
       const yOffset = clientY - windowCoordinates.y;
 
       // Adjust scroll position
-      const svgArea = $('#svgarea');
+      const svgArea = $('#svg-area');
       const scrollLeft = svgArea.scrollLeft();
       const scrollTop = svgArea.scrollTop();
 

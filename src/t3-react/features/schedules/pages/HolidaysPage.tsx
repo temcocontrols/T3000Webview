@@ -46,6 +46,8 @@ import { PanelDataRefreshService } from '@t3-react/shared/services/panelDataRefr
 import styles from './HolidaysPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Types based on C++ BacnetAnnualRoutine structure
 interface HolidayPoint {
@@ -58,7 +60,9 @@ interface HolidayPoint {
 }
 
 export const HolidaysPage: React.FC = () => {
-  const { selectedDevice, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, selectDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [holidays, setHolidays] = useState<HolidayPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,8 +80,9 @@ export const HolidaysPage: React.FC = () => {
   const [dbChecked, setDbChecked] = useState(false);
   const deviceRefreshedRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false);
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -112,7 +117,7 @@ export const HolidaysPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load holidays';
       setError(errorMessage);
-      console.error('Error fetching holidays:', err);
+      LogUtil.Error('Error fetching holidays:', err);
       // DON'T clear holidays on database fetch error - preserve what we have
     } finally {
       setLoading(false);
@@ -140,21 +145,18 @@ export const HolidaysPage: React.FC = () => {
 
       // Check if database has holiday data
       if (holidays.length > 0) {
-        console.log('🔄 Database has data, skipping auto-refresh');
         setAutoRefreshed(true);
         return;
       }
 
-      console.log('🔄 Database empty, auto-refreshing holidays from device on page load...');
       try {
         const serial = selectedDevice.serialNumber;
         const result = await PanelDataRefreshService.refreshAllHolidays(serial);
-        console.log('✅ Auto-refresh result:', result);
         // Data already saved by service, just reload from database
         await fetchHolidays();
         setAutoRefreshed(true);
       } catch (err) {
-        console.error('❌ Auto-refresh failed:', err);
+        LogUtil.Error('Auto-refresh failed:', err);
       }
     };
 
@@ -176,18 +178,18 @@ export const HolidaysPage: React.FC = () => {
 
     try {
       const serial = selectedDevice.serialNumber;
-      console.log('🔄 Refreshing all holidays from device...');
       const result = await PanelDataRefreshService.refreshAllHolidays(serial);
-      console.log('✅ Device refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchHolidays();
     } catch (err) {
-      console.error('❌ Refresh from device failed:', err);
+      LogUtil.Error('Refresh from device failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh from device');
     } finally {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Refresh single holiday from device (Trigger #3 - Per-row icon)
   const handleRefreshSingleHoliday = async (item: HolidayPoint) => {
@@ -199,14 +201,12 @@ export const HolidaysPage: React.FC = () => {
     try {
       const serial = selectedDevice.serialNumber;
       const holidayIndex = parseInt(item.holidayId);
-      console.log(`🔄 Refreshing single holiday from device: ${holidayIndex}`);
 
       const result = await PanelDataRefreshService.refreshSingleHoliday(serial, holidayIndex);
-      console.log('✅ Single holiday refresh result:', result);
       // Data already saved by service, just reload from database
       await fetchHolidays();
     } catch (err) {
-      console.error('❌ Single holiday refresh failed:', err);
+      LogUtil.Error('Single holiday refresh failed:', err);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -260,7 +260,8 @@ export const HolidaysPage: React.FC = () => {
     }
   };
 
-  // Auto-scroll navigation handlers
+  // [DISABLED] Auto-scroll navigation handlers — commented out for now.
+  /*
   const loadNextDevice = useCallback(() => {
     const nextDevice = getNextDevice();
     if (nextDevice) {
@@ -294,16 +295,17 @@ export const HolidaysPage: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, holidays.length, loadNextDevice]);
+  */
 
   // Auto-scroll to top after device change
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Display holidays with search filtering
   const displayHolidays = React.useMemo(() => {
@@ -345,7 +347,6 @@ export const HolidaysPage: React.FC = () => {
     setIsSaving(true);
     try {
       // TODO: Implement API call to save
-      console.log('Saving:', editingCell, editValue);
 
       // Update local state
       setHolidays(prevHolidays =>
@@ -358,7 +359,7 @@ export const HolidaysPage: React.FC = () => {
 
       setEditingCell(null);
     } catch (error) {
-      console.error('Error saving:', error);
+      LogUtil.Error('Error saving:', error);
     } finally {
       setIsSaving(false);
     }
@@ -384,7 +385,6 @@ export const HolidaysPage: React.FC = () => {
       )
     );
 
-    console.log('Toggle Auto/Manual:', item.holidayId, newValue);
     // TODO: Call API to update
   };
 
@@ -592,7 +592,7 @@ export const HolidaysPage: React.FC = () => {
                   title="Refresh from Device"
                   aria-label="Refresh from Device"
                 >
-                  <ArrowSyncRegular className={refreshing ? styles.rotating : ''} />
+                  <ArrowClockwiseRegular className={refreshing ? styles.rotating : ''} />
                   <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                 </button>
 
@@ -645,8 +645,9 @@ export const HolidaysPage: React.FC = () => {
                 <div
                   ref={scrollContainerRef}
                   className={styles.scrollContainer}
-                  onScroll={handleScroll}
-                  onWheel={handleWheel}
+                  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                  // onScroll={handleScroll}
+                  // onWheel={handleWheel}
                 >
                   <DataGrid
                     key={sortKey}
@@ -699,12 +700,14 @@ export const HolidaysPage: React.FC = () => {
                   )}
                   */}
 
+                  {/* [DISABLED] Auto-load indicator — commented out for now.
                   {isLoadingNextDevice && (
                     <div className={styles.autoLoadIndicator}>
                       <Spinner size="tiny" />
                       <Text>Loading next device...</Text>
                     </div>
                   )}
+                  */}
                 </div>
               )}
 

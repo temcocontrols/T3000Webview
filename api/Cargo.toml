@@ -62,7 +62,11 @@ aes-gcm = "0.10"
 base64 = "0.22"
 png = "0.17"
 hostname = "0.4"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+regex = "1.10"
+async-trait = "0.1"
+tokio-stream = "0.1"
+serde_yaml = "0.9"
 
 # Font extraction (TTF/OTF → LVGL binary format)
 # freetype matches Electron's lv_font_conv pixel-for-pixel
@@ -87,3 +91,6 @@ cc = "1.0"
 strip = false  # Disabled - was causing FFI symbol issues
 opt-level = 2  # Changed from "z" to 2 for better compatibility
 lto = false  # Disabled - was causing initialization crashes
+
+[profile.dev]
+debug=true

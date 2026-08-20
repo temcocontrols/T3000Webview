@@ -8,6 +8,8 @@ import { useHaystackStore } from '../store/haystackStore';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './HaystackTagsPage.module.css';
 
+type RightTab = 'all' | 'custom' | 'deprecated' | 'batch';
+
 export const HaystackTagsPage: React.FC = () => {
   const { tags, tagTree, isLoading, error, fetchTags, fetchTagTree } = useHaystackStore();
   const [search, setSearch] = useState('');
@@ -209,6 +211,11 @@ export const HaystackTagsPage: React.FC = () => {
             contentAfter={search ? <DismissRegular style={{ fontSize: 12, cursor: 'pointer', color: '#888' }} onClick={() => setSearch('')} /> : undefined}
             className={styles.searchInput}
           />
+        <div className={styles.filterChecks}>
+          <label><input type="checkbox" checked={filterStandard} onChange={() => setFilterStandard(!filterStandard)} /> Standard</label>
+          <label><input type="checkbox" checked={filterCustom} onChange={() => setFilterCustom(!filterCustom)} /> Custom</label>
+          <label><input type="checkbox" checked={filterDeprecated} onChange={() => setFilterDeprecated(!filterDeprecated)} /> Deprecated</label>
+        </div>
           <div className={styles.treeContainer}>
             {isLoading ? (
               <Spinner size="tiny" label="Loading…" />
@@ -285,6 +292,27 @@ export const HaystackTagsPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            </>
+          )}
+
+          {/* ── Deprecated Replace ── */}
+          {activeTab === 'deprecated' && (
+            <div className={styles.replaceForm}>
+              <h3>Replace Deprecated Tag</h3>
+              <Input placeholder="Old tag" value={replaceOld} onChange={(_, d) => setReplaceOld(d.value)} />
+              <Input placeholder="New tag" value={replaceNew} onChange={(_, d) => setReplaceNew(d.value)} />
+              <Button onClick={async () => { await replaceTag(replaceOld, replaceNew); setReplaceOld(''); setReplaceNew(''); }}>
+                Replace Globally
+              </Button>
+            </div>
+          )}
+
+          {/* ── Batch Assign Tab ── */}
+          {activeTab === 'batch' && (
+            <div className={styles.batchPanel}>
+              <p>Use the Tag Assignment Drawer from Inputs/Outputs/Variables pages to batch-assign tags to points.</p>
+              <p>Select points in the table, then open the TAGS column to assign tags to all selected points at once.</p>
+            </div>
           )}
         </div>
       </div>

@@ -54,6 +54,8 @@ import { ProgrammingDrawer } from '../components/ProgrammingDrawer';
 import styles from './ProgramsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Types based on Rust entity (programs.rs) and C++ BacnetProgram structure
 interface ProgramPoint {
@@ -69,7 +71,9 @@ interface ProgramPoint {
 }
 
 export const ProgramsPage: React.FC = () => {
-  const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const { selectedDevice, treeData, selectDevice, getNextDevice, getFilteredDevices } = useDeviceTreeStore();
+  const { selectedDevice, treeData, selectDevice, getFilteredDevices } = useDeviceTreeStore();
 
   const [programs, setPrograms] = useState<ProgramPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -97,8 +101,9 @@ export const ProgramsPage: React.FC = () => {
 
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
-  const isAtBottomRef = useRef(false);
+  // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+  // const [isLoadingNextDevice, setIsLoadingNextDevice] = useState(false);
+  // const isAtBottomRef = useRef(false);
 
   // Auto-select first device on page load if no device is selected
   useEffect(() => {
@@ -133,7 +138,7 @@ export const ProgramsPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load programs';
       setError(errorMessage);
-      console.error('Error fetching programs:', err);
+      LogUtil.Error('Error fetching programs:', err);
       // DON'T clear programs on database fetch error - preserve what we have
     } finally {
       setLoading(false);
@@ -162,24 +167,21 @@ export const ProgramsPage: React.FC = () => {
       try {
         // Check if database has program data
         if (programs.length > 0) {
-          console.log('[ProgramsPage] Database has data, skipping auto-refresh');
           setAutoRefreshed(true);
           return;
         }
 
-        console.log('[ProgramsPage] Database empty, auto-refreshing from device...');
         setMessage('Loading programs...', 'info');
         const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
-        console.log('[ProgramsPage] Auto-refresh result:', result);
-        setMessage(`✓ Synced ${result.itemCount} programs`, 'success');
+        setMessage(`Synced ${result.itemCount} programs`, 'success');
 
         // Reload from database (data already saved by service)
         await fetchPrograms();
         setAutoRefreshed(true);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Failed to load programs';
-        console.error('[ProgramsPage] Auto-refresh failed:', error);
-        setMessage(`✗ ${errorMsg}`, 'error');
+        LogUtil.Error('[ProgramsPage] Auto-refresh failed:', error);
+        setMessage(`${errorMsg}`, 'error');
         // Don't reload from database on error - preserve existing programs
         setAutoRefreshed(true); // Mark as attempted to prevent retry loops
       }
@@ -202,23 +204,23 @@ export const ProgramsPage: React.FC = () => {
     setRefreshing(true);
     setMessage('Refreshing programs...', 'info');
     try {
-      console.log('[ProgramsPage] Refreshing all programs from device...');
       const result = await PanelDataRefreshService.refreshAllPrograms(selectedDevice.serialNumber);
-      console.log('[ProgramsPage] Refresh result:', result);
-      setMessage(`✓ Synced ${result.itemCount} programs`, 'success');
+      setMessage(`Synced ${result.itemCount} programs`, 'success');
 
       // Reload from database (data already saved by service)
       await fetchPrograms();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to refresh from device';
-      console.error('[ProgramsPage] Failed to refresh from device:', error);
+      LogUtil.Error('[ProgramsPage] Failed to refresh from device:', error);
       setError(errorMsg);
-      setMessage('✗ Refresh failed', 'error');
+      setMessage('Refresh failed', 'error');
       // Don't call fetchPrograms() on error - preserve existing programs in UI
     } finally {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Refresh single program from device (Trigger #3: Per-row refresh icon)
   const handleRefreshSingleProgram = async (programId: string) => {
@@ -226,20 +228,18 @@ export const ProgramsPage: React.FC = () => {
 
     const index = parseInt(programId, 10);
     if (isNaN(index)) {
-      console.error('[ProgramsPage] Invalid program index:', programId);
+      LogUtil.Error('[ProgramsPage] Invalid program index:', programId);
       return;
     }
 
     setRefreshingItems(prev => new Set(prev).add(programId));
     try {
-      console.log(`[ProgramsPage] Refreshing program ${index} from device...`);
       const refreshResponse = await PanelDataRefreshService.refreshSingleProgram(selectedDevice.serialNumber, index);
-      console.log('[ProgramsPage] Refresh result:', refreshResponse);
 
       // Reload data from database (data already saved by service)
       await fetchPrograms();
     } catch (error) {
-      console.error(`[ProgramsPage] Failed to refresh program ${index}:`, error);
+      LogUtil.Error(`[ProgramsPage] Failed to refresh program ${index}:`, error);
     } finally {
       setRefreshingItems(prev => {
         const newSet = new Set(prev);
@@ -280,7 +280,8 @@ export const ProgramsPage: React.FC = () => {
   // Register CSV export/import handlers with global context (Tools menu)
   useRegisterCsvHandlers(handleExport, handleImport);
 
-  // Auto-scroll handlers
+  // [DISABLED] Auto-scroll handlers — commented out for now.
+  /*
   const loadNextDevice = useCallback(async () => {
     const nextDevice = getNextDevice();
     if (!nextDevice) return;
@@ -308,15 +309,16 @@ export const ProgramsPage: React.FC = () => {
       loadNextDevice();
     }
   }, [isLoadingNextDevice, loading, programs.length, loadNextDevice]);
+  */
 
   useEffect(() => {
     if (selectedDevice && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: 0,
-        behavior: isLoadingNextDevice ? 'smooth' : 'auto'
+        behavior: 'auto'
       });
     }
-  }, [selectedDevice, isLoadingNextDevice]);
+  }, [selectedDevice]);
 
   // Inline editing handlers
   const handleCellDoubleClick = (item: ProgramPoint, field: string, currentValue: string) => {
@@ -342,11 +344,10 @@ export const ProgramsPage: React.FC = () => {
         )
       );
 
-      console.log('Updated', editingCell.field, ':', editValue, 'for', editingCell);
       setEditingCell(null);
       // TODO: Call API to update program
     } catch (error) {
-      console.error('Failed to update:', error);
+      LogUtil.Error('Failed to update:', error);
     } finally {
       setIsSaving(false);
     }
@@ -374,7 +375,6 @@ export const ProgramsPage: React.FC = () => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    console.log('Search query:', e.target.value);
   };
 
   // Controlled sort state for asc→desc→clear
@@ -396,7 +396,6 @@ export const ProgramsPage: React.FC = () => {
     if (!program.programId) return;
     setSelectedProgramForProgramming(program);
     setIsProgrammingOpen(true);
-    console.log('📝 [ProgramsPage] Opening programming for program:', program.programId);
   }, []);
 
   // Display data with search filtering
@@ -517,7 +516,6 @@ export const ProgramsPage: React.FC = () => {
 
         const handleToggle = () => {
           const newValue = !isOn ? 'ON' : 'OFF';
-          console.log('Status toggled:', item.serialNumber, item.programId, newValue);
 
           setPrograms(prevPrograms =>
             prevPrograms.map(program =>
@@ -561,7 +559,6 @@ export const ProgramsPage: React.FC = () => {
 
         const handleToggle = () => {
           const newValue = !isAuto ? 'Auto' : 'Manual';
-          console.log('Auto/Man toggled:', item.serialNumber, item.programId, newValue);
 
           setPrograms(prevPrograms =>
             prevPrograms.map(program =>
@@ -740,7 +737,7 @@ export const ProgramsPage: React.FC = () => {
                     title="Refresh all programs from device"
                     aria-label="Refresh from Device"
                   >
-                    <ArrowSyncRegular />
+                    <ArrowClockwiseRegular />
                     <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                   </button>
 
@@ -802,8 +799,9 @@ export const ProgramsPage: React.FC = () => {
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}
-                    onScroll={handleScroll}
-                    onWheel={handleWheel}
+                    // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
+                    // onScroll={handleScroll}
+                    // onWheel={handleWheel}
                   >
                   <DataGrid
                     key={sortKey}
@@ -815,6 +813,16 @@ export const ProgramsPage: React.FC = () => {
                     resizableColumns
                     resizableColumnsOptions={{ autoFitColumns: false }}
                     style={{ width: '100%', border: '1px solid #d1d1d1', borderRadius: 0, backgroundColor: '#fff' }}
+                    columnSizingOptions={{
+                      program: { idealWidth: 80, minWidth: 50 },
+                      fullLabel: { idealWidth: 300, minWidth: 100 },
+                      status: { idealWidth: 100, minWidth: 50 },
+                      autoManual: { idealWidth: 120, minWidth: 70 },
+                      size: { idealWidth: 100, minWidth: 40 },
+                      executionTime: { idealWidth: 150, minWidth: 70 },
+                      label: { idealWidth: 180, minWidth: 70 },
+                      programming: { idealWidth: 120, minWidth: 55 },
+                    }}
                   >
                     <DataGridHeader>
                       <DataGridRow>

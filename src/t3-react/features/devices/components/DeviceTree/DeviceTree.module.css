@@ -137,6 +137,11 @@
   color: #0078d4 !important;
 }
 
+/* Keep offline icon red even when selected */
+.treeItemSelected :global(.fui-TreeItemLayout__iconBefore svg[data-offline="true"]) {
+  color: #a80000 !important;
+}
+
 /* Add extra margin to leaf nodes to align with branch content (for missing expand icon) */
 :global(.fui-TreeItem[itemtype="leaf"] .fui-TreeItemLayout__main) {
   margin-left: 44px !important;
@@ -150,6 +155,9 @@
   color: #605e5c !important;
   width: 20px !important;
   height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important; /* caret aligned left → nudged left */
 }
 
 :global(.fui-TreeItemLayout__iconBefore),
@@ -192,4 +200,26 @@
    gap: var(--spacingHorizontalXS); */
   padding: 0 0px !important;
   gap: 0px !important;
+}
+
+/* Offline "show more" group — hyperlink style */
+.offlineGroupItem {
+  cursor: pointer !important;
+}
+
+.offlineGroupItem:hover,
+.offlineGroupItem:active {
+  background-color: transparent !important;
+  border-left-color: transparent !important;
+}
+
+.offlineGroupItem :global(.fui-TreeItemLayout__main) {
+  font-size: 11px !important;
+  color: #0078d4 !important;
+  line-height: 1.4 !important;
+}
+
+.offlineGroupItem:hover :global(.fui-TreeItemLayout__main) {
+  color: #005a9e !important;
+  text-decoration: underline;
 }
