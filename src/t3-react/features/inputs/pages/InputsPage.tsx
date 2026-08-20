@@ -59,6 +59,7 @@ import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsCo
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import { TagsColumnCell, fetchTagsForDevice } from '../components/TagsColumnCell';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 import { isSubDevice } from '../../devices/lib/deviceSupport';
 import { NotSupportedBanner } from '@t3-react/shared/components/NotSupportedBanner';
 
@@ -283,7 +284,11 @@ const InputsPageDesktop: React.FC = () => {
       await fetchInputs();
       setRefreshing(false);
     }
-  };  // Refresh single input from device (Trigger #3: Per-row refresh icon)
+  };
+
+  usePageRefresh(handleRefreshFromDevice);
+
+  // Refresh single input from device (Trigger #3: Per-row refresh icon)
   const handleRefreshSingleInput = async (inputIndex: string) => {
     if (!selectedDevice) return;
 

@@ -39,6 +39,7 @@ import styles from './GraphicsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 export const GraphicsPage: React.FC = () => {
   // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
@@ -216,6 +217,8 @@ export const GraphicsPage: React.FC = () => {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Auto-scroll to top after device change
   useEffect(() => {

@@ -28,6 +28,7 @@ import {
   ErrorCircleRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 import { API_BASE_URL } from '@t3-react/config/constants';
 import styles from './BuildingsPage.module.css';
 
@@ -89,6 +90,8 @@ export const BuildingsPage: React.FC = () => {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefresh);
 
   const handleAdd = () => {
     console.log('Add building');

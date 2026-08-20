@@ -25,6 +25,7 @@ import {
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 import { API_BASE_URL } from '@t3-react/config/constants';
 import styles from './DiscoverPage.module.css';
 
@@ -97,6 +98,8 @@ export const DiscoverPage: React.FC = () => {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefresh);
 
   // Start Scan: trigger FFI scan with progress drawer (C++ equivalent: CScanDbWaitDlg)
   const handleStartScan = async () => {

@@ -55,6 +55,7 @@ import styles from './ProgramsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Types based on Rust entity (programs.rs) and C++ BacnetProgram structure
 interface ProgramPoint {
@@ -218,6 +219,8 @@ export const ProgramsPage: React.FC = () => {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Refresh single program from device (Trigger #3: Per-row refresh icon)
   const handleRefreshSingleProgram = async (programId: string) => {

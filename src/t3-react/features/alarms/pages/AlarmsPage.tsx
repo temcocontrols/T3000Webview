@@ -38,6 +38,7 @@ import styles from './AlarmsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Alarm interface matching ALARMS entity and C++ BacnetAlarmLog (7 columns)
 interface Alarm {
@@ -214,6 +215,8 @@ const AlarmsPageDesktop: React.FC = () => {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Refresh single alarm from device (Trigger #3 - Per-row icon)
   const handleRefreshSingleAlarm = async (item: Alarm) => {

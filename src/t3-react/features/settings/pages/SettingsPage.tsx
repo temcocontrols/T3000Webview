@@ -71,6 +71,7 @@ import { ExpansionIOTab, type ExpansionIOSettings } from '../components/Expansio
 import { API_BASE_URL } from '@t3-react/config/constants';
 import cssStyles from './SettingsPage.module.css';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Full T3000 C++ Baudrate_Array - com_baudrate0/1/2 stores an index 0-11 into this array
 // UART_9600=5, UART_19200=6, UART_38400=7, UART_115200=9, UART_57600=11
@@ -1134,6 +1135,8 @@ export const SettingsPage: React.FC = () => {
       }
     }
   }, [selectedDevice, fetchExternalSettings]); // Removed fetchSettings from dependencies
+
+  usePageRefresh(handleRefresh);
 
   // Load settings when device changes
   useEffect(() => {
