@@ -34,8 +34,6 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>(currentTags);
   const [brickClass, setBrickClass] = useState<string>(currentBrickClass || '');
   const [search, setSearch] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-  const [newTagName, setNewTagName] = useState('');
   const [saving, setSaving] = useState(false);
   const [focused, setFocused] = useState(false);
   const [brickClassOptions, setBrickClassOptions] = useState<string[]>([]);
@@ -132,7 +130,6 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
     const def = tags.find(d => d.tag_name === t);
     allItems.push({ label: t, prefix: def?.category === 'haystack' ? 'hay' : '' });
   }
-  };
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -205,23 +202,6 @@ export const TagAssignmentDrawer: React.FC<Props> = ({
               {filteredSuggestions.length === 0 && !isLoading && (
                 <div className={styles.suggestionItem} style={{ color: '#888', cursor: 'default' }}>No matches</div>
               )}
-            </div>
-
-        {/* Create Custom Tag */}
-        <div className={styles.section}>
-          {!showCreate ? (
-            <Button appearance="subtle" icon={<AddRegular />} onClick={() => setShowCreate(true)}>
-              + Create Custom Tag
-            </Button>
-          ) : (
-            <div className={styles.createForm}>
-              <Input
-                placeholder="New tag name"
-                value={newTagName}
-                onChange={(_, d) => setNewTagName(d.value)}
-              />
-              <Button size="small" onClick={handleCreateTag}>Create</Button>
-              <Button size="small" appearance="subtle" onClick={() => setShowCreate(false)}>Cancel</Button>
             </div>
           )}
         </div>
