@@ -14,14 +14,13 @@ import KeyboardConstant from "../Keyboard/KeyboardConstant"
 import PolygonConstant from '../Polygon/PolygonConstant'
 import DSConstant from '../DS/DSConstant'
 import OptConstant from '../../Data/Constant/OptConstant'
-import T3Util from '../../Util/T3Util'
+import LogUtil from '../../Util/LogUtil'
 import ObjectUtil from '../Data/ObjectUtil'
 import LayerUtil from '../Opt/LayerUtil'
 import SelectUtil from '../Opt/SelectUtil'
 import OptCMUtil from '../Opt/OptCMUtil'
 import DrawUtil from '../Opt/DrawUtil'
 import UIUtil from '../UI/UIUtil'
-import LogUtil from '../../Util/LogUtil'
 
 class WallOpt {
 

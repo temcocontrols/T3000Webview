@@ -193,17 +193,53 @@ class OptConstant {
   }
 
   /**
-   * Additional object flags
-   * Specifies extended behaviors for objects
+   * Bitwise flags for extended shape behaviors.
+   *
+   * Checked via HasFlag/AddFlag/RemoveFlag on element.moreflags.
+   * Bit positions match the serialized format — do not reorder.
    */
   static ObjMoreFlags = {
-    FixedRR: 64,             // Fixed rounded rectangle
-    Container: 128,          // Container object
-    UseInfoNoteIcon: 256,    // Use information note icon
-    ContainerChild: 512,     // Child of a container
-    AutoContainer: 1024,     // Auto-container
-    FrameAllowNesting: 2048, // Allow nested frames
-    FrameGroup: 4096         // Frame group
+    /**
+     * Shape maintains a fixed rounded-rectangle corner radius regardless of resize.
+     * When set, rrectparam (0.0–1.0) controls the corner radius as a fraction of shape size.
+     */
+    FixedRR: 64,
+
+    /**
+     * Object acts as a container that can hold child elements.
+     * Used with frame container object types.
+     */
+    Container: 128,
+
+    /**
+     * Display an expandable information-note icon on the shape.
+     * When set, loads the info icon and attaches an expandable note via NoteID.
+     */
+    UseInfoNoteIcon: 256,
+
+    /**
+     * Object is a child nested inside a parent container.
+     * Set automatically when added to a container; cleared on removal.
+     */
+    ContainerChild: 512,
+
+    /**
+     * Automatically create a container frame around this object.
+     * The rrectparam value determines the auto-container's corner rounding.
+     */
+    AutoContainer: 1024,
+
+    /**
+     * Allow child frames to be nested inside this frame group.
+     * Paired with FrameGroup; checked during frame deletion to protect nested frames.
+     */
+    FrameAllowNesting: 2048,
+
+    /**
+     * Object belongs to a frame group for collective operations.
+     * When set, child frames are processed together for move, resize, and delete actions.
+     */
+    FrameGroup: 4096
   }
 
   /**

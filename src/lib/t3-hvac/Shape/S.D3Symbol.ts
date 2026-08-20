@@ -7,10 +7,9 @@ import Instance from '../Data/Instance/Instance';
 import ShapeUtil from '../Opt/Shape/ShapeUtil';
 import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import TextUtil from '../Opt/Opt/TextUtil';
-import LogUtil from '../Util/LogUtil';
 import Utils1 from '../Util/Utils1';
 
 /**
@@ -443,7 +442,7 @@ class D3Symbol extends BaseSymbol {
     try {
       parsedSettings = JSON.parse(settingsString);
     } catch (error) {
-      T3Util.Error("= s.D3Symbol: ImportD3Settings - Error parsing settings:", error);
+      LogUtil.Error("= s.D3Symbol: ImportD3Settings - Error parsing settings:", error);
       throw error;
     }
 

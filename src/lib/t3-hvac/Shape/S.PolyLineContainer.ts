@@ -14,7 +14,7 @@ import T3Constant from '../Data/Constant/T3Constant';
 import DSConstant from '../Opt/DS/DSConstant';
 import OptConstant from '../Data/Constant/OptConstant';
 import CursorConstant from '../Data/Constant/CursorConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import LayerUtil from '../Opt/Opt/LayerUtil';
 import SvgUtil from '../Opt/Opt/SvgUtil';
@@ -26,7 +26,6 @@ import PolyUtil from '../Opt/Opt/PolyUtil';
 import HookUtil from '../Opt/Opt/HookUtil';
 import QuickStyle from '../Model/QuickStyle';
 import Rectangle from '../Model/Rectangle';
-import LogUtil from '../Util/LogUtil';
 
 
 /**

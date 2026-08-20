@@ -9,13 +9,12 @@ import Point from '../Model/Point'
 import NvConstant from '../Data/Constant/NvConstant'
 import PolygonConstant from '../Opt/Polygon/PolygonConstant';
 import OptConstant from '../Data/Constant/OptConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import PolyUtil from '../Opt/Opt/PolyUtil';
 // import VueCircle from '../../../../components/Basic/Circle.vue';
 // Placeholder: Vue component not needed in React migration
 const VueCircle: any = null;
 import ForeignObjUtil from '../Opt/Quasar/ForeignObjUtil';
-import LogUtil from '../Util/LogUtil';
 import Utils1 from '../Util/Utils1';
 
 /**

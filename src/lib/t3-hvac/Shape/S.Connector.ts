@@ -23,7 +23,7 @@ import OptConstant from '../Data/Constant/OptConstant';
 import T3Constant from '../Data/Constant/T3Constant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import TextConstant from '../Data/Constant/TextConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import LayerUtil from '../Opt/Opt/LayerUtil';
@@ -35,7 +35,6 @@ import RightClickMd from '../Model/RightClickMd';
 import TextUtil from '../Opt/Opt/TextUtil';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
-import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a connector drawing object that connects elements in a diagram.

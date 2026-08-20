@@ -7,11 +7,10 @@ import T3Gv from '../Data/T3Gv'
 import NvConstant from '../Data/Constant/NvConstant'
 import Instance from '../Data/Instance/Instance';
 import OptConstant from '../Data/Constant/OptConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import TextConstant from '../Data/Constant/TextConstant';
 import Point from '../Model/Point';
 import PolyUtil from '../Opt/Opt/PolyUtil';
-import LogUtil from '../Util/LogUtil';
 
 /**
  * Class representing an arc segmented line in an HVAC visualization system.

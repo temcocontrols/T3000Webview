@@ -8,11 +8,10 @@ import $ from "jquery"
 import T3Constant from "../../Data/Constant/T3Constant"
 import DocUtil from "../../Doc/DocUtil"
 import KeyboardUtil from "./KeyboardUtil"
-import T3Util from "../../Util/T3Util"
+import LogUtil from "../../Util/LogUtil"
 import SvgUtil from "../Opt/SvgUtil"
 import T3Clipboard from "../Clipboard/T3Clipboard"
 import ArrowKeyOpt from "../Tool/ArrowKeyOpt"
-import LogUtil from "../../Util/LogUtil"
 
 /**
  * Class that manages keyboard commands and event handling for the T3000 HVAC application.
@@ -164,7 +163,7 @@ class KeyboardOpt {
     try {
       KeyboardOpt.HandleKeyDown(event, keyCode, modifierKeys);
     } catch (error) {
-      T3Util.Error('= o.KeyboardOpt: OnKeyDown/ Error in key down handler', error);
+      LogUtil.Error('= o.KeyboardOpt: OnKeyDown/ Error in key down handler', error);
       T3Gv.opt.ExceptionCleanup(error);
       throw error;
     }
@@ -200,7 +199,7 @@ class KeyboardOpt {
       T3Gv.userSetting.DisableCtrlArrowShapeInsert
     );
 
-    // Handle clipboard operations in Firefox
+    // Handle clipboard operations in Firefox (needs explicit focus on hidden div)
     if (modifierKey == 1 && (
       keyCode == 67 || keyCode == 99 ||  // 'C' or 'c'
       keyCode == 88 || keyCode == 120 || // 'X' or 'x'
@@ -210,13 +209,17 @@ class KeyboardOpt {
         T3Clipboard.FocusOnIEclipboardDiv();
         LogUtil.Debug('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
       }
-    } else {
-      // Get the current selection context
-      if (selectionObj != null) {
-        contexts.push(selectionObj);
-      }
+      // Don't return — fall through to command execution below.
+      // Previously the else{} block was skipped entirely for Ctrl+C/V/X,
+      // which meant these shortcuts silently did nothing in non-Firefox browsers.
+    }
 
-      let selectionContext = toolUtil.GetSelectionContext();
+    // Get the current selection context
+    if (selectionObj != null) {
+      contexts.push(selectionObj);
+    }
+
+    let selectionContext = toolUtil.GetSelectionContext();
 
       // Handle title input specifically
       if (event.target.id === "titleInput") {
@@ -321,7 +324,6 @@ class KeyboardOpt {
           LogUtil.Debug('U.KeyboardUtil: Key event handled by shapes controller');
         }
       }
-    }
 
     LogUtil.Debug('U.KeyboardUtil: Key down handling complete');
   }
@@ -339,7 +341,7 @@ class KeyboardOpt {
       LogUtil.Debug('U.KeyboardUtil: Delegating key press handling to MainController', { charCode });
       KeyboardOpt.HandleKeyPress(event, charCode);
     } catch (error) {
-      T3Util.Error('= o.KeyboardOpt: OnKeyPress/ Error in key press handler', error);
+      LogUtil.Error('= o.KeyboardOpt: OnKeyPress/ Error in key press handler', error);
       throw error;
     }
   }

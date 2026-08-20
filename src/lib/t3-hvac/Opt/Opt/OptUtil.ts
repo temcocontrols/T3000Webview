@@ -50,9 +50,9 @@ import Style from '../../Basic/B.Element.Style';
 import ImageRecord from '../../Model/ImageRecord';
 import Hvac from '../../Hvac';
 import LogUtil from '../../Util/LogUtil';
-import ToolAct2Util from './ToolAct2Util';
 import ShapeUtil from '../Shape/ShapeUtil';
 import DataOpt from '../Data/DataOpt';
+import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 
 /**
  * Utility class for managing SVG optimization and editor functionality in the T3000 application.
@@ -5776,6 +5776,20 @@ class OptUtil {
       }
     }
 
+    // Update status bar with live position during drag
+    if (objectCount > 0) {
+      const bbox = T3Gv.opt.dragBBoxList?.[0];
+      const obj = ObjectUtil.GetObjectPtr(T3Gv.opt.moveList?.[0], false);
+      if (bbox && obj?.Frame) {
+        const x = bbox.x + T3Gv.opt.dragDeltaX;
+        const y = bbox.y + T3Gv.opt.dragDeltaY;
+        const w = obj.Frame.width || 0;
+        const h = obj.Frame.height || 0;
+        setStatusName(obj.ShapeType || 'Shape');
+        setStatusPos(x, y, x + w, y + h, w, h);
+      }
+    }
+
     LogUtil.Debug("= O.OptUtil  HandleObjectDragMoveCommon - Output:", {
       deltaX: T3Gv.opt.dragDeltaX,
       deltaY: T3Gv.opt.dragDeltaY,
@@ -7270,7 +7284,7 @@ class OptUtil {
     });
 
     // save new library to t3
-    Hvac.IdxPage2.addToNewLibrary();
+    Hvac.AppRuntime.addToNewLibrary();
     return libraryItems;
   }
 
@@ -8078,7 +8092,7 @@ class OptUtil {
 
         // Create a new group for the shapes if there are multiple shapes and we're not skipping regrouping
         if (shapeCount > 1 && !skipRegrouping) {
-          nativeGroupId = ToolAct2Util.GroupSelectedShapes(true, ungroupData.selectedList, false);
+          nativeGroupId = ToolActUtil.GroupSelectedShapes(true, ungroupData.selectedList, false);
           newGroupObject = ObjectUtil.GetObjectPtr(nativeGroupId, false);
 
           resultObjects.push(nativeGroupId);

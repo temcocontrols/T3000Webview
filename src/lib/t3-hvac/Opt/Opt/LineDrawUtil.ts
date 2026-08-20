@@ -26,7 +26,7 @@ class LineDraw {
    * @returns Array of created action button shapes
    */
   CreateCustomActionButtons(context, targetObject) {
-    console.log("T3Util: CreateCustomActionButtons input", { context, targetObject });
+    console.log("LogUtil: CreateCustomActionButtons input", { context, targetObject });
 
     const actionButtons = [];
     const useConnectPoints = targetObject.flags & NvConstant.ObjFlags.UseConnect && targetObject.ConnectPoints;
@@ -55,7 +55,7 @@ class LineDraw {
       }
     }
 
-    console.log("T3Util: CreateCustomActionButtons output", actionButtons);
+    console.log("LogUtil: CreateCustomActionButtons output", actionButtons);
     return actionButtons;
   }
 
@@ -67,7 +67,7 @@ class LineDraw {
    * @returns The created button shape or null if creation failed
    */
   CreateActionButton(context, xPosition, yPosition) {
-    console.log("T3Util: CreateActionButton input", { context, xPosition, yPosition });
+    console.log("LogUtil: CreateActionButton input", { context, xPosition, yPosition });
 
     const scale = context.docInfo.docToScreenScale;
     const adjustedScale = context.docInfo.docScale <= 0.5 ? scale * 2 : scale;
@@ -80,7 +80,7 @@ class LineDraw {
     buttonShape.SetStrokeWidth(0);
     buttonShape.SetCursor(CursorConstant.CursorType.Cross);
 
-    console.log("T3Util: CreateActionButton output", buttonShape);
+    console.log("LogUtil: CreateActionButton output", buttonShape);
     return buttonShape;
   }
 
@@ -103,7 +103,7 @@ class LineDraw {
    * @param actionType - The type of action being performed
    */
   ActionClick(event, objectId, actionType) {
-    console.log("T3Util: ActionClick input", { event, objectId, actionType });
+    console.log("LogUtil: ActionClick input", { event, objectId, actionType });
 
     let posX, posY;
     const connectionPoint = { x: 0, y: 0 };
@@ -446,7 +446,7 @@ class LineDraw {
       }
     }
 
-    console.log("T3Util: ActionClick output", { connectionPoint, perimeterPoints, offsetX, offsetY });
+    console.log("LogUtil: ActionClick output", { connectionPoint, perimeterPoints, offsetX, offsetY });
   }
 
   /**
@@ -454,7 +454,7 @@ class LineDraw {
    * @returns The current symbol ID for use in drawing operations
    */
   PrGetCurrentSymbolId() {
-    console.log("T3Util: PrGetCurrentSymbolId input");
+    console.log("LogUtil: PrGetCurrentSymbolId input");
 
     let index, symbolsCount;
     const dataBlock = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
@@ -493,7 +493,7 @@ class LineDraw {
       }
     }
 
-    console.log("T3Util: PrGetCurrentSymbolId output", selectedSymbolId);
+    console.log("LogUtil: PrGetCurrentSymbolId output", selectedSymbolId);
     return selectedSymbolId;
   }
 
@@ -509,7 +509,7 @@ class LineDraw {
    * @param connectionPoint - The connection point coordinates
    */
   PrInsertSymbol(symbolId, arrowDirection, sourceObjectId, lineId, connectedObjectId, endPoint, startPoint, connectionPoint) {
-    console.log("T3Util: PrInsertSymbol input", {
+    console.log("LogUtil: PrInsertSymbol input", {
       symbolId, arrowDirection, sourceObjectId, lineId,
       connectedObjectId, endPoint, startPoint, connectionPoint
     });
@@ -539,7 +539,7 @@ class LineDraw {
       newSymbolId
     );
 
-    console.log("T3Util: PrInsertSymbol output", { newSymbolId });
+    console.log("LogUtil: PrInsertSymbol output", { newSymbolId });
   }
 
   /**
@@ -554,7 +554,7 @@ class LineDraw {
    * @returns ID of the newly created line
    */
   PrAddLine(startPoint, endPoint, connectionPoint, lineType, objectId, arrowDirection, symbolId) {
-    console.log("T3Util: PrAddLine input", {
+    console.log("LogUtil: PrAddLine input", {
       startPoint, endPoint, connectionPoint, lineType, objectId, arrowDirection, symbolId
     });
 
@@ -620,7 +620,7 @@ class LineDraw {
     T3Gv.opt.lineDrawId = newObjectId;
     this.InsertShape(-1, null, true, symbolId);
 
-    console.log("T3Util: PrAddLine output", { newObjectId });
+    console.log("LogUtil: PrAddLine output", { newObjectId });
     return newObjectId;
   }
 
@@ -633,7 +633,7 @@ class LineDraw {
    * @param newShapeId - The ID of the new shape (optional)
    */
   PrShiftDiagram(actionObject, xOffset, yOffset, objectId, newShapeId) {
-    console.log("T3Util: PrShiftDiagram input", {
+    console.log("LogUtil: PrShiftDiagram input", {
       actionObject, xOffset, yOffset, objectId, newShapeId
     });
 
@@ -672,7 +672,7 @@ class LineDraw {
       }
     }
 
-    console.log("T3Util: PrShiftDiagram output", T3Gv.opt.flowchartShift);
+    console.log("LogUtil: PrShiftDiagram output", T3Gv.opt.flowchartShift);
   }
 
   /**
@@ -683,7 +683,7 @@ class LineDraw {
    * @param newShapeId - Optional ID for the new shape
    */
   InsertShape(index, symbolId, isCollabOperation, newShapeId) {
-    console.log("T3Util: InsertShape input", { index, symbolId, isCollabOperation, newShapeId });
+    console.log("LogUtil: InsertShape input", { index, symbolId, isCollabOperation, newShapeId });
 
     const lineObject = ObjectUtil.GetObjectPtr(T3Gv.opt.lineDrawId, false);
     let shapeWidth = OptConstant.Common.ShapeWidth;
@@ -925,7 +925,7 @@ class LineDraw {
       }
     }
 
-    console.log("T3Util: InsertShape output", { newShapeId });
+    console.log("LogUtil: InsertShape output", { newShapeId });
   }
 
   /**
@@ -934,7 +934,7 @@ class LineDraw {
    * @returns void
    */
   Initialize() {
-    console.log("T3Util: Initialize input");
+    console.log("LogUtil: Initialize input");
 
     const defaultSymbolIds = [
       "aa2307ef-e894-4766-b80f-906328ea4bfd"
@@ -963,16 +963,16 @@ class LineDraw {
       );
     }
 
-    console.log("T3Util: Initialize output", { symbolsInitialized: dataBlockObject.RecentSymbols.length });
+    console.log("LogUtil: Initialize output", { symbolsInitialized: dataBlockObject.RecentSymbols.length });
   }
 
   AddSymbol(symbolId: any) {
-    console.log("T3Util: AddSymbol input symbolId", symbolId);
+    console.log("LogUtil: AddSymbol input symbolId", symbolId);
 
     const dataBlockObject = ObjectUtil.GetObjectPtr(T3Gv.opt.sdDataBlockId, false);
     const newSymbolId = dataBlockObject.AddSymbol();
 
-    console.log("T3Util: AddSymbol output", { newSymbolId });
+    console.log("LogUtil: AddSymbol output", { newSymbolId });
     return newSymbolId;
   }
 

@@ -6,91 +6,81 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Hvac from '@/lib/t3-hvac';
+import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
 import {
   Spinner,
   Text,
-  MessageBar,
-  MessageBarBody,
-  Button,
   makeStyles
 } from '@fluentui/react-components';
-import {
-  NavigationRegular,
-  LockClosedRegular,
-  ArrowLeftRegular
-} from '@fluentui/react-icons';
+import { CheckmarkCircle16Regular } from '@fluentui/react-icons';
 import { TopToolbar } from '../components/toolbar/TopToolbar';
 import { ToolsPanel } from '../components/toolbar/ToolsPanel';
-import { PropertiesPanel } from '../components/panels/PropertiesPanel';
 import { HvacDrawingArea } from '../components/HvacDrawingArea';
+import { T3ContextMenu } from '../components/T3ContextMenu';
 import { useDrawing } from '../hooks/useDrawing';
+import { useStatusMessage } from '../hooks/useStatusMessage';
+import SelectUtil from '@/lib/t3-hvac/Opt/Opt/SelectUtil';
+import ObjectUtil from '@/lib/t3-hvac/Opt/Data/ObjectUtil';
+import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 
 const useStyles = makeStyles({
-  container: {
+  mainApp: {
     display: 'flex',
+    flexDirection: 'column',
     height: '100%',
+    width: '100%',
     overflow: 'hidden',
-    backgroundColor: '#f5f5f5',
+  },
+  mainPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    width: '100%',
+  },
+  mainArea: {
+    display: 'flex',
+    flex: 1,
+    overflow: 'hidden',
   },
   leftPanel: {
-    display: 'flex',
-    flexDirection: 'column',
+    width: '115px',
+    flexShrink: 0,
     borderRight: '1px solid #e1e1e1',
     backgroundColor: '#fafafa',
-    overflow: 'hidden',
-    transition: 'width 0.3s ease',
-  },
-  leftPanelHeader: {
-    display: 'flex',
-    flexDirection: 'column',
-    borderBottom: '1px solid #e1e1e1',
-    backgroundColor: '#f5f5f5',
-    height: '60px',
-  },
-  leftPanelRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '4px 8px',
-    height: '30px',
-  },
-  leftPanelTitle: {
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#323130',
-  },
-  leftPanelContent: {
-    flex: 1,
-    overflow: 'auto',
-  },
-  rightPanel: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
     overflow: 'hidden',
   },
   drawingArea: {
     flex: 1,
     overflow: 'hidden',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f5f5f5',
+    display: 'flex',
+    flexDirection: 'column',
   },
   messageBar: {
     borderTop: '1px solid #e1e1e1',
     backgroundColor: '#ffffff',
-    padding: '4px 8px',
+    padding: '2px 8px',
     fontSize: '11px',
-    minHeight: '28px',
+    minHeight: '24px',
     display: 'flex',
     alignItems: 'center',
+    flexShrink: 0,
     '& .fui-MessageBar': {
       width: '100%',
       minHeight: 'unset',
-      padding: '0',
+      padding: '0 4px',
       border: 'none',
+      backgroundColor: 'transparent',
     },
     '& .fui-MessageBarBody': {
+      display: 'flex',
+      alignItems: 'center',
       fontSize: '11px',
       padding: '0',
+      gap: '0',
+    },
+    '& .fui-MessageBar__icon': {
+      display: 'none',
     },
   },
 });
@@ -101,26 +91,79 @@ export const HvacDesignerPage: React.FC = () => {
   const { graphicId } = useParams<{ graphicId?: string }>();
   const { loadDrawing: loadDrawingFromDB, createNew, isLoading, error } = useDrawing();
   const [showMessageBar, setShowMessageBar] = useState(true);
-  const [message, setMessage] = useState('Ready');
+  const { name, coords, msg } = useStatusMessage();
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(115); // Default width
 
   // Initialize HVAC UI system once when page mounts
   useEffect(() => {
-    // Initialize the HVAC library (pass null for Quasar since we use Fluent UI)
-    // This creates DocUtil which sets up rulers, SVG area, grid, etc.
-    Hvac.UI.Initialize(null);
-    console.log('✅ HVAC Designer UI initialized');
+    try {
+      document.getElementById('svg-area')?.replaceChildren();
+      document.getElementById('h-ruler')?.replaceChildren();
+      document.getElementById('v-ruler')?.replaceChildren();
+
+      Hvac.UI.Initialize(null);
+      Hvac.IdxPageReact.initQuasar(null);
+      Hvac.IdxPageReact.initPageReact();
+
+      const refreshLayout = () => {
+        try {
+          const svgDoc = T3Gv?.docUtil?.svgDoc;
+          if (svgDoc && svgDoc.docInfo) {
+            svgDoc.CalcWorkArea();
+            svgDoc.ApplyDocumentTransform();
+            if (T3Gv.docUtil) T3Gv.docUtil.HandleResizeEvent();
+          }
+        } catch (e) { /* ignore */ }
+      };
+      setTimeout(refreshLayout, 150);
+      setTimeout(refreshLayout, 400);
+
+      // Show status bar for default-selected shape after init
+      setTimeout(() => {
+        try {
+          const selId = SelectUtil.GetTargetSelect();
+          if (selId >= 0) {
+            const obj = ObjectUtil.GetObjectPtr(selId, false);
+            if (obj?.Frame) {
+              const f = obj.Frame;
+              setStatusName(obj.ShapeType || 'Shape');
+              setStatusPos(f.x, f.y, f.x + f.width, f.y + f.height, f.width, f.height);
+            }
+          }
+        } catch { /* ignore */ }
+      }, 500);
+    } catch (err) {
+      console.error('[HvacDesigner] Init failed:', err);
+    }
+
+    return () => {
+      try {
+        Hvac.IdxPageReact.clearAutoSaveInterval();
+        Hvac.IdxPageReact.clearIdx();
+      } catch { /* ignore cleanup errors */ }
+    };
   }, []);
+
+  // Recalculate layout when left panel toggles
+  useEffect(() => {
+    setTimeout(() => {
+      try {
+        const svgDoc = T3Gv?.docUtil?.svgDoc;
+        if (svgDoc && svgDoc.docInfo) {
+          svgDoc.CalcWorkArea();
+          svgDoc.ApplyDocumentTransform();
+          if (T3Gv.docUtil) T3Gv.docUtil.HandleResizeEvent();
+        }
+      } catch { /* ignore */ }
+    }, 50);
+  }, [isLeftPanelCollapsed]);
 
   useEffect(() => {
     if (graphicId) {
-      // Load existing drawing
       loadDrawingFromDB(graphicId).catch((err) => {
         console.error('Failed to load drawing:', err);
       });
     } else {
-      // Create new drawing
       createNew();
     }
   }, [graphicId]);
@@ -142,96 +185,53 @@ export const HvacDesignerPage: React.FC = () => {
     );
   }
 
-  const toggleLeftPanel = () => {
-    setIsLeftPanelCollapsed(!isLeftPanelCollapsed);
-  };
-
   return (
-    <div className={styles.container}>
-      {/* Left Panel - Tools with collapsible header */}
-      <div
-        className={styles.leftPanel}
-        style={{
-          width: isLeftPanelCollapsed ? '0px' : `${leftPanelWidth}px`,
-        }}
-      >
-        {!isLeftPanelCollapsed && (
-          <>
-            {/* Left Panel Header */}
-            <div className={styles.leftPanelHeader}>
-              {/* Row 1: Title and collapse button */}
-              <div className={styles.leftPanelRow}>
-                <span className={styles.leftPanelTitle}>T3 Hvac</span>
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  icon={<NavigationRegular style={{ fontSize: '14px' }} />}
-                  onClick={toggleLeftPanel}
-                  title="Collapse panel"
-                />
-              </div>
-              {/* Row 2: Version and back button */}
-              <div className={styles.leftPanelRow}>
-                <Text size={200} style={{ fontSize: '10px', color: '#605e5c' }}>v1.0</Text>
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  icon={<ArrowLeftRegular style={{ fontSize: '14px' }} />}
-                  onClick={() => navigate('/t3000')}
-                  title="Back to main page"
-                />
-              </div>
-            </div>
+    <div id="main-app" className={styles.mainApp}>
+      <div id="main-panel" className={styles.mainPanel}>
+        {/* Top Bar - Toolbar (full width) */}
+        <TopToolbar
+          onToggleLeftPanel={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
+          onNavigateBack={() => navigate('/t3000')}
+        />
 
-            {/* Left Panel Content */}
-            <div className={styles.leftPanelContent}>
+        <div className={styles.mainArea}>
+          {/* Left Panel - Tools */}
+          {!isLeftPanelCollapsed && (
+            <div id="left-panel" className={styles.leftPanel}>
               <ToolsPanel />
             </div>
-          </>
-        )}
-      </div>
+          )}
 
-      {/* Expand button when collapsed */}
-      {isLeftPanelCollapsed && (
-        <div
-          style={{
-            width: '24px',
-            borderRight: '1px solid #e1e1e1',
-            backgroundColor: '#fafafa',
-            display: 'flex',
-            alignItems: 'flex-start',
-            paddingTop: '8px',
-          }}
-        >
-          <Button
-            appearance="subtle"
-            size="small"
-            icon={<NavigationRegular />}
-            onClick={toggleLeftPanel}
-            title="Expand panel"
-          />
-        </div>
-      )}
-
-      {/* Right Panel - Main work area */}
-      <div className={styles.rightPanel}>
-        {/* Top Bar - Toolbar (2 rows) */}
-        <TopToolbar />
-
-        {/* Drawing Area */}
-        <div className={styles.drawingArea}>
-          <HvacDrawingArea />
-        </div>
-
-        {/* Bottom Message Bar */}
-        {showMessageBar && (
-          <div className={styles.messageBar}>
-            <MessageBar intent="info">
-              <MessageBarBody>{message}</MessageBarBody>
-            </MessageBar>
+          {/* Right Workspace - Drawing Area + Message Bar */}
+          <div id="work-area" className={styles.drawingArea}>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <HvacDrawingArea />
+            </div>
+            {showMessageBar && (
+              <div className={styles.messageBar}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', padding: '0 12px',
+                  height: 28, fontSize: 11
+                }}>
+                  <span style={{ flexShrink: 0, color: '#444', whiteSpace: 'nowrap', marginRight: 8 }}>
+                    {name}
+                  </span>
+                  <span style={{ color: '#bbb', margin: '0 8px', flexShrink: 0 }}>|</span>
+                  <span style={{ flexShrink: 0, color: '#444', whiteSpace: 'nowrap' }}>
+                    {coords}
+                  </span>
+                  <span style={{ color: '#bbb', margin: '0 8px', flexShrink: 0 }}>|</span>
+                  <CheckmarkCircle16Regular style={{ marginRight: 6, fontSize: 14, flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>{msg}</span>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Right-click context menu — watches ctxMenuConfig from the core library */}
+      <T3ContextMenu />
     </div>
   );
 };

@@ -166,6 +166,7 @@ export const TagsColumnCell: React.FC<Props> = ({
           </div>
         )}
       </TableCellLayout>
+
       {drawerOpen && (
         <TagAssignmentDrawer
           deviceName={deviceName}

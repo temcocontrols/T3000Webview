@@ -24,7 +24,7 @@ import BConstant from '../Basic/B.Constant';
 import CursorConstant from '../Data/Constant/CursorConstant';
 import TextConstant from '../Data/Constant/TextConstant';
 import StyleConstant from '../Data/Constant/StyleConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import UIUtil from '../Opt/UI/UIUtil';
 import RulerUtil from '../Opt/UI/RulerUtil';
@@ -38,7 +38,6 @@ import ToolActUtil from '../Opt/Opt/ToolActUtil';
 import RightClickMd from '../Model/RightClickMd';
 import TextUtil from '../Opt/Opt/TextUtil';
 import PolyUtil from '../Opt/Opt/PolyUtil';
-import LogUtil from '../Util/LogUtil';
 
 /**
  * Represents a polyline shape with multiple connected segments.
@@ -4251,7 +4250,7 @@ class PolyLine extends BaseLine {
       }
     } else {
       if (secondPoint.y > firstPoint.y) {
-        result.ShortRef = OptConstant.ArcQuad.SD_PLA_BR;
+        result.ShortRef = OptConstant.ArcQuad.PLA_BR;
         if (endPoint.notclockwise) {
           result.ShortRef = OptConstant.ArcQuad.PLA_BL;
           result.param = NvConstant.Geometry.PI / 2;

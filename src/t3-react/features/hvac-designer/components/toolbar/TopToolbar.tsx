@@ -3,13 +3,14 @@
  * Main toolbar with drawing tools and actions (2 rows layout)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Menu,
   MenuTrigger,
   MenuPopover,
   MenuList,
   MenuItem,
+  Button,
   makeStyles,
 } from '@fluentui/react-components';
 import {
@@ -24,8 +25,9 @@ import {
   ZoomInRegular,
   ZoomOutRegular,
   GridRegular,
+  GridFilled,
   RulerRegular,
-  ArrowExportRegular,
+  RulerFilled,
   LockClosedRegular,
   LockOpenRegular,
   SelectAllOnRegular,
@@ -49,10 +51,16 @@ import {
   ImageRegular,
   ArrowResetRegular,
   ChevronDownRegular,
+  NavigationRegular,
+  ArrowLeftRegular,
 } from '@fluentui/react-icons';
-import { useHvacDesignerStore } from '../../store/designerStore';
-import { useDrawing } from '../../hooks/useDrawing';
 import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
+import EvtOpt from '@/lib/t3-hvac/Event/EvtOpt';
+import DataOpt from '@/lib/t3-hvac/Opt/Data/DataOpt';
+
+const toolOpt = EvtOpt.toolOpt;
+// Synthetic event for ToolOpt methods that expect a DOM event
+const noopEvent = { preventDefault: () => {}, stopPropagation: () => {} } as any;
 
 const useStyles = makeStyles({
   container: {
@@ -60,7 +68,7 @@ const useStyles = makeStyles({
     flexDirection: 'row',
     flexWrap: 'nowrap',
     backgroundColor: '#f5f5f5',
-    margin: '0px 2px',
+    margin: '0',
     height: '60px',
     borderBottom: '1px solid #e1e1e1',
     alignItems: 'center',
@@ -93,8 +101,11 @@ const useStyles = makeStyles({
     height: '100%',
   },
   toolItem: {
-    display: 'inline-flex',
+    display: 'flex',
+    flex: 1,
+    minWidth: 'fit-content',
     alignItems: 'center',
+    justifyContent: 'flex-start',
     gap: '4px',
     color: '#323130',
     fontSize: '11px',
@@ -114,6 +125,38 @@ const useStyles = makeStyles({
   },
   toolIcon: {
     fontSize: '14px',
+    width: '16px',
+    flexShrink: 0,
+    display: 'inline-flex',
+    justifyContent: 'center',
+  },
+  leftSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    padding: '0',
+    flexShrink: 0,
+    width: '115px',
+    borderRight: '1px solid rgba(0,0,0,0.1)',
+  },
+  leftRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '4px 8px',
+    height: '30px',
+    gap: '6px',
+  },
+  leftTitle: {
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#323130',
+    whiteSpace: 'nowrap',
+  },
+  leftVersion: {
+    fontSize: '10px',
+    color: '#605e5c',
+    whiteSpace: 'nowrap',
   },
   divider: {
     width: '1px',
@@ -128,150 +171,208 @@ const useStyles = makeStyles({
   },
 });
 
-export const TopToolbar: React.FC = () => {
-  const styles = useStyles();
-  const {
-    canvas,
-    history,
-    selectedShapeIds,
-    shapes,
-    isDirty,
-    undo,
-    redo,
-    copyToClipboard,
-    cutToClipboard,
-    pasteFromClipboard,
-    deleteShapes,
-    duplicateShapes,
-    toggleGrid,
-    toggleRulers,
-    selectAll,
-    clearSelection,
-    groupShapes,
-    ungroupShape,
-    clearDrawing,
-  } = useHvacDesignerStore();
+interface TopToolbarProps {
+  onToggleLeftPanel: () => void;
+  onNavigateBack: () => void;
+}
 
-  const { saveDrawing, exportAs, createNew, isSaving } = useDrawing();
-  // Use existing Hvac library for zoom operations
-  const zoomIn = () => T3Gv.docUtil?.SetZoomLevel((T3Gv.docUtil.zoom.value || 100) + 10);
-  const zoomOut = () => T3Gv.docUtil?.SetZoomLevel((T3Gv.docUtil.zoom.value || 100) - 10);
-  const [showExportMenu, setShowExportMenu] = useState(false);
+export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNavigateBack }) => {
+  const styles = useStyles();
+
+  // Use existing Hvac library for zoom operations.
+  // GetZoomFactor() returns a RATIO (1.0 = 100%), SetZoomLevel takes PERCENTAGE.
+  const getZoomPct = () => Math.round((T3Gv.docUtil?.GetZoomFactor() ?? 1) * 100);
+  const [zoomValue, setZoomValue] = useState(() => getZoomPct());
+
+  const [rulersOn, setRulersOn] = useState(false);
+  const [gridOn, setGridOn] = useState(false);
+
+  // Poll library state for zoom + rulers/grid (bypasses React state / async init).
+  useEffect(() => {
+    const id = setInterval(() => {
+      setZoomValue(getZoomPct());
+      const dc = T3Gv.docUtil?.docConfig;
+      if (dc) {
+        setRulersOn(dc.showRulers);
+        setGridOn(dc.showGrid);
+      }
+    }, 300);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleRulersToggle = () => {
+    const dc = T3Gv.docUtil?.docConfig;
+    if (dc) {
+      dc.showRulers = !dc.showRulers;
+      setRulersOn(dc.showRulers);
+      T3Gv.docUtil?.UpdateRulerVisibility();
+      DataOpt.SaveToLocalStorage();
+    }
+  };
+  const handleGridToggle = () => {
+    const dc = T3Gv.docUtil?.docConfig;
+    if (dc) {
+      dc.showGrid = !dc.showGrid;
+      setGridOn(dc.showGrid);
+      T3Gv.docUtil?.UpdateGridVisibility();
+      DataOpt.SaveToLocalStorage();
+    }
+  };
+
+  const zoomIn = () => {
+    const pct = getZoomPct() + 10;
+    setZoomValue(pct);
+    T3Gv.docUtil?.SetZoomLevel(pct);
+  };
+  const zoomOut = () => {
+    const pct = getZoomPct() - 10;
+    setZoomValue(pct);
+    T3Gv.docUtil?.SetZoomLevel(pct);
+  };
   const [showRotateMenu, setShowRotateMenu] = useState(false);
   const [showAlignMenu, setShowAlignMenu] = useState(false);
   const [showFlipMenu, setShowFlipMenu] = useState(false);
   const [showMakeSameMenu, setShowMakeSameMenu] = useState(false);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
-  const [zoomValue, setZoomValue] = useState(100);
 
   const handleSave = async () => {
-    try {
-      await saveDrawing();
-    } catch (error) {
-      console.error('Failed to save:', error);
-    }
-  };
-
-  const handleExport = async (format: 'json' | 'svg' | 'png' | 'pdf') => {
-    try {
-      await exportAs({ format });
-      setShowExportMenu(false);
-    } catch (error) {
-      console.error('Failed to export:', error);
-    }
+    toolOpt.SaveAct();
   };
 
   const handleDelete = () => {
-    if (selectedShapeIds.length > 0) {
-      deleteShapes(selectedShapeIds);
-    }
+    toolOpt.DeleteAct(noopEvent);
   };
 
   const handleDuplicate = () => {
-    if (selectedShapeIds.length > 0) {
-      duplicateShapes(selectedShapeIds);
-    }
+    toolOpt.DuplicateAct(noopEvent);
   };
 
   const handleGroup = () => {
-    if (selectedShapeIds.length > 1) {
-      groupShapes(selectedShapeIds);
-    }
+    toolOpt.GroupAct(noopEvent);
+  };
+
+  const handleUngroup = () => {
+    toolOpt.UnGroupAct(noopEvent);
+  };
+
+  const handleBringToFront = () => {
+    toolOpt.ShapeBringToFrontAct(noopEvent);
+  };
+
+  const handleSendToBack = () => {
+    toolOpt.ShapeSendToBackAct(noopEvent);
+  };
+
+  const handleCopy = () => {
+    toolOpt.CopyAct(noopEvent);
+  };
+
+  const handleCut = () => {
+    toolOpt.CutAct(noopEvent);
+  };
+
+  const handlePaste = () => {
+    toolOpt.PasteAct(noopEvent);
+  };
+
+  const handleUndo = () => {
+    toolOpt.UndoAct(noopEvent);
+  };
+
+  const handleRedo = () => {
+    toolOpt.RedoAct(noopEvent);
   };
 
   const handleRotate = (angle: number) => {
-    // TODO: Implement rotation
-    console.log('Rotate:', angle);
+    toolOpt.RotateAct(noopEvent, angle);
     setShowRotateMenu(false);
   };
 
   const handleAlign = (type: string) => {
-    // TODO: Implement alignment
-    console.log('Align:', type);
+    toolOpt.ShapeAlignAct(type);
     setShowAlignMenu(false);
   };
 
   const handleFlip = (type: string) => {
-    // TODO: Implement flip
-    console.log('Flip:', type);
+    if (type === 'horizontal') toolOpt.ShapeFlipHorizontalAct(noopEvent);
+    else toolOpt.ShapeFlipVerticalAct(noopEvent);
     setShowFlipMenu(false);
   };
 
-  const handleMakeSame = (type: string) => {
-    // TODO: Implement make same
-    console.log('Make same:', type);
+  const handleMakeSame = (type: number) => {
+    toolOpt.MakeSameSizeAct(noopEvent, type);
     setShowMakeSameMenu(false);
   };
 
   const handleBackground = (color: string) => {
-    // TODO: Implement background change
-    console.log('Background:', color);
+    toolOpt.LibSetBackgroundColorAct(color);
     setShowBackgroundMenu(false);
   };
 
   const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value) || 100;
     setZoomValue(value);
-    // TODO: Apply zoom
+    if (value > 0) T3Gv.docUtil?.SetZoomLevel(value);
   };
 
   const handleLock = () => {
-    // TODO: Implement lock
-    console.log('Lock');
+    toolOpt.LibLockAct(false);
   };
 
   const handleUnlock = () => {
-    // TODO: Implement unlock
-    console.log('Unlock');
-  };
-
-  const handleInsert = () => {
-    // TODO: Implement insert
-    console.log('Insert');
+    toolOpt.LibUnlockAct(false);
   };
 
   const handleResetZoom = () => {
     setZoomValue(100);
-    // TODO: Reset zoom to 100%
+    toolOpt.ResetScaleAct(noopEvent);
+  };
+
+  const handleInsert = () => {
+    // Insert is disabled in both React and Vue
   };
 
   return (
     <div className={styles.container}>
+      {/* Left: Title + version + controls (2 rows) */}
+      <div className={styles.leftSection}>
+        <div className={styles.leftRow}>
+          <span className={styles.leftTitle}>T3 Hvac</span>
+          <Button
+            appearance="subtle"
+            size="small"
+            icon={<NavigationRegular style={{ fontSize: '14px' }} />}
+            onClick={onToggleLeftPanel}
+            title="Collapse panel"
+          />
+        </div>
+        <div className={styles.leftRow}>
+          <span className={styles.leftVersion}>v1.0</span>
+          <Button
+            appearance="subtle"
+            size="small"
+            icon={<ArrowLeftRegular style={{ fontSize: '14px' }} />}
+            onClick={onNavigateBack}
+            title="Back to main page"
+          />
+        </div>
+      </div>
+
       {/* Group 1: Selection */}
       <div className={styles.group}>
-        <div className={styles.toolItem} onClick={clearSelection}>
+        <div className={styles.toolItem} title="Select shape(s)" onClick={() => toolOpt.SelectAct(noopEvent)}>
           <CursorRegular className={styles.toolIcon} />
           <span>Select</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleLock : undefined}>
+        <div className={styles.toolItem} title="Lock selected shape(s)" onClick={handleLock}>
           <LockClosedRegular className={styles.toolIcon} />
           <span>Lock</span>
         </div>
-        <div className={styles.toolItem} onClick={selectAll}>
+        <div className={styles.toolItem} title="Select all shape(s)" onClick={() => toolOpt.SelectAllObjects()}>
           <SelectAllOnRegular className={styles.toolIcon} />
           <span>Select All</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleUnlock : undefined}>
+        <div className={styles.toolItem} title="Unlock selected shape(s)" onClick={handleUnlock}>
           <LockOpenRegular className={styles.toolIcon} />
           <span>Unlock</span>
         </div>
@@ -281,27 +382,27 @@ export const TopToolbar: React.FC = () => {
 
       {/* Group 2: Clipboard */}
       <div className={styles.group}>
-        <div className={styles.toolItem} onClick={pasteFromClipboard}>
-          <ClipboardPasteRegular className={styles.toolIcon} />
-          <span>Paste</span>
-        </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? copyToClipboard : undefined}>
-          <CopyRegular className={styles.toolIcon} />
-          <span>Copy</span>
-        </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? cutToClipboard : undefined}>
+        <div className={styles.toolItem} title="Cut selected shape(s)" onClick={handleCut}>
           <CutRegular className={styles.toolIcon} />
           <span>Cut</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleDelete : undefined}>
-          <DeleteRegular className={styles.toolIcon} />
-          <span>Delete</span>
+        <div className={styles.toolItem} title="Copy selected shape(s)" onClick={handleCopy}>
+          <CopyRegular className={styles.toolIcon} />
+          <span>Copy</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0} onClick={selectedShapeIds.length > 0 ? handleDuplicate : undefined}>
+        <div className={styles.toolItem} title="Duplicate selected shape(s)" onClick={handleDuplicate}>
           <AddRegular className={styles.toolIcon} />
           <span>Duplicate</span>
         </div>
-        <div className={styles.toolItem} onClick={handleInsert}>
+        <div className={styles.toolItem} title="Paste copied shape(s)" onClick={handlePaste}>
+          <ClipboardPasteRegular className={styles.toolIcon} />
+          <span>Paste</span>
+        </div>
+        <div className={styles.toolItem} title="Delete selected shape(s)" onClick={handleDelete}>
+          <DeleteRegular className={styles.toolIcon} />
+          <span>Delete</span>
+        </div>
+        <div className={styles.toolItem} title="Insert shape" onClick={handleInsert}>
           <ImageAddRegular className={styles.toolIcon} />
           <span>Insert</span>
         </div>
@@ -311,19 +412,19 @@ export const TopToolbar: React.FC = () => {
 
       {/* Group 3: History & Save */}
       <div className={styles.group}>
-        <div className={styles.toolItem} data-disabled={history.past.length === 0} onClick={history.past.length > 0 ? undo : undefined}>
+        <div className={styles.toolItem} title="Undo last action" onClick={handleUndo}>
           <ArrowUndoRegular className={styles.toolIcon} />
           <span>Undo</span>
         </div>
-        <div className={styles.toolItem} data-disabled={!isDirty || isSaving} onClick={isDirty && !isSaving ? handleSave : undefined}>
+        <div className={styles.toolItem} title="Save data" onClick={handleSave}>
           <SaveRegular className={styles.toolIcon} />
-          <span>{isSaving ? 'Saving...' : 'Save'}</span>
+          <span>Save</span>
         </div>
-        <div className={styles.toolItem} data-disabled={history.future.length === 0} onClick={history.future.length > 0 ? redo : undefined}>
+        <div className={styles.toolItem} title="Redo last undone action" onClick={handleRedo}>
           <ArrowRedoRegular className={styles.toolIcon} />
           <span>Redo</span>
         </div>
-        <div className={styles.toolItem} onClick={clearDrawing}>
+        <div className={styles.toolItem} title="Clear draw area data" onClick={() => toolOpt.ClearAct()}>
           <EraserRegular className={styles.toolIcon} />
           <span>Clear</span>
         </div>
@@ -335,7 +436,7 @@ export const TopToolbar: React.FC = () => {
       <div className={styles.group}>
         <Menu open={showRotateMenu} onOpenChange={(_e, data) => setShowRotateMenu(data.open)}>
           <MenuTrigger>
-            <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+            <div className={styles.toolItem}>
               <ArrowRotateClockwiseRegular className={styles.toolIcon} />
               <span>Rotate</span>
               <ChevronDownRegular style={{ fontSize: '10px' }} />
@@ -343,7 +444,6 @@ export const TopToolbar: React.FC = () => {
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem className={styles.menuItem} onClick={() => handleRotate(0)}>0°</MenuItem>
               <MenuItem className={styles.menuItem} onClick={() => handleRotate(45)}>45°</MenuItem>
               <MenuItem className={styles.menuItem} onClick={() => handleRotate(90)}>90°</MenuItem>
               <MenuItem className={styles.menuItem} onClick={() => handleRotate(180)}>180°</MenuItem>
@@ -353,7 +453,7 @@ export const TopToolbar: React.FC = () => {
         </Menu>
         <Menu open={showAlignMenu} onOpenChange={(_e, data) => setShowAlignMenu(data.open)}>
           <MenuTrigger>
-            <div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2}>
+            <div className={styles.toolItem}>
               <AlignCenterHorizontalRegular className={styles.toolIcon} />
               <span>Align</span>
               <ChevronDownRegular style={{ fontSize: '10px' }} />
@@ -361,18 +461,18 @@ export const TopToolbar: React.FC = () => {
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem className={styles.menuItem} icon={<AlignLeftRegular />} onClick={() => handleAlign('left')}>Align Left</MenuItem>
-              <MenuItem className={styles.menuItem} icon={<AlignCenterHorizontalRegular />} onClick={() => handleAlign('center-h')}>Align Center H</MenuItem>
-              <MenuItem className={styles.menuItem} icon={<AlignRightRegular />} onClick={() => handleAlign('right')}>Align Right</MenuItem>
-              <MenuItem className={styles.menuItem} icon={<AlignTopRegular />} onClick={() => handleAlign('top')}>Align Top</MenuItem>
-              <MenuItem className={styles.menuItem} icon={<AlignCenterVerticalRegular />} onClick={() => handleAlign('center-v')}>Align Center V</MenuItem>
-              <MenuItem className={styles.menuItem} icon={<AlignBottomRegular />} onClick={() => handleAlign('bottom')}>Align Bottom</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleAlign('lefts')}>Align Left</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignCenterHorizontalRegular />} onClick={() => handleAlign('centers')}>Align Center H</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignRightRegular />} onClick={() => handleAlign('rights')}>Align Right</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignTopRegular />} onClick={() => handleAlign('tops')}>Align Top</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignCenterVerticalRegular />} onClick={() => handleAlign('middles')}>Align Center V</MenuItem>
+              <MenuItem className={styles.menuItem} icon={<AlignBottomRegular />} onClick={() => handleAlign('bottoms')}>Align Bottom</MenuItem>
             </MenuList>
           </MenuPopover>
         </Menu>
         <Menu open={showFlipMenu} onOpenChange={(_e, data) => setShowFlipMenu(data.open)}>
           <MenuTrigger>
-            <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+            <div className={styles.toolItem}>
               <ArrowRotateCounterclockwiseRegular className={styles.toolIcon} />
               <span>Flip</span>
               <ChevronDownRegular style={{ fontSize: '10px' }} />
@@ -387,7 +487,7 @@ export const TopToolbar: React.FC = () => {
         </Menu>
         <Menu open={showMakeSameMenu} onOpenChange={(_e, data) => setShowMakeSameMenu(data.open)}>
           <MenuTrigger>
-            <div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2}>
+            <div className={styles.toolItem}>
               <ResizeImageRegular className={styles.toolIcon} />
               <span>Make same</span>
               <ChevronDownRegular style={{ fontSize: '10px' }} />
@@ -395,9 +495,9 @@ export const TopToolbar: React.FC = () => {
           </MenuTrigger>
           <MenuPopover>
             <MenuList>
-              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame('width')}>Same Width</MenuItem>
-              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame('height')}>Same Height</MenuItem>
-              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame('size')}>Same Size</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame(2)}>Same Width</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame(1)}>Same Height</MenuItem>
+              <MenuItem className={styles.menuItem} onClick={() => handleMakeSame(3)}>Same Size</MenuItem>
             </MenuList>
           </MenuPopover>
         </Menu>
@@ -406,20 +506,20 @@ export const TopToolbar: React.FC = () => {
       <div className={styles.divider} />
 
       {/* Group 5: Arrange */}
-      <div className={styles.group}>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length < 2} onClick={selectedShapeIds.length >= 2 ? handleGroup : undefined}>
+      <div className={styles.group} style={{ maxWidth: '210px' }}>
+        <div className={styles.toolItem} title="Group selected shape(s)" onClick={handleGroup}>
           <GroupRegular className={styles.toolIcon} />
           <span>Group</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+        <div className={styles.toolItem} title="Bring to front" onClick={handleBringToFront}>
           <ArrowUpRegular className={styles.toolIcon} />
           <span>Bring to Front</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+        <div className={styles.toolItem} title="Ungroup selected shapes(s)" onClick={handleUngroup}>
           <GroupDismissRegular className={styles.toolIcon} />
           <span>Ungroup</span>
         </div>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+        <div className={styles.toolItem} title="Send to back" onClick={handleSendToBack}>
           <ArrowDownRegular className={styles.toolIcon} />
           <span>Send to Back</span>
         </div>
@@ -428,12 +528,12 @@ export const TopToolbar: React.FC = () => {
       <div className={styles.divider} />
 
       {/* Group 6: Library */}
-      <div className={styles.group}>
-        <div className={styles.toolItem} data-disabled={selectedShapeIds.length === 0}>
+      <div className={styles.group} style={{ maxWidth: '180px' }}>
+        <div className={styles.toolItem} title="Add selected shape(s) to library" onClick={() => toolOpt.AddToLibraryAct()}>
           <AddRegular className={styles.toolIcon} />
           <span>Add to Library</span>
         </div>
-        <div className={styles.toolItem}>
+        <div className={styles.toolItem} title="Load library" onClick={() => toolOpt.LoadLibraryAct()}>
           <FolderOpenRegular className={styles.toolIcon} />
           <span>Load Library</span>
         </div>
@@ -460,21 +560,22 @@ export const TopToolbar: React.FC = () => {
             </MenuList>
           </MenuPopover>
         </Menu>
-        <div className={styles.toolItem} onClick={toggleRulers}>
-          <RulerRegular className={styles.toolIcon} />
+        <div className={styles.toolItem} title="Toggle rulers visibility" onClick={handleRulersToggle}>
+          {rulersOn ? <RulerFilled className={styles.toolIcon} /> : <RulerRegular className={styles.toolIcon} />}
           <span>Rulers</span>
         </div>
-        <div className={styles.toolItem} onClick={toggleGrid}>
-          <GridRegular className={styles.toolIcon} />
+        <div className={styles.toolItem} title="Toggle grid visibility" onClick={handleGridToggle}>
+          {gridOn ? <GridFilled className={styles.toolIcon} /> : <GridRegular className={styles.toolIcon} />}
           <span>Grid</span>
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '2px 4px' }}>
-          <div className={styles.toolItem} onClick={zoomOut} style={{ padding: '2px 4px' }}>
+          <div className={styles.toolItem} title="Zoom out" onClick={zoomOut} style={{ padding: '2px 4px' }}>
             <ZoomOutRegular className={styles.toolIcon} />
           </div>
           <input
             type="number"
             value={zoomValue}
+            onFocus={() => setZoomValue(getZoomPct())}
             onChange={handleZoomChange}
             style={{
               width: '50px',
@@ -487,11 +588,11 @@ export const TopToolbar: React.FC = () => {
             }}
           />
           <span style={{ fontSize: '11px', color: '#323130' }}>%</span>
-          <div className={styles.toolItem} onClick={zoomIn} style={{ padding: '2px 4px' }}>
+          <div className={styles.toolItem} title="Zoom in" onClick={zoomIn} style={{ padding: '2px 4px' }}>
             <ZoomInRegular className={styles.toolIcon} />
           </div>
         </div>
-        <div className={styles.toolItem} onClick={handleResetZoom}>
+        <div className={styles.toolItem} title="Reset view to default" onClick={handleResetZoom}>
           <ArrowResetRegular className={styles.toolIcon} />
           <span>Reset Zoom</span>
         </div>

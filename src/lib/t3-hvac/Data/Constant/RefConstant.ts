@@ -16,6 +16,25 @@ export const objectConfigShow = ref<boolean>(false);
 export const globalMsgShow = ref<boolean>(false);
 export const commonMsg = ref<string>("");
 
+// ── Status bar ──
+
+export let sbName = '';
+export let sbX = 0, sbY = 0, sbR = 0, sbB = 0;   // edges from origin
+export let sbWidth = 0, sbHeight = 0;               // object dimensions
+
+export function setStatusPos(x: number, y: number, r: number, b: number, w: number, h: number) {
+  sbX = Math.round(x);
+  sbY = Math.round(y);
+  sbR = Math.round(r);
+  sbB = Math.round(b);
+  sbWidth = Math.round(w);
+  sbHeight = Math.round(h);
+}
+
+export function setStatusName(name: string) {
+  sbName = name;
+}
+
 // Index page 2
 
 // State variables for drawing and transformations

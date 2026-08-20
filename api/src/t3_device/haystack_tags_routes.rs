@@ -44,11 +44,14 @@ struct RebuildRequest {
 
 pub fn create_haystack_tags_routes() -> Router<T3AppState> {
     Router::new()
+        // Tag definitions
         .route("/api/haystack/tags", get(list_tags).post(create_tag))
         .route("/api/haystack/tags/:name", put(update_tag).delete(delete_tag_handler))
         .route("/api/haystack/tag-tree", get(get_tag_tree))
+        // Point tags
         .route("/api/haystack/point-tags/read", post(read_point_tags))
         .route("/api/haystack/point-tags/write", post(write_point_tags))
+        // Replace tag
         .route("/api/haystack/replace-tag", post(replace_tag))
         .route("/api/haystack/rebuild", post(rebuild_tags))
         .route("/api/haystack/sync", post(sync_official_tags))
@@ -67,6 +70,7 @@ async fn list_tags(
             tracing::error!("list_tags failed: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Failed to list tags: {}", e)})))
         })?;
+
     Ok(Json(json!({ "tags": tags, "total": tags.len() })))
 }
 
@@ -78,6 +82,7 @@ async fn create_tag(
     haystack_tags_service::create_tag(&db, &payload).await.map_err(|e| {
         (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
     })?;
+
     Ok(Json(json!({ "message": "Tag created", "tag_name": payload.tag_name })))
 }
 
@@ -90,6 +95,7 @@ async fn update_tag(
     haystack_tags_service::update_tag(&db, &name, &payload).await.map_err(|e| {
         (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
     })?;
+
     Ok(Json(json!({ "message": "Tag updated", "tag_name": name })))
 }
 
@@ -101,6 +107,7 @@ async fn delete_tag_handler(
     haystack_tags_service::delete_tag(&db, &name).await.map_err(|e| {
         (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
     })?;
+
     Ok(Json(json!({ "message": "Tag deleted", "tag_name": name })))
 }
 
@@ -112,6 +119,7 @@ async fn get_tag_tree(
         tracing::error!("get_tag_tree failed: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Failed to get tag tree: {}", e)})))
     })?;
+
     Ok(Json(json!({ "tree": tree })))
 }
 
@@ -127,6 +135,7 @@ async fn read_point_tags(
             tracing::error!("read_point_tags failed: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Failed to read point tags: {}", e)})))
         })?;
+
     Ok(Json(json!({ "entries": entries, "total": entries.len() })))
 }
 
@@ -138,6 +147,7 @@ async fn write_point_tags(
     haystack_tags_service::batch_update_point_tags(&db, &payload).await.map_err(|e| {
         (StatusCode::BAD_REQUEST, Json(json!({ "error": e })))
     })?;
+
     Ok(Json(json!({ "message": "Point tags updated", "count": payload.len() })))
 }
 

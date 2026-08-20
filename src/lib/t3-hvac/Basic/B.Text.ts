@@ -7,7 +7,6 @@ import Formatter from "./B.Text.Formatter"
 import Edit from "./B.Text.Edit"
 import T3Gv from "../Data/T3Gv"
 import CursorConstant from "../Data/Constant/CursorConstant"
-import T3Util from "../Util/T3Util"
 import LogUtil from "../Util/LogUtil"
 
 /**

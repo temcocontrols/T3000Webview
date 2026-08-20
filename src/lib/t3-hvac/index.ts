@@ -8,7 +8,7 @@
  *
  * Usage:
  *   import Hvac from '@/lib/t3-hvac'
- *   import { LogUtil, T3Util } from '@/lib/t3-hvac'
+ *   import { LogUtil } from '@/lib/t3-hvac'
  */
 
 // Main HVAC singleton - primary export
@@ -17,7 +17,6 @@ export { default as Hvac } from './Hvac';
 
 // Commonly used utilities
 export { default as LogUtil } from './Util/LogUtil';
-export { default as T3Util } from './Util/T3Util';
 export { default as T3DeviceApi } from './Util/T3DeviceApi';
 export { t3DeviceApi } from './Util/T3DeviceApi';
 
@@ -29,7 +28,8 @@ export * from './Data/T3Data'; // Export all named exports (T3Data, appStateV2, 
 // Commonly used utilities from Opt
 export { default as IdxUtils } from './Opt/Common/IdxUtils';
 export { default as IdxPage } from './Opt/Common/IdxPage';
-export { default as IdxPage2 } from './Opt/Common/IdxPage2';
+export { default as AppRuntime } from './Opt/Common/AppRuntime';
+export { default as IdxPageReact } from './Opt/Common/IdxPageReact';
 
 // FFI APIs - Note: Vue composables (use*) not available in migrated version
 // export { useT3000FfiApi } from './Opt/FFI/T3000FfiApi';

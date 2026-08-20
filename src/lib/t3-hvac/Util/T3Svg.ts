@@ -1733,9 +1733,14 @@ SVG.Doc.prototype.stage = function () {
   // Add the SVG node to the container
   containerDiv.appendChild(this.node);
 
+  // Clear pending restructure from a previous mount cycle (React StrictMode)
+  if ((this as any)._restructureTimer) {
+    clearTimeout((this as any)._restructureTimer);
+  }
+
   /**
-   * Handles the document ready state and finalizes SVG positioning
-   * Ensures proper rendering once the document is fully loaded
+   * Polls document.readyState then restructures the SVG DOM after page load.
+   * Timer is cleared if stage() re-invoked (React StrictMode double-mount).
    */
   const handleReadyState = () => {
     if (document.readyState === "complete") {
@@ -1743,16 +1748,17 @@ SVG.Doc.prototype.stage = function () {
       this.attr("style", "position:absolute;overflow:hidden;");
 
       // Use a timeout to change positioning and re-append the node for proper rendering
-      setTimeout(() => {
+      (this as any)._restructureTimer = setTimeout(() => {
         this.attr("style", "position:relative;overflow:hidden;");
         try {
           // Reconstruct the DOM structure to ensure proper rendering
-          parentElement.removeChild(this.node.parentNode);
-          this.node.parentNode.removeChild(this.node);
-          parentElement.appendChild(this.node);
+          if (this.node?.parentNode && this.node.parentNode.parentNode) {
+            parentElement.removeChild(this.node.parentNode);
+            this.node.parentNode.removeChild(this.node);
+            parentElement.appendChild(this.node);
+          }
         } catch (error) {
-          // Log any DOM manipulation errors
-          console.error(error);
+          // Node already detached (React StrictMode remount)
         }
       }, 5);
     } else {

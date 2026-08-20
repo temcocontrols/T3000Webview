@@ -1,6 +1,5 @@
 import T3Gv from "../../Data/T3Gv";
 import LogUtil from "../../Util/LogUtil";
-import T3Util from "../../Util/T3Util";
 
 
 class ArrowKeyOpt {

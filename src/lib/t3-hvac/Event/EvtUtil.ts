@@ -8,7 +8,7 @@ import RightClickMd from '../Model/RightClickMd'
 import T3Constant from '../Data/Constant/T3Constant';
 import DocUtil from '../Doc/DocUtil';
 import OptConstant from '../Data/Constant/OptConstant';
-import T3Util from '../Util/T3Util';
+import LogUtil from '../Util/LogUtil';
 import MouseUtil from './MouseUtil';
 import ObjectUtil from '../Opt/Data/ObjectUtil';
 import SelectUtil from '../Opt/Opt/SelectUtil';
@@ -18,7 +18,6 @@ import TextUtil from '../Opt/Opt/TextUtil';
 import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
-import LogUtil from '../Util/LogUtil';
 
 /**
  * Utility class for handling various user interaction events on an SVG document.
@@ -951,6 +950,14 @@ class EvtUtil {
     return function (event) {
       LogUtil.Debug("E.Evt StampObjectDragEnd input:", event);
 
+      // Normalize: Hammer dragend events have coords at event.gesture.center,
+      // but DragDropObjectDone expects event.clientX / event.clientY.
+      // Copy them onto the event object so the downstream code works unchanged.
+      if (event.gesture && event.gesture.center) {
+        event.clientX = event.gesture.center.clientX;
+        event.clientY = event.gesture.center.clientY;
+      }
+
       // Process the drag completion and place the stamp object
       DrawUtil.DragDropObjectDone(event, stampObject);
 
@@ -1041,7 +1048,7 @@ class EvtUtil {
       const yOffset = clientY - windowCoordinates.y;
 
       // Adjust scroll position
-      const svgArea = $('#svgarea');
+      const svgArea = $('#svg-area');
       const scrollLeft = svgArea.scrollLeft();
       const scrollTop = svgArea.scrollTop();
 
@@ -1178,7 +1185,7 @@ class EvtUtil {
       const yOffset = clientY - windowCoordinates.y;
 
       // Adjust scroll position
-      const svgArea = $('#svgarea');
+      const svgArea = $('#svg-area');
       const scrollLeft = svgArea.scrollLeft();
       const scrollTop = svgArea.scrollTop();
 

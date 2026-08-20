@@ -13,14 +13,13 @@ import Instance from '../Data/Instance/Instance'
 import DSConstant from '../Opt/DS/DSConstant'
 import OptConstant from '../Data/Constant/OptConstant'
 import CursorConstant from '../Data/Constant/CursorConstant'
-import T3Util from '../Util/T3Util'
+import LogUtil from '../Util/LogUtil'
 import TextConstant from '../Data/Constant/TextConstant'
 import ObjectUtil from '../Opt/Data/ObjectUtil'
 import UIUtil from '../Opt/UI/UIUtil'
 import OptCMUtil from '../Opt/Opt/OptCMUtil'
 import HookUtil from '../Opt/Opt/HookUtil'
 import PolyUtil from '../Opt/Opt/PolyUtil'
-import LogUtil from '../Util/LogUtil'
 
 /**
  * ArcLine class represents a curved line segment in the T3000 HVAC drawing system.

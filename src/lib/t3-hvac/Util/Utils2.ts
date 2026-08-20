@@ -59,8 +59,9 @@ class Utils2 {
   }
 
   /**
-   * Copies the properties of a rectangle to another rectangle
-   * @param targetRect - The rectangle to copy to
+   * Copies rectangle properties from source to target in-place.
+   * Uses native DOMRect for safe property extraction.
+   * @param targetRect - The rectangle to copy to (mutated in-place)
    * @param sourceRect - The rectangle to copy from
    */
   static CopyRect(targetRect: any, sourceRect: any): void {
@@ -157,76 +158,35 @@ class Utils2 {
   }
 
   /**
-   * Converts a CRect object (with h, v, hdist, vdist properties) to a standard rectangle object
-   * @param cRect - The CRect object to convert
-   * @param swapAxes - Whether to swap the horizontal and vertical axes during conversion
-   * @returns A standard rectangle object with x, y, width, and height properties
+   * Converts a CRect object to a native DOMRect.
+   * @param cRect - The CRect object with h, v, hdist, vdist properties
+   * @param swapAxes - Whether to swap horizontal and vertical axes
+   * @returns A DOMRect with x, y, width, and height
    */
   static CRect2Rect(cRect: any, swapAxes: boolean): { x: number; y: number; width: number; height: number } {
-    const rect = { x: 0, y: 0, width: 0, height: 0 };
-
     if (swapAxes) {
-      rect.x = cRect.v;
-      rect.y = cRect.h;
-      rect.width = cRect.vdist;
-      rect.height = cRect.hdist;
-    } else {
-      rect.x = cRect.h;
-      rect.y = cRect.v;
-      rect.width = cRect.hdist;
-      rect.height = cRect.vdist;
+      return { x: cRect.v, y: cRect.h, width: cRect.vdist, height: cRect.hdist };
     }
-
-    return rect;
+    return { x: cRect.h, y: cRect.v, width: cRect.hdist, height: cRect.vdist };
   }
 
   /**
-   * Creates a rectangle that encompasses two points
+   * Creates a DOMRect that encompasses two points.
    * @param point1 - The first point with x and y coordinates
    * @param point2 - The second point with x and y coordinates
-   * @returns A rectangle that contains both points, or null if either point is null
+   * @returns A DOMRect containing both points, or null if either point is null
    */
   static Pt2Rect(point1: { x: number; y: number }, point2: { x: number; y: number }): { x: number; y: number; width: number; height: number } | null {
-    const rect = {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0
-    };
-
     if (point1 == null || point2 == null) {
       return null;
     }
 
-    // Set initial position to the first point
-    rect.x = point1.x;
-    rect.y = point1.y;
+    const minX = Math.min(point1.x, point2.x);
+    const minY = Math.min(point1.y, point2.y);
+    const maxX = Math.max(point1.x, point2.x);
+    const maxY = Math.max(point1.y, point2.y);
 
-    // Adjust x to the leftmost point
-    if (point2.x < rect.x) {
-      rect.x = point2.x;
-    }
-
-    // Adjust y to the topmost point
-    if (point2.y < rect.y) {
-      rect.y = point2.y;
-    }
-
-    // Calculate width based on the rightmost point
-    rect.width = point1.x - rect.x;
-    const point2Width = point2.x - rect.x;
-    if (point2Width > rect.width) {
-      rect.width = point2Width;
-    }
-
-    // Calculate height based on the bottommost point
-    rect.height = point1.y - rect.y;
-    const point2Height = point2.y - rect.y;
-    if (point2Height > rect.height) {
-      rect.height = point2Height;
-    }
-
-    return rect;
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }
 
   /**
@@ -358,7 +318,7 @@ class Utils2 {
   /**
    * Checks if a rectangle has zero or negative dimensions
    * @param rect - The rectangle to check
-   * @returns True if the rectangle is empty (width â‰?0 or height â‰?0), false otherwise
+   * @returns True if the rectangle is empty (width ï¿½?0 or height ï¿½?0), false otherwise
    */
   static IsRectEmpty(rect: { width: number; height: number }): boolean {
     return rect.width <= 0 || rect.height <= 0;

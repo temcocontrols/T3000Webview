@@ -11,7 +11,7 @@ import HitResult from "../../Model/HitResult";
 import Point from '../../Model/Point';
 import SelectionAttr from "../../Model/SelectionAttr";
 import '../../Util/T3Hammer';
-import T3Util from "../../Util/T3Util";
+import LogUtil from "../../Util/LogUtil";
 import Utils1 from "../../Util/Utils1";
 import Utils2 from "../../Util/Utils2";
 import Utils3 from "../../Util/Utils3";
@@ -26,7 +26,7 @@ import SvgUtil from "./SvgUtil";
 import HookUtil from './HookUtil';
 import ToolActUtil from './ToolActUtil';
 import TextUtil from './TextUtil';
-import LogUtil from '../../Util/LogUtil';
+import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 
 class SelectUtil {
 
@@ -204,6 +204,17 @@ class SelectUtil {
     }
 
     LogUtil.Debug("O.Opt SelectObjects - Output:", { selectedIndex, selectedCount: objectsToSelect?.length || 0 });
+    // Update status bar on selection
+    if (selectedIndex >= 0) {
+      const obj = ObjectUtil.GetObjectPtr(selectedIndex, true);
+      if (obj?.Frame) {
+        setStatusName(obj.ShapeType || 'Shape');
+        setStatusPos(obj.Frame.x, obj.Frame.y, obj.Frame.x + obj.Frame.width, obj.Frame.y + obj.Frame.height, obj.Frame.width, obj.Frame.height);
+      }
+    } else {
+      setStatusName('');
+      setStatusPos(0, 0, 0, 0, 0, 0);
+    }
     return selectedIndex;
   }
 
@@ -737,7 +748,7 @@ class SelectUtil {
 
       T3Gv.opt.noUndo = false;
     } catch (cleanupError) {
-      T3Util.Error("= u.SelectUtil: OptSltSelectExceptionCleanup/ - Cleanup Error:", cleanupError);
+      LogUtil.Error("= u.SelectUtil: OptSltSelectExceptionCleanup/ - Cleanup Error:", cleanupError);
       throw cleanupError;
     }
 
