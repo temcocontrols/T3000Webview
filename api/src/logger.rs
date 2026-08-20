@@ -1,12 +1,12 @@
 use std::fs::{create_dir_all, OpenOptions};
 use std::io::Write;
 use chrono::{Utc, Timelike};
-use crate::constants::get_t3000_runtime_path;
+use crate::constants::get_t3000_log_path;
 
 /// Global flag to enable/disable T3WebLog functionality
 pub static ENABLE_T3_WEB_LOG: bool = false; // ❌ DISABLED - Set to true to enable logging
 
-/// Creates structured log file path with 4-hour bucket system: T3000_Runtime/T3WebLog/YYYY-MM/MMDD/filename_HHHH.txt
+/// Creates structured log file path with 4-hour bucket system: T3000_Runtime/T3Web/logs/YYYY-MM/MMDD/filename_HHHH.txt
 pub fn create_structured_log_path(base_filename: &str) -> Result<String, std::io::Error> {
     let now = Utc::now();
     let year_month = now.format("%Y-%m").to_string();
@@ -18,9 +18,8 @@ pub fn create_structured_log_path(base_filename: &str) -> Result<String, std::io
     let end_hour = start_hour + 3;
     let hour_bucket = format!("{:02}{:02}", start_hour, end_hour);
 
-    // Create the directory structure in T3000 runtime folder: T3WebLog/YYYY-MM/MMDD/
-    let runtime_path = get_t3000_runtime_path();
-    let log_dir = runtime_path.join("T3WebLog").join(&year_month).join(&month_day);
+    // Create the directory structure in T3000 runtime folder: T3Web/logs/YYYY-MM/MMDD/
+    let log_dir = get_t3000_log_path().join(&year_month).join(&month_day);
     create_dir_all(&log_dir)?;
 
     // Create the full log file path with 4-hour bucket: filename_HHHH.txt

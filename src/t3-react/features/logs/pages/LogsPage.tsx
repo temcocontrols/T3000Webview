@@ -883,7 +883,7 @@ export const LogsPage: React.FC = () => {
               <ul style={{ margin: '4px 0 12px', paddingLeft: '20px', color: tokens.colorNeutralForeground2, fontSize: '13px' }}>
                 <li>All flow logs (T3_FLOW, T3_FLOW_STEP)</li>
                 <li>All activity logs (T3_APP_LOG)</li>
-                <li>All log files on disk (T3WebLog folder)</li>
+                <li>All log files on disk (T3Web/logs folder)</li>
               </ul>
               <p style={{ margin: 0, fontWeight: 600, color: tokens.colorPaletteRedForeground1, fontSize: '13px' }}>
                 This cannot be undone.
@@ -1086,7 +1086,7 @@ export const LogsPage: React.FC = () => {
                   children: (
                     <div className={s.drawerPolicyTooltipContent}>
                       <div><strong>Log Settings</strong>: Per-category enable/disable, log level, detail mode, and sink targets.</div>
-                      <div><strong>File Mode</strong>: Raw text files written by the T3000 service process (T3WebLog).</div>
+                      <div><strong>File Mode</strong>: Raw text files written by the T3000 service process (T3Web/logs).</div>
                       <div><strong>Flow Mode</strong>: Step-by-step operation traces with timing and status.</div>
                     </div>
                   ),
