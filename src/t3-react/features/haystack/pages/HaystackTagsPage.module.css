@@ -95,7 +95,6 @@
   flex-shrink: 0;
   margin-right: 6px;
 }
-
 .leftHeader {
   display: flex;
   align-items: center;
@@ -181,8 +180,6 @@
   font-size: 12px;
   color: var(--colorNeutralForeground1);
   flex: 1;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -191,7 +188,7 @@
 .treeLabelCustom { opacity: 0.4; }
 .treeCount { color: var(--colorNeutralForeground3); font-size: 11px; margin-left: 4px; }
 
-/* ©¤©¤ Right Panel ©¤©¤ */
+/* â”€â”€ Right Panel â”€â”€ */
 .rightPanel {
   flex: 1;
   overflow-y: auto;
@@ -214,7 +211,7 @@
   background: #a1a1a1;
 }
 
-/* ©¤©¤ Thin scrollbars ©¤©¤ */
+/* â”€â”€ Thin scrollbars â”€â”€ */
 .treeContainer::-webkit-scrollbar,
 .rightPanel::-webkit-scrollbar {
   width: 5px;
@@ -239,10 +236,6 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  th, td {
-    text-align: left;
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--colorNeutralStroke2);
 }
 .tagTable th {
   position: sticky;
@@ -267,7 +260,7 @@
 .parents { color: var(--colorNeutralForeground2); font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .description { color: var(--colorNeutralForeground2); font-size: 12px; }
 
-/* ©¤©¤ Empty state ©¤©¤ */
+/* â”€â”€ Empty state â”€â”€ */
 .emptyState {
   display: flex;
   flex-direction: column;
@@ -277,15 +270,13 @@
   color: var(--colorNeutralForeground2);
   font-size: 14px;
   gap: 8px;
-  margin-top: 12px;
-  max-width: 400px;
 }
 .emptyState p { margin: 0; }
 .emptyHint { font-size: 12px; color: var(--colorNeutralForeground3); }
 .emptyTree { padding: 16px; font-size: 12px; color: var(--colorNeutralForeground3); text-align: center; }
 .emptyTree p { margin: 0; }
 
-/* ©¤©¤ Sync Dialog ©¤©¤ */
+/* â”€â”€ Sync Dialog â”€â”€ */
 .syncDialogContent {
   font-size: 13px;
   line-height: 1.6;
