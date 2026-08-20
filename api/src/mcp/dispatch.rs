@@ -2941,6 +2941,191 @@ pub async fn execute_tool(
 
         // ═══ v5: Device Diagnostics ═══ 
 
+        "t3000_fdd_rules_list" => {
+            // Ensure the table exists + seed defaults (idempotent).
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let category = args.get("category").and_then(|v| v.as_str());
+            let rules = crate::fdd::rules::list_rules(db, category)
+                .await
+                .map_err(|e| format!("FDD rules list failed: {}", e))?;
+            let items: Vec<Value> = rules
+                .iter()
+                .map(|r| {
+                    json!({
+                        "rule_id": r.rule_id,
+                        "rule_name": r.rule_name,
+                        "category": r.category,
+                        "description": r.description,
+                        "rule_kind": r.rule_kind,
+                        "required_roles": r.required_roles,
+                        "params": r.params,
+                        "severity": r.severity,
+                        "enabled": r.enabled,
+                    })
+                })
+                .collect();
+            serde_json::to_string_pretty(&json!({ "rules": items, "total": items.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_fdd_analyze" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+            let equipment = args
+                .get("equipment")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let range_hours: u64 = args
+                .get("range_hours")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(24);
+            let rule_ids: Vec<String> = args
+                .get("rules")
+                .and_then(|v| v.as_array())
+                .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+
+            let result = crate::fdd::analyze(db, serial, &equipment, range_hours, &rule_ids)
+                .await
+                .map_err(|e| format!("FDD analyze failed: {}", e))?;
+            serde_json::to_string_pretty(&result)
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_fdd_rule_create" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !confirm {
+                return Err("confirm:true is required to create an FDD rule".to_string());
+            }
+            let rule_id = args.get("rule_id").and_then(|v| v.as_str())
+                .ok_or_else(|| "rule_id required".to_string())?.to_string();
+            let rule = crate::fdd::rules::Rule {
+                rule_id: rule_id.clone(),
+                rule_name: args.get("rule_name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                category: args.get("category").and_then(|v| v.as_str()).unwrap_or("custom").to_string(),
+                description: args.get("description").and_then(|v| v.as_str()).map(String::from),
+                rule_kind: args.get("rule_kind").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                required_roles: args.get("required_roles").and_then(|v| v.as_array())
+                    .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+                    .unwrap_or_default(),
+                params: args.get("params").cloned().unwrap_or_else(|| json!({})),
+                severity: args.get("severity").and_then(|v| v.as_str()).unwrap_or("warning").to_string(),
+                enabled: args.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true),
+            };
+            crate::fdd::rules::create_rule(db, &rule)
+                .await
+                .map_err(|e| format!("FDD rule create failed: {}", e))?;
+            serde_json::to_string_pretty(&json!({ "created": true, "rule_id": rule_id }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_fdd_rule_update" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !confirm {
+                return Err("confirm:true is required to update an FDD rule".to_string());
+            }
+            let rule_id = args.get("rule_id").and_then(|v| v.as_str())
+                .ok_or_else(|| "rule_id required".to_string())?.to_string();
+            let changes = args.clone();
+            let updated = crate::fdd::rules::update_rule(db, &rule_id, &changes)
+                .await
+                .map_err(|e| format!("FDD rule update failed: {}", e))?;
+            match updated {
+                Some(r) => serde_json::to_string_pretty(&json!({
+                    "updated": true,
+                    "rule_id": r.rule_id,
+                    "rule_name": r.rule_name,
+                    "severity": r.severity,
+                    "enabled": r.enabled,
+                    "params": r.params,
+                }))
+                .map_err(|e| format!("Serialize error: {}", e)),
+                None => Err(format!("FDD rule '{}' not found", rule_id)),
+            }
+        }
+
+        "t3000_fdd_rule_toggle" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !confirm {
+                return Err("confirm:true is required to toggle an FDD rule".to_string());
+            }
+            let rule_id = args.get("rule_id").and_then(|v| v.as_str())
+                .ok_or_else(|| "rule_id required".to_string())?.to_string();
+            let enabled = args.get("enabled").and_then(|v| v.as_bool())
+                .ok_or_else(|| "enabled required".to_string())?;
+            let updated = crate::fdd::rules::toggle_rule(db, &rule_id, enabled)
+                .await
+                .map_err(|e| format!("FDD rule toggle failed: {}", e))?;
+            match updated {
+                Some(r) => serde_json::to_string_pretty(&json!({
+                    "updated": true,
+                    "rule_id": r.rule_id,
+                    "enabled": r.enabled,
+                }))
+                .map_err(|e| format!("Serialize error: {}", e)),
+                None => Err(format!("FDD rule '{}' not found", rule_id)),
+            }
+        }
+
+        "t3000_fdd_rule_export" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let category = args.get("category").and_then(|v| v.as_str());
+            let rules = crate::fdd::rules::list_rules(db, category)
+                .await
+                .map_err(|e| format!("FDD rules list failed: {}", e))?;
+            let items: Vec<Value> = rules
+                .iter()
+                .map(|r| {
+                    json!({
+                        "rule_id": r.rule_id,
+                        "rule_name": r.rule_name,
+                        "category": r.category,
+                        "description": r.description,
+                        "rule_kind": r.rule_kind,
+                        "required_roles": r.required_roles,
+                        "params": r.params,
+                        "severity": r.severity,
+                        "enabled": r.enabled,
+                    })
+                })
+                .collect();
+            serde_json::to_string_pretty(&json!({ "rules": items, "total": items.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_fdd_rule_import" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !confirm {
+                return Err("confirm:true is required to import FDD rules".to_string());
+            }
+            let rules = args.get("rules").and_then(|v| v.as_array())
+                .ok_or_else(|| "rules array required".to_string())?
+                .clone();
+            let n = crate::fdd::rules::import_rules(db, &rules)
+                .await
+                .map_err(|e| format!("FDD rule import failed: {}", e))?;
+            serde_json::to_string_pretty(&json!({ "imported": n }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_fdd_faults" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let serial = args.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
+            let rule_id = args.get("rule_id").and_then(|v| v.as_str());
+            let limit: u64 = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(50);
+            let result = crate::fdd::list_findings(db, serial, rule_id, limit)
+                .await
+                .map_err(|e| format!("FDD faults failed: {}", e))?;
+            serde_json::to_string_pretty(&result)
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
         "t3000_device_diagnostics" => {
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)

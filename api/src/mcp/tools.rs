@@ -1057,6 +1057,136 @@ lazy_static::lazy_static! {
             }
         }),
     },
+    // ═══ v5: Fault Detection & Diagnostics (FDD) ═══ 
+    ToolDef {
+        name: "t3000_fdd_rules_list",
+        title: "List FDD Rules",
+        description: "List all fault detection (FDD) rules with category, rule kind, required semantic roles, tunable parameters, severity, and enabled state. Rules are managed like auto-tagging rules (stored in the database).",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "description": "Optional: filter by category (economizer, sensor, fan, zone, chw, control)"
+                }
+            }
+        }),
+    },
+    ToolDef {
+        name: "t3000_fdd_analyze",
+        title: "Run Fault Detection",
+        description: "Run FDD rules against a device's trendlog history and Haystack-tagged points over a time range. Returns fault findings with severity, fault hours, and evidence. Optionally restrict to specific rule IDs. Use to proactively detect equipment faults (economizer, sensor, fan, chilled water).",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": { "type": "integer", "description": "Device serial number" },
+                "equipment": { "type": "string", "description": "Optional: equipment name (e.g. AHU-1) for context" },
+                "range_hours": { "type": "integer", "description": "Optional: hours of history to analyze (default 24)" },
+                "rules": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Optional: restrict to these rule IDs (e.g. [\"ECON-4\",\"SAT-HIGH\"]); empty = all enabled rules"
+                }
+            },
+            "required": ["serial_number"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_fdd_rule_create",
+        title: "Create FDD Rule",
+        description: "Create a new fault detection rule in the FDD_RULES table. Requires confirm:true. Fields: rule_id (unique), rule_name, category, rule_kind (ThresholdAbove|ThresholdBelow|RangeBand|StuckValue|FanMismatch|EconomizerOaFraction|EconomizerStuckClosed|SupplyTempDeviation|ChwLowDeltaT), required_roles, params, severity, enabled.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "rule_id": { "type": "string", "description": "Unique rule ID, e.g. 'MY-RULE-1'" },
+                "rule_name": { "type": "string", "description": "Human-readable rule name" },
+                "category": { "type": "string", "description": "Category (economizer, sensor, fan, zone, chw, control, custom)" },
+                "rule_kind": { "type": "string", "description": "Evaluator kind: ThresholdAbove, ThresholdBelow, RangeBand, StuckValue, FanMismatch, EconomizerOaFraction, EconomizerStuckClosed, SupplyTempDeviation, ChwLowDeltaT" },
+                "required_roles": { "type": "array", "items": { "type": "string" }, "description": "Semantic roles needed, e.g. [\"mat\",\"rat\",\"oa_t\",\"fan_cmd\"]" },
+                "params": { "type": "object", "description": "Tuning parameters, e.g. {\"field\":\"mat\",\"limit\":2,\"confirm_rows\":4,\"poll_seconds\":300}" },
+                "severity": { "type": "string", "description": "info, warning, or critical" },
+                "enabled": { "type": "boolean", "description": "Enabled by default" },
+                "confirm": { "type": "boolean", "description": "Must be true" }
+            },
+            "required": ["rule_id", "rule_name", "rule_kind", "confirm"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_fdd_rule_update",
+        title: "Update FDD Rule",
+        description: "Update an existing FDD rule (name, category, description, rule_kind, severity, enabled, required_roles, or params). Params are merged with existing values so partial tuning works. Requires confirm:true.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "rule_id": { "type": "string", "description": "Rule ID to update" },
+                "rule_name": { "type": "string", "description": "Optional new name" },
+                "category": { "type": "string", "description": "Optional new category" },
+                "description": { "type": "string", "description": "Optional new description" },
+                "rule_kind": { "type": "string", "description": "Optional new evaluator kind" },
+                "severity": { "type": "string", "description": "Optional new severity (info|warning|critical)" },
+                "enabled": { "type": "boolean", "description": "Optional enable/disable" },
+                "required_roles": { "type": "array", "items": { "type": "string" }, "description": "Optional new required roles" },
+                "params": { "type": "object", "description": "Optional params to merge into existing" },
+                "confirm": { "type": "boolean", "description": "Must be true" }
+            },
+            "required": ["rule_id", "confirm"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_fdd_rule_toggle",
+        title: "Enable/Disable FDD Rule",
+        description: "Enable or disable a fault detection rule by ID without changing its configuration. Disabled rules are skipped by t3000_fdd_analyze. Requires confirm:true.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "rule_id": { "type": "string", "description": "Rule ID to toggle" },
+                "enabled": { "type": "boolean", "description": "true = enable, false = disable" },
+                "confirm": { "type": "boolean", "description": "Must be true" }
+            },
+            "required": ["rule_id", "enabled", "confirm"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_fdd_rule_export",
+        title: "Export FDD Rules",
+        description: "Export all FDD rules as a JSON array (or optionally filtered by category). The output can be saved and re-imported with t3000_fdd_rule_import.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "category": { "type": "string", "description": "Optional: only export rules of this category" }
+            }
+        }),
+    },
+    ToolDef {
+        name: "t3000_fdd_rule_import",
+        title: "Import FDD Rules",
+        description: "Import FDD rules from a JSON array (upsert by rule_id — existing rules are replaced, new rules inserted). Requires confirm:true. Use to bulk-load rule catalogs across devices.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "rules": {
+                    "type": "array",
+                    "items": { "type": "object" },
+                    "description": "Array of rule objects: {rule_id, rule_name, category, rule_kind, required_roles, params, severity, enabled}"
+                },
+                "confirm": { "type": "boolean", "description": "Must be true" }
+            },
+            "required": ["rules", "confirm"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_fdd_faults",
+        title: "List FDD Findings",
+        description: "List persisted fault detection findings (faults found by t3000_fdd_analyze), optionally filtered by device serial and rule ID. Returns the most recent findings first.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "serial_number": { "type": "integer", "description": "Optional: only findings for this device" },
+                "rule_id": { "type": "string", "description": "Optional: only findings for this rule" },
+                "limit": { "type": "integer", "description": "Optional: max findings (default 50)" }
+            }
+        }),
+    },
     // ═══ v5: Navigation ═══ 
     ToolDef {
         name: "t3000_nav_list",

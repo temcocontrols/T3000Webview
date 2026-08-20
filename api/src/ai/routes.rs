@@ -455,6 +455,10 @@ const WRITE_TOOLS: &[&str] = &[
     "t3000_settings_write",
     "t3000_device_control",
     "t3000_device_delete",
+    "t3000_fdd_rule_create",
+    "t3000_fdd_rule_update",
+    "t3000_fdd_rule_toggle",
+    "t3000_fdd_rule_import",
 ];
 
 fn is_write_tool(name: &str) -> bool {
