@@ -16,6 +16,8 @@ fn test_device_ops_tools_exist() {
         "t3000_trendlog_list",
         "t3000_trendlog_export",
         "t3000_device_refresh",
+        "t3000_device_get",
+        "t3000_device_delete",
         "t3000_schedule_list",
         "t3000_settings_read",
         "t3000_settings_write",
@@ -304,4 +306,95 @@ async fn test_program_read_returns_source() {
             }
         }
     }).await;
+}
+
+// ═══ t3000_device_get (single device query) ═══
+
+#[test]
+fn test_device_get_requires_serial_number() {
+    let tool = common::all_tools()
+        .iter()
+        .find(|t| t.name == "t3000_device_get")
+        .unwrap();
+    let required: Vec<&str> = tool.input_schema
+        .get("required")
+        .and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|v| v.as_str()).collect())
+        .unwrap_or_default();
+    assert!(required.contains(&"serial_number"), "device_get must require 'serial_number'");
+}
+
+#[tokio::test]
+async fn test_device_get_returns_device() {
+    common::with_db_or_skip("device_get_returns_device", |db| async move {
+        // Find an existing device serial from the list, then query it.
+        let list = common::execute_tool_json("t3000_device_list", &json!({}), &db)
+            .await
+            .expect("device_list should succeed");
+        let serial = list
+            .get("devices")
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|d| d.get("serial"))
+            .and_then(|v| v.as_i64());
+        match serial {
+            Some(s) => {
+                let result = common::execute_tool_json(
+                    "t3000_device_get",
+                    &json!({"serial_number": s}),
+                    &db,
+                )
+                .await
+                .expect("device_get should succeed");
+                assert!(
+                    result.get("found").and_then(|v| v.as_bool()) == Some(true),
+                    "device should be found"
+                );
+                assert!(result.get("device").is_some(), "should include the device record");
+            }
+            None => println!("device_get_returns_device: no devices in DB, skipping body check"),
+        }
+    })
+    .await;
+}
+
+// ═══ t3000_device_delete (destructive — confirm guarded) ═══
+
+#[test]
+fn test_device_delete_requires_serial_and_confirm() {
+    let tool = common::all_tools()
+        .iter()
+        .find(|t| t.name == "t3000_device_delete")
+        .unwrap();
+    let required: Vec<&str> = tool.input_schema
+        .get("required")
+        .and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|v| v.as_str()).collect())
+        .unwrap_or_default();
+    assert!(required.contains(&"serial_number"), "device_delete must require 'serial_number'");
+    assert!(required.contains(&"confirm"), "device_delete must require 'confirm'");
+    let confirm_type = tool.input_schema
+        .get("properties")
+        .and_then(|v| v.get("confirm"))
+        .and_then(|v| v.get("type"))
+        .and_then(|v| v.as_str());
+    assert_eq!(confirm_type, Some("boolean"), "confirm must be boolean");
+}
+
+#[tokio::test]
+async fn test_device_delete_requires_confirmation() {
+    common::with_db_or_skip("device_delete_requires_confirmation", |db| async move {
+        // Missing confirm:true must be rejected before any delete happens.
+        let result = common::execute_tool(
+            "t3000_device_delete",
+            &json!({"serial_number": 444}),
+            &db,
+        )
+        .await;
+        match result {
+            Ok(_) => panic!("device_delete without confirm must be rejected"),
+            Err(e) => assert!(e.contains("confirm"), "error should mention confirm: {}", e),
+        }
+    })
+    .await;
 }

@@ -283,7 +283,8 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
     );
   }
 
-  // Device leaf node with context menu
+  // Device node — leaf, or branch when it has sub-device children
+  const hasSubDevices = !!node.children && node.children.length > 0;
   return (
     <>
       <TreeContextMenu
@@ -301,8 +302,10 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
           onMouseLeave={isSelected && hasDeviceInfo ? closeDetailsPopover : undefined}
         >
           <TreeItem
-            itemType="leaf"
+            itemType={hasSubDevices ? 'branch' : 'leaf'}
             value={node.id}
+            open={hasSubDevices ? node.expanded : undefined}
+            onOpenChange={hasSubDevices ? handleOpenChange : undefined}
           >
             <TreeItemLayout
               onClick={handleClick}
@@ -313,6 +316,13 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
             >
               {node.label}
             </TreeItemLayout>
+            {hasSubDevices && (
+              <Tree>
+                {node.children!.map((child) => (
+                  <TreeNodeItem key={child.id} node={child} level={level + 1} />
+                ))}
+              </Tree>
+            )}
           </TreeItem>
         </div>
       </TreeContextMenu>

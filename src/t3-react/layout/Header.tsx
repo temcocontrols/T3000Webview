@@ -99,7 +99,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { menuConfig } from '@t3-react/config/menuConfig';
 import { MenuAction } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
-import { useAuthStore } from '@t3-react/store';
+import { useAuthStore, useStatusBarStore } from '@t3-react/store';
 import { useUIStore } from '@t3-react/store/uiStore';
 import { useChatStore } from '@t3-react/store/chatStore';
 import { t3000Routes } from '@t3-react/app/router/routes';
@@ -115,6 +115,17 @@ import { useHelpMenu } from '@t3-react/shared/hooks/useHelpMenu';
 import { useDeviceData } from '@t3-react/shared/hooks/useDeviceData';
 import { useCsvOperations } from '@t3-react/shared/context/CsvOperationsContext';
 import type { DeviceInfo } from '@t3-react/shared/types/device';
+import { LogUtil } from '@/lib/t3-hvac';
+
+// Routes whose page handles the global "Refresh Data" toolbar action via
+// usePageRefresh. Other pages get a "no refreshable data" status message.
+const REFRESHABLE_PATHS = [
+  '/t3000/inputs', '/t3000/outputs', '/t3000/variables', '/t3000/programs',
+  '/t3000/schedules', '/t3000/holidays', '/t3000/pidloops', '/t3000/graphics',
+  '/t3000/trendlogs', '/t3000/alarms', '/t3000/settings', '/t3000/network',
+  '/t3000/array', '/t3000/tables', '/t3000/users', '/t3000/custom-units',
+  '/t3000/discover', '/t3000/buildings',
+];
 
 const useStyles = makeStyles({
   header: {
@@ -662,10 +673,27 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
         navigate(route.path);
       }
     } else if (item.action === 'refresh') {
-      // Refresh current page
-      window.location.reload();
+      // Silent per-page refresh — dispatch an event the ACTIVE page listens to
+      // (usePageRefresh) instead of reloading the whole SPA (no flash). The page
+      // handler updates the bottom status bar itself. Non-data pages get a hint.
+      const hash = window.location.hash.replace(/^#/, '');
+      const status = useStatusBarStore.getState();
+      if (REFRESHABLE_PATHS.some((p) => hash.startsWith(p))) {
+        status.setMessage('Refreshing current page...', 'info');
+        window.dispatchEvent(new CustomEvent('t3-page-refresh'));
+        // Safety net: if no page posted its own status (e.g. DB-only pages that
+        // refresh silently), clear the "Refreshing..." placeholder.
+        window.setTimeout(() => {
+          const s = useStatusBarStore.getState();
+          if (s.message === 'Refreshing current page...') {
+            s.setMessage('Refreshed', 'success');
+          }
+        }, 2000);
+      } else {
+        status.setMessage('No refreshable data on this page', 'info');
+      }
     } else {
-      console.warn('Unhandled toolbar action:', item);
+      LogUtil.Warn('Unhandled toolbar action:', item);
     }
   };
 

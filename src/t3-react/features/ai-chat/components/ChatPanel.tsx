@@ -169,6 +169,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const setPreviousPageHash = useChatStore((s) => s.setPreviousPageHash);
   const previousPageHash = useChatStore((s) => s.previousPageHash);
   const storeSetMessages = useChatStore((s) => s.setMessages);
+  const storeSetSessionId = useChatStore((s) => s.setSessionId);
 
   const handleBackToPanel = useCallback(() => {
     setChatMode('sidebar');
@@ -289,6 +290,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   const handleSelectSession = useCallback(
     async (id: string) => {
       setActiveSessionId(id);
+      // Point the chat store at this session so any follow-up message resumes
+      // the SAME session (and file) instead of creating a new one.
+      storeSetSessionId(id);
       const msgs = await loadSessionMessages(id);
       if (msgs.length > 0) {
         storeSetMessages(msgs);
@@ -300,7 +304,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
       }
       refreshSessions();
     },
-    [setActiveSessionId, loadSessionMessages, storeSetMessages, refreshSessions],
+    [setActiveSessionId, storeSetSessionId, loadSessionMessages, storeSetMessages, refreshSessions],
   );
 
   const handleDeleteSession = useCallback(

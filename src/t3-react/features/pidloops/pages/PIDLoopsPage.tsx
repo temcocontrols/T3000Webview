@@ -36,6 +36,7 @@ import styles from './PIDLoopsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // PID Controller interface matching PID_TABLE entity
 interface PIDController {
@@ -264,6 +265,8 @@ const PIDLoopsPage: React.FC = () => {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Refresh single PID loop from device (Trigger #3: Per-row refresh icon)
   const handleRefreshSinglePidLoop = async (loopField: string) => {

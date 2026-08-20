@@ -60,18 +60,36 @@ fn test_device_diagnostics_batch_has_optional_serials() {
 #[tokio::test]
 async fn test_device_diagnostics_returns_health() {
     common::with_db_or_skip("device_diagnostics_returns_health", |db| async move {
+        // Resolve a real device serial from the list; skip if none present.
+        let list = common::execute_tool_json("t3000_device_list", &json!({}), &db)
+            .await
+            .expect("device_list should succeed");
+        let serial = list
+            .get("devices")
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|d| d.get("serial"))
+            .and_then(|v| v.as_i64());
+        let Some(serial) = serial else {
+            println!("device_diagnostics_returns_health: no devices in DB, skipping");
+            return;
+        };
+
         let result = common::execute_tool_json(
             "t3000_device_diagnostics",
-            &json!({"serial_number": 444}),
+            &json!({"serial_number": serial}),
             &db,
-        ).await.expect("should succeed");
+        )
+        .await
+        .expect("should succeed");
         // Should have connection status, firmware, point counts, etc.
         assert!(common::get_str(&result, "connection_status").is_some()
             || common::get_str(&result, "status").is_some()
             || common::get_str(&result, "firmware_version").is_some()
             || result.get("health").is_some(),
             "diagnostics should return health info");
-    }).await;
+    })
+    .await;
 }
 
 #[tokio::test]

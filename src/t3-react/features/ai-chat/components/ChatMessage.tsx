@@ -225,7 +225,12 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
 
   // System message
   if (message.role === 'system') {
-    const isError = message.content.startsWith('Error:');
+    const isError =
+      message.content.startsWith('Error:') ||
+      message.content.startsWith('The LLM server returned HTTP') ||
+      message.content.startsWith('Could not reach the LLM server') ||
+      message.content.startsWith('The LLM request failed on the server side') ||
+      message.content.startsWith('No response received from the LLM server');
     const isWarning = message.content.startsWith('Unable to complete your request');
     if (isWarning) {
       const nl = message.content.indexOf('\n');

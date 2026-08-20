@@ -149,10 +149,8 @@ function createBuildingNode(
   const nodeId = `building-${buildingName}`;
   const protocol = devices[0]?.protocol || 'Unknown';
 
-  // Create child device nodes
-  const childNodes = devices.map((device) =>
-    createDeviceNode(device, expandedNodes, deviceStatuses)
-  );
+  // Create child device nodes (sub-devices nested under their parent)
+  const childNodes = buildNestedDeviceNodes(devices, expandedNodes, deviceStatuses);
 
   return {
     id: nodeId,
@@ -178,10 +176,8 @@ function createSubnetNode(
   const nodeId = `subnet-${parentBuilding}-${subnetName}`;
   const protocol = devices[0]?.protocol || 'Unknown';
 
-  // Create child device nodes
-  const childNodes = devices.map((device) =>
-    createDeviceNode(device, expandedNodes, deviceStatuses)
-  );
+  // Create child device nodes (sub-devices nested under their parent)
+  const childNodes = buildNestedDeviceNodes(devices, expandedNodes, deviceStatuses);
 
   return {
     id: nodeId,
@@ -205,11 +201,10 @@ function createRootBuildingNode(
 ): TreeNode {
   const nodeId = `building-${buildingName}`;
 
-  // Create device nodes directly (no subnet level)
+  // Create device nodes directly (no subnet level), sub-devices nested under
+  // their parent device.
   const sortedDevices = [...devices].sort(sortDevices);
-  const deviceNodes: TreeNode[] = sortedDevices.map((device) =>
-    createDeviceNode(device, expandedNodes, deviceStatuses)
-  );
+  const deviceNodes: TreeNode[] = buildNestedDeviceNodes(sortedDevices, expandedNodes, deviceStatuses);
 
   return {
     id: nodeId,
@@ -223,16 +218,21 @@ function createRootBuildingNode(
 }
 
 /**
- * Create device leaf node (Level 3)
+ * Create device node (Level 3). If the device has sub-devices they are
+ * attached as children, making the parent an expandable branch node.
  */
 function createDeviceNode(
   device: DeviceInfo,
   expandedNodes: Set<string>,
-  deviceStatuses: Map<number, DeviceStatus>
+  deviceStatuses: Map<number, DeviceStatus>,
+  subDevices?: DeviceInfo[]
 ): TreeNode {
   const nodeId = `device-${device.serialNumber}`;
+  const childNodes = subDevices?.map((sd) =>
+    createSubDeviceNode(sd, expandedNodes, deviceStatuses)
+  );
+  const hasChildren = !!childNodes && childNodes.length > 0;
 
-  // Device nodes are always leaf nodes - never have children
   return {
     id: nodeId,
     type: 'device',
@@ -242,9 +242,56 @@ function createDeviceNode(
     status: deviceStatuses.get(device.serialNumber) || device.status || 'unknown',
     expanded: expandedNodes.has(nodeId),
     level: 1,  // Level 1: Device (directly under building)
-    // Explicitly set children to undefined to ensure it's a leaf
+    children: hasChildren ? childNodes : undefined,
+  };
+}
+
+/**
+ * Create a sub-device leaf node (nested under its parent device).
+ */
+function createSubDeviceNode(
+  device: DeviceInfo,
+  expandedNodes: Set<string>,
+  deviceStatuses: Map<number, DeviceStatus>
+): TreeNode {
+  const nodeId = `device-${device.serialNumber}`;
+  return {
+    id: nodeId,
+    type: 'sub-device',
+    label: device.nameShowOnTree,
+    icon: 'Plug',
+    data: device,
+    status: deviceStatuses.get(device.serialNumber) || device.status || 'unknown',
+    expanded: expandedNodes.has(nodeId),
+    level: 2,
     children: undefined,
   };
+}
+
+/**
+ * Build a device node list, nesting sub-devices under their parent device
+ * (matched by `parentSerialNumber`). Orphan sub-devices (parent missing from
+ * the provided list) become top-level leaves so they remain reachable.
+ */
+function buildNestedDeviceNodes(
+  devices: DeviceInfo[],
+  expandedNodes: Set<string>,
+  deviceStatuses: Map<number, DeviceStatus>
+): TreeNode[] {
+  const isSub = (d: DeviceInfo) => Number(d.parentSerialNumber ?? d.noteParentSerialNumber ?? 0) > 0;
+  const topLevel = devices.filter((d) => !isSub(d));
+  const subDevices = devices.filter(isSub);
+
+  const subByParent = new Map<number, DeviceInfo[]>();
+  subDevices.forEach((sd) => {
+    const pid = Number(sd.parentSerialNumber ?? sd.noteParentSerialNumber ?? 0);
+    if (!subByParent.has(pid)) subByParent.set(pid, []);
+    subByParent.get(pid)!.push(sd);
+  });
+
+  return topLevel.map((device) =>
+    createDeviceNode(device, expandedNodes, deviceStatuses, subByParent.get(device.serialNumber))
+  );
 }
 
 /**
@@ -323,11 +370,12 @@ export function buildFlatDeviceNodes(
   expandedNodes: Set<string>,
   deviceStatuses: Map<number, DeviceStatus>
 ): TreeNode[] {
-  return [...devices]
-    .sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree))
-    .map((device) => createDeviceNode(device, expandedNodes, deviceStatuses));
+  return buildNestedDeviceNodes(
+    [...devices].sort((a, b) => a.nameShowOnTree.localeCompare(b.nameShowOnTree)),
+    expandedNodes,
+    deviceStatuses
+  );
 }
-
 /**
  * Get all node IDs (recursive)
  */

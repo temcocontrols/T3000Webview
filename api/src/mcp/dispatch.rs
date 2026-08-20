@@ -444,10 +444,14 @@ fn get_nav_pages() -> Vec<NavPage> {
             description: "Haystack semantic tagging. Browse and manage Haystack v4 tags across all devices.",
             features: &["Tag list with categories", "Point-tag mappings", "Tag documentation"],
             related_tools: &["haystack_list_tags", "haystack_get_point_tags", "haystack_search_points"] },
-        NavPage { title: "Auto-Tagging & MCP", path: "/t3000/auto-tagging", shortcut: "", requires_device: false, section: "config",
-            description: "Auto-tagging rules and MCP server management. Create regex rules to automatically apply Haystack tags and Brick classes.",
-            features: &["Auto-tagging rule editor", "Rule preview", "MCP tool reference", "Prompt examples"],
+        NavPage { title: "Auto-Tagging", path: "/t3000/auto-tagging", shortcut: "", requires_device: false, section: "config",
+            description: "Auto-tagging rules. Create regex rules to automatically apply Haystack tags and Brick classes.",
+            features: &["Auto-tagging rule editor", "Rule preview"],
             related_tools: &["haystack_auto_tag", "haystack_preview_tags", "haystack_list_rules", "rule_create", "rule_toggle"] },
+        NavPage { title: "MCP Server", path: "/t3000/ai-assistant/mcp", shortcut: "", requires_device: false, section: "config",
+            description: "Model Context Protocol (MCP) server integration. Connect LLM agents (Claude Desktop, VS Code Copilot, Cursor, Cline) to the T3000 API on port 9103.",
+            features: &["Client connection configs", "Available tools reference", "Natural-language prompt examples"],
+            related_tools: &["ping", "get_version", "describe_tool", "doc_list", "doc_read"] },
         // ── System ──
         NavPage { title: "Discover Devices", path: "/t3000/discover", shortcut: "", requires_device: false, section: "system",
             description: "Device discovery. Scan the network for T3000 controllers using BACnet/MSTP or Modbus.",
@@ -741,6 +745,17 @@ pub async fn execute_tool(
 
         "t3000_device_list" => {
             let filter_name = args.get("filter_name").and_then(|v| v.as_str()).map(String::from);
+            let refresh = args.get("refresh").and_then(|v| v.as_bool()).unwrap_or(false);
+            
+            // If refresh is requested, perform a network scan first to update device list
+            if refresh {
+                tracing::info!("[mcp] Device list refresh requested, performing network scan");
+                // Perform network scan to refresh device information
+                let scan_result = crate::lan_scan::scanner::scan_network(8).await;
+                // The scan result is already stored in the database via FFI sync service
+                // We don't need to process the results here, they're handled by the sync service
+            }
+            
             let devices = T3DeviceService::get_all_devices_with_stats(db)
                 .await
                 .map_err(|e| format!("Failed to list devices: {}", e))?;
@@ -770,6 +785,7 @@ pub async fn execute_tool(
                         "room": d.device.room_name,
                         "is_online": d.device.is_online,
                         "last_checked": d.device.last_checked,
+                        "refreshed": refresh,
                     })
                 })
                 .collect();
@@ -2263,6 +2279,46 @@ pub async fn execute_tool(
             Ok(json!({"success": true, "category": category, "updated_fields": fields.len(), "timestamp": now}).to_string())
         }
 
+        "t3000_device_get" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+
+            match T3DeviceService::get_device_by_id(db, serial).await {
+                Ok(Some(device)) => {
+                    let value = serde_json::to_value(&device)
+                        .map_err(|e| format!("Serialize error: {}", e))?;
+                    Ok(json!({
+                        "device": value,
+                        "found": true
+                    }).to_string())
+                }
+                Ok(None) => Err(format!("Device with serial_number {} not found", serial)),
+                Err(e) => Err(format!("Failed to query device: {}", e)),
+            }
+        }
+
+        "t3000_device_delete" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !confirm {
+                return Err("device_delete requires confirm: true for safety".to_string());
+            }
+
+            match T3DeviceService::delete_device(db, serial).await {
+                Ok(true) => Ok(json!({
+                    "success": true,
+                    "serial_number": serial,
+                    "message": "Device deleted successfully",
+                    "timestamp": Utc::now().to_rfc3339()
+                }).to_string()),
+                Ok(false) => Err(format!("Device with serial_number {} not found", serial)),
+                Err(e) => Err(format!("Failed to delete device: {}", e)),
+            }
+        }
+
         "t3000_device_control" => {
             use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
 
@@ -2884,6 +2940,191 @@ pub async fn execute_tool(
         }
 
         // ═══ v5: Device Diagnostics ═══ 
+
+        "t3000_fdd_rules_list" => {
+            // Ensure the table exists + seed defaults (idempotent).
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let category = args.get("category").and_then(|v| v.as_str());
+            let rules = crate::fdd::rules::list_rules(db, category)
+                .await
+                .map_err(|e| format!("FDD rules list failed: {}", e))?;
+            let items: Vec<Value> = rules
+                .iter()
+                .map(|r| {
+                    json!({
+                        "rule_id": r.rule_id,
+                        "rule_name": r.rule_name,
+                        "category": r.category,
+                        "description": r.description,
+                        "rule_kind": r.rule_kind,
+                        "required_roles": r.required_roles,
+                        "params": r.params,
+                        "severity": r.severity,
+                        "enabled": r.enabled,
+                    })
+                })
+                .collect();
+            serde_json::to_string_pretty(&json!({ "rules": items, "total": items.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_fdd_analyze" => {
+            let serial: i32 = args.get("serial_number")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
+                .ok_or_else(|| "serial_number required".to_string())?;
+            let equipment = args
+                .get("equipment")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let range_hours: u64 = args
+                .get("range_hours")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(24);
+            let rule_ids: Vec<String> = args
+                .get("rules")
+                .and_then(|v| v.as_array())
+                .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+
+            let result = crate::fdd::analyze(db, serial, &equipment, range_hours, &rule_ids)
+                .await
+                .map_err(|e| format!("FDD analyze failed: {}", e))?;
+            serde_json::to_string_pretty(&result)
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_fdd_rule_create" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !confirm {
+                return Err("confirm:true is required to create an FDD rule".to_string());
+            }
+            let rule_id = args.get("rule_id").and_then(|v| v.as_str())
+                .ok_or_else(|| "rule_id required".to_string())?.to_string();
+            let rule = crate::fdd::rules::Rule {
+                rule_id: rule_id.clone(),
+                rule_name: args.get("rule_name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                category: args.get("category").and_then(|v| v.as_str()).unwrap_or("custom").to_string(),
+                description: args.get("description").and_then(|v| v.as_str()).map(String::from),
+                rule_kind: args.get("rule_kind").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                required_roles: args.get("required_roles").and_then(|v| v.as_array())
+                    .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+                    .unwrap_or_default(),
+                params: args.get("params").cloned().unwrap_or_else(|| json!({})),
+                severity: args.get("severity").and_then(|v| v.as_str()).unwrap_or("warning").to_string(),
+                enabled: args.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true),
+            };
+            crate::fdd::rules::create_rule(db, &rule)
+                .await
+                .map_err(|e| format!("FDD rule create failed: {}", e))?;
+            serde_json::to_string_pretty(&json!({ "created": true, "rule_id": rule_id }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_fdd_rule_update" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !confirm {
+                return Err("confirm:true is required to update an FDD rule".to_string());
+            }
+            let rule_id = args.get("rule_id").and_then(|v| v.as_str())
+                .ok_or_else(|| "rule_id required".to_string())?.to_string();
+            let changes = args.clone();
+            let updated = crate::fdd::rules::update_rule(db, &rule_id, &changes)
+                .await
+                .map_err(|e| format!("FDD rule update failed: {}", e))?;
+            match updated {
+                Some(r) => serde_json::to_string_pretty(&json!({
+                    "updated": true,
+                    "rule_id": r.rule_id,
+                    "rule_name": r.rule_name,
+                    "severity": r.severity,
+                    "enabled": r.enabled,
+                    "params": r.params,
+                }))
+                .map_err(|e| format!("Serialize error: {}", e)),
+                None => Err(format!("FDD rule '{}' not found", rule_id)),
+            }
+        }
+
+        "t3000_fdd_rule_toggle" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !confirm {
+                return Err("confirm:true is required to toggle an FDD rule".to_string());
+            }
+            let rule_id = args.get("rule_id").and_then(|v| v.as_str())
+                .ok_or_else(|| "rule_id required".to_string())?.to_string();
+            let enabled = args.get("enabled").and_then(|v| v.as_bool())
+                .ok_or_else(|| "enabled required".to_string())?;
+            let updated = crate::fdd::rules::toggle_rule(db, &rule_id, enabled)
+                .await
+                .map_err(|e| format!("FDD rule toggle failed: {}", e))?;
+            match updated {
+                Some(r) => serde_json::to_string_pretty(&json!({
+                    "updated": true,
+                    "rule_id": r.rule_id,
+                    "enabled": r.enabled,
+                }))
+                .map_err(|e| format!("Serialize error: {}", e)),
+                None => Err(format!("FDD rule '{}' not found", rule_id)),
+            }
+        }
+
+        "t3000_fdd_rule_export" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let category = args.get("category").and_then(|v| v.as_str());
+            let rules = crate::fdd::rules::list_rules(db, category)
+                .await
+                .map_err(|e| format!("FDD rules list failed: {}", e))?;
+            let items: Vec<Value> = rules
+                .iter()
+                .map(|r| {
+                    json!({
+                        "rule_id": r.rule_id,
+                        "rule_name": r.rule_name,
+                        "category": r.category,
+                        "description": r.description,
+                        "rule_kind": r.rule_kind,
+                        "required_roles": r.required_roles,
+                        "params": r.params,
+                        "severity": r.severity,
+                        "enabled": r.enabled,
+                    })
+                })
+                .collect();
+            serde_json::to_string_pretty(&json!({ "rules": items, "total": items.len() }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_fdd_rule_import" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
+            if !confirm {
+                return Err("confirm:true is required to import FDD rules".to_string());
+            }
+            let rules = args.get("rules").and_then(|v| v.as_array())
+                .ok_or_else(|| "rules array required".to_string())?
+                .clone();
+            let n = crate::fdd::rules::import_rules(db, &rules)
+                .await
+                .map_err(|e| format!("FDD rule import failed: {}", e))?;
+            serde_json::to_string_pretty(&json!({ "imported": n }))
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_fdd_faults" => {
+            crate::fdd::ensure_schema(db).await.map_err(|e| format!("FDD init failed: {}", e))?;
+            let serial = args.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
+            let rule_id = args.get("rule_id").and_then(|v| v.as_str());
+            let limit: u64 = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(50);
+            let result = crate::fdd::list_findings(db, serial, rule_id, limit)
+                .await
+                .map_err(|e| format!("FDD faults failed: {}", e))?;
+            serde_json::to_string_pretty(&result)
+                .map_err(|e| format!("Serialize error: {}", e))
+        }
 
         "t3000_device_diagnostics" => {
             let serial: i32 = args.get("serial_number")

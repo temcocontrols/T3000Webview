@@ -1,6 +1,6 @@
 ## Claude Desktop MCP Setup
 
-> ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp)
+> ⬅️ [Back to MCP Server tab](/#/t3000/ai-assistant/mcp)
 
 Connect Claude Desktop to the T3000 MCP server to let Claude query devices, read/write points, manage Haystack tags, and run analytics.
 

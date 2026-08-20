@@ -286,7 +286,7 @@ export const SyncDiagnosticsPanel: React.FC<Props> = ({
           <div className={styles.eventsSection}>
             <span className={styles.eventsTitle}>{eventsLabel}</span>
             <span className={styles.eventsNote}>
-              Summaries only (category POLL/DEVICE, source=ffi_sync). For deep FFI traces use existing T3WebLog on the sync host PC.
+              Summaries only (category POLL/DEVICE, source=ffi_sync). For deep FFI traces use existing T3Web\logs on the sync host PC.
             </span>
             <EventRows events={ffiEvents} emptyLabel={eventsEmpty} />
           </div>

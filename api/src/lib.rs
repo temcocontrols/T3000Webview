@@ -36,6 +36,9 @@ pub mod lan_scan;
 pub mod t3_device;
 pub mod haystack;
 pub mod ai;
+
+// Fault Detection & Diagnostics (native Rust engine, DB-managed rules)
+pub mod fdd;
 pub mod t3_socket;
 
 // Developer tools modules

@@ -45,6 +45,7 @@ import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import styles from './NetworkPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Network item matching C++ NC table: Item, Product Type, Subnet, Serial NO., Address, Status, Time Since
 interface NetworkItem {
@@ -135,6 +136,8 @@ export const NetworkPage: React.FC = () => {
   const handleRefresh = () => {
     fetchNetworks();
   };
+
+  usePageRefresh(handleRefresh);
 
   const handleExport = () => {
     if (networks.length === 0) return;

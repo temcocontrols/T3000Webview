@@ -47,6 +47,7 @@ import styles from './HolidaysPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Types based on C++ BacnetAnnualRoutine structure
 interface HolidayPoint {
@@ -187,6 +188,8 @@ export const HolidaysPage: React.FC = () => {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Refresh single holiday from device (Trigger #3 - Per-row icon)
   const handleRefreshSingleHoliday = async (item: HolidayPoint) => {

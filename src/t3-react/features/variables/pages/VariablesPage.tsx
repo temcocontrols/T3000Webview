@@ -55,6 +55,9 @@ import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsCo
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
 import { TagsColumnCell, fetchTagsForDevice } from '../../inputs/components/TagsColumnCell';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
+import { isSubDevice } from '../../devices/lib/deviceSupport';
+import { NotSupportedBanner } from '@t3-react/shared/components/NotSupportedBanner';
 
 // Types based on Rust entity (variable_points.rs)
 interface VariablePoint {
@@ -98,6 +101,10 @@ const VariablesPageDesktop: React.FC = () => {
   const deviceRefreshedRef = useRef<number | null>(null);
   const hasEverLoadedData = useRef(false);
 
+  // ── Not-supported detection (sub-devices without variable points) ──
+  const isSubDeviceDevice = !!selectedDevice && isSubDevice(selectedDevice);
+  const toolbarDisabled = isSubDeviceDevice;
+
   // Auto-scroll feature state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // [DISABLED] Auto-switch-to-next-device on scroll — commented out for now.
@@ -127,6 +134,17 @@ const VariablesPageDesktop: React.FC = () => {
   const fetchVariables = useCallback(async () => {
     if (!selectedDevice) {
       setVariables([]);
+      return;
+    }
+
+    if (isSubDevice(selectedDevice)) {
+      // Sub-devices manage their points through the parent — not supported here.
+      setVariables([]);
+      setLoading(false);
+      setDbChecked(true);
+      setAutoRefreshed(true);
+      hasEverLoadedData.current = true;
+      fetchingRef.current = false;
       return;
     }
 
@@ -258,7 +276,12 @@ const VariablesPageDesktop: React.FC = () => {
 
   // Auto-refresh once per device �?matches InputsPage pattern exactly
   useEffect(() => {
-    if (!dbChecked || loading || loadingPvars || !selectedDevice || autoRefreshed) return;
+    if (!selectedDevice) return;
+    if (isSubDevice(selectedDevice)) {
+      setAutoRefreshed(true);
+      return;
+    }
+    if (!dbChecked || loading || loadingPvars || autoRefreshed) return;
     if (deviceRefreshedRef.current === selectedDevice.serialNumber) return;
 
     const checkAndRefresh = async () => {
@@ -329,6 +352,8 @@ const VariablesPageDesktop: React.FC = () => {
       setRefreshing(false);
     }
   };
+
+  usePageRefresh(handleRefreshFromDevice);
 
   // Refresh single variable from device (Trigger #3: Per-row refresh icon)
   const handleRefreshSingleVariable = async (variableIndex: string) => {
@@ -635,7 +660,7 @@ const VariablesPageDesktop: React.FC = () => {
       setEditingCell(null);
     } catch (error) {
       LogUtil.Error('Failed to update:', error);
-      alert(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setMessage(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -750,7 +775,7 @@ const VariablesPageDesktop: React.FC = () => {
       );
     } catch (error) {
       LogUtil.Error('Failed to update Range/Units:', error);
-      alert(`Failed to update Range/Units: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setMessage(`Failed to update Range/Units: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -1148,7 +1173,7 @@ const VariablesPageDesktop: React.FC = () => {
             );
           } catch (error) {
             LogUtil.Error('Failed to update Auto/Man:', error);
-            alert(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            setMessage(`Failed to update Auto/Man: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
           }
         };
 
@@ -1233,6 +1258,7 @@ const VariablesPageDesktop: React.FC = () => {
                         <input
                           className={styles.searchInput}
                           type="text"
+                          disabled={toolbarDisabled}
                           placeholder="Search variables by label, value, tags ..."
                           value={searchQuery}
                           onChange={handleSearchChange}
@@ -1251,6 +1277,7 @@ const VariablesPageDesktop: React.FC = () => {
                           aria-checked={activeFilter === 'VARS'}
                           className={`${styles.varRadio} ${activeFilter === 'VARS' ? styles.varRadioActive : ''}`}
                           onClick={() => setActiveFilter('VARS')}
+                          disabled={toolbarDisabled}
                           title="Vars: Regular system variables. These are global values used across the device."
                         >
                           <span className={styles.varRadioCircle} />
@@ -1262,6 +1289,7 @@ const VariablesPageDesktop: React.FC = () => {
                           aria-checked={activeFilter === 'PVARS'}
                           className={`${styles.varRadio} ${activeFilter === 'PVARS' ? styles.varRadioActive : ''}`}
                           onClick={() => setActiveFilter('PVARS')}
+                          disabled={toolbarDisabled}
                           title="PVars: Program variables. These are local values used inside control programs (e.g., timers, counters, setpoints)."
                         >
                           <span className={styles.varRadioCircle} />
@@ -1276,7 +1304,7 @@ const VariablesPageDesktop: React.FC = () => {
                       <button
                         className={styles.toolbarButton}
                         onClick={handleRefreshFromDevice}
-                        disabled={refreshing}
+                        disabled={refreshing || toolbarDisabled}
                         title="Refresh all variables from device"
                         aria-label="Refresh"
                       >
@@ -1294,6 +1322,7 @@ const VariablesPageDesktop: React.FC = () => {
                         <button
                           // className={`${styles.toolbarButton} ${styles.marginLeft8}`}
                           className={`${styles.toolbarButton}`}
+                          disabled={toolbarDisabled}
                           title="Information"
                           aria-label="Information about this page"
                         >
@@ -1346,8 +1375,15 @@ const VariablesPageDesktop: React.FC = () => {
                   </div>
                 )}
 
+                {/* Not Supported (sub-device) — show banner instead of grid */}
+                {selectedDevice && (!loading || hasEverLoadedData.current) && (!loadingPvars || hasEverLoadedData.current) &&
+                  isSubDeviceDevice && (
+                    <NotSupportedBanner pointType="Variables" deviceName={selectedDevice.nameShowOnTree} />
+                  )}
+
                 {/* Data Grid �?show once device is selected AND initial load is done OR we have data */}
-                {selectedDevice && (!loading || hasEverLoadedData.current) && (!loadingPvars || hasEverLoadedData.current) && (
+                {selectedDevice && (!loading || hasEverLoadedData.current) && (!loadingPvars || hasEverLoadedData.current) &&
+                  !isSubDeviceDevice && (
                   <div
                     ref={scrollContainerRef}
                     className={styles.scrollContainer}

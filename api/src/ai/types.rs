@@ -33,6 +33,12 @@ pub struct Message {
     pub tool_calls: Option<Vec<ToolCall>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
+    /// Opaque frontend UI state — thinking steps, tool-call records and
+    /// message blocks. Round-tripped verbatim between the webview and the
+    /// session file so loaded history replays thinking details. Never sent
+    /// to the LLM (providers build their request bodies from explicit fields).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub ui: Option<serde_json::Value>,
 }
 
 /// A tool call requested by the LLM.
@@ -53,6 +59,11 @@ pub struct FunctionCall {
     pub name: String,
     /// JSON-encoded arguments string.
     pub arguments: String,
+    /// Gemini thinking models attach an opaque `thoughtSignature` to function
+    /// calls; it must be echoed back on the next turn or the API rejects the
+    /// request with a 400 error. Only the Gemini provider populates this.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub thought_signature: Option<String>,
 }
 
 /// Provider connection settings.
@@ -84,6 +95,10 @@ pub enum StreamEvent {
         name: String,
         #[serde(rename = "args")]
         arguments: String,
+        /// Opaque Gemini thought signature attached to a function call. Carried
+        /// through the tool-call loop and echoed back to Gemini on the next turn.
+        #[serde(skip_serializing_if = "Option::is_none", default)]
+        thought_signature: Option<String>,
     },
     /// The result of a locally-executed tool.
     #[serde(rename = "tool_result")]

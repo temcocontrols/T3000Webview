@@ -53,6 +53,7 @@ import { TrendPolicyPage } from './TrendPolicyPage';
 import { TrendlogVerifyDrawer } from '../components/TrendlogVerifyDrawer';
 import { FlowLogTab } from '../../logs/components/FlowLogTab';
 import LogUtil from '@common/t3-hvac/Util/LogUtil';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 import styles from './TrendlogsPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
@@ -1152,6 +1153,8 @@ const handleRefreshFromDevice = async () => {
     setRefreshing(false);
   }
 };
+
+usePageRefresh(handleRefreshFromDevice);
 
 // Refresh single trendlog from device (Trigger #3: Per-row refresh icon)
 const handleRefreshSingleTrendlog = async (trendlogIndex: string) => {

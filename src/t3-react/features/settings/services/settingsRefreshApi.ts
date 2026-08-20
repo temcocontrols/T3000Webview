@@ -160,33 +160,40 @@ export class SettingsRefreshApi {
     try {
       LogUtil.Debug(`[SettingsRefreshApi] Refreshing settings for device ${serialNumber}`);
 
-      // Initialize T3Transport with FFI
-      const transport = new T3Transport({
-        apiBaseUrl: `${API_BASE_URL}/api`
-      });
-
-      await transport.connect('ffi');
-
       // Call Action 17: GET_WEBVIEW_LIST with READ_SETTING_COMMAND (entryType = 98)
-      // Returns single Str_Setting_Info structure (400 bytes)
-      const response = await transport.getDeviceSettings(serialNumber);
-
-      await transport.disconnect();
-
-      LogUtil.Debug('[SettingsRefreshApi] Raw response:', JSON.stringify(response).substring(0, 500));
-
-      // Check if device returned an error
-      if (!response || response.success === false) {
-        const errorMsg = response?.error || response?.data?.error || 'Device returned error response';
-        throw new Error(errorMsg);
+      // Returns single Str_Setting_Info structure (400 bytes).
+      const transport = new T3Transport({ apiBaseUrl: `${API_BASE_URL}/api` });
+      await transport.connect('ffi');
+      let resp: any;
+      try {
+        resp = await transport.getDeviceSettings(serialNumber);
+      } finally {
+        await transport.disconnect();
       }
+      LogUtil.Debug('[SettingsRefreshApi] Raw response:', JSON.stringify(resp).substring(0, 500));
 
-      if (!response.data) {
+      // Validate the response really carries the 400-byte array — the C++ side can
+      // return an empty device_data / missing `All` on a timeout, which would
+      // otherwise parse as all-zeros and blank every field.
+      if (!resp || resp.success === false) {
+        throw new Error(resp?.error || resp?.data?.error || 'Device returned error response');
+      }
+      if (!resp.data) {
         throw new Error('No data received from device');
+      }
+      const deviceData =
+        (resp.data as any)?.data?.device_data?.[0] ||
+        (resp.data as any)?.device_data?.[0] ||
+        resp.data;
+      const all: number[] = deviceData?.All || [];
+      if (all.length < 400) {
+        throw new Error(
+          `Settings read returned an empty/invalid array (${all.length} bytes) — device may be busy or offline`
+        );
       }
 
       // Parse response data
-      const settings = this.parseSettingsData(response.data, serialNumber, timestamp);
+      const settings = this.parseSettingsData(resp.data, serialNumber, timestamp);
 
       // Save to database
       await this.saveToDatabase(settings);
@@ -199,7 +206,9 @@ export class SettingsRefreshApi {
       };
 
     } catch (error) {
-      LogUtil.Error(`[SettingsRefreshApi] Refresh failed:`, error);
+      // The page layer (fetchSettings / handleRefresh) shows the message in the
+      // error banner and logs it once — keep this service quiet to avoid spam.
+      LogUtil.Debug(`[SettingsRefreshApi] Refresh failed:`, error);
       return {
         success: false,
         message: `Failed to refresh settings: ${error instanceof Error ? error.message : String(error)}`,
@@ -247,8 +256,8 @@ export class SettingsRefreshApi {
 
     // Store for later SEND vs RECV byte comparison
     SettingsRefreshApi._lastReceivedRaw = [...all];
-    console.log('[ByteCompare][RECV] Raw 400-byte array from C++:', [...all]);
-    console.log('[ByteCompare][RECV] Length:', all.length);
+    LogUtil.Debug('[ByteCompare][RECV] Raw 400-byte array from C++:', [...all]);
+    LogUtil.Debug('[ByteCompare][RECV] Length:', all.length);
 
     LogUtil.Debug(`[SettingsRefreshApi] Extracted array length: ${all.length}`);
     LogUtil.Debug(`[SettingsRefreshApi] First 20 bytes:`, all.slice(0, 20));
@@ -297,12 +306,18 @@ export class SettingsRefreshApi {
     }
 
     if (!all || all.length < 400) {
-      LogUtil.Warn(`[SettingsRefreshApi] Invalid data array length: ${all?.length || 0}, expected 400 bytes`);
       // Dump the raw response so we can see the actual C++ response structure and fix the extraction path
-      console.warn('[ByteCompare][RECV] all[] is SHORT — full rawData structure:', JSON.stringify(rawData));
-      console.warn('[ByteCompare][RECV] rawData.data =', JSON.stringify(rawData?.data));
-      console.warn('[ByteCompare][RECV] rawData.data?.device_data =', JSON.stringify(rawData?.data?.device_data));
-      console.warn('[ByteCompare][RECV] rawData.All =', JSON.stringify(rawData?.All));
+      LogUtil.Warn('[ByteCompare][RECV] all[] is SHORT — full rawData structure:', JSON.stringify(rawData));
+      LogUtil.Warn('[ByteCompare][RECV] rawData.data =', JSON.stringify(rawData?.data));
+      LogUtil.Warn('[ByteCompare][RECV] rawData.data?.device_data =', JSON.stringify(rawData?.data?.device_data));
+      LogUtil.Warn('[ByteCompare][RECV] rawData.All =', JSON.stringify(rawData?.All));
+      
+      // Never silently parse an empty/short array as all-zeros — every field would
+      // come back blank/wrong. Fail loudly instead.
+      throw new Error(
+        `Invalid settings response: expected 400 bytes but got ${all?.length || 0}. ` +
+        `The device may be busy, offline, or the FFI read failed.`
+      );
     }
 
     // Helper functions for byte parsing with detailed logging
@@ -749,13 +764,13 @@ export class SettingsRefreshApi {
         }
       }
       if (diffs.length === 0) {
-        console.log('%c[ByteCompare][DIFF] ✅ PERFECT MATCH — SEND is identical to RECV (400 bytes)', 'background:#52c41a;color:#fff;font-weight:bold;padding:2px 6px');
+        LogUtil.Info('%c[ByteCompare][DIFF] PERFECT MATCH — SEND is identical to RECV (400 bytes)', 'background:#52c41a;color:#fff;font-weight:bold;padding:2px 6px');
       } else {
-        console.log(`%c[ByteCompare][DIFF] ⚠️ ${diffs.length} byte(s) differ between RECV and SEND:`, 'background:#fa8c16;color:#fff;font-weight:bold;padding:2px 6px');
-        diffs.forEach(d => console.log(d));
+        LogUtil.Info(`%c[ByteCompare][DIFF] ${diffs.length} byte(s) differ between RECV and SEND:`, 'background:#fa8c16;color:#fff;font-weight:bold;padding:2px 6px');
+        diffs.forEach(d => LogUtil.Info(d));
       }
     } else {
-      console.log('[ByteCompare][DIFF] ⚠️ Cannot compare — no RECV data stored (length:', recv.length, ')');
+      LogUtil.Info('[ByteCompare][DIFF] Cannot compare — no RECV data stored (length:', recv.length, ')');
     }
 
     return all;

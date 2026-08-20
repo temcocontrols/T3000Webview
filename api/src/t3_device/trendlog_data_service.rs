@@ -739,33 +739,33 @@ impl T3TrendlogDataService {
         // Build SQL query with JOIN for recent data
         let mut sql = r#"
             SELECT
-                p.serial_number,
-                p.panel_id,
-                p.point_id,
-                p.point_index,
-                p.point_type,
-                d.logging_time,
-                d.logging_time_fmt,
-                d.value,
-                p.range_field,
-                p.digital_analog,
-                p.units
+                p.SerialNumber AS serial_number,
+                p.PanelId AS panel_id,
+                p.PointId AS point_id,
+                p.PointIndex AS point_index,
+                p.PointType AS point_type,
+                d.LoggingTime_Fmt AS logging_time,
+                d.LoggingTime_Fmt AS logging_time_fmt,
+                d.Value AS value,
+                p.Range_Field AS range_field,
+                p.Digital_Analog AS digital_analog,
+                p.Units AS units
             FROM TRENDLOG_DATA p
-            INNER JOIN TRENDLOG_DATA_DETAIL d ON p.id = d.parent_id
-            WHERE p.serial_number = ? AND p.panel_id = ?
+            INNER JOIN TRENDLOG_DATA_DETAIL d ON p.id = d.ParentId
+            WHERE p.SerialNumber = ? AND p.PanelId = ?
         "#.to_string();
 
         let mut params: Vec<Value> = vec![serial_number.into(), panel_id.into()];
 
         if let Some(types) = &point_types {
             let placeholders = types.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            sql.push_str(&format!(" AND p.point_type IN ({})", placeholders));
+            sql.push_str(&format!(" AND p.PointType IN ({})", placeholders));
             for t in types {
                 params.push(t.clone().into());
             }
         }
 
-        sql.push_str(" ORDER BY d.logging_time_fmt DESC");
+        sql.push_str(" ORDER BY d.LoggingTime_Fmt DESC");
 
         if let Some(limit_val) = limit {
             sql.push_str(&format!(" LIMIT {}", limit_val));
@@ -810,8 +810,8 @@ impl T3TrendlogDataService {
         // Use raw SQL to join and delete
         let sql = r#"
             DELETE FROM TRENDLOG_DATA_DETAIL
-            WHERE id IN (
-                SELECT d.id
+            WHERE rowid IN (
+                SELECT d.rowid
                 FROM TRENDLOG_DATA_DETAIL d
                 INNER JOIN TRENDLOG_DATA p ON d.ParentId = p.id
                 WHERE p.SerialNumber = ? AND d.LoggingTime_Fmt < ?
@@ -863,10 +863,10 @@ impl T3TrendlogDataService {
 
         let count_sql = r#"
             SELECT
-                COUNT(d.id) as total_count,
-                SUM(CASE WHEN p.PointType = 'INPUT' THEN 1 ELSE 0 END) as input_count,
-                SUM(CASE WHEN p.PointType = 'OUTPUT' THEN 1 ELSE 0 END) as output_count,
-                SUM(CASE WHEN p.PointType = 'VARIABLE' THEN 1 ELSE 0 END) as variable_count
+                COUNT(*) as total_count,
+                COALESCE(SUM(CASE WHEN p.PointType = 'INPUT' THEN 1 ELSE 0 END), 0) as input_count,
+                COALESCE(SUM(CASE WHEN p.PointType = 'OUTPUT' THEN 1 ELSE 0 END), 0) as output_count,
+                COALESCE(SUM(CASE WHEN p.PointType = 'VARIABLE' THEN 1 ELSE 0 END), 0) as variable_count
             FROM TRENDLOG_DATA_DETAIL d
             INNER JOIN TRENDLOG_DATA p ON d.ParentId = p.id
             WHERE p.SerialNumber = ? AND p.PanelId = ?
@@ -896,9 +896,9 @@ impl T3TrendlogDataService {
 
         let tracked_per_type_sql = r#"
             SELECT
-                SUM(CASE WHEN PointType = 'INPUT'    THEN 1 ELSE 0 END) as input_tracked,
-                SUM(CASE WHEN PointType = 'OUTPUT'   THEN 1 ELSE 0 END) as output_tracked,
-                SUM(CASE WHEN PointType = 'VARIABLE' THEN 1 ELSE 0 END) as variable_tracked
+                COALESCE(SUM(CASE WHEN PointType = 'INPUT'    THEN 1 ELSE 0 END), 0) as input_tracked,
+                COALESCE(SUM(CASE WHEN PointType = 'OUTPUT'   THEN 1 ELSE 0 END), 0) as output_tracked,
+                COALESCE(SUM(CASE WHEN PointType = 'VARIABLE' THEN 1 ELSE 0 END), 0) as variable_tracked
             FROM TRENDLOG_DATA
             WHERE SerialNumber = ? AND PanelId = ?
         "#;
@@ -1093,21 +1093,21 @@ impl T3TrendlogDataService {
         // Build SQL query with JOIN
         let mut sql = r#"
             SELECT
-                p.serial_number,
-                p.panel_id,
-                p.point_id,
-                p.point_index,
-                p.point_type,
-                d.logging_time,
-                d.logging_time_fmt,
-                d.value,
-                p.range_field,
-                p.digital_analog,
-                p.units
+                p.SerialNumber AS serial_number,
+                p.PanelId AS panel_id,
+                p.PointId AS point_id,
+                p.PointIndex AS point_index,
+                p.PointType AS point_type,
+                d.LoggingTime_Fmt AS logging_time,
+                d.LoggingTime_Fmt AS logging_time_fmt,
+                d.Value AS value,
+                p.Range_Field AS range_field,
+                p.Digital_Analog AS digital_analog,
+                p.Units AS units
             FROM TRENDLOG_DATA p
-            INNER JOIN TRENDLOG_DATA_DETAIL d ON p.id = d.parent_id
-            WHERE p.serial_number = ? AND p.panel_id = ?
-            AND d.logging_time_fmt >= ?
+            INNER JOIN TRENDLOG_DATA_DETAIL d ON p.id = d.ParentId
+            WHERE p.SerialNumber = ? AND p.PanelId = ?
+            AND d.LoggingTime_Fmt >= ?
         "#.to_string();
 
         let mut params: Vec<Value> = vec![
@@ -1116,23 +1116,19 @@ impl T3TrendlogDataService {
             cutoff_time.format("%Y-%m-%d %H:%M:%S").to_string().into(),
         ];
 
-        if !request.data_sources.is_empty() {
-            let placeholders = request.data_sources.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            sql.push_str(&format!(" AND d.data_source IN ({})", placeholders));
-            for s in &request.data_sources {
-                params.push(s.clone().into());
-            }
-        }
+        // NOTE: TRENDLOG_DATA_DETAIL no longer carries a data_source column
+        // (removed in the split-table optimization), so the data_sources filter
+        // cannot be applied — it is ignored (output already reports "N/A").
 
         if let Some(points) = &request.specific_points {
             let placeholders = points.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            sql.push_str(&format!(" AND p.point_id IN ({})", placeholders));
+            sql.push_str(&format!(" AND p.PointId IN ({})", placeholders));
             for p in points {
                 params.push(p.point_id.clone().into());
             }
         }
 
-        sql.push_str(" ORDER BY d.logging_time_fmt ASC");
+        sql.push_str(" ORDER BY d.LoggingTime_Fmt ASC");
 
         if let Some(max) = request.max_points {
             sql.push_str(&format!(" LIMIT {}", max));

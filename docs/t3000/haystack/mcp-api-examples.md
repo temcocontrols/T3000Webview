@@ -1,6 +1,6 @@
 # MCP API Examples
 
-> ⬅️ [Back to MCP Server tab](/#/t3000/auto-tagging#mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
+> ⬅️ [Back to MCP Server tab](/#/t3000/ai-assistant/mcp) &nbsp;|&nbsp; [Setup: VS Code Copilot](/#/t3000/documentation/t3000/haystack/mcp-vscode-copilot) &nbsp;|&nbsp; [Setup: Claude Desktop](/#/t3000/documentation/t3000/haystack/mcp-claude-desktop)
 
 Complete reference of natural-language prompts for 50+ MCP tools across 16 categories. Copy any prompt and paste into Copilot Chat or Claude — the LLM automatically maps your question to the right tool and parameters.
 
@@ -168,11 +168,11 @@ Brick is a formal ontology for buildings (brickschema.org). After auto-tagging, 
 
 ---
 
-## Data & Discovery <span style="font-weight:400;font-size:12px;color:#888">6 tools</span>
+## Data & Discovery <span style="font-weight:400;font-size:12px;color:#888">7 tools</span>
 
 ### `t3000_device_list` — Enumerate all devices
 
-Get every T3000 device in the system with serial number, name, device type, building/floor/room, and counts of INPUT, OUTPUT, and VARIABLE points. Optionally filter by device name substring.
+Get every T3000 device in the system with serial number, name, device type, building/floor/room, and counts of INPUT, OUTPUT, and VARIABLE points. Optionally filter by device name substring or refresh the device list to discover new devices on the network.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -191,6 +191,38 @@ Get every T3000 device in the system with serial number, name, device type, buil
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **How many devices are in this system?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Refresh device list to discover new devices**
+
+</div>
+
+</div>
+
+### `t3000_device_get` — Get a single device record
+
+Query one device by serial number and return its full record: serial, name, product type, IP address, building/floor/room, online/offline status, panel and network info, and timestamps. Use this when you need a specific device's details rather than the whole list.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Get the full details for device 233626**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What is the IP address of device 240488?**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Is device 237219 online?**
 
 </div>
 
@@ -450,7 +482,7 @@ Get complete metadata for multiple points in a single call. Returns label, engin
 
 ---
 
-## Device Operations <span style="font-weight:400;font-size:12px;color:#888">7 tools</span>
+## Device Operations <span style="font-weight:400;font-size:12px;color:#888">8 tools</span>
 
 ### `t3000_trendlog_list` — Discover available trendlogs
 
@@ -599,6 +631,26 @@ Send control commands to a device: reboot (restart the controller) or reset_defa
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Factory reset device 233626**
+
+</div>
+
+</div>
+
+### `t3000_device_delete` — Delete a device record
+
+Remove a device and its database record by serial number. Destructive and irreversible — requires confirm:true. Only the local T3000 database record is removed; the physical controller on the network is unaffected. Use `t3000_device_list` first to confirm the serial number before deleting.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Delete device 233626 from the project**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Remove device 271845 from the database**
 
 </div>
 

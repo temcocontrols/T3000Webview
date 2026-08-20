@@ -51,16 +51,54 @@ impl SessionManager {
     pub async fn create_or_resume(&self, req: &ChatRequest) -> Session {
         let mut sessions = self.sessions.lock().await;
 
-        // Resume existing session if requested
+        // Resume an existing session if requested — from the in-memory cache,
+        // or (if it was evicted or the server restarted) from the JSON file
+        // store so that continuing a loaded conversation keeps writing to the
+        // same session file.
         if let Some(ref sid) = req.session_id {
-            if let Some(session) = sessions.get_mut(sid) {
-                session.last_active = Instant::now();
-                // Append only the new user message from this request
+            let existing = if let Some(s) = sessions.get_mut(sid) {
+                s.last_active = Instant::now();
+                Some(s.clone())
+            } else {
+                super::session_store::load_session(sid)
+                    .ok()
+                    .flatten()
+                    .map(|f| Session {
+                        id: f.id.clone(),
+                        provider: f.provider.clone(),
+                        model: f.model.clone(),
+                        endpoint: req
+                            .settings
+                            .as_ref()
+                            .and_then(|s| s.endpoint.clone())
+                            .unwrap_or_default(),
+                        api_key: req
+                            .settings
+                            .as_ref()
+                            .and_then(|s| s.api_key.clone())
+                            .filter(|k| !k.is_empty()),
+                        messages: f.messages,
+                        created_at: Instant::now(),
+                        last_active: Instant::now(),
+                    })
+            };
+
+            if let Some(mut session) = existing {
+                // The frontend sends the FULL message history, so append only
+                // the user turns we don't already have — this keeps the new
+                // user message while avoiding duplicating earlier turns.
+                let user_count = session.messages.iter().filter(|m| m.role == "user").count();
+                let mut seen = 0usize;
                 for msg in &req.messages {
                     if msg.role == "user" {
-                        session.messages.push(msg.clone());
+                        seen += 1;
+                        if seen > user_count {
+                            session.messages.push(msg.clone());
+                        }
                     }
                 }
+                session.last_active = Instant::now();
+                sessions.insert(session.id.clone(), session.clone());
                 return session.clone();
             }
         }

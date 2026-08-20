@@ -173,6 +173,12 @@
     outline: none;
   }
 
+  .searchInput:disabled {
+    background: #f3f2f1;
+    color: #a19f9d;
+    cursor: not-allowed;
+  }
+
 /* Blade Description */
 .bladeDescription {
   padding: 0;

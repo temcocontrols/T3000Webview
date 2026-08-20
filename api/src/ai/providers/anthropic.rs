@@ -131,17 +131,50 @@ impl LlmProvider for AnthropicProvider {
             .map_err(|e| AiError::Provider(format!("Failed to build HTTP client: {}", e)))?;
 
         let key = api_key.unwrap_or("");
-        let mut req_builder = client
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .header("x-api-key", key)
-            .header("anthropic-version", "2023-06-01")
-            .json(&body);
+        // Initial call + one retry on transient connection failure (2 total).
+        let attempts = 2;
+        let mut response: Option<reqwest::Response> = None;
+        let mut last_err: Option<AiError> = None;
 
-        let response = req_builder
-            .send()
-            .await
-            .map_err(|e| AiError::Provider(format!("Failed to connect to Anthropic: {}", e)))?;
+        for attempt in 0..attempts {
+            match client
+                .post(&url)
+                .header("Content-Type", "application/json")
+                .header("x-api-key", key)
+                .header("anthropic-version", "2023-06-01")
+                .json(&body)
+                .send()
+                .await
+            {
+                Ok(r) => {
+                    response = Some(r);
+                    break;
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "[Anthropic] connect attempt {}/{} failed for {}: {}",
+                        attempt + 1,
+                        attempts,
+                        url,
+                        e
+                    );
+                    last_err = Some(AiError::Provider(format!(
+                        "Failed to connect to Anthropic: {}",
+                        e
+                    )));
+                    if attempt + 1 < attempts {
+                        // Single retry — wait 500ms before it.
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    }
+                }
+            }
+        }
+
+        let response = response.ok_or_else(|| {
+            last_err.unwrap_or_else(|| {
+                AiError::Provider("Failed to connect to Anthropic".to_string())
+            })
+        })?;
 
         let status = response.status();
         if !status.is_success() {
@@ -166,16 +199,22 @@ impl LlmProvider for AnthropicProvider {
             let chunk_str = String::from_utf8_lossy(&chunk);
             buffer.push_str(&chunk_str);
 
+            // Normalize CRLF -> LF so the `\n\n` frame delimiter is found reliably.
+            buffer = buffer.replace("\r\n", "\n");
+
             while let Some(pos) = buffer.find("\n\n") {
                 let frame = buffer[..pos].to_string();
                 buffer = buffer[pos + 2..].to_string();
 
                 for line in frame.lines() {
                     let line = line.trim();
-                    if line.is_empty() || !line.starts_with("data: ") {
+                    if line.is_empty() || !line.starts_with("data:") {
                         continue;
                     }
-                    let data = &line[6..];
+                    let data = line[5..].trim();
+                    if data.is_empty() {
+                        continue;
+                    }
                     let parsed: Value = match serde_json::from_str(data) {
                         Ok(v) => v,
                         Err(_) => continue,
@@ -220,6 +259,7 @@ impl LlmProvider for AnthropicProvider {
                                         id,
                                         name,
                                         arguments: std::mem::take(&mut tool_args_buf),
+                                        thought_signature: None,
                                     });
                                 }
                                 in_tool_use = false;
@@ -241,6 +281,7 @@ impl LlmProvider for AnthropicProvider {
                     id,
                     name,
                     arguments: tool_args_buf,
+                    thought_signature: None,
                 });
             }
         }

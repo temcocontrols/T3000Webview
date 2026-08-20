@@ -25,6 +25,7 @@ import { API_BASE_URL } from '@t3-react/config/constants';
 import styles from './ArrayPage.module.css';
 import { useRegisterCsvHandlers } from '@t3-react/shared/context/CsvOperationsContext';
 import { exportToCsv, parseCsvFile, mapCsvToObjects } from '@t3-react/shared/utils/csvUtils';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 
 // Array interface matching C++ CBacnetArray structure (4 columns)
 interface ArrayItem {
@@ -119,6 +120,8 @@ const ArrayPage: React.FC = () => {
   const handleRefresh = () => {
     fetchArrays();
   };
+
+  usePageRefresh(handleRefresh);
 
   const handleExport = () => {
     if (arrays.length === 0) return;

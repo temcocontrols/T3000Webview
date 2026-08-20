@@ -21,6 +21,7 @@ import {
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
+import { usePageRefresh } from '@t3-react/shared/hooks/usePageRefresh';
 import { API_BASE_URL } from '../../../config/constants';
 import styles from './TablesPage.module.css';
 
@@ -101,6 +102,8 @@ const TablesPage: React.FC = () => {
   const handleRefresh = () => {
     fetchTables();
   };
+
+  usePageRefresh(handleRefresh);
 
   // Handle cell edit
   const handleCellClick = (rowIndex: number, columnId: string, currentValue: string) => {

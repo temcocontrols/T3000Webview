@@ -155,6 +155,9 @@
   color: #605e5c !important;
   width: 20px !important;
   height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important; /* caret aligned left → nudged left */
 }
 
 :global(.fui-TreeItemLayout__iconBefore),

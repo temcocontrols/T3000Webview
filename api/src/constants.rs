@@ -43,9 +43,9 @@ pub fn get_t3000_database_path() -> PathBuf {
     get_t3000_runtime_path().join("Database")
 }
 
-/// Get the T3000 log directory path
+/// Get the T3000 log directory path (T3Web\logs under the runtime folder)
 pub fn get_t3000_log_path() -> PathBuf {
-    get_t3000_runtime_path().join("T3WebLog")
+    get_t3000_runtime_path().join("T3Web").join("logs")
 }
 
 /// Get the AI Assistant sessions directory path

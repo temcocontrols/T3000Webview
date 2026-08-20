@@ -11,7 +11,6 @@ pub mod navigation;
 pub mod task_management;
 pub mod site_memory;
 pub mod docs;
-pub mod mcp_test;
 pub mod mcp_tool_tests;
 
 // DB-dependent modules — each checks DB availability and skips if unavailable
@@ -23,4 +22,5 @@ pub mod rules;
 pub mod alarms_and_trends;
 pub mod device_operations;
 pub mod diagnostics;
+pub mod fdd;
 pub mod integration_flows;
