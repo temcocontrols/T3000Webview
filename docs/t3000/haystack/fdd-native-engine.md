@@ -1,7 +1,6 @@
 # FDD — Native Fault Detection & Diagnostics for T3000
 
-> **Design doc — native Rust FDD engine, DB-managed rules (no SQL engine, nothing embedded).**
-> Status: Design / Proposed · Phase 1 POC planned.
+> Native Rust FDD engine with DB-managed rules (no SQL engine, nothing embedded).
 
 ---
 
@@ -19,16 +18,6 @@ roles, confirm windows) but re‑implemented **natively in T3000's Rust stack**:
 - ✅ nothing compiled into the binary (rules are data)
 - ✅ reuses what T3000 already has: Haystack/Brick tags, trendlog history, MCP server, AI chat
 
-### What we get
-
-| Benefit | How |
-|---|---|
-| Deterministic, repeatable detection | rules run the same logic every time |
-| Tunable per site | params in `FDD_RULES` (no rebuild) |
-| Rules as data | create/edit/toggle via MCP tools or UI |
-| Explainable | findings carry evidence + rule metadata |
-| AI synergy | `t3000_fdd_*` tools plug into the existing AI chat tool loop |
-
 ---
 
 ## 2. Design decisions
@@ -39,8 +28,8 @@ roles, confirm windows) but re‑implemented **natively in T3000's Rust stack**:
 | Rule storage | **DB table `FDD_RULES`** | managed at runtime like `HAYSTACK_AUTO_TAGGING_RULES`; nothing embedded |
 | Role source | **Haystack/Brick tags** | already in T3000 (`HAYSTACK_POINT_TAGS`, `HAYSTACK_POINT_BRICK_CLASS`) |
 | Time-series | **TRENDLOG_DATA_DETAIL** | existing history; pivot to wide samples on demand |
-| Discovery | **not built in Phase 1** | start with explicit analyze + rules; scheduling is a later phase |
-| Findings | computed on demand first; optional `FDD_FINDINGS` table later | keep Phase 1 minimal |
+| Discovery | **not built** | explicit `analyze` calls; scheduled scans are a later phase |
+| Findings | **`FDD_FINDINGS` table** | `t3000_fdd_analyze` persists active faults; `t3000_fdd_faults` lists history |
 
 ---
 
@@ -54,8 +43,8 @@ roles, confirm windows) but re‑implemented **natively in T3000's Rust stack**:
 │                                                                                           │
 │   NEW:  api/src/fdd module                                                                │
 │    ┌───────────┐   ┌────────────┐   ┌────────────────┐   ┌────────────┐                   │
-│    │ roles.rs  │──▶│ series.rs  │──▶│ evaluator.rs   │──▶│ findings.rs│                   │
-│    │ tags→roles│   │ trendlogs→ │   │ rule_kind arms │   │ Fault{...} │                   │
+│    │ roles.rs  │──▶│ series.rs  │──▶│ evaluator.rs   │──▶│ rules.rs   │                   │
+│    │ tags→roles│   │ trendlogs→ │   │ rule_kind arms │   │ persist    │                   │
 │    │           │   │ Vec<Sample>│   │ + confirm-     │   │            │                   │
 │    │           │   │            │   │   streak       │   │            │                   │
 │    └───────────┘   └────────────┘   └────────────────┘   └────────────┘                   │
@@ -90,13 +79,15 @@ CREATE TABLE IF NOT EXISTS FDD_RULES (
 );
 ```
 
-> This is the **only** new table for rules. Findings persistence (`FDD_FINDINGS`) is optional
-> and deferred. Time-series and tags reuse existing tables.
+> `FDD_FINDINGS` stores persisted fault detections — written by `t3000_fdd_analyze` and read
+> by `t3000_fdd_faults`. Time-series and tags reuse existing tables.
 
 ### Seed
 
-Rules are inserted once by `seed_fdd_rules.sql` (run with the schema migration). After that
-the DB is authoritative — rules can be edited/toggled/deleted at runtime with no rebuild.
+The catalog is seeded by the SeaORM migration `m20260819_add_fdd_tables` (fresh DBs) and by
+`fdd::rules::ensure_schema` on startup (idempotent `INSERT OR IGNORE`, so existing DBs pick
+up new rules). After seeding the DB is authoritative — rules can be edited/toggled/deleted at
+runtime with no rebuild.
 
 ```sql
 INSERT INTO FDD_RULES (rule_id, rule_name, category, description, rule_kind, required_roles, params_json, severity, enabled)
@@ -116,20 +107,11 @@ VALUES
 ### 5.1 Sample & roles
 
 ```rust
-/// One row of the "wide" history built from TRENDLOG_DATA_DETAIL for a device/equipment.
+/// One "wide" history row built from TRENDLOG_DATA_DETAIL for a device/equipment.
+/// Roles are resolved from Haystack tags; values are keyed by role.
 pub struct Sample {
-    pub ts: i64,          // unix seconds
-    pub mat: f64,         // mixed air temp
-    pub rat: f64,         // return air temp
-    pub oa_t: f64,        // outdoor air temp
-    pub sat: f64,         // supply air temp
-    pub zone_t: f64,      // zone temp
-    pub fan_cmd: f64,     // fan command (0..1 or 0..100)
-    pub fan_status: f64,  // fan status (0..1)
-    pub damper_pct: f64,  // OA damper position (0..100)
-    pub chw_s: f64,       // chilled water supply temp
-    pub chw_r: f64,       // chilled water return temp
-    // ... extend as needed
+    pub ts: String,                      // LoggingTime_Fmt, e.g. "2026-08-19 12:30:00"
+    pub values: HashMap<String, f64>,    // role → value, e.g. "oa_t" → 55.0
 }
 ```
 
@@ -139,6 +121,7 @@ pub struct Sample {
 OA_T        → oa_t       MAT        → mat        SupplyTemp → sat
 RAT         → rat        ZONE_T     → zone_t     FAN_CMD    → fan_cmd
 FAN_STATUS  → fan_status OA_DAMPER  → damper_pct CHW_S      → chw_s
+CHW_R       → chw_r      CHW_DP     → chw_dp     SAT_SP     → sat_sp
 ```
 
 ### 5.2 The reusable evaluator (the heart)
@@ -162,47 +145,29 @@ where F: FnMut(&Sample) -> bool
     hours
 }
 
+/// Read a role's value from a sample (None if the device has no such role).
+fn field(s: &Sample, role: &str) -> Option<f64> { s.values.get(role).copied() }
+
 /// Dispatch a FDD_RULES row to the right condition. Returns fault hours + evidence.
-pub fn eval_rule(kind: &str, params: &serde_json::Value, series: &[Sample]) -> Finding {
-    let confirm = params["confirm_rows"].as_u64().unwrap_or(4) as u32;
-    let poll = params["poll_seconds"].as_u64().unwrap_or(300);
-    match kind {
+pub fn eval_rule(rule: &Rule, series: &[Sample]) -> Finding {
+    let confirm = rule.params["confirm_rows"].as_u64().unwrap_or(4) as u32;
+    let poll = rule.params["poll_seconds"].as_u64().unwrap_or(300);
+    match rule.rule_kind.as_str() {
         "ThresholdAbove" => {
-            let field = params["field"].as_str().unwrap_or("");
-            let limit = params["limit"].as_f64().unwrap_or(0.0);
-            let hours = fault_hours(series, |s| sample_field(s, field) > limit, confirm, poll);
-            Finding { fault_hours: hours, evidence: json!({"field": field, "limit": limit}) }
+            let f = rule.params["field"].as_str().unwrap_or("");
+            let limit = rule.params["limit"].as_f64().unwrap_or(0.0);
+            let hours = fault_hours(series, |s| field(s, f).is_some_and(|v| v > limit), confirm, poll);
+            Finding { fault_hours: hours, evidence: json!({"field": f, "limit": limit}) }
         }
         "ThresholdBelow" => { /* same, reversed */ }
-        "RangeBand"      => { /* outside [lo,hi] */ }
-        "StuckValue"     => { /* no change over window (frozen sensor) */ }
-        "FanMismatch"    => {
-            let hours = fault_hours(series, |s| {
-                let fan = if s.fan_cmd > 1.0 { s.fan_cmd / 100.0 } else { s.fan_cmd };
-                (fan >= 0.05) != (s.fan_status > 0.5)
-            }, confirm, poll);
-            Finding { fault_hours: hours, evidence: json!({}) }
-        }
-        "EconomizerOaFraction" => {
-            let pct = params["oa_min_pct"].as_f64().unwrap_or(15.0);
-            let hours = fault_hours(series, |s| {
-                let fan = if s.fan_cmd > 1.0 { s.fan_cmd / 100.0 } else { s.fan_cmd };
-                fan > 0.01
-                    && (s.rat - s.oa_t).abs() > 2.2
-                    && ((s.mat - s.rat) / (s.oa_t - s.rat).max(1e-9)) * 100.0 < pct
-            }, confirm, poll);
-            Finding { fault_hours: hours, evidence: json!({"oa_min_pct": pct}) }
-        }
-        "EconomizerStuckClosed" => { /* OA damper ~0 while fan on + cool outside */ }
-        "ChwLowDeltaT" => {
-            let min_dt = params["min_dt"].as_f64().unwrap_or(5.0);
-            let hours = fault_hours(series, |s| (s.chw_r - s.chw_s) < min_dt, confirm, poll);
-            Finding { fault_hours: hours, evidence: json!({"min_dt": min_dt}) }
-        }
-        "SupplyTempDeviation" => { /* |sat - sat_sp| > max_dev */ }
-        "PidHunting"   => { /* count oscillations of a control output */ }
-        "SensorRate"   => { /* implausible rate of change */ }
-        _ => Finding { fault_hours: 0.0, evidence: json!({}) },
+        "RangeBand"      => { /* value outside [lo, hi] */ }
+        "StuckValue"     => { /* no change over a sliding window of `window_rows` (frozen sensor) */ }
+        "FanMismatch"    => { /* (fan_cmd on) != (fan_status on) after 0..100 normalisation */ }
+        "EconomizerOaFraction" => { /* OA fraction (mat−rat)/(oa_t−rat) < oa_min_pct while fan on */ }
+        "EconomizerStuckClosed" => { /* damper_pct < 5 while fan on and oa_t < mat */ }
+        "ChwLowDeltaT"   => { /* chw_r − chw_s < min_dt */ }
+        "SupplyTempDeviation" => { /* |sat − sat_sp| > max_dev */ }
+        _ => Finding { fault_hours: 0.0, evidence: json!({}) },  // new rule_kinds = new arms
     }
 }
 ```
@@ -213,7 +178,7 @@ pub fn eval_rule(kind: &str, params: &serde_json::Value, series: &[Sample]) -> F
 
 ## 6. The complete rule catalog
 
-Starter catalog (15 rules). All are DB rows seeded on first run; every rule is tunable via
+Starter catalog (16 rules). All are DB rows seeded on first run; every rule is tunable via
 `params_json` and toggleable via `enabled`.
 
 ### 6.1 Economizer
@@ -257,15 +222,7 @@ Starter catalog (15 rules). All are DB rows seeded on first run; every rule is t
 | CHW-2 | CHW supply pressure low | `ThresholdBelow` | `chw_dp` | `field:"chw_dp", limit:8, confirm_rows:4` | warning |
 | CHW-3 | CHW supply temp out of band | `RangeBand` | `chw_s` | `lo:40, hi:48, confirm_rows:4` | warning |
 
-### 6.6 Control
-
-| rule_id | Name | rule_kind | Required roles | Default params | Severity |
-|---|---|---|---|---|---|
-| PID-HUNT | PID hunting (oscillating output) | `PidHunting` | `pid_out` | `confirm_rows:4` | info |
-| SENSOR-RATE | Implausible sensor rate of change | `SensorRate` | any temp | `max_rate:20` | info |
-
-> The catalog is designed to grow by **inserting rows** (and, rarely, adding a `rule_kind`
-> arm). It mirrors open‑fdd's cookbook categories without requiring its SQL engine.
+> The catalog grows by **inserting rows** (and, rarely, adding a `rule_kind` evaluator arm).
 
 ---
 
@@ -332,21 +289,10 @@ gets findings → explains in plain language + suggests fixes (optionally via `t
 Frontend additions (same pipeline as existing tools):
 - `useAiChatStream.ts` tool labels (e.g. `t3000_fdd_analyze: 'Running fault detection…'`)
 - `McpServerPage.tsx` tool-table rows + Examples prompts
-- optional later: an FDD rules page beside the Auto-tagging menu
 
 ---
 
-## 10. Phased plan
-
-| Phase | Scope |
-|---|---|
-| **1 — POC** | `api/src/fdd/` (roles, series, evaluator, findings) + `FDD_RULES` table + seed + `t3000_fdd_analyze` + `t3000_fdd_rules_list` + 3 rules (ECON-4, SAT-HIGH, CMD-1) + unit tests |
-| **2 — Catalog + tools** | full starter catalog (15 rules) + `rule_create/update/toggle/export/import` + `t3000_fdd_faults` + AI chat labels + MCP page rows/examples |
-| **3 — Automation** | `FDD_FINDINGS` persistence, scheduled nightly scans, findings UI, rule tuning UI |
-
----
-
-## 11. Testing
+## 10. Testing
 
 - **Unit** (no DB): build synthetic `Vec<Sample>`, run `eval_rule` per `rule_kind`, assert `fault_hours` (streak/confirm behaviour).
 - **Integration** (MCP test suite, like `device_operations.rs`): tool existence + schema; DB test seeds `FDD_RULES`, runs `t3000_fdd_analyze` against a small synthetic series inserted into `TRENDLOG_DATA_DETAIL`.
@@ -354,18 +300,11 @@ Frontend additions (same pipeline as existing tools):
 
 ---
 
-## 12. Risks & open questions
+## 11. Known limitations
 
-- **Tag coverage** — rules only fire where auto-tagging produced the required roles; add a
-  `t3000_fdd_coverage` report (roles vs required_roles) in Phase 2.
-- **Trendlog resolution** — low-resolution logs limit detection quality (poll_seconds must
-  match the actual log interval).
-- **Rule correctness** — the starter catalog is heuristic; validate thresholds against real
-  site data during Phase 1.
-- **`Sample` role set** — currently covers the catalog; new rules may need new sample fields
-  (additive, low risk).
-
----
-
-*Replaces the idea of embedding SQL rules or depending on an external FDD engine. Rules are
-data; the engine is one reusable Rust evaluator; everything else is existing T3000.*
+- **Tag coverage** — rules only fire where auto-tagging produced the required roles.
+  `t3000_fdd_analyze` returns `roles_found` per analysis so gaps are visible.
+- **Trendlog resolution** — low-resolution logs limit detection quality; `poll_seconds` in
+  each rule must match the actual trendlog log interval for accurate fault hours.
+- **Rule correctness** — the starter catalog is heuristic; thresholds should be validated
+  and tuned against real site data.
