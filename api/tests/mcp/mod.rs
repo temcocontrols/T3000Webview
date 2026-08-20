@@ -22,4 +22,5 @@ pub mod rules;
 pub mod alarms_and_trends;
 pub mod device_operations;
 pub mod diagnostics;
+pub mod fdd;
 pub mod integration_flows;
