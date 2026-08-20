@@ -286,6 +286,16 @@ const McpTab: React.FC = () => {
             <tr><td><code>t3000_device_diagnostics</code></td><td>Comprehensive device health check: firmware, alarms, points, programs, PIDs</td><td>serial_number: int</td></tr>
             <tr><td><code>t3000_device_diagnostics_batch</code></td><td>Diagnose multiple devices or all devices at once</td><td>serial_numbers?: int[]</td></tr>
 
+            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Fault Detection &amp; Diagnostics (FDD)</td></tr>
+            <tr><td><code>t3000_fdd_rules_list</code></td><td>List all FDD rules with roles, params, severity, enabled state</td><td>category?: string</td></tr>
+            <tr><td><code>t3000_fdd_analyze</code></td><td>Run FDD rules over trendlog history to detect equipment faults</td><td>serial_number: int<br/>equipment?, range_hours?, rules?: string[]</td></tr>
+            <tr><td><code>t3000_fdd_rule_create</code></td><td>Create a new FDD rule (rule_id, rule_name, rule_kind, roles, params)</td><td>rule_id, rule_name, rule_kind: string<br/>category?, required_roles?, params?, severity?<br/>confirm: true</td></tr>
+            <tr><td><code>t3000_fdd_rule_update</code></td><td>Update an FDD rule (params merged with existing)</td><td>rule_id: string<br/>name?, category?, severity?, enabled?, params?<br/>confirm: true</td></tr>
+            <tr><td><code>t3000_fdd_rule_toggle</code></td><td>Enable or disable an FDD rule</td><td>rule_id: string, enabled: boolean<br/>confirm: true</td></tr>
+            <tr><td><code>t3000_fdd_rule_export</code></td><td>Export FDD rules as JSON (importable catalog)</td><td>category?: string</td></tr>
+            <tr><td><code>t3000_fdd_rule_import</code></td><td>Import FDD rules (upsert by rule_id)</td><td>rules: object[]<br/>confirm: true</td></tr>
+            <tr><td><code>t3000_fdd_faults</code></td><td>List persisted fault findings (from fdd_analyze)</td><td>serial_number?, rule_id?, limit?: int</td></tr>
+
             <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Navigation</td></tr>
             <tr><td><code>t3000_nav_list</code></td><td>List all T3000 web UI pages with paths and shortcuts</td><td>section?: points|control|monitoring|config|system|develop</td></tr>
             <tr><td><code>t3000_nav_search</code></td><td>Search T3000 pages by keyword (e.g., 'PID', 'alarm')</td><td>query: string</td></tr>
@@ -425,6 +435,18 @@ const promptCategories: PromptCategory[] = [
     name: 'Diagnostics', tools: 2, items: [
       { prompt: 'Run diagnostics on device 233626', tool: 't3000_device_diagnostics', desc: 'Single device health check' },
       { prompt: 'Check the health of all devices', tool: 't3000_device_diagnostics_batch', desc: 'Batch diagnostics across building' },
+    ]
+  },
+  {
+    name: 'Fault Detection (FDD)', tools: 8, items: [
+      { prompt: 'What FDD rules are available?', tool: 't3000_fdd_rules_list', desc: 'List all fault-detection rules' },
+      { prompt: 'Check AHU-1 on device 233626 for faults over the last day', tool: 't3000_fdd_analyze', desc: 'Run FDD rules over trendlog history' },
+      { prompt: 'Add a rule that alarms when the return air temp exceeds 80F', tool: 't3000_fdd_rule_create', desc: 'Create a new FDD rule' },
+      { prompt: 'Tighten ECON-4 to require 20% outdoor air and raise severity to critical', tool: 't3000_fdd_rule_update', desc: 'Update an FDD rule' },
+      { prompt: 'Disable the FAN-RUNTIME rule for now', tool: 't3000_fdd_rule_toggle', desc: 'Toggle an FDD rule' },
+      { prompt: 'Export all chw rules as JSON', tool: 't3000_fdd_rule_export', desc: 'Export FDD rules' },
+      { prompt: 'Import this rule catalog into the system', tool: 't3000_fdd_rule_import', desc: 'Bulk import FDD rules' },
+      { prompt: 'Show me recent fault findings for device 233626', tool: 't3000_fdd_faults', desc: 'List persisted FDD findings' },
     ]
   },
   {
