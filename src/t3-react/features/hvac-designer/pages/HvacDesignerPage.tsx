@@ -12,11 +12,12 @@ import {
   Text,
   makeStyles
 } from '@fluentui/react-components';
-import { CheckmarkCircle16Regular } from '@fluentui/react-icons';
+
 import { TopToolbar } from '../components/toolbar/TopToolbar';
 import { ToolsPanel } from '../components/toolbar/ToolsPanel';
 import { HvacDrawingArea } from '../components/HvacDrawingArea';
 import { T3ContextMenu } from '../components/T3ContextMenu';
+import { EditorStatusBar } from '../../design-hub/components/EditorStatusBar';
 import { useDrawing } from '../hooks/useDrawing';
 import { useStatusMessage } from '../hooks/useStatusMessage';
 import SelectUtil from '@/lib/t3-hvac/Opt/Opt/SelectUtil';
@@ -202,29 +203,13 @@ export const HvacDesignerPage: React.FC = () => {
             </div>
           )}
 
-          {/* Right Workspace - Drawing Area + Message Bar */}
+          {/* Right Workspace - Drawing Area + Status Bar */}
           <div id="work-area" className={styles.drawingArea}>
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <HvacDrawingArea />
             </div>
             {showMessageBar && (
-              <div className={styles.messageBar}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', padding: '0 12px',
-                  height: 28, fontSize: 11
-                }}>
-                  <span style={{ flexShrink: 0, color: '#444', whiteSpace: 'nowrap', marginRight: 8 }}>
-                    {name}
-                  </span>
-                  <span style={{ color: '#bbb', margin: '0 8px', flexShrink: 0 }}>|</span>
-                  <span style={{ flexShrink: 0, color: '#444', whiteSpace: 'nowrap' }}>
-                    {coords}
-                  </span>
-                  <span style={{ color: '#bbb', margin: '0 8px', flexShrink: 0 }}>|</span>
-                  <CheckmarkCircle16Regular style={{ marginRight: 6, fontSize: 14, flexShrink: 0 }} />
-                  <span style={{ flex: 1 }}>{msg}</span>
-                </div>
-              </div>
+              <EditorStatusBar name={name} coords={coords} message={msg} />
             )}
           </div>
         </div>
