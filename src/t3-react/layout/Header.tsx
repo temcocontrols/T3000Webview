@@ -133,9 +133,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: 'var(--t3-color-header-background)',
-    borderBottom: '1px solid #c4c8ca',
-    position: 'relative',
-    zIndex: 100,
+    borderBottom: '1px solid #c4c8ca'
   },
   menuBar: {
     display: 'flex',
