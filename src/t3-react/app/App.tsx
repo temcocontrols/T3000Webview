@@ -171,6 +171,14 @@ const EezStudioPage = React.lazy(() =>
   import('./EezStudioApp').then((m) => ({ default: m.EezStudioApp }))
 );
 
+// Design Hub — unified design center
+const DesignHubPage = React.lazy(() =>
+  import('../features/design-hub').then((m) => ({ default: m.DesignHubPage }))
+);
+const ProjectDetailPage = React.lazy(() =>
+  import('../features/design-hub/pages/ProjectDetailPage').then((m) => ({ default: m.ProjectDetailPage }))
+);
+
 /**
  * Protected Route Wrapper
  * Redirects to login if not authenticated
@@ -500,6 +508,22 @@ export const App: React.FC = () => {
                       </div>
                     }>
                       <DocumentationPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="design"
+                  element={
+                    <React.Suspense fallback={<div>Loading Design Hub...</div>}>
+                      <DesignHubPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="design/projects/:id"
+                  element={
+                    <React.Suspense fallback={<div>Loading project...</div>}>
+                      <ProjectDetailPage />
                     </React.Suspense>
                   }
                 />

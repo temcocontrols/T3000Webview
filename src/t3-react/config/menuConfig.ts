@@ -708,8 +708,10 @@ const haystackMenu: MenuItem = {
 
 /**
  * Simulator Menu
+ * Contextual — shown in the top menu bar only when the Tstat10 Simulator
+ * page (/t3000/tstat10-simulator) is open.
  */
-const simulatorMenu: MenuItem = {
+export const simulatorMenu: MenuItem = {
   id: 'simulator',
   label: 'Simulator',
   type: 'submenu',
@@ -794,10 +796,134 @@ const aiAssistantMenu: MenuItem = {
 };
 
 /**
+ * Design Menu — unified entry point for the Design Hub & drawing creation.
+ * Hub-only by design: Simulator and EEZ Studio live in the Design Hub and are
+ * also exposed as contextual menus on their own pages (see Header).
+ */
+const designMenu: MenuItem = {
+  id: 'design',
+  label: 'Design',
+  type: 'submenu',
+  children: [
+    {
+      id: 'design-hub',
+      label: 'Design Hub',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design';
+      },
+      icon: 'BuildingMultiple',
+    },
+    {
+      id: 'design-new-drawing',
+      label: 'New Drawing',
+      type: 'submenu',
+      icon: 'DocumentAdd',
+      children: [
+        {
+          id: 'design-new-hvac-schematic',
+          label: 'HVAC Schematic',
+          type: 'item',
+          action: () => {
+            window.location.hash = '#/t3000/hvac-designer?type=hvac-schematic';
+          },
+          icon: 'Flow',
+        },
+        {
+          id: 'design-new-floor-plan',
+          label: 'Floor Plan',
+          type: 'item',
+          action: () => {
+            window.location.hash = '#/t3000/hvac-designer?type=floor-plan';
+          },
+          icon: 'BuildingMultiple',
+        },
+        {
+          id: 'design-new-eez-project',
+          label: 'EEZ Project',
+          type: 'item',
+          action: () => {
+            window.location.hash = '#/t3000/eez?type=eez-project';
+          },
+          icon: 'DocumentText',
+        },
+        {
+          id: 'design-new-lcd-ui',
+          label: 'LCD UI (Thermostat)',
+          type: 'item',
+          action: () => {
+            window.location.hash = '#/t3000/tstat10-simulator?type=lcd-ui';
+          },
+          icon: 'DeveloperBoard',
+        },
+        {
+          id: 'design-new-panel-symbols',
+          label: 'Panel Symbols',
+          type: 'item',
+          action: () => {
+            window.location.hash = '#/t3000/hvac-designer?type=panel-symbols';
+          },
+          icon: 'CircleMultipleConcentric',
+        },
+      ],
+    },
+    { id: 'design-divider-1', type: 'divider' },
+    {
+      id: 'design-templates',
+      label: 'Templates',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?tab=templates';
+      },
+      icon: 'DocumentText',
+    },
+    {
+      id: 'design-libraries',
+      label: 'Libraries',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?tab=libraries';
+      },
+      icon: 'FolderOpen',
+    },
+    {
+      id: 'design-recent',
+      label: 'Recent',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?tab=recent';
+      },
+      icon: 'History',
+    },
+    { id: 'design-divider-2', type: 'divider' },
+    {
+      id: 'design-import',
+      label: 'Import',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?tab=import';
+      },
+      icon: 'ArrowUpload',
+    },
+    {
+      id: 'design-manage-types',
+      label: 'Manage Types',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?tab=types';
+      },
+      icon: 'Tag',
+    },
+  ],
+};
+
+/**
  * EEZ Studio Menu — mirrors Electron's native menu (File/Edit/View/Help)
  * These actions post messages into the EEZ Studio iframe/page shell.
+ * Contextual — shown in the top menu bar only when the EEZ Studio page
+ * (/t3000/eez) is open.
  */
-const eezStudioMenu: MenuItem = {
+export const eezStudioMenu: MenuItem = {
   id: 'eez-studio',
   label: 'EEZ Studio',
   type: 'submenu',
@@ -924,9 +1050,8 @@ export const topMenuConfig: MenuItem[] = [
   helpMenu,
   developerMenu,
   haystackMenu,
-  simulatorMenu,
   aiAssistantMenu,
-  eezStudioMenu,
+  designMenu,
 ];
 
 /**

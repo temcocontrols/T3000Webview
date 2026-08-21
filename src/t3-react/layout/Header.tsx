@@ -96,7 +96,7 @@ import {
   TagRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { menuConfig } from '@t3-react/config/menuConfig';
+import { menuConfig, simulatorMenu, eezStudioMenu } from '@t3-react/config/menuConfig';
 import { MenuAction } from '@common/react/types/menu';
 import type { MenuItem as MenuItemConfig } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
@@ -292,6 +292,17 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   const styles = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Contextual menus — shown only while their editor page is open.
+  // EEZ Studio appears on /t3000/eez, Simulator on /t3000/tstat10-simulator.
+  const contextualMenus: MenuItemConfig[] = [];
+  if (location.pathname.startsWith('/t3000/eez')) {
+    contextualMenus.push(eezStudioMenu);
+  }
+  if (location.pathname.startsWith('/t3000/tstat10-simulator')) {
+    contextualMenus.push(simulatorMenu);
+  }
+
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const { theme } = useTheme();
@@ -938,7 +949,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     <div className={styles.header}>
       {/* Row 1: Menu Bar with File, Edit, View, Tools, Help */}
       <div className={styles.menuBar}>
-        {menuConfig.map((menu) => (
+        {[...menuConfig, ...contextualMenus].map((menu) => (
           <Menu key={menu.id}>
             <MenuTrigger>
               <div className={styles.menuItem}>{menu.label}</div>
