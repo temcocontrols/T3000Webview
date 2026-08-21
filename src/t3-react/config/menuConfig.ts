@@ -5,6 +5,9 @@
 
 import type { MenuItem } from '@common/react/types/menu';
 import { MenuAction } from '@common/react/types/menu';
+import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
+import EvtOpt from '@/lib/t3-hvac/Event/EvtOpt';
+import DataOpt from '@/lib/t3-hvac/Opt/Data/DataOpt';
 
 /**
  * Home Menu — one-click return to the T3000 inputs page.
@@ -14,18 +17,11 @@ import { MenuAction } from '@common/react/types/menu';
 export const homeMenu: MenuItem = {
   id: 'home',
   label: 'Home',
-  type: 'submenu',
-  children: [
-    {
-      id: 'home-t3000',
-      label: 'T3000 Home',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/inputs';
-      },
-      icon: 'BuildingMultiple',
-    },
-  ],
+  type: 'item',
+  action: () => {
+    window.location.hash = '#/t3000/inputs';
+  },
+  icon: 'ArrowStepBack',
 };
 
 /**
@@ -36,18 +32,11 @@ export const homeMenu: MenuItem = {
 export const designHubBackMenu: MenuItem = {
   id: 'design-hub-back',
   label: 'Design Hub',
-  type: 'submenu',
-  children: [
-    {
-      id: 'design-hub-back-open',
-      label: 'Design Hub Dashboard',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design';
-      },
-      icon: 'BuildingMultiple',
-    },
-  ],
+  type: 'item',
+  action: () => {
+    window.location.hash = '#/t3000/design';
+  },
+  icon: 'BuildingMultiple',
 };
 
 /**
@@ -990,7 +979,23 @@ export const designMenu: MenuItem = {
 };
 
 /**
- * Design Hub mode — File menu (project & hub management)
+ * Design Hub mode — New Drawing (top-level create menu)
+ */
+const designHubNewDrawingMenu: MenuItem = {
+  id: 'dh-new',
+  label: 'New Drawing',
+  type: 'submenu',
+  children: [
+    { id: 'dh-new-hvac', label: 'HVAC Schematic', type: 'item', action: () => { window.location.hash = '#/t3000/hvac-designer?type=hvac-schematic'; }, icon: 'Flow' },
+    { id: 'dh-new-floor', label: 'Floor Plan', type: 'item', action: () => { window.location.hash = '#/t3000/hvac-designer?type=floor-plan'; }, icon: 'BuildingMultiple' },
+    { id: 'dh-new-eez', label: 'EEZ Project', type: 'item', action: () => { window.location.hash = '#/t3000/eez?type=eez-project'; }, icon: 'DocumentText' },
+    { id: 'dh-new-lcd', label: 'LCD UI (Thermostat)', type: 'item', action: () => { window.location.hash = '#/t3000/tstat10-simulator?type=lcd-ui'; }, icon: 'DeveloperBoard' },
+    { id: 'dh-new-symbols', label: 'Panel Symbols', type: 'item', action: () => { window.location.hash = '#/t3000/hvac-designer?type=panel-symbols'; }, icon: 'CircleMultipleConcentric' },
+  ],
+};
+
+/**
+ * Design Hub mode — File menu (management)
  */
 const designHubFileMenu: MenuItem = {
   id: 'dh-file',
@@ -998,21 +1003,10 @@ const designHubFileMenu: MenuItem = {
   type: 'submenu',
   children: [
     {
-      id: 'dh-file-new-project',
-      label: 'New Project...',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?action=new-project';
-      },
-      icon: 'DocumentAdd',
-    },
-    {
       id: 'dh-file-new-type',
       label: 'New Type...',
       type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?action=new-type';
-      },
+      action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'new-type' } })),
       icon: 'DocumentAdd',
     },
     { id: 'dh-file-div1', type: 'divider' },
@@ -1020,9 +1014,7 @@ const designHubFileMenu: MenuItem = {
       id: 'dh-file-import',
       label: 'Import Drawing...',
       type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?action=import';
-      },
+      action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'import' } })),
       icon: 'ArrowUpload',
     },
     { id: 'dh-file-div2', type: 'divider' },
@@ -1030,162 +1022,73 @@ const designHubFileMenu: MenuItem = {
       id: 'dh-file-backup',
       label: 'Backup Hub',
       type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?action=backup';
-      },
+      action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'backup' } })),
       icon: 'ArrowDownload',
     },
     {
       id: 'dh-file-restore',
       label: 'Restore Hub...',
       type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?action=restore';
-      },
+      action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'restore' } })),
       icon: 'ArrowUpload',
     },
   ],
 };
 
 /**
- * Design Hub mode — View menu (grid/list, sort, favorites, folders)
+ * Design Hub mode — View menu (grid/list, sort, favorites, folders, refresh)
  */
 const designHubViewMenu: MenuItem = {
   id: 'dh-view',
   label: 'View',
   type: 'submenu',
   children: [
-    {
-      id: 'dh-view-grid',
-      label: 'Grid View',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?tab=grid';
-      },
-      icon: 'Table',
-    },
-    {
-      id: 'dh-view-list',
-      label: 'List View',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?tab=list';
-      },
-      icon: 'List',
-    },
+    { id: 'dh-view-grid', label: 'Grid View', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'view-grid' } })), icon: 'Table' },
+    { id: 'dh-view-list', label: 'List View', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'view-list' } })), icon: 'List' },
     { id: 'dh-view-div1', type: 'divider' },
     {
-      id: 'dh-view-sort-updated',
-      label: 'Sort by Updated',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?sort=updated';
-      },
-      icon: 'History',
+      id: 'dh-view-sort-title',
+      label: 'Sort by',
+      type: 'header',
     },
-    {
-      id: 'dh-view-sort-name',
-      label: 'Sort by Name',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?sort=name';
-      },
-      icon: 'DocumentText',
-    },
-    {
-      id: 'dh-view-sort-created',
-      label: 'Sort by Created',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?sort=created';
-      },
-      icon: 'Calendar',
-    },
+    { id: 'dh-view-sort-updated', label: 'Updated', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'sort-updated' } })), icon: 'History' },
+    { id: 'dh-view-sort-name', label: 'Name', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'sort-name' } })), icon: 'DocumentText' },
+    { id: 'dh-view-sort-created', label: 'Created', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'sort-created' } })), icon: 'Calendar' },
     { id: 'dh-view-div2', type: 'divider' },
-    {
-      id: 'dh-view-favorites',
-      label: 'Favorites',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?tab=favorites';
-      },
-      icon: 'CheckmarkCircle',
-    },
-    {
-      id: 'dh-view-folders',
-      label: 'Folders',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?tab=folders';
-      },
-      icon: 'FolderOpen',
-    },
+    { id: 'dh-view-favorites', label: 'Favorites', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'favorites' } })), icon: 'CheckmarkCircle' },
+    { id: 'dh-view-folders', label: 'Folders', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'folders' } })), icon: 'FolderOpen' },
+    { id: 'dh-view-div3', type: 'divider' },
+    { id: 'dh-view-refresh', label: 'Refresh', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'refresh' } })), icon: 'ArrowClockwise' },
   ],
 };
 
 /**
- * Design Hub mode — Tools menu (device / share / cloud)
+ * Design Hub mode — Tools menu (device / cloud / compare)
  */
 const designHubToolsMenu: MenuItem = {
   id: 'dh-tools',
   label: 'Tools',
   type: 'submenu',
   children: [
-    {
-      id: 'dh-tools-bind',
-      label: 'Bind Device...',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?action=bind';
-      },
-      icon: 'PlugConnected',
-    },
-    {
-      id: 'dh-tools-deploy',
-      label: 'Deploy...',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?action=deploy';
-      },
-      icon: 'ArrowUpload',
-    },
-    {
-      id: 'dh-tools-sync',
-      label: 'Sync to Cloud',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?action=sync';
-      },
-      icon: 'ArrowSync',
-    },
-    {
-      id: 'dh-tools-share',
-      label: 'Share...',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?action=share';
-      },
-      icon: 'People',
-    },
+    { id: 'dh-tools-bind', label: 'Bind Device...', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'bind' } })), icon: 'PlugConnected' },
+    { id: 'dh-tools-deploy', label: 'Deploy...', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'deploy' } })), icon: 'ArrowUpload' },
     { id: 'dh-tools-div1', type: 'divider' },
-    {
-      id: 'dh-tools-compare',
-      label: 'Compare Drawings...',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/design?action=compare';
-      },
-      icon: 'DataHistogram',
-    },
+    { id: 'dh-tools-sync', label: 'Sync to Cloud', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'sync' } })), icon: 'ArrowSync' },
+    { id: 'dh-tools-share', label: 'Share...', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'share' } })), icon: 'People' },
+    { id: 'dh-tools-div2', type: 'divider' },
+    { id: 'dh-tools-compare', label: 'Compare Drawings...', type: 'item', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'compare' } })), icon: 'DataHistogram' },
+    { id: 'dh-tools-div3', type: 'divider' },
+    { id: 'dh-tools-palette', label: 'Command Palette', type: 'item', shortcut: 'Ctrl+K', action: () => window.dispatchEvent(new CustomEvent('t3-design-action', { detail: { action: 'palette' } })), icon: 'Search' },
   ],
 };
 
 /**
- * Design Hub mode menu set
+ * Design Hub mode menu set — Home + File/View/Tools/Help. The "Design Hub"
+ * menu itself is intentionally omitted here (you are already on the hub).
  */
 export const designHubMenuConfig: MenuItem[] = [
   homeMenu,
-  designMenu,
+  designHubNewDrawingMenu,
   designHubFileMenu,
   designHubViewMenu,
   designHubToolsMenu,
@@ -1193,21 +1096,62 @@ export const designHubMenuConfig: MenuItem[] = [
 ];
 
 /**
- * HVAC Designer mode menus — structure only, actions to be wired later.
+ * HVAC Designer mode menus — mirror the page's TopToolbar / ToolsPanel actions.
  */
+const hvacNoopEvent = { preventDefault: () => {}, stopPropagation: () => {} } as any;
+const hvacCenterEvent = () => {
+  const svgArea = document.getElementById('svg-area');
+  const rect = svgArea?.getBoundingClientRect();
+  return {
+    clientX: rect ? rect.left + rect.width / 2 : 400,
+    clientY: rect ? rect.top + rect.height / 2 : 300,
+    button: 0,
+    preventDefault: () => {},
+    stopPropagation: () => {},
+  } as any;
+};
+const hvacZoomPct = () => Math.round((T3Gv.docUtil?.GetZoomFactor() ?? 1) * 100);
+const hvacToggleRulers = () => {
+  const dc = T3Gv.docUtil?.docConfig;
+  if (dc) {
+    dc.showRulers = !dc.showRulers;
+    T3Gv.docUtil?.UpdateRulerVisibility();
+    DataOpt.SaveToLocalStorage();
+  }
+};
+const hvacToggleGrid = () => {
+  const dc = T3Gv.docUtil?.docConfig;
+  if (dc) {
+    dc.showGrid = !dc.showGrid;
+    T3Gv.docUtil?.UpdateGridVisibility();
+    DataOpt.SaveToLocalStorage();
+  }
+};
+
 const hvacFileMenu: MenuItem = {
   id: 'hvac-file',
   label: 'File',
   type: 'submenu',
   children: [
-    { id: 'hvac-file-new', label: 'New', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'DocumentAdd' },
-    { id: 'hvac-file-open', label: 'Open...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'FolderOpen' },
+    { id: 'hvac-file-save', label: 'Save', type: 'item', action: () => EvtOpt.toolOpt.SaveAct(), shortcut: 'Ctrl+S', icon: 'Save' },
     { id: 'hvac-file-div1', type: 'divider' },
-    { id: 'hvac-file-save', label: 'Save', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+S', disabled: true, icon: 'Save' },
-    { id: 'hvac-file-saveas', label: 'Save As...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'SaveAs' },
+    { id: 'hvac-file-clear', label: 'Clear', type: 'item', action: () => EvtOpt.toolOpt.ClearAct(), icon: 'Delete' },
     { id: 'hvac-file-div2', type: 'divider' },
-    { id: 'hvac-file-import', label: 'Import SVG...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'ArrowUpload' },
-    { id: 'hvac-file-export', label: 'Export...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'ArrowDownload' },
+    { id: 'hvac-file-add-lib', label: 'Add to Library', type: 'item', action: () => EvtOpt.toolOpt.AddToLibraryAct(), icon: 'DocumentAdd' },
+    { id: 'hvac-file-load-lib', label: 'Load Library...', type: 'item', action: () => EvtOpt.toolOpt.LoadLibraryAct(), icon: 'FolderOpen' },
+    { id: 'hvac-file-div3', type: 'divider' },
+    {
+      id: 'hvac-file-background',
+      label: 'Background',
+      type: 'submenu',
+      icon: 'Image',
+      children: [
+        { id: 'hvac-file-bg-white', label: 'White', type: 'item', action: () => EvtOpt.toolOpt.LibSetBackgroundColorAct('white') },
+        { id: 'hvac-file-bg-gray', label: 'Gray', type: 'item', action: () => EvtOpt.toolOpt.LibSetBackgroundColorAct('gray') },
+        { id: 'hvac-file-bg-black', label: 'Black', type: 'item', action: () => EvtOpt.toolOpt.LibSetBackgroundColorAct('black') },
+        { id: 'hvac-file-bg-custom', label: 'Custom...', type: 'item', action: () => EvtOpt.toolOpt.LibSetBackgroundColorAct('custom') },
+      ],
+    },
   ],
 };
 
@@ -1216,15 +1160,18 @@ const hvacEditMenu: MenuItem = {
   label: 'Edit',
   type: 'submenu',
   children: [
-    { id: 'hvac-edit-undo', label: 'Undo', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+Z', disabled: true, icon: 'ArrowSync' },
-    { id: 'hvac-edit-redo', label: 'Redo', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+Y', disabled: true, icon: 'ArrowSync' },
+    { id: 'hvac-edit-undo', label: 'Undo', type: 'item', action: () => EvtOpt.toolOpt.UndoAct(hvacNoopEvent), shortcut: 'Ctrl+Z' },
+    { id: 'hvac-edit-redo', label: 'Redo', type: 'item', action: () => EvtOpt.toolOpt.RedoAct(hvacNoopEvent), shortcut: 'Ctrl+Y' },
     { id: 'hvac-edit-div1', type: 'divider' },
-    { id: 'hvac-edit-cut', label: 'Cut', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+X', disabled: true, icon: 'Delete' },
-    { id: 'hvac-edit-copy', label: 'Copy', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+C', disabled: true, icon: 'DocumentText' },
-    { id: 'hvac-edit-paste', label: 'Paste', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+V', disabled: true, icon: 'ArrowUpload' },
-    { id: 'hvac-edit-delete', label: 'Delete', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Del', disabled: true, icon: 'Delete' },
+    { id: 'hvac-edit-cut', label: 'Cut', type: 'item', action: () => EvtOpt.toolOpt.CutAct(hvacNoopEvent), shortcut: 'Ctrl+X' },
+    { id: 'hvac-edit-copy', label: 'Copy', type: 'item', action: () => EvtOpt.toolOpt.CopyAct(hvacNoopEvent), shortcut: 'Ctrl+C', icon: 'DocumentText' },
+    { id: 'hvac-edit-duplicate', label: 'Duplicate', type: 'item', action: () => EvtOpt.toolOpt.DuplicateAct(hvacNoopEvent), icon: 'DocumentAdd' },
+    { id: 'hvac-edit-paste', label: 'Paste', type: 'item', action: () => EvtOpt.toolOpt.PasteAct(hvacNoopEvent), shortcut: 'Ctrl+V', icon: 'ArrowUpload' },
+    { id: 'hvac-edit-delete', label: 'Delete', type: 'item', action: () => EvtOpt.toolOpt.DeleteAct(hvacNoopEvent), shortcut: 'Del', icon: 'Delete' },
     { id: 'hvac-edit-div2', type: 'divider' },
-    { id: 'hvac-edit-selectall', label: 'Select All', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+A', disabled: true, icon: 'CheckmarkCircle' },
+    { id: 'hvac-edit-select-all', label: 'Select All', type: 'item', action: () => EvtOpt.toolOpt.SelectAllObjects(), shortcut: 'Ctrl+A', icon: 'CheckmarkCircle' },
+    { id: 'hvac-edit-lock', label: 'Lock', type: 'item', action: () => EvtOpt.toolOpt.LibLockAct(false) },
+    { id: 'hvac-edit-unlock', label: 'Unlock', type: 'item', action: () => EvtOpt.toolOpt.LibUnlockAct(false) },
   ],
 };
 
@@ -1233,14 +1180,12 @@ const hvacViewMenu: MenuItem = {
   label: 'View',
   type: 'submenu',
   children: [
-    { id: 'hvac-view-zoomin', label: 'Zoom In', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Flow' },
-    { id: 'hvac-view-zoomout', label: 'Zoom Out', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Flow' },
-    { id: 'hvac-view-zoomfit', label: 'Zoom to Fit', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Flow' },
+    { id: 'hvac-view-zoomin', label: 'Zoom In', type: 'item', action: () => T3Gv.docUtil?.SetZoomLevel(hvacZoomPct() + 10) },
+    { id: 'hvac-view-zoomout', label: 'Zoom Out', type: 'item', action: () => T3Gv.docUtil?.SetZoomLevel(hvacZoomPct() - 10) },
+    { id: 'hvac-view-resetzoom', label: 'Reset Zoom', type: 'item', action: () => EvtOpt.toolOpt.ResetScaleAct(hvacNoopEvent), icon: 'ArrowReset' },
     { id: 'hvac-view-div1', type: 'divider' },
-    { id: 'hvac-view-grid', label: 'Show Grid', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Table' },
-    { id: 'hvac-view-rulers', label: 'Show Rulers', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Toolbox' },
-    { id: 'hvac-view-div2', type: 'divider' },
-    { id: 'hvac-view-fullscreen', label: 'Fullscreen', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Image' },
+    { id: 'hvac-view-rulers', label: 'Rulers', type: 'item', action: hvacToggleRulers, icon: 'Toolbox' },
+    { id: 'hvac-view-grid', label: 'Grid', type: 'item', action: hvacToggleGrid, icon: 'Table' },
   ],
 };
 
@@ -1250,19 +1195,15 @@ const hvacInsertMenu: MenuItem = {
   type: 'submenu',
   children: [
     {
-      id: 'hvac-insert-shape',
+      id: 'hvac-insert-shape-title',
       label: 'Add Shape',
-      type: 'submenu',
-      icon: 'CircleMultipleConcentric',
-      children: [
-        { id: 'hvac-insert-rect', label: 'Rectangle', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'DocumentText' },
-        { id: 'hvac-insert-oval', label: 'Oval', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'CircleMultipleConcentric' },
-        { id: 'hvac-insert-line', label: 'Line', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Flow' },
-        { id: 'hvac-insert-text', label: 'Text', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'DocumentText' },
-      ],
+      type: 'header',
     },
-    { id: 'hvac-insert-div1', type: 'divider' },
-    { id: 'hvac-insert-symbol', label: 'Symbol Library...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Toolbox' },
+    { id: 'hvac-insert-rect', label: 'Rectangle', type: 'item', action: () => EvtOpt.toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 2, 'Box'), icon: 'DocumentText' },
+    { id: 'hvac-insert-oval', label: 'Oval', type: 'item', action: () => EvtOpt.toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 4, 'Oval'), icon: 'CircleMultipleConcentric' },
+    { id: 'hvac-insert-circle', label: 'Circle', type: 'item', action: () => EvtOpt.toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 9, 'G_Circle'), icon: 'CircleMultipleConcentric' },
+    { id: 'hvac-insert-line', label: 'Line', type: 'item', action: () => EvtOpt.toolOpt.ToolLineAct('line', hvacCenterEvent()), icon: 'Flow' },
+    { id: 'hvac-insert-text', label: 'Text', type: 'item', action: () => EvtOpt.toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 'textLabel', 'Text'), icon: 'DocumentText' },
   ],
 };
 
@@ -1271,14 +1212,64 @@ const hvacToolsMenu: MenuItem = {
   label: 'Tools',
   type: 'submenu',
   children: [
-    { id: 'hvac-tools-align', label: 'Align', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Table' },
-    { id: 'hvac-tools-group', label: 'Group', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'CircleMultipleConcentric' },
-    { id: 'hvac-tools-ungroup', label: 'Ungroup', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'CircleMultipleConcentric' },
+    {
+      id: 'hvac-tools-transform-title',
+      label: 'Transform',
+      type: 'header',
+    },
+    {
+      id: 'hvac-tools-rotate',
+      label: 'Rotate',
+      type: 'submenu',
+      icon: 'ArrowClockwise',
+      children: [
+        { id: 'hvac-tools-rotate-45', label: '45°', type: 'item', action: () => EvtOpt.toolOpt.RotateAct(hvacNoopEvent, 45) },
+        { id: 'hvac-tools-rotate-90', label: '90°', type: 'item', action: () => EvtOpt.toolOpt.RotateAct(hvacNoopEvent, 90) },
+        { id: 'hvac-tools-rotate-180', label: '180°', type: 'item', action: () => EvtOpt.toolOpt.RotateAct(hvacNoopEvent, 180) },
+        { id: 'hvac-tools-rotate-270', label: '270°', type: 'item', action: () => EvtOpt.toolOpt.RotateAct(hvacNoopEvent, 270) },
+      ],
+    },
+    {
+      id: 'hvac-tools-flip',
+      label: 'Flip',
+      type: 'submenu',
+      icon: 'Flow',
+      children: [
+        { id: 'hvac-tools-flip-h', label: 'Flip Horizontal', type: 'item', action: () => EvtOpt.toolOpt.ShapeFlipHorizontalAct(hvacNoopEvent) },
+        { id: 'hvac-tools-flip-v', label: 'Flip Vertical', type: 'item', action: () => EvtOpt.toolOpt.ShapeFlipVerticalAct(hvacNoopEvent) },
+      ],
+    },
+    {
+      id: 'hvac-tools-align',
+      label: 'Align',
+      type: 'submenu',
+      icon: 'Table',
+      children: [
+        { id: 'hvac-tools-align-left', label: 'Align Left', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('lefts') },
+        { id: 'hvac-tools-align-centerh', label: 'Align Center H', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('centers') },
+        { id: 'hvac-tools-align-right', label: 'Align Right', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('rights') },
+        { id: 'hvac-tools-align-top', label: 'Align Top', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('tops') },
+        { id: 'hvac-tools-align-centerv', label: 'Align Center V', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('middles') },
+        { id: 'hvac-tools-align-bottom', label: 'Align Bottom', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('bottoms') },
+      ],
+    },
+    {
+      id: 'hvac-tools-makesame',
+      label: 'Make Same',
+      type: 'submenu',
+      icon: 'DocumentText',
+      children: [
+        { id: 'hvac-tools-same-width', label: 'Same Width', type: 'item', action: () => EvtOpt.toolOpt.MakeSameSizeAct(hvacNoopEvent, 2) },
+        { id: 'hvac-tools-same-height', label: 'Same Height', type: 'item', action: () => EvtOpt.toolOpt.MakeSameSizeAct(hvacNoopEvent, 1) },
+        { id: 'hvac-tools-same-size', label: 'Same Size', type: 'item', action: () => EvtOpt.toolOpt.MakeSameSizeAct(hvacNoopEvent, 3) },
+      ],
+    },
     { id: 'hvac-tools-div1', type: 'divider' },
-    { id: 'hvac-tools-front', label: 'Bring to Front', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'ArrowUpload' },
-    { id: 'hvac-tools-back', label: 'Send to Back', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'ArrowDownload' },
+    { id: 'hvac-tools-group', label: 'Group', type: 'item', action: () => EvtOpt.toolOpt.GroupAct(hvacNoopEvent), icon: 'CircleMultipleConcentric' },
+    { id: 'hvac-tools-ungroup', label: 'Ungroup', type: 'item', action: () => EvtOpt.toolOpt.UnGroupAct(hvacNoopEvent), icon: 'CircleMultipleConcentric' },
     { id: 'hvac-tools-div2', type: 'divider' },
-    { id: 'hvac-tools-snap', label: 'Snap to Grid', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'CheckmarkCircle' },
+    { id: 'hvac-tools-front', label: 'Bring to Front', type: 'item', action: () => EvtOpt.toolOpt.ShapeBringToFrontAct(hvacNoopEvent), icon: 'ArrowUpload' },
+    { id: 'hvac-tools-back', label: 'Send to Back', type: 'item', action: () => EvtOpt.toolOpt.ShapeSendToBackAct(hvacNoopEvent), icon: 'ArrowDownload' },
   ],
 };
 

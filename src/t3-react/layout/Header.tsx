@@ -47,6 +47,7 @@ import {
   ArrowClockwiseRegular,
   ArrowSyncRegular,
   ArrowResetRegular,
+  ArrowStepBackRegular,
   CheckmarkCircleRegular,
   Wifi1Regular,
   PeopleRegular,
@@ -739,6 +740,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       'ArrowClockwise': ArrowClockwiseRegular,
       'ArrowSync': ArrowSyncRegular,
       'ArrowReset': ArrowResetRegular,
+      'ArrowStepBack': ArrowStepBackRegular,
       'CheckmarkCircle': CheckmarkCircleRegular,
       'Settings': SettingsRegular,
       'Delete': DeleteRegular,
@@ -965,18 +967,36 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     <div className={styles.header}>
       {/* Row 1: Menu Bar with File, Edit, View, Tools, Help */}
       <div className={styles.menuBar}>
-        {activeMenus.map((menu) => (
-          <Menu key={menu.id}>
-            <MenuTrigger>
-              <div className={styles.menuItem}>{menu.label}</div>
-            </MenuTrigger>
-            <MenuPopover className={menu.id === 'tools' ? styles.menuPopover : undefined}>
-              <MenuList>
-                {menu.children?.map((item) => renderMenuItem(item, menu.id))}
-              </MenuList>
-            </MenuPopover>
-          </Menu>
-        ))}
+        {activeMenus.map((menu) => {
+          // Top-level single-action item (e.g. "Home") — same trigger style as
+          // other menus (styles.menuItem) but clickable to run its action.
+          if (menu.type === 'item') {
+            const IconComponent = typeof menu.icon === 'string' ? getIconComponent(menu.icon) : null;
+            return (
+              <div
+                key={menu.id}
+                className={styles.menuItem}
+                onClick={() => handleMenuClick(menu.action)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+              >
+                {IconComponent ? <IconComponent /> : undefined}
+                {menu.label}
+              </div>
+            );
+          }
+          return (
+            <Menu key={menu.id}>
+              <MenuTrigger>
+                <div className={styles.menuItem}>{menu.label}</div>
+              </MenuTrigger>
+              <MenuPopover className={menu.id === 'tools' ? styles.menuPopover : undefined}>
+                <MenuList>
+                  {menu.children?.map((item) => renderMenuItem(item, menu.id))}
+                </MenuList>
+              </MenuPopover>
+            </Menu>
+          );
+        })}
 
         {/* Theme Selector and User Avatar on right side of menu bar */}
         <div className={styles.menuBarRight}>
