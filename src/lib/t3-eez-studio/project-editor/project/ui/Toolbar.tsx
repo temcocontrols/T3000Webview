@@ -38,7 +38,7 @@ import { closest } from "eez-studio-shared/dom";
 import { Icon } from "./fluent-toolbar";
 import { dockerBuildState } from "project-editor/lvgl/docker-build/docker-build-state";
 import { transformToDeviceJson } from "project-editor/build/firmware-export";
-import { deviceClient } from "project-editor/build/device-rest-client";
+import { base64ToBytes, deviceClient } from "project-editor/build/device-rest-client";
 import { writeTextFile } from "project-editor/build/build";
 import { makeFolder } from "eez-studio-shared/util-electron";
 import * as notification from "eez-studio-ui/notification";
@@ -889,11 +889,16 @@ const RunEditSwitchControls = observer(
             const baseFolder = filePath.replace(/[\\/][^\\/]+$/, "");
 
             try {
-                // 1. Save to local device-config/ folder
+                // 1. Generate device JSON at the front side: screens + images
+                const screens = transformToDeviceJson(project);
+                const images = deviceClient.extractDeviceImages(project as any);
+
+                // 2. Save to local device-config/ folder for backup
+                //    (virtual: project/<panel>/device-config → real disk:
+                //     <runtime>/T3Web/t3-eez/project/<panel>/device-config)
                 const deviceConfigDir = baseFolder + "\\device-config";
                 await makeFolder(deviceConfigDir);
 
-                const screens = transformToDeviceJson(project);
                 let count = 0;
                 for (const [screenName, screenData] of Object.entries(screens)) {
                     const json = JSON.stringify(
@@ -901,23 +906,66 @@ const RunEditSwitchControls = observer(
                         null,
                         2
                     );
-                    const filePath = deviceConfigDir + "\\" + screenName + ".json";
-                    await writeTextFile(filePath, json);
+                    const screenPath = deviceConfigDir + "\\" + screenName + ".json";
+                    await writeTextFile(screenPath, json);
                     count++;
                 }
 
-                // 2. Also push to device via DeviceRestClient (mock or real)
+                // Save each generated image as full JSON + raw PNG
+                const imageDir = deviceConfigDir + "\\images";
+                if (images.length > 0) {
+                    await makeFolder(imageDir);
+                    for (const img of images) {
+                        await writeTextFile(
+                            imageDir + "\\" + img.name + ".json",
+                            JSON.stringify(img, null, 2)
+                        );
+                        await fetch(
+                            `/api/eez-studio/write-file?path=${encodeURIComponent(imageDir + "\\" + img.name + ".png")}`,
+                            { method: "POST", body: base64ToBytes(img.data_base64) }
+                        );
+                    }
+                }
+
+                // Backup manifest — records exactly what was generated
+                await writeTextFile(
+                    deviceConfigDir + "\\deploy-manifest.json",
+                    JSON.stringify(
+                        {
+                            exportedAt: new Date().toISOString(),
+                            serialNumber: deviceClient.deviceSerialNumber || undefined,
+                            panelId: deviceClient.devicePanelId || undefined,
+                            screenCount: count,
+                            imageCount: images.length,
+                            screens: Object.keys(screens),
+                            images: images.map((i) => ({
+                                name: i.name,
+                                width: i.width,
+                                height: i.height,
+                                color_format: i.color_format,
+                            })),
+                        },
+                        null,
+                        2
+                    )
+                );
+
+                // 3. Push screens + images to device via DeviceRestClient (mock or real)
                 try {
                     // connect() sets mode — mock mode returns instantly, real probes device
                     await deviceClient.connect("", 0, 0);
                     const result = await deviceClient.deployAllScreens(project as any);
+                    const imgNote =
+                        result && (result.imagesDeployed ?? 0) > 0
+                            ? ` + ${result.imagesDeployed} image${result.imagesDeployed === 1 ? "" : "s"}`
+                            : "";
                     notification.success(
-                        `Deployed ${count} screen${count > 1 ? "s" : ""} to device-config\\${result ? ` (${result.deployed} pushed to device)` : ""}`,
-                        { autoClose: 3000 }
+                        `Deployed ${count} screen${count > 1 ? "s" : ""} + ${images.length} image${images.length === 1 ? "" : "s"} to device-config${result ? ` (${result.deployed} pushed to device${imgNote})` : ""}`,
+                        { autoClose: 4000 }
                     );
                 } catch (apiErr: any) {
                     notification.warning(
-                        `Saved ${count} screen${count > 1 ? "s" : ""} locally (device push failed: ${apiErr.message})`,
+                        `Saved ${count} screen${count > 1 ? "s" : ""} + ${images.length} image${images.length === 1 ? "" : "s"} locally (device push failed: ${apiErr.message})`,
                         { autoClose: 4000 }
                     );
                 }

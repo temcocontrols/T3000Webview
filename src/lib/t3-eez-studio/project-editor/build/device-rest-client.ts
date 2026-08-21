@@ -38,6 +38,24 @@ export interface DeployAllResponse {
     failed: number;
     errors?: { screen: number; name: string; message: string }[];
     status: "ok" | "partial" | "error";
+    /** Number of images pushed ahead of the screens (0 if project has no bitmaps). */
+    imagesDeployed?: number;
+    /** Number of images that failed to push (0 if none). */
+    imagesFailed?: number;
+}
+
+/**
+ * Device image JSON — same shape the device returns on image pull.
+ * Generated at the front side from project bitmaps before deploy.
+ */
+export interface DeviceImageJson {
+    name: string;
+    width: number;
+    height: number;
+    color_format: string;
+    png_base64: string;
+    data_base64: string;
+    image: string;
 }
 
 /** Response from PUT /api/v1/screens/:name (deploy single). */
@@ -116,6 +134,38 @@ function restUrl(path: string, deviceIp?: string): string {
     return `http://${deviceIp}:${REST_PORT}${REST_BASE}/${path}`;
 }
 
+/** Decode a base64 string into raw bytes (browser-safe). */
+export function base64ToBytes(b64: string): Uint8Array {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) {
+        bytes[i] = bin.charCodeAt(i);
+    }
+    return bytes;
+}
+
+/**
+ * Parse PNG width/height from a base64-encoded PNG by reading the IHDR chunk
+ * (mirrors `png_dimensions_from_base64` in the Rust mock).
+ */
+function pngDimensionsFromBase64(b64: string): { width: number; height: number } {
+    try {
+        const bytes = base64ToBytes(b64);
+        // 8-byte PNG signature + IHDR: len(4) "IHDR"(4) width(4) height(4)
+        if (
+            bytes.length >= 24 &&
+            bytes[0] === 0x89 && bytes[1] === 0x50 &&
+            bytes[2] === 0x4e && bytes[3] === 0x47
+        ) {
+            const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+            return { width: dv.getUint32(16), height: dv.getUint32(20) };
+        }
+    } catch {
+        /* not a valid PNG — caller falls back to 0x0 */
+    }
+    return { width: 0, height: 0 };
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // DeviceRestClient
 // ═══════════════════════════════════════════════════════════════════
@@ -125,6 +175,16 @@ export class DeviceRestClient {
     private deviceIp: string = "";
     private panelId: number = 0;
     private serialNumber: number = 0;
+
+    /** Panel ID used for BACnet image/screen push (set by connect()). */
+    get devicePanelId(): number {
+        return this.panelId;
+    }
+
+    /** Device serial number (set by connect()). */
+    get deviceSerialNumber(): number {
+        return this.serialNumber;
+    }
 
     // ── Connection & Reachability ─────────────────────────────────
 
@@ -263,23 +323,45 @@ export class DeviceRestClient {
     // ── Full Sync: Deploy All ─────────────────────────────────────
 
     /**
-     * Deploy ALL screens to the device.
-     * REST path: PUT /api/v1/screens
-     * BACnet path: POST /api/eez-device/screens/push/:id (T3000 mock)
+     * Deploy ALL screens AND their images to the device.
+     *
+     * Step 1 — Generate image JSON at the front side: extract the PNG payload
+     *          from each project bitmap (data URL) into the device image format
+     *          {name,width,height,color_format,png_base64,data_base64,image}.
+     * Step 2 — Push images FIRST (the device must have them before any screen
+     *          references them by name).
+     *          BACnet:  POST /api/eez-device/images/push/:panelId
+     *          REST:    PUT /api/v1/images/:name
+     * Step 3 — Push screens (existing transform + deploy).
      *
      * @param projectJson  The raw .eez-project JSON (parsed object)
      */
     async deployAllScreens(projectJson: Record<string, unknown>): Promise<DeployAllResponse> {
+        // Step 1 — generate images at the front side
+        const images = this.extractDeviceImages(projectJson);
+
+        // Step 2 — push images first (best-effort; screen push still proceeds)
+        let imagesDeployed = 0;
+        let imagesFailed = 0;
+        if (images.length > 0) {
+            const imgResult = await this.pushImages(images);
+            imagesDeployed = imgResult.deployed;
+            imagesFailed = imgResult.failed;
+        }
+
+        // Step 3 — transform + push screens
         const deviceScreens = transformToDeviceJson(projectJson as any);
         const screens = Object.entries(deviceScreens).map(([name, screen]) => ({
             name,
             json: screen,
         }));
 
-        if (this.mode === "rest") {
-            return this.restDeployAll(screens);
-        }
-        return this.bacnetDeployAll(screens);
+        const result =
+            this.mode === "rest"
+                ? await this.restDeployAll(screens)
+                : await this.bacnetDeployAll(screens);
+
+        return { ...result, imagesDeployed, imagesFailed };
     }
 
     private async restDeployAll(
@@ -319,6 +401,97 @@ export class DeviceRestClient {
             throw new Error(`T3000 returned ${response.status}`);
         }
         return response.json();
+    }
+
+    // ── Image Generation & Push ───────────────────────────────────
+
+    /**
+     * Generate device image JSON from the project's bitmap list.
+     *
+     * Each project bitmap is `{ name, image: "data:image/png;base64,..." }`.
+     * Produces the same shape the device returns on image pull, so the screen
+     * JSON (which references bitmaps by name) resolves on the device.
+     */
+    extractDeviceImages(projectJson: Record<string, unknown>): DeviceImageJson[] {
+        const bitmaps = (projectJson.bitmaps as any[]) || [];
+        const images: DeviceImageJson[] = [];
+        for (const bmp of bitmaps) {
+            const name: string | undefined = bmp?.name;
+            const image: unknown = bmp?.image;
+            if (!name || typeof image !== "string" || !image) continue;
+
+            const m = image.match(/^data:image\/(png|jpeg|jpg|gif|bmp);base64,(.+)$/);
+            if (!m) continue; // file-path bitmaps can't be read in-browser — skip
+
+            const dataBase64 = m[2].trim();
+            const { width, height } = pngDimensionsFromBase64(dataBase64);
+            const colorFormat =
+                (projectJson as any).settings?.general?.colorFormat || "NATIVE_WITH_ALPHA";
+
+            images.push({
+                name,
+                width,
+                height,
+                color_format: colorFormat,
+                png_base64: dataBase64,
+                data_base64: dataBase64,
+                image: `data:image/${m[1]};base64,${dataBase64}`,
+            });
+        }
+        return images;
+    }
+
+    /**
+     * Push generated image JSON to the device.
+     * BACnet/mock: POST /api/eez-device/images/push/:panelId  body {name,data_base64}
+     * REST (real): PUT /api/v1/images/:name                    body = PNG binary
+     */
+    async pushImages(images: DeviceImageJson[]): Promise<{ deployed: number; failed: number }> {
+        let deployed = 0;
+        let failed = 0;
+        for (const img of images) {
+            try {
+                if (this.mode === "rest") {
+                    await this.restPushImage(img);
+                } else {
+                    await this.bacnetPushImage(img);
+                }
+                deployed++;
+            } catch {
+                failed++;
+            }
+        }
+        return { deployed, failed };
+    }
+
+    private async restPushImage(img: DeviceImageJson): Promise<void> {
+        const response = await fetch(
+            restUrl(`images/${encodeURIComponent(img.name)}`, this.deviceIp),
+            {
+                method: "PUT",
+                headers: { "Content-Type": "image/png" },
+                body: base64ToBytes(img.data_base64),
+                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            }
+        );
+        if (!response.ok) {
+            throw new Error(`Device returned ${response.status}`);
+        }
+    }
+
+    private async bacnetPushImage(img: DeviceImageJson): Promise<void> {
+        const response = await fetch(
+            `/api/eez-device/images/push/${this.panelId}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: img.name, data_base64: img.data_base64 }),
+                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            }
+        );
+        if (!response.ok) {
+            throw new Error(`T3000 returned ${response.status}`);
+        }
     }
 
     // ── Single Screen ─────────────────────────────────────────────

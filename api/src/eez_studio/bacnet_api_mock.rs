@@ -648,7 +648,40 @@ pub struct PushImageResponse {
 #[derive(Debug, Serialize)]
 pub struct PullImageResponse {
     pub name: String,
+    pub width: u32,
+    pub height: u32,
+    pub color_format: String,
+    pub png_base64: String,
     pub data_base64: String,
+    pub image: String,
+}
+
+/// Parse PNG width/height from base64-encoded PNG (read the IHDR chunk).
+fn png_dimensions_from_base64(b64: &str) -> (u32, u32) {
+    use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+    if let Ok(bytes) = BASE64.decode(b64) {
+        // 8-byte PNG signature + IHDR chunk: len(4) "IHDR"(4) width(4) height(4)
+        if bytes.len() >= 24 && &bytes[..8] == b"\x89PNG\r\n\x1a\n" {
+            let w = u32::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19]]);
+            let h = u32::from_be_bytes([bytes[20], bytes[21], bytes[22], bytes[23]]);
+            return (w, h);
+        }
+    }
+    (0, 0)
+}
+
+/// Build a PullImageResponse matching the real device bitmap JSON.
+fn image_response(name: String, data_base64: String) -> Json<PullImageResponse> {
+    let (w, h) = png_dimensions_from_base64(&data_base64);
+    Json(PullImageResponse {
+        name,
+        width: w,
+        height: h,
+        color_format: "NATIVE_WITH_ALPHA".into(),
+        png_base64: data_base64.clone(),
+        data_base64: data_base64.clone(),
+        image: format!("data:image/png;base64,{}", data_base64),
+    })
 }
 
 /// POST /api/eez-device/images/push/:panelId — upload a bitmap to mock device
@@ -674,10 +707,7 @@ pub async fn pull_image(
     {
         let store = IMG_STORE.lock().map_err(|e| { error!("pull_image: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
         if let Some(data) = store.get(&(panel_id, name.clone())) {
-            return Ok(Json(PullImageResponse {
-                name,
-                data_base64: String::from_utf8_lossy(data).to_string(),
-            }));
+            return Ok(image_response(name, String::from_utf8_lossy(data).to_string()));
         }
     }
 
@@ -693,10 +723,7 @@ pub async fn pull_image(
                 match crate::eez_studio::lvgl_img_extract::extract_image(c_file) {
                     Ok(img) => {
                         info!("pull_image: extracted '{}' from firmware ({}x{})", name, img.width, img.height);
-                        return Ok(Json(PullImageResponse {
-                            name: img.name,
-                            data_base64: img.png_base64,
-                        }));
+                        return Ok(image_response(img.name, img.png_base64));
                     }
                     Err(e) => {
                         error!("pull_image: extraction failed for '{}': {}", name, e);
