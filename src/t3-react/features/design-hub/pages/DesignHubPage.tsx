@@ -37,6 +37,9 @@ export const DesignHubPage: React.FC = () => {
   const importHub = useDesignHubStore((s) => s.importHub);
   const importFile = useDesignHubStore((s) => s.importFile);
   const refresh = useDesignHubStore((s) => s.refresh);
+  const setView = useDesignHubStore((s) => s.setView);
+  const setSortBy = useDesignHubStore((s) => s.setSortBy);
+  const syncBackend = useDesignHubStore((s) => s.syncBackend);
   const setMessage = useStatusBarStore((s) => s.setMessage);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -101,6 +104,103 @@ export const DesignHubPage: React.FC = () => {
     window.addEventListener('t3-design-import', openImport);
     return () => window.removeEventListener('t3-design-import', openImport);
   }, []);
+
+  // Top menu bar actions (File / View / Tools) — dispatched via t3-design-action
+  useEffect(() => {
+    const scrollTo = (id: string) =>
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    const onAction = (e: Event) => {
+      const action = (e as CustomEvent)?.detail?.action;
+      if (!action) return;
+      switch (action) {
+        case 'new-type':
+          setNewTypeOpen(true);
+          break;
+        case 'import':
+          setImportOpen(true);
+          break;
+        case 'backup':
+          try {
+            const blob = exportHub();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `design-hub-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            setMessage('Design Hub backup downloaded', 'success');
+          } catch {
+            setMessage('Backup failed', 'error');
+          }
+          break;
+        case 'restore':
+          restoreRef.current?.click();
+          break;
+        case 'view-grid':
+          setView('grid');
+          break;
+        case 'view-list':
+          setView('list');
+          break;
+        case 'sort-updated':
+          setSortBy('updated');
+          break;
+        case 'sort-name':
+          setSortBy('name');
+          break;
+        case 'sort-created':
+          setSortBy('created');
+          break;
+        case 'favorites':
+          setActiveTab('all');
+          scrollTo('hub-projects');
+          break;
+        case 'folders':
+          scrollTo('hub-folders');
+          break;
+        case 'refresh':
+          refresh();
+          break;
+        case 'sync':
+          syncBackend().then((r) => {
+            setMessage(
+              r.backend
+                ? `Synced ${r.projects} drawings, ${r.libraries} libraries`
+                : 'Backend offline — kept locally',
+              r.backend ? 'success' : 'info'
+            );
+          });
+          break;
+        case 'bind':
+          setActiveTab('all');
+          scrollTo('hub-projects');
+          setMessage('Select a drawing, then use "Bind Device" on its card', 'info');
+          break;
+        case 'deploy':
+          setActiveTab('all');
+          scrollTo('hub-projects');
+          setMessage('Select a drawing, then use "Deploy" on its card', 'info');
+          break;
+        case 'share':
+          setActiveTab('shared');
+          scrollTo('hub-projects');
+          break;
+        case 'compare':
+          setActiveTab('all');
+          scrollTo('hub-projects');
+          setMessage('Open a drawing’s detail page to compare revisions', 'info');
+          break;
+        case 'palette':
+          setPaletteOpen(true);
+          break;
+      }
+    };
+    window.addEventListener('t3-design-action', onAction);
+    return () => window.removeEventListener('t3-design-action', onAction);
+  }, [exportHub, setMessage, setView, setSortBy, setActiveTab, refresh, syncBackend]);
 
   const handleBind = (project: HubProject) => setBindingProject(project);
 
@@ -186,7 +286,7 @@ export const DesignHubPage: React.FC = () => {
 
         <TemplatesSection />
 
-        <div className={styles.section}>
+        <div className={styles.section} id="hub-folders">
           <div className={styles.sectionHeader} style={{ marginBottom: 10 }}>
             <div className={styles.sectionTitle}>
               <HubIcon icon="FolderOpen" size={18} />
@@ -197,7 +297,9 @@ export const DesignHubPage: React.FC = () => {
           <FoldersBar />
         </div>
 
-        <ProjectsGrid onBind={handleBind} />
+        <div id="hub-projects">
+          <ProjectsGrid onBind={handleBind} />
+        </div>
 
         {/* Hub Tools — backup / restore */}
         <div

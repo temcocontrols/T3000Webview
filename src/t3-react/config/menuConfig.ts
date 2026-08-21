@@ -5,9 +5,6 @@
 
 import type { MenuItem } from '@common/react/types/menu';
 import { MenuAction } from '@common/react/types/menu';
-import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
-import EvtOpt from '@/lib/t3-hvac/Event/EvtOpt';
-import DataOpt from '@/lib/t3-hvac/Opt/Data/DataOpt';
 
 /**
  * Home Menu — one-click return to the T3000 inputs page.
@@ -36,7 +33,7 @@ export const designHubBackMenu: MenuItem = {
   action: () => {
     window.location.hash = '#/t3000/design';
   },
-  icon: 'BuildingMultiple',
+  icon: 'ArrowStepBack',
 };
 
 /**
@@ -1097,6 +1094,9 @@ export const designHubMenuConfig: MenuItem[] = [
 
 /**
  * HVAC Designer mode menus — mirror the page's TopToolbar / ToolsPanel actions.
+ * The t3-hvac library is loaded lazily via dynamic import() so importing this
+ * config early during boot never triggers the library's internal
+ * circular-initialization (S.BaseSymbol ↔ BaseShape).
  */
 const hvacNoopEvent = { preventDefault: () => {}, stopPropagation: () => {} } as any;
 const hvacCenterEvent = () => {
@@ -1110,22 +1110,23 @@ const hvacCenterEvent = () => {
     stopPropagation: () => {},
   } as any;
 };
-const hvacZoomPct = () => Math.round((T3Gv.docUtil?.GetZoomFactor() ?? 1) * 100);
-const hvacToggleRulers = () => {
-  const dc = T3Gv.docUtil?.docConfig;
-  if (dc) {
-    dc.showRulers = !dc.showRulers;
-    T3Gv.docUtil?.UpdateRulerVisibility();
-    DataOpt.SaveToLocalStorage();
+let t3Promise: Promise<{ toolOpt: any; T3Gv: any; DataOpt: any }> | null = null;
+function getT3(): Promise<{ toolOpt: any; T3Gv: any; DataOpt: any }> {
+  if (!t3Promise) {
+    t3Promise = Promise.all([
+      import('@/lib/t3-hvac/Event/EvtOpt'),
+      import('@/lib/t3-hvac/Data/T3Gv'),
+      import('@/lib/t3-hvac/Opt/Data/DataOpt'),
+    ]).then(([EvtOptMod, T3GvMod, DataOptMod]: any[]) => ({
+      toolOpt: EvtOptMod.default.toolOpt,
+      T3Gv: T3GvMod.default,
+      DataOpt: DataOptMod.default,
+    }));
   }
-};
-const hvacToggleGrid = () => {
-  const dc = T3Gv.docUtil?.docConfig;
-  if (dc) {
-    dc.showGrid = !dc.showGrid;
-    T3Gv.docUtil?.UpdateGridVisibility();
-    DataOpt.SaveToLocalStorage();
-  }
+  return t3Promise;
+}
+const hvacAct = (run: (t3: { toolOpt: any; T3Gv: any; DataOpt: any }) => void) => () => {
+  getT3().then(run).catch(() => {});
 };
 
 const hvacFileMenu: MenuItem = {
@@ -1133,12 +1134,12 @@ const hvacFileMenu: MenuItem = {
   label: 'File',
   type: 'submenu',
   children: [
-    { id: 'hvac-file-save', label: 'Save', type: 'item', action: () => EvtOpt.toolOpt.SaveAct(), shortcut: 'Ctrl+S', icon: 'Save' },
+    { id: 'hvac-file-save', label: 'Save', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.SaveAct()), shortcut: 'Ctrl+S', icon: 'Save' },
     { id: 'hvac-file-div1', type: 'divider' },
-    { id: 'hvac-file-clear', label: 'Clear', type: 'item', action: () => EvtOpt.toolOpt.ClearAct(), icon: 'Delete' },
+    { id: 'hvac-file-clear', label: 'Clear', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ClearAct()), icon: 'Delete' },
     { id: 'hvac-file-div2', type: 'divider' },
-    { id: 'hvac-file-add-lib', label: 'Add to Library', type: 'item', action: () => EvtOpt.toolOpt.AddToLibraryAct(), icon: 'DocumentAdd' },
-    { id: 'hvac-file-load-lib', label: 'Load Library...', type: 'item', action: () => EvtOpt.toolOpt.LoadLibraryAct(), icon: 'FolderOpen' },
+    { id: 'hvac-file-add-lib', label: 'Add to Library', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.AddToLibraryAct()), icon: 'DocumentAdd' },
+    { id: 'hvac-file-load-lib', label: 'Load Library...', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.LoadLibraryAct()), icon: 'FolderOpen' },
     { id: 'hvac-file-div3', type: 'divider' },
     {
       id: 'hvac-file-background',
@@ -1146,10 +1147,10 @@ const hvacFileMenu: MenuItem = {
       type: 'submenu',
       icon: 'Image',
       children: [
-        { id: 'hvac-file-bg-white', label: 'White', type: 'item', action: () => EvtOpt.toolOpt.LibSetBackgroundColorAct('white') },
-        { id: 'hvac-file-bg-gray', label: 'Gray', type: 'item', action: () => EvtOpt.toolOpt.LibSetBackgroundColorAct('gray') },
-        { id: 'hvac-file-bg-black', label: 'Black', type: 'item', action: () => EvtOpt.toolOpt.LibSetBackgroundColorAct('black') },
-        { id: 'hvac-file-bg-custom', label: 'Custom...', type: 'item', action: () => EvtOpt.toolOpt.LibSetBackgroundColorAct('custom') },
+        { id: 'hvac-file-bg-white', label: 'White', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.LibSetBackgroundColorAct('white')) },
+        { id: 'hvac-file-bg-gray', label: 'Gray', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.LibSetBackgroundColorAct('gray')) },
+        { id: 'hvac-file-bg-black', label: 'Black', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.LibSetBackgroundColorAct('black')) },
+        { id: 'hvac-file-bg-custom', label: 'Custom...', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.LibSetBackgroundColorAct('custom')) },
       ],
     },
   ],
@@ -1160,18 +1161,18 @@ const hvacEditMenu: MenuItem = {
   label: 'Edit',
   type: 'submenu',
   children: [
-    { id: 'hvac-edit-undo', label: 'Undo', type: 'item', action: () => EvtOpt.toolOpt.UndoAct(hvacNoopEvent), shortcut: 'Ctrl+Z' },
-    { id: 'hvac-edit-redo', label: 'Redo', type: 'item', action: () => EvtOpt.toolOpt.RedoAct(hvacNoopEvent), shortcut: 'Ctrl+Y' },
+    { id: 'hvac-edit-undo', label: 'Undo', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.UndoAct(hvacNoopEvent)), shortcut: 'Ctrl+Z' },
+    { id: 'hvac-edit-redo', label: 'Redo', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.RedoAct(hvacNoopEvent)), shortcut: 'Ctrl+Y' },
     { id: 'hvac-edit-div1', type: 'divider' },
-    { id: 'hvac-edit-cut', label: 'Cut', type: 'item', action: () => EvtOpt.toolOpt.CutAct(hvacNoopEvent), shortcut: 'Ctrl+X' },
-    { id: 'hvac-edit-copy', label: 'Copy', type: 'item', action: () => EvtOpt.toolOpt.CopyAct(hvacNoopEvent), shortcut: 'Ctrl+C', icon: 'DocumentText' },
-    { id: 'hvac-edit-duplicate', label: 'Duplicate', type: 'item', action: () => EvtOpt.toolOpt.DuplicateAct(hvacNoopEvent), icon: 'DocumentAdd' },
-    { id: 'hvac-edit-paste', label: 'Paste', type: 'item', action: () => EvtOpt.toolOpt.PasteAct(hvacNoopEvent), shortcut: 'Ctrl+V', icon: 'ArrowUpload' },
-    { id: 'hvac-edit-delete', label: 'Delete', type: 'item', action: () => EvtOpt.toolOpt.DeleteAct(hvacNoopEvent), shortcut: 'Del', icon: 'Delete' },
+    { id: 'hvac-edit-cut', label: 'Cut', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.CutAct(hvacNoopEvent)), shortcut: 'Ctrl+X' },
+    { id: 'hvac-edit-copy', label: 'Copy', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.CopyAct(hvacNoopEvent)), shortcut: 'Ctrl+C', icon: 'DocumentText' },
+    { id: 'hvac-edit-duplicate', label: 'Duplicate', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.DuplicateAct(hvacNoopEvent)), icon: 'DocumentAdd' },
+    { id: 'hvac-edit-paste', label: 'Paste', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.PasteAct(hvacNoopEvent)), shortcut: 'Ctrl+V', icon: 'ArrowUpload' },
+    { id: 'hvac-edit-delete', label: 'Delete', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.DeleteAct(hvacNoopEvent)), shortcut: 'Del', icon: 'Delete' },
     { id: 'hvac-edit-div2', type: 'divider' },
-    { id: 'hvac-edit-select-all', label: 'Select All', type: 'item', action: () => EvtOpt.toolOpt.SelectAllObjects(), shortcut: 'Ctrl+A', icon: 'CheckmarkCircle' },
-    { id: 'hvac-edit-lock', label: 'Lock', type: 'item', action: () => EvtOpt.toolOpt.LibLockAct(false) },
-    { id: 'hvac-edit-unlock', label: 'Unlock', type: 'item', action: () => EvtOpt.toolOpt.LibUnlockAct(false) },
+    { id: 'hvac-edit-select-all', label: 'Select All', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.SelectAllObjects()), shortcut: 'Ctrl+A', icon: 'CheckmarkCircle' },
+    { id: 'hvac-edit-lock', label: 'Lock', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.LibLockAct(false)) },
+    { id: 'hvac-edit-unlock', label: 'Unlock', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.LibUnlockAct(false)) },
   ],
 };
 
@@ -1180,12 +1181,12 @@ const hvacViewMenu: MenuItem = {
   label: 'View',
   type: 'submenu',
   children: [
-    { id: 'hvac-view-zoomin', label: 'Zoom In', type: 'item', action: () => T3Gv.docUtil?.SetZoomLevel(hvacZoomPct() + 10) },
-    { id: 'hvac-view-zoomout', label: 'Zoom Out', type: 'item', action: () => T3Gv.docUtil?.SetZoomLevel(hvacZoomPct() - 10) },
-    { id: 'hvac-view-resetzoom', label: 'Reset Zoom', type: 'item', action: () => EvtOpt.toolOpt.ResetScaleAct(hvacNoopEvent), icon: 'ArrowReset' },
+    { id: 'hvac-view-zoomin', label: 'Zoom In', type: 'item', action: hvacAct(({ T3Gv }) => T3Gv.docUtil?.SetZoomLevel(Math.round((T3Gv.docUtil?.GetZoomFactor() ?? 1) * 100) + 10)) },
+    { id: 'hvac-view-zoomout', label: 'Zoom Out', type: 'item', action: hvacAct(({ T3Gv }) => T3Gv.docUtil?.SetZoomLevel(Math.round((T3Gv.docUtil?.GetZoomFactor() ?? 1) * 100) - 10)) },
+    { id: 'hvac-view-resetzoom', label: 'Reset Zoom', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ResetScaleAct(hvacNoopEvent)), icon: 'ArrowReset' },
     { id: 'hvac-view-div1', type: 'divider' },
-    { id: 'hvac-view-rulers', label: 'Rulers', type: 'item', action: hvacToggleRulers, icon: 'Toolbox' },
-    { id: 'hvac-view-grid', label: 'Grid', type: 'item', action: hvacToggleGrid, icon: 'Table' },
+    { id: 'hvac-view-rulers', label: 'Rulers', type: 'item', action: hvacAct(({ T3Gv, DataOpt }) => { const dc = T3Gv.docUtil?.docConfig; if (dc) { dc.showRulers = !dc.showRulers; T3Gv.docUtil?.UpdateRulerVisibility(); DataOpt.SaveToLocalStorage(); } }), icon: 'Toolbox' },
+    { id: 'hvac-view-grid', label: 'Grid', type: 'item', action: hvacAct(({ T3Gv, DataOpt }) => { const dc = T3Gv.docUtil?.docConfig; if (dc) { dc.showGrid = !dc.showGrid; T3Gv.docUtil?.UpdateGridVisibility(); DataOpt.SaveToLocalStorage(); } }), icon: 'Table' },
   ],
 };
 
@@ -1199,11 +1200,11 @@ const hvacInsertMenu: MenuItem = {
       label: 'Add Shape',
       type: 'header',
     },
-    { id: 'hvac-insert-rect', label: 'Rectangle', type: 'item', action: () => EvtOpt.toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 2, 'Box'), icon: 'DocumentText' },
-    { id: 'hvac-insert-oval', label: 'Oval', type: 'item', action: () => EvtOpt.toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 4, 'Oval'), icon: 'CircleMultipleConcentric' },
-    { id: 'hvac-insert-circle', label: 'Circle', type: 'item', action: () => EvtOpt.toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 9, 'G_Circle'), icon: 'CircleMultipleConcentric' },
-    { id: 'hvac-insert-line', label: 'Line', type: 'item', action: () => EvtOpt.toolOpt.ToolLineAct('line', hvacCenterEvent()), icon: 'Flow' },
-    { id: 'hvac-insert-text', label: 'Text', type: 'item', action: () => EvtOpt.toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 'textLabel', 'Text'), icon: 'DocumentText' },
+    { id: 'hvac-insert-rect', label: 'Rectangle', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 2, 'Box')), icon: 'DocumentText' },
+    { id: 'hvac-insert-oval', label: 'Oval', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 4, 'Oval')), icon: 'CircleMultipleConcentric' },
+    { id: 'hvac-insert-circle', label: 'Circle', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 9, 'G_Circle')), icon: 'CircleMultipleConcentric' },
+    { id: 'hvac-insert-line', label: 'Line', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ToolLineAct('line', hvacCenterEvent())), icon: 'Flow' },
+    { id: 'hvac-insert-text', label: 'Text', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.StampShapeFromToolAct(hvacCenterEvent(), 'textLabel', 'Text')), icon: 'DocumentText' },
   ],
 };
 
@@ -1223,10 +1224,10 @@ const hvacToolsMenu: MenuItem = {
       type: 'submenu',
       icon: 'ArrowClockwise',
       children: [
-        { id: 'hvac-tools-rotate-45', label: '45°', type: 'item', action: () => EvtOpt.toolOpt.RotateAct(hvacNoopEvent, 45) },
-        { id: 'hvac-tools-rotate-90', label: '90°', type: 'item', action: () => EvtOpt.toolOpt.RotateAct(hvacNoopEvent, 90) },
-        { id: 'hvac-tools-rotate-180', label: '180°', type: 'item', action: () => EvtOpt.toolOpt.RotateAct(hvacNoopEvent, 180) },
-        { id: 'hvac-tools-rotate-270', label: '270°', type: 'item', action: () => EvtOpt.toolOpt.RotateAct(hvacNoopEvent, 270) },
+        { id: 'hvac-tools-rotate-45', label: '45°', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.RotateAct(hvacNoopEvent, 45)) },
+        { id: 'hvac-tools-rotate-90', label: '90°', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.RotateAct(hvacNoopEvent, 90)) },
+        { id: 'hvac-tools-rotate-180', label: '180°', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.RotateAct(hvacNoopEvent, 180)) },
+        { id: 'hvac-tools-rotate-270', label: '270°', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.RotateAct(hvacNoopEvent, 270)) },
       ],
     },
     {
@@ -1235,8 +1236,8 @@ const hvacToolsMenu: MenuItem = {
       type: 'submenu',
       icon: 'Flow',
       children: [
-        { id: 'hvac-tools-flip-h', label: 'Flip Horizontal', type: 'item', action: () => EvtOpt.toolOpt.ShapeFlipHorizontalAct(hvacNoopEvent) },
-        { id: 'hvac-tools-flip-v', label: 'Flip Vertical', type: 'item', action: () => EvtOpt.toolOpt.ShapeFlipVerticalAct(hvacNoopEvent) },
+        { id: 'hvac-tools-flip-h', label: 'Flip Horizontal', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ShapeFlipHorizontalAct(hvacNoopEvent)) },
+        { id: 'hvac-tools-flip-v', label: 'Flip Vertical', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ShapeFlipVerticalAct(hvacNoopEvent)) },
       ],
     },
     {
@@ -1245,12 +1246,12 @@ const hvacToolsMenu: MenuItem = {
       type: 'submenu',
       icon: 'Table',
       children: [
-        { id: 'hvac-tools-align-left', label: 'Align Left', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('lefts') },
-        { id: 'hvac-tools-align-centerh', label: 'Align Center H', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('centers') },
-        { id: 'hvac-tools-align-right', label: 'Align Right', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('rights') },
-        { id: 'hvac-tools-align-top', label: 'Align Top', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('tops') },
-        { id: 'hvac-tools-align-centerv', label: 'Align Center V', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('middles') },
-        { id: 'hvac-tools-align-bottom', label: 'Align Bottom', type: 'item', action: () => EvtOpt.toolOpt.ShapeAlignAct('bottoms') },
+        { id: 'hvac-tools-align-left', label: 'Align Left', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ShapeAlignAct('lefts')) },
+        { id: 'hvac-tools-align-centerh', label: 'Align Center H', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ShapeAlignAct('centers')) },
+        { id: 'hvac-tools-align-right', label: 'Align Right', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ShapeAlignAct('rights')) },
+        { id: 'hvac-tools-align-top', label: 'Align Top', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ShapeAlignAct('tops')) },
+        { id: 'hvac-tools-align-centerv', label: 'Align Center V', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ShapeAlignAct('middles')) },
+        { id: 'hvac-tools-align-bottom', label: 'Align Bottom', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ShapeAlignAct('bottoms')) },
       ],
     },
     {
@@ -1259,17 +1260,17 @@ const hvacToolsMenu: MenuItem = {
       type: 'submenu',
       icon: 'DocumentText',
       children: [
-        { id: 'hvac-tools-same-width', label: 'Same Width', type: 'item', action: () => EvtOpt.toolOpt.MakeSameSizeAct(hvacNoopEvent, 2) },
-        { id: 'hvac-tools-same-height', label: 'Same Height', type: 'item', action: () => EvtOpt.toolOpt.MakeSameSizeAct(hvacNoopEvent, 1) },
-        { id: 'hvac-tools-same-size', label: 'Same Size', type: 'item', action: () => EvtOpt.toolOpt.MakeSameSizeAct(hvacNoopEvent, 3) },
+        { id: 'hvac-tools-same-width', label: 'Same Width', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.MakeSameSizeAct(hvacNoopEvent, 2)) },
+        { id: 'hvac-tools-same-height', label: 'Same Height', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.MakeSameSizeAct(hvacNoopEvent, 1)) },
+        { id: 'hvac-tools-same-size', label: 'Same Size', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.MakeSameSizeAct(hvacNoopEvent, 3)) },
       ],
     },
     { id: 'hvac-tools-div1', type: 'divider' },
-    { id: 'hvac-tools-group', label: 'Group', type: 'item', action: () => EvtOpt.toolOpt.GroupAct(hvacNoopEvent), icon: 'CircleMultipleConcentric' },
-    { id: 'hvac-tools-ungroup', label: 'Ungroup', type: 'item', action: () => EvtOpt.toolOpt.UnGroupAct(hvacNoopEvent), icon: 'CircleMultipleConcentric' },
+    { id: 'hvac-tools-group', label: 'Group', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.GroupAct(hvacNoopEvent)), icon: 'CircleMultipleConcentric' },
+    { id: 'hvac-tools-ungroup', label: 'Ungroup', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.UnGroupAct(hvacNoopEvent)), icon: 'CircleMultipleConcentric' },
     { id: 'hvac-tools-div2', type: 'divider' },
-    { id: 'hvac-tools-front', label: 'Bring to Front', type: 'item', action: () => EvtOpt.toolOpt.ShapeBringToFrontAct(hvacNoopEvent), icon: 'ArrowUpload' },
-    { id: 'hvac-tools-back', label: 'Send to Back', type: 'item', action: () => EvtOpt.toolOpt.ShapeSendToBackAct(hvacNoopEvent), icon: 'ArrowDownload' },
+    { id: 'hvac-tools-front', label: 'Bring to Front', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ShapeBringToFrontAct(hvacNoopEvent)), icon: 'ArrowUpload' },
+    { id: 'hvac-tools-back', label: 'Send to Back', type: 'item', action: hvacAct(({ toolOpt }) => toolOpt.ShapeSendToBackAct(hvacNoopEvent)), icon: 'ArrowDownload' },
   ],
 };
 
