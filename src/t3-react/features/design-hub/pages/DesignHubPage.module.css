@@ -1,0 +1,602 @@
+/**
+ * Design Hub — Dashboard Styles
+ * Modern card-based dashboard with gradient hero, glass tiles and hover lift.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 24px 32px;
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 400px at 80% -10%, rgba(0, 120, 212, 0.10), transparent 60%),
+    radial-gradient(900px 380px at 0% 0%, rgba(135, 100, 184, 0.08), transparent 55%),
+    linear-gradient(180deg, #f7f9fc 0%, #f1f4f9 100%);
+  font-family: var(--t3-font-family);
+}
+
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ── Hero ─────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 26px 30px;
+  color: #fff;
+  background: linear-gradient(120deg, #0b4f8a 0%, #0078d4 48%, #2e7db9 100%);
+  box-shadow: 0 12px 30px rgba(0, 90, 160, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -80px;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  right: 80px;
+  bottom: -110px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+}
+.heroText {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+}
+.heroEyebrow {
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.85;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.heroTitle {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0;
+}
+.heroSubtitle {
+  font-size: 14px;
+  opacity: 0.92;
+  margin-top: 8px;
+}
+.heroActions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.heroBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.heroBtnPrimary {
+  background: #ffffff;
+  color: #0b4f8a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.heroBtnPrimary:hover {
+  transform: translateY(-1px);
+  background: #f0f7ff;
+}
+.heroBtnGhost {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.heroBtnGhost:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+/* ── Section ──────────────────────────────────────────── */
+.section {
+  background: #ffffff;
+  border: 1px solid #e6eaf0;
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 8px rgba(30, 50, 80, 0.04);
+}
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1c2b3a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sectionHint {
+  font-size: 12px;
+  color: #7a8699;
+}
+
+/* ── Device context bar ───────────────────────────────── */
+.deviceBar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  border-radius: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, #eef6ff, #f7fbff);
+  border: 1px solid #d5e6f7;
+}
+.deviceChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+}
+.deviceChipIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #0078d4;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.deviceChipName {
+  font-weight: 700;
+  color: #143a5c;
+  font-size: 14px;
+}
+.deviceChipMeta {
+  font-size: 12px;
+  color: #5f7891;
+}
+.deviceStats {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.deviceStat {
+  text-align: center;
+}
+.deviceStatValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: #143a5c;
+}
+.deviceStatLabel {
+  font-size: 11px;
+  color: #6b7f94;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.deviceBarActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.noDevice {
+  color: #5f7891;
+  font-size: 13px;
+}
+
+/* ── Type tiles ───────────────────────────────────────── */
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+  gap: 14px;
+}
+.typeTile {
+  position: relative;
+  border-radius: 14px;
+  padding: 16px 16px 14px;
+  cursor: pointer;
+  border: 1px solid #e6eaf0;
+  background: #ffffff;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  overflow: hidden;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.typeTile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(30, 60, 100, 0.12);
+  border-color: transparent;
+}
+.typeTile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+.typeTileIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 22px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+.typeTileName {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1c2b3a;
+}
+.typeTileDesc {
+  font-size: 12px;
+  color: #6b7f94;
+  line-height: 1.45;
+  flex: 1;
+}
+.typeTileFooter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8b97a8;
+  flex-wrap: wrap;
+}
+.formatPill {
+  background: #f0f4f9;
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 10px;
+  color: #48627a;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.addTile {
+  border-style: dashed;
+  border-color: #c3cfe0;
+  background: rgba(255, 255, 255, 0.7);
+  color: #6b7f94;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.addTile:hover {
+  color: #0078d4;
+  border-color: #0078d4;
+  background: #f0f7ff;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(0, 120, 212, 0.14);
+}
+
+/* ── Tabs ─────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.tab {
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #54647a;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: all 0.12s ease;
+}
+.tab:hover {
+  background: #f0f4f9;
+  color: #143a5c;
+}
+.tabActive {
+  background: #0078d4;
+  color: #fff;
+}
+.tabActive:hover {
+  background: #0b6ab5;
+  color: #fff;
+}
+.tabCount {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 1px 8px;
+  font-size: 11px;
+  margin-left: 6px;
+}
+.tabActive .tabCount {
+  background: rgba(255, 255, 255, 0.25);
+}
+.searchBox {
+  width: 220px;
+}
+
+/* ── Project cards ────────────────────────────────────── */
+.projectGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.projectCard {
+  border-radius: 14px;
+  border: 1px solid #e6eaf0;
+  background: #fff;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  display: flex;
+  flex-direction: column;
+}
+.projectCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(30, 60, 100, 0.12);
+  border-color: transparent;
+}
+.projectThumb {
+  height: 96px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.95);
+}
+.projectThumbIcon {
+  font-size: 34px;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2));
+}
+.projectThumbOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.18));
+}
+.projectStatus {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  backdrop-filter: blur(4px);
+}
+.statusSynced { background: rgba(40, 130, 70, 0.85); }
+.statusLocal { background: rgba(110, 120, 135, 0.85); }
+.statusBound { background: rgba(0, 120, 212, 0.85); }
+.statusDeployed { background: rgba(150, 90, 0, 0.85); }
+
+.projectBody {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+.projectName {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1c2b3a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.projectType {
+  font-size: 11px;
+  color: #7a8699;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+}
+.projectMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8b97a8;
+  flex-wrap: wrap;
+}
+.projectMetaDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #c3cfe0;
+}
+.projectActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.emptyState {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px 20px;
+  color: #7a8699;
+  font-size: 14px;
+  border: 1px dashed #d4dbe6;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+/* ── Bottom two-column ────────────────────────────────── */
+.bottomGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+@media (max-width: 1024px) {
+  .bottomGrid { grid-template-columns: 1fr; }
+}
+
+/* ── Libraries ────────────────────────────────────────── */
+.libList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.libCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e9edf3;
+  background: #fbfcfe;
+  transition: border-color 0.12s ease, background 0.12s ease;
+  cursor: pointer;
+}
+.libCard:hover {
+  border-color: #0078d4;
+  background: #f2f8ff;
+}
+.libIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #e3eefb, #f2f8ff);
+  color: #0078d4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  flex-shrink: 0;
+}
+.libBody {
+  flex: 1;
+  min-width: 0;
+}
+.libName {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1c2b3a;
+}
+.libDesc {
+  font-size: 11.5px;
+  color: #7a8699;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.libBadge {
+  font-size: 10px;
+  color: #48627a;
+  background: #e9eef5;
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.libSource {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #8b97a8;
+}
+.addLibBtn {
+  align-self: flex-start;
+  font-size: 12px;
+}
+
+/* ── Activity ─────────────────────────────────────────── */
+.activityList {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbarWidth: thin;
+}
+.activityItem {
+  display: flex;
+  gap: 12px;
+  padding: 9px 4px;
+  border-bottom: 1px solid #f0f3f8;
+  align-items: flex-start;
+}
+.activityItem:last-child { border-bottom: none; }
+.activityIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: #fff;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.activityBody { flex: 1; min-width: 0; }
+.activityLabel {
+  font-size: 13px;
+  color: #1c2b3a;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.activityDetail {
+  font-size: 11.5px;
+  color: #7a8699;
+}
+.activityTime {
+  font-size: 11px;
+  color: #a5afbf;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.activityEmpty {
+  color: #7a8699;
+  font-size: 13px;
+  padding: 24px 4px;
+  text-align: center;
+}
+
+/* ── New type dialog / misc ───────────────────────────── */
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
