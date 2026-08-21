@@ -19,7 +19,7 @@ export enum MenuItemType {
 // Menu item
 export interface MenuItem {
   id?: string;
-  type: MenuItemType | 'submenu' | 'item' | 'divider' | 'separator' | 'checkbox';
+  type: MenuItemType | 'submenu' | 'item' | 'divider' | 'separator' | 'checkbox' | 'header';
   label?: string;
   icon?: FluentIcon | string; // Support both component and string name
   shortcut?: string;

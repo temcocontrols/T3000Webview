@@ -7,6 +7,50 @@ import type { MenuItem } from '@common/react/types/menu';
 import { MenuAction } from '@common/react/types/menu';
 
 /**
+ * Home Menu — one-click return to the T3000 inputs page.
+ * Shown as the first menu in every design mode. Declared at the top so every
+ * mode menu set (which references it) can initialize safely.
+ */
+export const homeMenu: MenuItem = {
+  id: 'home',
+  label: 'Home',
+  type: 'submenu',
+  children: [
+    {
+      id: 'home-t3000',
+      label: 'T3000 Home',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/inputs';
+      },
+      icon: 'BuildingMultiple',
+    },
+  ],
+};
+
+/**
+ * Design Hub Back Menu — returns to the Design Hub dashboard.
+ * Shown next to Home in every design tool mode. Declared at the top so every
+ * mode menu set (which references it) can initialize safely.
+ */
+export const designHubBackMenu: MenuItem = {
+  id: 'design-hub-back',
+  label: 'Design Hub',
+  type: 'submenu',
+  children: [
+    {
+      id: 'design-hub-back-open',
+      label: 'Design Hub Dashboard',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design';
+      },
+      icon: 'BuildingMultiple',
+    },
+  ],
+};
+
+/**
  * File Menu
  */
 const fileMenu: MenuItem = {
@@ -533,7 +577,7 @@ const miscMenu: MenuItem = {
 /**
  * Help Menu
  */
-const helpMenu: MenuItem = {
+export const helpMenu: MenuItem = {
   id: 'help',
   label: 'Help',
   type: 'submenu',
@@ -707,43 +751,57 @@ const haystackMenu: MenuItem = {
 };
 
 /**
- * Simulator Menu
- * Contextual — shown in the top menu bar only when the Tstat10 Simulator
- * page (/t3000/tstat10-simulator) is open.
+ * Simulator mode menus — Tstat10 Simulator / LCD UI editor.
+ * Structure defined; editor-specific actions wired later.
  */
-export const simulatorMenu: MenuItem = {
-  id: 'simulator',
-  label: 'Simulator',
+const simFileMenu: MenuItem = {
+  id: 'sim-file',
+  label: 'File',
   type: 'submenu',
   children: [
+    { id: 'sim-file-new', label: 'New Screen', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'DocumentAdd' },
+    { id: 'sim-file-open', label: 'Open...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'FolderOpen' },
+    { id: 'sim-file-div1', type: 'divider' },
+    { id: 'sim-file-save', label: 'Save', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+S', disabled: true, icon: 'Save' },
+    { id: 'sim-file-export', label: 'Export...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'ArrowDownload' },
+  ],
+};
+
+const simDesignMenu: MenuItem = {
+  id: 'sim-design',
+  label: 'Design',
+  type: 'submenu',
+  children: [
+    { id: 'sim-design-screens', label: 'Screens', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Image' },
+    { id: 'sim-design-widget', label: 'Add Widget...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'DocumentAdd' },
+    { id: 'sim-design-library', label: 'Widget Library', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Toolbox' },
+  ],
+};
+
+const simulateMenu: MenuItem = {
+  id: 'sim-simulate',
+  label: 'Simulate',
+  type: 'submenu',
+  children: [
+    { id: 'sim-simulate-run', label: 'Run', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Play' },
+    { id: 'sim-simulate-pause', label: 'Pause', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Stop' },
+    { id: 'sim-simulate-div1', type: 'divider' },
     {
-      id: 'simulator-tstat10',
-      label: 'Tstat10 Simulator',
-      type: 'item',
-      action: () => window.location.hash = '#/t3000/tstat10-simulator',
-      shortcut: 'Alt+M',
-      icon: 'Board',
-    },
-    {
-      id: 'simulator-divider-1',
-      type: 'divider',
-    },
-    {
-      id: 'simulator-toggle-drift',
+      id: 'sim-simulate-drift',
       label: 'Toggle Temperature Drift',
       type: 'item',
       action: MenuAction.ToggleDrift,
       icon: 'Temperature',
     },
     {
-      id: 'simulator-toggle-debug',
+      id: 'sim-simulate-debug',
       label: 'Toggle Debug Panel',
       type: 'item',
       action: MenuAction.ToggleDebugPanel,
       icon: 'Bug',
     },
     {
-      id: 'simulator-reset',
+      id: 'sim-simulate-reset',
       label: 'Reset Simulator',
       type: 'item',
       action: MenuAction.ResetSimulator,
@@ -751,6 +809,31 @@ export const simulatorMenu: MenuItem = {
     },
   ],
 };
+
+const simViewMenu: MenuItem = {
+  id: 'sim-view',
+  label: 'View',
+  type: 'submenu',
+  children: [
+    { id: 'sim-view-lcd', label: 'LCD View', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'DeveloperBoard' },
+    { id: 'sim-view-bezel', label: 'Bezel View', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Image' },
+    { id: 'sim-view-div1', type: 'divider' },
+    { id: 'sim-view-debug', label: 'Debug Panel', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Bug' },
+  ],
+};
+
+/**
+ * Simulator mode menu set
+ */
+export const simulatorMenuConfig: MenuItem[] = [
+  homeMenu,
+  designHubBackMenu,
+  simFileMenu,
+  simDesignMenu,
+  simulateMenu,
+  simViewMenu,
+  helpMenu,
+];
 
 /**
  * AI Assistant Menu
@@ -798,74 +881,72 @@ const aiAssistantMenu: MenuItem = {
 /**
  * Design Menu — unified entry point for the Design Hub & drawing creation.
  * Hub-only by design: Simulator and EEZ Studio live in the Design Hub and are
- * also exposed as contextual menus on their own pages (see Header).
+ * also exposed as contextual menus on their own pages (see getMenusForPath).
  */
-const designMenu: MenuItem = {
+export const designMenu: MenuItem = {
   id: 'design',
-  label: 'Design',
+  label: 'Design Hub',
   type: 'submenu',
   children: [
     {
       id: 'design-hub',
-      label: 'Design Hub',
+      label: 'Dashboard',
       type: 'item',
       action: () => {
         window.location.hash = '#/t3000/design';
       },
+      icon: 'DataHistogram',
+    },
+    { id: 'design-divider-0', type: 'divider' },
+    {
+      id: 'design-new-drawing-title',
+      label: 'New Drawing',
+      type: 'header',
+    },
+    {
+      id: 'design-new-hvac-schematic',
+      label: 'HVAC Schematic',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/hvac-designer?type=hvac-schematic';
+      },
+      icon: 'Flow',
+    },
+    {
+      id: 'design-new-floor-plan',
+      label: 'Floor Plan',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/hvac-designer?type=floor-plan';
+      },
       icon: 'BuildingMultiple',
     },
     {
-      id: 'design-new-drawing',
-      label: 'New Drawing',
-      type: 'submenu',
-      icon: 'DocumentAdd',
-      children: [
-        {
-          id: 'design-new-hvac-schematic',
-          label: 'HVAC Schematic',
-          type: 'item',
-          action: () => {
-            window.location.hash = '#/t3000/hvac-designer?type=hvac-schematic';
-          },
-          icon: 'Flow',
-        },
-        {
-          id: 'design-new-floor-plan',
-          label: 'Floor Plan',
-          type: 'item',
-          action: () => {
-            window.location.hash = '#/t3000/hvac-designer?type=floor-plan';
-          },
-          icon: 'BuildingMultiple',
-        },
-        {
-          id: 'design-new-eez-project',
-          label: 'EEZ Project',
-          type: 'item',
-          action: () => {
-            window.location.hash = '#/t3000/eez?type=eez-project';
-          },
-          icon: 'DocumentText',
-        },
-        {
-          id: 'design-new-lcd-ui',
-          label: 'LCD UI (Thermostat)',
-          type: 'item',
-          action: () => {
-            window.location.hash = '#/t3000/tstat10-simulator?type=lcd-ui';
-          },
-          icon: 'DeveloperBoard',
-        },
-        {
-          id: 'design-new-panel-symbols',
-          label: 'Panel Symbols',
-          type: 'item',
-          action: () => {
-            window.location.hash = '#/t3000/hvac-designer?type=panel-symbols';
-          },
-          icon: 'CircleMultipleConcentric',
-        },
-      ],
+      id: 'design-new-eez-project',
+      label: 'EEZ Project',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/eez?type=eez-project';
+      },
+      icon: 'DocumentText',
+    },
+    {
+      id: 'design-new-lcd-ui',
+      label: 'LCD UI (Thermostat)',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/tstat10-simulator?type=lcd-ui';
+      },
+      icon: 'DeveloperBoard',
+    },
+    {
+      id: 'design-new-panel-symbols',
+      label: 'Panel Symbols',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/hvac-designer?type=panel-symbols';
+      },
+      icon: 'CircleMultipleConcentric',
     },
     { id: 'design-divider-1', type: 'divider' },
     {
@@ -905,136 +986,417 @@ const designMenu: MenuItem = {
       },
       icon: 'ArrowUpload',
     },
+  ],
+};
+
+/**
+ * Design Hub mode — File menu (project & hub management)
+ */
+const designHubFileMenu: MenuItem = {
+  id: 'dh-file',
+  label: 'File',
+  type: 'submenu',
+  children: [
     {
-      id: 'design-manage-types',
-      label: 'Manage Types',
+      id: 'dh-file-new-project',
+      label: 'New Project...',
       type: 'item',
       action: () => {
-        window.location.hash = '#/t3000/design?tab=types';
+        window.location.hash = '#/t3000/design?action=new-project';
       },
-      icon: 'Tag',
+      icon: 'DocumentAdd',
+    },
+    {
+      id: 'dh-file-new-type',
+      label: 'New Type...',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?action=new-type';
+      },
+      icon: 'DocumentAdd',
+    },
+    { id: 'dh-file-div1', type: 'divider' },
+    {
+      id: 'dh-file-import',
+      label: 'Import Drawing...',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?action=import';
+      },
+      icon: 'ArrowUpload',
+    },
+    { id: 'dh-file-div2', type: 'divider' },
+    {
+      id: 'dh-file-backup',
+      label: 'Backup Hub',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?action=backup';
+      },
+      icon: 'ArrowDownload',
+    },
+    {
+      id: 'dh-file-restore',
+      label: 'Restore Hub...',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?action=restore';
+      },
+      icon: 'ArrowUpload',
     },
   ],
 };
 
 /**
- * EEZ Studio Menu — mirrors Electron's native menu (File/Edit/View/Help)
- * These actions post messages into the EEZ Studio iframe/page shell.
- * Contextual — shown in the top menu bar only when the EEZ Studio page
- * (/t3000/eez) is open.
+ * Design Hub mode — View menu (grid/list, sort, favorites, folders)
  */
-export const eezStudioMenu: MenuItem = {
-  id: 'eez-studio',
-  label: 'EEZ Studio',
+const designHubViewMenu: MenuItem = {
+  id: 'dh-view',
+  label: 'View',
   type: 'submenu',
   children: [
-    // ── Launch EEZ Studio page ──
     {
-      id: 'eez-open-studio',
-      label: 'Open EEZ Studio',
+      id: 'dh-view-grid',
+      label: 'Grid View',
       type: 'item',
-      action: MenuAction.EezOpenStudio,
-      shortcut: 'Ctrl+E',
-      icon: 'WindowNew',
+      action: () => {
+        window.location.hash = '#/t3000/design?tab=grid';
+      },
+      icon: 'Table',
     },
-    { id: 'eez-divider-launch', type: 'divider' },
-    // ── File ──
     {
-      id: 'eez-file',
-      label: 'File',
-      type: 'submenu',
-      icon: 'Folder',
-      children: [
-        { id: 'eez-file-new', label: 'New Project...', type: 'item', action: MenuAction.EezNewProject, shortcut: 'Ctrl+N', icon: 'DocumentAdd' },
-        { id: 'eez-file-add-instr', label: 'Add Instrument...', type: 'item', action: MenuAction.EezAddInstrument, shortcut: 'Ctrl+Alt+N', icon: 'Add' },
-        { id: 'eez-file-new-window', label: 'New Window', type: 'item', action: MenuAction.EezNewWindow, shortcut: 'Ctrl+Shift+N', icon: 'WindowNew' },
-        { id: 'eez-file-div1', type: 'divider' },
-        { id: 'eez-file-open', label: 'Open...', type: 'item', action: MenuAction.EezOpen, shortcut: 'Ctrl+O', icon: 'FolderOpen' },
-        { id: 'eez-file-open-recent', label: 'Open Recent', type: 'submenu', icon: 'History', children: [] }, // populated dynamically
-        { id: 'eez-file-div2', type: 'divider' },
-        { id: 'eez-file-reload', label: 'Reload Project', type: 'item', action: MenuAction.EezReloadProject, disabled: true, icon: 'ArrowSync' },
-        { id: 'eez-file-div3', type: 'divider' },
-        { id: 'eez-file-import-instr', label: 'Import Instrument Definition...', type: 'item', action: MenuAction.EezImportInstrumentDef, icon: 'ArrowImport' },
-        { id: 'eez-file-div4', type: 'divider' },
-        { id: 'eez-file-save', label: 'Save', type: 'item', action: MenuAction.EezSave, shortcut: 'Ctrl+S', disabled: true, icon: 'Save' },
-        { id: 'eez-file-saveas', label: 'Save As...', type: 'item', action: MenuAction.EezSaveAs, shortcut: 'Ctrl+Shift+S', disabled: true, icon: 'SaveAs' },
-        { id: 'eez-file-div5', type: 'divider' },
-        { id: 'eez-file-check', label: 'Check', type: 'item', action: MenuAction.EezCheck, shortcut: 'Ctrl+K', disabled: true, icon: 'Checkmark' },
-        { id: 'eez-file-build', label: 'Build', type: 'item', action: MenuAction.EezBuild, shortcut: 'Ctrl+B', disabled: true, icon: 'Wrench' },
-        { id: 'eez-file-build-ext', label: 'Build Extensions', type: 'item', action: MenuAction.EezBuildExtensions, disabled: true, icon: 'PuzzlePiece' },
-        { id: 'eez-file-build-install-ext', label: 'Build and Install Extensions', type: 'item', action: MenuAction.EezBuildInstallExtensions, disabled: true, icon: 'PuzzlePiece' },
-      ],
+      id: 'dh-view-list',
+      label: 'List View',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?tab=list';
+      },
+      icon: 'List',
     },
-    { id: 'eez-divider-a', type: 'divider' },
-    // ── Edit ──
+    { id: 'dh-view-div1', type: 'divider' },
     {
-      id: 'eez-edit',
-      label: 'Edit',
-      type: 'submenu',
-      icon: 'Edit',
-      children: [
-        { id: 'eez-edit-undo', label: 'Undo', type: 'item', action: MenuAction.EezUndo, shortcut: 'Ctrl+Z', disabled: true, icon: 'ArrowUndo' },
-        { id: 'eez-edit-redo', label: 'Redo', type: 'item', action: MenuAction.EezRedo, shortcut: 'Ctrl+Y', disabled: true, icon: 'ArrowRedo' },
-        { id: 'eez-edit-div1', type: 'divider' },
-        { id: 'eez-edit-cut', label: 'Cut', type: 'item', action: MenuAction.EezCut, shortcut: 'Ctrl+X', disabled: true, icon: 'Cut' },
-        { id: 'eez-edit-copy', label: 'Copy', type: 'item', action: MenuAction.EezCopy, shortcut: 'Ctrl+C', disabled: true, icon: 'Copy' },
-        { id: 'eez-edit-paste', label: 'Paste', type: 'item', action: MenuAction.EezPaste, shortcut: 'Ctrl+V', disabled: true, icon: 'ClipboardPaste' },
-        { id: 'eez-edit-delete', label: 'Delete', type: 'item', action: MenuAction.EezDelete, shortcut: 'Del', disabled: true, icon: 'Delete' },
-        { id: 'eez-edit-div2', type: 'divider' },
-        { id: 'eez-edit-selectall', label: 'Select All', type: 'item', action: MenuAction.EezSelectAll, shortcut: 'Ctrl+A', disabled: true, icon: 'SelectAllOn' },
-        { id: 'eez-edit-div3', type: 'divider' },
-        { id: 'eez-edit-find', label: 'Find Project Component', type: 'item', action: MenuAction.EezFindComponent, shortcut: 'Ctrl+Shift+F', disabled: true, icon: 'Search' },
-      ],
+      id: 'dh-view-sort-updated',
+      label: 'Sort by Updated',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?sort=updated';
+      },
+      icon: 'History',
     },
-    { id: 'eez-divider-b', type: 'divider' },
-    // ── View ──
     {
-      id: 'eez-view',
-      label: 'View',
-      type: 'submenu',
-      icon: 'Eye',
-      children: [
-        { id: 'eez-view-home', label: 'Home', type: 'item', action: MenuAction.EezHome, icon: 'Home' },
-        { id: 'eez-view-history', label: 'History', type: 'item', action: MenuAction.EezHistory, icon: 'History' },
-        { id: 'eez-view-shortcuts', label: 'Shortcuts and Groups', type: 'item', action: MenuAction.EezShortcuts, icon: 'LinkSquare' },
-        { id: 'eez-view-notebooks', label: 'Notebooks', type: 'item', action: MenuAction.EezNotebooks, icon: 'Notebook' },
-        { id: 'eez-view-extensions', label: 'Extensions', type: 'item', action: MenuAction.EezExtensions, icon: 'PuzzlePiece' },
-        { id: 'eez-view-settings', label: 'Settings', type: 'item', action: MenuAction.EezSettings, icon: 'Settings' },
-        { id: 'eez-view-div1', type: 'divider' },
-        { id: 'eez-view-scrapbook', label: 'Scrapbook for Project Editor', type: 'item', action: MenuAction.EezScrapbook, icon: 'Collections' },
-        { id: 'eez-view-div2', type: 'divider' },
-        { id: 'eez-view-fullscreen', label: 'Toggle Full Screen', type: 'item', action: MenuAction.EezToggleFullScreen, shortcut: 'F11', icon: 'FullScreenMaximize' },
-        { id: 'eez-view-devtools', label: 'Toggle Developer Tools', type: 'item', action: MenuAction.EezToggleDevTools, shortcut: 'Ctrl+Shift+I', icon: 'WindowDevTools' },
-        { id: 'eez-view-theme', label: 'Switch Theme', type: 'item', action: MenuAction.EezSwitchTheme, shortcut: 'Ctrl+Shift+T', icon: 'DarkTheme' },
-        { id: 'eez-view-div3', type: 'divider' },
-        { id: 'eez-view-zoomin', label: 'Zoom In', type: 'item', action: MenuAction.EezZoomIn, icon: 'ZoomIn' },
-        { id: 'eez-view-zoomout', label: 'Zoom Out', type: 'item', action: MenuAction.EezZoomOut, icon: 'ZoomOut' },
-        { id: 'eez-view-resetzoom', label: 'Reset Zoom', type: 'item', action: MenuAction.EezResetZoom, icon: 'ZoomFit' },
-        { id: 'eez-view-div4', type: 'divider' },
-        { id: 'eez-view-components', label: 'Show/Hide Components Palette', type: 'item', action: MenuAction.EezToggleComponentsPalette, disabled: true, icon: 'PanelRight' },
-        { id: 'eez-view-resetlayout', label: 'Reset Layout', type: 'item', action: MenuAction.EezResetLayout, disabled: true, icon: 'LayoutRowFour' },
-        { id: 'eez-view-div5', type: 'divider' },
-        { id: 'eez-view-nexttab', label: 'Next Tab', type: 'item', action: MenuAction.EezNextTab, shortcut: 'Ctrl+Tab', icon: 'TabDesktopArrowRight' },
-        { id: 'eez-view-prevtab', label: 'Previous Tab', type: 'item', action: MenuAction.EezPreviousTab, shortcut: 'Ctrl+Shift+Tab', icon: 'TabDesktopArrowLeft' },
-        { id: 'eez-view-div6', type: 'divider' },
-        { id: 'eez-view-reload', label: 'Reload', type: 'item', action: MenuAction.EezReload, shortcut: 'Ctrl+R', icon: 'ArrowClockwise' },
-      ],
+      id: 'dh-view-sort-name',
+      label: 'Sort by Name',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?sort=name';
+      },
+      icon: 'DocumentText',
     },
-    { id: 'eez-divider-c', type: 'divider' },
-    // ── Help ──
     {
-      id: 'eez-help',
-      label: 'Help',
-      type: 'submenu',
-      icon: 'QuestionCircle',
-      children: [
-        { id: 'eez-help-docs', label: 'Documentation', type: 'item', action: MenuAction.EezDocumentation, shortcut: 'F1', icon: 'Book' },
-        { id: 'eez-help-div1', type: 'divider' },
-        { id: 'eez-help-about', label: 'About EEZ Studio', type: 'item', action: MenuAction.EezAbout, icon: 'Info' },
-      ],
+      id: 'dh-view-sort-created',
+      label: 'Sort by Created',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?sort=created';
+      },
+      icon: 'Calendar',
+    },
+    { id: 'dh-view-div2', type: 'divider' },
+    {
+      id: 'dh-view-favorites',
+      label: 'Favorites',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?tab=favorites';
+      },
+      icon: 'CheckmarkCircle',
+    },
+    {
+      id: 'dh-view-folders',
+      label: 'Folders',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?tab=folders';
+      },
+      icon: 'FolderOpen',
     },
   ],
 };
+
+/**
+ * Design Hub mode — Tools menu (device / share / cloud)
+ */
+const designHubToolsMenu: MenuItem = {
+  id: 'dh-tools',
+  label: 'Tools',
+  type: 'submenu',
+  children: [
+    {
+      id: 'dh-tools-bind',
+      label: 'Bind Device...',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?action=bind';
+      },
+      icon: 'PlugConnected',
+    },
+    {
+      id: 'dh-tools-deploy',
+      label: 'Deploy...',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?action=deploy';
+      },
+      icon: 'ArrowUpload',
+    },
+    {
+      id: 'dh-tools-sync',
+      label: 'Sync to Cloud',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?action=sync';
+      },
+      icon: 'ArrowSync',
+    },
+    {
+      id: 'dh-tools-share',
+      label: 'Share...',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?action=share';
+      },
+      icon: 'People',
+    },
+    { id: 'dh-tools-div1', type: 'divider' },
+    {
+      id: 'dh-tools-compare',
+      label: 'Compare Drawings...',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?action=compare';
+      },
+      icon: 'DataHistogram',
+    },
+  ],
+};
+
+/**
+ * Design Hub mode menu set
+ */
+export const designHubMenuConfig: MenuItem[] = [
+  homeMenu,
+  designMenu,
+  designHubFileMenu,
+  designHubViewMenu,
+  designHubToolsMenu,
+  helpMenu,
+];
+
+/**
+ * HVAC Designer mode menus — structure only, actions to be wired later.
+ */
+const hvacFileMenu: MenuItem = {
+  id: 'hvac-file',
+  label: 'File',
+  type: 'submenu',
+  children: [
+    { id: 'hvac-file-new', label: 'New', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'DocumentAdd' },
+    { id: 'hvac-file-open', label: 'Open...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'FolderOpen' },
+    { id: 'hvac-file-div1', type: 'divider' },
+    { id: 'hvac-file-save', label: 'Save', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+S', disabled: true, icon: 'Save' },
+    { id: 'hvac-file-saveas', label: 'Save As...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'SaveAs' },
+    { id: 'hvac-file-div2', type: 'divider' },
+    { id: 'hvac-file-import', label: 'Import SVG...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'ArrowUpload' },
+    { id: 'hvac-file-export', label: 'Export...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'ArrowDownload' },
+  ],
+};
+
+const hvacEditMenu: MenuItem = {
+  id: 'hvac-edit',
+  label: 'Edit',
+  type: 'submenu',
+  children: [
+    { id: 'hvac-edit-undo', label: 'Undo', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+Z', disabled: true, icon: 'ArrowSync' },
+    { id: 'hvac-edit-redo', label: 'Redo', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+Y', disabled: true, icon: 'ArrowSync' },
+    { id: 'hvac-edit-div1', type: 'divider' },
+    { id: 'hvac-edit-cut', label: 'Cut', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+X', disabled: true, icon: 'Delete' },
+    { id: 'hvac-edit-copy', label: 'Copy', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+C', disabled: true, icon: 'DocumentText' },
+    { id: 'hvac-edit-paste', label: 'Paste', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+V', disabled: true, icon: 'ArrowUpload' },
+    { id: 'hvac-edit-delete', label: 'Delete', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Del', disabled: true, icon: 'Delete' },
+    { id: 'hvac-edit-div2', type: 'divider' },
+    { id: 'hvac-edit-selectall', label: 'Select All', type: 'item', action: () => { /* TODO: wire */ }, shortcut: 'Ctrl+A', disabled: true, icon: 'CheckmarkCircle' },
+  ],
+};
+
+const hvacViewMenu: MenuItem = {
+  id: 'hvac-view',
+  label: 'View',
+  type: 'submenu',
+  children: [
+    { id: 'hvac-view-zoomin', label: 'Zoom In', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Flow' },
+    { id: 'hvac-view-zoomout', label: 'Zoom Out', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Flow' },
+    { id: 'hvac-view-zoomfit', label: 'Zoom to Fit', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Flow' },
+    { id: 'hvac-view-div1', type: 'divider' },
+    { id: 'hvac-view-grid', label: 'Show Grid', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Table' },
+    { id: 'hvac-view-rulers', label: 'Show Rulers', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Toolbox' },
+    { id: 'hvac-view-div2', type: 'divider' },
+    { id: 'hvac-view-fullscreen', label: 'Fullscreen', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Image' },
+  ],
+};
+
+const hvacInsertMenu: MenuItem = {
+  id: 'hvac-insert',
+  label: 'Insert',
+  type: 'submenu',
+  children: [
+    {
+      id: 'hvac-insert-shape',
+      label: 'Add Shape',
+      type: 'submenu',
+      icon: 'CircleMultipleConcentric',
+      children: [
+        { id: 'hvac-insert-rect', label: 'Rectangle', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'DocumentText' },
+        { id: 'hvac-insert-oval', label: 'Oval', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'CircleMultipleConcentric' },
+        { id: 'hvac-insert-line', label: 'Line', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Flow' },
+        { id: 'hvac-insert-text', label: 'Text', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'DocumentText' },
+      ],
+    },
+    { id: 'hvac-insert-div1', type: 'divider' },
+    { id: 'hvac-insert-symbol', label: 'Symbol Library...', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Toolbox' },
+  ],
+};
+
+const hvacToolsMenu: MenuItem = {
+  id: 'hvac-tools',
+  label: 'Tools',
+  type: 'submenu',
+  children: [
+    { id: 'hvac-tools-align', label: 'Align', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'Table' },
+    { id: 'hvac-tools-group', label: 'Group', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'CircleMultipleConcentric' },
+    { id: 'hvac-tools-ungroup', label: 'Ungroup', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'CircleMultipleConcentric' },
+    { id: 'hvac-tools-div1', type: 'divider' },
+    { id: 'hvac-tools-front', label: 'Bring to Front', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'ArrowUpload' },
+    { id: 'hvac-tools-back', label: 'Send to Back', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'ArrowDownload' },
+    { id: 'hvac-tools-div2', type: 'divider' },
+    { id: 'hvac-tools-snap', label: 'Snap to Grid', type: 'item', action: () => { /* TODO: wire */ }, disabled: true, icon: 'CheckmarkCircle' },
+  ],
+};
+
+/**
+ * HVAC Designer mode menu set
+ */
+export const hvacMenuConfig: MenuItem[] = [
+  homeMenu,
+  designHubBackMenu,
+  hvacFileMenu,
+  hvacEditMenu,
+  hvacViewMenu,
+  hvacInsertMenu,
+  hvacToolsMenu,
+  helpMenu,
+];
+
+/**
+ * EEZ Studio top-level menus — mirrors Electron's native menu (File/Edit/View/Help)
+ * These actions post messages into the EEZ Studio iframe/page shell.
+ * Shown at the top menu bar only while the EEZ Studio page (/t3000/eez) is open.
+ */
+export const eezFileMenu: MenuItem = {
+  id: 'eez-file',
+  label: 'File',
+  type: 'submenu',
+  icon: 'Folder',
+  children: [
+    { id: 'eez-file-new', label: 'New Project...', type: 'item', action: MenuAction.EezNewProject, shortcut: 'Ctrl+N', icon: 'DocumentAdd' },
+    { id: 'eez-file-add-instr', label: 'Add Instrument...', type: 'item', action: MenuAction.EezAddInstrument, shortcut: 'Ctrl+Alt+N', icon: 'Add' },
+    { id: 'eez-file-new-window', label: 'New Window', type: 'item', action: MenuAction.EezNewWindow, shortcut: 'Ctrl+Shift+N', icon: 'WindowNew' },
+    { id: 'eez-file-div1', type: 'divider' },
+    { id: 'eez-file-open', label: 'Open...', type: 'item', action: MenuAction.EezOpen, shortcut: 'Ctrl+O', icon: 'FolderOpen' },
+    { id: 'eez-file-open-recent', label: 'Open Recent', type: 'submenu', icon: 'History', children: [] }, // populated dynamically
+    { id: 'eez-file-div2', type: 'divider' },
+    { id: 'eez-file-reload', label: 'Reload Project', type: 'item', action: MenuAction.EezReloadProject, disabled: true, icon: 'ArrowSync' },
+    { id: 'eez-file-div3', type: 'divider' },
+    { id: 'eez-file-import-instr', label: 'Import Instrument Definition...', type: 'item', action: MenuAction.EezImportInstrumentDef, icon: 'ArrowImport' },
+    { id: 'eez-file-div4', type: 'divider' },
+    { id: 'eez-file-save', label: 'Save', type: 'item', action: MenuAction.EezSave, shortcut: 'Ctrl+S', disabled: true, icon: 'Save' },
+    { id: 'eez-file-saveas', label: 'Save As...', type: 'item', action: MenuAction.EezSaveAs, shortcut: 'Ctrl+Shift+S', disabled: true, icon: 'SaveAs' },
+    { id: 'eez-file-div5', type: 'divider' },
+    { id: 'eez-file-check', label: 'Check', type: 'item', action: MenuAction.EezCheck, shortcut: 'Ctrl+K', disabled: true, icon: 'Checkmark' },
+    { id: 'eez-file-build', label: 'Build', type: 'item', action: MenuAction.EezBuild, shortcut: 'Ctrl+B', disabled: true, icon: 'Wrench' },
+    { id: 'eez-file-build-ext', label: 'Build Extensions', type: 'item', action: MenuAction.EezBuildExtensions, disabled: true, icon: 'PuzzlePiece' },
+    { id: 'eez-file-build-install-ext', label: 'Build and Install Extensions', type: 'item', action: MenuAction.EezBuildInstallExtensions, disabled: true, icon: 'PuzzlePiece' },
+  ],
+};
+
+export const eezEditMenu: MenuItem = {
+  id: 'eez-edit',
+  label: 'Edit',
+  type: 'submenu',
+  icon: 'Edit',
+  children: [
+    { id: 'eez-edit-undo', label: 'Undo', type: 'item', action: MenuAction.EezUndo, shortcut: 'Ctrl+Z', disabled: true, icon: 'ArrowUndo' },
+    { id: 'eez-edit-redo', label: 'Redo', type: 'item', action: MenuAction.EezRedo, shortcut: 'Ctrl+Y', disabled: true, icon: 'ArrowRedo' },
+    { id: 'eez-edit-div1', type: 'divider' },
+    { id: 'eez-edit-cut', label: 'Cut', type: 'item', action: MenuAction.EezCut, shortcut: 'Ctrl+X', disabled: true, icon: 'Cut' },
+    { id: 'eez-edit-copy', label: 'Copy', type: 'item', action: MenuAction.EezCopy, shortcut: 'Ctrl+C', disabled: true, icon: 'Copy' },
+    { id: 'eez-edit-paste', label: 'Paste', type: 'item', action: MenuAction.EezPaste, shortcut: 'Ctrl+V', disabled: true, icon: 'ClipboardPaste' },
+    { id: 'eez-edit-delete', label: 'Delete', type: 'item', action: MenuAction.EezDelete, shortcut: 'Del', disabled: true, icon: 'Delete' },
+    { id: 'eez-edit-div2', type: 'divider' },
+    { id: 'eez-edit-selectall', label: 'Select All', type: 'item', action: MenuAction.EezSelectAll, shortcut: 'Ctrl+A', disabled: true, icon: 'SelectAllOn' },
+    { id: 'eez-edit-div3', type: 'divider' },
+    { id: 'eez-edit-find', label: 'Find Project Component', type: 'item', action: MenuAction.EezFindComponent, shortcut: 'Ctrl+Shift+F', disabled: true, icon: 'Search' },
+  ],
+};
+
+export const eezViewMenu: MenuItem = {
+  id: 'eez-view',
+  label: 'View',
+  type: 'submenu',
+  icon: 'Eye',
+  children: [
+    { id: 'eez-view-home', label: 'Home', type: 'item', action: MenuAction.EezHome, icon: 'Home' },
+    { id: 'eez-view-history', label: 'History', type: 'item', action: MenuAction.EezHistory, icon: 'History' },
+    { id: 'eez-view-shortcuts', label: 'Shortcuts and Groups', type: 'item', action: MenuAction.EezShortcuts, icon: 'LinkSquare' },
+    { id: 'eez-view-notebooks', label: 'Notebooks', type: 'item', action: MenuAction.EezNotebooks, icon: 'Notebook' },
+    { id: 'eez-view-extensions', label: 'Extensions', type: 'item', action: MenuAction.EezExtensions, icon: 'PuzzlePiece' },
+    { id: 'eez-view-settings', label: 'Settings', type: 'item', action: MenuAction.EezSettings, icon: 'Settings' },
+    { id: 'eez-view-div1', type: 'divider' },
+    { id: 'eez-view-scrapbook', label: 'Scrapbook for Project Editor', type: 'item', action: MenuAction.EezScrapbook, icon: 'Collections' },
+    { id: 'eez-view-div2', type: 'divider' },
+    { id: 'eez-view-fullscreen', label: 'Toggle Full Screen', type: 'item', action: MenuAction.EezToggleFullScreen, shortcut: 'F11', icon: 'FullScreenMaximize' },
+    { id: 'eez-view-devtools', label: 'Toggle Developer Tools', type: 'item', action: MenuAction.EezToggleDevTools, shortcut: 'Ctrl+Shift+I', icon: 'WindowDevTools' },
+    { id: 'eez-view-theme', label: 'Switch Theme', type: 'item', action: MenuAction.EezSwitchTheme, shortcut: 'Ctrl+Shift+T', icon: 'DarkTheme' },
+    { id: 'eez-view-div3', type: 'divider' },
+    { id: 'eez-view-zoomin', label: 'Zoom In', type: 'item', action: MenuAction.EezZoomIn, icon: 'ZoomIn' },
+    { id: 'eez-view-zoomout', label: 'Zoom Out', type: 'item', action: MenuAction.EezZoomOut, icon: 'ZoomOut' },
+    { id: 'eez-view-resetzoom', label: 'Reset Zoom', type: 'item', action: MenuAction.EezResetZoom, icon: 'ZoomFit' },
+    { id: 'eez-view-div4', type: 'divider' },
+    { id: 'eez-view-components', label: 'Show/Hide Components Palette', type: 'item', action: MenuAction.EezToggleComponentsPalette, disabled: true, icon: 'PanelRight' },
+    { id: 'eez-view-resetlayout', label: 'Reset Layout', type: 'item', action: MenuAction.EezResetLayout, disabled: true, icon: 'LayoutRowFour' },
+    { id: 'eez-view-div5', type: 'divider' },
+    { id: 'eez-view-nexttab', label: 'Next Tab', type: 'item', action: MenuAction.EezNextTab, shortcut: 'Ctrl+Tab', icon: 'TabDesktopArrowRight' },
+    { id: 'eez-view-prevtab', label: 'Previous Tab', type: 'item', action: MenuAction.EezPreviousTab, shortcut: 'Ctrl+Shift+Tab', icon: 'TabDesktopArrowLeft' },
+    { id: 'eez-view-div6', type: 'divider' },
+    { id: 'eez-view-reload', label: 'Reload', type: 'item', action: MenuAction.EezReload, shortcut: 'Ctrl+R', icon: 'ArrowClockwise' },
+  ],
+};
+
+export const eezHelpMenu: MenuItem = {
+  id: 'eez-help',
+  label: 'Help',
+  type: 'submenu',
+  icon: 'QuestionCircle',
+  children: [
+    { id: 'eez-help-docs', label: 'Documentation', type: 'item', action: MenuAction.EezDocumentation, shortcut: 'F1', icon: 'Book' },
+    { id: 'eez-help-div1', type: 'divider' },
+    { id: 'eez-help-about', label: 'About EEZ Studio', type: 'item', action: MenuAction.EezAbout, icon: 'Info' },
+  ],
+};
+
+/**
+ * EEZ Studio mode menu set — File/Edit/View/Help promoted to top level.
+ */
+export const eezMenuConfig: MenuItem[] = [designHubBackMenu, eezFileMenu, eezEditMenu, eezViewMenu, eezHelpMenu];
 
 /**
  * Top Menu Configuration
@@ -1058,6 +1420,23 @@ export const topMenuConfig: MenuItem[] = [
  * Alias for compatibility
  */
 export const menuConfig = topMenuConfig;
+
+/**
+ * Mode-based menu resolution.
+ * Returns the menu set to show for a given route path:
+ *  - /t3000/design            → Design Hub menus
+ *  - /t3000/hvac-designer     → HVAC editor menus
+ *  - /t3000/eez               → EEZ Studio File/Edit/View/Help (top level)
+ *  - /t3000/tstat10-simulator → Simulator menus
+ *  - everything else          → T3000 menus
+ */
+export function getMenusForPath(pathname: string): MenuItem[] {
+  if (pathname.startsWith('/t3000/design')) return designHubMenuConfig;
+  if (pathname.startsWith('/t3000/hvac-designer')) return hvacMenuConfig;
+  if (pathname.startsWith('/t3000/eez')) return eezMenuConfig;
+  if (pathname.startsWith('/t3000/tstat10-simulator')) return simulatorMenuConfig;
+  return topMenuConfig;
+}
 
 /**
  * Get menu item by ID (helper function)

@@ -96,7 +96,7 @@ import {
   TagRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { menuConfig, simulatorMenu, eezStudioMenu } from '@t3-react/config/menuConfig';
+import { getMenusForPath } from '@t3-react/config/menuConfig';
 import { MenuAction } from '@common/react/types/menu';
 import type { MenuItem as MenuItemConfig } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
@@ -293,15 +293,9 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Contextual menus — shown only while their editor page is open.
-  // EEZ Studio appears on /t3000/eez, Simulator on /t3000/tstat10-simulator.
-  const contextualMenus: MenuItemConfig[] = [];
-  if (location.pathname.startsWith('/t3000/eez')) {
-    contextualMenus.push(eezStudioMenu);
-  }
-  if (location.pathname.startsWith('/t3000/tstat10-simulator')) {
-    contextualMenus.push(simulatorMenu);
-  }
+  // Mode-based menu bar: T3000 menus by default; design tools swap to their
+  // own menu set when their route is active (see getMenusForPath).
+  const activeMenus = getMenusForPath(location.pathname);
 
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -881,6 +875,28 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       return <MenuDivider key={item.id} />;
     }
 
+    // Non-clickable section header (small title) — e.g. "New Drawing"
+    if (item.type === 'header') {
+      return (
+        <MenuItem
+          key={item.id}
+          disabled
+          style={{
+            fontSize: '10px',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--t3-color-muted, #8a8a8a)',
+            padding: '6px 16px 2px',
+            minHeight: '18px',
+            cursor: 'default',
+          }}
+        >
+          {item.label}
+        </MenuItem>
+      );
+    }
+
     const IconComponent = typeof item.icon === 'string'
       ? getIconComponent(item.icon)
       : item.icon;
@@ -949,7 +965,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
     <div className={styles.header}>
       {/* Row 1: Menu Bar with File, Edit, View, Tools, Help */}
       <div className={styles.menuBar}>
-        {[...menuConfig, ...contextualMenus].map((menu) => (
+        {activeMenus.map((menu) => (
           <Menu key={menu.id}>
             <MenuTrigger>
               <div className={styles.menuItem}>{menu.label}</div>
