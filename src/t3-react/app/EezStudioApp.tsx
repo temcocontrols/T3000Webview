@@ -4,6 +4,53 @@ import "src/t3-eez-studio/bridge/browser-polyfill";
 import { useEffect, useState } from "react";
 import { initEezBridge, checkBackendHealth } from "src/t3-eez-studio/bridge/eez-studio-api";
 import "src/t3-eez-studio/bridge/eez-registry";
+import { ipcRenderer } from "electron";
+
+// ── EEZ top-menu → IPC channel map ────────────────────────────────
+// Header's File/Edit/View/Help menus dispatch `eez-studio-action` CustomEvents
+// (Header.tsx handleEezAction). Map each channel to the embedded EEZ Studio's
+// IPC channel, which is handled by home/main.tsx + home/tabs-store.tsx.
+const EEZ_ACTION_TO_IPC: Record<string, string | { channel: string; args?: any[] }> = {
+    // File
+    "new-project": "new-project",
+    "add-instrument": "add-instrument",
+    "open": "open-project", // opens a file picker (electron-kitchen)
+    "reload-project": "reload-project",
+    "save": "save",
+    "save-as": "saveAs",
+    "check": "check",
+    "build": "build",
+    "build-extensions": "build-extensions",
+    "build-and-install-extensions": "build-and-install-extensions",
+    // Edit
+    "undo": "undo",
+    "redo": "redo",
+    "cut": "cut",
+    "copy": "copy",
+    "paste": "paste",
+    "delete": "delete",
+    "select-all": "select-all",
+    "find-project-component": "findProjectComponent",
+    // View
+    "openTab-home": { channel: "openTab", args: ["home"] },
+    "openTab-history": { channel: "openTab", args: ["history"] },
+    "openTab-shortcutsAndGroups": { channel: "openTab", args: ["shortcutsAndGroups"] },
+    "openTab-homeSection_notebooks": { channel: "openTab", args: ["home"] },
+    "openTab-extensions": { channel: "openTab", args: ["extensions"] },
+    "openTab-settings": { channel: "openTab", args: ["settings"] },
+    "showScrapbookManager": "showScrapbookManager",
+    "switch-theme": "switch-theme",
+    "toggle-components-palette": "toggleComponentsPalette",
+    "reset-layout": "resetLayoutModels",
+    "show-next-tab": "show-next-tab",
+    "show-previous-tab": "show-previous-tab",
+    "reload": "reload",
+    // Help
+    "show-documentation-browser": "show-documentation-browser",
+    "show-about-box": "show-about-box",
+};
+// No-op in browser: new-window, close-window, exit, toggle-fullscreen,
+// toggle-devtools, zoom-in, zoom-out, reset-zoom, import-instrument-def
 import "bootstrap/dist/css/bootstrap.min.css";
 import { makeStyles, mergeClasses, Spinner, FluentProvider, webLightTheme } from "@fluentui/react-components";
 import { CheckmarkCircleRegular, ErrorCircleRegular } from "@fluentui/react-icons";
@@ -122,6 +169,23 @@ export function EezStudioApp() {
         return () => {
             cancelled = true;
         };
+    }, []);
+
+    // ── EEZ top-menu bridge ─────────────────────────────────────
+    // Header dispatches `eez-studio-action` (see Header.tsx handleEezAction);
+    // forward the channel to the embedded EEZ Studio via its IPC emitter.
+    useEffect(() => {
+        const onEezAction = (e: Event) => {
+            const action = (e as CustomEvent<string>).detail;
+            if (!action) return;
+            const mapped = EEZ_ACTION_TO_IPC[action];
+            if (!mapped) return;
+            const channel = typeof mapped === "string" ? mapped : mapped.channel;
+            const args = typeof mapped === "string" ? [] : (mapped.args ?? []);
+            ipcRenderer.send(channel, ...args);
+        };
+        window.addEventListener("eez-studio-action", onEezAction);
+        return () => window.removeEventListener("eez-studio-action", onEezAction);
     }, []);
 
     return (

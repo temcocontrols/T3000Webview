@@ -57,7 +57,9 @@ const ipcSyncDefaults: Record<string, any> = {
 // Simple event emitter so ipcRenderer.on actually works in browser
 const ipcListeners: Record<string, Array<(...args: any[]) => void>> = {};
 function emitIPC(ch: string, ...args: any[]) {
-    (ipcListeners[ch] || []).forEach(fn => fn(...args));
+    (ipcListeners[ch] || []).forEach(fn => {
+        try { fn(...args); } catch (e) { console.error(`[ipcRenderer] handler for "${ch}" failed:`, e); }
+    });
 }
 
 export const ipcRenderer = {
@@ -189,6 +191,9 @@ export const ipcRenderer = {
                 })
                 .catch(err => console.error("[electron-kitchen] pick-save-file failed:", err));
         }
+
+        // Dispatch to renderer-registered IPC handlers (home/main.tsx, tabs-store.tsx, ...)
+        emitIPC(ch, null, ...args);
     },
     sendSync: (ch: string) => {
         if (ch === "getMRU") { return readMRU(); }

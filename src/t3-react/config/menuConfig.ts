@@ -1306,17 +1306,17 @@ export const eezFileMenu: MenuItem = {
     { id: 'eez-file-open', label: 'Open...', type: 'item', action: MenuAction.EezOpen, shortcut: 'Ctrl+O', icon: 'FolderOpen' },
     { id: 'eez-file-open-recent', label: 'Open Recent', type: 'submenu', icon: 'History', children: [] }, // populated dynamically
     { id: 'eez-file-div2', type: 'divider' },
-    { id: 'eez-file-reload', label: 'Reload Project', type: 'item', action: MenuAction.EezReloadProject, disabled: true, icon: 'ArrowSync' },
+    { id: 'eez-file-reload', label: 'Reload Project', type: 'item', action: MenuAction.EezReloadProject, icon: 'ArrowSync' },
     { id: 'eez-file-div3', type: 'divider' },
     { id: 'eez-file-import-instr', label: 'Import Instrument Definition...', type: 'item', action: MenuAction.EezImportInstrumentDef, icon: 'ArrowImport' },
     { id: 'eez-file-div4', type: 'divider' },
-    { id: 'eez-file-save', label: 'Save', type: 'item', action: MenuAction.EezSave, shortcut: 'Ctrl+S', disabled: true, icon: 'Save' },
-    { id: 'eez-file-saveas', label: 'Save As...', type: 'item', action: MenuAction.EezSaveAs, shortcut: 'Ctrl+Shift+S', disabled: true, icon: 'SaveAs' },
+    { id: 'eez-file-save', label: 'Save', type: 'item', action: MenuAction.EezSave, shortcut: 'Ctrl+S', icon: 'Save' },
+    { id: 'eez-file-saveas', label: 'Save As...', type: 'item', action: MenuAction.EezSaveAs, shortcut: 'Ctrl+Shift+S', icon: 'SaveAs' },
     { id: 'eez-file-div5', type: 'divider' },
-    { id: 'eez-file-check', label: 'Check', type: 'item', action: MenuAction.EezCheck, shortcut: 'Ctrl+K', disabled: true, icon: 'Checkmark' },
-    { id: 'eez-file-build', label: 'Build', type: 'item', action: MenuAction.EezBuild, shortcut: 'Ctrl+B', disabled: true, icon: 'Wrench' },
-    { id: 'eez-file-build-ext', label: 'Build Extensions', type: 'item', action: MenuAction.EezBuildExtensions, disabled: true, icon: 'PuzzlePiece' },
-    { id: 'eez-file-build-install-ext', label: 'Build and Install Extensions', type: 'item', action: MenuAction.EezBuildInstallExtensions, disabled: true, icon: 'PuzzlePiece' },
+    { id: 'eez-file-check', label: 'Check', type: 'item', action: MenuAction.EezCheck, shortcut: 'Ctrl+K', icon: 'Checkmark' },
+    { id: 'eez-file-build', label: 'Build', type: 'item', action: MenuAction.EezBuild, shortcut: 'Ctrl+B', icon: 'Wrench' },
+    { id: 'eez-file-build-ext', label: 'Build Extensions', type: 'item', action: MenuAction.EezBuildExtensions, icon: 'PuzzlePiece' },
+    { id: 'eez-file-build-install-ext', label: 'Build and Install Extensions', type: 'item', action: MenuAction.EezBuildInstallExtensions, icon: 'PuzzlePiece' },
   ],
 };
 
@@ -1326,17 +1326,17 @@ export const eezEditMenu: MenuItem = {
   type: 'submenu',
   icon: 'Edit',
   children: [
-    { id: 'eez-edit-undo', label: 'Undo', type: 'item', action: MenuAction.EezUndo, shortcut: 'Ctrl+Z', disabled: true, icon: 'ArrowUndo' },
-    { id: 'eez-edit-redo', label: 'Redo', type: 'item', action: MenuAction.EezRedo, shortcut: 'Ctrl+Y', disabled: true, icon: 'ArrowRedo' },
+    { id: 'eez-edit-undo', label: 'Undo', type: 'item', action: MenuAction.EezUndo, shortcut: 'Ctrl+Z', icon: 'ArrowUndo' },
+    { id: 'eez-edit-redo', label: 'Redo', type: 'item', action: MenuAction.EezRedo, shortcut: 'Ctrl+Y', icon: 'ArrowRedo' },
     { id: 'eez-edit-div1', type: 'divider' },
-    { id: 'eez-edit-cut', label: 'Cut', type: 'item', action: MenuAction.EezCut, shortcut: 'Ctrl+X', disabled: true, icon: 'Cut' },
-    { id: 'eez-edit-copy', label: 'Copy', type: 'item', action: MenuAction.EezCopy, shortcut: 'Ctrl+C', disabled: true, icon: 'Copy' },
-    { id: 'eez-edit-paste', label: 'Paste', type: 'item', action: MenuAction.EezPaste, shortcut: 'Ctrl+V', disabled: true, icon: 'ClipboardPaste' },
-    { id: 'eez-edit-delete', label: 'Delete', type: 'item', action: MenuAction.EezDelete, shortcut: 'Del', disabled: true, icon: 'Delete' },
+    { id: 'eez-edit-cut', label: 'Cut', type: 'item', action: MenuAction.EezCut, shortcut: 'Ctrl+X', icon: 'Cut' },
+    { id: 'eez-edit-copy', label: 'Copy', type: 'item', action: MenuAction.EezCopy, shortcut: 'Ctrl+C', icon: 'Copy' },
+    { id: 'eez-edit-paste', label: 'Paste', type: 'item', action: MenuAction.EezPaste, shortcut: 'Ctrl+V', icon: 'ClipboardPaste' },
+    { id: 'eez-edit-delete', label: 'Delete', type: 'item', action: MenuAction.EezDelete, shortcut: 'Del', icon: 'Delete' },
     { id: 'eez-edit-div2', type: 'divider' },
-    { id: 'eez-edit-selectall', label: 'Select All', type: 'item', action: MenuAction.EezSelectAll, shortcut: 'Ctrl+A', disabled: true, icon: 'SelectAllOn' },
+    { id: 'eez-edit-selectall', label: 'Select All', type: 'item', action: MenuAction.EezSelectAll, shortcut: 'Ctrl+A', icon: 'SelectAllOn' },
     { id: 'eez-edit-div3', type: 'divider' },
-    { id: 'eez-edit-find', label: 'Find Project Component', type: 'item', action: MenuAction.EezFindComponent, shortcut: 'Ctrl+Shift+F', disabled: true, icon: 'Search' },
+    { id: 'eez-edit-find', label: 'Find Project Component', type: 'item', action: MenuAction.EezFindComponent, shortcut: 'Ctrl+Shift+F', icon: 'Search' },
   ],
 };
 
@@ -1363,8 +1363,8 @@ export const eezViewMenu: MenuItem = {
     { id: 'eez-view-zoomout', label: 'Zoom Out', type: 'item', action: MenuAction.EezZoomOut, icon: 'ZoomOut' },
     { id: 'eez-view-resetzoom', label: 'Reset Zoom', type: 'item', action: MenuAction.EezResetZoom, icon: 'ZoomFit' },
     { id: 'eez-view-div4', type: 'divider' },
-    { id: 'eez-view-components', label: 'Show/Hide Components Palette', type: 'item', action: MenuAction.EezToggleComponentsPalette, disabled: true, icon: 'PanelRight' },
-    { id: 'eez-view-resetlayout', label: 'Reset Layout', type: 'item', action: MenuAction.EezResetLayout, disabled: true, icon: 'LayoutRowFour' },
+    { id: 'eez-view-components', label: 'Show/Hide Components Palette', type: 'item', action: MenuAction.EezToggleComponentsPalette, icon: 'PanelRight' },
+    { id: 'eez-view-resetlayout', label: 'Reset Layout', type: 'item', action: MenuAction.EezResetLayout, icon: 'LayoutRowFour' },
     { id: 'eez-view-div5', type: 'divider' },
     { id: 'eez-view-nexttab', label: 'Next Tab', type: 'item', action: MenuAction.EezNextTab, shortcut: 'Ctrl+Tab', icon: 'TabDesktopArrowRight' },
     { id: 'eez-view-prevtab', label: 'Previous Tab', type: 'item', action: MenuAction.EezPreviousTab, shortcut: 'Ctrl+Shift+Tab', icon: 'TabDesktopArrowLeft' },
@@ -1386,9 +1386,9 @@ export const eezHelpMenu: MenuItem = {
 };
 
 /**
- * EEZ Studio mode menu set — File/Edit/View/Help promoted to top level.
+ * EEZ Studio mode menu set — Home + Design Hub back + File/Edit/View/Help (top level).
  */
-export const eezMenuConfig: MenuItem[] = [designHubBackMenu, eezFileMenu, eezEditMenu, eezViewMenu, eezHelpMenu];
+export const eezMenuConfig: MenuItem[] = [homeMenu, designHubBackMenu, eezFileMenu, eezEditMenu, eezViewMenu, eezHelpMenu];
 
 /**
  * Top Menu Configuration
