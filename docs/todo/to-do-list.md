@@ -119,3 +119,8 @@ Consolidate hardcoded `http://localhost:9103` → relative `/api/...` URLs.
 - `src/lib/t3-hvac/Util/T3DeviceApiExamples.ts` — example code (dead, can remove)
 
 
+## 2026-08-24
+
+To update Haystack tags with periodic updates through GitHub Actions
+
+More details=> Proposal: Fixes for specific enthalpy units
