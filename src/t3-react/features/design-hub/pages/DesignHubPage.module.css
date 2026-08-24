@@ -7,7 +7,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 20px 24px 32px;
+  padding: 10px 10px 32px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -27,11 +27,11 @@
 
 .container {
   width: 100%;
-  max-width: 1400px;
+  /* max-width: 1400px; — commented out (user, 2026-08-24) */
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
 }
 
 /* ── Hero ─────────────────────────────────────────────── */
@@ -862,6 +862,149 @@
   line-height: 1.5;
 }
 .dialogSelect:focus { border-color: #0078d4; box-shadow: 0 0 0 1px #0078d4; }
+
+/* ── LVGL New Drawing dialog (two-mode: Create New / Load from Device) ── */
+.lvglTabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #e6eaf0;
+  margin-bottom: 2px;
+}
+.lvglTab,
+.lvglTabActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #54647a;
+  cursor: pointer;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-family: inherit;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.lvglTab:hover {
+  color: #143a5c;
+  background: #f5f8fc;
+}
+.lvglTabActive {
+  color: #0078d4;
+  border-bottom-color: #0078d4;
+}
+.lvglTabActive:hover {
+  color: #0b6ab5;
+  background: #eef4fb;
+}
+.createDirRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.createDirHint {
+  font-size: 11px;
+  color: #7a8699;
+}
+.pathPreview {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f0f2f6;
+  border: 1px solid #e1e6ee;
+  font-size: 12.5px;
+  color: #3b4a5c;
+  word-break: break-all;
+  font-family: 'Cascadia Mono', Consolas, monospace;
+}
+.importInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #5b6b7c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.importPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 10px;
+}
+.importSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.importStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12px;
+  color: #3b4a5c;
+  line-height: 1.4;
+}
+.importStep_done { color: #2c7a3c; }
+.importStep_active { color: #0b6ab5; font-weight: 600; }
+.importStep_error { color: #c0392b; font-weight: 600; }
+.importStep_pending { color: #8b97a8; }
+.importStepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c3cfe0;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.importStepEmpty {
+  color: #8b97a8;
+  font-size: 12px;
+}
+.detailToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: #0078d4;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 0;
+  font-family: inherit;
+  align-self: flex-start;
+}
+.detailCount {
+  background: rgba(0, 120, 212, 0.12);
+  color: #0b6ab5;
+  border-radius: 10px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.detailLog {
+  max-height: 180px;
+  overflow-y: auto;
+  background: #0f1a26;
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scrollbarWidth: thin;
+}
+.detailLine {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 11px;
+  color: #cfe3f5;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 .dialogBadge {
   display: inline-flex;
   align-items: center;

@@ -1,7 +1,7 @@
 
 import "src/t3-eez-studio/bridge/browser-polyfill";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { initEezBridge, checkBackendHealth } from "src/t3-eez-studio/bridge/eez-studio-api";
 import "src/t3-eez-studio/bridge/eez-registry";
 import { ipcRenderer } from "electron";
@@ -147,6 +147,9 @@ function BackendStatusBar() {
 
 export function EezStudioApp() {
     const [showContent, setShowContent] = useState(false);
+    // Prevent React StrictMode (dev) from double-running the ?new= effect, which
+    // would open the New Project wizard twice (two stacked panels).
+    const wizardOpenedRef = useRef(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -163,15 +166,26 @@ export function EezStudioApp() {
                         m.initEezMain();
                     }
                     // #/t3000/eez?new=<wizardType> → open the New Project wizard
-                    // pre-configured with the requested LVGL template.
+                    // pre-configured with the requested LVGL template. Optional
+                    // name/location/createDirectory params (from the design hub's
+                    // LVGL "Create New" dialog) pre-fill the wizard fields.
                     const qi = window.location.hash.indexOf("?");
-                    const wizardType = qi >= 0
-                        ? new URLSearchParams(window.location.hash.slice(qi + 1)).get("new")
+                    const params = qi >= 0
+                        ? new URLSearchParams(window.location.hash.slice(qi + 1))
                         : null;
+                    const wizardType = params?.get("new") ?? null;
                     if (!cancelled && wizardType) {
+                        const wizardName = params.get("name") ?? null;
+                        const wizardLocation = params.get("location") ?? null;
+                        const wizardCreateDirectory = params.get("createDirectory") ?? null;
                         import("project-editor/project/ui/Wizard").then(w => {
                             if (cancelled) return;
                             w.wizardModelTemplates.type = wizardType;
+                            if (wizardName) w.wizardModelTemplates.name = wizardName;
+                            if (wizardLocation) w.wizardModelTemplates.location = wizardLocation;
+                            if (wizardCreateDirectory) {
+                                w.wizardModelTemplates.createDirectory = wizardCreateDirectory !== "false";
+                            }
                             // Wait until the app shell (home tab) is fully mounted,
                             // then open the wizard ONCE. Opening too early renders the
                             // dialog into a layer that the app then tears down.
@@ -182,11 +196,19 @@ export function EezStudioApp() {
                                     !!document.querySelector(".EezStudio_HomeTab") ||
                                     !!document.querySelector(".EezStudio_HomeTab_Navigation");
                                 if (mounted) {
+                                    // Only the surviving StrictMode effect run gets here
+                                    // (the first run is cancelled before this point), but
+                                    // guard anyway so a re-render can't stack two wizards.
+                                    if (wizardOpenedRef.current) return;
+                                    wizardOpenedRef.current = true;
                                     try { w.showNewProjectWizard(); }
                                     catch (err) { console.error("[EEZ] Failed to open New Project wizard:", err); }
                                     return;
                                 }
-                                if (attempts++ < 40) setTimeout(waitForApp, 300);
+                                // Keep waiting while the shell mounts (a cold WASM
+                                // load can take longer than 12s to render the home
+                                // tab). Cap at ~45s so we never poll forever.
+                                if (attempts++ < 150) setTimeout(waitForApp, 300);
                             };
                             waitForApp();
                         }).catch(err => console.error("[EEZ] Failed to open New Project wizard:", err));
@@ -197,6 +219,8 @@ export function EezStudioApp() {
 
         return () => {
             cancelled = true;
+            // Let a StrictMode remount (or a later ?new= navigation) retry.
+            wizardOpenedRef.current = false;
         };
     }, []);
 

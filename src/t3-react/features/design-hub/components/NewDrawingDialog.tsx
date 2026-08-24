@@ -20,9 +20,11 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { InfoRegular } from '@fluentui/react-icons';
+import { useNavigate } from 'react-router-dom';
 import type { DrawingType } from '../types';
 import { designHubService } from '../services/designHubService';
 import { HubIcon } from '../icons';
+import { LvglCreateDialog } from './LvglCreateDialog';
 import styles from '../pages/DesignHubPage.module.css';
 
 interface DialogDevice {
@@ -80,15 +82,17 @@ export const NewDrawingDialog: React.FC<{
   type: DrawingType | null;
   onClose: () => void;
 }> = ({ type, onClose }) => {
+  const navigate = useNavigate();
   const [devices, setDevices] = useState<DialogDevice[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [deviceSerial, setDeviceSerial] = useState<number | ''>('');
   const [graphic, setGraphic] = useState(1);
   const [name, setName] = useState('');
 
-  // Reset fields whenever a different type is opened
+  // Reset fields whenever a different type is opened. LVGL types are handled by
+  // LvglCreateDialog (below), so skip all of this state for them.
   useEffect(() => {
-    if (type) {
+    if (type && type.createMode !== 'lvgl') {
       setName(type.createMode === 'hvac' ? 'HVAC' : type.name);
       setDeviceSerial('');
       setGraphic(1);
@@ -97,8 +101,9 @@ export const NewDrawingDialog: React.FC<{
 
   // Load the device list when the dialog opens; pre-select the device that is
   // currently selected in the dashboard device bar (persisted in localStorage).
+  // LVGL types fetch their own (richer) device list inside LvglCreateDialog.
   useEffect(() => {
-    if (type) {
+    if (type && type.createMode !== 'lvgl') {
       setLoadingDevices(true);
       fetchDevices()
         .then((list) => {
@@ -115,6 +120,11 @@ export const NewDrawingDialog: React.FC<{
 
   if (!type) return null;
 
+  // LVGL 9.5 / LVGL + Flow 9.5 use a two-mode dialog (Create New / Load from Device).
+  if (type.createMode === 'lvgl') {
+    return <LvglCreateDialog type={type} onClose={onClose} />;
+  }
+
   const handleCreate = () => {
     const params = new URLSearchParams();
     if (deviceSerial !== '') params.set('device', String(deviceSerial));
@@ -128,8 +138,19 @@ export const NewDrawingDialog: React.FC<{
     });
 
     const qs = params.toString();
-    window.location.hash = `#${type.openPath}${qs ? `?${qs}` : ''}`;
+    const target = `${type.openPath}${qs ? `?${qs}` : ''}`;
+
+    // Close the dialog FIRST, then navigate on the next tick. Deferring the
+    // navigation guarantees the dialog-close state update is committed before the
+    // route change, so the popup can't survive the redirect.
     onClose();
+    window.setTimeout(() => {
+      try {
+        navigate(target);
+      } catch (err) {
+        console.error('[NewDrawingDialog] navigate failed:', err, target);
+      }
+    }, 0);
   };
 
   const selectedDevice = devices.find((d) => d.serialNumber === deviceSerial);
