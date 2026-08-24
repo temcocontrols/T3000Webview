@@ -277,7 +277,7 @@ export const DesignHubPage: React.FC = () => {
             <div className={styles.examplesHeaderRight}>
               <span className={styles.examplesInfoChip}>
                 <SparkleRegular className={styles.examplesInfoSpark} />
-                For <b>LVGL</b> you can create by example
+                For LVGL you can create by example
               </span>
               <button
                 type="button"
