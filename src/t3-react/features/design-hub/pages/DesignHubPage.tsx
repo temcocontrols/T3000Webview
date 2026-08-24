@@ -3,24 +3,26 @@
  * The unified center for all HVAC drawing engines.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Spinner, Button, Tooltip } from '@fluentui/react-components';
 import { ArrowDownloadRegular, ArrowUploadRegular } from '@fluentui/react-icons';
-import type { HubProject } from '../types';
+import type { DrawingType, HubProject } from '../types';
 import { useDesignHubStore } from '../store/designHubStore';
 import { designHubService } from '../services/designHubService';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { HeroHeader } from '../components/HeroHeader';
 import { DeviceContextBar } from '../components/DeviceContextBar';
-import { HubStats } from '../components/HubStats';
+// import { HubStats } from '../components/HubStats'; // hidden for now (user, 2026-08-22) — duplicates Device Context Bar counts
 import { TypeTiles } from '../components/TypeTiles';
 import { ProjectsGrid } from '../components/ProjectsGrid';
-import { FoldersBar } from '../components/FoldersBar';
-import { TemplatesSection } from '../components/TemplatesSection';
-import { SharedLibraries } from '../components/SharedLibraries';
-import { ActivityPanel } from '../components/ActivityPanel';
+// import { FoldersBar } from '../components/FoldersBar'; // hidden for now (user, 2026-08-22)
+// import { TemplatesSection } from '../components/TemplatesSection'; // hidden for now (user, 2026-08-22)
+// import { SharedLibraries } from '../components/SharedLibraries'; // hidden for now (user, 2026-08-22)
+// import { ActivityPanel } from '../components/ActivityPanel'; // hidden for now (user, 2026-08-22)
 import { BindDeviceDialog } from '../components/BindDeviceDialog';
-import { NewTypeDialog } from '../components/NewTypeDialog';
+import { NewDrawingDialog } from '../components/NewDrawingDialog';
+// 'New Type' hidden for now — only the 4 core types (user, 2026-08-22)
+// import { NewTypeDialog } from '../components/NewTypeDialog';
 import { ImportDialog } from '../components/ImportDialog';
 import { CommandPalette } from '../components/CommandPalette';
 import { HubIcon } from '../icons';
@@ -32,7 +34,6 @@ export const DesignHubPage: React.FC = () => {
   const isLoading = useDesignHubStore((s) => s.isLoading);
   const setActiveTab = useDesignHubStore((s) => s.setActiveTab);
   const bindProject = useDesignHubStore((s) => s.bindProject);
-  const addCustomType = useDesignHubStore((s) => s.addCustomType);
   const exportHub = useDesignHubStore((s) => s.exportHub);
   const importHub = useDesignHubStore((s) => s.importHub);
   const importFile = useDesignHubStore((s) => s.importFile);
@@ -42,12 +43,11 @@ export const DesignHubPage: React.FC = () => {
   const syncBackend = useDesignHubStore((s) => s.syncBackend);
   const setMessage = useStatusBarStore((s) => s.setMessage);
 
-  const [searchParams, setSearchParams] = useSearchParams();
   const restoreRef = useRef<HTMLInputElement>(null);
 
   // Dialog state
   const [bindingProject, setBindingProject] = useState<HubProject | null>(null);
-  const [newTypeOpen, setNewTypeOpen] = useState(false);
+  const [newDrawingType, setNewDrawingType] = useState<DrawingType | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -82,22 +82,8 @@ export const DesignHubPage: React.FC = () => {
       .catch((err) => setMessage(`Import failed: ${err.message}`, 'error'));
   };
 
-  // ?tab=shared → jump to the Shared view of projects
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'shared') {
-      setActiveTab('shared');
-      setSearchParams({}, { replace: true });
-    }
-  }, [searchParams, setActiveTab, setSearchParams]);
-
-  // ?newtype=1 or the global t3-design-import event → open dialogs
-  useEffect(() => {
-    if (searchParams.get('newtype') === '1') {
-      setNewTypeOpen(true);
-      setSearchParams({}, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
+  // ?tab=shared removed — the Shared tab was retired (user, 2026-08-24)
+  // ?newtype=1 hidden for now (user, 2026-08-22)
 
   useEffect(() => {
     const openImport = () => setImportOpen(true);
@@ -114,9 +100,10 @@ export const DesignHubPage: React.FC = () => {
       const action = (e as CustomEvent)?.detail?.action;
       if (!action) return;
       switch (action) {
-        case 'new-type':
-          setNewTypeOpen(true);
-          break;
+        // 'new-type' hidden for now (user, 2026-08-22)
+        // case 'new-type':
+        //   setNewTypeOpen(true);
+        //   break;
         case 'import':
           setImportOpen(true);
           break;
@@ -185,7 +172,7 @@ export const DesignHubPage: React.FC = () => {
           setMessage('Select a drawing, then use "Deploy" on its card', 'info');
           break;
         case 'share':
-          setActiveTab('shared');
+          setActiveTab('all');
           scrollTo('hub-projects');
           break;
         case 'compare':
@@ -269,9 +256,11 @@ export const DesignHubPage: React.FC = () => {
         </div>
       )}
       <div className={styles.container}>
-        <HeroHeader onImport={() => setImportOpen(true)} />
+        <HeroHeader />
         <DeviceContextBar />
+        {/* Stats strip hidden for now (user, 2026-08-22) — duplicates Device Context Bar counts
         <HubStats />
+        */}
 
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
@@ -281,11 +270,16 @@ export const DesignHubPage: React.FC = () => {
             </div>
             <span className={styles.sectionHint}>Each tile opens its own drawing engine</span>
           </div>
-          <TypeTiles onNewType={() => setNewTypeOpen(true)} />
+          <TypeTiles onCreate={(type) => setNewDrawingType(type)} />
         </div>
 
-        <TemplatesSection />
+        {/* Templates section hidden for now (user, 2026-08-22) — redundant with
+            "Create by Type"; the LCD template was broken (navigated to HVAC).
+        */}
+        {/* <TemplatesSection /> */}
 
+        {/* Folders section hidden for now (user, 2026-08-22) — organization is
+            redundant with device binding + type tabs.
         <div className={styles.section} id="hub-folders">
           <div className={styles.sectionHeader} style={{ marginBottom: 10 }}>
             <div className={styles.sectionTitle}>
@@ -296,12 +290,13 @@ export const DesignHubPage: React.FC = () => {
           </div>
           <FoldersBar />
         </div>
+        */}
 
         <div id="hub-projects">
           <ProjectsGrid onBind={handleBind} />
         </div>
 
-        {/* Hub Tools — backup / restore */}
+        {/* Hub Tools row hidden for now (user, 2026-08-22) — Backup/Restore stay in File menu.
         <div
           style={{
             display: 'flex',
@@ -328,23 +323,24 @@ export const DesignHubPage: React.FC = () => {
               Restore
             </Button>
           </Tooltip>
-          <input
-            ref={restoreRef}
-            type="file"
-            accept=".json,application/json"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleRestore(f);
-              e.target.value = '';
-            }}
-          />
         </div>
+        */}
+        {/* Hidden file input kept — used by File → Restore Hub */}
+        <input
+          ref={restoreRef}
+          type="file"
+          accept=".json,application/json"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleRestore(f);
+            e.target.value = '';
+          }}
+        />
 
-        <div className={styles.bottomGrid}>
-          <SharedLibraries />
-          <ActivityPanel />
-        </div>
+        {/* Recent & History + Shared Libraries hidden for now (user, 2026-08-22) —
+            redundant with the Projects grid (already lists by recent-updated with search).
+        */}
       </div>
 
       {/* Dialogs */}
@@ -354,6 +350,7 @@ export const DesignHubPage: React.FC = () => {
         onClose={() => setBindingProject(null)}
         onBind={handleBindSave}
       />
+      {/* New Type dialog hidden for now (user, 2026-08-22)
       <NewTypeDialog
         open={newTypeOpen}
         onClose={() => setNewTypeOpen(false)}
@@ -361,6 +358,8 @@ export const DesignHubPage: React.FC = () => {
           addCustomType(type as any);
         }}
       />
+      */}
+      <NewDrawingDialog type={newDrawingType} onClose={() => setNewDrawingType(null)} />
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>

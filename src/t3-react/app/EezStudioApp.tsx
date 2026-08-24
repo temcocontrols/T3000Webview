@@ -162,6 +162,35 @@ export function EezStudioApp() {
                     if (!cancelled && m.initEezMain) {
                         m.initEezMain();
                     }
+                    // #/t3000/eez?new=<wizardType> → open the New Project wizard
+                    // pre-configured with the requested LVGL template.
+                    const qi = window.location.hash.indexOf("?");
+                    const wizardType = qi >= 0
+                        ? new URLSearchParams(window.location.hash.slice(qi + 1)).get("new")
+                        : null;
+                    if (!cancelled && wizardType) {
+                        import("project-editor/project/ui/Wizard").then(w => {
+                            if (cancelled) return;
+                            w.wizardModelTemplates.type = wizardType;
+                            // Wait until the app shell (home tab) is fully mounted,
+                            // then open the wizard ONCE. Opening too early renders the
+                            // dialog into a layer that the app then tears down.
+                            let attempts = 0;
+                            const waitForApp = () => {
+                                if (cancelled) return;
+                                const mounted =
+                                    !!document.querySelector(".EezStudio_HomeTab") ||
+                                    !!document.querySelector(".EezStudio_HomeTab_Navigation");
+                                if (mounted) {
+                                    try { w.showNewProjectWizard(); }
+                                    catch (err) { console.error("[EEZ] Failed to open New Project wizard:", err); }
+                                    return;
+                                }
+                                if (attempts++ < 40) setTimeout(waitForApp, 300);
+                            };
+                            waitForApp();
+                        }).catch(err => console.error("[EEZ] Failed to open New Project wizard:", err));
+                    }
                 }).catch(err => console.error("[EEZ] Failed to load home/main:", err));
             }
         });
