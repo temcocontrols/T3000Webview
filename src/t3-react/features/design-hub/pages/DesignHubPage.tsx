@@ -3,12 +3,13 @@
  * The unified center for all HVAC drawing engines.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Spinner, Button, Tooltip } from '@fluentui/react-components';
 import { ArrowDownloadRegular, ArrowUploadRegular, SparkleRegular } from '@fluentui/react-icons';
 import type { DrawingType, HubProject } from '../types';
 import { useDesignHubStore } from '../store/designHubStore';
 import { designHubService } from '../services/designHubService';
+import { getDrawingType } from '../drawingTypes';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { HeroHeader } from '../components/HeroHeader';
 import { DeviceContextBar } from '../components/DeviceContextBar';
@@ -31,6 +32,7 @@ import styles from './DesignHubPage.module.css';
 
 export const DesignHubPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const load = useDesignHubStore((s) => s.load);
   const isLoading = useDesignHubStore((s) => s.isLoading);
   const setActiveTab = useDesignHubStore((s) => s.setActiveTab);
@@ -58,6 +60,16 @@ export const DesignHubPage: React.FC = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Deep-link from the Design Hub / New Drawing top menus:
+  // #/t3000/design?create=<typeId> → open the New-Drawing dialog for that type.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const createId = params.get('create');
+    if (createId) {
+      setNewDrawingType(getDrawingType(createId));
+    }
+  }, [location.search]);
 
   // Ctrl+K → command palette
   useEffect(() => {
@@ -218,6 +230,17 @@ export const DesignHubPage: React.FC = () => {
       setMessage(`Backup restored — ${result.projects} drawings, ${result.libraries} libraries, ${result.customTypes} types`, 'success');
     } catch (err) {
       setMessage(`Restore failed: ${err instanceof Error ? err.message : 'invalid backup'}`, 'error');
+    }
+  };
+
+  const closeNewDrawing = () => {
+    setNewDrawingType(null);
+    // Strip the ?create= deep-link so the dialog doesn't reopen on re-render.
+    const params = new URLSearchParams(location.search);
+    if (params.has('create')) {
+      params.delete('create');
+      const qs = params.toString();
+      window.location.hash = `#/t3000/design${qs ? `?${qs}` : ''}`;
     }
   };
 
@@ -382,7 +405,7 @@ export const DesignHubPage: React.FC = () => {
         }}
       />
       */}
-      <NewDrawingDialog type={newDrawingType} onClose={() => setNewDrawingType(null)} />
+      <NewDrawingDialog type={newDrawingType} onClose={closeNewDrawing} />
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <EezExamplesDrawer

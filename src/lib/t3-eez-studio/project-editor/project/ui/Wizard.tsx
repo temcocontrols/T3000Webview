@@ -696,6 +696,14 @@ export class WizardModel {
             }
         });
 
+        console.log("[EEZ-Examples] Wizard exampleProjectTypes — catalog length:", examplesCatalog.catalog?.length,
+            "LVGL examples kept:", _allExamples.length,
+            _allExamples.slice(0, 5).map((x) => ({
+                id: x.id,
+                projectType: x.projectType,
+                projectName: x.projectName
+            })));
+
         return map;
     }
 

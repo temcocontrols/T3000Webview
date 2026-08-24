@@ -186,6 +186,23 @@ export function EezStudioApp() {
                                     params.get("folder") || "_allExamples";
                                 const exType = params.get("type");
                                 if (exType) w.wizardModelExamples.type = exType;
+                                // Optional name/location/createDirectory from the
+                                // design hub example create dialog pre-fill the wizard.
+                                const exName = params.get("name") ?? null;
+                                const exLocation = params.get("location") ?? null;
+                                const exCreateDirectory = params.get("createDirectory") ?? null;
+                                if (exName) w.wizardModelExamples.name = exName;
+                                if (exLocation) w.wizardModelExamples.location = exLocation;
+                                if (exCreateDirectory) {
+                                    w.wizardModelExamples.createDirectory =
+                                        exCreateDirectory !== "false";
+                                }
+                                console.log("[EEZ-Examples] EezStudioApp handoff — folder:",
+                                    w.wizardModelExamples.folder,
+                                    "type:", w.wizardModelExamples.type,
+                                    "name:", w.wizardModelExamples.name,
+                                    "location:", w.wizardModelExamples.location,
+                                    "createDirectory:", w.wizardModelExamples.createDirectory);
                             } else {
                                 w.wizardModelTemplates.type = wizardType;
                                 const wizardName = params.get("name") ?? null;
