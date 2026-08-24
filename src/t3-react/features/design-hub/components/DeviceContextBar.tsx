@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { Tooltip } from '@fluentui/react-components';
 import {
-  BoardRegular,
+  DesktopRegular,
   ChevronDownRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
@@ -40,16 +40,22 @@ export const DeviceContextBar: React.FC = () => {
   return (
     <div className={styles.deviceBar}>
       <button className={styles.deviceChip} onClick={() => setPickerOpen(true)}>
-        <div className={selectedDevice ? styles.deviceChipIcon : styles.deviceChipIconNone}>
-          <BoardRegular style={{ fontSize: 18 }} />
-        </div>
+        <span className={styles.deviceChipIcon}>
+          <DesktopRegular style={{ fontSize: 20 }} />
+        </span>
         <div>
           <div className={styles.deviceChipName}>
             {selectedDevice?.nameShowOnTree || 'No device selected'}
           </div>
           <div className={styles.deviceChipMeta}>
             {selectedDevice
-              ? `SN ${selectedDevice.serialNumber}${building ? ` · ${building}` : ''}`
+              ? [
+                  `SN ${selectedDevice.serialNumber}`,
+                  selectedDevice.ipAddress,
+                  building,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
               : 'Click to choose a device'}
           </div>
         </div>
