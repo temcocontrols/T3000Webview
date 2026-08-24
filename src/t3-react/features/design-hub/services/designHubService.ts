@@ -278,6 +278,21 @@ export const designHubService = {
         openPath: '/t3000/tstat10-simulator',
       });
     }
+    // Sample LVGL 9.5 card — lets users preview the card style/color.
+    if (!existing.has('lvgl-demo')) {
+      seed.push({
+        id: 'lvgl-demo',
+        name: 'LVGL 9.5 Demo',
+        description: 'Sample LVGL 9.5 embedded UI project',
+        typeId: 'lvgl-9-5',
+        engine: 'eez',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: 'local',
+        source: 'eez',
+        openPath: '/t3000/eez',
+      });
+    }
     if (seed.length) {
       writeHub({ ...hub, projects: [...seed, ...hub.projects] });
     }

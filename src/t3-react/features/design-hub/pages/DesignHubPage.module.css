@@ -514,26 +514,16 @@
   box-shadow: 0 10px 22px rgba(30, 60, 100, 0.12);
   border-color: transparent;
 }
-.projectAccent {
-  height: 4px;
-  flex-shrink: 0;
-}
 .projectThumb {
-  height: 96px;
+  height: 64px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.95);
+  color: #48627a;
 }
 .projectThumbIcon {
   font-size: 28px;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2));
-}
-.projectThumbOverlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.18));
 }
 .projectTypePill {
   position: absolute;

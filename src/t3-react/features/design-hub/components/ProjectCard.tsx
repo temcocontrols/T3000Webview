@@ -104,25 +104,21 @@ export const ProjectCard: React.FC<{
       onClick={cardClick}
       style={selected ? { outline: '2px solid #0078d4' } : undefined}
     >
-      {/* Accent strip — type identity */}
-      <div className={styles.projectAccent} style={{ background: accent }} />
-
       <div
         className={styles.projectThumb}
         style={
           hasPreview
             ? { background: '#ffffff' }
-            : { background: `linear-gradient(135deg, ${accent}, ${accent}99)` }
+            : { background: `color-mix(in srgb, ${accent} 12%, #ffffff)` }
         }
       >
         {hasPreview ? (
           <DrawingPreview project={project} />
         ) : (
-          <span className={styles.projectThumbIcon}>
+          <span className={styles.projectThumbIcon} style={{ color: accent }}>
             <HubIcon icon={type.icon} size={28} />
           </span>
         )}
-        {!hasPreview && <span className={styles.projectThumbOverlay} />}
 
         {selectMode && (
           <span
