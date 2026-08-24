@@ -111,6 +111,10 @@ export interface FirmwareScreen {
 interface DeviceMeta {
     panel_name: string;
     serial_number: number;
+    /** Device IP (direct REST target for deploy). */
+    ip_address?: string;
+    /** Panel id (used in device image/screen paths). */
+    panel_id?: number;
 }
 
 /** Metadata detected from firmware — sourced from /device/info API. */
@@ -268,6 +272,8 @@ export function firmwareToProject(
         importedFrom: {
             device: device.panel_name,
             serialNumber: device.serial_number,
+            ip: device.ip_address,
+            panelId: device.panel_id,
             importedAt: new Date().toISOString(),
         },
         userPages: screens.map(s => {

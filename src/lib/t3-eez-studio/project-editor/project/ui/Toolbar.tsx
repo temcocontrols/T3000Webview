@@ -39,6 +39,7 @@ import { Icon } from "./fluent-toolbar";
 import { dockerBuildState } from "project-editor/lvgl/docker-build/docker-build-state";
 import { transformToDeviceJson } from "project-editor/build/firmware-export";
 import { base64ToBytes, deviceClient } from "project-editor/build/device-rest-client";
+import { getDeviceBinding } from "project-editor/build/device-binding";
 import { writeTextFile } from "project-editor/build/build";
 import { makeFolder } from "eez-studio-shared/util-electron";
 import * as notification from "eez-studio-ui/notification";
@@ -888,6 +889,16 @@ const RunEditSwitchControls = observer(
             // Use path.dirname — cross-platform, handles both / and \
             const baseFolder = filePath.replace(/[\\/][^\\/]+$/, "");
 
+            // The target device is bound automatically when the project is
+            // imported via "Load from Device" (open-projects-v2.tsx).
+            const binding = getDeviceBinding(filePath);
+            if (!binding) {
+                notification.error(
+                    "This project is not bound to a device. Open it via 'Load from Device' to bind it, then deploy."
+                );
+                return;
+            }
+
             try {
                 // 1. Generate device JSON at the front side: screens + images
                 const screens = transformToDeviceJson(project);
@@ -950,10 +961,17 @@ const RunEditSwitchControls = observer(
                     )
                 );
 
-                // 3. Push screens + images to device via DeviceRestClient (mock or real)
+                // 3. Push screens + images to device via direct REST (mock or real)
                 try {
-                    // connect() sets mode — mock mode returns instantly, real probes device
-                    await deviceClient.connect("", 0, 0);
+                    // connect() sets mode — mock mode returns instantly, real probes the device
+                    const conn = await deviceClient.connect(
+                        binding.ip,
+                        binding.panelId,
+                        binding.serialNumber
+                    );
+                    if (conn.error) {
+                        throw new Error(conn.error);
+                    }
                     const result = await deviceClient.deployAllScreens(project as any);
                     const imgNote =
                         result && (result.imagesDeployed ?? 0) > 0

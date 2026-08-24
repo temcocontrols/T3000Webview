@@ -1,20 +1,19 @@
 /**
  * device-rest-client.ts — REST API client for direct device communication.
  *
- * Communicates with the ESP32-hosted REST API (primary path) with automatic
- * BACnet fallback through T3000 when the device is unreachable via HTTP.
+ * Communicates directly with the ESP32 dynamic-display REST API (the device's
+ * BACnet/display API). No T3000 proxy and no BACnet fallback — the browser
+ * talks straight to the device at http://<device-ip>/api/eez-device (port 80).
  *
- * ┌──────────┐  REST (primary)    ┌──────────┐
- * │ Browser  │ ─────────────────→ │  ESP32   │
- * │ (EEZ)    │ ←───────────────── │  Device  │
- * └──────────┘                    └──────────┘
- *      │                                │
- *      └── BACnet fallback ──→ T3000 ──→ Device
+ * ┌──────────┐  REST (direct)    ┌──────────┐
+ * │ Browser  │ ────────────────→ │  ESP32   │
+ * │ (EEZ)    │ ←──────────────── │  Device  │
+ * └──────────┘                   └──────────┘
  *
- * Endpoints: GET/PUT /api/v1/screens   (full sync)
- *            GET/PUT /api/v1/screens/:name  (single screen)
- *            PATCH /api/v1/screens/:name    (delta update)
- *            PATCH /api/v1/screens/:name/widgets/:id  (widget delta)
+ * Endpoints: GET/PUT /api/eez-device/screens        (full sync)
+ *            GET/PUT /api/eez-device/screens/:name  (single screen)
+ *            PATCH /api/eez-device/screens/:name    (delta update)
+ *            GET/PUT /api/eez-device/images/*       (bitmaps)
  */
 
 import { transformToDeviceJson, type DeviceScreen } from "./firmware-export";
@@ -114,15 +113,19 @@ export interface ConnectionResult {
 // Constants
 // ═══════════════════════════════════════════════════════════════════
 
-/** Toggle: true = use Rust mock at localhost:9103, false = real ESP32 */
-const USE_MOCK = true;
+/**
+ * Toggle: true = use the Rust mock at /api/eez-device (same-origin, no hardware),
+ *         false = real ESP32 dynamic-display REST API (direct HTTP to the device).
+ * NOTE: there is no UI toggle — flip this constant manually for mock testing.
+ */
+const USE_MOCK = false;
 
-/** Mock device base (hits Rust backend at localhost:9103) */
+/** Mock device base (served by the Rust backend — mirrors the real device API). */
 const MOCK_BASE = "/api/eez-device";
 
-/** Real ESP32 REST API */
-const REST_BASE = "/api/v1";
-const REST_PORT = 8000;
+/** Real ESP32 dynamic-display REST API (device port 80, base path /api/eez-device). */
+const REST_BASE = "/api/eez-device";
+const REST_PORT = 80;
 const REACHABILITY_TIMEOUT_MS = 2000;
 const REQUEST_TIMEOUT_MS = 30000;
 
@@ -176,7 +179,7 @@ export class DeviceRestClient {
     private panelId: number = 0;
     private serialNumber: number = 0;
 
-    /** Panel ID used for BACnet image/screen push (set by connect()). */
+    /** Panel ID used for device image/screen pull path (set by connect()). */
     get devicePanelId(): number {
         return this.panelId;
     }
@@ -193,8 +196,8 @@ export class DeviceRestClient {
      * Returns the connection mode to use.
      *
      * @param deviceIp  IP address of the ESP32 device
-     * @param panelId   Optional panel ID for BACnet fallback
-     * @param serialNumber Optional serial number for BACnet fallback
+     * @param panelId   Optional panel ID (used in image pull path)
+     * @param serialNumber Optional serial number (recorded in deploy manifest)
      */
     async connect(
         deviceIp: string,
@@ -205,20 +208,20 @@ export class DeviceRestClient {
         this.panelId = panelId ?? 0;
         this.serialNumber = serialNumber ?? 0;
 
-        // Try REST API first
+        // Direct REST is the only transport — no BACnet fallback.
         const reachable = await this.isReachable(deviceIp);
         if (reachable) {
             this.mode = "rest";
             return { mode: "rest", deviceIp };
         }
 
-        // Fall back to BACnet through T3000
-        if (this.panelId && this.serialNumber) {
-            this.mode = "bacnet";
-            return { mode: "bacnet", panelId: this.panelId, serialNumber: this.serialNumber };
-        }
+        // ── BACnet fallback removed — direct REST only ──────────────────────
+        // if (this.panelId && this.serialNumber) {
+        //     this.mode = "bacnet";
+        //     return { mode: "bacnet", panelId: this.panelId, serialNumber: this.serialNumber };
+        // }
 
-        return { mode: "bacnet", error: "Device unreachable via REST and no BACnet credentials provided" };
+        return { mode: "rest", error: `Device "${deviceIp}" is unreachable via its REST API` };
     }
 
     /**
@@ -252,45 +255,33 @@ export class DeviceRestClient {
      * REST path: GET /api/v1/device/info
      */
     async getDeviceInfo(): Promise<DeviceInfoResponse> {
-        if (this.mode === "rest") {
-            const response = await fetch(
-                restUrl("device/info", this.deviceIp),
-                { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
-            );
-            if (!response.ok) {
-                throw new Error(`Device returned ${response.status}`);
-            }
-            return response.json();
+        // Direct REST only — BACnet fallback removed.
+        if (this.mode !== "rest") {
+            throw new Error("Device not connected via REST API");
         }
-        // BACnet fallback: load all screens and derive summary
-        const all = await this.bacnetLoadAll();
-        return {
-            panel_name: all.meta?.panel_name ?? "Unknown",
-            serial_number: all.meta?.serial_number ?? 0,
-            screen_size: { width: 480, height: 320 },
-            screen_count: all.screens.length,
-            screens: all.screens.map(s => s.name),
-            image_count: 0,
-            font_count: 0,
-            firmware_version: all.meta?.firmware_version ?? "0.0.0",
-            lvgl_version: "9.5.0",
-            dark_theme: true,
-            color_format: "RGB",
-        };
+
+        const response = await fetch(
+            restUrl("device/info", this.deviceIp),
+            { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
+        );
+        if (!response.ok) {
+            throw new Error(`Device returned ${response.status}`);
+        }
+        return response.json();
     }
 
     // ── Full Sync: Load All ───────────────────────────────────────
 
     /**
      * Load ALL screens from the device.
-     * REST path: GET /api/v1/screens
-     * BACnet path: POST /api/eez-device/screens/pull/:id (T3000)
+     * REST path: GET http://<ip>/api/eez-device/screens
      */
     async loadAllScreens(): Promise<LoadAllResponse> {
-        if (this.mode === "rest") {
-            return this.restLoadAll();
+        // Direct REST only — BACnet fallback removed.
+        if (this.mode !== "rest") {
+            throw new Error("Device not connected via REST API");
         }
-        return this.bacnetLoadAll();
+        return this.restLoadAll();
     }
 
     private async restLoadAll(): Promise<LoadAllResponse> {
@@ -304,21 +295,22 @@ export class DeviceRestClient {
         return response.json();
     }
 
-    private async bacnetLoadAll(): Promise<LoadAllResponse> {
-        const response = await fetch(
-            `/api/eez-device/screens/pull/${this.panelId}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ serial_number: this.serialNumber }),
-                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-            }
-        );
-        if (!response.ok) {
-            throw new Error(`T3000 returned ${response.status}`);
-        }
-        return response.json();
-    }
+    // ── BACnet fallback removed — direct REST only ─────────────────────────
+    // private async bacnetLoadAll(): Promise<LoadAllResponse> {
+    //     const response = await fetch(
+    //         `/api/eez-device/screens/pull/${this.panelId}`,
+    //         {
+    //             method: "POST",
+    //             headers: { "Content-Type": "application/json" },
+    //             body: JSON.stringify({ serial_number: this.serialNumber }),
+    //             signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    //         }
+    //     );
+    //     if (!response.ok) {
+    //         throw new Error(`T3000 returned ${response.status}`);
+    //     }
+    //     return response.json();
+    // }
 
     // ── Full Sync: Deploy All ─────────────────────────────────────
 
@@ -330,8 +322,7 @@ export class DeviceRestClient {
      *          {name,width,height,color_format,png_base64,data_base64,image}.
      * Step 2 — Push images FIRST (the device must have them before any screen
      *          references them by name).
-     *          BACnet:  POST /api/eez-device/images/push/:panelId
-     *          REST:    PUT /api/v1/images/:name
+     *          REST:    POST http://<ip>/api/eez-device/images/push/:panelId
      * Step 3 — Push screens (existing transform + deploy).
      *
      * @param projectJson  The raw .eez-project JSON (parsed object)
@@ -356,10 +347,8 @@ export class DeviceRestClient {
             json: screen,
         }));
 
-        const result =
-            this.mode === "rest"
-                ? await this.restDeployAll(screens)
-                : await this.bacnetDeployAll(screens);
+        // Direct REST only — BACnet fallback removed.
+        const result = await this.restDeployAll(screens);
 
         return { ...result, imagesDeployed, imagesFailed };
     }
@@ -382,26 +371,27 @@ export class DeviceRestClient {
         return response.json();
     }
 
-    private async bacnetDeployAll(
-        screens: { name: string; json: DeviceScreen }[]
-    ): Promise<DeployAllResponse> {
-        const response = await fetch(
-            `/api/eez-device/screens/push/${this.panelId}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    serial_number: this.serialNumber,
-                    screens,
-                }),
-                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-            }
-        );
-        if (!response.ok) {
-            throw new Error(`T3000 returned ${response.status}`);
-        }
-        return response.json();
-    }
+    // ── BACnet fallback removed — direct REST only ─────────────────────────
+    // private async bacnetDeployAll(
+    //     screens: { name: string; json: DeviceScreen }[]
+    // ): Promise<DeployAllResponse> {
+    //     const response = await fetch(
+    //         `/api/eez-device/screens/push/${this.panelId}`,
+    //         {
+    //             method: "POST",
+    //             headers: { "Content-Type": "application/json" },
+    //             body: JSON.stringify({
+    //                 serial_number: this.serialNumber,
+    //                 screens,
+    //             }),
+    //             signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    //         }
+    //     );
+    //     if (!response.ok) {
+    //         throw new Error(`T3000 returned ${response.status}`);
+    //     }
+    //     return response.json();
+    // }
 
     // ── Image Generation & Push ───────────────────────────────────
 
@@ -443,19 +433,16 @@ export class DeviceRestClient {
 
     /**
      * Push generated image JSON to the device.
-     * BACnet/mock: POST /api/eez-device/images/push/:panelId  body {name,data_base64}
-     * REST (real): PUT /api/v1/images/:name                    body = PNG binary
+     * REST: POST http://<ip>/api/eez-device/images/push/:panelId  body {name,data_base64}
+     * (mock: POST /api/eez-device/images/push/:panelId — same path)
      */
     async pushImages(images: DeviceImageJson[]): Promise<{ deployed: number; failed: number }> {
         let deployed = 0;
         let failed = 0;
         for (const img of images) {
             try {
-                if (this.mode === "rest") {
-                    await this.restPushImage(img);
-                } else {
-                    await this.bacnetPushImage(img);
-                }
+                // Direct REST only — BACnet fallback removed.
+                await this.restPushImage(img);
                 deployed++;
             } catch {
                 failed++;
@@ -465,23 +452,9 @@ export class DeviceRestClient {
     }
 
     private async restPushImage(img: DeviceImageJson): Promise<void> {
+        // Device image API: POST /api/eez-device/images/push/:panelId  body {name, data_base64}
         const response = await fetch(
-            restUrl(`images/${encodeURIComponent(img.name)}`, this.deviceIp),
-            {
-                method: "PUT",
-                headers: { "Content-Type": "image/png" },
-                body: base64ToBytes(img.data_base64),
-                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-            }
-        );
-        if (!response.ok) {
-            throw new Error(`Device returned ${response.status}`);
-        }
-    }
-
-    private async bacnetPushImage(img: DeviceImageJson): Promise<void> {
-        const response = await fetch(
-            `/api/eez-device/images/push/${this.panelId}`,
+            restUrl(`images/push/${this.panelId}`, this.deviceIp),
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -490,20 +463,52 @@ export class DeviceRestClient {
             }
         );
         if (!response.ok) {
-            throw new Error(`T3000 returned ${response.status}`);
+            throw new Error(`Device returned ${response.status}`);
         }
+    }
+
+    // ── BACnet fallback removed — direct REST only ─────────────────────────
+    // private async bacnetPushImage(img: DeviceImageJson): Promise<void> {
+    //     const response = await fetch(
+    //         `/api/eez-device/images/push/${this.panelId}`,
+    //         {
+    //             method: "POST",
+    //             headers: { "Content-Type": "application/json" },
+    //             body: JSON.stringify({ name: img.name, data_base64: img.data_base64 }),
+    //             signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    //         }
+    //     );
+    //     if (!response.ok) {
+    //         throw new Error(`T3000 returned ${response.status}`);
+    //     }
+    // }
+
+    /**
+     * Pull a stored image (bitmap) from the device by name.
+     * REST: GET http://<ip>/api/eez-device/images/pull/:panelId/:name
+     * (mock: GET /api/eez-device/images/pull/:panelId/:name — same path)
+     */
+    async pullImage(name: string): Promise<{ name?: string; data_base64?: string }> {
+        if (this.mode !== "rest") {
+            throw new Error("Device not connected via REST API");
+        }
+        const response = await fetch(
+            restUrl(`images/pull/${this.panelId}/${encodeURIComponent(name)}`, this.deviceIp),
+            { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
+        );
+        if (!response.ok) {
+            throw new Error(`Device returned ${response.status}`);
+        }
+        return response.json();
     }
 
     // ── Single Screen ─────────────────────────────────────────────
 
     /** Load a single screen by name. */
     async loadScreen(name: string): Promise<FirmwareScreen> {
+        // Direct REST only — BACnet fallback removed.
         if (this.mode !== "rest") {
-            // Load all via BACnet, then filter
-            const all = await this.bacnetLoadAll();
-            const screen = all.screens.find((s) => s.name === name);
-            if (!screen) throw new Error(`Screen "${name}" not found on device`);
-            return screen;
+            throw new Error("Device not connected via REST API");
         }
 
         const response = await fetch(
@@ -518,12 +523,9 @@ export class DeviceRestClient {
 
     /** Deploy a single screen by name. */
     async deployScreen(name: string, json: DeviceScreen): Promise<DeployScreenResponse> {
+        // Direct REST only — BACnet fallback removed.
         if (this.mode !== "rest") {
-            return this.bacnetDeployAll([{ name, json }]).then((r) => ({
-                name,
-                status: r.failed === 0 ? "ok" : "error",
-                error: r.errors?.[0]?.message,
-            }));
+            throw new Error("Device not connected via REST API");
         }
 
         const response = await fetch(
@@ -545,13 +547,13 @@ export class DeviceRestClient {
 
     /**
      * Send a delta (PATCH) update — only changed key paths.
-     * REST: PATCH /api/v1/screens/:name
-     * BACnet: not supported (falls back to full deploy of affected screen)
+     * REST: PATCH http://<ip>/api/eez-device/screens/:name
+     * (direct REST only — no BACnet delta)
      */
     async patchScreen(name: string, changes: DeltaChange[]): Promise<PatchResponse> {
         if (this.mode !== "rest") {
-            // BACnet doesn't support delta — caller should use deployScreen instead
-            throw new Error("Delta updates require REST API. Use deployScreen() for BACnet.");
+            // Delta updates require the device REST API (direct REST is the only transport).
+            throw new Error("Device not connected via REST API");
         }
 
         const response = await fetch(
@@ -579,7 +581,7 @@ export class DeviceRestClient {
         changes: DeltaChange[]
     ): Promise<PatchResponse> {
         if (this.mode !== "rest") {
-            throw new Error("Delta updates require REST API.");
+            throw new Error("Device not connected via REST API");
         }
 
         const response = await fetch(

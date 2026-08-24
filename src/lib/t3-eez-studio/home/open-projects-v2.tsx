@@ -54,6 +54,7 @@ import { ProjectStore, loadProject } from "project-editor/store";
 import { ProjectEditorTab, tabs } from "home/tabs-store";
 import { initProjectEditor } from "project-editor/project-editor-bootstrap";
 import type { LoadAllResponse } from "project-editor/build/device-rest-client";
+import { setDeviceBinding } from "project-editor/build/device-binding";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Styles (Fluent tokens)
@@ -678,12 +679,20 @@ class DeviceImportStore {
             this.appendLog("⏳ Step 1 — Connecting to device...");
             const { DeviceRestClient } = await import("project-editor/build/device-rest-client");
             const client = new DeviceRestClient();
+            const deviceIp = device.panel_ipaddress || "";
             const conn = await client.connect(
-                device.panel_ipaddress || "mock",
+                deviceIp,
                 device.panel_id,
                 device.panel_serial_number
             );
-            this.appendLog(`✅ Step 1 — Connected via ${conn.mode.toUpperCase()}`);
+            if (conn.error) {
+                throw new Error(
+                    `Cannot reach device${deviceIp ? ` at ${deviceIp}` : " (no IP on record)"}: ${conn.error}`
+                );
+            }
+            this.appendLog(
+                `✅ Step 1 — Connected via ${conn.mode.toUpperCase()}${deviceIp ? ` (${deviceIp})` : " (mock)"}`
+            );
 
             // Step 2 — Get device summary (screen names, counts, etc.)
             this.appendLog("⏳ Step 2 — Fetching device info...");
@@ -715,6 +724,8 @@ class DeviceImportStore {
             const project = firmwareToProject(stagingScreens, {
                 panel_name: device.panel_name,
                 serial_number: device.panel_serial_number,
+                ip_address: device.panel_ipaddress,
+                panel_id: device.panel_id,
             }, {
                 displaySize: { width: info.screen_size.width, height: info.screen_size.height },
                 lvglVersion: info.lvgl_version,
@@ -736,27 +747,22 @@ class DeviceImportStore {
                 for (const bmp of project.bitmaps) {
                     if (!bmp.name) continue;
                     try {
-                        const resp = await fetch(
-                            `/api/eez-device/images/pull/0/${encodeURIComponent(bmp.name)}`
-                        );
-                        if (resp.ok) {
-                            const data = await resp.json();
-                            if (data.data_base64) {
-                                // Save raw PNG to runtime folder
-                                const imgPath = `${imgDir}/${bmp.name}.png`;
-                                const binaryStr = atob(data.data_base64);
-                                const pngBytes = new Uint8Array(binaryStr.length);
-                                for (let i = 0; i < binaryStr.length; i++) {
-                                    pngBytes[i] = binaryStr.charCodeAt(i);
-                                }
-                                await fetch(
-                                    `/api/eez-studio/write-file?path=${encodeURIComponent(imgPath)}`,
-                                    { method: "POST", body: pngBytes }
-                                );
-                                // Embed in project as base64 data URL
-                                bmp.image = `data:image/png;base64,${data.data_base64}`;
-                                loaded++;
+                        const data = await client.pullImage(bmp.name);
+                        if (data?.data_base64) {
+                            // Save raw PNG to runtime folder
+                            const imgPath = `${imgDir}/${bmp.name}.png`;
+                            const binaryStr = atob(data.data_base64);
+                            const pngBytes = new Uint8Array(binaryStr.length);
+                            for (let i = 0; i < binaryStr.length; i++) {
+                                pngBytes[i] = binaryStr.charCodeAt(i);
                             }
+                            await fetch(
+                                `/api/eez-studio/write-file?path=${encodeURIComponent(imgPath)}`,
+                                { method: "POST", body: pngBytes }
+                            );
+                            // Embed in project as base64 data URL
+                            bmp.image = `data:image/png;base64,${data.data_base64}`;
+                            loaded++;
                         }
                     } catch { /* skip images not in firmware */ }
                 }
@@ -772,6 +778,15 @@ class DeviceImportStore {
             );
             if (!saveResp.ok) throw new Error("Failed to save project");
             this.appendLog(`✅ Step 5 — Project saved`);
+
+            // Bind the project to its source device (used by "Deploy to Device").
+            setDeviceBinding(projectPath, {
+                ip: device.panel_ipaddress,
+                panelId: device.panel_id,
+                serialNumber: device.panel_serial_number,
+                panelName: device.panel_name,
+                importedAt: new Date().toISOString(),
+            });
 
             // Track imported project for badge display
             try {
