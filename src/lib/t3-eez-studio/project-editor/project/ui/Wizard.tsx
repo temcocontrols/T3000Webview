@@ -2779,6 +2779,31 @@ export function showNewProjectWizard() {
     modalDialogObservable.set(modalDialog);
 }
 
+/**
+ * Open the New Project wizard in EXAMPLES mode (pre-selected example can be
+ * supplied by setting wizardModelExamples.folder + .type before calling).
+ */
+export function showNewExampleProjectWizard() {
+    const modalDialogObservable = observable.box<any>();
+
+    const [modalDialog] = showDialog(
+        <NewProjectWizard
+            wizardModel={wizardModelExamples}
+            modalDialog={modalDialogObservable}
+        />,
+        {
+            jsPanel: {
+                id: "new-project-wizard",
+                title: "New Project",
+                width: 1280,
+                height: 800
+            }
+        }
+    );
+
+    modalDialogObservable.set(modalDialog);
+}
+
 class NameInput extends React.Component<{
     id?: string;
     value: string | undefined;

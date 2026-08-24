@@ -121,6 +121,7 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+  flex-wrap: wrap;
 }
 .sectionTitle {
   font-size: 15px;
@@ -1016,4 +1017,314 @@
   color: #3b4a5c;
   font-size: 12.5px;
   font-weight: 600;
+}
+
+/* ── Create by Type header — right-aligned EEZ Examples cluster ── */
+.examplesHeaderLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.examplesHeaderLeft .sectionHint {
+  margin: 0 0 0 26px;
+}
+.examplesHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.examplesInfoChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #54647a;
+  background: #fff;
+  border: 1px solid #d9e0ea;
+  border-radius: 20px;
+  padding: 6px 12px;
+  box-shadow: 0 1px 3px rgba(30, 60, 100, 0.05);
+  white-space: nowrap;
+}
+.examplesInfoChip b {
+  color: #1c2b3a;
+  font-weight: 600;
+}
+.examplesInfoSpark {
+  color: #b8860b;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.examplesTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  border: 1px solid #c9d4e2;
+  background: #fff;
+  color: #0078d4;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 7px 14px;
+  border-radius: 8px;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  white-space: nowrap;
+}
+.examplesTrigger:hover {
+  background: #eaf4fd;
+  border-color: #0078d4;
+}
+.examplesTrigger svg {
+  color: #0078d4;
+}
+.examplesCount {
+  background: #eaf4fd;
+  color: #0078d4;
+  border-radius: 20px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.examplesTriggerArrow {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ── EEZ Examples drawer ─────────────────────────────────────── */
+.examplesTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1c2b3a;
+}
+.examplesTitleIcon {
+  color: #0078d4;
+  font-size: 16px;
+}
+.examplesSub {
+  font-size: 12px;
+  color: #7a8699;
+  margin-top: 6px;
+}
+.examplesState {
+  text-align: left;
+  color: #7a8699;
+  font-size: 12.5px;
+  padding: 24px 4px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.examplesStateIcon {
+  color: #b9c6d6;
+}
+.examplesErrorMsg {
+  font-size: 11.5px;
+  color: #8b97a8;
+  line-height: 1.5;
+  max-width: 300px;
+  word-break: break-word;
+}
+.examplesSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d9e0ea;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #fbfcfe;
+}
+.examplesSearch:focus-within {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+.examplesSearchIcon {
+  color: #a5afbf;
+  font-size: 14px;
+}
+.examplesSearchInput {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 13px;
+  font-family: inherit;
+  background: transparent;
+  color: #1c2b3a;
+}
+.examplesSearchInput::placeholder {
+  color: #a5afbf;
+}
+.examplesChips {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0 14px;
+  flex-wrap: wrap;
+}
+.examplesChip {
+  border: 1px solid #d9e0ea;
+  background: #fff;
+  color: #54647a;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.examplesChip:hover {
+  border-color: #0078d4;
+  color: #0078d4;
+}
+.examplesChipOn {
+  background: #eaf4fd;
+  border-color: #0078d4;
+  color: #0078d4;
+}
+.examplesGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.examplesCard {
+  border: 1px solid #e6eaf0;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: box-shadow 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+}
+.examplesCard:hover {
+  box-shadow: 0 8px 20px rgba(30, 60, 100, 0.14);
+  transform: translateY(-2px);
+}
+.examplesCardSel {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.35);
+}
+.examplesCardCheck {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #0078d4;
+  color: #fff;
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.examplesThumb {
+  height: 96px;
+  background: linear-gradient(135deg, #e8f0fb, #f7fafd);
+  display: grid;
+  place-items: center;
+  color: #9db4cd;
+  position: relative;
+  overflow: hidden;
+}
+.examplesThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.examplesThumbPh {
+  color: #9db4cd;
+}
+.examplesNewTag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #1e8e3e;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+.examplesBody {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.examplesName {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1c2b3a;
+  line-height: 1.3;
+}
+.examplesDesc {
+  font-size: 11px;
+  color: #7a8699;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.examplesMeta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.examplesBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.examplesBadgeLvgl {
+  background: #e8ebf9;
+  color: #3f51b5;
+}
+.examplesBadgeFlow {
+  background: #e4effb;
+  color: #0b6ab5;
+}
+.examplesBadgeSize {
+  background: #eef1f5;
+  color: #54647a;
+}
+.examplesFoot {
+  border-top: 1px solid #f0f3f8;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #a5afbf;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.examplesDrawerFoot {
+  border-top: 1px solid #e6eaf0;
+  padding: 14px 18px;
+  background: #fbfcfe;
+}
+.examplesFootActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* On narrow screens keep the header tidy: drop the info chip, keep the button. */
+@media (max-width: 900px) {
+  .examplesInfoChip {
+    display: none;
+  }
 }

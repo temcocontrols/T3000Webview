@@ -5,7 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Spinner, Button, Tooltip } from '@fluentui/react-components';
-import { ArrowDownloadRegular, ArrowUploadRegular } from '@fluentui/react-icons';
+import { ArrowDownloadRegular, ArrowUploadRegular, SparkleRegular } from '@fluentui/react-icons';
 import type { DrawingType, HubProject } from '../types';
 import { useDesignHubStore } from '../store/designHubStore';
 import { designHubService } from '../services/designHubService';
@@ -21,6 +21,7 @@ import { ProjectsGrid } from '../components/ProjectsGrid';
 // import { ActivityPanel } from '../components/ActivityPanel'; // hidden for now (user, 2026-08-22)
 import { BindDeviceDialog } from '../components/BindDeviceDialog';
 import { NewDrawingDialog } from '../components/NewDrawingDialog';
+import { EezExamplesDrawer } from '../components/EezExamplesDrawer';
 // 'New Type' hidden for now — only the 4 core types (user, 2026-08-22)
 // import { NewTypeDialog } from '../components/NewTypeDialog';
 import { ImportDialog } from '../components/ImportDialog';
@@ -51,6 +52,8 @@ export const DesignHubPage: React.FC = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [examplesOpen, setExamplesOpen] = useState(false);
+  const [examplesCount, setExamplesCount] = useState<number | null>(null);
 
   useEffect(() => {
     load();
@@ -264,11 +267,31 @@ export const DesignHubPage: React.FC = () => {
 
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
-            <div className={styles.sectionTitle}>
-              <HubIcon icon="DocumentAdd" size={18} />
-              Create by Type
+            <div className={styles.examplesHeaderLeft}>
+              <div className={styles.sectionTitle}>
+                <HubIcon icon="DocumentAdd" size={18} />
+                Create by Type
+              </div>
+              <div className={styles.sectionHint}>Each tile opens its own drawing engine</div>
             </div>
-            <span className={styles.sectionHint}>Each tile opens its own drawing engine</span>
+            <div className={styles.examplesHeaderRight}>
+              <span className={styles.examplesInfoChip}>
+                <SparkleRegular className={styles.examplesInfoSpark} />
+                For <b>LVGL</b> you can create by example
+              </span>
+              <button
+                type="button"
+                className={styles.examplesTrigger}
+                onClick={() => setExamplesOpen(true)}
+              >
+                <SparkleRegular style={{ fontSize: 14 }} />
+                LVGL Examples
+                {examplesCount !== null && (
+                  <span className={styles.examplesCount}>{examplesCount}</span>
+                )}
+                <span className={styles.examplesTriggerArrow}>→</span>
+              </button>
+            </div>
           </div>
           <TypeTiles onCreate={(type) => setNewDrawingType(type)} />
         </div>
@@ -362,6 +385,11 @@ export const DesignHubPage: React.FC = () => {
       <NewDrawingDialog type={newDrawingType} onClose={() => setNewDrawingType(null)} />
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <EezExamplesDrawer
+        open={examplesOpen}
+        onClose={() => setExamplesOpen(false)}
+        onCount={setExamplesCount}
+      />
     </div>
   );
 };

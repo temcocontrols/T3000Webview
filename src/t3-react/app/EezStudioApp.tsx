@@ -169,22 +169,33 @@ export function EezStudioApp() {
                     // pre-configured with the requested LVGL template. Optional
                     // name/location/createDirectory params (from the design hub's
                     // LVGL "Create New" dialog) pre-fill the wizard fields.
+                    // #/t3000/eez?examples=1&folder=<folder>&type=<id> → open the
+                    // wizard in EXAMPLES mode pre-selected to a specific example
+                    // (hand-off from the design hub "EEZ Examples" drawer).
                     const qi = window.location.hash.indexOf("?");
                     const params = qi >= 0
                         ? new URLSearchParams(window.location.hash.slice(qi + 1))
                         : null;
                     const wizardType = params?.get("new") ?? null;
-                    if (!cancelled && wizardType) {
-                        const wizardName = params.get("name") ?? null;
-                        const wizardLocation = params.get("location") ?? null;
-                        const wizardCreateDirectory = params.get("createDirectory") ?? null;
+                    const openExamples = params?.get("examples") === "1";
+                    if (!cancelled && (wizardType || openExamples)) {
                         import("project-editor/project/ui/Wizard").then(w => {
                             if (cancelled) return;
-                            w.wizardModelTemplates.type = wizardType;
-                            if (wizardName) w.wizardModelTemplates.name = wizardName;
-                            if (wizardLocation) w.wizardModelTemplates.location = wizardLocation;
-                            if (wizardCreateDirectory) {
-                                w.wizardModelTemplates.createDirectory = wizardCreateDirectory !== "false";
+                            if (openExamples) {
+                                w.wizardModelExamples.folder =
+                                    params.get("folder") || "_allExamples";
+                                const exType = params.get("type");
+                                if (exType) w.wizardModelExamples.type = exType;
+                            } else {
+                                w.wizardModelTemplates.type = wizardType;
+                                const wizardName = params.get("name") ?? null;
+                                const wizardLocation = params.get("location") ?? null;
+                                const wizardCreateDirectory = params.get("createDirectory") ?? null;
+                                if (wizardName) w.wizardModelTemplates.name = wizardName;
+                                if (wizardLocation) w.wizardModelTemplates.location = wizardLocation;
+                                if (wizardCreateDirectory) {
+                                    w.wizardModelTemplates.createDirectory = wizardCreateDirectory !== "false";
+                                }
                             }
                             // Wait until the app shell (home tab) is fully mounted,
                             // then open the wizard ONCE. Opening too early renders the
@@ -201,7 +212,13 @@ export function EezStudioApp() {
                                     // guard anyway so a re-render can't stack two wizards.
                                     if (wizardOpenedRef.current) return;
                                     wizardOpenedRef.current = true;
-                                    try { w.showNewProjectWizard(); }
+                                    try {
+                                        if (openExamples) {
+                                            w.showNewExampleProjectWizard();
+                                        } else {
+                                            w.showNewProjectWizard();
+                                        }
+                                    }
                                     catch (err) { console.error("[EEZ] Failed to open New Project wizard:", err); }
                                     return;
                                 }
