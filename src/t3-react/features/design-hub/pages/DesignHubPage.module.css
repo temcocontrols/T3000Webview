@@ -200,12 +200,17 @@
 }
 .deviceStats {
   display: flex;
-  gap: 22px;
+  gap: 24px;
   flex-wrap: wrap;
   margin-left: auto;
 }
 .deviceStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
+  cursor: help;
+  line-height: 1.2;
 }
 .deviceStatValue {
   font-size: 18px;
@@ -213,10 +218,11 @@
   color: #143a5c;
 }
 .deviceStatLabel {
-  font-size: 11px;
+  font-size: 10px;
   color: #6b7f94;
   text-transform: uppercase;
   letter-spacing: 0.4px;
+  white-space: nowrap;
 }
 .deviceBarActions {
   display: flex;
@@ -282,6 +288,34 @@
   border: 1px dashed #d4dbe6;
   border-radius: 10px;
   background: #fbfcfe;
+}
+.devicePickerTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+.devicePickerLoading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 6px 4px;
+  font-size: 11px;
+  color: #6b7f94;
+}
+.devicePickerError {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fdeeee;
+  border: 1px solid #f5c6c6;
+  color: #a4262c;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.devicePickerErrorMsg {
+  font-size: 11.5px;
+  color: #7a4b50;
+  word-break: break-word;
 }
 
 /* ── Type tiles ───────────────────────────────────────── */
