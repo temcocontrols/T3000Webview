@@ -244,7 +244,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
   border-radius: 10px;
   border: 1px solid #e9edf3;
   background: #fbfcfe;
