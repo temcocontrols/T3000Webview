@@ -3,13 +3,11 @@
  * Real preview thumbnail, favorite pin, selection, and quick actions.
  */
 import React, { useState } from 'react';
-import { Button, Tooltip } from '@fluentui/react-components';
+import { Button, Spinner, Tooltip } from '@fluentui/react-components';
 import {
   OpenRegular,
-  ArrowSyncRegular,
+  ArrowUploadRegular,
   LinkSquareRegular,
-  StarRegular,
-  StarFilled,
   InfoRegular,
   CheckmarkRegular,
 } from '@fluentui/react-icons';
@@ -44,13 +42,10 @@ export const ProjectCard: React.FC<{
   const type = getDrawingType(project.typeId);
   const accent = type.accent;
   const deployProject = useDesignHubStore((s) => s.deployProject);
-  const favorites = useDesignHubStore((s) => s.favorites);
-  const toggleFavorite = useDesignHubStore((s) => s.toggleFavorite);
   const deviceStatuses = useDeviceTreeStore((s) => s.deviceStatuses);
   const setMessage = useStatusBarStore((s) => s.setMessage);
   const [busy, setBusy] = useState(false);
 
-  const isFav = favorites.includes(project.id);
   const hasPreview = project.source === 'hvac';
 
   // Device-focused status badge — Deployed / SN xxxx / Local (synced retired).
@@ -163,28 +158,7 @@ export const ProjectCard: React.FC<{
       </div>
 
       <div className={styles.projectBody}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-          <div className={styles.projectName} style={{ flex: 1, minWidth: 0 }}>
-            {project.name}
-          </div>
-          <button
-            title={isFav ? 'Remove from favorites' : 'Add to favorites'}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleFavorite(project.id);
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: isFav ? '#f59e0b' : '#c3cfe0',
-              padding: 0,
-              flexShrink: 0,
-            }}
-          >
-            {isFav ? <StarFilled style={{ fontSize: 16 }} /> : <StarRegular style={{ fontSize: 16 }} />}
-          </button>
-        </div>
+        <div className={styles.projectName}>{project.name}</div>
 
         {/* Device row — link icon + SN + location (or Unbound) */}
         <div className={styles.projectDevice}>
@@ -218,23 +192,25 @@ export const ProjectCard: React.FC<{
 
         <div className={styles.projectActions} onClick={(e) => e.stopPropagation()}>
           <Tooltip content="Details & manage" relationship="label">
-            <Button size="small" icon={<InfoRegular />} onClick={openDetail} />
+            <Button size="small" appearance="subtle" icon={<InfoRegular />} onClick={openDetail} />
           </Tooltip>
           <Tooltip content="Open in editor" relationship="label">
-            <Button size="small" icon={<OpenRegular />} onClick={open}>
-              Open
-            </Button>
+            <Button size="small" appearance="subtle" icon={<OpenRegular />} onClick={open} />
           </Tooltip>
           {type.deviceAware && (
             <Tooltip content={project.serialNumber ? 'Deploy to device' : 'Bind to a device first'} relationship="label">
-              <Button size="small" icon={<ArrowSyncRegular />} onClick={handleDeploy} disabled={busy}>
-                {busy ? '…' : 'Deploy'}
-              </Button>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={busy ? <Spinner size="tiny" /> : <ArrowUploadRegular />}
+                onClick={handleDeploy}
+                disabled={busy}
+              />
             </Tooltip>
           )}
           {type.deviceAware && (
             <Tooltip content="Bind to device" relationship="label">
-              <Button size="small" icon={<LinkSquareRegular />} onClick={() => onBind(project)} />
+              <Button size="small" appearance="subtle" icon={<LinkSquareRegular />} onClick={() => onBind(project)} />
             </Tooltip>
           )}
         </div>

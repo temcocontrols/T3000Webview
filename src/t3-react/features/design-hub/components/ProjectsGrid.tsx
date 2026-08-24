@@ -153,14 +153,17 @@ export const ProjectsGrid: React.FC<{ onBind: (project: HubProject) => void }> =
   return (
     <div className={styles.section}>
       <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitle}>Project History</div>
+        <div className={styles.sectionTitle}>
+          <HubIcon icon="History" size={18} />
+          Project History
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {/* Sort */}
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortKey)}
             title="Sort projects"
-            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d1d1', fontSize: 12 }}
+            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #c9d4e2', fontSize: 12, background: '#fff', color: '#1c2b3a' }}
           >
             {SORT_OPTIONS.map((o) => (
               <option key={o.id} value={o.id}>{o.label}</option>

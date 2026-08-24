@@ -449,41 +449,45 @@
 /* ── Tabs ─────────────────────────────────────────────── */
 .tabs {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   flex-wrap: wrap;
+  border-bottom: 1px solid #e6eaf0;
 }
 .tab {
-  padding: 7px 14px;
-  border-radius: 20px;
+  padding: 8px 14px;
   font-size: 13px;
   font-weight: 600;
   color: #54647a;
   cursor: pointer;
-  border: 1px solid transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   background: transparent;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
 .tab:hover {
-  background: #f0f4f9;
   color: #143a5c;
+  background: #f5f8fc;
 }
 .tabActive {
-  background: #0078d4;
-  color: #fff;
+  color: #0078d4;
+  border-bottom-color: #0078d4;
+  background: transparent;
 }
 .tabActive:hover {
-  background: #0b6ab5;
-  color: #fff;
+  color: #0b6ab5;
+  background: #eef4fb;
 }
 .tabCount {
-  background: rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  padding: 1px 8px;
+  background: rgba(0, 0, 0, 0.07);
+  border-radius: 10px;
+  padding: 1px 7px;
   font-size: 11px;
   margin-left: 6px;
 }
 .tabActive .tabCount {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 120, 212, 0.12);
+  color: #0b6ab5;
 }
 .searchBox {
   width: 220px;
