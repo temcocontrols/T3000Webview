@@ -5,6 +5,10 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
+
+    /* Silence the baseUrl deprecation (TS 6.x) — baseUrl is still required by
+       the legacy path aliases in this repo. */
+    "ignoreDeprecations": "6.0",
     "allowJs": true,
 
     /* Bundler mode */
@@ -59,7 +63,6 @@
       "eez-studio-ui/*": ["src/lib/t3-eez-studio/eez-studio-ui/*"],
       "eez-studio-types": ["src/lib/t3-eez-studio/eez-studio-types"],
       "eez-studio-types/*": ["src/lib/t3-eez-studio/eez-studio-types/*"],
-      "db-services/*": ["src/lib/t3-eez-studio/db-services/*"],
       "home/*": ["src/lib/t3-eez-studio/home/*"],
       "instrument/*": ["src/lib/t3-eez-studio/instrument/*"],
       "project-editor/*": ["src/lib/t3-eez-studio/project-editor/*"],
