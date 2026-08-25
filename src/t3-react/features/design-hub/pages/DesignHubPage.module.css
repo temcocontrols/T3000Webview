@@ -25,6 +25,19 @@
 .page::-webkit-scrollbar-thumb { background: #b9c6d6; border-radius: 3px; }
 .page::-webkit-scrollbar-thumb:hover { background: #9fb0c4; }
 
+/* Project detail page — own scroll container with thin scrollbar */
+.detailScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;                 /* Firefox */
+  scrollbar-color: #b9c6d6 transparent;  /* Firefox */
+}
+.detailScroll::-webkit-scrollbar { width: 6px; }
+.detailScroll::-webkit-scrollbar-track { background: transparent; }
+.detailScroll::-webkit-scrollbar-thumb { background: #b9c6d6; border-radius: 3px; }
+.detailScroll::-webkit-scrollbar-thumb:hover { background: #9fb0c4; }
+
 .container {
   width: 100%;
   /* max-width: 1400px; — commented out (user, 2026-08-24) */
