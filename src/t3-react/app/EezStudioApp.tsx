@@ -2,6 +2,7 @@
 import "src/t3-eez-studio/bridge/browser-polyfill";
 
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { initEezBridge, checkBackendHealth } from "src/t3-eez-studio/bridge/eez-studio-api";
 import "src/t3-eez-studio/bridge/eez-registry";
 import { ipcRenderer } from "electron";
@@ -147,170 +148,197 @@ function BackendStatusBar() {
 
 export function EezStudioApp() {
     const [showContent, setShowContent] = useState(false);
+    const location = useLocation();
     // Prevent React StrictMode (dev) from double-running the ?new= effect, which
     // would open the New Project wizard twice (two stacked panels).
     const wizardOpenedRef = useRef(false);
 
+    // 1) Backend health → reveal the content area (runs once on mount).
     useEffect(() => {
         let cancelled = false;
         initEezBridge();
-
         checkBackendHealth().then(h => {
             if (cancelled) return;
-            if (h) {
-                setShowContent(true);
-                // home/main is side-effect driven (cached import won't re-run).
-                // Import it first if not already loaded, then call initEezMain() to re-render.
-                import("home/main").then(m => {
-                    if (!cancelled && m.initEezMain) {
-                        m.initEezMain();
-                    }
-                    // #/t3000/eez?new=<wizardType> → open the New Project wizard
-                    // pre-configured with the requested LVGL template. Optional
-                    // name/location/createDirectory params (from the design hub's
-                    // LVGL "Create New" dialog) pre-fill the wizard fields.
-                    // #/t3000/eez?examples=1&folder=<folder>&type=<id> → open the
-                    // wizard in EXAMPLES mode pre-selected to a specific example
-                    // (hand-off from the design hub "EEZ Examples" drawer).
-                    const qi = window.location.hash.indexOf("?");
-                    const params = qi >= 0
-                        ? new URLSearchParams(window.location.hash.slice(qi + 1))
-                        : null;
-                    const wizardType = params?.get("new") ?? null;
-                    const openExamples = params?.get("examples") === "1";
-                    if (!cancelled && (wizardType || openExamples)) {
-                        import("project-editor/project/ui/Wizard").then(w => {
-                            if (cancelled) return;
-                            if (openExamples) {
-                                w.wizardModelExamples.folder =
-                                    params.get("folder") || "_allExamples";
-                                const exType = params.get("type");
-                                if (exType) w.wizardModelExamples.type = exType;
-                                // Optional name/location/createDirectory from the
-                                // design hub example create dialog pre-fill the wizard.
-                                const exName = params.get("name") ?? null;
-                                const exLocation = params.get("location") ?? null;
-                                const exCreateDirectory = params.get("createDirectory") ?? null;
-                                if (exName) w.wizardModelExamples.name = exName;
-                                if (exLocation) w.wizardModelExamples.location = exLocation;
-                                if (exCreateDirectory) {
-                                    w.wizardModelExamples.createDirectory =
-                                        exCreateDirectory !== "false";
-                                }
-                                console.log("[EEZ-Examples] EezStudioApp handoff — folder:",
-                                    w.wizardModelExamples.folder,
-                                    "type:", w.wizardModelExamples.type,
-                                    "name:", w.wizardModelExamples.name,
-                                    "location:", w.wizardModelExamples.location,
-                                    "createDirectory:", w.wizardModelExamples.createDirectory);
-                            } else {
-                                w.wizardModelTemplates.type = wizardType;
-                                const wizardName = params.get("name") ?? null;
-                                const wizardLocation = params.get("location") ?? null;
-                                const wizardCreateDirectory = params.get("createDirectory") ?? null;
-                                if (wizardName) w.wizardModelTemplates.name = wizardName;
-                                if (wizardLocation) w.wizardModelTemplates.location = wizardLocation;
-                                if (wizardCreateDirectory) {
-                                    w.wizardModelTemplates.createDirectory = wizardCreateDirectory !== "false";
-                                }
-                            }
-                            // Run the direct-to-editor create. When the home tab first
-                            // mounts the app may still be settling (WASM compile / tab
-                            // restore), so a request can occasionally be dropped and
-                            // createProject fails partway. Retry, cleaning up any
-                            // partially-created folder (from the ?folder= param) so
-                            // the exists-validation passes on the next attempt.
-                            const createWithRetry = async (create: () => Promise<boolean>) => {
-                                for (let attempt = 1; attempt <= 3; attempt++) {
-                                    if (cancelled) return;
-                                    const ok = await create().catch(err => {
-                                        console.error("[EEZ-Examples] autoCreate error:", err);
-                                        return false;
-                                    });
-                                    if (cancelled) return;
-                                    if (ok) {
-                                        console.log(`[EEZ-Examples] autoCreate succeeded (attempt ${attempt})`);
-                                        return;
-                                    }
-                                    if (attempt === 3) {
-                                        console.error("[EEZ-Examples] autoCreate failed after 3 attempts");
-                                        return;
-                                    }
-                                    console.warn(`[EEZ-Examples] autoCreate attempt ${attempt} failed, retrying...`);
-                                    const folderPath = params?.get("folderPath");
-                                    if (folderPath) {
-                                        try {
-                                            await fetch(`/api/eez-studio/delete-recursive?path=${encodeURIComponent(folderPath)}&force=true`, { method: "DELETE" });
-                                        } catch {}
-                                    }
-                                    await new Promise(res => setTimeout(res, 1500));
-                                }
-                            };
-
-                            // Wait until the app shell (home tab) is fully mounted,
-                            // then open the wizard ONCE. Opening too early renders the
-                            // dialog into a layer that the app then tears down.
-                            let attempts = 0;
-                            const waitForApp = () => {
-                                if (cancelled) return;
-                                const mounted =
-                                    !!document.querySelector(".EezStudio_HomeTab") ||
-                                    !!document.querySelector(".EezStudio_HomeTab_Navigation");
-                                if (mounted) {
-                                    // Only the surviving StrictMode effect run gets here
-                                    // (the first run is cancelled before this point), but
-                                    // guard anyway so a re-render can't stack two wizards.
-                                    if (wizardOpenedRef.current) return;
-                                    wizardOpenedRef.current = true;
-                                    try {
-                                        if (openExamples) {
-                                            if (params?.get("autoCreate") === "1") {
-                                                // Direct-to-editor: skip the wizard
-                                                // form and create the example now
-                                                // (downloads + saves, then opens the
-                                                // project editor). Give the shell a
-                                                // moment to settle, then create.
-                                                setTimeout(() => createWithRetry(() => w.createProjectFromExample()), 1000);
-                                            } else {
-                                                w.showNewExampleProjectWizard();
-                                            }
-                                        } else {
-                                            // Direct-to-editor: create a NEW LVGL
-                                            // template project (from the design hub
-                                            // create dialog) and open the editor —
-                                            // never show the wizard form.
-                                            const hasSettings =
-                                                !!(params?.get("name") &&
-                                                    params?.get("location"));
-                                            if (params?.get("autoCreate") === "1" || hasSettings) {
-                                                console.log("[EEZ-Examples] EezStudioApp autoCreate (template) — new=", params.get("new"), "name=", params.get("name"), "location=", params.get("location"), "folder=", params.get("folder"));
-                                                setTimeout(() => createWithRetry(() => w.createProjectFromTemplate()), 1000);
-                                            } else {
-                                                w.showNewProjectWizard();
-                                            }
-                                        }
-                                    }
-                                    catch (err) { console.error("[EEZ] Failed to open New Project wizard:", err); }
-                                    return;
-                                }
-                                // Keep waiting while the shell mounts (a cold WASM
-                                // load can take longer than 12s to render the home
-                                // tab). Cap at ~45s so we never poll forever.
-                                if (attempts++ < 150) setTimeout(waitForApp, 300);
-                            };
-                            waitForApp();
-                        }).catch(err => console.error("[EEZ] Failed to open New Project wizard:", err));
-                    }
-                }).catch(err => console.error("[EEZ] Failed to load home/main:", err));
-            }
+            if (h) setShowContent(true);
         });
+        return () => { cancelled = true; };
+    }, []);
+
+    // 2) Mount the embedded EEZ Studio shell once the content area is shown.
+    //    main() is deliberately NOT re-run on later navigations — remounting the
+    //    whole app while a create is in flight made the previous project flash
+    //    and then leave an empty canvas.
+    useEffect(() => {
+        if (!showContent) return;
+        let cancelled = false;
+        // When landing here to CREATE a new project (name+location present),
+        // don't resurrect previously open project tabs — only the newly created
+        // project should show in the editor (avoids the previous project
+        // flashing in and conflicting with the new one).
+        // NOTE: under HashRouter the query lives in location.search, NOT
+        // location.hash (which is empty) — parsing the wrong one silently
+        // skipped the create and resurrected the previous default project.
+        const params = new URLSearchParams(location.search);
+        const isCreate =
+            !!(params.get("name") && params.get("location")) &&
+            (!!params.get("new") || params.get("examples") === "1");
+        if (isCreate) {
+            try { localStorage.removeItem("home/tabs"); } catch {}
+            try { localStorage.removeItem("home-tab-options"); } catch {}
+        }
+        import("home/main")
+            .then(m => {
+                if (!cancelled && m.initEezMain) m.initEezMain();
+            })
+            .catch(err => console.error("[EEZ] Failed to load home/main:", err));
+        return () => { cancelled = true; };
+    }, [showContent]);
+
+    // 3) Hand-off from the design hub: /t3000/eez?new=… or ?examples=… creates
+    //    the project and opens the editor. Keyed on the route location so a NEW
+    //    navigation on the same route (e.g. ?examples= → ?new=) is processed
+    //    even though the app is already mounted.
+    useEffect(() => {
+        if (!showContent) return;
+        wizardOpenedRef.current = false;
+        let cancelled = false;
+
+        // Parse the query from location.search (HashRouter puts the query here;
+        // location.hash is empty). This drives ?new= / ?examples= creates.
+        const params = new URLSearchParams(location.search);
+        const wizardType = params.get("new") ?? null;
+        const openExamples = params.get("examples") === "1";
+        if (!wizardType && !openExamples) return;
+
+        import("project-editor/project/ui/Wizard").then(w => {
+            if (cancelled) return;
+
+            if (openExamples) {
+                w.wizardModelExamples.folder =
+                    params.get("folder") || "_allExamples";
+                const exType = params.get("type");
+                if (exType) w.wizardModelExamples.type = exType;
+                const exName = params.get("name") ?? null;
+                const exLocation = params.get("location") ?? null;
+                const exCreateDirectory = params.get("createDirectory") ?? null;
+                if (exName) w.wizardModelExamples.name = exName;
+                if (exLocation) w.wizardModelExamples.location = exLocation;
+                if (exCreateDirectory) {
+                    w.wizardModelExamples.createDirectory =
+                        exCreateDirectory !== "false";
+                }
+                console.log("[EEZ-Examples] EezStudioApp handoff — folder:",
+                    w.wizardModelExamples.folder,
+                    "type:", w.wizardModelExamples.type,
+                    "name:", w.wizardModelExamples.name,
+                    "location:", w.wizardModelExamples.location,
+                    "createDirectory:", w.wizardModelExamples.createDirectory);
+            } else {
+                w.wizardModelTemplates.type = wizardType;
+                const wizardName = params.get("name") ?? null;
+                const wizardLocation = params.get("location") ?? null;
+                const wizardCreateDirectory = params.get("createDirectory") ?? null;
+                if (wizardName) w.wizardModelTemplates.name = wizardName;
+                if (wizardLocation) w.wizardModelTemplates.location = wizardLocation;
+                if (wizardCreateDirectory) {
+                    w.wizardModelTemplates.createDirectory = wizardCreateDirectory !== "false";
+                }
+            }
+
+            // Path to clean up if a create fails partway (matches
+            // wizardModel.projectFolderPath = location/name when
+            // createDirectory is set).
+            const createDirectory = params.get("createDirectory") !== "false";
+            const loc = (params.get("location") || "").trim().replace(/[\/\\]+$/, "");
+            const nm = (params.get("name") || "").trim();
+            const cleanupFolder = createDirectory
+                ? (loc ? loc + "/" + nm : nm)
+                : loc;
+
+            // Run the direct-to-editor create. When the home tab first mounts the
+            // app may still be settling (WASM compile / tab restore), so a request
+            // can occasionally be dropped and createProject fails partway. Retry,
+            // cleaning up any partially-created folder so the exists-validation
+            // passes on the next attempt.
+            const createWithRetry = async (create: () => Promise<boolean>) => {
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                    if (cancelled) return;
+                    const ok = await create().catch(err => {
+                        console.error("[EEZ-Examples] autoCreate error:", err);
+                        return false;
+                    });
+                    if (cancelled) return;
+                    if (ok) {
+                        console.log(`[EEZ-Examples] autoCreate succeeded (attempt ${attempt})`);
+                        return;
+                    }
+                    if (attempt === 3) {
+                        console.error("[EEZ-Examples] autoCreate failed after 3 attempts");
+                        return;
+                    }
+                    console.warn(`[EEZ-Examples] autoCreate attempt ${attempt} failed, retrying...`);
+                    if (cleanupFolder) {
+                        try {
+                            await fetch(`/api/eez-studio/delete-recursive?path=${encodeURIComponent(cleanupFolder)}&force=true`, { method: "DELETE" });
+                        } catch {}
+                    }
+                    await new Promise(res => setTimeout(res, 1500));
+                }
+            };
+
+            // Wait until the app shell (home tab) is fully mounted, then open the
+            // wizard ONCE. Opening too early renders the dialog into a layer that
+            // the app then tears down.
+            let attempts = 0;
+            const waitForApp = () => {
+                if (cancelled) return;
+                const mounted =
+                    !!document.querySelector(".EezStudio_HomeTab") ||
+                    !!document.querySelector(".EezStudio_HomeTab_Navigation");
+                if (mounted) {
+                    if (wizardOpenedRef.current) return;
+                    wizardOpenedRef.current = true;
+                    try {
+                        if (openExamples) {
+                            if (params?.get("name") && params?.get("location")) {
+                                // Direct-to-editor: create the example project now
+                                // (downloads + saves, then opens the editor).
+                                console.log("[EEZ-Examples] EezStudioApp create-from-example — type=", params.get("type"), "name=", params.get("name"), "location=", params.get("location"));
+                                setTimeout(() => createWithRetry(() => w.createProjectFromExample()), 1000);
+                            } else {
+                                w.showNewExampleProjectWizard();
+                            }
+                        } else {
+                            if (params?.get("name") && params?.get("location")) {
+                                // Direct-to-editor: create a NEW LVGL template
+                                // project (from the design hub create dialog) and
+                                // open the editor — never show the wizard form.
+                                console.log("[EEZ-Examples] EezStudioApp create-from-template — new=", wizardType, "name=", params.get("name"), "location=", params.get("location"));
+                                setTimeout(() => createWithRetry(() => w.createProjectFromTemplate()), 1000);
+                            } else {
+                                w.showNewProjectWizard();
+                            }
+                        }
+                    } catch (err) {
+                        console.error("[EEZ] Failed to open New Project wizard:", err);
+                    }
+                    return;
+                }
+                // Keep waiting while the shell mounts (a cold WASM load can take
+                // longer than 12s to render the home tab). Cap at ~45s.
+                if (attempts++ < 150) setTimeout(waitForApp, 300);
+            };
+            waitForApp();
+        }).catch(err => console.error("[EEZ] Failed to open New Project wizard:", err));
 
         return () => {
             cancelled = true;
-            // Let a StrictMode remount (or a later ?new= navigation) retry.
             wizardOpenedRef.current = false;
         };
-    }, []);
+        // Re-run when the route location changes — even on the same /t3000/eez
+        // route with a different query — so a fresh create request is always
+        // processed (previously the previous project stayed in the editor).
+    }, [location.key, location.search, showContent]);
 
     // ── EEZ top-menu bridge ─────────────────────────────────────
     // Header dispatches `eez-studio-action` (see Header.tsx handleEezAction);

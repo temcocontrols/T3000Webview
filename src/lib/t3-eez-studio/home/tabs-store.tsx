@@ -491,20 +491,51 @@ export class ProjectEditorTab implements IHomeTab {
                 });
                 // Browser: FlexLayout model may not be ready when
                 // Content.componentDidMount fires and consumes the
-                // openInitialEditorsAtStart flag. Open the first page
-                // directly after the model settles.
-                setTimeout(() => {
+                // openInitialEditorsAtStart flag, which can leave the project
+                // canvas empty until a manual refresh. Keep opening the first
+                // page (openEditor is idempotent) and re-syncing from the layout
+                // model until the page's tab actually appears in the canvas.
+                let firstPageRetries = 0;
+                const ensureFirstPageVisible = () => {
                     const store = projectStore.editorsStore;
-                    if (store && store.editors.length === 0) {
-                        const pages = projectStore.project.userPages;
-                        if (pages && pages.length > 0) {
-                            store.openEditor(pages[0]);
-                            projectStore.navigationStore.showObjects(
-                                [pages[0]], false, false, true
-                            );
-                        }
+                    if (!store || this.closed) return;
+                    // If an editor is already visible in the canvas (restored
+                    // ui-state or a successful openInitialEditors), leave it
+                    // alone.
+                    if (
+                        store.activeEditor?.tabId &&
+                        store.tabs.some(
+                            t => t.getId() === store.activeEditor.tabId
+                        )
+                    ) {
+                        return;
                     }
-                }, 100);
+                    const pages = projectStore.project.userPages;
+                    if (!pages || pages.length === 0) return;
+                    const page = pages[0];
+                    try {
+                        store.openEditor(page);
+                        store.refresh(true);
+                        projectStore.navigationStore.showObjects(
+                            [page], false, false, true
+                        );
+                    } catch (err) {
+                        console.error("[EEZ-Examples] ensureFirstPageVisible error:", err);
+                    }
+                    const activeTabId = store.activeEditor?.tabId;
+                    const inLayout =
+                        !!activeTabId &&
+                        store.tabs.some(t => t.getId() === activeTabId);
+                    firstPageRetries += 1;
+                    if (!inLayout && firstPageRetries < 12) {
+                        setTimeout(ensureFirstPageVisible, 500);
+                    } else {
+                        console.log(
+                            `[EEZ-Examples] first page in canvas after ${firstPageRetries} attempt(s): ${inLayout}`
+                        );
+                    }
+                };
+                setTimeout(ensureFirstPageVisible, 300);
             }
         } catch (err) {
             console.log(err);
