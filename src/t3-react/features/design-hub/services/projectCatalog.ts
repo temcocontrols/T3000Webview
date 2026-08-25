@@ -26,6 +26,8 @@ export interface EezProjectEntry {
   lvgl_version: string | null;
   size: number;
   modified: number;
+  pages?: number;
+  widgets?: number;
 }
 
 export interface HvacDrawingEntry {
@@ -65,6 +67,11 @@ function eezToHubProject(e: EezProjectEntry): HubProject {
     status: 'local',
     source: 'eez',
     openPath: `/t3000/eez?open=${encodeURIComponent(e.file_path)}`,
+    lvglVersion: e.lvgl_version ?? undefined,
+    folder: e.folder,
+    fileSize: e.size,
+    pages: e.pages,
+    widgets: e.widgets,
   };
 }
 

@@ -1162,6 +1162,8 @@ struct EezProjectEntry {
     lvgl_version: Option<String>,
     size: u64,
     modified: u64,
+    pages: Option<usize>,
+    widgets: Option<usize>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1234,12 +1236,22 @@ async fn list_eez_projects() -> Json<EezProjectsResponse> {
                     .unwrap_or_else(|| folder.clone());
 
                 let mut lvgl_version: Option<String> = None;
+                let mut pages: Option<usize> = None;
+                let mut widgets: Option<usize> = None;
                 if let Ok(content) = fs::read_to_string(&pf).await {
                     if let Ok(json) = serde_json::from_str::<Value>(&content) {
                         lvgl_version = json
                             .pointer("/settings/general/lvglVersion")
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string());
+                        pages = json
+                            .pointer("/userPages")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.len());
+                        widgets = json
+                            .pointer("/userWidgets")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.len());
                     }
                 }
 
@@ -1260,6 +1272,8 @@ async fn list_eez_projects() -> Json<EezProjectsResponse> {
                     lvgl_version,
                     size,
                     modified,
+                    pages,
+                    widgets,
                 });
             }
         }
