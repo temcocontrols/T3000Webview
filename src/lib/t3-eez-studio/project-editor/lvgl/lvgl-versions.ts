@@ -584,6 +584,28 @@ const wasmFlowRuntimeConstructors: {
     [key: string]: any;
 } = {};
 
+// Serializes Emscripten glue <script> loads so only one glue script evaluates at
+// a time. Every version's glue writes the SAME shared globalThis.LVGLWasmRuntime;
+// if two versions evaluated concurrently the last one to run would win and a
+// version could capture another version's factory → wrong glue + wrong wasm →
+// "missing Wasm export" (e.g. 9.5.0 glue + 8.4.0 wasm).
+//
+// The chain lives on globalThis so it is SHARED even if this module is bundled
+// more than once — two independent chains would let two versions' glues evaluate
+// concurrently again.
+const GLUE_LOAD_CHAIN_KEY = "__LVGL_GLUE_LOAD_CHAIN";
+function getGlueLoadChain(): Promise<void> {
+    let chain = (globalThis as any)[GLUE_LOAD_CHAIN_KEY] as Promise<void> | undefined;
+    if (!chain) {
+        chain = Promise.resolve();
+        (globalThis as any)[GLUE_LOAD_CHAIN_KEY] = chain;
+    }
+    return chain;
+}
+function setGlueLoadChain(chain: Promise<void>): void {
+    (globalThis as any)[GLUE_LOAD_CHAIN_KEY] = chain;
+}
+
 export function getLvglWasmFlowRuntimeConstructor(
     lvglVersion: LVGLVersion
 ): any {
@@ -611,17 +633,77 @@ export function getLvglWasmFlowRuntimeConstructor(
         const versionMatch = fileName.match(/v?(\d+\.\d+\.\d+)/);
         const version = versionMatch ? versionMatch[1] : "9.5.0";
         const jsUrl = `/eez-studio-wasm/wasm/lvgl/${version}/${fileName}`;
+        // Per-version glue slot. The emscripten glue assigns the SHARED
+        // globalThis.LVGLWasmRuntime, so we capture it into a version-specific
+        // slot right after THIS version's script alone has evaluated.
+        const globalKey = `LVGLWasmRuntime_${version.replace(/\./g, "_")}`;
 
-        // Load the JS glue once (sets globalThis.LVGLWasmRuntime)
+        // Load the JS glue for this version — serialized through wasmGlueLoadChain
+        // so only one glue script evaluates at a time (race-free capture). Retries
+        // transient failures and never rejects the chain, so one bad load can't
+        // block the other versions.
         const loadPromise = (() => {
-            if ((globalThis as any).LVGLWasmRuntime) return Promise.resolve();
-            return new Promise<void>((resolve, reject) => {
-                const script = document.createElement("script");
-                script.src = jsUrl;
-                script.onload = () => resolve();
-                script.onerror = () => reject(new Error("Failed to load " + jsUrl));
-                document.head.appendChild(script);
+            if ((globalThis as any)[globalKey]) return Promise.resolve();
+            const myLoad = getGlueLoadChain().then(async () => {
+                if ((globalThis as any)[globalKey]) return;
+                for (let attempt = 1; attempt <= 4; attempt++) {
+                    try {
+                        // CRITICAL: load the glue as an ES MODULE (fetch text →
+                        // Blob → dynamic import), NOT as a classic <script>.
+                        //
+                        // The Emscripten glue declares its helper functions
+                        // (runWasmModule / createWasm / assignWasmExports /
+                        // receiveInstance / findWasmBinary / wasmBinaryFile / …)
+                        // at TOP LEVEL. As a classic <script> they become
+                        // GLOBALS, so when two versions' glue scripts evaluate in
+                        // the same page the LAST one to evaluate overwrites them
+                        // ALL. Then a factory from one version internally calls
+                        // ANOTHER version's helpers → e.g. the 9.5.0 factory calls
+                        // the 8.4.0 assignWasmExports which checks the 9.5.0 wasm
+                        // (via __lvglWasmUrl) for `lv_disp_flush_ready` → abort
+                        // "missing Wasm export: lv_disp_flush_ready". This is the
+                        // exact "mounts 9.5.0 but the error is in 8.4.0.js" bug.
+                        //
+                        // Evaluating as a module scopes every declaration to that
+                        // module, so each version's factory always uses ITS OWN
+                        // helpers. fetch({cache:"no-store"}) also guarantees the
+                        // fresh backend glue (never a stale SW/HTTP cached copy).
+                        const res = await fetch(jsUrl, { cache: "no-store" });
+                        if (!res.ok) {
+                            throw new Error("HTTP " + res.status + " for " + jsUrl);
+                        }
+                        const text = await res.text();
+                        const blobUrl = URL.createObjectURL(
+                            new Blob([text], { type: "text/javascript" })
+                        );
+                        try {
+                            await import(/* @vite-ignore */ blobUrl);
+                        } finally {
+                            URL.revokeObjectURL(blobUrl);
+                        }
+                        // The glue's last statement sets globalThis.LVGLWasmRuntime;
+                        // module evaluation completes before import() resolves, so
+                        // this is THIS version's factory. Capture it immediately
+                        // (the serialized chain guarantees no other glue evaluated
+                        // in between).
+                        const factory = (globalThis as any).LVGLWasmRuntime;
+                        if (!factory) {
+                            throw new Error("glue evaluated but LVGLWasmRuntime global not set: " + jsUrl);
+                        }
+                        (globalThis as any)[globalKey] = factory;
+                        console.log("[LVGL-WASM] v" + version + " glue ready" + (attempt > 1 ? " (retry " + attempt + ")" : ""));
+                        return;
+                    } catch (err) {
+                        console.warn("[LVGL-WASM] glue load attempt " + attempt + " failed for " + jsUrl + ": " + (err as Error).message);
+                        if (attempt < 4) {
+                            await new Promise(res => setTimeout(res, 600));
+                        }
+                    }
+                }
+                console.error("[LVGL-WASM] glue load failed for " + jsUrl);
             });
+            setGlueLoadChain(myLoad.catch(() => {}));
+            return myLoad;
         })();
 
         return function DirectWasmRuntime(this: any, initCb: any) {
@@ -654,9 +736,11 @@ export function getLvglWasmFlowRuntimeConstructor(
             const runtimeProxy = new Proxy(this, proxyHandler);
 
             loadPromise.then(() => {
-                const factory = (globalThis as any).LVGLWasmRuntime;
+                // Use ONLY this version's slot — never the shared global, which
+                // could hold another version's factory (the original bug).
+                const factory = (globalThis as any)[globalKey];
                 if (!factory) {
-                    console.warn("[wasm] LVGLWasmRuntime not found — using no-op");
+                    console.warn("[wasm] LVGLWasmRuntime not found for v" + version + " — using no-op");
                     if (typeof initCb === "function") setTimeout(() => initCb({ init: true }), 0);
                     return;
                 }

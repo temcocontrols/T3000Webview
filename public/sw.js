@@ -3,8 +3,8 @@
  * Handles caching, offline functionality, and background sync
  */
 
-const CACHE_NAME = 't3000-cache-v1';
-const DATA_CACHE_NAME = 't3000-data-cache-v1';
+const CACHE_NAME = 't3000-cache-v2';
+const DATA_CACHE_NAME = 't3000-data-cache-v2';
 
 // Resources to cache on install
 const STATIC_CACHE_URLS = [
@@ -85,6 +85,14 @@ self.addEventListener('fetch', (event) => {
   // Handle API requests
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(handleApiRequest(request));
+    return;
+  }
+
+  // NEVER cache the LVGL WASM runtime (glue JS + wasm binaries) — a stale
+  // cached glue can pair with another version's wasm and abort with
+  // "missing Wasm export". Always fetch fresh from the backend.
+  if (url.pathname.startsWith('/eez-studio-wasm/')) {
+    event.respondWith(fetch(request));
     return;
   }
 

@@ -3,7 +3,7 @@
  * Provides offline functionality and intelligent caching
  */
 
-const CACHE_NAME = 'T3000_v1.2.0';
+const CACHE_NAME = 'T3000_v1.3.0';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
 // Define cache strategies for different resource types
@@ -311,6 +311,13 @@ const networkHandler = {
    * Handle network requests with caching strategies
    */
   async handleRequest(request) {
+    // NEVER cache the LVGL WASM runtime (glue JS + wasm binaries) — a stale
+    // cached glue can pair with another version's wasm and abort with
+    // "missing Wasm export". Always fetch fresh from the backend.
+    if (request.url.includes('/eez-studio-wasm/')) {
+      return fetch(request);
+    }
+
     const strategy = cacheManager.getCacheStrategy(request.url);
 
     switch (strategy) {
