@@ -237,10 +237,10 @@ export function EezStudioApp() {
                                         return;
                                     }
                                     console.warn(`[EEZ-Examples] autoCreate attempt ${attempt} failed, retrying...`);
-                                    const folder = params?.get("folder");
-                                    if (folder) {
+                                    const folderPath = params?.get("folderPath");
+                                    if (folderPath) {
                                         try {
-                                            await fetch(`/api/eez-studio/delete-recursive?path=${encodeURIComponent(folder)}&force=true`, { method: "DELETE" });
+                                            await fetch(`/api/eez-studio/delete-recursive?path=${encodeURIComponent(folderPath)}&force=true`, { method: "DELETE" });
                                         } catch {}
                                     }
                                     await new Promise(res => setTimeout(res, 1500));

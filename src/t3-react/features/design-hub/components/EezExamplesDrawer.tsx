@@ -3,8 +3,9 @@
  *
  * Shows ready-made LVGL example projects from the EEZ examples catalog
  * (`project-editor/store/examples-catalog`, filtered to LVGL / LVGL + Flow).
- * Picking an example hands off to the EEZ New Project wizard in examples mode:
- *   navigate("/t3000/eez?examples=1&folder=<folderId>&type=<exampleId>")
+ * Picking an example opens the create dialog (EezExampleCreateDialog), which
+ * collects the project settings and then hands off to the EEZ examples wizard:
+ *   /t3000/eez?examples=1&folder=<folderId>&type=<exampleId>&name=…&location=…
  *
  * The trigger button + info chip live right-aligned in the "Create by Type"
  * title bar (see DesignHubPage). The count badge is reported via onCount().
@@ -24,7 +25,7 @@ import {
   SearchRegular,
   DocumentTextRegular,
 } from '@fluentui/react-icons';
-import { useNavigate } from 'react-router-dom';
+import { EezExampleCreateDialog } from './EezExampleCreateDialog';
 import styles from '../pages/DesignHubPage.module.css';
 
 interface Props {
@@ -34,7 +35,7 @@ interface Props {
   onCount?: (count: number) => void;
 }
 
-interface ExampleItem {
+export interface ExampleItem {
   id: string;
   folderId: string;
   name: string;
@@ -87,37 +88,71 @@ async function loadCatalogModule(): Promise<any> {
   return m.examplesCatalog;
 }
 
+// The catalog stores the raw ProjectType enum value (e.g. "lvgl") as
+// `projectType`. Mirror the EEZ wizard (project-editor/project/ui/Wizard.tsx →
+// PROJECT_TYPE_NAMES) by mapping it to its display name before filtering, so
+// LVGL examples actually match. Kept inline to avoid pulling the whole
+// project-editor module into the design hub bundle.
+const PROJECT_TYPE_NAMES: Record<string, string> = {
+  undefined: 'Undefined',
+  firmware: 'EEZ-GUI',
+  'firmware-module': 'EEZ-GUI Library',
+  resource: 'BB3 MicroPython Script',
+  applet: 'BB3 Applet',
+  dashboard: 'Dashboard',
+  lvgl: 'LVGL',
+  iext: 'IEXT',
+  'eez-gui-lite': 'EEZ-GUI Lite',
+};
+
 function buildExamples(catalog: any): ExampleItem[] {
   const raw = Array.isArray(catalog.catalog) ? catalog.catalog : [];
+  console.log('[EEZ-Examples] buildExamples — raw catalog entries:', raw.length);
+  console.log('[EEZ-Examples] raw projectType values:', raw.map((e: any) => e?.projectType));
   const startIds = new Set<string>(
     (Array.isArray(catalog.catalogAtStart) ? catalog.catalogAtStart : []).map(exampleId)
   );
-  return raw
-    .filter((e: any) => e && LVGL_TYPES.includes(e.projectType))
-    .map((e: any): ExampleItem => ({
-      id: exampleId(e),
-      folderId: exampleFolderId(e),
-      name: e.projectName || 'Untitled',
-      description: e.description || '',
-      type: e.projectType,
-      image: typeof e.image === 'string' ? e.image : undefined,
-      width: e.displayWidth,
-      height: e.displayHeight,
-      author: e.author,
-      isNew: !startIds.has(exampleId(e)),
-    }));
+  const result = raw
+    .map((e: any): ExampleItem | null => {
+      if (!e) return null;
+      // Map raw enum → display name (same as the EEZ wizard), then keep LVGL.
+      const mappedType = PROJECT_TYPE_NAMES[e.projectType as string];
+      if (!mappedType || !LVGL_TYPES.includes(mappedType)) return null;
+      return {
+        id: exampleId(e),
+        folderId: exampleFolderId(e),
+        name: e.projectName || 'Untitled',
+        description: e.description || '',
+        type: mappedType,
+        image: typeof e.image === 'string' ? e.image : undefined,
+        width: e.displayWidth,
+        height: e.displayHeight,
+        author: e.author,
+        isNew: !startIds.has(exampleId(e)),
+      };
+    })
+    .filter((x): x is ExampleItem => x !== null);
+  console.log('[EEZ-Examples] LVGL examples found:', result.length,
+    result.slice(0, 5).map((x) => ({ type: x.type, name: x.name, id: x.id })));
+  return result;
 }
 
 export const EezExamplesDrawer: React.FC<Props> = ({ open, onClose, onCount }) => {
-  const navigate = useNavigate();
   const [examples, setExamples] = useState<ExampleItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'new' | 'lvgl' | 'flow'>('all');
   const [selected, setSelected] = useState<ExampleItem | null>(null);
+  const [creatingExample, setCreatingExample] = useState<ExampleItem | null>(null);
 
   // Load the catalog when the drawer opens (once).
+  // The catalog module downloads + unpacks ASYNC after load() resolves (see
+  // examples-catalog.ts: checkNewVersionOfCatalog → downloadCatalog), so the
+  // live `examplesCatalog.catalog` can be empty for a while. The EEZ wizard
+  // picks it up reactively (mobx recomputes on change). Mirror that here by
+  // re-reading the live singleton until it populates instead of bailing out
+  // after a few seconds (which caused "No LVGL examples yet").
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -127,6 +162,7 @@ export const EezExamplesDrawer: React.FC<Props> = ({ open, onClose, onCount }) =
 
     const finish = (list: ExampleItem[]) => {
       if (cancelled) return;
+      console.log('[EEZ-Examples] drawer finished with', list.length, 'examples');
       setExamples(list);
       onCount?.(list.length);
       // Keep the selection valid if the list changed.
@@ -140,23 +176,24 @@ export const EezExamplesDrawer: React.FC<Props> = ({ open, onClose, onCount }) =
       .then(snapshot)
       .then((list) => {
         if (cancelled) return;
-        // The catalog download can finish a moment AFTER load() returns (the
-        // catalog module downloads + unpacks async). Give it a few seconds to
-        // populate before falling through to the empty state.
         if (list.length > 0) {
           finish(list);
           return;
         }
+        // Empty right after load() — the async catalog download is still
+        // running. Keep re-reading until it lands (long window, ~60s), like the
+        // reactive wizard does.
+        console.log('[EEZ-Examples] catalog empty after load(), polling for async download...');
         let attempts = 0;
         const poll = () => {
           if (cancelled) return;
           snapshot().then((l2) => {
             if (cancelled) return;
-            if (l2.length > 0 || attempts >= 10) {
+            if (l2.length > 0 || attempts >= 60) {
               finish(l2);
             } else {
               attempts++;
-              pollTimer = window.setTimeout(poll, 800);
+              pollTimer = window.setTimeout(poll, 1000);
             }
           });
         };
@@ -164,6 +201,7 @@ export const EezExamplesDrawer: React.FC<Props> = ({ open, onClose, onCount }) =
       })
       .catch((err: any) => {
         if (!cancelled) {
+          console.log('[EEZ-Examples] drawer load error:', err);
           setError(err?.message || String(err));
           setLoading(false);
         }
@@ -207,21 +245,11 @@ export const EezExamplesDrawer: React.FC<Props> = ({ open, onClose, onCount }) =
     [examples]
   );
 
+  // Selecting an example opens the create dialog; it hands off to the EEZ
+  // examples wizard (with name/location) when the user clicks "Create & Open".
   const handleUse = () => {
     if (!selected) return;
-    const params = new URLSearchParams();
-    params.set('examples', '1');
-    params.set('folder', selected.folderId);
-    params.set('type', selected.id);
-    const target = `/t3000/eez?${params.toString()}`;
-    onClose();
-    window.setTimeout(() => {
-      try {
-        navigate(target);
-      } catch (err) {
-        console.error('[EezExamplesDrawer] navigate failed:', err, target);
-      }
-    }, 0);
+    setCreatingExample(selected);
   };
 
   // Manual reload (Retry / Try again) — forces a fresh catalog load + download.
@@ -403,6 +431,11 @@ export const EezExamplesDrawer: React.FC<Props> = ({ open, onClose, onCount }) =
           </Button>
         </div>
       </div>
+
+      <EezExampleCreateDialog
+        example={creatingExample}
+        onClose={() => setCreatingExample(null)}
+      />
     </Drawer>
   );
 };

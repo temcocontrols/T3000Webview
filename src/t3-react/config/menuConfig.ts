@@ -894,7 +894,7 @@ export const designMenu: MenuItem = {
       label: 'HVAC',
       type: 'item',
       action: () => {
-        window.location.hash = '#/t3000/hvac-designer?type=hvac-schematic';
+        window.location.hash = '#/t3000/design?create=hvac-schematic';
       },
       icon: 'Flow',
     },
@@ -905,11 +905,20 @@ export const designMenu: MenuItem = {
     //   ...
     // },
     {
+      id: 'design-new-lcd-ui',
+      label: 'LCD UI',
+      type: 'item',
+      action: () => {
+        window.location.hash = '#/t3000/design?create=lcd-ui';
+      },
+      icon: 'DeveloperBoard',
+    },
+    {
       id: 'design-new-lvgl',
       label: 'LVGL 9.5',
       type: 'item',
       action: () => {
-        window.location.hash = '#/t3000/eez?new=LVGL';
+        window.location.hash = '#/t3000/design?create=lvgl-9-5';
       },
       icon: 'DocumentText',
     },
@@ -918,18 +927,9 @@ export const designMenu: MenuItem = {
       label: 'LVGL with Flow 9.5',
       type: 'item',
       action: () => {
-        window.location.hash = '#/t3000/eez?new=LVGL%20with%20EEZ%20Flow';
+        window.location.hash = '#/t3000/design?create=lvgl-flow-9-5';
       },
       icon: 'Toolbox',
-    },
-    {
-      id: 'design-new-lcd-ui',
-      label: 'LCD UI',
-      type: 'item',
-      action: () => {
-        window.location.hash = '#/t3000/tstat10-simulator?type=lcd-ui';
-      },
-      icon: 'DeveloperBoard',
     },
     { id: 'design-divider-1', type: 'divider' },
     {
@@ -980,10 +980,10 @@ const designHubNewDrawingMenu: MenuItem = {
   label: 'New Drawing',
   type: 'submenu',
   children: [
-    { id: 'dh-new-hvac', label: 'HVAC', type: 'item', action: () => { window.location.hash = '#/t3000/hvac-designer?type=hvac-schematic'; }, icon: 'Flow' },
-    { id: 'dh-new-lcd', label: 'LCD UI', type: 'item', action: () => { window.location.hash = '#/t3000/tstat10-simulator?type=lcd-ui'; }, icon: 'DeveloperBoard' },
-    { id: 'dh-new-lvgl', label: 'LVGL 9.5', type: 'item', action: () => { window.location.hash = '#/t3000/eez?new=LVGL'; }, icon: 'DocumentText' },
-    { id: 'dh-new-lvgl-flow', label: 'LVGL with Flow 9.5', type: 'item', action: () => { window.location.hash = '#/t3000/eez?new=LVGL%20with%20EEZ%20Flow'; }, icon: 'Toolbox' },
+    { id: 'dh-new-hvac', label: 'HVAC', type: 'item', action: () => { window.location.hash = '#/t3000/design?create=hvac-schematic'; }, icon: 'Flow' },
+    { id: 'dh-new-lcd', label: 'LCD UI', type: 'item', action: () => { window.location.hash = '#/t3000/design?create=lcd-ui'; }, icon: 'DeveloperBoard' },
+    { id: 'dh-new-lvgl', label: 'LVGL 9.5', type: 'item', action: () => { window.location.hash = '#/t3000/design?create=lvgl-9-5'; }, icon: 'DocumentText' },
+    { id: 'dh-new-lvgl-flow', label: 'LVGL with Flow 9.5', type: 'item', action: () => { window.location.hash = '#/t3000/design?create=lvgl-flow-9-5'; }, icon: 'Toolbox' },
     // Floor Plan / EEZ Project / Panel Symbols hidden for now (user, 2026-08-22)
   ],
 };
