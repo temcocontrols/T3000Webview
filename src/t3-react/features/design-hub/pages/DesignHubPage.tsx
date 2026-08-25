@@ -246,8 +246,9 @@ export const DesignHubPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-        <Spinner label="Loading Design Hub…" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px' }}>
+        <Spinner size="tiny" />
+        <span style={{ fontSize: 12, color: 'var(--colorNeutralForeground3, #616161)' }}>Loading Design Hub…</span>
       </div>
     );
   }

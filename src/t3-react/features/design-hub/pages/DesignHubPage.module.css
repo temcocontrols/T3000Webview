@@ -497,11 +497,11 @@
 /* ── Project cards ────────────────────────────────────── */
 .projectGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
 }
 .projectCard {
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid #e6eaf0;
   background: #fff;
   overflow: hidden;
@@ -511,29 +511,70 @@
   flex-direction: column;
 }
 .projectCard:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 22px rgba(30, 60, 100, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(30, 60, 100, 0.12);
   border-color: transparent;
 }
 .projectThumb {
-  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  min-height: 56px;
   position: relative;
+  color: #48627a;
+}
+.projectThumbMedia {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+.projectThumbIconSm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+.projectThumbType {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
   color: #48627a;
+  white-space: nowrap;
 }
-.projectThumbIcon {
-  font-size: 28px;
-}
-.projectTypePill {
-  position: absolute;
-  bottom: 8px;
-  left: 10px;
-  z-index: 1;
+.projectStatus {
   font-size: 9.5px;
   font-weight: 700;
   padding: 2px 8px;
+  border-radius: 20px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  backdrop-filter: blur(4px);
+}
+.statusLocal { background: rgba(110, 120, 135, 0.85); }
+.statusBound { background: rgba(0, 120, 212, 0.85); }
+.statusDeployed { background: rgba(25, 130, 60, 0.88); }
+.projectThumbIcon {
+  font-size: 24px;
+}
+.projectTypePill {
+  position: absolute;
+  bottom: 6px;
+  left: 8px;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.92);
   color: #48627a;
@@ -542,11 +583,11 @@
 }
 .projectStatus {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 10px;
+  top: 8px;
+  right: 8px;
+  font-size: 9.5px;
   font-weight: 700;
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: 20px;
   color: #fff;
   display: flex;
@@ -559,14 +600,14 @@
 .statusDeployed { background: rgba(25, 130, 60, 0.88); }
 
 .projectBody {
-  padding: 12px 14px 14px;
+  padding: 10px 12px 11px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
 }
 .projectName {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #1c2b3a;
   white-space: nowrap;
@@ -588,11 +629,23 @@
   color: #8b97a8;
   flex-wrap: wrap;
 }
+.projectMetaLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8b97a8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
 .projectMetaDot {
   width: 3px;
   height: 3px;
   border-radius: 50%;
   background: #c3cfe0;
+  flex-shrink: 0;
 }
 .projectDevice {
   display: flex;
@@ -615,7 +668,7 @@
   color: #7a8699;
 }
 .projectUnbound {
-  font-size: 11.5px;
+  font-size: 11px;
   color: #a5afbf;
   font-style: italic;
 }
@@ -634,8 +687,9 @@
 }
 .projectActions {
   display: flex;
-  gap: 6px;
-  margin-top: 4px;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 2px;
 }
 .emptyState {
   grid-column: 1 / -1;

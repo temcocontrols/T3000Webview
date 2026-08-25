@@ -514,7 +514,14 @@ export const App: React.FC = () => {
                 <Route
                   path="design"
                   element={
-                    <React.Suspense fallback={<div>Loading Design Hub...</div>}>
+                    <React.Suspense
+                      fallback={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px' }}>
+                          <Spinner size="tiny" />
+                          <span style={{ fontSize: 12, color: '#616161' }}>Loading Design Hub…</span>
+                        </div>
+                      }
+                    >
                       <DesignHubPage />
                     </React.Suspense>
                   }
