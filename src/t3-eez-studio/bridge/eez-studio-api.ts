@@ -60,7 +60,7 @@ async function api(path: string, init?: RequestInit): Promise<any> {
         }
         const res = await Promise.race([
             fetch(`${BASE}${path}`, opts),
-            new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("timeout")), 10000))
+            new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("timeout")), 60000))
         ]);
         if (res.ok) {
             const ct = res.headers.get("content-type") || "";

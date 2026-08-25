@@ -2812,6 +2812,28 @@ export function showNewExampleProjectWizard() {
     modalDialogObservable.set(modalDialog);
 }
 
+/**
+ * Create the currently-selected example project programmatically (skips the
+ * wizard dialog). Pre-fill wizardModelExamples (folder/type/name/location/
+ * createDirectory), then call this — createProject downloads the example, saves
+ * it and opens the project editor directly (see createProject → openProject).
+ */
+export async function createProjectFromExample(): Promise<boolean> {
+    const modalDialogObservable = observable.box<any>();
+    return await wizardModelExamples.createProject(modalDialogObservable, false);
+}
+
+/**
+ * Create a new standard LVGL project programmatically (skips the wizard
+ * dialog). Pre-fill wizardModelTemplates (type/name/location/createDirectory),
+ * then call this — createProject downloads the LVGL template, saves it and
+ * opens the project editor directly (see createProject → openProject).
+ */
+export async function createProjectFromTemplate(): Promise<boolean> {
+    const modalDialogObservable = observable.box<any>();
+    return await wizardModelTemplates.createProject(modalDialogObservable, false);
+}
+
 class NameInput extends React.Component<{
     id?: string;
     value: string | undefined;

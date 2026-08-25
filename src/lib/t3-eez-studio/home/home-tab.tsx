@@ -92,53 +92,9 @@ export const Home = observer(
             return (
                 <div className="EezStudio_HomeTab">
                     <div className="EezStudio_HomeTab_Header">
-                        <div className="EezStudio_HomeTab_Navigation">
-                            <NavItem
-                                icon={HOME_TAB_OPEN_ICON}
-                                label="OPEN"
-                                title="Open a local project or select one from the recent list"
-                                selected={homeTabStore.activeTab == "open"}
-                                onClick={action(() => { homeTabStore.activeTab = "open"; })}
-                            />
-                            <NavItem
-                                icon={HOME_TAB_CREATE_ICON}
-                                label="CREATE"
-                                title="Create a new project"
-                                selected={homeTabStore.activeTab == "create"}
-                                onClick={action(() => { homeTabStore.activeTab = "create"; })}
-                            />
-                            <NavItem
-                                icon={HOME_TAB_EXAMPLES_ICON}
-                                label="EXAMPLES"
-                                title="Example projects ready to run or edit"
-                                selected={homeTabStore.activeTab == "examples"}
-                                onClick={action(() => { homeTabStore.activeTab = "examples"; })}
-                            />
-                            {/* Instruments not relevant for T3000 */}
-                            {/*
-                            <NavItem
-                                icon={HOME_TAB_INSTRUMENTS_ICON}
-                                label="Instruments"
-                                title="Instruments manager"
-                                selected={homeTabStore.activeTab == "instruments"}
-                                onClick={action(() => { homeTabStore.activeTab = "instruments"; })}
-                            />
-                            */}
-                            <NavItem
-                                icon={HOME_TAB_EXTENSIONS_ICON}
-                                label="EXTENSIONS"
-                                title="Extensions manager"
-                                selected={homeTabStore.activeTab == "extensions"}
-                                onClick={action(() => { homeTabStore.activeTab = "extensions"; })}
-                            />
-                            <NavItem
-                                icon={HOME_TAB_SETTINGS_ICON}
-                                label="SETTINGS"
-                                title="Global user settings"
-                                selected={homeTabStore.activeTab == "settings"}
-                                onClick={action(() => { homeTabStore.activeTab = "settings"; })}
-                            />
-                        </div>
+                        {/* Home-tab navigation (OPEN/CREATE/EXAMPLES/EXTENSIONS/
+                            SETTINGS) hidden for now — migrated to the design hub
+                            (2026-08-25). */}
                         {/*
                         <div className="EezStudio_HomeTab_Tabs">
                             {tabs.allTabs
@@ -155,36 +111,9 @@ export const Home = observer(
                     </div>
 
                     <div className="EezStudio_HomeTab_Body">
-                        {homeTabStore.activeTab == "open" && <Projects />}
-                        {homeTabStore.activeTab == "create" && (
-                            <NewProjectWizard
-                                wizardModel={wizardModelTemplates}
-                                modalDialog={observable.box<any>()}
-                            />
-                        )}
-                        {homeTabStore.activeTab == "examples" && (
-                            <NewProjectWizard
-                                wizardModel={wizardModelExamples}
-                                modalDialog={observable.box<any>()}
-                            />
-                        )}
-                        {/*
-                        homeTabStore.activeTab == "run" && (
-                            <div style={{ margin: "auto" }}></div>
-                        )
-                        */}
-                        {/* Instruments not relevant for T3000
-                        {homeTabStore.activeTab == "instruments" && (
-                            <Instruments
-                                instrumentsStore={defaultInstrumentsStore}
-                                size="M"
-                            />
-                        )}
-                        */}
-                        {homeTabStore.activeTab == "extensions" && (
-                            <ExtensionsManager />
-                        )}
-                        {homeTabStore.activeTab == "settings" && <Settings />}
+                        {/* Home-tab body (OPEN/CREATE/EXAMPLES/EXTENSIONS/SETTINGS)
+                            hidden for now — migrated to the design hub (2026-08-25).
+                            After "Create & Open" the project editor opens directly. */}
                     </div>
                 </div>
             );

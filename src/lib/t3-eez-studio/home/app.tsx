@@ -34,6 +34,9 @@ const MainContent = observer(
             return (
                 <VerticalHeaderWithBody style={{ height: "100%" }}>
                     <Header className="EezStudio_AppHeader">
+                        {/* Top tab strip hidden for now — home/examples/create
+                            migrated to the design hub; the active page (e.g. the
+                            project editor) fills the whole content area.
                         <TabsView
                             tabs={tabs.tabs}
                             moveTab={action(
@@ -49,6 +52,7 @@ const MainContent = observer(
                                 }
                             )}
                         />
+                        */}
                         {((tabs.activeTab instanceof HomeTab &&
                             homeTabStore.activeTab == "instruments") ||
                             tabs.activeTab instanceof InstrumentTab) && (
