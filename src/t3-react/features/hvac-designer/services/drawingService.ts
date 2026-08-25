@@ -14,7 +14,6 @@ import { Shape } from '../types/shape.types';
 import { Layer } from '../types/drawing.types';
 import Hvac from '@/lib/t3-hvac';
 
-const API_BASE = '/api';
 const LOCAL_STORAGE_KEY = 't3-hvac-drawings';
 
 // ── localStorage helpers ──
@@ -32,6 +31,29 @@ function saveLocalDrawings(drawings: Record<string, Drawing>): void {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(drawings));
 }
 
+// ── Disk persistence (best-effort, kept local to this service) ──────────────
+// Mirrors each drawing to `<T3Web>/t3-hvac/<id>/<id>.json` so the folder can
+// later be the source for the Design Hub list. localStorage stays the source of
+// truth; these fail silently when the backend isn't available.
+
+async function saveDrawingToDisk(id: string, drawing: unknown): Promise<void> {
+  try {
+    await fetch(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: typeof drawing === 'string' ? drawing : JSON.stringify(drawing),
+    });
+  } catch { /* backend unavailable — localStorage remains primary */ }
+}
+
+async function deleteDrawingFromDisk(id: string): Promise<void> {
+  try {
+    await fetch(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  } catch { /* backend unavailable — localStorage remains primary */ }
+}
+
 /**
  * Save a drawing.
  * Writes to both the library's appStateV2 persistence and our local index.
@@ -45,18 +67,9 @@ export async function saveDrawing(drawing: Drawing): Promise<{ success: boolean;
   drawings[id] = { ...drawing, id, updatedAt: new Date().toISOString() };
   saveLocalDrawings(drawings);
 
-  // Try API (backend not yet implemented — fails silently)
-  try {
-    const r = await fetch(`${API_BASE}/drawings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(drawing),
-    });
-    if (r.ok) {
-      const data = await r.json();
-      return { success: true, id: data.id };
-    }
-  } catch { /* API unavailable */ }
+  // Best-effort disk mirror under <T3Web>/t3-hvac/<id>/<id>.json.
+  // localStorage stays primary.
+  await saveDrawingToDisk(id, drawings[id]);
 
   return { success: true, id };
 }
@@ -69,6 +82,8 @@ export async function updateDrawing(id: string, drawing: Partial<Drawing>): Prom
   if (drawings[id]) {
     drawings[id] = { ...drawings[id], ...drawing, id, updatedAt: new Date().toISOString() };
     saveLocalDrawings(drawings);
+    // Best-effort disk mirror.
+    await saveDrawingToDisk(id, drawings[id]);
   }
   return { success: true };
 }
@@ -80,10 +95,10 @@ export async function loadDrawing(id: string): Promise<Drawing> {
   const drawings = getLocalDrawings();
   if (drawings[id]) return drawings[id];
 
-  // Try API
+  // Try disk (backend) — the drawing may exist on disk but not in this browser.
   try {
-    const r = await fetch(`${API_BASE}/drawings/${id}`);
-    if (r.ok) return r.json();
+    const r = await fetch(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`);
+    if (r.ok) return (await r.json()) as Drawing;
   } catch { /* API unavailable */ }
 
   throw new Error(`Drawing not found: ${id}`);
@@ -96,6 +111,8 @@ export async function deleteDrawing(id: string): Promise<{ success: boolean }> {
   const drawings = getLocalDrawings();
   delete drawings[id];
   saveLocalDrawings(drawings);
+  // Best-effort disk delete.
+  await deleteDrawingFromDisk(id);
   return { success: true };
 }
 

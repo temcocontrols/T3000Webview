@@ -17,6 +17,11 @@ import type {
 } from '../types';
 import type { DrawingTemplate } from '../templates';
 import { designHubService } from '../services/designHubService';
+import {
+  deleteEezProjectOnDisk,
+  deleteHvacDrawingOnDisk,
+  loadRealProjects,
+} from '../services/projectCatalog';
 import { addCustomDrawingType } from '../drawingTypes';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
 
@@ -40,11 +45,12 @@ interface DesignHubState {
   folders: HubFolder[];
   activeFolder: string | null;
 
-  load: () => void;
+  load: () => Promise<void>;
   setActiveTab: (tab: ProjectTab) => void;
   setSearch: (search: string) => void;
   openProject: (project: HubProject) => void;
-  refresh: () => void;
+  refresh: () => Promise<void>;
+  reloadProjects: () => Promise<void>;
 
   toggleFavorite: (projectId: string) => void;
   setSortBy: (sort: SortKey) => void;
@@ -62,7 +68,7 @@ interface DesignHubState {
   saveSnapshot: (projectId: string, name?: string) => void;
   restoreSnapshot: (projectId: string, snapshotId: string) => boolean;
   deleteSnapshot: (projectId: string, snapshotId: string) => void;
-  deleteProjects: (ids: string[]) => void;
+  deleteProjects: (ids: string[]) => Promise<void>;
   duplicateProject: (projectId: string) => HubProject | null;
   renameProject: (projectId: string, name: string) => void;
   createFromTemplate: (template: DrawingTemplate) => HubProject;
@@ -107,16 +113,26 @@ export const useDesignHubStore = create<DesignHubState>()(
       folders: [],
       activeFolder: null,
 
-      load: () => {
-        designHubService.seedEngineProjects();
+      load: async () => {
+        set({ isLoading: true });
+        await get().reloadProjects();
         set({
-          projects: designHubService.listProjects(),
-          recentProjects: designHubService.listRecentProjects(),
           activity: designHubService.listActivity(),
           libraries: designHubService.listLibraries(),
           favorites: designHubService.listFavorites(),
           folders: designHubService.listFolders(),
           isLoading: false,
+        });
+      },
+
+      reloadProjects: async () => {
+        const localHvac = designHubService
+          .listProjects()
+          .filter((p) => p.source === 'hvac');
+        const projects = await loadRealProjects(localHvac);
+        set({
+          projects,
+          recentProjects: designHubService.listRecentProjects(projects),
         });
       },
 
@@ -127,15 +143,14 @@ export const useDesignHubStore = create<DesignHubState>()(
       openProject: (project) => {
         designHubService.recordOpen(project.id, project.name, project.typeId);
         set({
-          recentProjects: designHubService.listRecentProjects(),
+          recentProjects: designHubService.listRecentProjects(get().projects),
           activity: designHubService.listActivity(),
         });
       },
 
-      refresh: () => {
+      refresh: async () => {
+        await get().reloadProjects();
         set({
-          projects: designHubService.listProjects(),
-          recentProjects: designHubService.listRecentProjects(),
           activity: designHubService.listActivity(),
           libraries: designHubService.listLibraries(),
           favorites: designHubService.listFavorites(),
@@ -178,12 +193,14 @@ export const useDesignHubStore = create<DesignHubState>()(
 
       deleteFolder: (folderId) => {
         designHubService.deleteFolder(folderId);
-        set({ folders: designHubService.listFolders(), projects: designHubService.listProjects() });
+        set({ folders: designHubService.listFolders() });
+        get().reloadProjects();
       },
 
       setProjectFolder: (projectId, folderId) => {
         designHubService.setProjectFolder(projectId, folderId);
-        set({ projects: designHubService.listProjects(), activity: designHubService.listActivity() });
+        set({ activity: designHubService.listActivity() });
+        get().reloadProjects();
       },
 
       // ── Snapshots ──
@@ -194,7 +211,8 @@ export const useDesignHubStore = create<DesignHubState>()(
 
       restoreSnapshot: (projectId, snapshotId) => {
         const ok = designHubService.restoreSnapshot(projectId, snapshotId);
-        set({ projects: designHubService.listProjects(), activity: designHubService.listActivity() });
+        set({ activity: designHubService.listActivity() });
+        get().reloadProjects();
         return ok;
       },
 
@@ -202,11 +220,17 @@ export const useDesignHubStore = create<DesignHubState>()(
         designHubService.deleteSnapshot(projectId, snapshotId);
       },
 
-      deleteProjects: (ids) => {
-        ids.forEach((id) => designHubService.deleteProject(id));
+      deleteProjects: async (ids) => {
+        for (const id of ids) {
+          if (id.startsWith('eez:')) {
+            await deleteEezProjectOnDisk(id.slice(4));
+          } else if (id.startsWith('drawing-') || id.startsWith('hvac-')) {
+            await deleteHvacDrawingOnDisk(id);
+          }
+          designHubService.deleteProject(id);
+        }
+        await get().reloadProjects();
         set({
-          projects: designHubService.listProjects(),
-          recentProjects: designHubService.listRecentProjects(),
           activity: designHubService.listActivity(),
           favorites: designHubService.listFavorites(),
           selectedIds: [],
@@ -215,18 +239,21 @@ export const useDesignHubStore = create<DesignHubState>()(
 
       duplicateProject: (projectId) => {
         const copy = designHubService.duplicateProject(projectId);
-        set({ projects: designHubService.listProjects(), activity: designHubService.listActivity() });
+        set({ activity: designHubService.listActivity() });
+        get().reloadProjects();
         return copy;
       },
 
       renameProject: (projectId, name) => {
         designHubService.renameProject(projectId, name);
-        set({ projects: designHubService.listProjects(), activity: designHubService.listActivity() });
+        set({ activity: designHubService.listActivity() });
+        get().reloadProjects();
       },
 
       createFromTemplate: (template) => {
         const project = designHubService.createFromTemplate(template);
-        set({ projects: designHubService.listProjects(), activity: designHubService.listActivity() });
+        set({ activity: designHubService.listActivity() });
+        get().reloadProjects();
         return project;
       },
 
@@ -234,9 +261,8 @@ export const useDesignHubStore = create<DesignHubState>()(
 
       importHub: async (file) => {
         const result = await designHubService.importHub(file);
+        await get().reloadProjects();
         set({
-          projects: designHubService.listProjects(),
-          recentProjects: designHubService.listRecentProjects(),
           activity: designHubService.listActivity(),
           libraries: designHubService.listLibraries(),
           favorites: designHubService.listFavorites(),

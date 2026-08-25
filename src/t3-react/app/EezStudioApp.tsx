@@ -182,7 +182,8 @@ export function EezStudioApp() {
         const isCreate =
             !!(params.get("name") && params.get("location")) &&
             (!!params.get("new") || params.get("examples") === "1");
-        if (isCreate) {
+        const isOpen = !!params.get("open");
+        if (isCreate || isOpen) {
             try { localStorage.removeItem("home/tabs"); } catch {}
             try { localStorage.removeItem("home-tab-options"); } catch {}
         }
@@ -204,10 +205,47 @@ export function EezStudioApp() {
         let cancelled = false;
 
         // Parse the query from location.search (HashRouter puts the query here;
-        // location.hash is empty). This drives ?new= / ?examples= creates.
+        // location.hash is empty). This drives ?new= / ?examples= creates and
+        // ?open= opening an existing on-disk project.
         const params = new URLSearchParams(location.search);
         const wizardType = params.get("new") ?? null;
         const openExamples = params.get("examples") === "1";
+        const openPath = params.get("open");
+
+        // Open an existing on-disk EEZ/LVGL project:
+        //   /t3000/eez?open=project/<folder>/<folder>.eez-project
+        if (openPath && !wizardType && !openExamples) {
+            let attempts = 0;
+            const waitForOpen = () => {
+                if (cancelled) return;
+                const mounted =
+                    !!document.querySelector(".EezStudio_HomeTab") ||
+                    !!document.querySelector(".EezStudio_HomeTab_Navigation");
+                if (mounted) {
+                    if (wizardOpenedRef.current) return;
+                    wizardOpenedRef.current = true;
+                    console.log("[EEZ-Examples] EezStudioApp open-project —", openPath);
+                    import("home/tabs-store")
+                        .then(({ openProject }) => {
+                            setTimeout(() => {
+                                if (cancelled) return;
+                                try {
+                                    openProject(openPath, false);
+                                    console.log("[EEZ-Examples] openProject succeeded:", openPath);
+                                } catch (err) {
+                                    console.error("[EEZ-Examples] openProject failed:", err);
+                                }
+                            }, 1000);
+                        })
+                        .catch(err => console.error("[EEZ-Examples] failed to load tabs-store:", err));
+                    return;
+                }
+                if (attempts++ < 150) setTimeout(waitForOpen, 300);
+            };
+            waitForOpen();
+            return;
+        }
+
         if (!wizardType && !openExamples) return;
 
         import("project-editor/project/ui/Wizard").then(w => {

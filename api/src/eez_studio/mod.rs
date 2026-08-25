@@ -7,7 +7,7 @@ pub mod parse_squareline;
 pub mod lvgl_img_extract;
 
 use axum::{
-    extract::Query,
+    extract::{Path, Query},
     http::StatusCode,
     routing::{delete, get, patch, post, put},
     Json, Router,
@@ -1151,6 +1151,228 @@ fn value_to_json(v: rusqlite::types::Value) -> serde_json::Value {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Design Hub — real project catalog (EEZ + HVAC disk storage)
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Serialize)]
+struct EezProjectEntry {
+    folder: String,
+    name: String,
+    file_path: String,
+    lvgl_version: Option<String>,
+    size: u64,
+    modified: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct EezProjectsResponse {
+    projects: Vec<EezProjectEntry>,
+}
+
+/// The HVAC drawings root — sibling of `t3-eez` under `T3Web`
+/// (e.g. `<cwd>/T3Web/t3-hvac`).
+fn hvac_root() -> PathBuf {
+    let mut root = data_root();
+    if let Some(parent) = root.parent() {
+        root = parent.to_path_buf();
+    }
+    root.join("t3-hvac")
+}
+
+/// Restrict a drawing id to a safe folder/file name.
+fn sanitize_id(id: &str) -> String {
+    id.chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' || c == '.' || c == ' ' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
+fn unix_secs(meta: &std::fs::Metadata) -> u64 {
+    meta.modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// List real EEZ/LVGL projects on disk under `<data_root>/project/`.
+async fn list_eez_projects() -> Json<EezProjectsResponse> {
+    let project_root = data_root().join("project");
+    let mut projects = Vec::new();
+    if let Ok(mut dir) = fs::read_dir(&project_root).await {
+        while let Ok(Some(entry)) = dir.next_entry().await {
+            let Ok(ft) = entry.file_type().await else { continue };
+            if !ft.is_dir() {
+                continue;
+            }
+            let folder = entry.file_name().into_string().unwrap_or_default();
+            let folder_path = entry.path();
+
+            // Preferred: <folder>/<folder>.eez-project; fallback: first *.eez-project
+            let mut project_file: Option<PathBuf> = None;
+            let expected = folder_path.join(format!("{}.eez-project", folder));
+            if fs::metadata(&expected).await.is_ok() {
+                project_file = Some(expected);
+            } else if let Ok(mut fd) = fs::read_dir(&folder_path).await {
+                while let Ok(Some(fe)) = fd.next_entry().await {
+                    if fe.file_name().to_string_lossy().ends_with(".eez-project") {
+                        project_file = Some(fe.path());
+                        break;
+                    }
+                }
+            }
+
+            if let Some(pf) = project_file {
+                let name = pf
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_else(|| folder.clone());
+
+                let mut lvgl_version: Option<String> = None;
+                if let Ok(content) = fs::read_to_string(&pf).await {
+                    if let Ok(json) = serde_json::from_str::<Value>(&content) {
+                        lvgl_version = json
+                            .pointer("/settings/general/lvglVersion")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
+                    }
+                }
+
+                let meta = fs::metadata(&pf).await.ok().map(std::fs::Metadata::from);
+                let size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
+                let modified = meta.as_ref().map(unix_secs).unwrap_or(0);
+
+                let rel = pf
+                    .strip_prefix(&data_root())
+                    .unwrap_or(pf.as_path())
+                    .to_string_lossy()
+                    .replace('\\', "/");
+
+                projects.push(EezProjectEntry {
+                    folder,
+                    name,
+                    file_path: rel,
+                    lvgl_version,
+                    size,
+                    modified,
+                });
+            }
+        }
+    }
+    projects.sort_by(|a, b| b.modified.cmp(&a.modified));
+    Json(EezProjectsResponse { projects })
+}
+
+#[derive(Debug, Serialize)]
+struct HvacDrawingEntry {
+    id: String,
+    name: String,
+    updated_at: u64,
+    size: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct HvacDrawingsResponse {
+    drawings: Vec<HvacDrawingEntry>,
+}
+
+/// List HVAC drawings saved on disk under `<T3Web>/t3-hvac/<id>/<id>.json`.
+async fn list_hvac_drawings() -> Json<HvacDrawingsResponse> {
+    let root = hvac_root();
+    let mut drawings = Vec::new();
+    if let Ok(mut dir) = fs::read_dir(&root).await {
+        while let Ok(Some(entry)) = dir.next_entry().await {
+            let Ok(ft) = entry.file_type().await else { continue };
+            if !ft.is_dir() {
+                continue;
+            }
+            let id = entry.file_name().into_string().unwrap_or_default();
+            let file = entry.path().join(format!("{}.json", id));
+            if fs::metadata(&file).await.is_err() {
+                continue;
+            }
+            let mut name = id.clone();
+            if let Ok(content) = fs::read_to_string(&file).await {
+                if let Ok(json) = serde_json::from_str::<Value>(&content) {
+                    if let Some(n) = json.get("name").and_then(|v| v.as_str()) {
+                        name = n.to_string();
+                    }
+                }
+            }
+            let meta = fs::metadata(&file).await.ok().map(std::fs::Metadata::from);
+            let size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
+            let updated_at = meta.as_ref().map(unix_secs).unwrap_or(0);
+            drawings.push(HvacDrawingEntry {
+                id,
+                name,
+                updated_at,
+                size,
+            });
+        }
+    }
+    drawings.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    Json(HvacDrawingsResponse { drawings })
+}
+
+/// Read a single HVAC drawing JSON.
+async fn get_hvac_drawing(Path(id): Path<String>) -> Result<axum::response::Response, StatusCode> {
+    let safe = sanitize_id(&id);
+    let file = hvac_root().join(&safe).join(format!("{}.json", safe));
+    match fs::read_to_string(&file).await {
+        Ok(content) => Ok(axum::response::Response::builder()
+            .header("Content-Type", "application/json")
+            .body(axum::body::Body::from(content))
+            .unwrap()),
+        Err(_) => Err(StatusCode::NOT_FOUND),
+    }
+}
+
+/// Save an HVAC drawing to disk (`<id>/<id>.json`).
+async fn put_hvac_drawing(Path(id): Path<String>, body: String) -> Result<StatusCode, StatusCode> {
+    let safe = sanitize_id(&id);
+    let dir = hvac_root().join(&safe);
+    if let Err(e) = fs::create_dir_all(&dir).await {
+        error!("put_hvac_drawing mkdir failed: {} — {:?}", dir.display(), e);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    let file = dir.join(format!("{}.json", safe));
+    match fs::write(&file, &body).await {
+        Ok(_) => {
+            info!("put_hvac_drawing: {} ({} chars)", file.display(), body.len());
+            Ok(StatusCode::OK)
+        }
+        Err(e) => {
+            error!("put_hvac_drawing write failed: {} — {:?}", file.display(), e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Delete an HVAC drawing folder.
+async fn delete_hvac_drawing(Path(id): Path<String>) -> Result<StatusCode, StatusCode> {
+    let dir = hvac_root().join(sanitize_id(&id));
+    match fs::remove_dir_all(&dir).await {
+        Ok(_) => {
+            info!("delete_hvac_drawing: {}", dir.display());
+            Ok(StatusCode::OK)
+        }
+        Err(e) => {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                Ok(StatusCode::OK)
+            } else {
+                error!("delete_hvac_drawing failed: {} — {:?}", dir.display(), e);
+                Err(StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Router
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1182,6 +1404,13 @@ pub fn bridge_routes(router: Router<T3AppState>) -> Router<T3AppState> {
         .route("/api/eez-studio/proxy-fetch-binary", get(proxy_fetch_binary))
         .route("/api/eez-studio/extract-font", post(extract_font))
         .route("/api/eez-studio/store", post(store_handler))
+        // Design Hub — real project catalog
+        .route("/api/eez-studio/projects", get(list_eez_projects))
+        // HVAC drawings disk persistence (<T3Web>/t3-hvac/<id>/<id>.json)
+        .route("/api/design-hub/hvac-drawings", get(list_hvac_drawings))
+        .route("/api/design-hub/hvac-drawings/:id", get(get_hvac_drawing))
+        .route("/api/design-hub/hvac-drawings/:id", put(put_hvac_drawing))
+        .route("/api/design-hub/hvac-drawings/:id", delete(delete_hvac_drawing))
         // Mock BACnet device API — simulates ESP32 REST + BACnet fallback
         // Device info summary (lightweight metadata before fetching screens)
         .route("/api/eez-device/device/info", get(bacnet_api_mock::get_device_info))

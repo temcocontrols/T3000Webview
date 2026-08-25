@@ -148,11 +148,13 @@ export const designHubService = {
     );
   },
 
-  /** Recently opened projects (ordered by last-open). */
-  listRecentProjects(limit = 8): HubProject[] {
+  /** Recently opened projects (ordered by last-open).
+   *  Pass the REAL catalog list (projectCatalog.loadRealProjects) so recent
+   *  entries resolve against actual on-disk projects, not the hub seeds. */
+  listRecentProjects(all?: HubProject[], limit = 8): HubProject[] {
     const hub = readHub();
-    const all = this.listProjects();
-    const byId = new Map(all.map((p) => [p.id, p]));
+    const src = all ?? this.listProjects();
+    const byId = new Map(src.map((p) => [p.id, p]));
     const recent: HubProject[] = [];
     for (const id of hub.recentProjectIds) {
       const p = byId.get(id);
@@ -242,59 +244,6 @@ export const designHubService = {
         ...hub,
         projects: [{ ...project, updatedAt: new Date().toISOString() }, ...hub.projects],
       });
-    }
-  },
-
-  /** Seed a starter EEZ / Simulator entry so the hub feels alive on first run. */
-  seedEngineProjects(): void {
-    const hub = readHub();
-    const existing = new Set(hub.projects.map((p) => p.id));
-    const seed: HubProject[] = [];
-    if (!existing.has('eez-current')) {
-      seed.push({
-        id: 'eez-current',
-        name: 'LVGL Workspace',
-        description: 'Open the EEZ Studio workspace — create LVGL projects or import from device',
-        typeId: 'lvgl-9-5',
-        engine: 'eez',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        status: 'local',
-        source: 'eez',
-        openPath: '/t3000/eez',
-      });
-    }
-    if (!existing.has('sim-current')) {
-      seed.push({
-        id: 'sim-current',
-        name: 'Thermostat LCD Designer',
-        description: 'Design and simulate thermostat LCD screens',
-        typeId: 'lcd-ui',
-        engine: 'simulator',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        status: 'local',
-        source: 'simulator',
-        openPath: '/t3000/tstat10-simulator',
-      });
-    }
-    // Sample LVGL 9.5 card — lets users preview the card style/color.
-    if (!existing.has('lvgl-demo')) {
-      seed.push({
-        id: 'lvgl-demo',
-        name: 'LVGL 9.5 Demo',
-        description: 'Sample LVGL 9.5 embedded UI project',
-        typeId: 'lvgl-9-5',
-        engine: 'eez',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        status: 'local',
-        source: 'eez',
-        openPath: '/t3000/eez',
-      });
-    }
-    if (seed.length) {
-      writeHub({ ...hub, projects: [...seed, ...hub.projects] });
     }
   },
 

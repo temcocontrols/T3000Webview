@@ -92,6 +92,20 @@ src/t3-react/features/design-hub/
 `Database/design-hub.json`). When the backend is unavailable it reports "backend offline —
 kept local" and continues fully functional.
 
+### Real project list (Project Catalog)
+The dashboard **project history** is driven by the real created projects, not seeds:
+
+- **EEZ / LVGL** projects live on disk at `<data_root>/project/<name>/<name>.eez-project`
+  (`data_root` = `<cwd>/T3Web/t3-eez`) and are listed via `GET /api/eez-studio/projects`.
+- **HVAC** drawings stay localStorage-primary, with a best-effort disk mirror under
+  `<T3Web>/t3-hvac/<id>/<id>.json` (`GET/PUT/DELETE /api/design-hub/hvac-drawings`).
+- **Simulator** has no real project storage yet → hidden.
+
+The unified loader lives in `src/t3-react/features/design-hub/services/projectCatalog.ts`
+(`loadRealProjects`), consumed by `designHubStore`. Opening an EEZ card deep-links to
+`/t3000/eez?open=project/<name>/<name>.eez-project` (handled in `EezStudioApp`).
+Deleting an EEZ card removes the folder on disk (`/api/eez-studio/delete-recursive`).
+
 ### The Drawing Type Registry (extensibility)
 A type is a plain config entry:
 
