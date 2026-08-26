@@ -219,40 +219,38 @@ module.exports = configure(function (/* ctx */) {
           viteConf.server.headers["*.wasm"] = { "Content-Type": "application/wasm" };
         }
 
+        const proxyToBackend = {
+          target: "http://localhost:9103",
+          changeOrigin: true,
+          secure: false,
+          proxyTimeout: 10000,
+          configure: (proxy) => {
+            // When the Rust backend (T3000) is down, respond 502 fast instead of
+            // hanging — otherwise blocking calls (e.g. EEZ store sync XHR) freeze the UI.
+            proxy.on("error", (err, _req, res) => {
+              if (!res.headersSent) {
+                res.writeHead(502, { "Content-Type": "application/json" });
+              }
+              res.end(JSON.stringify({ ok: false, error: "Backend unreachable", detail: err && err.message }));
+            });
+          },
+        };
+
         viteConf.server.proxy = {
           ...(viteConf.server.proxy || {}),
           // Local backend proxy — all external downloads now go through Rust backend
           "/api/eez-studio": {
-            target: "http://localhost:9103",
-            changeOrigin: true,
-            secure: false,
+            ...proxyToBackend,
             rewrite: path => path.replace(/^\/api\/eez-studio/, "/api/eez-studio")
           },
           // T3000 device API proxy
-          "/api/t3_device": {
-            target: "http://localhost:9103",
-            changeOrigin: true,
-            secure: false,
-          },
+          "/api/t3_device": proxyToBackend,
           // All other API routes (files, users, modbus, etc.)
-          "/api": {
-            target: "http://localhost:9103",
-            changeOrigin: true,
-            secure: false,
-          },
+          "/api": proxyToBackend,
           // WASM runtimes & LVGL served from Rust resource tree (not public/)
-          "/eez-studio-wasm": {
-            target: "http://localhost:9103",
-            changeOrigin: true,
-            secure: false,
-          },
+          "/eez-studio-wasm": proxyToBackend,
           // Font assets served from Rust resource tree
-          "/eez-studio-assets": {
-            target: "http://localhost:9103",
-            changeOrigin: true,
-            secure: false,
-          },
-
+          "/eez-studio-assets": proxyToBackend,
         };
       },
 

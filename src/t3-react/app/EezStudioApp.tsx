@@ -53,8 +53,8 @@ const EEZ_ACTION_TO_IPC: Record<string, string | { channel: string; args?: any[]
 // No-op in browser: new-window, close-window, exit, toggle-fullscreen,
 // toggle-devtools, zoom-in, zoom-out, reset-zoom, import-instrument-def
 import "bootstrap/dist/css/bootstrap.min.css";
-import { makeStyles, mergeClasses, Spinner, FluentProvider, webLightTheme } from "@fluentui/react-components";
-import { CheckmarkCircleRegular, ErrorCircleRegular } from "@fluentui/react-icons";
+import { makeStyles, mergeClasses, Spinner, Button, FluentProvider, webLightTheme } from "@fluentui/react-components";
+import { ErrorCircleRegular, ArrowClockwiseRegular } from "@fluentui/react-icons";
 
 // EEZ Studio stylesheets
 import "eez-studio-ui/_stylesheets/main.less";
@@ -67,10 +67,11 @@ const useBackendStyles = makeStyles({
         alignItems: "flex-start",
         gap: "8px",
         padding: "8px 14px",
+        marginTop: "5px",
         fontSize: "11.5px",
         lineHeight: "1.5",
         flexShrink: 0,
-        transition: "opacity 0.4s ease, height 0.3s ease, padding 0.3s ease",
+        transition: "opacity 0.4s ease, height 0.3s ease, padding 0.3s ease, margin-top 0.3s ease",
     },
     barOnline: {
         backgroundColor: "#dff6dd",
@@ -91,6 +92,7 @@ const useBackendStyles = makeStyles({
         opacity: 0,
         height: "0px",
         padding: "0px 14px",
+        marginTop: "0px",
         overflow: "hidden",
         borderBottom: "none",
     },
@@ -127,7 +129,7 @@ function BackendStatusBar() {
     const icon = health === undefined ? (
         <Spinner size="extra-tiny" className={s.icon} />
     ) : health ? (
-        <CheckmarkCircleRegular className={mergeClasses(s.icon, s.iconOnline)} />
+        <Spinner size="tiny" className={s.icon} />
     ) : (
         <ErrorCircleRegular className={mergeClasses(s.icon, s.iconOffline)} />
     );
@@ -148,6 +150,7 @@ function BackendStatusBar() {
 
 export function EezStudioApp() {
     const [showContent, setShowContent] = useState(false);
+    const [backendUp, setBackendUp] = useState<boolean | undefined>(undefined);
     const location = useLocation();
     // Prevent React StrictMode (dev) from double-running the ?new= effect, which
     // would open the New Project wizard twice (two stacked panels).
@@ -159,6 +162,7 @@ export function EezStudioApp() {
         initEezBridge();
         checkBackendHealth().then(h => {
             if (cancelled) return;
+            setBackendUp(h);
             if (h) setShowContent(true);
         });
         return () => { cancelled = true; };
@@ -208,7 +212,7 @@ export function EezStudioApp() {
         // location.hash is empty). This drives ?new= / ?examples= creates and
         // ?open= opening an existing on-disk project.
         const params = new URLSearchParams(location.search);
-        const wizardType = params.get("new") ?? null;
+        const wizardType = params.get("new") ?? undefined;
         const openExamples = params.get("examples") === "1";
         const openPath = params.get("open");
 
@@ -409,6 +413,59 @@ export function EezStudioApp() {
                             overflow: "hidden",
                         }}
                     />
+                )}
+                {backendUp === false && !showContent && (
+                    <div
+                        style={{
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "flex-start",
+                            justifyContent: "flex-start",
+                            padding: "20px 14px",
+                        }}
+                    >
+                        <div
+                            style={{
+                                maxWidth: 560,
+                                background: "#fff",
+                                borderRadius: 12,
+                                // padding: "20px 24px",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 12,
+                                textAlign: "left",
+                            }}
+                        >
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <ErrorCircleRegular style={{ fontSize: 18, color: "#c50f1f", flexShrink: 0 }} />
+                                <div style={{ fontSize: 14, fontWeight: 700, color: "#1c2b3a" }}>
+                                    T3000 backend is unreachable
+                                </div>
+                            </div>
+                            <div style={{ fontSize: 13, color: "#6b7f94", lineHeight: 1.6 }}>
+                                Creating or opening LVGL projects requires the T3000 backend, which
+                                creates the project folder on disk. Make sure T3000 is running, then reload
+                                this page.
+                            </div>
+                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                                <Button
+                                    size="small"
+                                    appearance="primary"
+                                    icon={<ArrowClockwiseRegular />}
+                                    onClick={() => window.location.reload()}
+                                >
+                                    Reload
+                                </Button>
+                                <Button
+                                    size="small"
+                                    appearance="secondary"
+                                    onClick={() => (window.location.hash = "#/t3000/design")}
+                                >
+                                    Back to Design Hub
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </FluentProvider>

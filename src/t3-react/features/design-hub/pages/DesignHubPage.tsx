@@ -333,9 +333,27 @@ export const DesignHubPage: React.FC = () => {
               <span style={{ fontWeight: 700 }}>T3000 backend unreachable — </span>
               {loadError}
             </div>
-            <Button size="small" appearance="subtle" icon={<ArrowSyncRegular />} onClick={() => load()}>
+            <button
+              type="button"
+              onClick={() => load()}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+                cursor: 'pointer',
+                color: '#0078d4',
+                fontSize: 12,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              <ArrowSyncRegular style={{ fontSize: 13 }} />
               Retry
-            </Button>
+            </button>
           </div>
         )}
         <DeviceContextBar />
