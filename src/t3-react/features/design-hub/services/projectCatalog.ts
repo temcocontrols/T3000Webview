@@ -90,8 +90,19 @@ function hvacDiskToHubProject(d: HvacDrawingEntry): HubProject {
   };
 }
 
+/** fetch() with an AbortController timeout so a dead backend never hangs the load. */
+async function fetchJson(url: string, timeoutMs = 8000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchEezProjects(): Promise<HubProject[]> {
-  const r = await fetch(EEZ_PROJECTS_URL);
+  const r = await fetchJson(EEZ_PROJECTS_URL);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const data = await r.json();
   const list: EezProjectEntry[] = data?.projects ?? [];
@@ -99,7 +110,7 @@ async function fetchEezProjects(): Promise<HubProject[]> {
 }
 
 async function fetchHvacDiskDrawings(): Promise<HubProject[]> {
-  const r = await fetch(HVAC_DRAWINGS_URL);
+  const r = await fetchJson(HVAC_DRAWINGS_URL);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const data = await r.json();
   const list: HvacDrawingEntry[] = data?.drawings ?? [];
@@ -160,9 +171,13 @@ export async function deleteEezProjectOnDisk(folder: string): Promise<boolean> {
  */
 export async function loadRealProjects(
   localHvac: HubProject[] = []
-): Promise<HubProject[]> {
+): Promise<{ projects: HubProject[]; backendOnline: boolean }> {
   // EEZ/LVGL — real on-disk projects.
-  const eez = await fetchEezProjects().catch(() => [] as HubProject[]);
+  let backendOnline = true;
+  const eez = await fetchEezProjects().catch(() => {
+    backendOnline = false;
+    return [] as HubProject[];
+  });
 
   // HVAC — localStorage for now; disk folder once tested (see flag above).
   let hvac: HubProject[];
@@ -181,5 +196,8 @@ export async function loadRealProjects(
   }
 
   const all = [...eez, ...hvac];
-  return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return {
+    projects: all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    backendOnline,
+  };
 }

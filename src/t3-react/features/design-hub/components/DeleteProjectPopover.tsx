@@ -17,7 +17,9 @@ export const DeleteProjectPopover: React.FC<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (id: string) => void;
-}> = ({ project, open, onOpenChange, onConfirm }) => {
+  /** Custom trigger element (e.g. a labeled button). Defaults to a trash icon button. */
+  trigger?: React.ReactNode;
+}> = ({ project, open, onOpenChange, onConfirm, trigger }) => {
   const deviceRef = project.serialNumber ? `SN ${project.serialNumber}` : '';
   const warnDeployed =
     project.status === 'deployed'
@@ -29,14 +31,16 @@ export const DeleteProjectPopover: React.FC<{
   return (
     <Popover open={open} onOpenChange={(_, d) => onOpenChange(d.open)} positioning="above-start">
       <PopoverTrigger disableButtonEnhancement>
-        <Button
-          size="small"
-          appearance="subtle"
-          icon={<DeleteRegular style={{ fontSize: 17 }} />}
-          className={styles.deleteAction}
-          aria-label={`Delete drawing ${project.name}`}
-          onClick={(e) => e.stopPropagation()}
-        />
+        {trigger ?? (
+          <Button
+            size="small"
+            appearance="subtle"
+            icon={<DeleteRegular style={{ fontSize: 17 }} />}
+            className={styles.deleteAction}
+            aria-label={`Delete drawing ${project.name}`}
+            onClick={(e) => e.stopPropagation()}
+          />
+        )}
       </PopoverTrigger>
       <PopoverSurface style={{ maxWidth: 340, padding: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>

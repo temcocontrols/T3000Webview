@@ -33,6 +33,7 @@ interface DesignHubState {
   activeTab: ProjectTab;
   search: string;
   isLoading: boolean;
+  loadError: string | null;
 
   // Favorites / sort / view / selection
   favorites: string[];
@@ -108,6 +109,7 @@ export const useDesignHubStore = create<DesignHubState>()(
       activeTab: 'all',
       search: '',
       isLoading: true,
+      loadError: null,
       favorites: [],
       sortBy: 'updated',
       view: 'grid',
@@ -117,26 +119,45 @@ export const useDesignHubStore = create<DesignHubState>()(
       activeFolder: null,
 
       load: async () => {
-        set({ isLoading: true });
-        await get().reloadProjects();
-        set({
-          activity: designHubService.listActivity(),
-          libraries: designHubService.listLibraries(),
-          favorites: designHubService.listFavorites(),
-          folders: designHubService.listFolders(),
-          isLoading: false,
-        });
+        set({ isLoading: true, loadError: null });
+        try {
+          await get().reloadProjects();
+        } catch (err) {
+          set({
+            loadError: err instanceof Error ? err.message : 'Failed to load projects',
+          });
+        } finally {
+          set({
+            activity: designHubService.listActivity(),
+            libraries: designHubService.listLibraries(),
+            favorites: designHubService.listFavorites(),
+            folders: designHubService.listFolders(),
+            isLoading: false,
+          });
+        }
       },
 
       reloadProjects: async () => {
         const localHvac = designHubService
           .listProjects()
           .filter((p) => p.source === 'hvac');
-        const projects = await loadRealProjects(localHvac);
-        set({
-          projects,
-          recentProjects: designHubService.listRecentProjects(projects),
-        });
+        try {
+          const { projects, backendOnline } = await loadRealProjects(localHvac);
+          set({
+            projects,
+            recentProjects: designHubService.listRecentProjects(projects),
+            loadError: backendOnline
+              ? null
+              : 'The T3000 backend is unreachable. Some features need it — retry when T3000 is running.',
+          });
+        } catch (err) {
+          // Backend unreachable — keep the local HVAC list so the hub still works.
+          set({
+            projects: localHvac,
+            recentProjects: designHubService.listRecentProjects(localHvac),
+            loadError: err instanceof Error ? err.message : 'Failed to load projects',
+          });
+        }
       },
 
       setActiveTab: (tab) => set({ activeTab: tab }),

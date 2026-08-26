@@ -5,7 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Spinner, Button, Tooltip } from '@fluentui/react-components';
-import { ArrowDownloadRegular, ArrowUploadRegular, SparkleRegular } from '@fluentui/react-icons';
+import { ArrowDownloadRegular, ArrowUploadRegular, SparkleRegular, ErrorCircleRegular, ArrowSyncRegular } from '@fluentui/react-icons';
 import type { DrawingType, HubProject } from '../types';
 import { useDesignHubStore } from '../store/designHubStore';
 import { designHubService } from '../services/designHubService';
@@ -35,6 +35,7 @@ export const DesignHubPage: React.FC = () => {
   const location = useLocation();
   const load = useDesignHubStore((s) => s.load);
   const isLoading = useDesignHubStore((s) => s.isLoading);
+  const loadError = useDesignHubStore((s) => s.loadError);
   const setActiveTab = useDesignHubStore((s) => s.setActiveTab);
   const bindProject = useDesignHubStore((s) => s.bindProject);
   const exportHub = useDesignHubStore((s) => s.exportHub);
@@ -54,12 +55,21 @@ export const DesignHubPage: React.FC = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
   const [examplesOpen, setExamplesOpen] = useState(false);
   const [examplesCount, setExamplesCount] = useState<number | null>(null);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // If the backend is down, don't spin forever — surface an error after a short timeout.
+  useEffect(() => {
+    if (!isLoading) return;
+    setLoadTimedOut(false);
+    const t = setTimeout(() => setLoadTimedOut(true), 10000);
+    return () => clearTimeout(t);
+  }, [isLoading]);
 
   // Deep-link from the Design Hub / New Drawing top menus:
   // #/t3000/design?create=<typeId> → open the New-Drawing dialog for that type.
@@ -244,11 +254,31 @@ export const DesignHubPage: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  const stuckLoading = isLoading && loadTimedOut;
+
+  if (isLoading && !stuckLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px' }}>
         <Spinner size="tiny" />
         <span style={{ fontSize: 12, color: 'var(--colorNeutralForeground3, #616161)' }}>Loading Design Hub…</span>
+      </div>
+    );
+  }
+
+  if (stuckLoading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 10, padding: '24px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c50f1f', fontSize: 13, fontWeight: 600 }}>
+          <ErrorCircleRegular style={{ fontSize: 16 }} />
+          Design Hub is taking too long to load
+        </div>
+        <div style={{ fontSize: 12, color: '#6b7f94', lineHeight: 1.5, maxWidth: 640 }}>
+          {loadError ||
+            'The T3000 backend is unreachable. Make sure T3000 is running, then try again.'}
+        </div>
+        <Button size="small" icon={<ArrowSyncRegular />} onClick={() => load()}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -284,6 +314,30 @@ export const DesignHubPage: React.FC = () => {
       )}
       <div className={styles.container}>
         <HeroHeader />
+        {loadError && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 14px',
+              background: '#fff4e2',
+              border: '1px solid #f0d9a8',
+              borderRadius: 8,
+              fontSize: 12,
+              color: '#8a5d00',
+            }}
+          >
+            <ErrorCircleRegular style={{ fontSize: 16, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0, lineHeight: 1.5 }}>
+              <span style={{ fontWeight: 700 }}>T3000 backend unreachable — </span>
+              {loadError}
+            </div>
+            <Button size="small" appearance="subtle" icon={<ArrowSyncRegular />} onClick={() => load()}>
+              Retry
+            </Button>
+          </div>
+        )}
         <DeviceContextBar />
         {/* Stats strip hidden for now (user, 2026-08-22) — duplicates Device Context Bar counts
         <HubStats />
