@@ -714,6 +714,15 @@
   gap: 4px;
   margin-top: 2px;
 }
+
+/* Per-item delete action (subtle, red on hover) */
+.deleteAction {
+  color: #8b97a8 !important;
+}
+.deleteAction:hover {
+  color: #d13438 !important;
+}
+
 .emptyState {
   grid-column: 1 / -1;
   text-align: center;

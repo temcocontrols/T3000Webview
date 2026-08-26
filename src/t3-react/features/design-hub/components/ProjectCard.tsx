@@ -14,6 +14,7 @@ import type { HubProject } from '../types';
 import { getDrawingType } from '../drawingTypes';
 import { HubIcon } from '../icons';
 import { DrawingPreview } from './DrawingPreview';
+import { DeleteProjectPopover } from './DeleteProjectPopover';
 import { useDesignHubStore } from '../store/designHubStore';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
@@ -37,7 +38,19 @@ export const ProjectCard: React.FC<{
   selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: (projectId: string) => void;
-}> = ({ project, onBind, selectMode = false, selected = false, onToggleSelect }) => {
+  deleteOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onConfirmDelete?: (projectId: string) => void;
+}> = ({
+  project,
+  onBind,
+  selectMode = false,
+  selected = false,
+  onToggleSelect,
+  deleteOpen = false,
+  onOpenChange,
+  onConfirmDelete,
+}) => {
   const type = getDrawingType(project.typeId);
   const accent = type.accent;
   const deployProject = useDesignHubStore((s) => s.deployProject);
@@ -199,6 +212,12 @@ export const ProjectCard: React.FC<{
           <Tooltip content="More (details & manage)" relationship="label">
             <Button size="small" appearance="subtle" icon={<MoreHorizontalRegular />} onClick={openDetail} />
           </Tooltip>
+          <DeleteProjectPopover
+            project={project}
+            open={deleteOpen}
+            onOpenChange={onOpenChange ?? (() => {})}
+            onConfirm={onConfirmDelete ?? (() => {})}
+          />
         </div>
       </div>
     </div>
