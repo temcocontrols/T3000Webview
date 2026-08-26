@@ -104,6 +104,9 @@ const CustomTagsPage = React.lazy(() =>
 const AutoTaggingMcpPage = React.lazy(() =>
   import('../features/haystack/pages/AutoTaggingMcpPage')
 );
+const FddPage = React.lazy(() =>
+  import('../features/fdd/pages/FddPage')
+);
 const Tstat10SimulatorPage = React.lazy(() =>
   Promise.all([
     import('../features/tstat10-simulator/pages/Tstat10SimulatorPage').then(m => m.Tstat10SimulatorPage),
@@ -444,6 +447,14 @@ export const App: React.FC = () => {
                         element={
                           <React.Suspense fallback={<div>Loading...</div>}>
                             <AutoTaggingMcpPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="fdd"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <FddPage />
                           </React.Suspense>
                         }
                       />

@@ -243,6 +243,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         .merge(crate::haystack::tags_routes::create_haystack_tags_routes())
         // Haystack Auto-tagging routes (v3)
         .merge(crate::haystack::auto_tagging_routes::create_auto_tagging_routes())
+        // FDD (Fault Detection & Diagnostics) routes
+        .merge(crate::fdd::routes::create_fdd_routes())
         // MCP Server routes (JSON-RPC over HTTP)
         .merge(crate::mcp::server::create_mcp_routes())
         // AI Chat routes (SSE streaming + tool-call loop)

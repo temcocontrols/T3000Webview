@@ -733,6 +733,13 @@ const haystackMenu: MenuItem = {
       action: () => { window.location.hash = '#/t3000/auto-tagging'; },
       icon: 'Flash',
     },
+    {
+      id: 'haystack-fdd',
+      label: 'FDD (Fault Detection)',
+      type: 'item',
+      action: () => { window.location.hash = '#/t3000/fdd'; },
+      icon: 'Bug',
+    },
   ],
 };
 

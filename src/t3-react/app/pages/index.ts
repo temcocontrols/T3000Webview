@@ -24,6 +24,9 @@ export { HolidaysPage } from '../../features/schedules/pages/HolidaysPage';
 export { HaystackTagsPage } from '../../features/haystack/pages/HaystackTagsPage';
 export { default as AutoTaggingMcpPage } from '../../features/haystack/pages/AutoTaggingMcpPage';
 
+// FDD (Fault Detection & Diagnostics)
+export { default as FddPage } from '../../features/fdd/pages/FddPage';
+
 // AI Assistant
 export { default as McpServerPage } from '../../features/ai-chat/pages/McpServerPage';
 
