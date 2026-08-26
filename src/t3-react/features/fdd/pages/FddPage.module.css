@@ -157,8 +157,8 @@
   flex-wrap: wrap;
 }
 .fieldLabel { font-size: 12px; color: var(--colorNeutralForeground2); margin-bottom: 4px; }
-.runDropdown { width: 380px; min-height: 32px; }
-.runDropdown input { height: 28px; }
+.runDropdown { width: 280px; }
+.runDropdown :global(.fui-Dropdown__button) { min-height: 28px; height: 28px; font-size: 12px; }
 .rangeSelect { width: 120px; }
 .rangeSelect :global(.fui-Select__select) { min-height: 28px; height: 28px; font-size: 12px; }
 .runActions {

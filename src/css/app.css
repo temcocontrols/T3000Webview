@@ -39,6 +39,29 @@ body {
   width: 100%;
 }
 
+/* Fluent dropdown listbox — thinner scrollbar */
+.fui-Listbox {
+  scrollbar-width: thin;
+  scrollbar-color: #b8b8b8 transparent;
+}
+.fui-Listbox::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.fui-Listbox::-webkit-scrollbar-thumb {
+  background: #b8b8b8;
+  border-radius: 3px;
+}
+.fui-Listbox::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Fluent dropdown listbox options — smaller font + left padding */
+.fui-Listbox .fui-Option {
+  font-size: 12px;
+  padding-left: 14px;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;

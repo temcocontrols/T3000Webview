@@ -168,7 +168,8 @@
   gap: 24px;
   padding: 12px 0;
 }
-.runDropdown { width: 380px; min-height: 32px; }
+.runDropdown { width: 280px; }
+.runDropdown :global(.fui-Dropdown__button) { min-height: 28px; height: 28px; font-size: 12px; }
 .selectAllLink {
   font-size: 11px;
   color: var(--colorBrandForeground1);
@@ -177,7 +178,6 @@
   user-select: none;
 }
 .selectAllLink:hover { text-decoration: underline; }
-.runDropdown input { height: 28px; }
 .runActions {
   display: flex;
   gap: 8px;

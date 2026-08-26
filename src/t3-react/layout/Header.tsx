@@ -95,6 +95,7 @@ import {
   HistoryRegular,
   CalendarDataBar28Regular,
   TagRegular,
+  WindowDevToolsRegular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getMenusForPath } from '@t3-react/config/menuConfig';
@@ -801,6 +802,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       'History': HistoryRegular,
       'CalendarDataBar': CalendarDataBar28Regular,
       'Tag': TagRegular,
+      'WindowDevTools': WindowDevToolsRegular,
     };
     return iconMap[icon];
   };

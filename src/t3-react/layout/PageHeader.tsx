@@ -147,6 +147,7 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[]; su
   '/t3000/develop/logs': { label: 'T3000 Logs', segments: ['Developer', 'T3000 Logs'] },
   '/t3000/developer/fluentui-v9': { label: 'FluentUI v9', segments: ['Developer', 'FluentUI v9'] },
   '/t3000/auto-tagging': { label: 'Auto-Tagging', segments: ['Haystack'], subtitle: 'Manage regex-based rules for automatic Haystack tagging and Brick classification.' },
+  '/t3000/fdd': { label: 'FDD (Fault Detection)', segments: ['Haystack'], subtitle: 'Fault Detection & Diagnostics — evaluate trendlog history against FDD rules to surface equipment faults.' },
   '/t3000/ai-assistant/mcp': { label: 'MCP Server', segments: ['AI Assistant'], subtitle: 'Connect LLM agents (Claude Desktop, VS Code Copilot, Cursor) to the T3000 MCP server on port 9103. Browse available tools and copy natural-language prompts.' },
 };
 

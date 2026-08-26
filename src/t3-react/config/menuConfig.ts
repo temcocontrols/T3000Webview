@@ -724,7 +724,7 @@ const haystackMenu: MenuItem = {
       label: 'Custom Tags',
       type: 'item',
       action: () => { window.location.hash = '#/t3000/custom-tags'; },
-      icon: 'Tag',
+      icon: 'Code',
     },
     {
       id: 'haystack-auto-tagging',

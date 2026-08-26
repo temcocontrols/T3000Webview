@@ -6,7 +6,7 @@ import {
   DataGrid, DataGridHeader, DataGridRow, DataGridCell, DataGridBody,
   createTableColumn, TableColumnDefinition,
   Popover, PopoverSurface, PopoverTrigger,
-  Dropdown, Option,
+  Dropdown, Option, OptionGroup,
 } from '@fluentui/react-components';
 import {
   ArrowClockwiseRegular, AddRegular, DismissRegular,
@@ -16,6 +16,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { API_BASE_URL } from '../../../config/constants';
+import { deviceListName, deviceOptionLabel, hasDeviceTreeName, groupDevicesForDropdown } from '../../../shared/utils/deviceTreeList';
 import styles from './AutoTaggingMcpPage.module.css';
 
 // ── Types ──
@@ -524,7 +525,7 @@ const RuleDialog: React.FC<{ onClose: () => void; onSaved: () => void }> = ({ on
 // ═══ Run Tab ═══
 
 const RunTab: React.FC = () => {
-  const { devices } = useDeviceTreeStore();
+  const { devices, deviceStatuses } = useDeviceTreeStore();
   const [selectedSerials, setSelectedSerials] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(true);
   const [running, setRunning] = useState(false);
@@ -539,7 +540,11 @@ const RunTab: React.FC = () => {
   const [ruleCategoryFilter, setRuleCategoryFilter] = useState('all'); // all | haystack | brick | range
   const [previewFilter, setPreviewFilter] = useState('');
 
-  const allDevices = devices.filter(d => d.productName && d.productName !== 'Unknown' && d.productName !== '(Unknown)');
+  const allDevices = useMemo(() => devices.filter(hasDeviceTreeName), [devices]);
+  const deviceGroups = useMemo(
+    () => groupDevicesForDropdown(allDevices, deviceStatuses),
+    [allDevices, deviceStatuses]
+  );
   const allSerials = allDevices.map(d => String(d.serialNumber));
   const effectiveSerials = selectAll ? allSerials : selectedSerials;
   const serials = effectiveSerials.map(Number).filter(n => !isNaN(n));
@@ -643,7 +648,7 @@ const RunTab: React.FC = () => {
 
   const getDeviceName = (sn: number) => {
     const d = allDevices.find(d => d.serialNumber === sn);
-    return d?.productName || '';
+    return d ? deviceListName(d) : '';
   };
 
   return (
@@ -657,7 +662,6 @@ const RunTab: React.FC = () => {
           size="small"
           multiselect
           className={styles.runDropdown}
-          open
           positioning={{ position: 'below', align: 'start', fallbackPositions: ['above'] }}
           listbox={{ style: { maxHeight: 260, overflowY: 'auto' } }}
           placeholder={selectAll ? `${allSerials.length} devices selected` : selectedSerials.length === 0 ? 'No devices selected' : `${selectedSerials.length} device${selectedSerials.length > 1 ? 's' : ''} selected`}
@@ -668,10 +672,14 @@ const RunTab: React.FC = () => {
           <div onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setSelectAll(!selectAll); if (selectAll) setSelectedSerials([]); }} style={{ padding: '5px 12px', cursor: 'pointer', fontSize: 13, color: '#0078d4' }}>
             {selectAll ? 'Deselect All' : 'Select All'}
           </div>
-          {allDevices.map(d => (
-            <Option key={String(d.serialNumber)} value={String(d.serialNumber)} text={`${d.serialNumber} — ${d.productName || `Device ${d.serialNumber}`}`}>
-              {d.serialNumber} — {d.productName || `Device ${d.serialNumber}`}
-            </Option>
+          {deviceGroups.map(g => (
+            <OptionGroup key={g.label} label={g.label}>
+              {g.devices.map(d => (
+                <Option key={String(d.serialNumber)} value={String(d.serialNumber)} text={deviceOptionLabel(d)}>
+                  {deviceOptionLabel(d)}
+                </Option>
+              ))}
+            </OptionGroup>
           ))}
         </Dropdown>
 
