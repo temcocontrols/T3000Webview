@@ -38,6 +38,16 @@
 .detailScroll::-webkit-scrollbar-thumb { background: #b9c6d6; border-radius: 3px; }
 .detailScroll::-webkit-scrollbar-thumb:hover { background: #9fb0c4; }
 
+/* Deploy log drawer — thinner vertical scrollbar */
+.deployLogDrawerBody {
+  scrollbar-width: thin;                 /* Firefox */
+  scrollbar-color: #b9c6d6 transparent;  /* Firefox */
+}
+.deployLogDrawerBody::-webkit-scrollbar { width: 6px; }
+.deployLogDrawerBody::-webkit-scrollbar-track { background: transparent; }
+.deployLogDrawerBody::-webkit-scrollbar-thumb { background: #b9c6d6; border-radius: 3px; }
+.deployLogDrawerBody::-webkit-scrollbar-thumb:hover { background: #9fb0c4; }
+
 .container {
   width: 100%;
   /* max-width: 1400px; — commented out (user, 2026-08-24) */

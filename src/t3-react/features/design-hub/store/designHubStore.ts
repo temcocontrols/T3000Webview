@@ -81,7 +81,10 @@ interface DesignHubState {
   syncBackend: () => Promise<{ backend: boolean; projects: number; libraries: number }>;
 
   // Phase 5 — device integration
-  deployProject: (project: HubProject) => Promise<{ success: boolean; message: string }>;
+  deployProject: (
+    project: HubProject,
+    opts?: { deviceName?: string }
+  ) => Promise<{ success: boolean; message: string }>;
   bindProject: (
     projectId: string,
     binding: { serialNumber?: number; building?: string; floor?: string; room?: string }
@@ -273,7 +276,14 @@ export const useDesignHubStore = create<DesignHubState>()(
       // ── Phase 4 — sharing / backend ──
       shareProject: (projectId, shared) => {
         designHubService.shareProject(projectId, shared);
-        set({ activity: designHubService.listActivity(), projects: designHubService.listProjects() });
+        set((s) => ({
+          activity: designHubService.listActivity(),
+          projects: s.projects.map((p) =>
+            p.id === projectId
+              ? { ...p, status: shared ? ('synced' as const) : ('local' as const), updatedAt: new Date().toISOString() }
+              : p
+          ),
+        }));
       },
 
       syncLibraryToCloud: (libraryId) => {
@@ -287,7 +297,7 @@ export const useDesignHubStore = create<DesignHubState>()(
       },
 
       // ── Phase 5 — device integration ──
-      deployProject: async (project) => {
+      deployProject: async (project, opts) => {
         if (!project.serialNumber) {
           return { success: false, message: 'Bind this drawing to a device first.' };
         }
@@ -304,23 +314,71 @@ export const useDesignHubStore = create<DesignHubState>()(
           if (result.success) {
             designHubService.markDeployed(project.id);
           }
-          set({
-            activity: designHubService.listActivity(),
-            projects: designHubService.listProjects(),
+          // EEZ/LVGL — enrich with the on-disk deploy manifest (if present).
+          let manifest: Awaited<ReturnType<typeof designHubService.fetchDeployManifest>> = null;
+          if (project.engine === 'eez' && project.folder) {
+            manifest = await designHubService.fetchDeployManifest(project.folder).catch(() => null);
+          }
+          designHubService.recordDeployLog(project.id, {
+            id: `dep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            timestamp: new Date().toISOString(),
+            serialNumber: project.serialNumber,
+            deviceName: opts?.deviceName,
+            status: result.success ? 'success' : 'error',
+            message: result.message || 'Device sync completed',
+            screenCount: manifest?.screenCount ?? result.savedCount,
+            screens: manifest?.screens,
+            images: manifest?.images,
+            manifestPath:
+              project.engine === 'eez' && project.folder
+                ? `project/${project.folder}/device-config/deploy-manifest.json`
+                : undefined,
           });
+          set((s) => ({
+            activity: designHubService.listActivity(),
+            // Preserve the real (catalog) project list; just mark this one deployed.
+            projects: s.projects.map((p) =>
+              p.id === project.id && result.success
+                ? { ...p, status: 'deployed' as const, updatedAt: new Date().toISOString() }
+                : p
+            ),
+          }));
           return { success: result.success, message: result.message || 'Device sync completed' };
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Device sync failed';
+          designHubService.recordDeployLog(project.id, {
+            id: `dep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            timestamp: new Date().toISOString(),
+            serialNumber: project.serialNumber,
+            deviceName: opts?.deviceName,
+            status: 'error',
+            message,
+          });
           return { success: false, message };
         }
       },
 
       bindProject: (projectId, binding) => {
         const updated = designHubService.saveProjectBinding(projectId, binding);
-        set({
-          projects: designHubService.listProjects(),
-          recentProjects: designHubService.listRecentProjects(),
-          activity: designHubService.listActivity(),
+        set((s) => {
+          const projects = s.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  serialNumber: binding.serialNumber ?? p.serialNumber,
+                  building: binding.building ?? p.building,
+                  floor: binding.floor ?? p.floor,
+                  room: binding.room ?? p.room,
+                  status: binding.serialNumber ? ('bound' as const) : p.status,
+                  updatedAt: new Date().toISOString(),
+                }
+              : p
+          );
+          return {
+            projects,
+            recentProjects: designHubService.listRecentProjects(projects),
+            activity: designHubService.listActivity(),
+          };
         });
         return updated;
       },
@@ -338,11 +396,16 @@ export const useDesignHubStore = create<DesignHubState>()(
 
       importFile: async (file) => {
         const result = await designHubService.importFile(file);
-        set({
-          projects: designHubService.listProjects(),
+        const fresh = designHubService.listProjects(); // hub + hvac
+        set((s) => ({
+          // Merge — keep real on-disk projects (EEZ) that listProjects() omits.
+          projects: [
+            ...fresh,
+            ...s.projects.filter((p) => !fresh.some((f) => f.id === p.id)),
+          ],
           recentProjects: designHubService.listRecentProjects(),
           activity: designHubService.listActivity(),
-        });
+        }));
         return result;
       },
     }),

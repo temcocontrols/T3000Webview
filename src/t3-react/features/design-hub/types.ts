@@ -78,6 +78,24 @@ export interface ActivityItem {
   projectId?: string;
 }
 
+/** A single deployment attempt for a project (persisted per-project). */
+export interface DeployLogEntry {
+  id: string;
+  timestamp: string;
+  serialNumber?: number;
+  deviceName?: string;
+  status: 'success' | 'error' | 'warning';
+  message: string;
+  screenCount?: number;
+  imageCount?: number;
+  /** Deployed screen names (EEZ/LVGL manifest detail). */
+  screens?: string[];
+  /** Deployed image manifests (EEZ/LVGL manifest detail). */
+  images?: { name: string; width: number; height: number; color_format?: number }[];
+  /** On-disk manifest path (EEZ/LVGL device-config), if known. */
+  manifestPath?: string;
+}
+
 export interface LibraryItem {
   id: string;
   name: string;

@@ -424,14 +424,6 @@ export const App: React.FC = () => {
                 />
 
                 <Route
-                  path="tstat10-simulator"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <Tstat10SimulatorPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
                   path="haystack-tags"
                   element={
                     <React.Suspense fallback={<div>Loading...</div>}>
@@ -495,6 +487,14 @@ export const App: React.FC = () => {
                       </div>
                     }>
                       <HvacDesignerPage />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="tstat10-simulator"
+                  element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                      <Tstat10SimulatorPage />
                     </React.Suspense>
                   }
                 />

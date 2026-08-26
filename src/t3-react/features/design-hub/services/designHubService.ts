@@ -14,6 +14,7 @@
 import type {
   ActivityItem,
   ActivityKind,
+  DeployLogEntry,
   HubFolder,
   HubProject,
   LibraryItem,
@@ -34,6 +35,7 @@ interface HubMeta {
   folders: HubFolder[];
   projectFolders: Record<string, string>;
   snapshots: Record<string, RevisionSnapshot[]>;
+  deployLogs: Record<string, DeployLogEntry[]>;
 }
 
 const EMPTY: HubMeta = {
@@ -45,6 +47,7 @@ const EMPTY: HubMeta = {
   folders: [],
   projectFolders: {},
   snapshots: {},
+  deployLogs: {},
 };
 
 function readHub(): HubMeta {
@@ -207,6 +210,57 @@ export const designHubService = {
       timestamp: new Date().toISOString(),
     };
     writeHub({ ...hub, activity: [item, ...hub.activity].slice(0, 100) });
+  },
+
+  /** Deploy logs for a project (newest first). */
+  listDeployLogs(projectId: string): DeployLogEntry[] {
+    return readHub().deployLogs[projectId] ?? [];
+  },
+
+  /** Append a deploy log entry (newest first, capped at 20 per project). */
+  recordDeployLog(projectId: string, entry: DeployLogEntry): void {
+    const hub = readHub();
+    const logs = [entry, ...(hub.deployLogs[projectId] ?? [])].slice(0, 20);
+    writeHub({ ...hub, deployLogs: { ...hub.deployLogs, [projectId]: logs } });
+  },
+
+  /** Clear all deploy logs for a project. */
+  clearDeployLogs(projectId: string): void {
+    const hub = readHub();
+    const deployLogs = { ...hub.deployLogs };
+    delete deployLogs[projectId];
+    writeHub({ ...hub, deployLogs });
+  },
+
+  /**
+   * Read the EEZ on-disk deploy manifest (`project/<folder>/device-config/
+   * deploy-manifest.json`) written by the EEZ editor's "Deploy to Device".
+   * Returns the screen/image detail, or null when not present.
+   */
+  async fetchDeployManifest(folder: string): Promise<{
+    screenCount?: number;
+    imageCount?: number;
+    screens?: string[];
+    images?: { name: string; width: number; height: number; color_format?: number }[];
+  } | null> {
+    try {
+      const host = window.location.hostname || 'localhost';
+      const path = `project/${folder}/device-config/deploy-manifest.json`;
+      const resp = await fetch(
+        `http://${host}:9103/api/eez-studio/read-text-file?path=${encodeURIComponent(path)}`
+      );
+      if (!resp.ok) return null;
+      const m = JSON.parse(await resp.text());
+      if (!m || typeof m !== 'object') return null;
+      return {
+        screenCount: Number(m.screenCount) || undefined,
+        imageCount: Number(m.imageCount) || undefined,
+        screens: Array.isArray(m.screens) ? (m.screens as string[]) : undefined,
+        images: Array.isArray(m.images) ? (m.images as any[]) : undefined,
+      };
+    } catch {
+      return null;
+    }
   },
 
   /** Record that a project was opened (also feeds "recent"). */

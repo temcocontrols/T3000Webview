@@ -4,28 +4,45 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Spinner, Tooltip } from '@fluentui/react-components';
+import {
+  Button,
+  Spinner,
+  Tooltip,
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerHeaderTitle,
+} from '@fluentui/react-components';
 import {
   OpenRegular,
   EditRegular,
   CopyRegular,
   DeleteRegular,
-  ArrowSyncRegular,
   ShareRegular,
-  LinkSquareRegular,
   CameraRegular,
   ArrowResetRegular,
   DataHistogramRegular,
+  ChevronDownRegular,
+  ChevronRightRegular,
+  WarningRegular,
+  MoreHorizontalRegular,
+  RocketRegular,
+  DismissRegular,
 } from '@fluentui/react-icons';
-import type { HubProject, RevisionSnapshot } from '../types';
+import type { DeployLogEntry, HubProject, RevisionSnapshot } from '../types';
 import { getDrawingType } from '../drawingTypes';
 import { designHubService } from '../services/designHubService';
 import { useDesignHubStore } from '../store/designHubStore';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { CompareDrawings } from '../components/CompareDrawings';
-import { BindDeviceDialog } from '../components/BindDeviceDialog';
+import { DeployDeviceDialog } from '../components/DeployDeviceDialog';
 import { HubIcon } from '../icons';
 import styles from './DesignHubPage.module.css';
+
+/**
+ * Hero background — same family as the dashboard hero, but lighter.
+ */
+const HERO_GRADIENT = 'linear-gradient(120deg, #2a67a6 0%, #2e6fae 50%, #3277b4 100%)';
 
 function formatDate(iso: string): string {
   try {
@@ -54,11 +71,74 @@ function formatBytes(n: number | undefined | null): string {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+/** Single expandable deploy-log entry (status dot, time, device, message, detail). */
+const DeployLogRow: React.FC<{
+  log: DeployLogEntry;
+  open: boolean;
+  onToggle: () => void;
+  wrap?: boolean;
+}> = ({ log, open, onToggle, wrap = false }) => {
+  const hasDetail = (log.screens && log.screens.length > 0) || (log.images && log.images.length > 0);
+  return (
+    <div style={{ borderRadius: 8, marginBottom: 6, background: '#fff' }}>
+      <div
+        onClick={onToggle}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', cursor: 'pointer', userSelect: 'none' }}
+      >
+        {log.status === 'success' ? (
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2e9b4f', flexShrink: 0 }} />
+        ) : log.status === 'error' ? (
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#d13438', flexShrink: 0 }} />
+        ) : (
+          <WarningRegular style={{ fontSize: 13, color: '#b8860b', flexShrink: 0 }} />
+        )}
+        <span style={{ fontSize: 12, color: '#1c2b3a', fontWeight: 600, flexShrink: 0 }}>{timeAgo(log.timestamp)}</span>
+        <span
+          style={{
+            fontSize: 12,
+            color: '#4a5a6c',
+            flex: 1,
+            minWidth: 0,
+            ...(wrap
+              ? { whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.5 }
+              : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }),
+          }}
+        >
+          {log.deviceName ? `${log.deviceName} (SN ${log.serialNumber})` : log.serialNumber ? `SN ${log.serialNumber}` : ''}
+          {' — '}
+          {log.message}
+        </span>
+        {hasDetail &&
+          (open ? (
+            <ChevronDownRegular style={{ fontSize: 12, flexShrink: 0 }} />
+          ) : (
+            <ChevronRightRegular style={{ fontSize: 12, flexShrink: 0 }} />
+          ))}
+      </div>
+      {open && hasDetail && (
+        <div style={{ borderTop: '1px solid #eef1f6', padding: '8px 12px', background: '#f8fafc', fontSize: 12, color: '#4a5a6c', lineHeight: 1.6 }}>
+          {log.screens && log.screens.length > 0 && (
+            <div style={{ marginBottom: 4 }}>
+              <span style={{ fontWeight: 600, color: '#1c2b3a' }}>Screens ({log.screens.length}): </span>
+              {log.screens.join(', ')}
+            </div>
+          )}
+          {log.images && log.images.length > 0 && (
+            <div>
+              <span style={{ fontWeight: 600, color: '#1c2b3a' }}>Images ({log.images.length}): </span>
+              {log.images.map((img) => `${img.name} (${img.width}×${img.height})`).join(', ')}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const projects = useDesignHubStore((s) => s.projects);
-  const activity = useDesignHubStore((s) => s.activity);
   const deployProject = useDesignHubStore((s) => s.deployProject);
   const shareProject = useDesignHubStore((s) => s.shareProject);
   const duplicateProject = useDesignHubStore((s) => s.duplicateProject);
@@ -66,21 +146,46 @@ export const ProjectDetailPage: React.FC = () => {
   const renameProject = useDesignHubStore((s) => s.renameProject);
   const bindProject = useDesignHubStore((s) => s.bindProject);
   const folders = useDesignHubStore((s) => s.folders);
-  const setProjectFolder = useDesignHubStore((s) => s.setProjectFolder);
   const saveSnapshot = useDesignHubStore((s) => s.saveSnapshot);
   const restoreSnapshot = useDesignHubStore((s) => s.restoreSnapshot);
   const deleteSnapshot = useDesignHubStore((s) => s.deleteSnapshot);
   const setMessage = useStatusBarStore((s) => s.setMessage);
+  const loadHub = useDesignHubStore((s) => s.load);
 
   const project = useMemo(
     () => projects.find((p) => p.id === id),
     [projects, id]
   );
 
-  const [bindOpen, setBindOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [deployOpen, setDeployOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [deployLogOpen, setDeployLogOpen] = useState(false);
+  const [deployLogs, setDeployLogs] = useState<DeployLogEntry[]>([]);
+  const [expandedLog, setExpandedLog] = useState<number | null>(0);
   const [snapshots, setSnapshots] = useState<RevisionSnapshot[]>([]);
   const [compareSnap, setCompareSnap] = useState<RevisionSnapshot | null>(null);
+
+  const reloadDeployLogs = () => {
+    if (id) {
+      const logs = designHubService.listDeployLogs(id);
+      setDeployLogs(logs);
+      setExpandedLog(logs.length > 0 ? 0 : null); // first row expanded, rest collapsed
+    }
+  };
+
+  useEffect(() => {
+    reloadDeployLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // Direct URL refresh / deep-link: DesignHubPage's load() never ran, so the store
+  // is empty — kick off a load so the project (and activity/folders) resolve.
+  useEffect(() => {
+    if (projects.length === 0) {
+      loadHub();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load snapshots whenever the project id changes
   useEffect(() => {
@@ -130,7 +235,6 @@ export const ProjectDetailPage: React.FC = () => {
   }
 
   const type = getDrawingType(project.typeId);
-  const relatedActivity = activity.filter((a) => a.projectId === project.id).slice(0, 8);
   const locationBits = [project.building, project.floor, project.room].filter(Boolean);
 
   const isHvac = project.engine === 'hvac';
@@ -172,6 +276,15 @@ export const ProjectDetailPage: React.FC = () => {
   aboutRows.push(['Updated', formatDate(project.updatedAt)]);
   aboutRows.push(['Status', project.status]);
 
+  const fullAboutRows: [string, React.ReactNode][] = [
+    ['ID', project.id],
+    ...aboutRows,
+    ['Folder', folders.find((f) => f.id === folderId)?.name || '—'],
+  ];
+  const lastDeployError =
+    deployLogs.length > 0 &&
+    (deployLogs[0].status === 'error' || deployLogs[0].status === 'warning');
+
   const handleRename = () => {
     const name = window.prompt('Rename drawing', project.name);
     if (name && name.trim()) renameProject(project.id, name.trim());
@@ -189,15 +302,22 @@ export const ProjectDetailPage: React.FC = () => {
     }
   };
 
-  const handleDeploy = async () => {
-    if (!project.serialNumber) {
-      setBindOpen(true);
-      return;
+  // Deploy via the dialog: bind to the chosen device, then sync/deploy.
+  const handleDeploy = async (binding: {
+    serialNumber?: number;
+    building?: string;
+    floor?: string;
+    room?: string;
+    deviceName?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    if (binding.serialNumber) {
+      bindProject(project.id, binding);
     }
-    setBusy(true);
-    const result = await deployProject(project);
-    setBusy(false);
+    const target = binding.serialNumber ?? project.serialNumber;
+    const result = await deployProject({ ...project, serialNumber: target }, { deviceName: binding.deviceName });
     setMessage(result.message, result.success ? 'success' : 'error');
+    reloadDeployLogs();
+    return result;
   };
 
   const handleShare = () => {
@@ -210,7 +330,7 @@ export const ProjectDetailPage: React.FC = () => {
   const actions: {
     label: string;
     caption: string;
-    icon: React.ReactNode;
+    icon: React.ReactElement;
     onClick: () => void;
     primary?: boolean;
     danger?: boolean;
@@ -224,21 +344,6 @@ export const ProjectDetailPage: React.FC = () => {
         primary: true,
       },
     ];
-  if (type.deviceAware) {
-    actions.push({
-      label: 'Bind',
-      caption: 'Bind to a device',
-      icon: <LinkSquareRegular />,
-      onClick: () => setBindOpen(true),
-    });
-    actions.push({
-      label: busy ? '…' : 'Deploy',
-      caption: 'Deploy to the bound device',
-      icon: <ArrowSyncRegular />,
-      onClick: handleDeploy,
-      disabled: busy,
-    });
-  }
   actions.push(
     { label: 'Rename', caption: 'Rename this project', icon: <EditRegular />, onClick: handleRename },
     { label: 'Duplicate', caption: 'Create a copy', icon: <CopyRegular />, onClick: handleDuplicate },
@@ -262,21 +367,34 @@ export const ProjectDetailPage: React.FC = () => {
           ← Design Hub
         </span>
         <span style={{ color: '#8b97a8', fontSize: 13 }}>/</span>
-        <span style={{ fontSize: 17, color: '#1c2b3a', fontWeight: 700 }}>{project.name}</span>
+        <span style={{ fontSize: 14, color: '#1c2b3a', fontWeight: 700 }}>{project.name}</span>
       </div>
 
-      {/* Top hero — blue gradient; title on top, key info at the bottom (white text) */}
+      {/* Top hero — saturated blue per type, white text */}
       <div
+        className={styles.section}
         style={{
-          borderRadius: 14,
           marginBottom: 16,
+          background: HERO_GRADIENT,
+          border: '1px solid rgba(255,255,255,0.4)',
           color: '#fff',
-          background: 'linear-gradient(120deg, #0b4f8a 0%, #0078d4 48%, #2e7db9 100%)',
-          padding: '20px 24px',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
+        {/* Soft white highlight in the corner */}
+        {/* <div
+          style={{
+            position: 'absolute',
+            top: -70,
+            right: -50,
+            width: 260,
+            height: 260,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.28) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }}
+        /> */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <HubIcon icon={type.icon} size={36} />
           <div>
@@ -292,78 +410,119 @@ export const ProjectDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: 16, borderTop: '1px solid rgba(255,255,255,0.25)', paddingTop: 12 }}>
-          {getInfoCells().map(([k, v], i) => (
-            <div key={k} style={{ flex: '1 1 120px', minWidth: 120, padding: '2px 14px', borderLeft: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.22)' }}>
+        {/* Info cells + More detail on the same row, packed left, no dividers */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '10px 26px', marginTop: 16, borderTop: '1px solid rgba(255,255,255,0.25)', paddingTop: 12 }}>
+          {getInfoCells().map(([k, v]) => (
+            <div key={k}>
               <div style={{ fontSize: 10, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k}</div>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
             </div>
           ))}
+          <span
+            onClick={() => setDetailOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'rgba(255,255,255,0.95)', fontSize: 13, fontWeight: 600, userSelect: 'none', marginBottom: 1 }}
+          >
+            More detail <MoreHorizontalRegular style={{ fontSize: 16 }} />
+          </span>
         </div>
       </div>
 
-      {/* Actions — title with primary vertical indicator, descriptions as tooltips */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '10px 4px 22px', borderBottom: '1px solid #e6eaf0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 10 }}>
-          <span style={{ width: 4, height: 12, borderRadius: 2, background: '#0078d4', flexShrink: 0 }} />
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#1c2b3a' }}>Actions</span>
-        </div>
-        <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap', alignItems: 'center', marginLeft: 10 }}>
-          {actions.map((a) => (
-            <Tooltip key={a.label} content={a.caption} relationship="label">
-              <span
-                onClick={a.disabled ? undefined : a.onClick}
-                style={{
-                  cursor: a.disabled ? 'default' : 'pointer',
-                  opacity: a.disabled ? 0.5 : 1,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  color: a.danger ? '#d13438' : '#0078d4',
-                }}
-              >
-                {a.icon} {a.label}
-              </span>
-            </Tooltip>
-          ))}
-        </div>
+      {/* Actions — under the hero, history icon right-aligned */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+        {actions.map((a) => (
+          <Tooltip key={a.label} content={a.caption} relationship="label" positioning="above">
+            <Button
+              size="small"
+              appearance="transparent"
+              icon={a.icon}
+              disabled={a.disabled}
+              onClick={a.onClick}
+              style={{ color: a.danger ? '#d13438' : '#0078d4', fontWeight: 600, gap: 6, fontSize: 12 }}
+            >
+              {a.label}
+            </Button>
+          </Tooltip>
+        ))}
       </div>
 
-      {/* Detail + History */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 20, alignItems: 'start', marginTop: 15 }}>
-        <div className={styles.section}>
-          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Detail</div>
-          {aboutRows.map(([k, v]) => (
-            <div key={String(k)} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0', borderBottom: '1px solid #f0f3f8', fontSize: 13 }}>
-              <span style={{ color: '#7a8699' }}>{k}</span>
-              <span style={{ color: '#1c2b3a', fontWeight: 600, textAlign: 'right' }}>{v}</span>
+      {/* Deployment — device state + deploy log (device-aware types only) */}
+      {type.deviceAware && (
+        <div className={styles.section} style={{ marginTop: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <span style={{ width: 4, height: 16, borderRadius: 2, background: '#0078d4', flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#1c2b3a' }}>Deployment</span>
+            <span style={{ marginLeft: 'auto' }}>
+              {project.status === 'deployed' ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#25632d', background: '#e9f4ea', borderRadius: 999, padding: '3px 10px' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2e9b4f' }} /> Deployed
+                </span>
+              ) : project.serialNumber ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#0f5fa8', background: '#e8f2fb', borderRadius: 999, padding: '3px 10px' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#0078d4' }} /> Bound
+                </span>
+              ) : (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#6b7f94', background: '#eef1f6', borderRadius: 999, padding: '3px 10px' }}>
+                  Not deployed
+                </span>
+              )}
+            </span>
+          </div>
+
+          {/* Device / state summary */}
+          {project.serialNumber ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, marginBottom: 14 }}>
+              <div style={{ color: '#1c2b3a', fontWeight: 600 }}>
+                {deployLogs[0]?.deviceName ? `${deployLogs[0].deviceName} (SN ${project.serialNumber})` : `Device SN ${project.serialNumber}`}
+              </div>
+              <div style={{ color: '#7a8699' }}>
+                {locationBits.length ? locationBits.join(' · ') : 'Location not set'}
+              </div>
+              <div style={{ color: lastDeployError ? '#c50f1f' : '#7a8699' }}>
+                Last deployed: {deployLogs.length > 0 ? `${timeAgo(deployLogs[0].timestamp)} · ${deployLogs[0].screenCount != null ? `${deployLogs[0].screenCount} items` : deployLogs[0].message}` : '—'}
+              </div>
             </div>
-          ))}
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0', fontSize: 13, alignItems: 'center' }}>
-            <span style={{ color: '#7a8699' }}>Folder</span>
-            <select value={folderId ?? ''} onChange={(e) => setProjectFolder(project.id, e.target.value || null)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d1d1', fontSize: 12 }}>
-              <option value="">— None —</option>
-              {folders.map((f) => (<option key={f.id} value={f.id}>{f.name}</option>))}
-            </select>
+          ) : (
+            <div style={{ color: '#8b97a8', fontSize: 13, marginBottom: 14 }}>
+              Not deployed to any device yet. Pick a device to deploy this project.
+            </div>
+          )}
+
+          <Button size="small" appearance="primary" icon={<RocketRegular style={{ fontSize: 14 }} />} onClick={() => setDeployOpen(true)} style={{ fontWeight: 600 }}>
+            Deploy to device
+          </Button>
+
+          {/* Deploy log — first 5, first row expanded, rest collapsed */}
+          <div style={{ marginTop: 16, borderTop: '1px solid #eef1f6', paddingTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1c2b3a' }}>Deploy Log</span>
+              {deployLogs.length > 5 && (
+                <span style={{ marginLeft: 'auto' }}>
+                  <Tooltip content="View all deploy logs" relationship="label" positioning="above">
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      icon={<MoreHorizontalRegular style={{ fontSize: 15 }} />}
+                      onClick={() => setDeployLogOpen(true)}
+                    />
+                  </Tooltip>
+                </span>
+              )}
+            </div>
+            {deployLogs.length === 0 ? (
+              <div style={{ color: '#8b97a8', fontSize: 12, padding: '4px 0' }}>No deployments yet for this project.</div>
+            ) : (
+              deployLogs.slice(0, 5).map((log, idx) => (
+                <DeployLogRow
+                  key={log.id}
+                  log={log}
+                  open={expandedLog === idx}
+                  onToggle={() => setExpandedLog(expandedLog === idx ? null : idx)}
+                />
+              ))
+            )}
           </div>
         </div>
-
-        <div className={styles.section}>
-          <div className={styles.sectionTitle} style={{ marginBottom: 8 }}>History</div>
-          {relatedActivity.length === 0 ? (
-            <div style={{ color: '#8b97a8', fontSize: 12, padding: '8px 0' }}>No events recorded for this drawing yet.</div>
-          ) : (
-            relatedActivity.map((a) => (
-              <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '5px 0', fontSize: 12, borderBottom: '1px solid #f0f3f8' }}>
-                <span style={{ color: '#1c2b3a' }}>{a.label}</span>
-                <span style={{ color: '#a5afbf', flexShrink: 0 }}>{formatDate(a.timestamp)}</span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Snapshots — only for HVAC (localStorage drawings can be snapshotted) */}
       {isHvac && (
@@ -407,11 +566,65 @@ export const ProjectDetailPage: React.FC = () => {
         </div>
       )}
 
-      <BindDeviceDialog
-        open={bindOpen}
+      {/* Full detail drawer */}
+      <Drawer position="end" size="small" open={detailOpen} onOpenChange={(_, d) => !d.open && setDetailOpen(false)}>
+        <DrawerHeader>
+          <DrawerHeaderTitle
+            action={
+              <Button appearance="subtle" aria-label="Close" icon={<DismissRegular />} onClick={() => setDetailOpen(false)} />
+            }
+          >
+            <span style={{ fontSize: 13, fontWeight: 600, lineHeight: '20px' }}>{project.name} — Details</span>
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+        <DrawerBody>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {fullAboutRows.map(([k, v]) => (
+              <div
+                key={String(k)}
+                style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '8px 0', borderBottom: '1px solid #f0f3f8', fontSize: 13 }}
+              >
+                <span style={{ color: '#7a8699', flexShrink: 0 }}>{k}</span>
+                <span style={{ color: '#1c2b3a', fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </DrawerBody>
+      </Drawer>
+
+      {/* Full deploy log drawer */}
+      <Drawer position="end" size="small" open={deployLogOpen} onOpenChange={(_, d) => !d.open && setDeployLogOpen(false)}>
+        <DrawerHeader>
+          <DrawerHeaderTitle
+            action={
+              <Button appearance="subtle" aria-label="Close" icon={<DismissRegular />} onClick={() => setDeployLogOpen(false)} />
+            }
+          >
+            <span style={{ fontSize: 13, fontWeight: 600, lineHeight: '20px' }}>Deploy Log — {project.name}</span>
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+        <DrawerBody className={styles.deployLogDrawerBody}>
+          {deployLogs.length === 0 ? (
+            <div style={{ color: '#8b97a8', fontSize: 13, padding: '8px 0' }}>No deployments yet for this project.</div>
+          ) : (
+            deployLogs.map((log, idx) => (
+              <DeployLogRow
+                key={log.id}
+                log={log}
+                open={expandedLog === idx}
+                wrap
+                onToggle={() => setExpandedLog(expandedLog === idx ? null : idx)}
+              />
+            ))
+          )}
+        </DrawerBody>
+      </Drawer>
+
+      <DeployDeviceDialog
+        open={deployOpen}
         project={project}
-        onClose={() => setBindOpen(false)}
-        onBind={(binding) => bindProject(project.id, binding)}
+        onClose={() => setDeployOpen(false)}
+        onDeploy={handleDeploy}
       />
     </div>
   );
