@@ -657,6 +657,9 @@ const RunTab: React.FC = () => {
           size="small"
           multiselect
           className={styles.runDropdown}
+          open
+          positioning={{ position: 'below', align: 'start', fallbackPositions: ['above'] }}
+          listbox={{ style: { maxHeight: 260, overflowY: 'auto' } }}
           placeholder={selectAll ? `${allSerials.length} devices selected` : selectedSerials.length === 0 ? 'No devices selected' : `${selectedSerials.length} device${selectedSerials.length > 1 ? 's' : ''} selected`}
           selectedOptions={selectAll ? allSerials : selectedSerials}
           onOptionSelect={(_, d) => { setSelectedSerials(d.selectedOptions); setSelectAll(false); }}
