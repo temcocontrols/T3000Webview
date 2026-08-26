@@ -102,7 +102,9 @@ interface FirmwareWidget {
 export interface FirmwareScreen {
     name: string;
     json: {
-        fonts?: { name: string; size: number }[];
+        // Real device serves fonts as [name, size] tuples; the Rust mock serves
+        // {name, size} objects. Accept both.
+        fonts?: ({ name: string; size: number } | [string, number])[];
         bitmaps?: string[];
         widgets?: Record<string, FirmwareWidget>;
     };
@@ -158,12 +160,16 @@ export function firmwareToProject(
 
     for (const screen of screens) {
         for (const f of screen.json.fonts || []) {
+            // Normalize font entry: {name,size} object OR [name,size] tuple.
+            const fontName = Array.isArray(f) ? String(f[0] ?? "") : String((f as any)?.name ?? "");
+            const fontSize = Array.isArray(f) ? Number(f[1] ?? 0) : Number((f as any)?.size ?? 0);
+            if (!fontName) continue;
             // Strip lv_font_ prefix and UPPERCASE for cleaner naming
             // (e.g. "lv_font_montserrat_40" → "MONTSERRAT_40" matching BUILT_IN_FONTS)
-            const cleanName = f.name.replace(/^lv_font_/, "").toUpperCase();
+            const cleanName = fontName.replace(/^lv_font_/, "").toUpperCase();
             if (!seenFonts.has(cleanName)) {
                 seenFonts.add(cleanName);
-                allFonts.push({ name: cleanName, size: f.size });
+                allFonts.push({ name: cleanName, size: fontSize });
             }
         }
         for (const b of screen.json.bitmaps || []) {
