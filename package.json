@@ -181,5 +181,14 @@
     "npm": ">= 6.13.4",
     "yarn": ">= 1.21.1"
   },
-  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
+  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610",
+  "overrides": {
+    "vite": "2.9.18",
+    "vitest": {
+      "vite": "5.4.19"
+    },
+    "vite-node": {
+      "vite": "5.4.19"
+    }
+  }
 }

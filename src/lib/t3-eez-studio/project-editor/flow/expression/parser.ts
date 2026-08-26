@@ -1,38 +1,8 @@
-import { readFileSync } from "fs";
-import { resolve } from "path";
 import peggy from "peggy";
 
-import { isDev } from "eez-studio-shared/util-electron";
-import { sourceRootDir } from "eez-studio-shared/util";
-
-/*
-const expressionParserGrammar = readFileSync(
-    isDev
-        ? resolve(`${sourceRootDir()}/../resources/expression-grammar.pegjs`)
-        : process.resourcesPath! + "/expression-grammar.pegjs",
-    "utf8"
-);
-
-// Debug log
-console.log("Grammar path:", 
-    isDev
-        ? resolve(`${sourceRootDir()}/../resources/expression-grammar.pegjs`)
-        : process.resourcesPath! + "/expression-grammar.pegjs"
-);
-console.log("Grammar length:", expressionParserGrammar.length);
-console.log("Grammar preview:", expressionParserGrammar.slice(0, 200));
-*/
-
-// Import grammar as raw text
-// import expressionParserGrammar from "../../../../resources/expression-grammar.pegjs";
-
-//TODO: Use Vite raw plugin to import .pegjs files as raw text
-const expressionParserGrammar = await fetch(
-  new URL("expression-grammar.pegjs", import.meta.url)
-).then(res => res.text());
-
-console.log("Grammar length:", expressionParserGrammar.length);
-console.log("Grammar preview:", expressionParserGrammar.slice(0, 200));
+// Grammar is bundled at build time via Vite's ?raw import.
+// This avoids a runtime fetch and top-level await (not allowed for the es2020 build target).
+import expressionParserGrammar from "./expression-grammar.pegjs?raw";
 
 const peggyParser = peggy.generate(expressionParserGrammar, {
     cache: true,
