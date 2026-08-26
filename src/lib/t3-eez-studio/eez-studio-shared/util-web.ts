@@ -36,13 +36,15 @@ export const app = {
     getLocale: () => "en"
 };
 
-// In the browser, process is always available (bundled), but we aren't in Electron.
+// In the browser, `process` is provided by the browser-polyfill boot file, but we
+// aren't in Electron. Guard every `process` access so this never throws even if
+// the polyfill hasn't run (e.g. this module is bundled into an early chunk).
 // We detect dev mode by checking Electron's execPath, NODE_ENV, or CLI mode flag.
 export const isDev: boolean =
-    (typeof process !== "undefined" &&
-        (/[\\/]node_modules[\\/]electron[\\/]/.test(process.execPath) ||
-            process.env?.NODE_ENV === "development")) ||
-    process.env?.EEZ_STUDIO_CLI_MODE === "1";
+    typeof process !== "undefined" &&
+    (/[\/]node_modules[\/]electron[\/]/.test(process.execPath) ||
+        process.env?.NODE_ENV === "development" ||
+        process.env?.EEZ_STUDIO_CLI_MODE === "1");
 
 ////////////////////////////////////////////////////////////////////////////////
 // Path helpers
