@@ -217,398 +217,403 @@ export const App: React.FC = () => {
         <FluentProvider theme={theme === 'light' ? webLightTheme : webDarkTheme}>
           <NotificationProvider>
             <CsvOperationsProvider>
-            <ErrorBoundary>
-              <HashRouter>
-              <Routes>
-                  {/* T3000 Routes - All protected with MainLayout wrapper */}
-                  <Route
-                    path="/t3000"
-                    element={
-                      <ProtectedRoute>
-                        <MainLayout />
-                      </ProtectedRoute>
-                    }
-                  >
-                {/* Nested routes */}
-                <Route
-                  index
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <DashboardPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="dashboard"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <DashboardPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="inputs"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <InputsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="outputs"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <OutputsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="variables"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <VariablesPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="programs"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <ProgramsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="pidloops"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <PIDLoopsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="graphics"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <GraphicsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="schedules"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <SchedulesPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="holidays"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <HolidaysPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="trendlogs"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <TrendLogsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="trend-policy"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <TrendPolicyPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="alarms"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <AlarmsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="network"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <NetworkPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="array"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <ArrayPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="tables"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <TablesPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="users"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <UsersPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="custom-units"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <CustomUnitsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="settings"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <SettingsPageResponsive />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="discover"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <DiscoverPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="buildings"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <BuildingsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="developer/sync"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <SyncConfigurationPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="developer/fluentui-v9"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <FluentUIV9Page />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="database/config"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <DatabaseConfigPage />
-                    </React.Suspense>
-                  }
-                />
-
-                <Route
-                  path="haystack-tags"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <HaystackTagsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="custom-tags"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <CustomTagsPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="auto-tagging"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <AutoTaggingMcpPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="ai-assistant/mcp"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <McpServerPage />
-                    </React.Suspense>
-                  }
-                />
-
-                {/* Develop Routes - Special layout with left navigation */}
-              </Route>
-
-              {/* HVAC Designer, Documentation & AI Chat - Minimal layout with just top menu bar */}
-              <Route path="/t3000" element={<MinimalLayout />}>
-                <Route
-                  path="ai-chat"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <AiChatPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="trends/chart"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <TrendChartPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="hvac-designer/:graphicId?"
-                  element={
-                    <React.Suspense fallback={
-                      <div className={styles.suspenseLoader}>
-                        <Spinner size="extra-tiny" />
-                        <span className={styles.suspenseLoaderText}>Loading...</span>
-                      </div>
-                    }>
-                      <HvacDesignerPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="tstat10-simulator"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <Tstat10SimulatorPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="documentation/*"
-                  element={
-                    <React.Suspense fallback={
-                      <div className={styles.suspenseLoaderDocs}>
-                        <Spinner size="tiny" />
-                        <span className={styles.suspenseLoaderTextDocs}>Loading...</span>
-                      </div>
-                    }>
-                      <DocumentationPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="design"
-                  element={
-                    <React.Suspense
-                      fallback={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px' }}>
-                          <Spinner size="tiny" />
-                          <span style={{ fontSize: 12, color: '#616161' }}>Loading Design Hub…</span>
-                        </div>
+              <ErrorBoundary>
+                <HashRouter>
+                  <Routes>
+                    {/* T3000 Routes - All protected with MainLayout wrapper */}
+                    <Route
+                      path="/t3000"
+                      element={
+                        <ProtectedRoute>
+                          <MainLayout />
+                        </ProtectedRoute>
                       }
                     >
-                      <DesignHubPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="design/projects/:id"
-                  element={
-                    <React.Suspense fallback={<div>Loading project...</div>}>
-                      <ProjectDetailPage />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="eez"
-                  element={
-                    <React.Suspense fallback={<div>Loading EEZ Studio...</div>}>
-                      <EezStudioPage />
-                    </React.Suspense>
-                  }
-                />
-              </Route>
+                      {/* Nested routes */}
+                      <Route
+                        index
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <DashboardPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="dashboard"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <DashboardPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="inputs"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <InputsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="outputs"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <OutputsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="variables"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <VariablesPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="programs"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <ProgramsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="pidloops"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <PIDLoopsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="graphics"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <GraphicsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="schedules"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <SchedulesPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="holidays"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <HolidaysPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="trendlogs"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <TrendLogsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="trend-policy"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <TrendPolicyPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="alarms"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <AlarmsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="network"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <NetworkPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="array"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <ArrayPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="tables"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <TablesPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="users"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <UsersPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="custom-units"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <CustomUnitsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="settings"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <SettingsPageResponsive />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="discover"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <DiscoverPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="buildings"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <BuildingsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="developer/sync"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <SyncConfigurationPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="developer/fluentui-v9"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <FluentUIV9Page />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="database/config"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <DatabaseConfigPage />
+                          </React.Suspense>
+                        }
+                      />
 
-              {/* Develop Routes - Separate from t3000, no device tree */}
-              <Route
-                path="/t3000/develop"
-                element={
-                  <ProtectedRoute>
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <DevelopLayoutWrapper />
-                    </React.Suspense>
-                  </ProtectedRoute>
-                }
-              >
-                <Route
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <DevelopLayout />
-                    </React.Suspense>
-                  }
-                >
-                  <Route
-                    index
-                    element={<Navigate to="/t3000/develop/files" replace />}
-                  />
-                  <Route
-                    path="files"
-                    element={
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <FileBrowserPage />
-                      </React.Suspense>
-                    }
-                  />
-                  <Route
-                    path="database"
-                    element={
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <DatabaseViewerPage />
-                      </React.Suspense>
-                    }
-                  />
-                  <Route
-                    path="transport"
-                    element={
-                      <React.Suspense fallback={<div>Loading...</div>}>
-                        <TransportTesterPage />
-                      </React.Suspense>
-                    }
-                  />
-                </Route>
-                {/* Logs - no left sidebar */}
-                <Route
-                  path="logs"
-                  element={
-                    <React.Suspense fallback={<div>Loading...</div>}>
-                      <LogsPage />
-                    </React.Suspense>
-                  }
-                />
-              </Route>
+                      <Route
+                        path="haystack-tags"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <HaystackTagsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="custom-tags"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <CustomTagsPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="auto-tagging"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <AutoTaggingMcpPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="ai-assistant/mcp"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <McpServerPage />
+                          </React.Suspense>
+                        }
+                      />
 
-              {/* Fallback route */}
-              </Routes>
-            </HashRouter>
-          </ErrorBoundary>
+                      {/* Develop Routes - Special layout with left navigation */}
+                    </Route>
+
+                    {/* HVAC Designer, Documentation & AI Chat - Minimal layout with just top menu bar */}
+                    <Route path="/t3000" element={<MinimalLayout />}>
+                      <Route
+                        path="ai-chat"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <AiChatPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="trends/chart"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <TrendChartPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="hvac-designer/:graphicId?"
+                        element={
+                          <React.Suspense fallback={
+                            <div className={styles.suspenseLoader}>
+                              <Spinner size="extra-tiny" />
+                              <span className={styles.suspenseLoaderText}>Loading...</span>
+                            </div>
+                          }>
+                            <HvacDesignerPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="tstat10-simulator"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <Tstat10SimulatorPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="documentation/*"
+                        element={
+                          <React.Suspense fallback={
+                            <div className={styles.suspenseLoaderDocs}>
+                              <Spinner size="tiny" />
+                              <span className={styles.suspenseLoaderTextDocs}>Loading...</span>
+                            </div>
+                          }>
+                            <DocumentationPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="design"
+                        element={
+                          <React.Suspense
+                            fallback={
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px' }}>
+                                <Spinner size="tiny" />
+                                <span style={{ fontSize: 12, color: '#616161' }}>Loading Design Hub ...</span>
+                              </div>
+                            }
+                          >
+                            <DesignHubPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="design/projects/:id"
+                        element={
+                          <React.Suspense fallback={<div>Loading project ...</div>}>
+                            <ProjectDetailPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="eez"
+                        element={
+                          <React.Suspense fallback={
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px' }}>
+                              <Spinner size="tiny" />
+                              <span style={{ fontSize: 12, color: '#616161' }}>Loading LVGL Studio ...</span>
+                            </div>
+                          }>
+                            <EezStudioPage />
+                          </React.Suspense>
+                        }
+                      />
+                    </Route>
+
+                    {/* Develop Routes - Separate from t3000, no device tree */}
+                    <Route
+                      path="/t3000/develop"
+                      element={
+                        <ProtectedRoute>
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <DevelopLayoutWrapper />
+                          </React.Suspense>
+                        </ProtectedRoute>
+                      }
+                    >
+                      <Route
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <DevelopLayout />
+                          </React.Suspense>
+                        }
+                      >
+                        <Route
+                          index
+                          element={<Navigate to="/t3000/develop/files" replace />}
+                        />
+                        <Route
+                          path="files"
+                          element={
+                            <React.Suspense fallback={<div>Loading...</div>}>
+                              <FileBrowserPage />
+                            </React.Suspense>
+                          }
+                        />
+                        <Route
+                          path="database"
+                          element={
+                            <React.Suspense fallback={<div>Loading...</div>}>
+                              <DatabaseViewerPage />
+                            </React.Suspense>
+                          }
+                        />
+                        <Route
+                          path="transport"
+                          element={
+                            <React.Suspense fallback={<div>Loading...</div>}>
+                              <TransportTesterPage />
+                            </React.Suspense>
+                          }
+                        />
+                      </Route>
+                      {/* Logs - no left sidebar */}
+                      <Route
+                        path="logs"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <LogsPage />
+                          </React.Suspense>
+                        }
+                      />
+                    </Route>
+
+                    {/* Fallback route */}
+                  </Routes>
+                </HashRouter>
+              </ErrorBoundary>
             </CsvOperationsProvider>
-        </NotificationProvider>
-      </FluentProvider>
+          </NotificationProvider>
+        </FluentProvider>
       </ThemeProvider>
     </div>
   );
