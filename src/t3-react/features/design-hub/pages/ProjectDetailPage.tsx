@@ -36,6 +36,10 @@ import { useDesignHubStore } from '../store/designHubStore';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { CompareDrawings } from '../components/CompareDrawings';
 import { DeployDeviceDialog } from '../components/DeployDeviceDialog';
+import { DeleteProjectPopover } from '../components/DeleteProjectPopover';
+import { ConfirmPopover } from '../components/ConfirmPopover';
+import { RenameProjectDialog } from '../components/RenameProjectDialog';
+import { DuplicateProjectDialog } from '../components/DuplicateProjectDialog';
 import { HubIcon } from '../icons';
 import styles from './DesignHubPage.module.css';
 
@@ -164,6 +168,11 @@ export const ProjectDetailPage: React.FC = () => {
   const [expandedLog, setExpandedLog] = useState<number | null>(0);
   const [snapshots, setSnapshots] = useState<RevisionSnapshot[]>([]);
   const [compareSnap, setCompareSnap] = useState<RevisionSnapshot | null>(null);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<string | null>(null);
+  const [deleteSnapTarget, setDeleteSnapTarget] = useState<string | null>(null);
 
   const reloadDeployLogs = () => {
     if (id) {
@@ -211,8 +220,9 @@ export const ProjectDetailPage: React.FC = () => {
     }
   };
 
-  const handleRestore = (snapId: string) => {
-    if (project && window.confirm('Restore this snapshot? Current drawing will be overwritten.')) {
+  const handleRestoreConfirm = (snapId: string) => {
+    setRestoreTarget(null);
+    if (project) {
       restoreSnapshot(project.id, snapId);
       setMessage('Snapshot restored', 'success');
     }
@@ -285,21 +295,26 @@ export const ProjectDetailPage: React.FC = () => {
     deployLogs.length > 0 &&
     (deployLogs[0].status === 'error' || deployLogs[0].status === 'warning');
 
-  const handleRename = () => {
-    const name = window.prompt('Rename drawing', project.name);
-    if (name && name.trim()) renameProject(project.id, name.trim());
+  const handleRenameSave = (name: string) => {
+    setRenameOpen(false);
+    renameProject(project.id, name);
+    setMessage(`Renamed to "${name}"`, 'success');
   };
 
-  const handleDuplicate = () => {
+  const handleDuplicateConfirm = (name: string) => {
+    setDuplicateOpen(false);
     const copy = duplicateProject(project.id);
-    if (copy) navigate(`/t3000/design/projects/${copy.id}`);
+    if (copy) {
+      renameProject(copy.id, name);
+      setMessage(`Duplicated as "${name}"`, 'success');
+      navigate(`/t3000/design/projects/${copy.id}`);
+    }
   };
 
-  const handleDelete = () => {
-    if (window.confirm(`Delete "${project.name}"? This cannot be undone.`)) {
-      deleteProject([project.id]);
-      navigate('/t3000/design');
-    }
+  const handleDeleteConfirm = (id: string) => {
+    setDeleteOpen(false);
+    deleteProject([id]);
+    navigate('/t3000/design');
   };
 
   // Deploy via the dialog: bind to the chosen device, then sync/deploy.
@@ -345,15 +360,14 @@ export const ProjectDetailPage: React.FC = () => {
       },
     ];
   actions.push(
-    { label: 'Rename', caption: 'Rename this project', icon: <EditRegular />, onClick: handleRename },
-    { label: 'Duplicate', caption: 'Create a copy', icon: <CopyRegular />, onClick: handleDuplicate },
+    { label: 'Rename', caption: 'Rename this project', icon: <EditRegular />, onClick: () => setRenameOpen(true) },
+    { label: 'Duplicate', caption: 'Create a copy', icon: <CopyRegular />, onClick: () => setDuplicateOpen(true) },
     {
       label: project.status === 'synced' ? 'Unshare' : 'Share',
       caption: project.status === 'synced' ? 'Stop sharing' : 'Share this project',
       icon: <ShareRegular />,
       onClick: handleShare,
     },
-    { label: 'Delete', caption: 'Delete this project', icon: <DeleteRegular />, onClick: handleDelete, danger: true },
   );
 
   return (
@@ -443,6 +457,22 @@ export const ProjectDetailPage: React.FC = () => {
             </Button>
           </Tooltip>
         ))}
+        <DeleteProjectPopover
+          project={project}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onConfirm={handleDeleteConfirm}
+          trigger={
+            <Button
+              size="small"
+              appearance="transparent"
+              icon={<DeleteRegular />}
+              style={{ color: '#d13438', fontWeight: 600, gap: 6, fontSize: 12 }}
+            >
+              Delete
+            </Button>
+          }
+        />
       </div>
 
       {/* Deployment — device state + deploy log (device-aware types only) */}
@@ -543,8 +573,29 @@ export const ProjectDetailPage: React.FC = () => {
                   <div style={{ fontSize: 11, color: '#a5afbf', marginBottom: 8 }}>{formatDate(s.timestamp)}</div>
                   <div style={{ display: 'flex', gap: 4 }}>
                     <Button size="small" appearance="subtle" icon={<DataHistogramRegular />} title="Compare with current" onClick={() => setCompareSnap(s)} />
-                    <Button size="small" appearance="subtle" icon={<ArrowResetRegular />} title="Restore" onClick={() => handleRestore(s.id)} />
-                    <Button size="small" appearance="subtle" icon={<DeleteRegular />} title="Delete" onClick={() => { deleteSnapshot(project.id, s.id); reloadSnapshots(); }} />
+                    <ConfirmPopover
+                      title="Restore snapshot?"
+                      message="Current drawing will be overwritten with this snapshot. This cannot be undone."
+                      confirmLabel="Restore"
+                      open={restoreTarget === s.id}
+                      onOpenChange={(open) => setRestoreTarget(open ? s.id : null)}
+                      onConfirm={() => handleRestoreConfirm(s.id)}
+                      trigger={<Button size="small" appearance="subtle" icon={<ArrowResetRegular />} title="Restore" />}
+                    />
+                    <ConfirmPopover
+                      title="Delete snapshot?"
+                      message={`Delete snapshot "${s.name}"? This cannot be undone.`}
+                      confirmLabel="Delete"
+                      open={deleteSnapTarget === s.id}
+                      onOpenChange={(open) => setDeleteSnapTarget(open ? s.id : null)}
+                      onConfirm={() => {
+                        setDeleteSnapTarget(null);
+                        deleteSnapshot(project.id, s.id);
+                        reloadSnapshots();
+                        setMessage('Snapshot deleted', 'success');
+                      }}
+                      trigger={<Button size="small" appearance="subtle" icon={<DeleteRegular />} title="Delete" />}
+                    />
                   </div>
                 </div>
               ))}
@@ -625,6 +676,19 @@ export const ProjectDetailPage: React.FC = () => {
         project={project}
         onClose={() => setDeployOpen(false)}
         onDeploy={handleDeploy}
+      />
+
+      <RenameProjectDialog
+        projectName={project.name}
+        open={renameOpen}
+        onClose={() => setRenameOpen(false)}
+        onSave={handleRenameSave}
+      />
+      <DuplicateProjectDialog
+        projectName={project.name}
+        open={duplicateOpen}
+        onClose={() => setDuplicateOpen(false)}
+        onDuplicate={handleDuplicateConfirm}
       />
     </div>
   );
