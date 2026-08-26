@@ -7,6 +7,7 @@
 
 pub mod evaluator;
 pub mod roles;
+pub mod routes;
 pub mod rules;
 pub mod series;
 

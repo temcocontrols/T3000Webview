@@ -300,6 +300,40 @@ pub async fn toggle_rule(
     update_rule(db, rule_id, &json!({ "enabled": enabled })).await
 }
 
+/// Delete a rule by ID (also removes persisted findings for that rule).
+pub async fn delete_rule(db: &sea_orm::DatabaseConnection, rule_id: &str) -> Result<(), String> {
+    let del = format!(
+        "DELETE FROM FDD_RULES WHERE rule_id = '{}'",
+        rule_id.replace('\'', "''")
+    );
+    db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, del))
+        .await
+        .map_err(|e| format!("FDD delete error: {}", e))?;
+    let del_findings = format!(
+        "DELETE FROM FDD_FINDINGS WHERE rule_id = '{}'",
+        rule_id.replace('\'', "''")
+    );
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Sqlite,
+        del_findings,
+    ))
+    .await
+    .map_err(|e| format!("FDD delete findings error: {}", e))?;
+    Ok(())
+}
+
+/// Clear all persisted findings.
+pub async fn clear_findings(db: &sea_orm::DatabaseConnection) -> Result<usize, String> {
+    let res = db
+        .execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "DELETE FROM FDD_FINDINGS".to_string(),
+        ))
+        .await
+        .map_err(|e| format!("FDD clear findings error: {}", e))?;
+    Ok(res.rows_affected() as usize)
+}
+
 /// Import rules (upsert). `rules` is an array of rule objects.
 pub async fn import_rules(db: &sea_orm::DatabaseConnection, rules: &[Value]) -> Result<usize, String> {
     let mut count = 0usize;
