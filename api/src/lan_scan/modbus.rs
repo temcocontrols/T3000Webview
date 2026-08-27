@@ -92,9 +92,11 @@ pub enum OnlineCheckError {
 /// The probe is a broadcast to a *range* of Modbus IDs; a device echoes with
 /// its own address in `gval[2]`. Two protocol variants are handled (old/new)
 /// exactly like the C++ `CheckTstatOnline2`.
-pub fn parse_online_check(pval: &[u8; 6], gval: &[u8]) -> Result<Option<u8>, OnlineCheckError> {
-    // old protocol: gval[8..12] all zero
-    if gval[8] == 0 && gval[9] == 0 && gval[10] == 0 && gval[11] == 0 && gval[12] == 0 {
+pub fn parse_online_check(pval: &[u8; 6], gval: &[u8; 13]) -> Result<Option<u8>, OnlineCheckError> {
+    // old protocol: gval[7..12] all zero — mirrors C++ `CheckTstatOnline2_a_nocretical`.
+    // gval[7] is included so a new-protocol reply whose CRC low byte happens to be
+    // 0 isn't misdetected as the old protocol (the C++ bug fixed by "fance").
+    if gval[7] == 0 && gval[8] == 0 && gval[9] == 0 && gval[10] == 0 && gval[11] == 0 && gval[12] == 0 {
         if gval[0] == 0 && gval[1] == 0 && gval[2] == 0 && gval[3] == 0 && gval[4] == 0 {
             return Err(OnlineCheckError::NoResponse);
         }

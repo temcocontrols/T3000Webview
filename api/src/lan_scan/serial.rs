@@ -12,6 +12,25 @@
 
 use std::time::Duration;
 
+#[cfg(windows)]
+use winapi::shared::minwindef::DWORD;
+#[cfg(windows)]
+use winapi::um::commapi::{
+    EscapeCommFunction, GetCommState, GetCommTimeouts, PurgeComm, SetCommState, SetCommTimeouts,
+    SetupComm,
+};
+#[cfg(windows)]
+use winapi::um::fileapi::{CreateFileW, ReadFile, WriteFile, OPEN_EXISTING};
+#[cfg(windows)]
+use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
+#[cfg(windows)]
+use winapi::um::winbase::{
+    CLRRTS, COMMTIMEOUTS, DCB, NOPARITY, ONESTOPBIT, PURGE_RXABORT, PURGE_RXCLEAR, PURGE_TXABORT,
+    PURGE_TXCLEAR, SETRTS,
+};
+#[cfg(windows)]
+use winapi::um::winnt::{GENERIC_READ, GENERIC_WRITE, HANDLE};
+
 use super::modbus::{self, OnlineCheckError};
 use super::types::DiscoveredDevice;
 
@@ -27,6 +46,237 @@ const DEV_ID_MAX: u8 = 254;
 const LATENCY_MS: u64 = 75;
 /// Timeout for one read after sending a frame.
 const READ_TIMEOUT_MS: u64 = 200;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Raw Win32 serial port.
+//
+// Mirrors the C++ `open_com_nocretical` (ModbusDllforVc/common.cpp:5114) and
+// `Change_BaudRate_NoCretical` (common.cpp:592) line-for-line.
+//
+// The `serialport` crate CANNOT be used for the probe: its default DCB forces
+// `fRtsControl = RTS_CONTROL_DISABLE` and `fDtrControl = DTR_CONTROL_DISABLE`
+// (serialport-4.10.0/src/windows/dcb.rs: `init()` + `set_flow_control(None)`).
+// On FTDI/RS485 adapters RTS drives the transceiver direction, so with RTS
+// disabled our TX never reaches the bus — T3000 keeps the driver's RTS/DTR
+// defaults (RTS_CONTROL_TOGGLE) and finds the device, while we couldn't. This
+// type gets the DCB via GetCommState and changes ONLY baud/8/N/1, exactly like
+// the C++.
+// ─────────────────────────────────────────────────────────────────────────────
+#[cfg(windows)]
+pub struct Win32Serial {
+    handle: HANDLE,
+    #[allow(dead_code)]
+    name: String,
+}
+
+#[cfg(windows)]
+impl Win32Serial {
+    /// Open a COM port — mirrors C++ `open_com_nocretical`.
+    pub fn open(name: &str, baud: u32) -> std::io::Result<Win32Serial> {
+        use std::mem::{size_of, zeroed};
+        use std::ptr::null_mut;
+        unsafe {
+            let path = format!("\\\\.\\{}", name);
+            let wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
+            let handle = CreateFileW(
+                wide.as_ptr(),
+                GENERIC_READ | GENERIC_WRITE,
+                0,
+                null_mut(),
+                OPEN_EXISTING,
+                0, // synchronous handle; the DCB (line state) is identical
+                null_mut(),
+            );
+            if handle == INVALID_HANDLE_VALUE {
+                return Err(std::io::Error::last_os_error());
+            }
+            // SetupComm(64K in, 32K out) — mirrors C++.
+            if SetupComm(handle, 1024 * 64, 1024 * 32) == 0 {
+                let e = std::io::Error::last_os_error();
+                CloseHandle(handle);
+                return Err(e);
+            }
+            let mut dcb: DCB = zeroed();
+            dcb.DCBlength = size_of::<DCB>() as DWORD;
+            if GetCommState(handle, &mut dcb) == 0 {
+                let e = std::io::Error::last_os_error();
+                CloseHandle(handle);
+                return Err(e);
+            }
+            // Set baud/8/N/1.
+            dcb.BaudRate = baud as DWORD;
+            dcb.ByteSize = 8;
+            dcb.Parity = NOPARITY as u8;
+            dcb.StopBits = ONESTOPBIT as u8;
+            // Force RTS_CONTROL_TOGGLE (bits 12-13) — auto-drive RTS during TX.
+            // The persistent DCB on this port was left with fRtsControl=Disable
+            // (earlier serialport-crate runs, which set RTS/DTR to Disable),
+            // which holds the FTDI RS485 transceiver in RX so our TX never
+            // reaches the bus. TOGGLE is the correct RS485 direction mode and
+            // is what makes T3000's C++ path work.
+            dcb.BitFields &= !(0b11 << 12);
+            dcb.BitFields |= (0b11u32) << 12; // RTS_CONTROL_TOGGLE
+            // Enable DTR too (harmless, and many USB-serial adapters need it
+            // high for the far end to be ready).
+            dcb.BitFields &= !(0b11 << 4);
+            dcb.BitFields |= (0b01u32) << 4; // DTR_CONTROL_ENABLE
+            if SetCommState(handle, &mut dcb) == 0 {
+                let e = std::io::Error::last_os_error();
+                CloseHandle(handle);
+                return Err(e);
+            }
+            let mut ct: COMMTIMEOUTS = zeroed();
+            if GetCommTimeouts(handle, &mut ct) == 0 {
+                let e = std::io::Error::last_os_error();
+                CloseHandle(handle);
+                return Err(e);
+            }
+            ct.ReadIntervalTimeout = 160;
+            ct.ReadTotalTimeoutMultiplier = 20;
+            ct.ReadTotalTimeoutConstant = 360;
+            ct.WriteTotalTimeoutMultiplier = 20;
+            ct.WriteTotalTimeoutConstant = 200;
+            if SetCommTimeouts(handle, &mut ct) == 0 {
+                let e = std::io::Error::last_os_error();
+                CloseHandle(handle);
+                return Err(e);
+            }
+            Ok(Win32Serial {
+                handle,
+                name: name.to_string(),
+            })
+        }
+    }
+
+    /// Change the baud rate — mirrors C++ `Change_BaudRate_NoCretical`.
+    pub fn set_baud(&mut self, baud: u32) -> std::io::Result<()> {
+        use std::mem::{size_of, zeroed};
+        unsafe {
+            let mut dcb: DCB = zeroed();
+            dcb.DCBlength = size_of::<DCB>() as DWORD;
+            if GetCommState(self.handle, &mut dcb) == 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            dcb.BaudRate = baud as DWORD;
+            dcb.ByteSize = 8;
+            dcb.Parity = NOPARITY as u8;
+            dcb.StopBits = ONESTOPBIT as u8;
+            if SetCommState(self.handle, &mut dcb) == 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        }
+    }
+
+    /// Purge buffers — mirrors the C++ `PurgeComm` calls before each frame.
+    pub fn purge(&mut self, rx: bool, tx: bool) -> std::io::Result<()> {
+        unsafe {
+            let mut flags = 0u32;
+            if rx {
+                flags |= PURGE_RXABORT | PURGE_RXCLEAR;
+            }
+            if tx {
+                flags |= PURGE_TXABORT | PURGE_TXCLEAR;
+            }
+            if PurgeComm(self.handle, flags) == 0 {
+                Err(std::io::Error::last_os_error())
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    /// Drive the RTS line high/low (optional fallback; the C++ relies on the
+    /// DCB, which on FTDI RS485 auto-toggles RTS during TX).
+    pub fn set_rts(&mut self, high: bool) -> std::io::Result<()> {
+        unsafe {
+            let func = if high { SETRTS } else { CLRRTS };
+            if EscapeCommFunction(self.handle, func) == 0 {
+                Err(std::io::Error::last_os_error())
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    /// Read the current DCB line-control state (for diagnostics).
+    ///
+    /// fRtsControl bits 12-13: 0=Disable 1=Enable 2=Handshake 3=Toggle
+    /// fDtrControl bits 4-5:   0=Disable 1=Enable 2=Handshake
+    pub fn debug_dcb(&self) -> String {
+        use std::mem::{size_of, zeroed};
+        unsafe {
+            let mut dcb: DCB = zeroed();
+            dcb.DCBlength = size_of::<DCB>() as DWORD;
+            if GetCommState(self.handle, &mut dcb) == 0 {
+                return format!("GetCommState failed: {}", std::io::Error::last_os_error());
+            }
+            let f_rts = (dcb.BitFields >> 12) & 0b11;
+            let f_dtr = (dcb.BitFields >> 4) & 0b11;
+            let f_cts = (dcb.BitFields >> 2) & 1;
+            let f_dsr = (dcb.BitFields >> 3) & 1;
+            format!(
+                "baud={} fRtsControl={} (0=Disable 1=Enable 2=Handshake 3=Toggle) fDtrControl={} fOutxCtsFlow={} fOutxDsrFlow={}",
+                dcb.BaudRate, f_rts, f_dtr, f_cts, f_dsr
+            )
+        }
+    }
+
+    /// Write bytes (synchronous WriteFile).
+    pub fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+        use std::ptr::null_mut;
+        unsafe {
+            let mut written: DWORD = 0;
+            if WriteFile(
+                self.handle,
+                data.as_ptr() as *const _,
+                data.len() as DWORD,
+                &mut written,
+                null_mut(),
+            ) == 0
+            {
+                Err(std::io::Error::last_os_error())
+            } else {
+                Ok(written as usize)
+            }
+        }
+    }
+
+    /// Read bytes (synchronous ReadFile). A COMMTIMEOUTS timeout returns
+    /// ERROR_TIMEOUT with any bytes read so far — map it to Ok(partial).
+    pub fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        use std::ptr::null_mut;
+        use winapi::shared::winerror::ERROR_TIMEOUT;
+        unsafe {
+            let mut got: DWORD = 0;
+            if ReadFile(
+                self.handle,
+                buf.as_mut_ptr() as *mut _,
+                buf.len() as DWORD,
+                &mut got,
+                null_mut(),
+            ) == 0
+            {
+                let err = std::io::Error::last_os_error();
+                if err.raw_os_error() == Some(ERROR_TIMEOUT as i32) {
+                    return Ok(got as usize);
+                }
+                Err(err)
+            } else {
+                Ok(got as usize)
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+impl Drop for Win32Serial {
+    fn drop(&mut self) {
+        unsafe {
+            CloseHandle(self.handle);
+        }
+    }
+}
 
 /// A device discovered on a serial port.
 #[derive(Debug, Clone)]
@@ -82,13 +332,32 @@ pub fn scan_all_serial_ports(
     for port in &ports {
         match scan_com_port(port, baudrates, dev_lo, dev_hi) {
             Ok(mut found) => {
+                let n = found.len();
+                for d in &found {
+                    tracing::info!(
+                        "[lan_scan] serial {} found SN={} PID={} ModbusID={} @{} baud name={}",
+                        port,
+                        d.device.serial_number,
+                        d.device.product_id,
+                        d.device.modbus_id,
+                        d.baudrate,
+                        d.device.panel_name,
+                    );
+                }
+                tracing::info!("[lan_scan] serial {} scan done: {} devices found", port, n);
                 devices.append(&mut found);
             }
             Err(e) => {
+                tracing::info!("[lan_scan] serial {} scan failed: {}", port, e);
                 port_open_failures.push(format!("{}: {}", port, e));
             }
         }
     }
+    tracing::info!(
+        "[lan_scan] serial scan done: {} devices found across {} COM port(s)",
+        devices.len(),
+        ports.len()
+    );
 
     SerialScanResult { devices, port_open_failures, warnings }
 }
@@ -100,20 +369,24 @@ pub fn scan_com_port(
     dev_lo: u8,
     dev_hi: u8,
 ) -> Result<Vec<SerialDeviceResult>, String> {
+    if baudrates.is_empty() {
+        return Ok(Vec::new());
+    }
+    // Open once with the exact C++ DCB (driver RTS/DTR defaults preserved),
+    // then change baud per iteration — mirrors `ScanComThreadNoCritical`.
+    let mut port_handle = Win32Serial::open(port, baudrates[0])
+        .map_err(|e| format!("cannot open {}: {}", port, e))?;
+
     let mut results = Vec::new();
     let mut mstp_checked = false;
     let mut mstp_detected = false;
 
     for &baud in baudrates {
-        let open_res = serialport::new(port, baud)
-            .timeout(Duration::from_millis(READ_TIMEOUT_MS))
-            .open();
-        let mut port_handle = match open_res {
-            Ok(p) => p,
-            Err(_) => continue, // next baud; if all fail we treat as open failure
-        };
+        if port_handle.set_baud(baud).is_err() {
+            continue;
+        }
         // Flush stale RX data.
-        let _ = port_handle.clear(serialport::ClearBuffer::All);
+        let _ = port_handle.purge(true, true);
         std::thread::sleep(Duration::from_millis(20));
 
         // First baud: detect BACnet MSTP data on the line (mirror Test_Comport).
@@ -134,20 +407,6 @@ pub fn scan_com_port(
                 });
             }
         }
-        drop(port_handle);
-    }
-
-    if results.is_empty() {
-        // No device answered on any baud — verify the port actually opens once.
-        let any_open = baudrates.iter().any(|&b| {
-            serialport::new(port, b)
-                .timeout(Duration::from_millis(READ_TIMEOUT_MS))
-                .open()
-                .is_ok()
-        });
-        if !any_open {
-            return Err("cannot open COM port".to_string());
-        }
     }
     Ok(results)
 }
@@ -158,7 +417,7 @@ pub fn scan_com_port(
 /// covering `dev_lo..=dev_hi`; a single responder returns its address; a
 /// collision (more than one device) is resolved by splitting the range in half.
 fn scan_modbus_ids(
-    port: &mut Box<dyn serialport::SerialPort>,
+    port: &mut Win32Serial,
     dev_lo: u8,
     dev_hi: u8,
     _baud: u32,
@@ -171,25 +430,22 @@ fn scan_modbus_ids(
         }
         match online_check(port, lo, hi) {
             Ok(Some(id)) => {
-                if id >= lo && id <= hi {
-                    found.push(id);
-                } else {
-                    // Responder reported an address outside the range we probed;
-                    // probe it directly.
-                    found.push(id);
-                }
+                found.push(id);
             }
             Ok(None) => { /* no device in range */ }
-            Err(OnlineCheckError::Collision) => {
+            Err(OnlineCheckError::Collision) | Err(OnlineCheckError::BadFormat) => {
                 if lo == hi {
-                    // Still colliding on a single ID — device ID conflict; skip.
+                    // Collision/CRC error on a single ID — device ID conflict; skip.
                     continue;
                 }
+                // C++ `binarySearchforComDevice` splits the range on both -3
+                // (collision) AND -2 (CRC error) — mirror that so devices that
+                // answer a broad probe with a CRC error are still found.
                 let mid = lo + (hi - lo) / 2;
                 stack.push((lo, mid));
                 stack.push((mid + 1, hi));
             }
-            Err(_) => { /* CRC / format / transient — skip range */ }
+            Err(_) => { /* no response / transient — skip range */ }
         }
     }
     found.sort_unstable();
@@ -199,7 +455,7 @@ fn scan_modbus_ids(
 
 /// Send one online-check probe for `dev_lo..=dev_hi` and parse the response.
 fn online_check(
-    port: &mut Box<dyn serialport::SerialPort>,
+    port: &mut Win32Serial,
     dev_lo: u8,
     dev_hi: u8,
 ) -> Result<Option<u8>, OnlineCheckError> {
@@ -209,15 +465,17 @@ fn online_check(
     }
     std::thread::sleep(Duration::from_millis(LATENCY_MS));
 
-    let mut buf = [0u8; 13];
-    let n = match port.read(&mut buf) {
+    // Read into a fixed 13-byte buffer (like C++ `gval[13]`); a short read is
+    // zero-padded so the parser never indexes out of bounds.
+    let mut gval = [0u8; 13];
+    let n = match port.read(&mut gval) {
         Ok(n) => n,
         Err(_) => return Err(OnlineCheckError::NoResponse),
     };
     if n == 0 {
         return Err(OnlineCheckError::NoResponse);
     }
-    modbus::parse_online_check(&frame, &buf[..n.min(13)])
+    modbus::parse_online_check(&frame, &gval)
 }
 
 /// Read device info registers for a confirmed Modbus ID.
@@ -230,7 +488,7 @@ fn online_check(
 /// - [8]    hardware version
 /// Register 714+ carries an optional device label.
 fn read_device_info(
-    port: &mut Box<dyn serialport::SerialPort>,
+    port: &mut Win32Serial,
     id: u8,
     com_port: &str,
     baud: u32,
@@ -287,7 +545,7 @@ fn read_device_info(
 
 /// Read and decode the device label register block (714..=723).
 fn read_device_label(
-    port: &mut Box<dyn serialport::SerialPort>,
+    port: &mut Win32Serial,
     id: u8,
     product_id: u8,
 ) -> String {
@@ -298,11 +556,11 @@ fn read_device_label(
             if regs.first() == Some(&0x56) {
                 let mut bytes: Vec<u8> = Vec::new();
                 for &r in &regs[1..] {
-                    let hi = (r >> 8) as u8;
-                    let lo = (r & 0xFF) as u8;
-                    // C++ swaps hi/lo per word.
-                    bytes.push(lo);
-                    bytes.push(hi);
+                    // High byte first, then low byte — matches the C++ label
+                    // decode (htons() in `binarySearchforComDevice` and
+                    // `GetTextFromRegLength()`).
+                    bytes.push((r >> 8) as u8);
+                    bytes.push((r & 0xFF) as u8);
                 }
                 // Trim at first NUL.
                 if let Some(nul) = bytes.iter().position(|&b| b == 0) {
@@ -320,7 +578,7 @@ fn read_device_label(
 
 /// Write a frame and read exactly the expected response length.
 fn read_frame(
-    port: &mut Box<dyn serialport::SerialPort>,
+    port: &mut Win32Serial,
     frame: &[u8],
     expected_len: usize,
 ) -> Option<Vec<u8>> {
@@ -353,25 +611,28 @@ fn read_frame(
 
 /// Write a frame to the port.
 ///
-/// When `RTS_TOGGLE` is enabled (default for RS485 adapters), RTS is driven
-/// high during transmission and released afterward — many USB-RS485 dongles
-/// (FT232R + MAX485) use RTS to flip the transceiver to transmit mode. Without
-/// this the probe is written to the chip but never driven onto the bus.
-pub static RTS_TOGGLE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-
-fn write_frame(port: &mut Box<dyn serialport::SerialPort>, frame: &[u8]) -> bool {
-    let _ = port.clear(serialport::ClearBuffer::Input);
-    if RTS_TOGGLE.load(std::sync::atomic::Ordering::Relaxed) {
-        let _ = port.write_request_to_send(true); // drive bus for TX
+/// Mirrors the C++ write path (ClearCommError/PurgeComm → WriteFile). The RS485
+/// transceiver direction is handled by the DCB, which we leave at the driver
+/// default (RTS_CONTROL_TOGGLE on FTDI adapters) — exactly like the C++.
+/// An optional manual RTS toggle can be forced with env `T3_SCAN_RTS=1`.
+fn write_frame(port: &mut Win32Serial, frame: &[u8]) -> bool {
+    let _ = port.purge(true, false);
+    if manual_rts_toggle() {
+        let _ = port.set_rts(true);
         std::thread::sleep(Duration::from_millis(1));
     }
     let written = port.write(frame).unwrap_or(0);
     // Let the last byte shift out before releasing the bus.
     std::thread::sleep(Duration::from_millis(2));
-    if RTS_TOGGLE.load(std::sync::atomic::Ordering::Relaxed) {
-        let _ = port.write_request_to_send(false); // back to RX
+    if manual_rts_toggle() {
+        let _ = port.set_rts(false);
     }
     written == frame.len()
+}
+
+/// Read env `T3_SCAN_RTS=1` to manually toggle RTS around writes.
+fn manual_rts_toggle() -> bool {
+    std::env::var("T3_SCAN_RTS").map(|v| v == "1").unwrap_or(false)
 }
 
 /// Detect BACnet MSTP data on the line (mirror `Test_Comport` / `check_bacnet_data`).
@@ -379,10 +640,10 @@ fn write_frame(port: &mut Box<dyn serialport::SerialPort>, frame: &[u8]) -> bool
 /// Listens briefly and counts occurrences of the `0x55 0xFF` MSTP preamble;
 /// >= 3 indicates BACnet MSTP is present on the bus at this baud rate.
 fn probe_mstp(
-    port: &mut Box<dyn serialport::SerialPort>,
+    port: &mut Win32Serial,
     _baud: u32,
 ) -> bool {
-    let _ = port.clear(serialport::ClearBuffer::All);
+    let _ = port.purge(true, true);
     // Wait for any traffic.
     let deadline = std::time::Instant::now() + Duration::from_millis(300);
     let mut bytes: Vec<u8> = Vec::new();

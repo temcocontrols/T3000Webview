@@ -378,3 +378,206 @@ fn test_mstp_detection_too_few_pairs() {
     // only 2 pairs → no
     assert!(!check_mstp_data(&[0x55, 0xFF, 0x55, 0xFF, 0x00, 0x01]));
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Modbus online-check protocol parsing (moved here from modbus.rs so the
+// source file stays pure implementation)
+// ═══════════════════════════════════════════════════════════════════
+
+/// Build a valid new-protocol online-check reply whose CRC low byte
+/// (gval[8]) is exactly 0 — the edge case the C++ "fance" fix guards.
+fn new_protocol_reply_with_zero_crc_lo(dev_id: u8) -> [u8; 13] {
+    let mut gval = [0u8; 13];
+    gval[0] = 255;
+    gval[1] = 25;
+    gval[2] = dev_id;
+    gval[3] = 0xAA;
+    gval[4] = 0xBB;
+    gval[5] = 0xCC;
+    // Vary the tail until CRC16's low byte is 0 (guaranteed to exist:
+    // CRC16 over two variable bytes covers the full 16-bit state space).
+    'search: for g3 in 0u8..=255u8 {
+        for g6 in 0u8..=255u8 {
+            gval[3] = g3;
+            gval[6] = g6;
+            let crc = modbus::crc16(&gval[..7]);
+            if (crc & 0xFF) as u8 == 0 {
+                gval[7] = (crc >> 8) as u8;
+                gval[8] = 0;
+                break 'search;
+            }
+        }
+    }
+    gval
+}
+
+#[test]
+fn new_protocol_with_zero_crc_low_byte_is_not_misdetected_as_old() {
+    // New-protocol reply whose CRC low byte (gval[8]) is 0. The old
+    // gval[8..12]-only check would misroute this into the old-protocol
+    // branch and reject it; including gval[7] (the C++ "fance" fix) keeps
+    // it in the new-protocol branch where the CRC is valid.
+    let pval = modbus::build_online_check(1, 254);
+    let gval = new_protocol_reply_with_zero_crc_lo(7);
+    assert_eq!(modbus::parse_online_check(&pval, &gval), Ok(Some(7)));
+}
+
+#[test]
+fn non_zero_gval7_routes_to_new_protocol() {
+    // gval[7] != 0 → new-protocol branch even though gval[8..12] are 0.
+    let pval = modbus::build_online_check(1, 254);
+    let mut gval = [0u8; 13];
+    gval[0] = 255;
+    gval[1] = 25;
+    gval[2] = 42;
+    gval[3] = 1; // data byte → old-protocol condition fails
+    let crc = modbus::crc16(&gval[..7]);
+    gval[7] = (crc >> 8) as u8;
+    gval[8] = (crc & 0xFF) as u8;
+    assert_eq!(modbus::parse_online_check(&pval, &gval), Ok(Some(42)));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Modbus TCP sub-port framing (moved here from tcp_sub.rs)
+// ═══════════════════════════════════════════════════════════════════
+
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::thread;
+use std::time::Duration;
+use t3_webview_api::lan_scan::tcp_sub;
+
+/// Read exactly `n` bytes (or until timeout) from a stream.
+fn read_exact(s: &mut TcpStream, n: usize) -> Vec<u8> {
+    let mut buf = vec![0u8; n];
+    let mut got = 0;
+    while got < n {
+        match s.read(&mut buf[got..]) {
+            Ok(0) => break,
+            Ok(k) => got += k,
+            Err(_) => break,
+        }
+    }
+    buf.truncate(got);
+    buf
+}
+
+#[test]
+fn write_reg_sends_mbap_frame_and_verifies_echo() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let (mut s, _) = listener.accept().unwrap();
+        s.set_read_timeout(Some(Duration::from_millis(2000))).unwrap();
+        let req = read_exact(&mut s, 12);
+        assert_eq!(&req[2..6], &[0, 0, 0, 6], "MBAP protocol id + length");
+        assert_eq!(req[6], 255, "slave");
+        assert_eq!(req[7], 6, "func 6");
+        assert_eq!(req[8], 0x00, "addr hi");
+        assert_eq!(req[9], 96, "addr lo (reg 96)");
+        assert_eq!(req[10], 0x00, "val hi");
+        assert_eq!(req[11], 0x02, "val lo (sub_com=2)");
+        // Echo the exact write frame back.
+        s.write_all(&req).unwrap();
+    });
+
+    let mut client = TcpStream::connect(addr).unwrap();
+    client.set_read_timeout(Some(Duration::from_millis(2000))).unwrap();
+    let mut trans_id = 1u16;
+    let r = tcp_sub::write_reg(&mut client, &mut trans_id, 255, 96, 2);
+    assert!(r.is_ok(), "write_reg failed: {:?}", r);
+    server.join().unwrap();
+}
+
+#[test]
+fn read_regs_tcp_sends_mbap_frame_and_strips_header() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let (mut s, _) = listener.accept().unwrap();
+        s.set_read_timeout(Some(Duration::from_millis(2000))).unwrap();
+        let req = read_exact(&mut s, 12);
+        assert_eq!(&req[2..6], &[0, 0, 0, 6], "MBAP protocol id + length");
+        assert_eq!(req[6], 7, "slave");
+        assert_eq!(req[7], 3, "func 3");
+        assert_eq!(req[10], 0x00, "count hi");
+        assert_eq!(req[11], 10, "count lo");
+        // Response: 6-byte MBAP header + [slave,3,20,data...] with NO CRC.
+        let mut resp = vec![0u8; 6 + 3 + 20];
+        resp[0] = req[0];
+        resp[1] = req[1]; // echo transaction id
+        resp[5] = (3 + 20) as u8; // MBAP length
+        resp[6] = 7;
+        resp[7] = 3;
+        resp[8] = 20;
+        resp[9] = 0x12; // reg0 hi
+        resp[10] = 0x34; // reg0 lo → 0x1234
+        resp[9 + 14] = 0x00; // reg7 hi
+        resp[10 + 14] = 88; // reg7 lo → product 88
+        s.write_all(&resp).unwrap();
+    });
+
+    let mut client = TcpStream::connect(addr).unwrap();
+    client.set_read_timeout(Some(Duration::from_millis(2000))).unwrap();
+    let mut trans_id = 1u16;
+    let regs = tcp_sub::read_regs_tcp(&mut client, &mut trans_id, 7, 0, 10)
+        .expect("read_regs_tcp failed");
+    assert_eq!(regs.len(), 10);
+    assert_eq!(regs[0], 0x1234);
+    assert_eq!(regs[7], 88);
+    server.join().unwrap();
+}
+
+#[test]
+fn online_check_tcp_skips_mbap_and_parses_old_protocol() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let (mut s, _) = listener.accept().unwrap();
+        s.set_read_timeout(Some(Duration::from_millis(2000))).unwrap();
+        let req = read_exact(&mut s, 10);
+        assert_eq!(&req[..6], &[1, 2, 3, 4, 5, 6], "probe prefix");
+        assert_eq!(&req[6..], &[255, 25, 0xFE, 0x01], "probe payload");
+        // 6-byte MBAP prefix + old-protocol payload (no CRC bytes).
+        let mut resp = [0u8; 6 + 13];
+        resp[..6].copy_from_slice(&[1, 2, 3, 4, 5, 6]);
+        resp[6] = 255;
+        resp[7] = 25;
+        resp[8] = 42; // device ID
+        s.write_all(&resp).unwrap();
+    });
+
+    let mut client = TcpStream::connect(addr).unwrap();
+    client.set_read_timeout(Some(Duration::from_millis(2000))).unwrap();
+    assert_eq!(tcp_sub::online_check_tcp(&mut client, 1, 254), Ok(Some(42)));
+    server.join().unwrap();
+}
+
+#[test]
+fn online_check_tcp_new_protocol_with_zero_crc_lo() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let (mut s, _) = listener.accept().unwrap();
+        s.set_read_timeout(Some(Duration::from_millis(2000))).unwrap();
+        let _ = read_exact(&mut s, 10);
+        // 6-byte MBAP prefix + new-protocol payload; CRC low byte (gval[8]) is 0.
+        let mut resp = [0u8; 6 + 13];
+        resp[..6].copy_from_slice(&[1, 2, 3, 4, 5, 6]);
+        resp[6] = 255;
+        resp[7] = 25;
+        resp[8] = 7; // device ID
+        resp[9] = 0xAA;
+        resp[10] = 0xBB;
+        resp[11] = 0xCC;
+        resp[12] = 0xDD;
+        resp[13] = 0x12; // gval[7] CRC hi
+        resp[14] = 0x00; // gval[8] CRC lo == 0
+        s.write_all(&resp).unwrap();
+    });
+
+    let mut client = TcpStream::connect(addr).unwrap();
+    client.set_read_timeout(Some(Duration::from_millis(2000))).unwrap();
+    assert_eq!(tcp_sub::online_check_tcp(&mut client, 1, 254), Ok(Some(7)));
+    server.join().unwrap();
+}

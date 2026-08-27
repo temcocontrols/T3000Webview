@@ -30,7 +30,7 @@
 use std::time::Duration;
 
 use t3_webview_api::lan_scan::modbus;
-use t3_webview_api::lan_scan::serial::{check_mstp_data, PROBE_BAUDRATES};
+use t3_webview_api::lan_scan::serial::{check_mstp_data, Win32Serial, PROBE_BAUDRATES};
 
 fn hex(b: &[u8]) -> String {
     b.iter().map(|x| format!("{:02X}", x)).collect::<Vec<_>>().join(" ")
@@ -39,27 +39,29 @@ fn hex(b: &[u8]) -> String {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let port_name = args.get(1).cloned().unwrap_or_else(|| {
-        eprintln!("usage: cargo run --example diag_serial -- COMx [--rts]");
+        eprintln!("usage: cargo run --example diag_serial -- COMx [--rts] [--loop]");
         std::process::exit(2);
     });
     let use_rts = args.iter().any(|a| a == "--rts");
+    let use_loop = args.iter().any(|a| a == "--loop");
 
-    println!("=== Deep serial diagnostic on {} === (RTS toggle: {})", port_name, use_rts);
+    println!("=== Deep serial diagnostic on {} === (RTS toggle: {}, loopback test: {})", port_name, use_rts, use_loop);
 
     for &baud in &PROBE_BAUDRATES {
         println!("--- {} @ {} baud ---", port_name, baud);
 
-        let mut port = match serialport::new(&port_name, baud)
-            .timeout(Duration::from_millis(250))
-            .open()
-        {
+        // Use the same raw Win32 open as the scanner (driver RTS/DTR defaults
+        // preserved — the serialport crate forces RTS/DTR to Disable and kills
+        // the RS485 transceiver).
+        let mut port = match Win32Serial::open(&port_name, baud) {
             Ok(p) => p,
             Err(e) => {
                 println!("   ✘ cannot open: {}", e);
                 continue;
             }
         };
-        let _ = port.clear(serialport::ClearBuffer::All);
+        let _ = port.purge(true, true);
+        println!("   [dcb] {}", port.debug_dcb());
         std::thread::sleep(Duration::from_millis(30));
 
         // 1) Passive listen
@@ -79,17 +81,43 @@ fn main() {
             }
         }
 
+        // 1b) Loopback self-test (--loop): short the adapter's TX to RX and we
+        //     must read back exactly what we sent. This isolates whether the
+        //     adapter/driver/code can TX+RX at all (vs. the device/bus being
+        //     silent).
+        if use_loop {
+            let pattern = [0xAAu8, 0x55, 0xAA, 0x55];
+            let _ = port.purge(true, true);
+            let _ = port.write(&pattern);
+            std::thread::sleep(Duration::from_millis(100));
+            let mut lb: Vec<u8> = Vec::new();
+            let ldeadline = std::time::Instant::now() + Duration::from_millis(400);
+            while std::time::Instant::now() < ldeadline && lb.len() < 8 {
+                match port.read(&mut buf) {
+                    Ok(n) if n > 0 => lb.extend_from_slice(&buf[..n]),
+                    _ => std::thread::sleep(Duration::from_millis(15)),
+                }
+            }
+            if lb == pattern {
+                println!("   [loopback] OK — TX & RX work on the adapter/driver");
+            } else if lb.is_empty() {
+                println!("   [loopback] NOTHING received — SHORT TX to RX on the adapter, then re-run;\n                if still nothing, the adapter/driver/COMx is dead, not the device.");
+            } else {
+                println!("   [loopback] got {} (expected {})", hex(&lb), hex(&pattern));
+            }
+        }
+
         // 2) T3000 online-check probe
         let pval = modbus::build_online_check(1, 254);
         println!("   → probe (T3000 online-check): {}", hex(&pval));
-        let _ = port.clear(serialport::ClearBuffer::Input);
+        let _ = port.purge(true, false);
         if use_rts {
-            let _ = port.write_request_to_send(true); // drive bus for TX
+            let _ = port.set_rts(true); // manual TX direction (optional)
         }
         let _ = port.write(&pval);
         std::thread::sleep(Duration::from_millis(30));
         if use_rts {
-            let _ = port.write_request_to_send(false); // back to RX
+            let _ = port.set_rts(false);
         }
         std::thread::sleep(Duration::from_millis(120));
         let mut resp: Vec<u8> = Vec::new();
@@ -117,14 +145,14 @@ fn main() {
         // 3) Standard Modbus function-3 read to ID 1 (regs 0..9)
         let f3 = modbus::build_read_multiple(1, 0, 10);
         println!("   → modbus f3 (ID=1 regs 0..9): {}", hex(&f3));
-        let _ = port.clear(serialport::ClearBuffer::Input);
+        let _ = port.purge(true, false);
         if use_rts {
-            let _ = port.write_request_to_send(true);
+            let _ = port.set_rts(true);
         }
         let _ = port.write(&f3);
         std::thread::sleep(Duration::from_millis(30));
         if use_rts {
-            let _ = port.write_request_to_send(false);
+            let _ = port.set_rts(false);
         }
         std::thread::sleep(Duration::from_millis(120));
         let mut resp: Vec<u8> = Vec::new();

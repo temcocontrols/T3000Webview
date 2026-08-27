@@ -210,50 +210,58 @@ fn bind_scan_port(local_addr: Ipv4Addr) -> Result<UdpSocket, String> {
 pub async fn scan_all(timeout_secs: u64) -> FullScanResult {
     let udp = scan_network(timeout_secs).await;
 
-    // Serial scan is blocking/threaded; run it on a blocking task.
-    let serial_result = tokio::task::spawn_blocking(|| {
-        super::serial::scan_all_serial_ports(None, 1, 254)
-    })
-    .await
-    .unwrap_or_else(|_| super::serial::SerialScanResult {
+    let mut all: Vec<DiscoveredDevice> = udp.devices.clone();
+
+    // Parents for the TCP sub-port scan (from UDP results).
+    let parents: Vec<DiscoveredDevice> = udp
+        .devices
+        .iter()
+        .filter(|d| super::tcp_sub::supports_sub_ports(d.product_id))
+        .cloned()
+        .collect();
+
+    // Run the serial COM scan and every parent's TCP sub-port scan concurrently.
+    // Mirrors the C++ `ScanTCPSubPortThreadNoCritical`, which spawns one thread
+    // per parent — scanning parents one-at-a-time (each ~15 probes x 1.5s) is
+    // what made scan-refresh take minutes.
+    enum Outcome {
+        Serial(super::serial::SerialScanResult),
+        TcpSub(Vec<super::tcp_sub::TcpSubDeviceResult>),
+    }
+    let mut tasks = tokio::task::JoinSet::new();
+    tasks.spawn_blocking(move || {
+        Outcome::Serial(super::serial::scan_all_serial_ports(None, 1, 254))
+    });
+    for parent in parents {
+        tasks.spawn_blocking(move || match super::tcp_sub::scan_parent_sub_ports(&parent) {
+            Ok(found) => Outcome::TcpSub(found),
+            Err(_) => Outcome::TcpSub(Vec::new()),
+        });
+    }
+
+    let mut serial_result = super::serial::SerialScanResult {
         devices: vec![],
         port_open_failures: vec!["serial scan task panicked".into()],
         warnings: vec![],
-    });
+    };
+    let mut tcp_devices: Vec<super::tcp_sub::TcpSubDeviceResult> = Vec::new();
 
-    let mut all: Vec<DiscoveredDevice> = udp.devices.clone();
+    while let Some(joined) = tasks.join_next().await {
+        match joined {
+            Ok(Outcome::Serial(s)) => serial_result = s,
+            Ok(Outcome::TcpSub(found)) => {
+                for d in found {
+                    all.push(d.device.clone());
+                    tcp_devices.push(d);
+                }
+            }
+            Err(_) => {} // a task panicked — ignore that one
+        }
+    }
 
     // Serial devices: ip_address is the COM port name — keep them distinct.
     for s in &serial_result.devices {
         all.push(s.device.clone());
-    }
-
-    // TCP sub-port scan: run only against UDP-discovered parents that support
-    // downward expansion. Serial-discovered parents (COM) can't host TCP ports.
-    let mut tcp_devices: Vec<super::tcp_sub::TcpSubDeviceResult> = Vec::new();
-    {
-        let parents: Vec<DiscoveredDevice> = udp
-            .devices
-            .iter()
-            .filter(|d| super::tcp_sub::supports_sub_ports(d.product_id))
-            .cloned()
-            .collect();
-        for parent in &parents {
-            let parent = parent.clone();
-            match tokio::task::spawn_blocking(move || {
-                super::tcp_sub::scan_parent_sub_ports(&parent)
-            })
-            .await
-            {
-                Ok(Ok(found)) => {
-                    for d in found {
-                        all.push(d.device.clone());
-                        tcp_devices.push(d);
-                    }
-                }
-                _ => {}
-            }
-        }
     }
 
     // Deduplicate by (serial_number, ip_address) so a serial device that also
@@ -271,6 +279,14 @@ pub async fn scan_all(timeout_secs: u64) -> FullScanResult {
     for w in &serial_result.warnings {
         warnings.push(format!("serial: {}", w));
     }
+
+    tracing::info!(
+        "[lan_scan] full scan done: {} UDP, {} serial, {} TCP sub-port → {} total devices",
+        udp.devices.len(),
+        serial_result.devices.len(),
+        tcp_devices.len(),
+        devices.len()
+    );
 
     FullScanResult {
         devices,
