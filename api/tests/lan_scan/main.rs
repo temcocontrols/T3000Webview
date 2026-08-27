@@ -277,3 +277,104 @@ async fn test_real_network_scan() {
     println!("Bind ports: 57619..57623");
     println!("=== Scan complete ===\n");
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Modbus RTU wire helpers (ported from the C++ scanner)
+// ═══════════════════════════════════════════════════════════════════
+
+use t3_webview_api::lan_scan::modbus::{self, OnlineCheckError};
+
+#[test]
+fn test_crc16_known_value() {
+    // Modbus CRC16 of [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A] is 0xCDC5
+    assert_eq!(modbus::crc16(&[0x01, 0x03, 0x00, 0x00, 0x00, 0x0A]), 0xCDC5);
+}
+
+#[test]
+fn test_build_read_multiple_frame() {
+    let f = modbus::build_read_multiple(1, 0, 10);
+    assert_eq!(&f[..6], &[1, 3, 0, 0, 0, 10]);
+    let crc = modbus::crc16(&f[..6]);
+    assert_eq!(f[6], (crc >> 8) as u8);
+    assert_eq!(f[7], (crc & 0xFF) as u8);
+}
+
+#[test]
+fn test_parse_read_multiple_roundtrip() {
+    let mut resp = vec![0u8; 3 + 4 + 2];
+    resp[0] = 5;
+    resp[1] = 3;
+    resp[2] = 4;
+    resp[3] = 0x12;
+    resp[4] = 0x34;
+    resp[5] = 0xAB;
+    resp[6] = 0xCD;
+    let crc = modbus::crc16(&resp[..7]);
+    resp[7] = (crc >> 8) as u8;
+    resp[8] = (crc & 0xFF) as u8;
+    let regs = modbus::parse_read_multiple(5, 2, &resp).unwrap();
+    assert_eq!(regs, vec![0x1234, 0xABCD]);
+}
+
+#[test]
+fn test_parse_online_check_no_response() {
+    let pval = modbus::build_online_check(1, 254);
+    let gval = [0u8; 13];
+    assert_eq!(
+        modbus::parse_online_check(&pval, &gval),
+        Err(OnlineCheckError::NoResponse)
+    );
+}
+
+#[test]
+fn test_parse_online_check_single_responder_old_protocol() {
+    // Old protocol: gval[8..12] all zero. gval[2] = the responding device ID.
+    let pval = modbus::build_online_check(1, 254);
+    let mut gval = [0u8; 13];
+    gval[0] = pval[0]; // 255 (probe slave)
+    gval[1] = 25;      // probe cmd
+    gval[2] = 42;      // device ID
+    // CRC over gval[0..3]
+    let crc = modbus::crc16(&gval[..3]);
+    gval[3] = (crc >> 8) as u8;
+    gval[4] = (crc & 0xFF) as u8;
+    assert_eq!(modbus::parse_online_check(&pval, &gval), Ok(Some(42)));
+}
+
+#[test]
+fn test_parse_online_check_collision() {
+    let pval = modbus::build_online_check(1, 254);
+    let mut gval = [0u8; 13];
+    gval[0] = pval[0];
+    gval[1] = 25;
+    gval[2] = 7;
+    // gval[5] or gval[6] non-zero → collision (more than one device)
+    gval[5] = 1;
+    assert_eq!(
+        modbus::parse_online_check(&pval, &gval),
+        Err(OnlineCheckError::Collision)
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Serial scanner helpers (BACnet MSTP detection)
+// ═══════════════════════════════════════════════════════════════════
+
+use t3_webview_api::lan_scan::serial::check_mstp_data;
+
+#[test]
+fn test_mstp_detection_positive() {
+    // 3 x 55 FF → MSTP present
+    assert!(check_mstp_data(&[0x55, 0xFF, 0x55, 0xFF, 0x55, 0xFF, 0x00]));
+}
+
+#[test]
+fn test_mstp_detection_random_data() {
+    assert!(!check_mstp_data(&[0x01, 0x02, 0x03, 0x04, 0x05, 0x06]));
+}
+
+#[test]
+fn test_mstp_detection_too_few_pairs() {
+    // only 2 pairs → no
+    assert!(!check_mstp_data(&[0x55, 0xFF, 0x55, 0xFF, 0x00, 0x01]));
+}

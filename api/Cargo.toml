@@ -48,6 +48,9 @@ once_cell = "1.19.0"
 # Windows API for runtime function loading
 winapi = { version = "0.3", features = ["libloaderapi", "winnt"] }
 
+# Serial (COM/USB) port access for Modbus RTU / BACnet MSTP device scanning
+serialport = "4.6"
+
 # SQLite support for T3000 C++ database access (use compatible version with sea-orm)
 rusqlite = { version = "0.29.0", features = ["bundled"] }
 
