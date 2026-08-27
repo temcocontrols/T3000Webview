@@ -199,3 +199,112 @@ fn bind_scan_port(local_addr: Ipv4Addr) -> Result<UdpSocket, String> {
     s.set_nonblocking(true).map_err(|e| format!("set_nonblocking failed: {}", e))?;
     UdpSocket::from_std(s).map_err(|e| format!("UdpSocket::from_std failed: {}", e))
 }
+
+/// Run a full device discovery pass mirroring the C++ `CTStatScanner::ScanAll()`:
+///
+/// 1. UDP network scan (0x64/0x65 broadcast) — already-existing LAN discovery
+/// 2. Serial COM/USB Modbus RTU scan — devices on RS485/USB virtual COM ports
+/// 3. Modbus TCP sub-port scan — devices behind Minipanel/CM5 down-expansion ports
+///
+/// Returns the merged device list, plus per-scan metadata.
+pub async fn scan_all(timeout_secs: u64) -> FullScanResult {
+    let udp = scan_network(timeout_secs).await;
+
+    // Serial scan is blocking/threaded; run it on a blocking task.
+    let serial_result = tokio::task::spawn_blocking(|| {
+        super::serial::scan_all_serial_ports(None, 1, 254)
+    })
+    .await
+    .unwrap_or_else(|_| super::serial::SerialScanResult {
+        devices: vec![],
+        port_open_failures: vec!["serial scan task panicked".into()],
+        warnings: vec![],
+    });
+
+    let mut all: Vec<DiscoveredDevice> = udp.devices.clone();
+
+    // Serial devices: ip_address is the COM port name — keep them distinct.
+    for s in &serial_result.devices {
+        all.push(s.device.clone());
+    }
+
+    // TCP sub-port scan: run only against UDP-discovered parents that support
+    // downward expansion. Serial-discovered parents (COM) can't host TCP ports.
+    let mut tcp_devices: Vec<super::tcp_sub::TcpSubDeviceResult> = Vec::new();
+    {
+        let parents: Vec<DiscoveredDevice> = udp
+            .devices
+            .iter()
+            .filter(|d| super::tcp_sub::supports_sub_ports(d.product_id))
+            .cloned()
+            .collect();
+        for parent in &parents {
+            let parent = parent.clone();
+            match tokio::task::spawn_blocking(move || {
+                super::tcp_sub::scan_parent_sub_ports(&parent)
+            })
+            .await
+            {
+                Ok(Ok(found)) => {
+                    for d in found {
+                        all.push(d.device.clone());
+                        tcp_devices.push(d);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Deduplicate by (serial_number, ip_address) so a serial device that also
+    // appears on the network isn't doubled.
+    let mut seen: HashSet<(u32, String)> = HashSet::new();
+    let devices: Vec<DiscoveredDevice> = all
+        .into_iter()
+        .filter(|d| seen.insert((d.serial_number, d.ip_address.clone())))
+        .collect();
+
+    let mut warnings = udp.warnings.clone();
+    for f in &serial_result.port_open_failures {
+        warnings.push(format!("serial: {}", f));
+    }
+    for w in &serial_result.warnings {
+        warnings.push(format!("serial: {}", w));
+    }
+
+    FullScanResult {
+        devices,
+        udp_count: udp.devices.len(),
+        serial_count: serial_result.devices.len(),
+        tcp_sub_count: tcp_devices.len(),
+        com_ports: serial_result
+            .devices
+            .iter()
+            .map(|d| d.com_port.clone())
+            .collect(),
+        adapters_scanned: udp.adapters_scanned,
+        local_ips: udp.local_ips,
+        warnings,
+    }
+}
+
+/// Full multi-protocol scan result (UDP + serial + TCP sub-port).
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct FullScanResult {
+    /// Merged, deduplicated device list.
+    pub devices: Vec<DiscoveredDevice>,
+    /// Devices found via UDP broadcast.
+    pub udp_count: usize,
+    /// Devices found on serial COM ports.
+    pub serial_count: usize,
+    /// Devices found via Modbus TCP sub-port gateways.
+    pub tcp_sub_count: usize,
+    /// COM ports where devices were found.
+    pub com_ports: Vec<String>,
+    /// Network adapters scanned.
+    pub adapters_scanned: usize,
+    /// Local IPs used for scanning.
+    pub local_ips: Vec<String>,
+    /// Non-fatal warnings.
+    pub warnings: Vec<String>,
+}

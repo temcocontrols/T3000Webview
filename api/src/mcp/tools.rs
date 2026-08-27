@@ -173,6 +173,20 @@ lazy_static::lazy_static! {
             }
         }),
     },
+    ToolDef {
+        name: "t3000_scan_all",
+        title: "Full Device Scan (UDP + Serial COM + Modbus TCP)",
+        description: "Run a full T3000 device discovery pass mirroring the C++ ScanAll(): 1) UDP broadcast scan (0x64/0x65) for LAN devices, 2) serial COM/USB Modbus RTU scan of all COM ports (including USB virtual COM ports) for RS485/serial devices, 3) Modbus TCP sub-port scan for devices behind Minipanel/CM5 down-expansion gateways. Returns merged devices with counts per scan method and the COM ports where serial devices were found. Takes 10–30 seconds.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "timeout_seconds": {
+                    "type": "integer",
+                    "description": "Seconds to wait for UDP responses (default: 8, range: 3–30)"
+                }
+            }
+        }),
+    },
     // ═══ v4: Data & Metadata ═══ 
     ToolDef {
         name: "t3000_device_list",

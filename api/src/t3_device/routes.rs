@@ -743,7 +743,12 @@ async fn scan_and_refresh_devices(
                 "devices": result.devices,
                 "total": result.devices.len(),
                 "scanned": result.scanned_count,
-                "message": format!("UDP scan found {} device(s), {} total in database", result.scanned_count, result.devices.len())
+                "udp_count": result.udp_count,
+                "serial_count": result.serial_count,
+                "tcp_sub_count": result.tcp_sub_count,
+                "com_ports": result.com_ports,
+                "message": format!("Scan found {} device(s) ({} UDP, {} serial, {} TCP sub-port), {} total in database",
+                    result.scanned_count, result.udp_count, result.serial_count, result.tcp_sub_count, result.devices.len())
             })))
         }
         Err(e) => {

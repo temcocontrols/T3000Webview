@@ -741,6 +741,26 @@ pub async fn execute_tool(
             .map_err(|e| format!("Serialize error: {}", e))
         }
 
+        "t3000_scan_all" => {
+            let timeout_secs = args.get("timeout_seconds")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(8)
+                .clamp(3, 30);
+            let result = crate::lan_scan::scanner::scan_all(timeout_secs).await;
+            serde_json::to_string_pretty(&json!({
+                "devices": result.devices,
+                "total": result.devices.len(),
+                "udp_count": result.udp_count,
+                "serial_count": result.serial_count,
+                "tcp_sub_count": result.tcp_sub_count,
+                "com_ports": result.com_ports,
+                "adapters_scanned": result.adapters_scanned,
+                "local_ips": result.local_ips,
+                "warnings": result.warnings,
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
+        }
+
         // ═══ v4: Data & Metadata ═══ 
 
         "t3000_device_list" => {
@@ -749,9 +769,10 @@ pub async fn execute_tool(
             
             // If refresh is requested, perform a network scan first to update device list
             if refresh {
-                tracing::info!("[mcp] Device list refresh requested, performing network scan");
-                // Perform network scan to refresh device information
-                let scan_result = crate::lan_scan::scanner::scan_network(8).await;
+                tracing::info!("[mcp] Device list refresh requested, performing full scan");
+                // Perform full scan (UDP + serial COM + TCP sub-port) to refresh device information
+                let scan_result = crate::lan_scan::scanner::scan_all(8).await;
+                let _ = scan_result;
                 // The scan result is already stored in the database via FFI sync service
                 // We don't need to process the results here, they're handled by the sync service
             }

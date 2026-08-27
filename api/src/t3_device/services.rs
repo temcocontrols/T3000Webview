@@ -83,10 +83,18 @@ pub struct CreateDeviceRequest {
     pub last_checked: Option<String>,              // ISO 8601 timestamp
 }
 
-/// Result of a UDP LAN scan + DB refresh operation.
+/// Result of a multi-protocol scan (UDP + serial COM + TCP sub-port) + DB refresh.
 pub struct ScanAndRefreshResult {
     pub devices: Vec<DeviceWithStats>,
     pub scanned_count: usize,
+    /// Devices found via UDP broadcast.
+    pub udp_count: usize,
+    /// Devices found on serial COM ports.
+    pub serial_count: usize,
+    /// Devices found via Modbus TCP sub-port gateways.
+    pub tcp_sub_count: usize,
+    /// COM ports where devices were found.
+    pub com_ports: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -486,7 +494,8 @@ impl T3DeviceService {
             .cloned()
     }
 
-    /// Run UDP LAN scan and upsert discovered devices into DEVICES table.
+    /// Run a full multi-protocol scan (UDP + serial COM + TCP sub-port) and
+    /// upsert discovered devices into the DEVICES table.
     /// Returns the updated device list with separate scanned vs. DB counts.
     pub async fn scan_and_refresh(
         db: &DatabaseConnection,
@@ -495,7 +504,7 @@ impl T3DeviceService {
         use crate::lan_scan::scanner;
 
         let now = chrono::Utc::now().to_rfc3339();
-        let scan_result = scanner::scan_network(timeout_secs).await;
+        let scan_result = scanner::scan_all(timeout_secs).await;
         // Local IPs used for scanning — the host PC IP recorded as pc_ip_address
         // (mirrors C++ `temp.NetCard_Address = local_enthernet_ip`).
         let local_ips: Vec<String> = scan_result.local_ips.clone();
@@ -506,6 +515,10 @@ impl T3DeviceService {
         for dev in &scan_result.devices {
             let sn = dev.serial_number as i32;
             seen_serials.push(sn);
+
+            // A serial device's ip_address holds the COM port name (e.g. "COM3");
+            // there is no IP to match against pc_ip_address.
+            let is_serial = dev.ip_address.starts_with("COM") || dev.ip_address.starts_with("com");
 
             let existing = devices::Entity::find_by_id(sn).one(db).await?;
 
@@ -531,7 +544,11 @@ impl T3DeviceService {
                 active.is_online = Set(Some(1));
                 active.last_checked = Set(Some(now.clone()));
                 active.bautrate = Set(Some(dev.ip_address.clone()));
-                active.pc_ip_address = Set(Self::pick_pc_ip(&dev.ip_address, &local_ips));
+                if is_serial {
+                    active.pc_ip_address = Set(Some(format!("SERIAL:{}", dev.ip_address)));
+                } else {
+                    active.pc_ip_address = Set(Self::pick_pc_ip(&dev.ip_address, &local_ips));
+                }
                 let _ = active.update(db).await;
             } else {
                 // Insert new device
@@ -557,7 +574,11 @@ impl T3DeviceService {
                     is_online: Set(Some(1)),
                     last_checked: Set(Some(now.clone())),
                     bautrate: Set(Some(dev.ip_address.clone())),
-                    pc_ip_address: Set(Self::pick_pc_ip(&dev.ip_address, &local_ips)),
+                    pc_ip_address: Set(if is_serial {
+                        Some(format!("SERIAL:{}", dev.ip_address))
+                    } else {
+                        Self::pick_pc_ip(&dev.ip_address, &local_ips)
+                    }),
                     ..Default::default()
                 };
                 let _ = devices::Entity::insert(active).exec(db).await;
@@ -582,6 +603,10 @@ impl T3DeviceService {
             Ok(devices) => Ok(ScanAndRefreshResult {
                 scanned_count: seen_serials.len(),
                 devices,
+                udp_count: scan_result.udp_count,
+                serial_count: scan_result.serial_count,
+                tcp_sub_count: scan_result.tcp_sub_count,
+                com_ports: scan_result.com_ports.clone(),
             }),
             Err(e) => {
                 tracing::error!("[lan_scan] get_all_devices_with_stats failed: {:?}", e);
@@ -594,6 +619,10 @@ impl T3DeviceService {
                 Ok(ScanAndRefreshResult {
                     scanned_count: seen_serials.len(),
                     devices: all_devices,
+                    udp_count: scan_result.udp_count,
+                    serial_count: scan_result.serial_count,
+                    tcp_sub_count: scan_result.tcp_sub_count,
+                    com_ports: scan_result.com_ports.clone(),
                 })
             }
         }

@@ -12,6 +12,9 @@
 //! println!("Found {} devices", result.devices.len());
 //! ```
 
+pub mod modbus;
 pub mod protocol;
 pub mod scanner;
+pub mod serial;
+pub mod tcp_sub;
 pub mod types;
