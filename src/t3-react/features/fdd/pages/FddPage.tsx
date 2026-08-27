@@ -12,11 +12,11 @@ import {
     ArrowClockwiseRegular, AddRegular, DismissRegular,
     PlayRegular, CheckmarkCircleRegular, WarningRegular,
     DeleteRegular, EditRegular, SettingsRegular, ErrorCircleRegular,
-    InfoRegular, DocumentSearchRegular, PersonQuestionMarkRegular,
+    InfoRegular, DocumentSearchRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { fddApi, FddRule, AnalyzeResult, FddFinding } from '../services/fddApi';
-import { deviceOptionLabel, hasDeviceTreeName, groupDevicesForDropdown } from '../../../shared/utils/deviceTreeList';
+import { deviceListName, deviceOptionLabel, hasDeviceTreeName, groupDevicesForDropdown } from '../../../shared/utils/deviceTreeList';
 import styles from './FddPage.module.css';
 
 // ── Shared helpers ──
@@ -420,6 +420,126 @@ const RuleDialog: React.FC<{
     );
 };
 
+// ═══ Per-device analysis result panel ═══
+
+const DeviceAnalysisPanel: React.FC<{ r: AnalyzeResult; deviceName?: string }> = ({ r, deviceName }) => {
+    const [skippedOpen, setSkippedOpen] = useState(false);
+
+    const roles = r.roles_found.length;
+    const samples = r.sample_count;
+    const faults = r.findings.filter(f => f.status === 'ok' && f.fault_hours > 0);
+    const skipped = r.findings.filter(f => f.status === 'insufficient_roles');
+
+    const severityRank: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+    const sorted = [...r.findings].sort((a, b) => {
+        const aFault = a.status === 'ok' && a.fault_hours > 0 ? 0 : 1;
+        const bFault = b.status === 'ok' && b.fault_hours > 0 ? 0 : 1;
+        if (aFault !== bFault) return aFault - bFault;
+        const aSkip = a.status === 'insufficient_roles' ? 1 : 0;
+        const bSkip = b.status === 'insufficient_roles' ? 1 : 0;
+        if (aSkip !== bSkip) return aSkip - bSkip;
+        const aRank = a.status === 'ok' ? (severityRank[a.severity] ?? 3) : 3;
+        const bRank = b.status === 'ok' ? (severityRank[b.severity] ?? 3) : 3;
+        if (aRank !== bRank) return aRank - bRank;
+        return b.fault_hours - a.fault_hours;
+    });
+    // Skipped rules go in the collapsible list, not the grid.
+    const gridFindings = sorted.filter(f => f.status !== 'insufficient_roles');
+
+    let banner: { kind: 'amber' | 'red' | 'green'; text: string } | null = null;
+    if (roles === 0) {
+        banner = { kind: 'amber', text: 'No Haystack/Brick tags on this device. Run Auto-Tagging (Haystack → Auto-Tagging) for this device, then re-run.' };
+    } else if (samples === 0) {
+        banner = { kind: 'amber', text: `Points are tagged (${roles} roles) but no trendlog data in the last ${r.range_hours}h. Enable/collect trendlogs for tagged points, or increase the range.` };
+    } else if (faults.length > 0) {
+        banner = { kind: 'red', text: `${faults.length} fault${faults.length !== 1 ? 's' : ''} detected — see grid below.` };
+    } else {
+        banner = { kind: 'green', text: 'No faults detected in range.' };
+    }
+
+    return (
+        <div className={styles.analysisPanel}>
+            <div className={styles.panelHeader}>
+                <span className={styles.panelDeviceName}>Device {r.device}{deviceName ? ` · ${deviceName}` : ''}</span>
+                {r.equipment && <span className={styles.panelEquipment}>{r.equipment}</span>}
+                <span className={styles.panelRange}>{r.range_hours} h</span>
+                <Badge appearance="filled" color={faults.length ? 'danger' : (roles === 0 || samples === 0) ? 'warning' : 'success'} size="small">
+                    {faults.length
+                        ? `${faults.length} fault${faults.length !== 1 ? 's' : ''}`
+                        : (roles === 0 || samples === 0) ? 'No data' : 'OK'}
+                </Badge>
+            </div>
+
+            <div className={styles.chipRow}>
+                <span className={`${styles.chip} ${roles ? styles.chipGood : styles.chipWarn}`}>{roles ? '✓' : '✗'} Roles: {roles}</span>
+                <span className={`${styles.chip} ${samples ? styles.chipGood : styles.chipWarn}`}>{samples ? '✓' : '✗'} Samples: {samples}</span>
+                <span className={`${styles.chip} ${faults.length ? styles.chipBad : styles.chipGood}`}>{faults.length ? '✗' : '✓'} Faults: {faults.length}</span>
+                <span className={`${styles.chip} ${styles.chipMuted}`}>− Skipped: {skipped.length}</span>
+            </div>
+
+            {banner && (
+                <div className={`${styles.analysisBanner} ${banner.kind === 'red' ? styles.bannerRed : banner.kind === 'amber' ? styles.bannerAmber : styles.bannerGreen}`}>
+                    {banner.kind === 'red'
+                        ? <ErrorCircleRegular style={{ fontSize: 14, flexShrink: 0 }} />
+                        : banner.kind === 'amber'
+                            ? <WarningRegular style={{ fontSize: 14, flexShrink: 0 }} />
+                            : <CheckmarkCircleRegular style={{ fontSize: 14, flexShrink: 0 }} />}
+                    <span>{banner.text}</span>
+                </div>
+            )}
+
+            {gridFindings.length > 0 && (
+                <div className={styles.findingGrid}>
+                    <div className={styles.gridHeader}>
+                        <span>Severity</span><span>Rule</span><span>Status</span><span>Fault Hours</span><span>Evidence / Hint</span>
+                    </div>
+                    {gridFindings.map(f => {
+                        const isFault = f.status === 'ok' && f.fault_hours > 0;
+                        const evidenceText = f.evidence && Object.keys(f.evidence).length ? JSON.stringify(f.evidence) : '';
+                        return (
+                            <div key={f.rule_id} className={`${styles.gridRow} ${isFault ? styles.gridFault : ''}`}>
+                                <span className={styles.gridSeverity}>
+                                    <Badge appearance="filled" color={sevColor(f.severity)} className={sevBadgeClass(f.severity)} size="small">
+                                        {f.severity}
+                                    </Badge>
+                                </span>
+                                <span className={styles.gridRule}>
+                                    <span className={styles.gridRuleName}>{f.rule_name}</span>
+                                    <span className={styles.gridRuleId}>{f.rule_id}</span>
+                                </span>
+                                <span className={styles.gridStatus}>{isFault ? 'FAULT' : 'OK'}</span>
+                                <span className={styles.gridHours}>{isFault ? `${f.fault_hours.toFixed(2)} h` : '—'}</span>
+                                <span className={styles.gridEvidence}>
+                                    {evidenceText}
+                                    {isFault && f.suggestion && <span className={styles.gridHint}>💡 {f.suggestion}</span>}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {skipped.length > 0 && (
+                <div>
+                    <div className={styles.skippedToggle} onClick={() => setSkippedOpen(o => !o)}>
+                        <span>{skippedOpen ? '▾' : '▸'}</span>
+                        {skipped.length} rule{skipped.length !== 1 ? 's' : ''} skipped — {roles === 0 ? 'no tags on device' : 'required roles missing'}
+                    </div>
+                    {skippedOpen && (
+                        <div className={styles.skippedList}>
+                            {skipped.map(f => (
+                                <span key={f.rule_id} className={styles.skippedItem}>
+                                    {f.rule_id} — {f.rule_name} · missing: {f.missing_roles?.join(', ')}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ═══ Analysis Tab ═══
 
 const AnalysisTab: React.FC = () => {
@@ -473,57 +593,10 @@ const AnalysisTab: React.FC = () => {
         setSelectedRuleIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     };
 
-    const rFaults = (r: AnalyzeResult) => r.findings.filter(f => f.status === 'ok' && f.fault_hours > 0).length;
-    const rOk = (r: AnalyzeResult) => r.findings.filter(f => f.status === 'ok' && f.fault_hours === 0).length;
-    const rMissing = (r: AnalyzeResult) => r.findings.filter(f => f.status === 'insufficient_roles').length;
-
-    const renderFindings = (r: AnalyzeResult) => (
-        <div key={r.device} style={{ marginBottom: 16 }}>
-            <div className={styles.analysisSummary}>
-                <span className={styles.summaryItem}><strong>Device</strong> {r.device}</span>
-                {r.equipment && <span className={styles.summaryItem}><strong>Equipment</strong> {r.equipment}</span>}
-                <span className={styles.summaryItem}><strong>Range</strong> {r.range_hours} h</span>
-                <span className={styles.summaryItem}><strong>Samples</strong> {r.sample_count}</span>
-                <span className={styles.summaryItem}><strong>Roles found</strong> {r.roles_found.length}</span>
-                <span className={styles.summaryItem} style={{ color: rFaults(r) ? '#a4262c' : '#107c10' }}>
-                    <strong>{rFaults(r)}</strong> fault{rFaults(r) !== 1 ? 's' : ''} · {rOk(r)} ok · {rMissing(r)} skipped
-                </span>
-            </div>
-            <div className={styles.findingsList}>
-                {r.findings.map(f => {
-                    const isFault = f.status === 'ok' && f.fault_hours > 0;
-                    return (
-                        <div key={f.rule_id} className={`${styles.findingCard} ${!isFault ? styles.okFinding : ''}`}>
-                            <div className={styles.findingCardHeader}>
-                                <Badge appearance="filled" color={sevColor(f.severity)} className={sevBadgeClass(f.severity)} size="small">
-                                    {f.severity}
-                                </Badge>
-                                <span className={styles.findingTitle}>{f.rule_name}</span>
-                                <span className={styles.findingRuleId}>{f.rule_id}</span>
-                                {f.status === 'insufficient_roles' && (
-                                    <span className={styles.insufficientRole}>
-                                        <PersonQuestionMarkRegular style={{ fontSize: 13 }} />
-                                        missing: {f.missing_roles?.join(', ')}
-                                    </span>
-                                )}
-                            </div>
-                            <div className={styles.findingBody}>
-                                {f.status === 'insufficient_roles'
-                                    ? 'Rule skipped — required roles not found on this device.'
-                                    : isFault
-                                        ? <><strong>{f.fault_hours.toFixed(2)} h</strong> of fault detected in range.</>
-                                        : 'No fault detected in range.'}
-                                {f.suggestion && isFault && <div style={{ marginTop: 4, color: '#555' }}>💡 {f.suggestion}</div>}
-                            </div>
-                            {isFault && f.evidence && Object.keys(f.evidence).length > 0 && (
-                                <pre className={styles.evidenceCode}>{JSON.stringify(f.evidence, null, 2)}</pre>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
+    const getDeviceName = (serial: number) => {
+        const d = allDevices.find(x => x.serialNumber === serial);
+        return d ? deviceListName(d) : undefined;
+    };
 
     return (
         <div>
@@ -602,7 +675,7 @@ const AnalysisTab: React.FC = () => {
 
             {results && results.length > 0 && (
                 <div className={styles.analysisResult}>
-                    {results.map(r => renderFindings(r))}
+                    {results.map(r => <DeviceAnalysisPanel key={r.device} r={r} deviceName={getDeviceName(r.device)} />)}
                 </div>
             )}
 
