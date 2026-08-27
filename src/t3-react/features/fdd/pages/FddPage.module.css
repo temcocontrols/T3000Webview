@@ -339,6 +339,51 @@
 .bannerRed { background: #fde7e9; color: #a4262c; }
 .bannerGreen { background: #dff6dd; color: #107c10; }
 
+.taggedRoles {
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+  margin: 2px 14px 0;
+  padding-left: 10px;
+  line-height: 1.6;
+}
+.taggedRolesTitle { margin-bottom: 2px; }
+.taggedRole {
+  display: flex;
+  gap: 8px;
+  padding-left: 4px;
+}
+.taggedRoleName {
+  font-family: 'Cascadia Code', Consolas, monospace;
+  color: var(--colorNeutralForeground2);
+  font-weight: 600;
+  min-width: 90px;
+}
+.taggedRolePoint {
+  color: var(--colorNeutralForeground3);
+  word-break: break-word;
+}
+.taggedRoleList {
+  max-height: 160px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b8b8b8 transparent;
+  margin-top: 2px;
+}
+.taggedRoleList::-webkit-scrollbar { width: 6px; height: 6px; }
+.taggedRoleList::-webkit-scrollbar-thumb { background: #b8b8b8; border-radius: 3px; }
+.taggedRoleList::-webkit-scrollbar-track { background: transparent; }
+.taggedMore {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #0078d4;
+  margin-top: 4px;
+  user-select: none;
+}
+.taggedMore:hover { text-decoration: underline; }
+
 .findingGrid {
   margin: 12px 14px 14px;
   border: 1px solid var(--colorNeutralStroke2, #e0e0e0);

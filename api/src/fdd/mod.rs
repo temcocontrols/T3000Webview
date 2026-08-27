@@ -89,7 +89,18 @@ pub async fn analyze(
         }));
     }
 
-    let roles_found: Vec<&String> = role_map.keys().collect();
+    let roles_found: Vec<Value> = role_map
+        .iter()
+        .map(|(role, p)| {
+            json!({
+                "role": role,
+                "point_type": p.point_type,
+                "point_index": p.point_index,
+                "point_id": p.point_id,
+                "label": p.label,
+            })
+        })
+        .collect();
     Ok(json!({
         "device": serial,
         "equipment": equipment,

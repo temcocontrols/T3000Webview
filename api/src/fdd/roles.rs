@@ -12,6 +12,8 @@ pub struct RolePoint {
     pub point_type: String, // INPUT | OUTPUT | VARIABLE
     pub point_index: i32,
     pub point_id: String,
+    /// Human-readable Full_Label from the point table, when found.
+    pub label: Option<String>,
 }
 
 /// Infer an FDD role from a point's Haystack tags (lowercased keyword matching).
@@ -85,7 +87,33 @@ pub async fn load_role_map(
                 point_type: pt,
                 point_index: idx,
                 point_id,
+                label: None,
             });
+        }
+    }
+
+    // Attach the human-readable point label (Full_Label) from the point tables,
+    // so the UI can show exactly which physical point maps to each role.
+    for p in map.values_mut() {
+        let table = match p.point_type.as_str() {
+            "INPUT" => Some(("INPUTS", "Input_Index")),
+            "OUTPUT" => Some(("OUTPUTS", "Output_Index")),
+            "VARIABLE" => Some(("VARIABLES", "Variable_Index")),
+            _ => None,
+        };
+        if let Some((tbl, idx_col)) = table {
+            let sql = format!(
+                "SELECT Full_Label FROM {} WHERE SerialNumber = {} AND CAST({} AS INTEGER) = {} LIMIT 1",
+                tbl, serial, idx_col, p.point_index
+            );
+            if let Ok(rows) = db
+                .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql))
+                .await
+            {
+                if let Some(row) = rows.first() {
+                    p.label = row.try_get("", "Full_Label").ok();
+                }
+            }
         }
     }
     Ok(map)

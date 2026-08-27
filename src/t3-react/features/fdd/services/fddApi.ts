@@ -31,11 +31,19 @@ export interface AnalyzeFinding {
   missing_roles?: string[];
 }
 
+export interface RoleFound {
+  role: string;
+  point_type: string;
+  point_index: number;
+  point_id?: string;
+  label?: string | null;
+}
+
 export interface AnalyzeResult {
   device: number;
   equipment: string;
   range_hours: number;
-  roles_found: string[];
+  roles_found: RoleFound[];
   sample_count: number;
   findings: AnalyzeFinding[];
 }

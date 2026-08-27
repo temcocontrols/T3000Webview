@@ -12,7 +12,7 @@ import {
     ArrowClockwiseRegular, AddRegular, DismissRegular,
     PlayRegular, CheckmarkCircleRegular, WarningRegular,
     DeleteRegular, EditRegular, SettingsRegular, ErrorCircleRegular,
-    InfoRegular, DocumentSearchRegular,
+    InfoRegular, DocumentSearchRegular, ChevronDownRegular,
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { fddApi, FddRule, AnalyzeResult, FddFinding } from '../services/fddApi';
@@ -34,6 +34,8 @@ const RULE_KINDS: { value: string; label: string; params: Record<string, unknown
 ];
 
 const SEVERITIES = ['info', 'warning', 'critical'] as const;
+
+const ROLES_PREVIEW = 5; // tagged-roles shown before the "Show more" toggle
 
 const sevColor = (s: string): 'informative' | 'warning' | 'danger' =>
     s === 'critical' ? 'danger' : s === 'warning' ? 'warning' : 'informative';
@@ -424,6 +426,7 @@ const RuleDialog: React.FC<{
 
 const DeviceAnalysisPanel: React.FC<{ r: AnalyzeResult; deviceName?: string }> = ({ r, deviceName }) => {
     const [skippedOpen, setSkippedOpen] = useState(false);
+    const [rolesExpanded, setRolesExpanded] = useState(false);
 
     const roles = r.roles_found.length;
     const samples = r.sample_count;
@@ -446,11 +449,11 @@ const DeviceAnalysisPanel: React.FC<{ r: AnalyzeResult; deviceName?: string }> =
     // Skipped rules go in the collapsible list, not the grid.
     const gridFindings = sorted.filter(f => f.status !== 'insufficient_roles');
 
-    let banner: { kind: 'amber' | 'red' | 'green'; text: string } | null = null;
+    let banner: { kind: 'amber' | 'red' | 'green'; text: string; noIcon?: boolean } | null = null;
     if (roles === 0) {
         banner = { kind: 'amber', text: 'No Haystack/Brick tags on this device. Run Auto-Tagging (Haystack → Auto-Tagging) for this device, then re-run.' };
     } else if (samples === 0) {
-        banner = { kind: 'amber', text: `Points are tagged (${roles} roles) but no trendlog data in the last ${r.range_hours}h. Enable/collect trendlogs for tagged points, or increase the range.` };
+        banner = { kind: 'amber', noIcon: true, text: `Points are tagged (${roles} role${roles !== 1 ? 's' : ''}) but no trendlog data in the last ${r.range_hours}h. Enable/collect trendlogs for tagged points, or increase the range.` };
     } else if (faults.length > 0) {
         banner = { kind: 'red', text: `${faults.length} fault${faults.length !== 1 ? 's' : ''} detected — see grid below.` };
     } else {
@@ -479,12 +482,45 @@ const DeviceAnalysisPanel: React.FC<{ r: AnalyzeResult; deviceName?: string }> =
 
             {banner && (
                 <div className={`${styles.analysisBanner} ${banner.kind === 'red' ? styles.bannerRed : banner.kind === 'amber' ? styles.bannerAmber : styles.bannerGreen}`}>
-                    {banner.kind === 'red'
+                    {!banner.noIcon && (banner.kind === 'red'
                         ? <ErrorCircleRegular style={{ fontSize: 14, flexShrink: 0 }} />
                         : banner.kind === 'amber'
                             ? <WarningRegular style={{ fontSize: 14, flexShrink: 0 }} />
-                            : <CheckmarkCircleRegular style={{ fontSize: 14, flexShrink: 0 }} />}
+                            : <CheckmarkCircleRegular style={{ fontSize: 14, flexShrink: 0 }} />)}
                     <span>{banner.text}</span>
+                </div>
+            )}
+
+            {roles > 0 && samples === 0 && r.roles_found.length > 0 && (
+                <div className={styles.taggedRoles}>
+                    <div className={styles.taggedRolesTitle}>Tagged roles ({roles}) — mapped points:</div>
+                    <div className={rolesExpanded ? styles.taggedRoleList : ''}>
+                        {(rolesExpanded ? r.roles_found : r.roles_found.slice(0, ROLES_PREVIEW)).map((role: any) => {
+                            const isObj = role !== null && typeof role === 'object';
+                            const name = isObj ? role.role : role;
+                            const pointType = isObj ? role.point_type : '';
+                            const pointIndex = isObj ? role.point_index : '';
+                            const label = isObj ? role.label : '';
+                            const pointId = isObj ? role.point_id : '';
+                            return (
+                                <div key={String(name)} className={styles.taggedRole}>
+                                    <span className={styles.taggedRoleName}>{name}</span>
+                                    {pointType && (
+                                        <span className={styles.taggedRolePoint}>
+                                            {pointType} #{pointIndex}
+                                            {label ? ` · ${label}` : pointId ? ` · ${pointId}` : ''}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {r.roles_found.length > ROLES_PREVIEW && (
+                        <div className={styles.taggedMore} onClick={() => setRolesExpanded(o => !o)}>
+                            <ChevronDownRegular style={{ fontSize: 12, transform: rolesExpanded ? 'rotate(180deg)' : undefined }} />
+                            {rolesExpanded ? 'Show less' : `Show ${r.roles_found.length - ROLES_PREVIEW} more`}
+                        </div>
+                    )}
                 </div>
             )}
 
