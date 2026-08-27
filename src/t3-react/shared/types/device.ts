@@ -129,7 +129,11 @@ export interface DeviceWithStats extends DeviceInfo {
 export interface DevicesResponse {
   devices: DeviceWithStats[];
   total: number;
-  scanned?: number;         // devices found by UDP scan (scan-refresh only)
+  scanned?: number;         // devices found by scan (scan-refresh only)
+  udp_count?: number;       // devices found via UDP broadcast
+  serial_count?: number;    // devices found on serial COM ports
+  tcp_sub_count?: number;   // devices found via Modbus TCP sub-port gateways
+  com_ports?: string[];     // COM ports where serial devices were found
   message: string;
 }
 

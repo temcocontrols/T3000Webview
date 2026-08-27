@@ -330,7 +330,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         scanInProgress = true;
         const { setMessage } = useStatusBarStore.getState();
         try {
-          setMessage('Scanning network for T3000 devices...', 'info');
+          setMessage('Scanning network + serial (COM) ports for T3000 devices...', 'info');
           const response = await DeviceApiService.scanAndRefreshDevices(options?.timeout ?? 8);
 
           const cleanedDevices = response.devices
@@ -352,7 +352,11 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           set({ devices: cleanedDevices, deviceStatuses: newStatuses, lastSyncTime: new Date() });
           get().buildTreeStructure();
           const scannedCount = response.scanned ?? 0;
-          setMessage(`Scan complete — ${scannedCount} device(s) found on network`, 'success');
+          const parts: string[] = [`${scannedCount} device(s) found`];
+          if (response.serial_count) parts.push(`${response.serial_count} serial`);
+          if (response.udp_count) parts.push(`${response.udp_count} UDP`);
+          if (response.tcp_sub_count) parts.push(`${response.tcp_sub_count} TCP sub-port`);
+          setMessage(`Scan complete — ${parts.join(', ')}`, 'success');
         } catch (error) {
           setMessage('Network scan failed', 'warning');
         } finally {
