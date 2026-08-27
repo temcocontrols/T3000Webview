@@ -80,8 +80,14 @@ pub async fn load_role_map(
             .push(tag);
     }
 
+    // Sort points so role→point assignment is deterministic (lowest index wins
+    // when multiple points infer the same role). HashMap iteration order is not
+    // stable across runs, which previously made the tagged roles keep changing.
+    let mut points: Vec<((String, i32), (String, Vec<String>))> = by_point.into_iter().collect();
+    points.sort_by(|a, b| a.0.cmp(&b.0));
+
     let mut map: HashMap<String, RolePoint> = HashMap::new();
-    for ((pt, idx), (point_id, tags)) in by_point {
+    for ((pt, idx), (point_id, tags)) in points {
         if let Some(role) = infer_role(&tags) {
             map.entry(role).or_insert(RolePoint {
                 point_type: pt,

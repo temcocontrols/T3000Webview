@@ -474,6 +474,13 @@ pub async fn run_auto_tagging(
         .filter_map(|r| compile_rule(r))
         .collect();
 
+    // When running with ALL enabled rules, clear stale auto-assigned tags first.
+    // (Previously tags were only INSERTed, so wrong tags from earlier runs/labels
+    // lingered forever; re-runs now recompute from the current rules.)
+    if rule_ids.is_none() {
+        reset_auto_tags(db, serial_numbers).await?;
+    }
+
     let sn_list = serial_numbers.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(",");
     let mut tagged_count = 0usize;
     let mut all_matches = Vec::new();
