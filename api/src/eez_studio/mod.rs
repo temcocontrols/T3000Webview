@@ -7,9 +7,11 @@ pub mod parse_squareline;
 pub mod lvgl_img_extract;
 
 use axum::{
+    body::Bytes,
     extract::{Path, Query},
-    http::StatusCode,
-    routing::{delete, get, patch, post, put},
+    http::{header, HeaderMap, Method, StatusCode},
+    response::{IntoResponse, Response},
+    routing::{any, delete, get, patch, post, put},
     Json, Router,
 };
 use rusqlite::OptionalExtension;
@@ -390,6 +392,87 @@ async fn proxy_fetch_binary(
         Err(e) => {
             error!("proxy_fetch_binary failed: {} — {:?}", q.url, e);
             Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Device REST proxy — forwards EEZ device calls through THIS server so the
+// browser never talks to the device directly.
+//
+// The ESP32 device serves /api/eez-device/* on port 80 but sends no CORS
+// headers, so direct browser→device fetches are blocked by the browser. This
+// route proxies them server-side (server→device has no CORS), returning the
+// device's status + body to the browser as a same-origin response.
+////////////////////////////////////////////////////////////////////////////////
+
+/// Device REST port (ESP32 dynamic-display API).
+const DEVICE_REST_PORT: u16 = 80;
+
+/// Forward any method + body to `http://{device_ip}:80/{path}`.
+///
+/// Browser → `/api/device-rest/<ip>/api/eez-device/<path>` → this server →
+/// device. Method, Content-Type and body are forwarded; status, body and
+/// Content-Type are passed back.
+///
+/// `#[doc(hidden)] pub` — exposed so the integration test in `tests/eez_studio/`
+/// can mount the handler on a plain router (keeps this file test-free).
+#[doc(hidden)]
+pub async fn proxy_device_rest(
+    Path((device_ip, path)): Path<(String, String)>,
+    method: Method,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    // Optional `x-device-port` header overrides the default port (80). Useful
+    // for tests and non-standard device setups.
+    let port = headers
+        .get("x-device-port")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse::<u16>().ok())
+        .unwrap_or(DEVICE_REST_PORT);
+    let url = format!("http://{}:{}/{}", device_ip, port, path);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(35))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
+
+    let mut req = client.request(method.clone(), &url);
+    if let Some(ct) = headers.get(header::CONTENT_TYPE) {
+        req = req.header(header::CONTENT_TYPE, ct);
+    }
+    let resp = if body.is_empty() {
+        req.send().await
+    } else {
+        req.body(body).send().await
+    };
+
+    match resp {
+        Ok(r) => {
+            let status = r.status();
+            let ct = r
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string());
+            let bytes = r.bytes().await.unwrap_or_default();
+            let mut out = Response::new(axum::body::Body::from(bytes));
+            *out.status_mut() = status;
+            if let Some(ct) = ct {
+                if let Ok(v) = ct.parse() {
+                    out.headers_mut().insert(header::CONTENT_TYPE, v);
+                }
+            }
+            out
+        }
+        Err(e) => {
+            warn!("[device-proxy] {} {} failed: {}", method, url, e);
+            (
+                StatusCode::BAD_GATEWAY,
+                Json(serde_json::json!({ "error": format!("device proxy failed: {}", e) })),
+            )
+                .into_response()
         }
     }
 }
@@ -1416,6 +1499,9 @@ pub fn bridge_routes(router: Router<T3AppState>) -> Router<T3AppState> {
         .route("/api/eez-studio/delete-recursive", delete(delete_recursive))
         .route("/api/eez-studio/proxy-fetch", get(proxy_fetch))
         .route("/api/eez-studio/proxy-fetch-binary", get(proxy_fetch_binary))
+        // Device REST proxy — forwards EEZ device calls through this server to
+        // avoid browser CORS (the ESP32 device sends no Access-Control-* headers).
+        .route("/api/device-rest/:device_ip/*path", any(proxy_device_rest))
         .route("/api/eez-studio/extract-font", post(extract_font))
         .route("/api/eez-studio/store", post(store_handler))
         // Design Hub — real project catalog

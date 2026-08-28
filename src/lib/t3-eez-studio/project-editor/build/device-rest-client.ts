@@ -125,16 +125,22 @@ const MOCK_BASE = "/api/eez-device";
 
 /** Real ESP32 dynamic-display REST API (device port 80, base path /api/eez-device). */
 const REST_BASE = "/api/eez-device";
-const REST_PORT = 80;
 const REACHABILITY_TIMEOUT_MS = 2000;
 const REQUEST_TIMEOUT_MS = 30000;
 
-/** Resolve the REST base URL depending on mock/real mode */
+/**
+ * Resolve the REST base URL depending on mock/real mode.
+ *
+ * In real mode the URL is routed through the local T3000 server proxy
+ * (`/api/device-rest/<ip>/...`), which forwards to the device server-side.
+ * The device sends no CORS headers, so a direct browser→device fetch is
+ * blocked; proxying through our own origin avoids that entirely.
+ */
 function restUrl(path: string, deviceIp?: string): string {
     if (USE_MOCK) {
         return `${MOCK_BASE}/${path}`;
     }
-    return `http://${deviceIp}:${REST_PORT}${REST_BASE}/${path}`;
+    return `/api/device-rest/${deviceIp}${REST_BASE}/${path}`;
 }
 
 /** Decode a base64 string into raw bytes (browser-safe). */
@@ -233,9 +239,12 @@ export class DeviceRestClient {
         try {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), REACHABILITY_TIMEOUT_MS);
+            // GET the lightweight device-info endpoint via the local proxy. The
+            // device returns 405 for HEAD and direct fetches are CORS-blocked,
+            // so a proxied GET is the reliable probe.
             const response = await fetch(
-                `http://${deviceIp}:${REST_PORT}${REST_BASE}/screens`,
-                { method: "HEAD", signal: controller.signal }
+                `/api/device-rest/${deviceIp}${REST_BASE}/device/info`,
+                { method: "GET", signal: controller.signal }
             );
             clearTimeout(timer);
             return response.ok;
