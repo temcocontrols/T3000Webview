@@ -409,11 +409,16 @@ async fn proxy_fetch_binary(
 /// Device REST port (ESP32 dynamic-display API).
 const DEVICE_REST_PORT: u16 = 80;
 
-/// Forward any method + body to `http://{device_ip}:80/{path}`.
+/// Forward any method + body to `http://{host}:{port}/{path}`.
 ///
-/// Browser → `/api/device-rest/<ip>/api/eez-device/<path>` → this server →
-/// device. Method, Content-Type and body are forwarded; status, body and
+/// Browser → `/api/device-rest/<ip>[:port]/api/eez-device/<path>` → this server
+/// → device. Method, Content-Type and body are forwarded; status, body and
 /// Content-Type are passed back.
+///
+/// Port resolution precedence:
+///   1. `x-device-port` header (explicit override, used by tests)
+///   2. port embedded in the ip segment, e.g. `/api/device-rest/127.0.0.1:8080/...`
+///   3. default device port 80
 ///
 /// `#[doc(hidden)] pub` — exposed so the integration test in `tests/eez_studio/`
 /// can mount the handler on a plain router (keeps this file test-free).
@@ -424,14 +429,16 @@ pub async fn proxy_device_rest(
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    // Optional `x-device-port` header overrides the default port (80). Useful
-    // for tests and non-standard device setups.
-    let port = headers
+    let header_port = headers
         .get("x-device-port")
         .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.parse::<u16>().ok())
-        .unwrap_or(DEVICE_REST_PORT);
-    let url = format!("http://{}:{}/{}", device_ip, port, path);
+        .and_then(|v| v.parse::<u16>().ok());
+    let (host, ip_port) = match device_ip.rsplit_once(':') {
+        Some((h, p)) => (h.to_string(), p.parse::<u16>().ok()),
+        None => (device_ip, None),
+    };
+    let port = header_port.or(ip_port).unwrap_or(DEVICE_REST_PORT);
+    let url = format!("http://{}:{}/{}", host, port, path);
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(35))

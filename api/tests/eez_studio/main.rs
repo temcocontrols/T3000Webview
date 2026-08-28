@@ -91,3 +91,50 @@ async fn device_proxy_forwards_get_and_preserves_body() {
     assert_eq!(resp.status(), StatusCode::OK);
     assert_eq!(resp.text().await.unwrap(), "received:5");
 }
+
+/// The proxy must also honor a port embedded in the ip segment
+/// (`/api/device-rest/127.0.0.1:8080/...`). This is how the frontend reaches a
+/// mock device running on a non-standard port (e.g. `device_mock_server`) with
+/// no extra headers.
+#[tokio::test]
+async fn device_proxy_honors_port_in_ip_segment() {
+    // --- Mock device on an ephemeral port ---
+    let mock = Router::new().route(
+        "/api/eez-device/screens",
+        get(|| async { (StatusCode::OK, "{\"screens\":[]}") }),
+    );
+    let device_listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .unwrap();
+    let device_addr = device_listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        axum::serve(device_listener, mock).await.unwrap();
+    });
+
+    // --- Proxy router under test ---
+    let proxy_router =
+        Router::new().route("/api/device-rest/:device_ip/*path", any(proxy_device_rest));
+    let proxy_listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .unwrap();
+    let proxy_addr = proxy_listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        axum::serve(proxy_listener, proxy_router).await.unwrap();
+    });
+
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+    // NO x-device-port header — the port is embedded in the ip segment.
+    let url = format!(
+        "http://{}/api/device-rest/127.0.0.1:{}/api/eez-device/screens",
+        proxy_addr,
+        device_addr.port()
+    );
+    let resp = reqwest::Client::new()
+        .get(&url)
+        .send()
+        .await
+        .expect("GET through proxy failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(resp.text().await.unwrap(), "{\"screens\":[]}");
+}
