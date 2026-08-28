@@ -84,7 +84,8 @@ export async function importProjectFromDevice(
             `${info.screen_size.width}x${info.screen_size.height}`
     );
 
-    // Step 3 — load each screen individually
+    // Step 3 — load each screen individually (order = device info's screens
+    // list as-is; the device is responsible for reporting the correct order).
     log(`=> Step 3 — Loading ${info.screen_count} screens...`);
     const stagingScreens: { name: string; json: any }[] = [];
     for (const screenName of info.screens) {

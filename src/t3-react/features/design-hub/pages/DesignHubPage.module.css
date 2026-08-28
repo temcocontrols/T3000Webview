@@ -1000,10 +1000,9 @@
   border-radius: 6px;
   background: #f0f2f6;
   border: 1px solid #e1e6ee;
-  font-size: 12.5px;
+  font-size: 13px;
   color: #3b4a5c;
   word-break: break-all;
-  font-family: 'Cascadia Mono', Consolas, monospace;
 }
 .importInfo {
   display: flex;

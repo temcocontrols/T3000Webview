@@ -265,8 +265,16 @@ export const LvglCreateDialog: React.FC<{
       push('✔ Project imported');
       push(`  → ${projectPath}`);
 
-      // NOTE: auto-jump to the EEZ editor is disabled for now — the user stays
-      // in the Design Hub and can open the imported project manually.
+      // Close the dialog, then hop over to the EEZ editor and open the
+      // imported project directly (the ?open= hand-off opens it in a tab).
+      onClose();
+      window.setTimeout(() => {
+        try {
+          navigate(`/t3000/eez?open=${encodeURIComponent(projectPath)}`);
+        } catch (err) {
+          console.error('[LvglCreateDialog] navigate failed:', err);
+        }
+      }, 900);
     } catch (err: any) {
       const msg = err?.message || String(err);
       push(`X Failed: ${msg}`);
