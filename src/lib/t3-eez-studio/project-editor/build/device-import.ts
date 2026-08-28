@@ -56,6 +56,8 @@ export async function importProjectFromDevice(
     const stagingDir = `${projectDir}/device-import`;
     const log = onLog;
 
+    device.ip = "127.0.0.1:8080";
+
     log(`Importing from ${device.name}`);
     log(`  → IP: ${device.ip || "(mock)"}  SN: ${device.serialNumber}`);
 
@@ -116,6 +118,7 @@ export async function importProjectFromDevice(
             colorFormat: info.color_format,
         }
     );
+    log("✔ Step 4 — Project built");
 
     // Step 4.5 — pull + embed bitmap images
     let loadedImageCount = 0;
@@ -146,6 +149,7 @@ export async function importProjectFromDevice(
             }
         }
         log(`  → ${loadedImageCount}/${project.bitmaps.length} images saved to ${imgDir}`);
+        log(`✔ Step 4.5 — Images ready (${loadedImageCount}/${project.bitmaps.length})`);
     }
 
     // Step 5 — save the .eez-project
@@ -172,4 +176,76 @@ export async function importProjectFromDevice(
     }
 
     return { project, projectPath, screenCount: stagingScreens.length, loadedImageCount };
+}
+
+export type ImportLogStepStatus = "done" | "active" | "error";
+
+export interface ImportLogStep {
+    num: string;
+    text: string;
+    status: ImportLogStepStatus;
+    /** Detail lines logged while this step was in progress (e.g. screen list). */
+    details: string[];
+}
+
+export interface ResolvedImportLog {
+    steps: ImportLogStep[];
+    /** Lines logged before the first step (e.g. "Importing from …", IP/SN). */
+    header: string[];
+}
+
+/**
+ * Resolve the flat marker log (=> / ✔ / X / → lines) into a per-step summary.
+ * Each numbered step collapses to ONE row whose status flips from `active` to
+ * `done`/`error` when its completion line arrives, and the `→` / plain lines
+ * logged while a step is in progress are attached as nested details under it.
+ * Lines logged before the first step go into `header`.
+ */
+export function resolveImportLog(log: string[]): ResolvedImportLog {
+    const steps: ImportLogStep[] = [];
+    const header: string[] = [];
+    let current = -1; // index of the step that detail lines attach to
+    const stepNum = (t: string) => (t.match(/Step (\d+(?:\.\d+)?)/) || [])[1] || "";
+    const findActive = (num: string) => steps.findIndex(s => s.num === num && s.status === "active");
+    for (const line of log) {
+        let m = /^=>\s*(.+)/.exec(line);
+        if (m) {
+            steps.push({ num: stepNum(m[1]), text: m[1], status: "active", details: [] });
+            current = steps.length - 1;
+            continue;
+        }
+        m = /^✔\s*(.+)/.exec(line);
+        if (m) {
+            const num = stepNum(m[1]);
+            const idx = findActive(num);
+            if (idx >= 0) {
+                steps[idx] = { ...steps[idx], text: m[1], status: "done" };
+            } else {
+                steps.push({ num, text: m[1], status: "done", details: [] });
+            }
+            current = idx >= 0 ? idx : steps.length - 1;
+            continue;
+        }
+        m = /^X\s*(.+)/.exec(line);
+        if (m) {
+            const num = stepNum(m[1]);
+            const idx = findActive(num);
+            if (idx >= 0) {
+                steps[idx] = { ...steps[idx], text: m[1], status: "error" };
+            } else {
+                steps.push({ num, text: m[1], status: "error", details: [] });
+            }
+            current = idx >= 0 ? idx : steps.length - 1;
+            continue;
+        }
+        m = /^→\s*(.+)/.exec(line);
+        const detail = m ? m[1] : line;
+        if (!detail.trim()) continue;
+        if (current >= 0) {
+            steps[current].details.push(detail);
+        } else {
+            header.push(detail);
+        }
+    }
+    return { steps, header };
 }

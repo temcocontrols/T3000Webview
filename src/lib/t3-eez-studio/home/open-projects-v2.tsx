@@ -20,7 +20,6 @@ import {
     Text,
     Badge,
     Spinner,
-    Divider,
     makeStyles,
     tokens,
     mergeClasses,
@@ -57,6 +56,7 @@ import { ProjectStore, loadProject } from "project-editor/store";
 import { ProjectEditorTab, tabs } from "home/tabs-store";
 import { initProjectEditor } from "project-editor/project-editor-bootstrap";
 import type { LoadAllResponse } from "project-editor/build/device-rest-client";
+import { resolveImportLog } from "project-editor/build/device-import";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Styles (Fluent tokens)
@@ -1148,42 +1148,7 @@ const DeviceListPanel: React.FC = observer(() => {
 
 const DeviceImportPanel: React.FC = observer(() => {
     const styles = useStyles();
-    const [parsedSteps, setParsedSteps] = useState<{ label: string; status: "pending" | "active" | "done" | "error" }[]>([]);
-
-    useEffect(() => {
-        const steps: { label: string; status: "pending" | "active" | "done" | "error" }[] = [];
-        let currentStatus: "done" | "error" = "done";
-        let hasActive = false;
-        const doneSteps = new Set<string>();
-
-        for (const line of deviceImportStore.importLog) {
-            const doneMatch = line.match(/^✔\s*(.+)/);
-            const activeMatch = line.match(/^=>\s*(.+)/);
-            const errorMatch = line.match(/^X\s*(.+)/);
-
-            if (doneMatch) {
-                const label = doneMatch[1].replace(/^Step \d+\s*[—–-]\s*/, "").trim();
-                if (!doneSteps.has(label)) {
-                    doneSteps.add(label);
-                    steps.push({ label, status: "done" });
-                }
-            } else if (activeMatch && !hasActive) {
-                const label = activeMatch[1].replace(/^Step \d+\s*[—–-]\s*/, "").trim();
-                if (!doneSteps.has(label)) {
-                    steps.push({ label, status: "active" });
-                    hasActive = true;
-                }
-            } else if (errorMatch) {
-                currentStatus = "error";
-            }
-        }
-
-        if (currentStatus === "error" && steps.length > 0) {
-            steps[steps.length - 1] = { ...steps[steps.length - 1], status: "error" };
-        }
-
-        setParsedSteps(steps);
-    }, [deviceImportStore.importLog.length]);
+    const resolvedLog = resolveImportLog(deviceImportStore.importLog);
 
     return (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -1200,72 +1165,37 @@ const DeviceImportPanel: React.FC = observer(() => {
                 )}
             </div>
 
-            {/* Steps */}
+            {/* Steps — each with its detail lines nested below */}
             <div style={{ flex: 1, overflowY: "auto", scrollbarWidth: "thin" }}>
-                {parsedSteps.map((step, i) => (
-                    <div key={i} style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: tokens.spacingHorizontalS,
-                        padding: `3px ${tokens.spacingHorizontalM}`,
-                        borderRadius: tokens.borderRadiusMedium,
-                        lineHeight: 1.5,
-                    }}>
-                        {/* Status icon — inline, sized to match the text line height */}
-                        <div style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            width: "18px",
-                            height: "18px",
-                        }}>
-                            {step.status === "done" ? (
-                                <CheckmarkCircleRegular style={{ color: "#107c10", fontSize: 16 }} />
-                            ) : step.status === "active" ? (
-                                <Spinner size="extra-tiny" />
-                            ) : step.status === "error" ? (
-                                <DismissCircleRegular style={{ color: "#d32f2f", fontSize: 16 }} />
-                            ) : (
-                                <span style={{ fontSize: 11, color: tokens.colorNeutralForeground3 }}>{i + 1}</span>
-                            )}
+                {resolvedLog.header.map((h, i) => (
+                    <div key={`h${i}`} style={{ fontFamily: "monospace", fontSize: "11px", color: tokens.colorNeutralForeground3, lineHeight: 1.5, padding: `2px ${tokens.spacingHorizontalM}` }}>{h}</div>
+                ))}
+                {resolvedLog.steps.map((s, i) => (
+                    <div key={i} style={{ padding: `4px ${tokens.spacingHorizontalM}` }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, lineHeight: 1.5 }}>
+                            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: "18px", height: "18px" }}>
+                                {s.status === "done" ? (
+                                    <CheckmarkCircleRegular style={{ color: "#107c10", fontSize: 15 }} />
+                                ) : s.status === "active" ? (
+                                    <Spinner size="extra-tiny" />
+                                ) : (
+                                    <DismissCircleRegular style={{ color: "#d32f2f", fontSize: 15 }} />
+                                )}
+                            </span>
+                            <Text size={200} style={{ fontWeight: 600, color: s.status === "done" ? "#2c7a3c" : s.status === "active" ? "#0b6ab5" : "#c0392b" }}>
+                                {s.text}
+                            </Text>
                         </div>
-                        <Text size={200} style={{
-                            color: step.status === "done" ? tokens.colorNeutralForeground1 :
-                                step.status === "active" ? tokens.colorBrandForeground1 :
-                                    step.status === "error" ? "#d32f2f" :
-                                        tokens.colorNeutralForeground3,
-                            fontWeight: step.status === "active" ? 600 : 400,
-                        }}>
-                            {step.label}
-                        </Text>
+                        {s.details.length > 0 && (
+                            <div style={{ paddingLeft: "26px", marginTop: "2px", fontFamily: "monospace", fontSize: "11px", color: tokens.colorNeutralForeground3, lineHeight: 1.6 }}>
+                                {s.details.map((d, j) => (
+                                    <div key={j} style={{ whiteSpace: "pre-wrap" }}>{d}</div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
-
-            {/* Detail log */}
-            <details style={{ marginTop: tokens.spacingVerticalM }}>
-                <summary style={{ fontSize: "12px", color: tokens.colorNeutralForeground3, cursor: "pointer" }}>
-                    Detail Log
-                </summary>
-                <div style={{
-                    maxHeight: "120px",
-                    overflowY: "auto",
-                    marginTop: tokens.spacingVerticalS,
-                    fontFamily: "monospace",
-                    fontSize: "11px",
-                    lineHeight: 1.6,
-                    color: tokens.colorNeutralForeground2,
-                    padding: tokens.spacingVerticalXS,
-                    background: tokens.colorNeutralBackground2,
-                    borderRadius: tokens.borderRadiusSmall,
-                    scrollbarWidth: "thin",
-                }}>
-                    {deviceImportStore.importLog.map((line, i) => (
-                        <div key={i} style={{ whiteSpace: "pre-wrap" }}>{line}</div>
-                    ))}
-                </div>
-            </details>
         </div>
     );
 });

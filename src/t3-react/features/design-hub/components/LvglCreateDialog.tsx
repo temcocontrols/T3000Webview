@@ -34,8 +34,6 @@ import {
   ArrowDownloadRegular,
   ArrowUploadRegular,
   CheckmarkCircleRegular,
-  ChevronDownRegular,
-  ChevronRightRegular,
   DismissCircleRegular,
   InfoRegular,
 } from '@fluentui/react-icons';
@@ -43,6 +41,7 @@ import { useNavigate } from 'react-router-dom';
 import type { DrawingType } from '../types';
 import { designHubService } from '../services/designHubService';
 import { HubIcon } from '../icons';
+import { resolveImportLog } from 'project-editor/build/device-import';
 import styles from '../pages/DesignHubPage.module.css';
 
 interface ImportDevice {
@@ -106,7 +105,6 @@ async function fetchImportDevices(): Promise<ImportDevice[]> {
 }
 
 type LvglMode = 'create' | 'import';
-type StepStatus = 'done' | 'active' | 'pending' | 'error';
 
 export const LvglCreateDialog: React.FC<{
   type: DrawingType;
@@ -126,7 +124,6 @@ export const LvglCreateDialog: React.FC<{
   const [deviceSerial, setDeviceSerial] = useState<number | ''>('');
   const [importing, setImporting] = useState(false);
   const [log, setLog] = useState<string[]>([]);
-  const [showDetail, setShowDetail] = useState(true);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   // Reset fields whenever the type changes
@@ -136,7 +133,6 @@ export const LvglCreateDialog: React.FC<{
     setCreateDirectory(true);
     setDeviceSerial('');
     setLog([]);
-    setShowDetail(true);
     setMode('create');
   }, [type]);
 
@@ -211,7 +207,6 @@ export const LvglCreateDialog: React.FC<{
 
     setImporting(true);
     setLog([]);
-    setShowDetail(true);
 
     const push = (msg: string) => setLog((prev) => [...prev, msg]);
 
@@ -270,14 +265,8 @@ export const LvglCreateDialog: React.FC<{
       push('✔ Project imported');
       push(`  → ${projectPath}`);
 
-      // Hop over to the EEZ home so the user can open + edit the project
-      window.setTimeout(() => {
-        try {
-          navigate('/t3000/eez');
-        } catch (err) {
-          console.error('[LvglCreateDialog] navigate failed:', err);
-        }
-      }, 900);
+      // NOTE: auto-jump to the EEZ editor is disabled for now — the user stays
+      // in the Design Hub and can open the imported project manually.
     } catch (err: any) {
       const msg = err?.message || String(err);
       push(`X Failed: ${msg}`);
@@ -286,30 +275,10 @@ export const LvglCreateDialog: React.FC<{
     }
   };
 
-  // Parse the log into coarse steps (=> / ✔ / X lines) for the status list
-  const steps = useMemo(() => {
-    const out: { text: string; status: StepStatus }[] = [];
-    for (const line of log) {
-      let m = /^✔\s*(.+)/.exec(line);
-      if (m) {
-        out.push({ text: m[1], status: 'done' });
-        continue;
-      }
-      m = /^=>\s*(.+)/.exec(line);
-      if (m) {
-        out.push({ text: m[1], status: 'active' });
-        continue;
-      }
-      m = /^X\s*(.+)/.exec(line);
-      if (m) {
-        out.push({ text: m[1], status: 'error' });
-        continue;
-      }
-    }
-    return out;
-  }, [log]);
-
   const selectedDevice = devices.find((d) => d.serialNumber === deviceSerial);
+
+  // Resolve the flat marker log into a per-step summary + detail lines.
+  const resolved = useMemo(() => resolveImportLog(log), [log]);
 
   // Same list rules as the device picker: online devices grouped by building,
   // offline devices in a trailing group.
@@ -466,6 +435,7 @@ export const LvglCreateDialog: React.FC<{
                   )}
                 </Field>
 
+                {/* Info bar — separate from the log panel */}
                 <div className={styles.importInfo}>
                   <InfoRegular style={{ fontSize: 14, flexShrink: 0 }} />
                   <span>
@@ -477,56 +447,43 @@ export const LvglCreateDialog: React.FC<{
 
                 {log.length > 0 && (
                   <div className={styles.importPanel}>
+                    {/* Header lines logged before the first step */}
+                    {resolved.header.length > 0 && (
+                      <div className={styles.panelHeaderLines}>
+                        {resolved.header.map((h, i) => (
+                          <div key={i} className={styles.stepDetailLine}>{h}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Steps — each with its detail lines nested below */}
                     <div className={styles.importSteps}>
-                      {steps.length === 0 && (
-                        <div className={styles.importStepEmpty}>Starting import…</div>
-                      )}
-                      {steps.map((s, i) => (
-                        <div
-                          key={i}
-                          className={`${styles.importStep} ${styles[`importStep_${s.status}`]}`}
-                        >
-                          {s.status === 'done' && (
-                            <CheckmarkCircleRegular
-                              style={{ color: '#2c7a3c', fontSize: 15, flexShrink: 0 }}
-                            />
+                      {resolved.steps.map((s, i) => (
+                        <div key={i} className={styles.stepItem}>
+                          <div className={`${styles.stepRow} ${styles[`stepRow_${s.status}`]}`}>
+                            <span className={styles.stepIcon}>
+                              {s.status === 'done' ? (
+                                <CheckmarkCircleRegular style={{ color: '#2c7a3c', fontSize: 15, flexShrink: 0 }} />
+                              ) : s.status === 'active' ? (
+                                <Spinner size="extra-tiny" />
+                              ) : (
+                                <DismissCircleRegular style={{ color: '#c0392b', fontSize: 15, flexShrink: 0 }} />
+                              )}
+                            </span>
+                            <span className={styles.stepText}>{s.text}</span>
+                          </div>
+                          {s.details.length > 0 && (
+                            <div className={styles.stepDetails}>
+                              {s.details.map((d, j) => (
+                                <div key={j} className={styles.stepDetailLine}>{d}</div>
+                              ))}
+                            </div>
                           )}
-                          {s.status === 'active' && <Spinner size="extra-tiny" />}
-                          {s.status === 'error' && (
-                            <DismissCircleRegular
-                              style={{ color: '#c0392b', fontSize: 15, flexShrink: 0 }}
-                            />
-                          )}
-                          {s.status === 'pending' && <span className={styles.importStepDot} />}
-                          <span>{s.text}</span>
                         </div>
                       ))}
                     </div>
 
-                    <button
-                      type="button"
-                      className={styles.detailToggle}
-                      onClick={() => setShowDetail((v) => !v)}
-                    >
-                      {showDetail ? (
-                        <ChevronDownRegular style={{ fontSize: 12 }} />
-                      ) : (
-                        <ChevronRightRegular style={{ fontSize: 12 }} />
-                      )}
-                      Detail log
-                      <span className={styles.detailCount}>{log.length}</span>
-                    </button>
-
-                    {showDetail && (
-                      <div className={styles.detailLog}>
-                        {log.map((line, i) => (
-                          <div key={i} className={styles.detailLine}>
-                            {line}
-                          </div>
-                        ))}
-                        <div ref={logEndRef} />
-                      </div>
-                    )}
+                    <div ref={logEndRef} />
                   </div>
                 )}
 
