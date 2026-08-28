@@ -1029,23 +1029,22 @@
 }
 .importStep {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 7px;
   font-size: 12px;
   color: #3b4a5c;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 .importStep_done { color: #2c7a3c; }
 .importStep_active { color: #0b6ab5; font-weight: 600; }
 .importStep_error { color: #c0392b; font-weight: 600; }
 .importStep_pending { color: #8b97a8; }
 .importStepDot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #c3cfe0;
   flex-shrink: 0;
-  margin-top: 4px;
 }
 .importStepEmpty {
   color: #8b97a8;

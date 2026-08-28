@@ -38,6 +38,9 @@ import {
     ArrowSyncRegular,
     PlugDisconnectedRegular,
     DismissRegular,
+    CheckmarkRegular,
+    CheckmarkCircleRegular,
+    DismissCircleRegular,
     HistoryRegular,
     PlayRegular,
     EditRegular,
@@ -54,7 +57,6 @@ import { ProjectStore, loadProject } from "project-editor/store";
 import { ProjectEditorTab, tabs } from "home/tabs-store";
 import { initProjectEditor } from "project-editor/project-editor-bootstrap";
 import type { LoadAllResponse } from "project-editor/build/device-rest-client";
-import { setDeviceBinding } from "project-editor/build/device-binding";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Styles (Fluent tokens)
@@ -661,132 +663,20 @@ class DeviceImportStore {
         });
 
         try {
-            this.appendLog(`📋 Importing from ${device.panel_name}`);
-            this.appendLog(`   IP: ${device.panel_ipaddress || "(mock)"}  SN: ${device.panel_serial_number}`);
-
-            // Step 0 — Create project skeleton
-            const projectDir = `project/${device.panel_name}`;
-            const stagingDir = `${projectDir}/device-import`;
-            this.appendLog("⏳ Step 0 — Creating project folder...");
-            await fetch(`/api/eez-studio/make-folder`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ path: stagingDir }),
-            });
-            this.appendLog("✅ Step 0 — Project folder ready");
-
-            // Step 1 — Connect via DeviceRestClient (handles mock/real internally)
-            this.appendLog("⏳ Step 1 — Connecting to device...");
             const { DeviceRestClient } = await import("project-editor/build/device-rest-client");
+            const { importProjectFromDevice } = await import("project-editor/build/device-import");
             const client = new DeviceRestClient();
-            const deviceIp = device.panel_ipaddress || "";
-            const conn = await client.connect(
-                deviceIp,
-                device.panel_id,
-                device.panel_serial_number
-            );
-            if (conn.error) {
-                throw new Error(
-                    `Cannot reach device${deviceIp ? ` at ${deviceIp}` : " (no IP on record)"}: ${conn.error}`
-                );
-            }
-            this.appendLog(
-                `✅ Step 1 — Connected via ${conn.mode.toUpperCase()}${deviceIp ? ` (${deviceIp})` : " (mock)"}`
-            );
-
-            // Step 2 — Get device summary (screen names, counts, etc.)
-            this.appendLog("⏳ Step 2 — Fetching device info...");
-            const info = await client.getDeviceInfo();
-            this.appendLog(`✅ Step 2 — ${info.screen_count} screens, ${info.image_count} images, ${info.screen_size.width}x${info.screen_size.height}`);
-
-            // Step 3 — Load each screen individually by name
-            this.appendLog(`⏳ Step 3 — Loading ${info.screen_count} screens...`);
-            const stagingScreens: { name: string; json: any }[] = [];
-
-            for (const screenName of info.screens) {
-                const screen = await client.loadScreen(screenName);
-                const screenPath = `${stagingDir}/${screenName}.json`;
-                await fetch(
-                    `/api/eez-studio/write-file?path=${encodeURIComponent(screenPath)}`,
-                    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(screen.json) }
-                );
-                stagingScreens.push(screen);
-                const kb = Math.round(JSON.stringify(screen.json).length / 1024);
-                this.appendLog(`   ${screen.name} — ${kb}KB ✓`);
-            }
-            this.appendLog(`✅ Step 3 — Loaded ${stagingScreens.length} screens`);
-
-            // Step 4 — Build .eez-project
-            this.appendLog("⏳ Step 4 — Building project...");
-            const { firmwareToProject } = await import(
-                "project-editor/build/firmware-loader"
-            );
-            const project = firmwareToProject(stagingScreens, {
-                panel_name: device.panel_name,
-                serial_number: device.panel_serial_number,
-                ip_address: device.panel_ipaddress,
-                panel_id: device.panel_id,
-            }, {
-                displaySize: { width: info.screen_size.width, height: info.screen_size.height },
-                lvglVersion: info.lvgl_version,
-                darkTheme: info.dark_theme,
-                colorFormat: info.color_format,
+            const result = await importProjectFromDevice({
+                client,
+                device: {
+                    name: device.panel_name,
+                    ip: device.panel_ipaddress,
+                    serialNumber: device.panel_serial_number,
+                    panelId: device.panel_id,
+                },
+                onLog: (msg) => this.appendLog(msg),
             });
-
-            // Step 4.5 — Load bitmap images: pull PNGs from device/mock API,
-            // save to device-import/imgs/ folder, and embed as base64 in project.
-            if (project.bitmaps?.length) {
-                const imgDir = `${stagingDir}/imgs`;
-                await fetch(`/api/eez-studio/make-folder`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ path: imgDir }),
-                });
-                this.appendLog(`⏳ Step 4.5 — Extracting ${project.bitmaps.length} images...`);
-                let loaded = 0;
-                for (const bmp of project.bitmaps) {
-                    if (!bmp.name) continue;
-                    try {
-                        const data = await client.pullImage(bmp.name);
-                        if (data?.data_base64) {
-                            // Save raw PNG to runtime folder
-                            const imgPath = `${imgDir}/${bmp.name}.png`;
-                            const binaryStr = atob(data.data_base64);
-                            const pngBytes = new Uint8Array(binaryStr.length);
-                            for (let i = 0; i < binaryStr.length; i++) {
-                                pngBytes[i] = binaryStr.charCodeAt(i);
-                            }
-                            await fetch(
-                                `/api/eez-studio/write-file?path=${encodeURIComponent(imgPath)}`,
-                                { method: "POST", body: pngBytes }
-                            );
-                            // Embed in project as base64 data URL
-                            bmp.image = `data:image/png;base64,${data.data_base64}`;
-                            loaded++;
-                        }
-                    } catch { /* skip images not in firmware */ }
-                }
-                this.appendLog(`   ${loaded}/${project.bitmaps.length} images saved to ${imgDir} ✓`);
-            }
-
-            // Step 5 — Save to disk
-            const projectPath = `project/${device.panel_name}/${device.panel_name}.eez-project`;
-            const jsonStr = JSON.stringify(project, null, 2);
-            const saveResp = await fetch(
-                `/api/eez-studio/write-text-file?path=${encodeURIComponent(projectPath)}`,
-                { method: "POST", body: jsonStr }
-            );
-            if (!saveResp.ok) throw new Error("Failed to save project");
-            this.appendLog(`✅ Step 5 — Project saved`);
-
-            // Bind the project to its source device (used by "Deploy to Device").
-            setDeviceBinding(projectPath, {
-                ip: device.panel_ipaddress,
-                panelId: device.panel_id,
-                serialNumber: device.panel_serial_number,
-                panelName: device.panel_name,
-                importedAt: new Date().toISOString(),
-            });
+            const projectPath = result.projectPath;
 
             // Track imported project for badge display
             try {
@@ -797,10 +687,10 @@ class DeviceImportStore {
                     paths.push(projectPath);
                     localStorage.setItem("importedProjectPaths", JSON.stringify(paths));
                 }
-            } catch {}
+            } catch { }
 
             // Step 6 — Add to MRU and open in editor
-            this.appendLog("⏳ Step 6 — Opening editor...");
+            this.appendLog("=> Step 6 — Opening editor...");
 
             // Add to MRU so it appears in the recent projects list
             const mruEntry: IMruItem = {
@@ -827,13 +717,13 @@ class DeviceImportStore {
                 tab.makeActive();
             }
 
-            this.appendLog("✅ Done — Project opened");
+            this.appendLog("✔ Project opened");
 
             // Save history
             const entry: ImportHistoryEntry = {
                 deviceName: device.panel_name,
                 serialNumber: device.panel_serial_number,
-                screenCount: stagingScreens.length,
+                screenCount: result.screenCount,
                 timestamp: new Date().toISOString(),
                 log: this.importLog.slice(),
             };
@@ -843,7 +733,7 @@ class DeviceImportStore {
             });
             this.saveHistory();
         } catch (err: any) {
-            this.appendLog(`❌ Failed: ${err.message || err}`);
+            this.appendLog(`X Failed: ${err.message || err}`);
         } finally {
             runInAction(() => {
                 this.importing = false;
@@ -911,7 +801,7 @@ const ProjectListItem: React.FC<{
                         appearance="tint"
                         icon={<PlugDisconnectedRegular />}
                         size="small"
-                        style={{ fontSize: "10px", padding: "0 6px", height: "18px", gap: "2px" ,width:"90px"}}
+                        style={{ fontSize: "10px", padding: "0 6px", height: "18px", gap: "2px", width: "90px" }}
                     >
                         Imported
                     </Badge>
@@ -1267,9 +1157,9 @@ const DeviceImportPanel: React.FC = observer(() => {
         const doneSteps = new Set<string>();
 
         for (const line of deviceImportStore.importLog) {
-            const doneMatch = line.match(/^✅\s*(.+)/);
-            const activeMatch = line.match(/^⏳\s*(.+)/);
-            const errorMatch = line.match(/^❌\s*(.+)/);
+            const doneMatch = line.match(/^✔\s*(.+)/);
+            const activeMatch = line.match(/^=>\s*(.+)/);
+            const errorMatch = line.match(/^X\s*(.+)/);
 
             if (doneMatch) {
                 const label = doneMatch[1].replace(/^Step \d+\s*[—–-]\s*/, "").trim();
@@ -1299,7 +1189,7 @@ const DeviceImportPanel: React.FC = observer(() => {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: tokens.spacingVerticalM }}>
                 <Text weight="semibold" style={{ fontSize: "13px" }}>
-                    {deviceImportStore.importing ? "Importing..." : deviceImportStore.importLog.some(l => l.includes("❌")) ? "Import Failed" : "Import Complete"}
+                    {deviceImportStore.importing ? "Importing..." : deviceImportStore.importLog.some(l => /^X\s/.test(l)) ? "Import Failed" : "Import Complete"}
                 </Text>
                 {!deviceImportStore.importing && (
                     <Button
@@ -1316,37 +1206,35 @@ const DeviceImportPanel: React.FC = observer(() => {
                     <div key={i} style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: tokens.spacingHorizontalM,
-                        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+                        gap: tokens.spacingHorizontalS,
+                        padding: `3px ${tokens.spacingHorizontalM}`,
                         borderRadius: tokens.borderRadiusMedium,
-                        marginBottom: tokens.spacingVerticalXXS,
+                        lineHeight: 1.5,
                     }}>
-                        {/* Status icon */}
+                        {/* Status icon — inline, sized to match the text line height */}
                         <div style={{
-                            width: "24px",
-                            height: "24px",
-                            borderRadius: "50%",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             flexShrink: 0,
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            ...(step.status === "done" ? { background: "#107c10", color: "#fff" } :
-                                step.status === "active" ? { background: "#0f6cbd", color: "#fff" } :
-                                step.status === "error" ? { background: "#d32f2f", color: "#fff" } :
-                                { background: tokens.colorNeutralBackground2, color: tokens.colorNeutralForeground3 })
+                            width: "18px",
+                            height: "18px",
                         }}>
-                            {step.status === "done" ? "✓" :
-                             step.status === "active" ? <Spinner size="tiny" style={{ width: "14px", height: "14px" }} /> :
-                             step.status === "error" ? "✕" :
-                             i + 1}
+                            {step.status === "done" ? (
+                                <CheckmarkCircleRegular style={{ color: "#107c10", fontSize: 16 }} />
+                            ) : step.status === "active" ? (
+                                <Spinner size="extra-tiny" />
+                            ) : step.status === "error" ? (
+                                <DismissCircleRegular style={{ color: "#d32f2f", fontSize: 16 }} />
+                            ) : (
+                                <span style={{ fontSize: 11, color: tokens.colorNeutralForeground3 }}>{i + 1}</span>
+                            )}
                         </div>
                         <Text size={200} style={{
                             color: step.status === "done" ? tokens.colorNeutralForeground1 :
-                                   step.status === "active" ? tokens.colorBrandForeground1 :
-                                   step.status === "error" ? "#d32f2f" :
-                                   tokens.colorNeutralForeground3,
+                                step.status === "active" ? tokens.colorBrandForeground1 :
+                                    step.status === "error" ? "#d32f2f" :
+                                        tokens.colorNeutralForeground3,
                             fontWeight: step.status === "active" ? 600 : 400,
                         }}>
                             {step.label}
