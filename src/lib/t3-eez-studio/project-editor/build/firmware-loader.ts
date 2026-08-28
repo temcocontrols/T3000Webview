@@ -34,6 +34,8 @@ const SUB_TYPE_MAP: Record<string, string> = {
     roller: "LVGLRollerWidget",
     panel: "LVGLPanelWidget",
     calendar: "LVGLCalendarWidget",
+    checkbox: "LVGLCheckboxWidget",
+    keyboard: "LVGLKeyboardWidget",
     user_widget: "LVGLUserWidgetWidget",
     action: "LVGLActionComponent",
 };
@@ -682,7 +684,7 @@ function firmwareWidgetToComponent(
     };
 
     // ── Text ──
-    if (lvglType === "LVGLLabelWidget" || lvglType === "LVGLButtonWidget" || lvglType === "LVGLTextareaWidget") {
+    if (lvglType === "LVGLLabelWidget" || lvglType === "LVGLButtonWidget" || lvglType === "LVGLTextareaWidget" || lvglType === "LVGLCheckboxWidget") {
         comp.text = w.obj_text || "";
         comp.textType = w.text_type || "literal";
         if (w.long_mode) comp.longMode = w.long_mode;
@@ -692,6 +694,19 @@ function firmwareWidgetToComponent(
             if ((w as any).placeholder) comp.placeholder = (w as any).placeholder;
             if ((w as any).one_line) comp.oneLineMode = true;
         }
+    }
+
+    // ── Label scroll direction (firmware `scroll_dir`, e.g. "RIGHT" / "BOTH") ──
+    // EEZ has no separate direction property; `scroll_dir` implies a scrolling
+    // label, so fall back to circular (marquee) scroll when long_mode is unset.
+    if (lvglType === "LVGLLabelWidget" && (w as any).scroll_dir && !w.long_mode) {
+        comp.longMode = "SCROLL_CIRCULAR";
+    }
+
+    // ── Keyboard (mode is a required enum in EEZ) ──
+    if (lvglType === "LVGLKeyboardWidget") {
+        comp.mode = (w as any).mode || "TEXT_LOWER";
+        if ((w as any).textarea) comp.textarea = (w as any).textarea;
     }
 
     // ── Arc / Bar / Slider ──
@@ -766,6 +781,14 @@ function firmwareWidgetToComponent(
 
     // ── Switch ──
     if (lvglType === "LVGLSwitchWidget" && (
+        w.checked_type === "expression" || w.checkedStateType === "expression"
+    )) {
+        comp.checkedState = w.checked || w.checkedState || "";
+        comp.checkedStateType = "expression";
+    }
+
+    // ── Checkbox ──
+    if (lvglType === "LVGLCheckboxWidget" && (
         w.checked_type === "expression" || w.checkedStateType === "expression"
     )) {
         comp.checkedState = w.checked || w.checkedState || "";

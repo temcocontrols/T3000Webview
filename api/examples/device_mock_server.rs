@@ -50,11 +50,11 @@ use axum::{
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{Html, IntoResponse, Json, Response},
-    routing::{get, post, put},
+    routing::{get, post},
     Router,
 };
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
@@ -294,29 +294,45 @@ async fn index() -> Html<&'static str> {
 async fn device_info(State(st): State<AppState>) -> Json<Value> {
     let screens = st.screens.read().await;
     let mut names = Vec::new();
-    let mut image_count = 0usize;
-    let mut font_count = 0usize;
+    let mut images: BTreeSet<String> = BTreeSet::new();
+    let mut fonts: BTreeSet<String> = BTreeSet::new();
     for s in screens.iter() {
         names.push(s.name.clone());
         if let Some(b) = s.json.get("bitmaps").and_then(|b| b.as_array()) {
-            image_count += b.len();
+            for v in b {
+                if let Some(n) = v.as_str() {
+                    images.insert(n.to_string());
+                }
+            }
         }
         if let Some(f) = s.json.get("fonts").and_then(|f| f.as_array()) {
-            font_count += f.len();
+            for v in f {
+                // Font entry: [name, size] tuple or {name, size} object.
+                if let Some(n) = v
+                    .as_array()
+                    .and_then(|a| a.first())
+                    .and_then(|x| x.as_str())
+                {
+                    fonts.insert(n.to_string());
+                } else if let Some(n) = v.get("name").and_then(|x| x.as_str()) {
+                    fonts.insert(n.to_string());
+                }
+            }
         }
     }
+    // Values match the real ESP32 device (dynamic_display_api.c info_handler).
     Json(json!({
-        "panel_name": st.meta.get("panel_name").and_then(|v| v.as_str()).unwrap_or("T3-Mock"),
+        "panel_name": st.meta.get("panel_name").and_then(|v| v.as_str()).unwrap_or("T3-ESP32"),
         "serial_number": st.meta.get("serial_number").and_then(|v| v.as_i64()).unwrap_or(0),
-        "screen_size": { "width": 480, "height": 272 },
+        "screen_size": { "width": 480, "height": 320 },
         "screen_count": screens.len(),
         "screens": names,
-        "image_count": image_count,
-        "font_count": font_count,
-        "firmware_version": "3.7",
-        "lvgl_version": "9.5.0",
-        "dark_theme": false,
-        "color_format": "RGB",
+        "image_count": images.len(),
+        "font_count": fonts.len(),
+        "firmware_version": "1.0.0",
+        "lvgl_version": "9.1.0",
+        "dark_theme": true,
+        "color_format": "RGB565",
     }))
 }
 

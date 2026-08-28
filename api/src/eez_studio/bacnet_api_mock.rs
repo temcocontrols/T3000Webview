@@ -381,14 +381,14 @@ pub async fn get_device_info() -> Result<Json<DeviceInfoResponse>, StatusCode> {
         lvgl_version, dark_theme, color_format);
 
     Ok(Json(DeviceInfoResponse {
-        panel_name: "T3-BB".into(),
+        panel_name: "T3-ESP32".into(),
         serial_number: 0,
         screen_size: ScreenSize { width: display_width, height: display_height },
         screen_count: screen_names.len(),
         screens: screen_names,
         image_count,
         font_count,
-        firmware_version: "5.1.0".into(),
+        firmware_version: "1.0.0".into(),
         lvgl_version,
         dark_theme,
         color_format,
@@ -403,7 +403,7 @@ fn scan_firmware_metadata(dir: &std::path::Path) -> (usize, usize, u32, u32, Str
     let mut height: u32 = 320;
     let mut lvgl_version = String::from("9.5.0");
     let mut dark_theme = true;
-    let mut color_format = String::from("RGB");
+    let mut color_format = String::from("RGB565");
 
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -428,7 +428,7 @@ fn scan_firmware_metadata(dir: &std::path::Path) -> (usize, usize, u32, u32, Str
                             if line.contains("32") {
                                 color_format = "ARGB8888".into();
                             } else if line.contains("16") {
-                                color_format = "RGB".into();
+                                color_format = "RGB565".into();
                             }
                         }
                     }
