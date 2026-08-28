@@ -141,11 +141,15 @@ async fn main() {
             get(one_screen).put(put_one).options(options_handler),
         )
         .route(
-            "/api/eez-device/images/push/:panelId",
+            "/api/eez-device/images/push",
             post(push_image).options(options_handler),
         )
         .route(
-            "/api/eez-device/images/pull/:panelId/:name",
+            "/api/eez-device/images/push/*rest",
+            post(push_image).options(options_handler),
+        )
+        .route(
+            "/api/eez-device/images/pull/*rest",
             get(pull_image).options(options_handler),
         )
         .layer(middleware::from_fn(log_requests))
@@ -392,7 +396,7 @@ async fn put_one(State(st): State<AppState>, Path(name): Path<String>, Json(body
 
 async fn push_image(
     State(st): State<AppState>,
-    Path(_panel_id): Path<String>,
+    _panel: Option<Path<String>>,
     Json(body): Json<Value>,
 ) -> Json<Value> {
     let images = body
@@ -417,8 +421,11 @@ async fn push_image(
 
 async fn pull_image(
     State(st): State<AppState>,
-    Path((_panel_id, name)): Path<(String, String)>,
+    Path(rest): Path<String>,
 ) -> Response {
+    // Single-device API: the name is the last path segment (accepts
+    // /pull/:name and /pull/:panelId/:name, like the real firmware).
+    let name = rest.rsplit('/').next().unwrap_or(&rest).to_string();
     let store = st.images.lock().await;
     match store.get(&name) {
         Some(img) => (StatusCode::OK, Json(img.clone())).into_response(),

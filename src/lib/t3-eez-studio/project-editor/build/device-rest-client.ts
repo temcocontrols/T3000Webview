@@ -331,7 +331,7 @@ export class DeviceRestClient {
      *          {name,width,height,color_format,png_base64,data_base64,image}.
      * Step 2 — Push images FIRST (the device must have them before any screen
      *          references them by name).
-     *          REST:    POST http://<ip>/api/eez-device/images/push/:panelId
+     *          REST:    POST http://<ip>/api/eez-device/images/push
      * Step 3 — Push screens (existing transform + deploy).
      *
      * @param projectJson  The raw .eez-project JSON (parsed object)
@@ -442,8 +442,8 @@ export class DeviceRestClient {
 
     /**
      * Push generated image JSON to the device.
-     * REST: POST http://<ip>/api/eez-device/images/push/:panelId  body {name,data_base64}
-     * (mock: POST /api/eez-device/images/push/:panelId — same path)
+     * REST: POST http://<ip>/api/eez-device/images/push  body {name,data_base64}
+     * (device API is single-device — no panelId segment needed)
      */
     async pushImages(images: DeviceImageJson[]): Promise<{ deployed: number; failed: number }> {
         let deployed = 0;
@@ -461,9 +461,9 @@ export class DeviceRestClient {
     }
 
     private async restPushImage(img: DeviceImageJson): Promise<void> {
-        // Device image API: POST /api/eez-device/images/push/:panelId  body {name, data_base64}
+        // Device image API: POST /api/eez-device/images/push  body {name, data_base64}
         const response = await fetch(
-            restUrl(`images/push/${this.panelId}`, this.deviceIp),
+            restUrl(`images/push`, this.deviceIp),
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -494,15 +494,15 @@ export class DeviceRestClient {
 
     /**
      * Pull a stored image (bitmap) from the device by name.
-     * REST: GET http://<ip>/api/eez-device/images/pull/:panelId/:name
-     * (mock: GET /api/eez-device/images/pull/:panelId/:name — same path)
+     * REST: GET http://<ip>/api/eez-device/images/pull/:name
+     * (device API is single-device — no panelId segment needed)
      */
     async pullImage(name: string): Promise<{ name?: string; data_base64?: string }> {
         if (this.mode !== "rest") {
             throw new Error("Device not connected via REST API");
         }
         const response = await fetch(
-            restUrl(`images/pull/${this.panelId}/${encodeURIComponent(name)}`, this.deviceIp),
+            restUrl(`images/pull/${encodeURIComponent(name)}`, this.deviceIp),
             { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
         );
         if (!response.ok) {

@@ -11,9 +11,9 @@
 //!   PATCH  /api/eez-device/screens/:name                  — delta update
 //!   PATCH  /api/eez-device/screens/:name/widgets/:widgetId — widget delta
 //!   GET    /api/eez-device/devices                        — list mock devices
-//!   POST   /api/eez-device/images/push/:panelId           — upload image
-//!   GET    /api/eez-device/images/pull/:panelId/:name     — download image
-//!   DELETE /api/eez-device/images/:panelId/:name          — delete image
+//!   POST   /api/eez-device/images/push                    — upload image
+//!   GET    /api/eez-device/images/pull/:name              — download image
+//!   DELETE /api/eez-device/images/:name                   — delete image
 //!
 //! ## BACnet-style (used by DeviceRestClient BACnet fallback)
 //!   POST /api/eez-device/screens/push/:panelId            — store screens
@@ -628,8 +628,8 @@ pub async fn pull_screens_bacnet(
 // ═══════════════════════════════════════════════════════════════════
 
 lazy_static::lazy_static! {
-    /// (panel_id, image_name) → base64-encoded image bytes
-    static ref IMG_STORE: Mutex<HashMap<(i32, String), Vec<u8>>> = Mutex::new(HashMap::new());
+    /// image_name → base64-encoded image bytes (single-device API)
+    static ref IMG_STORE: Mutex<HashMap<String, Vec<u8>>> = Mutex::new(HashMap::new());
 }
 
 #[derive(Debug, Deserialize)]
@@ -684,29 +684,32 @@ fn image_response(name: String, data_base64: String) -> Json<PullImageResponse> 
     })
 }
 
-/// POST /api/eez-device/images/push/:panelId — upload a bitmap to mock device
+/// POST /api/eez-device/images/push — upload a bitmap to mock device
 pub async fn push_image(
-    Path(panel_id): Path<i32>,
+    _rest: Option<Path<String>>,
     Json(body): Json<PushImageBody>,
 ) -> Result<Json<PushImageResponse>, StatusCode> {
-    info!("push_image: panel={} name='{}' bytes={}", panel_id, body.name, body.data_base64.len());
+    info!("push_image: name='{}' bytes={}", body.name, body.data_base64.len());
     if body.name.is_empty() {
         return Err(StatusCode::BAD_REQUEST);
     }
     let mut store = IMG_STORE.lock().map_err(|e| { error!("push_image: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-    store.insert((panel_id, body.name.clone()), body.data_base64.into_bytes());
+    store.insert(body.name.clone(), body.data_base64.into_bytes());
     Ok(Json(PushImageResponse { name: body.name, status: "ok".into() }))
 }
 
-/// GET /api/eez-device/images/pull/:panelId/:name — download a bitmap from mock device.
-/// Tries in-memory store first, then falls back to extracting from firmware .c files.
+/// GET /api/eez-device/images/pull/:name — download a bitmap from mock device.
+/// Accepts `/pull/:name` or `/pull/:panelId/:name` (takes the last segment,
+/// matching the real firmware). Tries in-memory store first, then falls back
+/// to extracting from firmware .c files.
 pub async fn pull_image(
-    Path((panel_id, name)): Path<(i32, String)>,
+    Path(rest): Path<String>,
 ) -> Result<Json<PullImageResponse>, StatusCode> {
+    let name = rest.rsplit('/').next().unwrap_or(&rest).to_string();
     // Check in-memory store first
     {
         let store = IMG_STORE.lock().map_err(|e| { error!("pull_image: {}", e); StatusCode::INTERNAL_SERVER_ERROR })?;
-        if let Some(data) = store.get(&(panel_id, name.clone())) {
+        if let Some(data) = store.get(&name) {
             return Ok(image_response(name, String::from_utf8_lossy(data).to_string()));
         }
     }
@@ -737,13 +740,14 @@ pub async fn pull_image(
     Err(StatusCode::NOT_FOUND)
 }
 
-/// DELETE /api/eez-device/images/:panelId/:name — remove a bitmap from mock device
+/// DELETE /api/eez-device/images/:name — remove a bitmap from mock device
 pub async fn delete_image(
-    Path((panel_id, name)): Path<(i32, String)>,
+    Path(rest): Path<String>,
 ) -> StatusCode {
-    info!("delete_image: panel={} name='{}'", panel_id, name);
+    let name = rest.rsplit('/').next().unwrap_or(&rest).to_string();
+    info!("delete_image: name='{}'", name);
     let mut store = IMG_STORE.lock().unwrap_or_else(|e| e.into_inner());
-    store.remove(&(panel_id, name));
+    store.remove(&name);
     StatusCode::OK
 }
 
