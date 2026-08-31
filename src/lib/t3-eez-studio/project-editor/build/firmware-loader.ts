@@ -182,6 +182,21 @@ export function firmwareToProject(
         }
     }
 
+    // LVGL widget identifiers live in ONE project-wide namespace in EEZ
+    // (lvglIdentifiers.global), so the same device widget name used on multiple
+    // screens would collide. Make every identifier unique with a _2/_3 suffix
+    // (e.g. back_button, back_button_2, back_button_3) across all screens.
+    const usedIdentifiers = new Set<string>();
+    const uniqueIdentifier = (base: string) => {
+        let candidate = base;
+        let n = 2;
+        while (usedIdentifiers.has(candidate)) {
+            candidate = `${base}_${n++}`;
+        }
+        usedIdentifiers.add(candidate);
+        return candidate;
+    };
+
     return {
         themesVersion: "v3",
         objID: `proj_${device.serial_number}_${Date.now().toString(36)}`,
@@ -339,6 +354,9 @@ export function firmwareToProject(
 
             // Firmware widgets as direct page components (no LVGLScreenWidget wrapper)
             const fwObjIds: Record<string, string> = {};
+            // Map firmware widget key → the unique identifier assigned in the
+            // project (so flag_modify can reference the uniquified name).
+            const fwIdentifiers: Record<string, string> = {};
 
             // Recursively collect all non-screen widgets from the widget tree.
             // Only immediate children of the screen widget become top-level
@@ -353,8 +371,9 @@ export function firmwareToProject(
                     }
                     const comp = firmwareWidgetToComponent(widgetId, w);
                     comp.objID = genId();
-                    comp.identifier = toSnakeCase(widgetId);
+                    comp.identifier = uniqueIdentifier(toSnakeCase(widgetId));
                     fwObjIds[widgetId] = comp.objID;
+                    fwIdentifiers[widgetId] = comp.identifier;
                     widgetComponents.push(comp);
                 }
             }
@@ -374,7 +393,8 @@ export function firmwareToProject(
                         // reference this widget by its snake_case name.
                         const uid = genId();
                         comp.objID = uid;
-                        comp.identifier = toSnakeCase(fwKey);
+                        comp.identifier = uniqueIdentifier(toSnakeCase(fwKey));
+                        fwIdentifiers[fwKey] = comp.identifier;
                         // Also update style objIDs that reference the old ID
                         if (comp.style?.objID) comp.style.objID = `${uid}_style_ref_${Date.now().toString(36)}`;
                         if (comp.localStyles?.objID) comp.localStyles.objID = `${uid}_style_${Date.now().toString(36)}`;
@@ -461,8 +481,8 @@ export function firmwareToProject(
                                         connectionLines.push({ objID: genId(), source: sourceObjId, output: eezevtName, target: aid, input: "@seqin" });
                                     }
                                 } else if (action.action === "flag_modify") {
-                                    // Use snake_case identifier (matching EEZ build convention)
-                                    const targetName = toSnakeCase(action.target || "");
+                                    // Reference the widget by its (uniquified) identifier.
+                                    const targetName = fwIdentifiers[action.target || ""];
                                     // Guard: skip if target not found in tree
                                     if (!targetName || !fwObjIds[action.target || ""]) continue;
                                     const hiddenVal = action.mode === "remove" ? false : true;

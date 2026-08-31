@@ -121,12 +121,33 @@ async fn main() {
         eprintln!("⚠ no screens found in {} (expected {{screens:[...]}} / [...] / {{name,json}})", path.display());
     }
 
+    // Load real device image JSON files. They live in the `imgs/` subfolder of
+    // the screens folder (falling back to the screens folder itself). Each file
+    // is one image: { name, width, height, color_format, png_base64,
+    // data_base64, image }. Keyed by `name` so that
+    // /api/eez-device/images/pull/:name returns the real image data.
+    let screens_dir = if path.is_dir() {
+        path.clone()
+    } else {
+        path.parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| path.clone())
+    };
+    let imgs_dir = screens_dir.join("imgs");
+    let images_dir = if imgs_dir.is_dir() {
+        imgs_dir
+    } else {
+        screens_dir
+    };
+    let images = load_images_from_dir(&images_dir);
+    let image_count = images.len();
+
     // ── Router ──────────────────────────────────────────────────────────────
     let state = AppState {
         screens: Arc::new(RwLock::new(screens.clone())),
         meta,
         cors,
-        images: Arc::new(Mutex::new(HashMap::new())),
+        images: Arc::new(Mutex::new(images)),
     };
 
     let app = Router::new()
@@ -166,6 +187,7 @@ async fn main() {
     println!("════════════════════════════════════════════════════════════════");
     println!("  Screens JSON : {}", path.display());
     println!("  Screens      : {}", screens.len());
+    println!("  Images       : {} ({})", image_count, images_dir.display());
     println!("  Listening    : http://0.0.0.0:{}", port);
     println!("  CORS headers : {}", if cors { "SENT (--cors)" } else { "NONE (like real ESP32)" });
     println!("────────────────────────────────────────────────────────────────");
@@ -184,6 +206,41 @@ async fn main() {
 }
 
 // ── JSON loading / normalization ────────────────────────────────────────────
+
+/// Load real device image JSON files from a directory. Each file is one image:
+/// `{ name, width, height, color_format, png_base64, data_base64, image }`.
+/// The screens file (e.g. screen.json) has no `name`+`data_base64` pair, so it
+/// is skipped automatically.
+fn load_images_from_dir(dir: &std::path::Path) -> HashMap<String, Value> {
+    let mut images = HashMap::new();
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return images;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let Ok(raw) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(v) = serde_json::from_str::<Value>(&raw) else {
+            continue;
+        };
+        let name = v.get("name").and_then(|n| n.as_str());
+        let has_data = v
+            .get("data_base64")
+            .and_then(|d| d.as_str())
+            .or_else(|| v.get("png_base64").and_then(|d| d.as_str()))
+            .is_some();
+        if let Some(name) = name {
+            if has_data {
+                images.insert(name.to_string(), v);
+            }
+        }
+    }
+    images
+}
 
 /// Find the screens JSON — accept a file or a directory (first *.json inside),
 /// checking the given path, the api/ dir and the repo root.
