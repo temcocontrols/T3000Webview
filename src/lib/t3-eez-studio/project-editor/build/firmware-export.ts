@@ -52,6 +52,16 @@ function extractImageSrc(c: any): string | undefined {
     return undefined;
 }
 
+/**
+ * Restore the original device widget name by removing the import-uniquify
+ * suffix (`_2`, `_3`, ...) that firmware-loader adds to keep LVGL widget
+ * identifiers unique in EEZ's project-wide namespace. The device stores
+ * widget names per-screen, so the original name is used when deploying back.
+ */
+function restoreDeviceWidgetName(name: string): string {
+    return name.replace(/_\d+$/, "");
+}
+
 // ── Recursively transform one component tree ──
 function transformComponent(c: any): Record<string, any> | null {
     const t: string = c.type || "";
@@ -92,11 +102,13 @@ function transformComponent(c: any): Record<string, any> | null {
 
     if (!mapped) return null;
 
-    // Widget name = identifier, falling back to objID prefix
-    const ident: string =
+    // Widget name = identifier, falling back to objID prefix. Strip the
+    // import-uniquify suffix so the device gets its original widget name back.
+    const ident: string = restoreDeviceWidgetName(
         c.identifier ||
-        (c.name ? c.name.replace(/\s+/g, "_") : "") ||
-        ("w_" + (c.objID || "").slice(0, 8));
+            (c.name ? c.name.replace(/\s+/g, "_") : "") ||
+            ("w_" + (c.objID || "").slice(0, 8))
+    );
 
     // ═══ 8 base fields (EVERY widget has these) ═══
     const obj: Record<string, any> = {
