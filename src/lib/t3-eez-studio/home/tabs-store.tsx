@@ -417,14 +417,26 @@ export class ProjectEditorTab implements IHomeTab {
             _active: observable,
             projectStore: observable,
             error: observable,
+            showOpening: observable,
             makeActive: action,
             _icon: observable,
             loading: computed
         });
+        // Wait for the "T3000 services connected — loading workspace" status
+        // bar to finish its ~3s display before showing the "Opening project…"
+        // message, so the two loading messages never overlap.
+        setTimeout(() => {
+            runInAction(() => {
+                this.showOpening = true;
+            });
+        }, 3000);
     }
 
     permanent: boolean = true;
     _active: boolean = false;
+
+    /** True once the backend status bar has had time to show and hide. */
+    showOpening: boolean = false;
 
     /**
      * Show loader in tab when Docker build is in progress for this project
@@ -916,18 +928,35 @@ export class ProjectEditorTab implements IHomeTab {
 
     render() {
         if (!this.projectStore) {
+            // While the "T3000 services connected" status bar is still showing
+            // (~3s), keep this area empty so the two messages don't overlap.
+            if (!this.showOpening) {
+                return <div />;
+            }
             return (
                 <div
                     style={{
                         display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center"
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: 4,
+                        padding: "16px 20px"
                     }}
                 >
                     {this.error ? (
                         <div className="error">{this.error}</div>
                     ) : (
-                        <Loader size={60} />
+                        <>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <Loader size={20} />
+                                <span style={{ fontSize: 12, color: "#616161" }}>
+                                    Opening project…
+                                </span>
+                            </div>
+                            <div style={{ fontSize: 12, color: "#9aa7b5", paddingLeft: 28 }}>
+                                Loading screens, widgets and resources
+                            </div>
+                        </>
                     )}
                 </div>
             );

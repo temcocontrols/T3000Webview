@@ -220,6 +220,40 @@ export function EezStudioApp() {
         //   /t3000/eez?open=project/<folder>/<folder>.eez-project
         if (openPath && !wizardType && !openExamples) {
             let attempts = 0;
+            // Open the project and VERIFY it actually landed in the store.
+            // On a cold boot the EEZ shell can still be settling, so retry —
+            // this mirrors the retry logic the ?new= create hand-off uses.
+            const tryOpen = () => {
+                if (cancelled) return;
+                import("home/tabs-store")
+                    .then(({ openProject, tabs: tabsRef }) => {
+                        if (cancelled) return;
+                        // `tabs` is only usable after loadTabs() (inside
+                        // home/main). Guard so a cold boot never opens into an
+                        // uninitialized store.
+                        if (!tabsRef || !tabsRef.tabs) {
+                            if (attempts++ < 150) setTimeout(tryOpen, 300);
+                            return;
+                        }
+                        try {
+                            openProject(openPath, false);
+                        } catch (err) {
+                            console.error("[EEZ-Examples] openProject failed:", err);
+                        }
+                        const opened = tabsRef.tabs.some(
+                            (t: any) => t.filePath === openPath
+                        );
+                        if (opened) {
+                            console.log("[EEZ-Examples] openProject succeeded:", openPath);
+                        } else if (attempts++ < 40) {
+                            setTimeout(tryOpen, 300);
+                        }
+                    })
+                    .catch(() => {
+                        if (attempts++ < 150) setTimeout(tryOpen, 300);
+                    });
+            };
+            // Wait for the EEZ shell to mount, then hand off to the editor.
             const waitForOpen = () => {
                 if (cancelled) return;
                 const mounted =
@@ -229,19 +263,7 @@ export function EezStudioApp() {
                     if (wizardOpenedRef.current) return;
                     wizardOpenedRef.current = true;
                     console.log("[EEZ-Examples] EezStudioApp open-project —", openPath);
-                    import("home/tabs-store")
-                        .then(({ openProject }) => {
-                            setTimeout(() => {
-                                if (cancelled) return;
-                                try {
-                                    openProject(openPath, false);
-                                    console.log("[EEZ-Examples] openProject succeeded:", openPath);
-                                } catch (err) {
-                                    console.error("[EEZ-Examples] openProject failed:", err);
-                                }
-                            }, 1000);
-                        })
-                        .catch(err => console.error("[EEZ-Examples] failed to load tabs-store:", err));
+                    tryOpen();
                     return;
                 }
                 if (attempts++ < 150) setTimeout(waitForOpen, 300);
