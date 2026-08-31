@@ -364,6 +364,12 @@ export function firmwareToProject(
             // via firmwareWidgetToComponent's comp.children — this is essential
             // for correct LVGL relative positioning.
             function collectWidgets(widgets: Record<string, FirmwareWidget>) {
+                // Popup panels (hidden by default, e.g. SysModePanel / FanModePanel)
+                // must render ON TOP of the home content when shown. In LVGL,
+                // later-created siblings draw on top, so collect hidden widgets
+                // separately and push them AFTER all visible widgets.
+                const visibleComps: Record<string, any>[] = [];
+                const popupComps: Record<string, any>[] = [];
                 for (const [widgetId, w] of Object.entries(widgets)) {
                     if (w.sub_type === "screen") {
                         if (w.children) collectWidgets(w.children);
@@ -374,8 +380,10 @@ export function firmwareToProject(
                     comp.identifier = uniqueIdentifier(toSnakeCase(widgetId));
                     fwObjIds[widgetId] = comp.objID;
                     fwIdentifiers[widgetId] = comp.identifier;
-                    widgetComponents.push(comp);
+                    if (w.hidden) popupComps.push(comp);
+                    else visibleComps.push(comp);
                 }
+                widgetComponents.push(...visibleComps, ...popupComps);
             }
             collectWidgets(s.json.widgets || {});
 
@@ -485,7 +493,14 @@ export function firmwareToProject(
                                     const targetName = fwIdentifiers[action.target || ""];
                                     // Guard: skip if target not found in tree
                                     if (!targetName || !fwObjIds[action.target || ""]) continue;
-                                    const hiddenVal = action.mode === "remove" ? false : true;
+                                    // "add" → hide the panel; "remove" → show it.
+                                    // "toggle" → panels start hidden, so the practical
+                                    // behavior is to SHOW it (open the picker). A true
+                                    // flip on every click would need a flow variable
+                                    // (EEZ's objSetFlagHidden is literal-only), so map
+                                    // toggle → show, matching the device UX where picking
+                                    // a mode or tapping the background closes the panel.
+                                    const hiddenVal = action.mode === "add" ? true : false;
                                     const aid = genId();
                                     widgetComponents.push({
                                         objID: aid, type: "LVGLActionComponent",
