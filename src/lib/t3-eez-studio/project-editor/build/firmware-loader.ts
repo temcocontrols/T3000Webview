@@ -625,7 +625,19 @@ function firmwareWidgetToComponent(
             const digits = fontName.match(/(\d+)/);
             return digits ? parseInt(digits[1], 10) : 16;
         })();
-        widthVal = Math.max((w.obj_text || "").length * fontSize * 0.48, 80);
+        const letterSpace: number =
+            ((w.style as any)?.MAIN?.DEFAULT?.text_letter_space as number) ??
+            ((w.style as any)?.DEFAULT?.text_letter_space as number) ??
+            0;
+        // Estimate the rendered text width: montserrat glyphs are ~0.65×font
+        // size wide on average, plus letter spacing. No 80px floor — a short
+        // label (e.g. "Mode") must stay content-sized so align CENTER centers
+        // it correctly, while a longer one (e.g. "HUMIDITY") isn't truncated.
+        const text = w.obj_text || "";
+        widthVal = Math.max(
+            Math.ceil(text.length * fontSize * 0.65 + letterSpace * Math.max(text.length - 1, 0)),
+            16
+        );
     }
     if (isSizeContentH && (w.obj_text || "")) {
         const fontName: string | undefined =
@@ -679,8 +691,14 @@ function firmwareWidgetToComponent(
         // ── Required LVGLWidget base properties ──
         leftUnit: "px",
         topUnit: "px",
-        widthUnit: "px",
-        heightUnit: "px",
+        // Firmware width/height = 0 means LV_SIZE_CONTENT → map to EEZ "content"
+        // unit so the LVGL runtime auto-sizes the widget to its real content
+        // (text/image). This is the correct fix for labels like "Mode" or
+        // "HUMIDITY" — a manual pixel estimate is fragile and clips text.
+        // The widthVal/heightVal estimates above remain as a fallback only
+        // (used by flex-child stacking and the >480px align-strip logic).
+        widthUnit: isSizeContentW ? "content" : "px",
+        heightUnit: isSizeContentH ? "content" : "px",
         hiddenFlagType: "literal",
         clickableFlag: true,
         clickableFlagType: "literal",

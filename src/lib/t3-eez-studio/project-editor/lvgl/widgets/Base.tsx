@@ -1571,8 +1571,12 @@ export class LVGLWidget extends Widget {
 
         let left = this.leftUnit == "%" ? LV_PCT(this.left) : this.left;
         let top = this.topUnit == "%" ? LV_PCT(this.top) : this.top;
-        let width = this.widthUnit == "content" ? this.width : this.widthUnit == "%" ? LV_PCT(this.width) : this.width;
-        let height = this.heightUnit == "content" ? this.height : this.heightUnit == "%" ? LV_PCT(this.height) : this.height;
+        // "content" must map to the LV_SIZE_CONTENT coord constant so the LVGL
+        // runtime auto-sizes the widget to its real content (e.g. label text).
+        // Previously it passed `this.width`, which pinned content widgets to
+        // their stored px value and clipped text like "Mode" (47px < real width).
+        let width = this.widthUnit == "content" ? LV_SIZE_CONTENT : this.widthUnit == "%" ? LV_PCT(this.width) : this.width;
+        let height = this.heightUnit == "content" ? LV_SIZE_CONTENT : this.heightUnit == "%" ? LV_PCT(this.height) : this.height;
 
         return { left, top, width, height };
     }
