@@ -95,4 +95,44 @@ describe("parameter grid generation", () => {
         });
         expect(w.status).toBe(200);
     }, 30000);
+
+    it("generates a VARIABLE grid from the DB (same cols as input, variable range table)", async () => {
+        const proj = JSON.parse(
+            await (await fetch(`${BASE}/read-text-file?path=${enc(projectPath)}`)).text()
+        );
+        const sn = proj.importedFrom?.serialNumber;
+        const resp = await fetch(`http://localhost:3003/api/t3_device/devices/${sn}/variable-points`);
+        const data = await resp.json();
+        const variablePoints = data.variable_points || [];
+        expect(variablePoints.length).toBeGreaterThan(0);
+
+        const { added } = generateParameterGrid(proj, variablePoints, {
+            pointType: "variable",
+            maxRows: 15,
+        });
+        // variable columns = 6 (Label, Value, A/M, D/A, Ctrl, Range) — no SW
+        expect(added).toBe(15 * 6 + 6);
+
+        const page = proj.userPages.find(p => p.name === "parameters");
+        const container = page.components.find(c => c.identifier === "container1");
+        const panel = container.children.find(c => c.identifier === "panel4");
+        const cells = panel.children.filter((c: any) => c.paramGrid);
+        expect(cells.length).toBe(15 * 6 + 6);
+        const headers = cells
+            .filter((c: any) => /^param_grid_header_/.test(c.identifier))
+            .map((c: any) => c.text);
+        expect(headers.join("|")).toBe("Label|Value|A/M|D/A|Ctrl|Range");
+
+        const row0 = cells
+            .filter((c: any) => /^param_grid_r0_/.test(c.identifier))
+            .map((c: any) => c.text);
+        console.log("variable row0:", row0.join(" | "));
+
+        const w = await fetch(`${BASE}/write-text-file?path=${enc(projectPath)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(proj),
+        });
+        expect(w.status).toBe(200);
+    }, 30000);
 });

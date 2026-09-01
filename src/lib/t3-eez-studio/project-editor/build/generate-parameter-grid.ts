@@ -14,6 +14,7 @@
 
 import { getRangeLabel as inputRangeLabel } from "../../../../t3-react/features/inputs/data/rangeData";
 import { getRangeLabel as outputRangeLabel } from "../../../../t3-react/features/outputs/data/rangeData";
+import { getRangeLabel as variableRangeLabel } from "../../../../t3-react/features/variables/data/rangeData";
 
 /** Which point table the grid shows. Matches the firmware's PARAM_TABLE_*. */
 export type ParameterPointType = "input" | "output" | "variable";
@@ -123,7 +124,14 @@ export function gridCellText(
         case "range": {
             const da = parseInt(pt.digitalAnalog || "0", 10);
             const rv = parseInt(pt.rangeField || "0", 10);
-            const label = (pointType === "output" ? outputRangeLabel : inputRangeLabel)(rv, da);
+            // firmware: range table depends on the point type
+            // (param_table_get_range_options(PARAM_TABLE_INPUT/OUTPUT/VARIABLE)).
+            const label =
+                pointType === "output"
+                    ? outputRangeLabel(rv, da)
+                    : pointType === "variable"
+                      ? variableRangeLabel(rv, da)
+                      : inputRangeLabel(rv, da);
             return label && label !== "Unknown" ? label : (pt.rangeField || "-");
         }
         default:
