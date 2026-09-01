@@ -286,7 +286,13 @@ export abstract class LVGLPageRuntime {
                 return 0;
             }
 
-            const bitmapData = ProjectEditor.getBitmapData(bitmap, 32);
+            // LVGL ARGB8888 (cf 0x10) expects BGR byte order (blue, green, red,
+            // alpha) in memory. The default bitmapColorFormat is often "RGB565"
+            // (inherited from colorFormat on device import), which makes
+            // getBitmapData emit RGB order → rendered images get their R/B
+            // channels swapped (blue icons like fan_small appear orange). Force
+            // BGR here so the WASM runtime decodes image pixels correctly.
+            const bitmapData = ProjectEditor.getBitmapData(bitmap, 32, "BGR");
 
             let bitmapPtr = getLvglBitmapPtr(this.page, this.wasm, bitmapData);
 
@@ -833,7 +839,8 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                             if (imgDscPtr === undefined) {
                                 const bitmap = findBitmap(this.project, name);
                                 if (bitmap) {
-                                    const bitmapData = ProjectEditor.getBitmapData(bitmap, 32);
+                                    // BGR byte order required for LVGL ARGB8888 (see getBitmapPtr).
+                                    const bitmapData = ProjectEditor.getBitmapData(bitmap, 32, "BGR");
                                     let cf = 0x10;
                                     if (bitmapData.bpp === 24) cf = 0x11;
                                     else if (bitmapData.bpp === 16) cf = 0x09;
@@ -1318,7 +1325,8 @@ export class LVGLPageViewerRuntime extends LVGLPageRuntime {
                     if (imgDscPtr === undefined) {
                         const bitmap = findBitmap(this.project, name);
                         if (bitmap) {
-                            const bitmapData = ProjectEditor.getBitmapData(bitmap, 32);
+                            // BGR byte order required for LVGL ARGB8888 (see getBitmapPtr).
+                            const bitmapData = ProjectEditor.getBitmapData(bitmap, 32, "BGR");
                             let cf = 0x10; // LV_COLOR_FORMAT_ARGB8888
                             if (bitmapData.bpp === 24) cf = 0x11;
                             else if (bitmapData.bpp === 16) cf = 0x09;

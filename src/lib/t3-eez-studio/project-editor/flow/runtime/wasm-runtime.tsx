@@ -538,7 +538,8 @@ export class WasmRuntime extends RemoteRuntime {
             if (this.projectStore.project.bitmaps) {
                 for (const bmp of this.projectStore.project.bitmaps) {
                     try {
-                        const bd = ProjectEditor.getBitmapData(bmp, 32);
+                        // BGR byte order required for LVGL ARGB8888 in the WASM worker.
+                        const bd = ProjectEditor.getBitmapData(bmp, 32, "BGR");
                         bitmapDataList.push({
                             name: bmp.name,
                             width: bd.width,
