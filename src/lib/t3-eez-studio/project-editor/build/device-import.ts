@@ -16,7 +16,7 @@
 import { DeviceRestClient } from "./device-rest-client";
 import { firmwareToProject } from "./firmware-loader";
 import { setDeviceBinding } from "./device-binding";
-import { generateParameterGrid } from "./generate-parameter-grid";
+import { generateAllParameterGrids } from "./generate-parameter-grid";
 
 export interface DeviceImportInfo {
     name: string;
@@ -154,26 +154,40 @@ export async function importProjectFromDevice(
         log(`✔ Step 4.5 — Images ready (${loadedImageCount}/${project.bitmaps.length})`);
     }
 
-    // Step 4.6 — generate default parameter grid (VARIABLE page) from the DB
-    log("=> Step 4.6 — Generating parameter grid (variables)...");
+    // Step 4.6 — generate default parameter grids (INPUT/OUTPUT/VARIABLE) from
+    // the DB. The firmware keeps ONE parameters screen whose table is rebuilt
+    // per type (main-menu Inputs/Outputs/Variables), so we fill three stacked
+    // panels — each with its own columns + default data — and wire the buttons.
+    log("=> Step 4.6 — Generating parameter grids (input/output/variable)...");
     let gridCells = 0;
     try {
-        const pointsResp = await fetch(
-            `/api/t3_device/devices/${device.serialNumber}/variable-points`
-        );
-        const pointsData = pointsResp.ok ? await pointsResp.json() : null;
-        const variablePoints = (pointsData && pointsData.variable_points) || [];
-        gridCells = generateParameterGrid(project as any, variablePoints, {
-            pointType: "variable",
-        }).added;
+        const [inResp, outResp, varResp] = await Promise.all([
+            fetch(`/api/t3_device/devices/${device.serialNumber}/input-points`),
+            fetch(`/api/t3_device/devices/${device.serialNumber}/output-points`),
+            fetch(`/api/t3_device/devices/${device.serialNumber}/variable-points`),
+        ]);
+        const [inData, outData, varData] = await Promise.all([
+            inResp.ok ? inResp.json() : null,
+            outResp.ok ? outResp.json() : null,
+            varResp.ok ? varResp.json() : null,
+        ]);
+        const res = generateAllParameterGrids(project as any, {
+            inputPoints: (inData && inData.input_points) || [],
+            outputPoints: (outData && outData.output_points) || [],
+            variablePoints: (varData && varData.variable_points) || [],
+        });
+        gridCells = res.added;
         log(
-            `  → ${variablePoints.length} variable points → ${gridCells} grid cells`
+            `  → ${(inData?.input_points || []).length} inputs, ` +
+                `${(outData?.output_points || []).length} outputs, ` +
+                `${(varData?.variable_points || []).length} variables → ` +
+                `${gridCells} grid cells across [${res.panels.join(", ")}]`
         );
     } catch (err) {
         console.error("[device-import] parameter grid generation failed:", err);
-        log("  → grid generation skipped (no variable points data)");
+        log("  → grid generation skipped (no point data)");
     }
-    log(`✔ Step 4.6 — Parameter grid ready (${gridCells} cells)`);
+    log(`✔ Step 4.6 — Parameter grids ready (${gridCells} cells)`);
 
     // Step 5 — save the .eez-project
     const projectPath = `${projectDir}/${device.name}.eez-project`;

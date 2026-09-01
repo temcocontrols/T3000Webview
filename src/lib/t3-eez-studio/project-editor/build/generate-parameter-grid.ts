@@ -88,6 +88,51 @@ const COLUMN_SETS: Record<ParameterPointType, GridColumn[]> = {
     ],
 };
 
+/**
+ * Per-type panel identifier inside the parameters screen's container1.
+ * The firmware keeps ONE table on the parameters screen and rebuilds it per
+ * type (PARAM_TABLE_INPUT/OUTPUT/VARIABLE) when the user enters via the
+ * main-menu Inputs/Outputs/Variables button. We model that as three stacked
+ * panels (INPUT visible by default, the other two hidden), each pre-filled
+ * with its own grid (different fields + default data).
+ */
+export const PANEL_BY_TYPE: Record<ParameterPointType, string> = {
+    input: "panel4",
+    output: "panel4_output",
+    variable: "panel4_variable",
+};
+
+let _objCounter = 0;
+function genObjId(prefix: string): string {
+    return `${prefix}_${Date.now().toString(36)}_${_objCounter++}`;
+}
+
+/** Clone the primary grid panel (panel4) for another point type. The clone
+ *  shares the same geometry/styling but starts empty + hidden; the caller adds
+ *  the grid cells. */
+function cloneParamPanel(template: any, panelId: string): any {
+    const uid = genObjId(panelId);
+    const clone = JSON.parse(JSON.stringify(template));
+    clone.objID = uid;
+    clone.identifier = panelId;
+    clone.children = [];
+    clone.style = {
+        objID: `${uid}_style_ref`,
+        useStyle: "default",
+        conditionalStyles: [],
+        childStyles: [],
+    };
+    clone.localStyles = {
+        objID: `${uid}_style`,
+        definition: JSON.parse(JSON.stringify(template.localStyles?.definition || {})),
+    };
+    clone.hiddenFlagType = "literal";
+    clone.hiddenFlag = "true";
+    clone.flagScrollDirection = "all"; // LV_DIR_ALL (both directions)
+    clone.flagScrollbarMode = "AUTO";
+    return clone;
+}
+
 /** Map a raw point row to the display text for one grid column.
  *  Field semantics follow the firmware (lv_UserPeram.c `param_table_fill_row`):
  *  auto_manual: 0=Auto, 1=Manual; digital_analog: 1=Analog, 0=Digital;
@@ -228,12 +273,25 @@ export function generateParameterGrid(
     const container = (page.components || []).find(
         c => c.identifier === (options?.containerId || "container1")
     );
-    const panel = (container?.children || []).find(
-        c => c.identifier === (options?.panelId || "panel4")
-    );
-    if (!panel) return { added: 0 };
+    if (!container) return { added: 0 };
 
     const pointType: ParameterPointType = options?.pointType ?? "input";
+    const panelId = options?.panelId || PANEL_BY_TYPE[pointType] || "panel4";
+    // Each point type renders into its own stacked panel. The primary panel
+    // (panel4 = INPUT) exists from the imported screen; the output/variable
+    // panels are created by cloning it on first use.
+    let panel = (container.children || []).find(
+        c => c.identifier === panelId
+    );
+    if (!panel) {
+        const primary = (container.children || []).find(
+            c => c.identifier === PANEL_BY_TYPE.input
+        );
+        if (!primary) return { added: 0 };
+        panel = cloneParamPanel(primary, panelId);
+        container.children.push(panel);
+    }
+    const isPrimary = panelId === PANEL_BY_TYPE.input;
     const columns = COLUMN_SETS[pointType] || COLUMN_SETS.input;
     const maxRows = options?.maxRows ?? 15;
     const rowH = options?.rowHeight ?? 24;
@@ -315,18 +373,19 @@ export function generateParameterGrid(
     panel.flagScrollDirection = "all"; // LV_DIR_ALL (both directions; EEZ enum has no "BOTH")
     panel.flagScrollbarMode = panel.flagScrollbarMode || "AUTO";
 
-    // Add a little top margin to the title bar so it isn't flush against the
-    // top edge, and move the grid down by the same amount to stay aligned.
-    const titleTopMargin = options?.titleTopMargin ?? 8;
-    const titleBar = (page.components || []).find(
-        c => c.identifier === (options?.titleId || "change_config_title2")
-    );
-    if (titleBar) titleBar.top = titleTopMargin;
-
-    // Position the grid right below the title bar (no empty space at top) and
-    // give it a distinct background so it separates from the page background.
-    panel.left = 0;
-    panel.top = titleTopMargin;
+    // Position the primary grid right below the title bar (no empty space at
+    // top) and give it a distinct background so it separates from the page
+    // background. Cloned panels keep the primary's geometry (copied at clone
+    // time) — only the primary re-positions the title bar.
+    if (isPrimary) {
+        const titleTopMargin = options?.titleTopMargin ?? 8;
+        const titleBar = (page.components || []).find(
+            c => c.identifier === (options?.titleId || "change_config_title2")
+        );
+        if (titleBar) titleBar.top = titleTopMargin;
+        panel.left = 0;
+        panel.top = titleTopMargin;
+    }
     const d = (panel.localStyles = panel.localStyles || {});
     d.definition = d.definition || {};
     d.definition.MAIN = d.definition.MAIN || {};
@@ -346,4 +405,191 @@ export function generateParameterGrid(
     };
 
     return { added: cells.length };
+}
+
+export interface AllParameterGridsData {
+    inputPoints?: InputPointData[];
+    outputPoints?: InputPointData[];
+    variablePoints?: InputPointData[];
+}
+
+export interface AllParameterGridsResult {
+    /** Total grid cells added across all three panels. */
+    added: number;
+    /** Panels that received a grid (e.g. ["panel4","panel4_output","panel4_variable"]). */
+    panels: string[];
+}
+
+/**
+ * Generate the three parameter grids (INPUT/OUTPUT/VARIABLE) into three stacked
+ * panels on the `parameters` screen, then wire the main-menu Inputs/Outputs/
+ * Variables buttons so run mode shows the matching panel.
+ *
+ * Firmware model (lv_UserPeram.c): ONE parameters screen + ONE table rebuilt
+ * per type when the user enters via the main-menu Inputs/Outputs/Variables
+ * button (Event_Cb_ParamInput/Output/VariableShowCallBackFunc). We reproduce
+ * that with three overlapping panels:
+ *   - panel4 (input)          — visible by default (firmware init PARAM_TABLE_INPUT)
+ *   - panel4_output           — hidden until "Outputs" is pressed
+ *   - panel4_variable         — hidden until "Variables" is pressed
+ */
+export function generateAllParameterGrids(
+    project: any,
+    data: AllParameterGridsData,
+    options?: ParameterGridOptions
+): AllParameterGridsResult {
+    let added = 0;
+    const panels: string[] = [];
+    const types: ParameterPointType[] = ["input", "output", "variable"];
+    for (const t of types) {
+        const pts = data[`${t}Points` as keyof AllParameterGridsData] || [];
+        const res = generateParameterGrid(project, pts as InputPointData[], {
+            ...options,
+            pointType: t,
+        });
+        added += res.added;
+        if (res.added) panels.push(PANEL_BY_TYPE[t]);
+    }
+
+    // Default visible grid = INPUT (matches firmware s_param_table_type init).
+    setParamPanelHidden(project, PANEL_BY_TYPE.input, false);
+    setParamPanelHidden(project, PANEL_BY_TYPE.output, true);
+    setParamPanelHidden(project, PANEL_BY_TYPE.variable, true);
+
+    // Keep the Update button on top: it must stay the last child of container1
+    // (LVGL renders later siblings on top), matching the firmware where the
+    // button overlays the table.
+    const page = (project.userPages || []).find(p => p.name === "parameters");
+    const container = (page?.components || []).find(
+        c => c.identifier === "container1"
+    );
+    if (container && Array.isArray(container.children)) {
+        const updateBtn = container.children.find(
+            (c: any) => c.identifier === "parameter_update_btn"
+        );
+        if (updateBtn) {
+            container.children = container.children.filter(
+                (c: any) => c !== updateBtn
+            );
+            container.children.push(updateBtn);
+        }
+    }
+
+    wireParameterGridSwitch(project);
+
+    return { added, panels };
+}
+
+function setParamPanelHidden(project: any, panelId: string, hidden: boolean): void {
+    const page = (project.userPages || []).find(p => p.name === "parameters");
+    const container = (page?.components || []).find(
+        c => c.identifier === "container1"
+    );
+    const panel = (container?.children || []).find(c => c.identifier === panelId);
+    if (!panel) return;
+    if (hidden) {
+        panel.hiddenFlagType = "literal";
+        panel.hiddenFlag = "true";
+    } else {
+        // no hidden flag => visible (matches the imported primary panel)
+        delete panel.hiddenFlag;
+        panel.hiddenFlagType = "literal";
+    }
+}
+
+/**
+ * Wire the main-menu Inputs/Outputs/Variables buttons (img_button1/2/3) to show
+ * the matching parameters panel and hide the other two — mirroring the
+ * firmware's Event_Cb_ParamInput/Output/VariableShowCallBackFunc. Each button
+ * already has a changeScreen→parameters flow; we add objSetFlagHidden actions
+ * (the same action the loader uses for home-screen mode panels) chained off the
+ * button's CLICKED event.
+ */
+function wireParameterGridSwitch(project: any): void {
+    const mm = (project.userPages || []).find(p => p.name === "main_menu");
+    if (!mm) return;
+
+    const findWidget = (root: any, id: string): any => {
+        const queue: any[] = [root];
+        while (queue.length) {
+            const cur = queue.shift();
+            if (!cur) continue;
+            if (cur.identifier === id) return cur;
+            for (const ch of cur.children || []) queue.push(ch);
+            for (const c of cur.components || []) queue.push(c);
+        }
+        return null;
+    };
+
+    const buttons: Record<string, any> = {
+        input: findWidget(mm, "img_button1"),
+        output: findWidget(mm, "img_button2"),
+        variable: findWidget(mm, "img_button3"),
+    };
+    if (!buttons.input || !buttons.output || !buttons.variable) return;
+
+    // Stack the new flow components below the ones the loader already created.
+    let top = 1000;
+    for (const c of mm.components || []) {
+        if (c.type === "LVGLActionComponent" && typeof c.top === "number") {
+            top = Math.max(top, c.top + 60);
+        }
+    }
+    const comps = mm.components || (mm.components = []);
+    const lines = mm.connectionLines || (mm.connectionLines = []);
+
+    // Idempotent: drop any switch actions/lines this module added before
+    // (objID prefix "param_switch") so re-imports don't stack duplicates.
+    for (let i = comps.length - 1; i >= 0; i--) {
+        if (String(comps[i].objID).startsWith("param_switch")) comps.splice(i, 1);
+    }
+    for (let i = lines.length - 1; i >= 0; i--) {
+        if (String(lines[i].objID).startsWith("param_switch")) lines.splice(i, 1);
+    }
+
+    for (const type of Object.keys(buttons) as ParameterPointType[]) {
+        const btn = buttons[type];
+        const showId = PANEL_BY_TYPE[type];
+        const hideIds = (Object.keys(PANEL_BY_TYPE) as ParameterPointType[])
+            .filter(t => t !== type)
+            .map(t => PANEL_BY_TYPE[t]);
+        const actions: Array<{ id: string; hidden: boolean }> =
+            hideIds.map(id => ({ id, hidden: true }));
+        // Only emit a "show" action when the target isn't the default-visible
+        // INPUT panel (it's already visible; showing it again is a no-op).
+        if (showId !== PANEL_BY_TYPE.input) {
+            actions.push({ id: showId, hidden: false });
+        }
+        for (const a of actions) {
+            const aid = genObjId("param_switch");
+            comps.push({
+                objID: aid,
+                type: "LVGLActionComponent",
+                left: 20,
+                top,
+                width: 350,
+                height: 50,
+                customInputs: [],
+                customOutputs: [],
+                actions: [
+                    {
+                        objID: genObjId("param_switch_a"),
+                        action: "objSetFlagHidden",
+                        object: a.id,
+                        objectType: "literal",
+                        hidden: a.hidden,
+                        hiddenType: "literal",
+                    },
+                ],
+            });
+            lines.push({
+                objID: genObjId("param_switch_c"),
+                source: btn.objID,
+                output: "CLICKED",
+                target: aid,
+                input: "@seqin",
+            });
+            top += 60;
+        }
+    }
 }
