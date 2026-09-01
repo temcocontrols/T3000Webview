@@ -9,12 +9,12 @@ describe("parameter grid generation", () => {
     it("maps raw point codes to display text", () => {
         expect(gridCellText({ label: "", fullLabel: "AHU-1 Supply Temp1s" }, "label")).toBe("AHU-1 Supply Temp1s");
         expect(gridCellText({ fValue: "-40000" }, "value")).toBe("-40000");
-        expect(gridCellText({ autoManual: "0" }, "am")).toBe("Manual");
-        expect(gridCellText({ autoManual: "1" }, "am")).toBe("Auto");
+        expect(gridCellText({ autoManual: "0" }, "am")).toBe("Auto");   // firmware: 0=Auto
+        expect(gridCellText({ autoManual: "1" }, "am")).toBe("Manual"); // firmware: 1=Manual
         expect(gridCellText({ digitalAnalog: "1" }, "da")).toBe("Analog");
         expect(gridCellText({ digitalAnalog: "0" }, "da")).toBe("Digital");
-        expect(gridCellText({ control: "0" }, "ctrl")).toBe("OFF");
-        expect(gridCellText({ control: "1" }, "ctrl")).toBe("ON");
+        expect(gridCellText({ control: "0" }, "ctrl")).toBe("0"); // firmware shows raw control
+        expect(gridCellText({ control: "1" }, "ctrl")).toBe("1");
         expect(gridCellText({ digitalAnalog: "0", rangeField: "2" }, "range")).toBe("Close/Open");
         expect(gridCellText({ digitalAnalog: "0", rangeField: "0" }, "range")).toBe("Unused");
     });
@@ -54,5 +54,45 @@ describe("parameter grid generation", () => {
         console.log("header label:", header && header.text);
         console.log("row0 range:", firstRowRange && firstRowRange.text);
         console.log("row0 cells:", cells.slice(6, 12).map((c: any) => c.text).join(" | "));
+    }, 30000);
+
+    it("generates an OUTPUT grid from the DB (firmware fields: +SW col) and writes it", async () => {
+        const proj = JSON.parse(
+            await (await fetch(`${BASE}/read-text-file?path=${enc(projectPath)}`)).text()
+        );
+        const sn = proj.importedFrom?.serialNumber;
+        const resp = await fetch(`http://localhost:3003/api/t3_device/devices/${sn}/output-points`);
+        const data = await resp.json();
+        const outputPoints = data.output_points || [];
+        expect(outputPoints.length).toBeGreaterThan(0);
+
+        const { added } = generateParameterGrid(proj, outputPoints, {
+            pointType: "output",
+            maxRows: 15,
+        });
+        // output columns = 7 (Label, Value, A/M, D/A, Ctrl, SW, Range)
+        expect(added).toBe(15 * 7 + 7);
+
+        const page = proj.userPages.find(p => p.name === "parameters");
+        const container = page.components.find(c => c.identifier === "container1");
+        const panel = container.children.find(c => c.identifier === "panel4");
+        const cells = panel.children.filter((c: any) => c.paramGrid);
+        expect(cells.length).toBe(15 * 7 + 7);
+        const headers = cells
+            .filter((c: any) => /^param_grid_header_/.test(c.identifier))
+            .map((c: any) => c.text);
+        expect(headers.join("|")).toBe("Label|Value|A/M|D/A|Ctrl|SW|Range");
+
+        const row0 = cells
+            .filter((c: any) => /^param_grid_r0_/.test(c.identifier))
+            .map((c: any) => c.text);
+        console.log("output row0:", row0.join(" | "));
+
+        const w = await fetch(`${BASE}/write-text-file?path=${enc(projectPath)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(proj),
+        });
+        expect(w.status).toBe(200);
     }, 30000);
 });

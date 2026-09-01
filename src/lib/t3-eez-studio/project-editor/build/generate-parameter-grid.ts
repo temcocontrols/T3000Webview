@@ -12,7 +12,11 @@
  * hidden/locked from the editor UI.
  */
 
-import { getRangeLabel } from "../../../../t3-react/features/inputs/data/rangeData";
+import { getRangeLabel as inputRangeLabel } from "../../../../t3-react/features/inputs/data/rangeData";
+import { getRangeLabel as outputRangeLabel } from "../../../../t3-react/features/outputs/data/rangeData";
+
+/** Which point table the grid shows. Matches the firmware's PARAM_TABLE_*. */
+export type ParameterPointType = "input" | "output" | "variable";
 
 export interface InputPointData {
     label?: string | null;
@@ -23,12 +27,16 @@ export interface InputPointData {
     control?: string | null;
     rangeField?: string | null;
     units?: string | null;
+    /** Output HOA switch status: 0=MAN-OFF, 1=AUTO, 2=MAN-ON (firmware switch_status). */
+    status?: string | null;
+    hwSwitchStatus?: string | null;
 }
 
 export interface ParameterGridOptions {
     pageName?: string;     // screen whose grid we fill (default "parameters")
     containerId?: string;  // container that holds the panel (default "container1")
     panelId?: string;      // the scrollable panel (default "panel4")
+    pointType?: ParameterPointType; // which point table (default "input")
     maxRows?: number;      // how many rows to render (default 15)
     rowHeight?: number;    // px per row (default 24)
     fontName?: string;     // LVGL font (default "MONTSERRAT_12")
@@ -46,37 +54,76 @@ interface GridColumn {
     w: number;
 }
 
-// Narrow, balanced columns so all 6 fit on one page (total ~468px in 480px).
-// Label & Value get more room; Range is compact.
-const DEFAULT_COLUMNS: GridColumn[] = [
-    { key: "label", title: "Label", x: 6, w: 140 },
-    { key: "value", title: "Value", x: 146, w: 70 },
-    { key: "am", title: "A/M", x: 216, w: 54 },
-    { key: "da", title: "D/A", x: 270, w: 54 },
-    { key: "ctrl", title: "Ctrl", x: 324, w: 44 },
-    { key: "range", title: "Range", x: 368, w: 106 },
-];
+// Column layouts per point type. The firmware (lv_UserPeram.c) shows:
+//   INPUT/VAR:   No, Desc, Label, Value, A/M, D/A, Ctrl, Range
+//   OUTPUT:      No, Desc, Label, Value, A/M, D/A, Ctrl, SW, Range
+// We render the user-facing columns only (Label..Range), adding the OUTPUT-only
+// "SW" (HOA switch status) column for outputs.
+const COLUMN_SETS: Record<ParameterPointType, GridColumn[]> = {
+    input: [
+        { key: "label", title: "Label", x: 6, w: 140 },
+        { key: "value", title: "Value", x: 146, w: 70 },
+        { key: "am", title: "A/M", x: 216, w: 54 },
+        { key: "da", title: "D/A", x: 270, w: 54 },
+        { key: "ctrl", title: "Ctrl", x: 324, w: 44 },
+        { key: "range", title: "Range", x: 368, w: 106 },
+    ],
+    output: [
+        { key: "label", title: "Label", x: 6, w: 120 },
+        { key: "value", title: "Value", x: 126, w: 60 },
+        { key: "am", title: "A/M", x: 186, w: 48 },
+        { key: "da", title: "D/A", x: 234, w: 48 },
+        { key: "ctrl", title: "Ctrl", x: 282, w: 40 },
+        { key: "sw", title: "SW", x: 322, w: 50 },
+        { key: "range", title: "Range", x: 372, w: 102 },
+    ],
+    variable: [
+        { key: "label", title: "Label", x: 6, w: 140 },
+        { key: "value", title: "Value", x: 146, w: 70 },
+        { key: "am", title: "A/M", x: 216, w: 54 },
+        { key: "da", title: "D/A", x: 270, w: 54 },
+        { key: "ctrl", title: "Ctrl", x: 324, w: 44 },
+        { key: "range", title: "Range", x: 368, w: 106 },
+    ],
+};
 
-/** Map a raw INPUTS row to the display text for one grid column. */
-export function gridCellText(pt: InputPointData, key: string): string {
+/** Map a raw point row to the display text for one grid column.
+ *  Field semantics follow the firmware (lv_UserPeram.c `param_table_fill_row`):
+ *  auto_manual: 0=Auto, 1=Manual; digital_analog: 1=Analog, 0=Digital;
+ *  output "SW" = switch_status (HOA: 0=MAN-OFF, 1=AUTO, 2=MAN-ON). */
+export function gridCellText(
+    pt: InputPointData,
+    key: string,
+    pointType: ParameterPointType = "input"
+): string {
     switch (key) {
         case "label":
             return pt.label && pt.label.trim() ? pt.label : pt.fullLabel || "-";
         case "value":
             return pt.fValue || "-";
         case "am":
-            // Auto_Manual: 0 = Manual, 1 = Auto
-            return pt.autoManual === "1" ? "Auto" : "Manual";
+            // firmware: auto_manual == 0 ? "Auto" : "Manual"
+            return pt.autoManual === "1" ? "Manual" : "Auto";
         case "da":
-            // Digital_Analog: 0 = Digital, 1 = Analog
+            // firmware: digital_analog == 1 ? "Analog" : "Digital"
             return pt.digitalAnalog === "1" ? "Analog" : "Digital";
         case "ctrl":
-            // Control: 0 = OFF, 1 = ON
-            return pt.control === "1" ? "ON" : "OFF";
+            // firmware shows the raw control value
+            return pt.control || "-";
+        case "sw": {
+            // Output HOA switch status (0=MAN-OFF, 1=AUTO, 2=MAN-ON)
+            const v = pt.hwSwitchStatus ?? pt.status;
+            switch (String(v)) {
+                case "0": return "MAN-OFF";
+                case "1": return "AUTO";
+                case "2": return "MAN-ON";
+                default: return v ? String(v) : "-";
+            }
+        }
         case "range": {
             const da = parseInt(pt.digitalAnalog || "0", 10);
             const rv = parseInt(pt.rangeField || "0", 10);
-            const label = getRangeLabel(rv, da);
+            const label = (pointType === "output" ? outputRangeLabel : inputRangeLabel)(rv, da);
             return label && label !== "Unknown" ? label : (pt.rangeField || "-");
         }
         default:
@@ -178,6 +225,8 @@ export function generateParameterGrid(
     );
     if (!panel) return { added: 0 };
 
+    const pointType: ParameterPointType = options?.pointType ?? "input";
+    const columns = COLUMN_SETS[pointType] || COLUMN_SETS.input;
     const maxRows = options?.maxRows ?? 15;
     const rowH = options?.rowHeight ?? 24;
     const fontName = options?.fontName ?? "MONTSERRAT_12";
@@ -199,7 +248,7 @@ export function generateParameterGrid(
     const headerY = 4;
 
     // Header row
-    for (const col of DEFAULT_COLUMNS) {
+    for (const col of columns) {
         cells.push(
             makeCell(
                 `param_grid_header_${col.key}`,
@@ -219,7 +268,7 @@ export function generateParameterGrid(
     const rows = (points || []).slice(0, maxRows);
     rows.forEach((pt, r) => {
         const y = headerY + rowH + 2 + r * rowH;
-        for (const col of DEFAULT_COLUMNS) {
+        for (const col of columns) {
             cells.push(
                 makeCell(
                     `param_grid_r${r}_c${col.key}`,
@@ -227,7 +276,7 @@ export function generateParameterGrid(
                     y,
                     col.w,
                     rowH,
-                    gridCellText(pt, col.key),
+                    gridCellText(pt, col.key, pointType),
                     textColor,
                     fontName,
                     false

@@ -154,22 +154,24 @@ export async function importProjectFromDevice(
         log(`✔ Step 4.5 — Images ready (${loadedImageCount}/${project.bitmaps.length})`);
     }
 
-    // Step 4.6 — generate default parameter grid (INPUT page) from the DB
-    log("=> Step 4.6 — Generating parameter grid (inputs)...");
+    // Step 4.6 — generate default parameter grid (OUTPUT page) from the DB
+    log("=> Step 4.6 — Generating parameter grid (outputs)...");
     let gridCells = 0;
     try {
         const pointsResp = await fetch(
-            `/api/t3_device/devices/${device.serialNumber}/input-points`
+            `/api/t3_device/devices/${device.serialNumber}/output-points`
         );
         const pointsData = pointsResp.ok ? await pointsResp.json() : null;
-        const inputPoints = (pointsData && pointsData.input_points) || [];
-        gridCells = generateParameterGrid(project as any, inputPoints).added;
+        const outputPoints = (pointsData && pointsData.output_points) || [];
+        gridCells = generateParameterGrid(project as any, outputPoints, {
+            pointType: "output",
+        }).added;
         log(
-            `  → ${inputPoints.length} input points → ${gridCells} grid cells`
+            `  → ${outputPoints.length} output points → ${gridCells} grid cells`
         );
     } catch (err) {
         console.error("[device-import] parameter grid generation failed:", err);
-        log("  → grid generation skipped (no input points data)");
+        log("  → grid generation skipped (no output points data)");
     }
     log(`✔ Step 4.6 — Parameter grid ready (${gridCells} cells)`);
 
