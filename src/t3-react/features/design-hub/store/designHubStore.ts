@@ -352,7 +352,7 @@ export const useDesignHubStore = create<DesignHubState>()(
             images: manifest?.images,
             manifestPath:
               project.engine === 'eez' && project.folder
-                ? `project/${project.folder}/device-config/deploy-manifest.json`
+                ? `project/${project.folder}/device-export/deploy-manifest.json`
                 : undefined,
           });
           set((s) => ({

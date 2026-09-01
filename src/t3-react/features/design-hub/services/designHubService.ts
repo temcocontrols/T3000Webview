@@ -233,7 +233,7 @@ export const designHubService = {
   },
 
   /**
-   * Read the EEZ on-disk deploy manifest (`project/<folder>/device-config/
+   * Read the EEZ on-disk deploy manifest (`project/<folder>/device-export/
    * deploy-manifest.json`) written by the EEZ editor's "Deploy to Device".
    * Returns the screen/image detail, or null when not present.
    */
@@ -245,19 +245,27 @@ export const designHubService = {
   } | null> {
     try {
       const host = window.location.hostname || 'localhost';
-      const path = `project/${folder}/device-config/deploy-manifest.json`;
-      const resp = await fetch(
-        `http://${host}:9103/api/eez-studio/read-text-file?path=${encodeURIComponent(path)}`
-      );
-      if (!resp.ok) return null;
-      const m = JSON.parse(await resp.text());
-      if (!m || typeof m !== 'object') return null;
-      return {
-        screenCount: Number(m.screenCount) || undefined,
-        imageCount: Number(m.imageCount) || undefined,
-        screens: Array.isArray(m.screens) ? (m.screens as string[]) : undefined,
-        images: Array.isArray(m.images) ? (m.images as any[]) : undefined,
-      };
+      // device-export is the current export folder; fall back to the legacy
+      // device-config name so projects exported before the rename still resolve.
+      const paths = [
+        `project/${folder}/device-export/deploy-manifest.json`,
+        `project/${folder}/device-config/deploy-manifest.json`,
+      ];
+      for (const path of paths) {
+        const resp = await fetch(
+          `http://${host}:9103/api/eez-studio/read-text-file?path=${encodeURIComponent(path)}`
+        );
+        if (!resp.ok) continue;
+        const m = JSON.parse(await resp.text());
+        if (!m || typeof m !== 'object') continue;
+        return {
+          screenCount: Number(m.screenCount) || undefined,
+          imageCount: Number(m.imageCount) || undefined,
+          screens: Array.isArray(m.screens) ? (m.screens as string[]) : undefined,
+          images: Array.isArray(m.images) ? (m.images as any[]) : undefined,
+        };
+      }
+      return null;
     } catch {
       return null;
     }

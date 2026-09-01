@@ -4,7 +4,7 @@
  * Produces per-screen JSON files following the Firmware JSON Format spec
  * (see docs/t3000/architecture/lvgl-eez-project-json-format.md, Appendix B).
  *
- * Each output file goes to `<projectDir>/device-config/<screen_name>.json`.
+ * Each output file goes to `<projectDir>/device-export/<screen_name>.json`.
  */
 
 // ── Widget type mapping (LVGL prefix → firmware sub_type) ──

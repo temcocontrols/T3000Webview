@@ -53,7 +53,11 @@ export async function importProjectFromDevice(
     opts: DeviceImportOptions
 ): Promise<DeviceImportResult> {
     const { client, device, onLog = () => {} } = opts;
-    const projectDir = opts.projectDir || `project/${device.name}`;
+    // Panel names are not guaranteed unique across devices — append the device
+    // serial number (SN) so importing two same-named panels doesn't collide on
+    // the same project folder/file (e.g. "MyPanel_SN123456").
+    const projectName = `${device.name}_SN${device.serialNumber}`;
+    const projectDir = opts.projectDir || `project/${projectName}`;
     const stagingDir = `${projectDir}/device-import`;
     const log = onLog;
 
@@ -61,6 +65,7 @@ export async function importProjectFromDevice(
 
     log(`Importing from ${device.name}`);
     log(`  → IP: ${device.ip || "(mock)"}  SN: ${device.serialNumber}`);
+    log(`  → Project: ${projectDir}`);
 
     // Step 0 — create project folder skeleton
     log("=> Step 0 — Creating project folder...");
@@ -190,7 +195,12 @@ export async function importProjectFromDevice(
     log(`✔ Step 4.6 — Parameter grids ready (${gridCells} cells)`);
 
     // Step 5 — save the .eez-project
-    const projectPath = `${projectDir}/${device.name}.eez-project`;
+    // When a caller passes an explicit projectDir, name the file after the
+    // folder (keeps folder/file consistent); otherwise use the SN-qualified name.
+    const projectFileName = opts.projectDir
+        ? projectDir.split("/").filter(Boolean).pop() || projectName
+        : projectName;
+    const projectPath = `${projectDir}/${projectFileName}.eez-project`;
     log("=> Step 5 — Saving project...");
     const saveResp = await fetch(`/api/eez-studio/write-text-file?path=${encodeURIComponent(projectPath)}`, {
         method: "POST",

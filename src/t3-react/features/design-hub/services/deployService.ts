@@ -3,7 +3,7 @@
  *
  * Used by BOTH the EEZ editor toolbar ("Deploy to Device") and the Design Hub
  * project detail page, so every deploy entry point shares the same logic:
- *   export screens + images → write device-config/ + deploy-manifest.json →
+ *   export screens + images → write device-export/ + deploy-manifest.json →
  *   push to the chosen device via direct REST → record deploy log + activity →
  *   bind the project to the chosen device.
  *
@@ -115,7 +115,7 @@ async function loadProjectFromDisk(filePath: string): Promise<any> {
 }
 
 /**
- * Deploy an EEZ/LVGL project to a device: export → device-config + manifest →
+ * Deploy an EEZ/LVGL project to a device: export → device-export + manifest →
  * push → log → bind. Returns a result the drawer can show inline.
  */
 export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEezResult> {
@@ -126,24 +126,24 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     }
 
     const baseFolder = opts.filePath.replace(/[\\/][^\\/]+$/, "");
-    const deviceConfigDir = baseFolder + "\\device-config";
-    const manifestPath = deviceConfigDir + "\\deploy-manifest.json";
+    const deviceExportDir = baseFolder + "\\device-export";
+    const manifestPath = deviceExportDir + "\\deploy-manifest.json";
 
     // 1. Generate device JSON + images (front side).
     const screens = transformToDeviceJson(project);
     const images = deviceClient.extractDeviceImages(project as any);
 
-    // 2. Save device-config/ (backup) + deploy-manifest.json.
-    await makeFolder(deviceConfigDir);
+    // 2. Save device-export/ (backup) + deploy-manifest.json.
+    await makeFolder(deviceExportDir);
     let count = 0;
     for (const [screenName, screenData] of Object.entries(screens)) {
         await writeTextFile(
-            deviceConfigDir + "\\" + screenName + ".json",
+            deviceExportDir + "\\" + screenName + ".json",
             JSON.stringify({ [screenName]: screenData }, null, 2)
         );
         count++;
     }
-    const imageDir = deviceConfigDir + "\\images";
+    const imageDir = deviceExportDir + "\\images";
     if (images.length > 0) {
         await makeFolder(imageDir);
         for (const img of images) {
@@ -243,7 +243,7 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
             status: pushOk ? "success" : "warning",
             message: pushOk
                 ? pushMessage
-                : `${pushMessage} — screens saved locally to device-config`,
+                : `${pushMessage} — screens saved locally to device-export`,
             screenCount: count,
             imageCount: images.length,
             screens: Object.keys(screens),
@@ -270,7 +270,7 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         success: pushOk,
         message: pushOk
             ? pushMessage
-            : `${pushMessage} — screens saved locally to device-config`,
+            : `${pushMessage} — screens saved locally to device-export`,
         screens: Object.keys(screens),
         images: manifestImages,
         screenCount: count,

@@ -986,7 +986,7 @@ const RunEditSwitchControls = observer(
 
                     <ButtonAction
                         text="Deploy to Device"
-                        title="Export device JSON files to device-config\\ folder"
+                        title="Export device JSON files to device-export\\ folder"
                         icon="material:file_download"
                         iconSize={iconSize}
                         onClick={this.handleDeploy}
