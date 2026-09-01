@@ -317,7 +317,7 @@ export function generateParameterGrid(
     for (const col of columns) {
         cells.push(
             makeCell(
-                `param_grid_header_${col.key}`,
+                `param_grid_${pointType}_header_${col.key}`,
                 col.x,
                 headerY,
                 col.w,
@@ -337,7 +337,7 @@ export function generateParameterGrid(
         for (const col of columns) {
             cells.push(
                 makeCell(
-                    `param_grid_r${r}_c${col.key}`,
+                    `param_grid_${pointType}_r${r}_c${col.key}`,
                     col.x,
                     y,
                     col.w,

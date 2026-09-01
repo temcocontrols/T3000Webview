@@ -553,8 +553,7 @@ export function firmwareToProject(
                         if (bgEventNames.size > 0) {
                             const existing = bgPanel.eventHandlers || [];
                             const existingNames = new Set(existing.map((e: any) => e.eventName));
-                            for (const name of bgEventNames) {
-                                if (!existingNames.has(name)) {
+                            for (const name of bgEventNames) {                                if (!existingNames.has(name)) {
                                     existing.push({ eventName: name, handlerType: "flow" });
                                 }
                             }
@@ -562,6 +561,28 @@ export function firmwareToProject(
                             bgPanel.clickableFlag = true;
                         }
                     }
+                }
+            }
+
+            // ── Main menu: enable vertical scroll on the button container ──
+            // The firmware sets lv_obj_set_scroll_dir(ui_ButtonContainer,
+            // LV_DIR_VER) so all 7 items (WiFi, Network, Protocols, Schedule,
+            // Time, WireGuard, DDNS) are reachable by scrolling. The device JSON
+            // doesn't always carry this flag, so enforce it here to match the
+            // firmware behavior.
+            if (s.name === "main_menu") {
+                const bc = widgetComponents.find(
+                    (c: any) => c.identifier === "button_container"
+                );
+                if (bc) {
+                    const bcFlags = bc.widgetFlags || "";
+                    if (bcFlags.indexOf("SCROLLABLE") === -1) {
+                        bc.widgetFlags = bcFlags
+                            ? `${bcFlags}|SCROLLABLE|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW`
+                            : "SCROLLABLE|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW";
+                    }
+                    bc.flagScrollDirection = "ver"; // LV_DIR_VER
+                    bc.flagScrollbarMode = bc.flagScrollbarMode || "AUTO";
                 }
             }
 

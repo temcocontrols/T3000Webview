@@ -64,8 +64,8 @@ describe("parameter grid generation", () => {
 
         await saveProject(proj);
 
-        const header = cells.find((c: any) => c.identifier === "param_grid_header_label");
-        const firstRowRange = cells.find((c: any) => c.identifier === "param_grid_r0_crange");
+        const header = cells.find((c: any) => c.identifier === "param_grid_input_header_label");
+        const firstRowRange = cells.find((c: any) => c.identifier === "param_grid_input_r0_crange");
         console.log("header label:", header && header.text);
         console.log("row0 range:", firstRowRange && firstRowRange.text);
         console.log("input row0:", cells.slice(6, 12).map((c: any) => c.text).join(" | "));
@@ -91,12 +91,12 @@ describe("parameter grid generation", () => {
         const cells = panel.children.filter((c: any) => c.paramGrid);
         expect(cells.length).toBe(15 * 7 + 7);
         const headers = cells
-            .filter((c: any) => /^param_grid_header_/.test(c.identifier))
+            .filter((c: any) => /^param_grid_output_header_/.test(c.identifier))
             .map((c: any) => c.text);
         expect(headers.join("|")).toBe("Label|Value|A/M|D/A|Ctrl|SW|Range");
 
         const row0 = cells
-            .filter((c: any) => /^param_grid_r0_/.test(c.identifier))
+            .filter((c: any) => /^param_grid_output_r0_/.test(c.identifier))
             .map((c: any) => c.text);
         console.log("output row0:", row0.join(" | "));
 
@@ -123,12 +123,12 @@ describe("parameter grid generation", () => {
         const cells = panel.children.filter((c: any) => c.paramGrid);
         expect(cells.length).toBe(15 * 6 + 6);
         const headers = cells
-            .filter((c: any) => /^param_grid_header_/.test(c.identifier))
+            .filter((c: any) => /^param_grid_variable_header_/.test(c.identifier))
             .map((c: any) => c.text);
         expect(headers.join("|")).toBe("Label|Value|A/M|D/A|Ctrl|Range");
 
         const row0 = cells
-            .filter((c: any) => /^param_grid_r0_/.test(c.identifier))
+            .filter((c: any) => /^param_grid_variable_r0_/.test(c.identifier))
             .map((c: any) => c.text);
         console.log("variable row0:", row0.join(" | "));
 
@@ -163,9 +163,11 @@ describe("parameter grid generation", () => {
         expect(paramPanel(proj, "panel4_variable").hiddenFlag).toBe("true");
 
         // Distinct fields per type.
+        const typeOf = (pid: string) =>
+            pid === "panel4" ? "input" : pid === "panel4_output" ? "output" : "variable";
         const headers = (pid: string) =>
             paramPanel(proj, pid).children
-                .filter((c: any) => /^param_grid_header_/.test(c.identifier))
+                .filter((c: any) => new RegExp(`^param_grid_${typeOf(pid)}_header_`).test(c.identifier))
                 .map((c: any) => c.text);
         expect(headers("panel4").join("|")).toBe("Label|Value|A/M|D/A|Ctrl|Range");
         expect(headers("panel4_output").join("|")).toBe("Label|Value|A/M|D/A|Ctrl|SW|Range");
@@ -174,7 +176,7 @@ describe("parameter grid generation", () => {
         // Distinct default data: first data rows must differ.
         const row0 = (pid: string) =>
             paramPanel(proj, pid).children
-                .filter((c: any) => /^param_grid_r0_/.test(c.identifier))
+                .filter((c: any) => new RegExp(`^param_grid_${typeOf(pid)}_r0_`).test(c.identifier))
                 .map((c: any) => c.text)
                 .join(" | ");
         console.log("input row0   :", row0("panel4"));
