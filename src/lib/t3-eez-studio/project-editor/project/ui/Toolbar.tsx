@@ -37,12 +37,9 @@ import {
 import { closest } from "eez-studio-shared/dom";
 import { Icon } from "./fluent-toolbar";
 import { dockerBuildState } from "project-editor/lvgl/docker-build/docker-build-state";
-import { transformToDeviceJson } from "project-editor/build/firmware-export";
-import { base64ToBytes, deviceClient } from "project-editor/build/device-rest-client";
 import { getDeviceBinding } from "project-editor/build/device-binding";
-import { writeTextFile } from "project-editor/build/build";
-import { makeFolder } from "eez-studio-shared/util-electron";
 import * as notification from "eez-studio-ui/notification";
+import { DeployDeviceDrawer } from "../../../../../t3-react/features/design-hub/components/DeployDeviceDrawer";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -858,6 +855,27 @@ const RunEditSwitchControls = observer(
         static contextType = ProjectContext;
         declare context: React.ContextType<typeof ProjectContext>;
 
+        state = { deployOpen: false };
+
+        get deployProjectInfo() {
+            const projectStore = this.context;
+            const filePath = projectStore.filePath;
+            const baseFolder = filePath ? filePath.replace(/[\\/][^\\/]+$/, "") : "";
+            const folder = baseFolder.split(/[\\/]/).pop() || baseFolder;
+            const binding = filePath ? getDeviceBinding(filePath) : undefined;
+            const project = projectStore.project;
+            return {
+                id: `eez:${folder}`,
+                name: project.name || folder,
+                engine: "eez" as const,
+                folder,
+                serialNumber: binding?.serialNumber,
+                status: binding ? ("bound" as const) : ("local" as const),
+                lvglVersion: project.settings?.general?.lvglVersion,
+                pages: project.userPages?.length,
+            };
+        }
+
         get showFullSimulatorButton() {
             const projectStore = this.context;
             return (
@@ -877,121 +895,15 @@ const RunEditSwitchControls = observer(
             return previewStore.state === "building";
         }
 
-        handleDeploy = async () => {
+        handleDeploy = () => {
             const projectStore = this.context;
-            const project = projectStore.project;
-            const filePath = projectStore.filePath;
-            if (!filePath) {
+            if (!projectStore.filePath) {
                 notification.error("Save the project first before deploying.");
                 return;
             }
-
-            // Use path.dirname — cross-platform, handles both / and \
-            const baseFolder = filePath.replace(/[\\/][^\\/]+$/, "");
-
-            // The target device is bound automatically when the project is
-            // imported via "Load from Device" (open-projects-v2.tsx).
-            const binding = getDeviceBinding(filePath);
-            if (!binding) {
-                notification.error(
-                    "This project is not bound to a device. Open it via 'Load from Device' to bind it, then deploy."
-                );
-                return;
-            }
-
-            try {
-                // 1. Generate device JSON at the front side: screens + images
-                const screens = transformToDeviceJson(project);
-                const images = deviceClient.extractDeviceImages(project as any);
-
-                // 2. Save to local device-config/ folder for backup
-                //    (virtual: project/<panel>/device-config → real disk:
-                //     <runtime>/T3Web/t3-eez/project/<panel>/device-config)
-                const deviceConfigDir = baseFolder + "\\device-config";
-                await makeFolder(deviceConfigDir);
-
-                let count = 0;
-                for (const [screenName, screenData] of Object.entries(screens)) {
-                    const json = JSON.stringify(
-                        { [screenName]: screenData },
-                        null,
-                        2
-                    );
-                    const screenPath = deviceConfigDir + "\\" + screenName + ".json";
-                    await writeTextFile(screenPath, json);
-                    count++;
-                }
-
-                // Save each generated image as full JSON + raw PNG
-                const imageDir = deviceConfigDir + "\\images";
-                if (images.length > 0) {
-                    await makeFolder(imageDir);
-                    for (const img of images) {
-                        await writeTextFile(
-                            imageDir + "\\" + img.name + ".json",
-                            JSON.stringify(img, null, 2)
-                        );
-                        await fetch(
-                            `/api/eez-studio/write-file?path=${encodeURIComponent(imageDir + "\\" + img.name + ".png")}`,
-                            { method: "POST", body: base64ToBytes(img.data_base64) }
-                        );
-                    }
-                }
-
-                // Backup manifest — records exactly what was generated
-                await writeTextFile(
-                    deviceConfigDir + "\\deploy-manifest.json",
-                    JSON.stringify(
-                        {
-                            exportedAt: new Date().toISOString(),
-                            serialNumber: deviceClient.deviceSerialNumber || undefined,
-                            panelId: deviceClient.devicePanelId || undefined,
-                            screenCount: count,
-                            imageCount: images.length,
-                            screens: Object.keys(screens),
-                            images: images.map((i) => ({
-                                name: i.name,
-                                width: i.width,
-                                height: i.height,
-                                color_format: i.color_format,
-                            })),
-                        },
-                        null,
-                        2
-                    )
-                );
-
-                // 3. Push screens + images to device via direct REST (mock or real)
-                try {
-                    // connect() sets mode — mock mode returns instantly, real probes the device
-                    const conn = await deviceClient.connect(
-                        binding.ip,
-                        binding.panelId,
-                        binding.serialNumber
-                    );
-                    if (conn.error) {
-                        throw new Error(conn.error);
-                    }
-                    const result = await deviceClient.deployAllScreens(project as any);
-                    const imgNote =
-                        result && (result.imagesDeployed ?? 0) > 0
-                            ? ` + ${result.imagesDeployed} image${result.imagesDeployed === 1 ? "" : "s"}`
-                            : "";
-                    notification.success(
-                        `Deployed ${count} screen${count > 1 ? "s" : ""} + ${images.length} image${images.length === 1 ? "" : "s"} to device-config${result ? ` (${result.deployed} pushed to device${imgNote})` : ""}`,
-                        { autoClose: 4000 }
-                    );
-                } catch (apiErr: any) {
-                    notification.warning(
-                        `Saved ${count} screen${count > 1 ? "s" : ""} + ${images.length} image${images.length === 1 ? "" : "s"} locally (device push failed: ${apiErr.message})`,
-                        { autoClose: 4000 }
-                    );
-                }
-            } catch (err: any) {
-                notification.error(
-                    `Deploy failed: ${err?.message || err}`
-                );
-            }
+            // Open the shared Deploy-to-Device drawer: pick a device, deploy
+            // (real push), and view deploy logs — same logic as Design Hub.
+            this.setState({ deployOpen: true });
         };
 
         render() {
@@ -1079,6 +991,16 @@ const RunEditSwitchControls = observer(
                         iconSize={iconSize}
                         onClick={this.handleDeploy}
                     />
+
+                    {this.state.deployOpen && (
+                        <DeployDeviceDrawer
+                            open={this.state.deployOpen}
+                            onClose={() => this.setState({ deployOpen: false })}
+                            project={this.deployProjectInfo}
+                            eezProject={this.context.project}
+                            filePath={this.context.filePath}
+                        />
+                    )}
                 </div>
             );
         }

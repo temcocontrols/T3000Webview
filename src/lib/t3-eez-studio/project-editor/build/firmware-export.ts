@@ -296,6 +296,11 @@ export function transformToDeviceJson(
                 if (!sourceWidget.events) sourceWidget.events = {};
                 if (!sourceWidget.events[evtName]) {
                     sourceWidget.events[evtName] = { actions: [] };
+                } else if (!sourceWidget.events[evtName].actions) {
+                    // The event entry may already exist from eventHandlers
+                    // export ({ action, user_data } only) — make sure the
+                    // actions array is present before pushing into it.
+                    sourceWidget.events[evtName].actions = [];
                 }
                 if (targetAction.actions) {
                     sourceWidget.events[evtName].actions.push(...targetAction.actions);

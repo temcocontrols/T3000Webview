@@ -35,7 +35,7 @@ import { designHubService } from '../services/designHubService';
 import { useDesignHubStore } from '../store/designHubStore';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { CompareDrawings } from '../components/CompareDrawings';
-import { DeployDeviceDialog } from '../components/DeployDeviceDialog';
+import { DeployDeviceDrawer } from '../components/DeployDeviceDrawer';
 import { DeleteProjectPopover } from '../components/DeleteProjectPopover';
 import { ConfirmPopover } from '../components/ConfirmPopover';
 import { RenameProjectDialog } from '../components/RenameProjectDialog';
@@ -517,7 +517,7 @@ export const ProjectDetailPage: React.FC = () => {
             </div>
           )}
 
-          <Button size="small" appearance="primary" icon={<RocketRegular style={{ fontSize: 14 }} />} onClick={() => setDeployOpen(true)} style={{ fontWeight: 600 }}>
+          <Button size="medium" appearance="primary" icon={<RocketRegular style={{ fontSize: 10 }} />} onClick={() => setDeployOpen(true)} style={{ fontWeight: 500 }}>
             Deploy to device
           </Button>
 
@@ -671,11 +671,12 @@ export const ProjectDetailPage: React.FC = () => {
         </DrawerBody>
       </Drawer>
 
-      <DeployDeviceDialog
+      <DeployDeviceDrawer
         open={deployOpen}
         project={project}
         onClose={() => setDeployOpen(false)}
         onDeploy={handleDeploy}
+        onDeployed={() => reloadDeployLogs()}
       />
 
       <RenameProjectDialog
