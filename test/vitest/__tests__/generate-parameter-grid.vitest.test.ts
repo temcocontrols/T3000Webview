@@ -1,0 +1,58 @@
+import { describe, it, expect } from "vitest";
+import { generateParameterGrid, gridCellText } from "../../../src/lib/t3-eez-studio/project-editor/build/generate-parameter-grid";
+
+const BASE = "http://localhost:3003/api/eez-studio";
+const enc = encodeURIComponent;
+const projectPath = "project/T3-XX-ESP11113/T3-XX-ESP11113.eez-project";
+
+describe("parameter grid generation", () => {
+    it("maps raw point codes to display text", () => {
+        expect(gridCellText({ label: "", fullLabel: "AHU-1 Supply Temp1s" }, "label")).toBe("AHU-1 Supply Temp1s");
+        expect(gridCellText({ fValue: "-40000" }, "value")).toBe("-40000");
+        expect(gridCellText({ autoManual: "0" }, "am")).toBe("Manual");
+        expect(gridCellText({ autoManual: "1" }, "am")).toBe("Auto");
+        expect(gridCellText({ digitalAnalog: "1" }, "da")).toBe("Analog");
+        expect(gridCellText({ digitalAnalog: "0" }, "da")).toBe("Digital");
+        expect(gridCellText({ control: "0" }, "ctrl")).toBe("OFF");
+        expect(gridCellText({ control: "1" }, "ctrl")).toBe("ON");
+        expect(gridCellText({ digitalAnalog: "0", rangeField: "2" }, "range")).toBe("Close/Open");
+        expect(gridCellText({ digitalAnalog: "0", rangeField: "0" }, "range")).toBe("Unused");
+    });
+
+    it("generates a grid into the current project from the DB and verifies", async () => {
+        const proj = JSON.parse(
+            await (await fetch(`${BASE}/read-text-file?path=${enc(projectPath)}`)).text()
+        );
+        const sn = proj.importedFrom?.serialNumber;
+        const pointsResp = await fetch(`http://localhost:3003/api/t3_device/devices/${sn}/input-points`);
+        const pointsData = await pointsResp.json();
+        const inputPoints = pointsData.input_points || [];
+        expect(inputPoints.length).toBeGreaterThan(0);
+
+        const { added } = generateParameterGrid(proj, inputPoints, { maxRows: 15 });
+        expect(added).toBe(15 * 6 + 6); // 15 rows x 6 cols + 6 header
+
+        const page = proj.userPages.find(p => p.name === "parameters");
+        const container = page.components.find(c => c.identifier === "container1");
+        const panel = container.children.find(c => c.identifier === "panel4");
+        const cells = panel.children.filter((c: any) => c.paramGrid);
+        expect(cells.length).toBe(15 * 6 + 6);
+        expect(panel.flagScrollDirection).toBe("all"); // LV_DIR_ALL (both directions)
+        expect(panel.widgetFlags).toContain("SCROLLABLE");
+
+        // Write the generated grid back to the project so it's visible now
+        const w = await fetch(`${BASE}/write-text-file?path=${enc(projectPath)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(proj),
+        });
+        expect(w.status).toBe(200);
+
+        // Sample a couple of cell values for the report
+        const header = cells.find((c: any) => c.identifier === "param_grid_header_label");
+        const firstRowRange = cells.find((c: any) => c.identifier === "param_grid_r0_crange");
+        console.log("header label:", header && header.text);
+        console.log("row0 range:", firstRowRange && firstRowRange.text);
+        console.log("row0 cells:", cells.slice(6, 12).map((c: any) => c.text).join(" | "));
+    }, 30000);
+});

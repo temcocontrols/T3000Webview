@@ -1056,6 +1056,36 @@ function firmwareWidgetToComponent(
         comp.clickableFlag = false;
     }
 
+    // ── Scroll (panels / containers) ──
+    // Firmware: `scrollable: true` + `scroll_dir` (e.g. "BOTH"). Map to EEZ's
+    // flagScrollDirection (LV_DIR_* enum: none/top/left/bottom/right/hor/ver/all)
+    // and make sure the SCROLLABLE flag is present. "BOTH" is not a valid EEZ
+    // enum value — it maps to "all" (LV_DIR_ALL = HOR|VER).
+    const fwScrollable = (w as any).scrollable || (w as any).scroll;
+    if (fwScrollable || (w as any).scroll_dir) {
+        const dir = String((w as any).scroll_dir || "").toUpperCase();
+        const dirMap: Record<string, string> = {
+            BOTH: "all",
+            ALL: "all",
+            HOR: "hor",
+            HORIZONTAL: "hor",
+            VER: "ver",
+            VERTICAL: "ver",
+            LEFT: "left",
+            RIGHT: "right",
+            TOP: "top",
+            BOTTOM: "bottom",
+            NONE: "none",
+        };
+        if (dir) comp.flagScrollDirection = dirMap[dir] || "all";
+        const flags = comp.widgetFlags || "";
+        if (flags.indexOf("SCROLLABLE") === -1) {
+            comp.widgetFlags = flags
+                ? `${flags}|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW`
+                : "SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW";
+        }
+    }
+
     // ── Children (panel / button / dropdown) ──
     if (w.children) {
         comp.children = Object.entries(w.children).map(([cid, cw]) =>

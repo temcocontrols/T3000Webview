@@ -16,6 +16,7 @@
 import { DeviceRestClient } from "./device-rest-client";
 import { firmwareToProject } from "./firmware-loader";
 import { setDeviceBinding } from "./device-binding";
+import { generateParameterGrid } from "./generate-parameter-grid";
 
 export interface DeviceImportInfo {
     name: string;
@@ -152,6 +153,25 @@ export async function importProjectFromDevice(
         log(`  → ${loadedImageCount}/${project.bitmaps.length} images saved to ${imgDir}`);
         log(`✔ Step 4.5 — Images ready (${loadedImageCount}/${project.bitmaps.length})`);
     }
+
+    // Step 4.6 — generate default parameter grid (INPUT page) from the DB
+    log("=> Step 4.6 — Generating parameter grid (inputs)...");
+    let gridCells = 0;
+    try {
+        const pointsResp = await fetch(
+            `/api/t3_device/devices/${device.serialNumber}/input-points`
+        );
+        const pointsData = pointsResp.ok ? await pointsResp.json() : null;
+        const inputPoints = (pointsData && pointsData.input_points) || [];
+        gridCells = generateParameterGrid(project as any, inputPoints).added;
+        log(
+            `  → ${inputPoints.length} input points → ${gridCells} grid cells`
+        );
+    } catch (err) {
+        console.error("[device-import] parameter grid generation failed:", err);
+        log("  → grid generation skipped (no input points data)");
+    }
+    log(`✔ Step 4.6 — Parameter grid ready (${gridCells} cells)`);
 
     // Step 5 — save the .eez-project
     const projectPath = `${projectDir}/${device.name}.eez-project`;
