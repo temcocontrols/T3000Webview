@@ -4,10 +4,13 @@ import {
     useToastController,
     Toast,
     ToastTitle,
+    ToastTrigger,
+    Button,
     ToastIntent,
     FluentProvider,
     webLightTheme,
 } from "@fluentui/react-components";
+import { DismissRegular } from "@fluentui/react-icons";
 
 // ── Module-level refs to the Fluent UI toast controller ──────────────
 
@@ -63,6 +66,31 @@ export const container: React.ReactElement = (
 
 // ── Public API (same signatures as before) ───────────────────────────
 
+/** Toast body with a visible dismiss (✕) button so the user can close it
+ *  immediately instead of waiting for the auto-close timeout. */
+const ToastContent: React.FC<{ toastId: ToastId; message: string }> = ({
+    toastId,
+    message,
+}) => (
+    <Toast>
+        <ToastTitle
+            style={{ fontSize: 13, lineHeight: 1.3, fontWeight: 400 }}
+            action={
+                <ToastTrigger toastId={toastId}>
+                    <Button
+                        appearance="transparent"
+                        size="small"
+                        icon={<DismissRegular />}
+                        aria-label="Dismiss notification"
+                    />
+                </ToastTrigger>
+            }
+        >
+            {message}
+        </ToastTitle>
+    </Toast>
+);
+
 function dispatch(message: string, intent: ToastIntent, autoClose: number | false = 3000): ToastId {
     const id = nextId();
     if (!_dispatchToast) {
@@ -71,9 +99,7 @@ function dispatch(message: string, intent: ToastIntent, autoClose: number | fals
     }
 
     _dispatchToast(
-        <Toast>
-            <ToastTitle>{message}</ToastTitle>
-        </Toast>,
+        <ToastContent toastId={id} message={message} />,
         {
             toastId: id,
             intent,
@@ -107,9 +133,7 @@ export function update(toastId: ToastId, options: { message?: string; autoClose?
     _updateToast({
         toastId,
         content: options.message ? (
-            <Toast>
-                <ToastTitle>{options.message}</ToastTitle>
-            </Toast>
+            <ToastContent toastId={toastId} message={options.message} />
         ) : undefined,
         timeout: options.autoClose === false ? -1 : (options.autoClose ?? 3000),
     } as any);
