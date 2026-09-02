@@ -31,6 +31,20 @@ function paramPanel(proj: any, panelId: string) {
     return container.children.find((c: any) => c.identifier === panelId);
 }
 
+// Cell display text: label cells expose `.text`; Range cells are UI-only
+// dropdowns exposing `.options` (newline-joined string) + `.selected`
+// (editor-interactive, stripped on export). Read whichever the cell type has.
+function cellText(c: any): string {
+    if (!c) return "";
+    if (typeof c.text === "string") return c.text;
+    if (typeof c.options === "string") {
+        const lines = c.options.split("\n");
+        const idx = typeof c.selected === "number" ? c.selected : 0;
+        return lines[idx] ?? "";
+    }
+    return "";
+}
+
 describe("parameter grid generation", () => {
     it("maps raw point codes to display text", () => {
         expect(gridCellText({ label: "", fullLabel: "AHU-1 Supply Temp1s" }, "label")).toBe("AHU-1 Supply Temp1s");
@@ -66,9 +80,16 @@ describe("parameter grid generation", () => {
 
         const header = cells.find((c: any) => c.identifier === "param_grid_input_header_label");
         const firstRowRange = cells.find((c: any) => c.identifier === "param_grid_input_r0_crange");
-        console.log("header label:", header && header.text);
-        console.log("row0 range:", firstRowRange && firstRowRange.text);
-        console.log("input row0:", cells.slice(6, 12).map((c: any) => c.text).join(" | "));
+        console.log("header label:", header && cellText(header));
+        console.log("row0 range:", firstRowRange && cellText(firstRowRange));
+        console.log("input row0:", cells.slice(6, 12).map(cellText).join(" | "));
+
+        // Range data-row cells are UI-only dropdowns (editor-interactive).
+        expect(firstRowRange).toBeTruthy();
+        expect(firstRowRange.type).toBe("LVGLDropdownWidget");
+        expect(typeof firstRowRange.options).toBe("string");
+        expect(firstRowRange.options.split("\n").length).toBeGreaterThan(0);
+        expect(typeof firstRowRange.selected).toBe("number");
     }, 30000);
 
     it("generates an OUTPUT grid into its own panel (firmware fields: +SW col), hidden by default", async () => {
@@ -92,12 +113,12 @@ describe("parameter grid generation", () => {
         expect(cells.length).toBe(15 * 7 + 7);
         const headers = cells
             .filter((c: any) => /^param_grid_output_header_/.test(c.identifier))
-            .map((c: any) => c.text);
+            .map(cellText);
         expect(headers.join("|")).toBe("Label|Value|A/M|D/A|Ctrl|SW|Range");
 
         const row0 = cells
             .filter((c: any) => /^param_grid_output_r0_/.test(c.identifier))
-            .map((c: any) => c.text);
+            .map(cellText);
         console.log("output row0:", row0.join(" | "));
 
         await saveProject(proj);
@@ -124,12 +145,12 @@ describe("parameter grid generation", () => {
         expect(cells.length).toBe(15 * 6 + 6);
         const headers = cells
             .filter((c: any) => /^param_grid_variable_header_/.test(c.identifier))
-            .map((c: any) => c.text);
+            .map(cellText);
         expect(headers.join("|")).toBe("Label|Value|A/M|D/A|Ctrl|Range");
 
         const row0 = cells
             .filter((c: any) => /^param_grid_variable_r0_/.test(c.identifier))
-            .map((c: any) => c.text);
+            .map(cellText);
         console.log("variable row0:", row0.join(" | "));
 
         await saveProject(proj);
@@ -168,7 +189,7 @@ describe("parameter grid generation", () => {
         const headers = (pid: string) =>
             paramPanel(proj, pid).children
                 .filter((c: any) => new RegExp(`^param_grid_${typeOf(pid)}_header_`).test(c.identifier))
-                .map((c: any) => c.text);
+                .map(cellText);
         expect(headers("panel4").join("|")).toBe("Label|Value|A/M|D/A|Ctrl|Range");
         expect(headers("panel4_output").join("|")).toBe("Label|Value|A/M|D/A|Ctrl|SW|Range");
         expect(headers("panel4_variable").join("|")).toBe("Label|Value|A/M|D/A|Ctrl|Range");
@@ -177,7 +198,7 @@ describe("parameter grid generation", () => {
         const row0 = (pid: string) =>
             paramPanel(proj, pid).children
                 .filter((c: any) => new RegExp(`^param_grid_${typeOf(pid)}_r0_`).test(c.identifier))
-                .map((c: any) => c.text)
+                .map(cellText)
                 .join(" | ");
         console.log("input row0   :", row0("panel4"));
         console.log("output row0  :", row0("panel4_output"));

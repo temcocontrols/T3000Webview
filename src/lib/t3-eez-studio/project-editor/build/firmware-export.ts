@@ -102,6 +102,40 @@ function transformComponent(c: any): Record<string, any> | null {
 
     if (!mapped) return null;
 
+    // ── UI-only parameter-grid Range dropdowns ──
+    // These are editor-interactive dropdowns (click to pick a range) but must
+    // NOT reach the device: the firmware has its own native range dialog.
+    // Strip them back to a plain label showing the currently-selected option.
+    if (t === "LVGLDropdownWidget" && c.paramGrid === true) {
+        const ident = restoreDeviceWidgetName(
+            c.identifier ||
+                (c.name ? c.name.replace(/\s+/g, "_") : "") ||
+                ("w_" + (c.objID || "").slice(0, 8))
+        );
+        // options is a newline-joined string in the EEZ project
+        // (array:string literal). Split to pick the selected label.
+        const options: string[] = typeof c.options === "string"
+            ? c.options.split("\n")
+            : Array.isArray(c.options)
+              ? c.options.map((o: any) => (typeof o === "string" ? o : o.label || o.text || "?"))
+              : [];
+        const selIdx = typeof c.selected === "number" ? c.selected : 0;
+        const label = options[selIdx] ?? "";
+        const obj: Record<string, any> = {
+            type: "Widget",
+            sub_type: "label",
+            x_pos: c.left ?? 0,
+            y_pos: c.top ?? 0,
+            width: c.width ?? 0,
+            height: c.height ?? 0,
+            obj_text: label,
+            text_type: "literal",
+        };
+        const ls = c.localStyles;
+        if (ls?.definition) obj.style = ls.definition;
+        return { [ident]: obj };
+    }
+
     // Widget name = identifier, falling back to objID prefix. Strip the
     // import-uniquify suffix so the device gets its original widget name back.
     const ident: string = restoreDeviceWidgetName(

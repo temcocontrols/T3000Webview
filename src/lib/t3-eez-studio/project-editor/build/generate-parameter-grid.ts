@@ -12,9 +12,18 @@
  * hidden/locked from the editor UI.
  */
 
-import { getRangeLabel as inputRangeLabel } from "../../../../t3-react/features/inputs/data/rangeData";
-import { getRangeLabel as outputRangeLabel } from "../../../../t3-react/features/outputs/data/rangeData";
-import { getRangeLabel as variableRangeLabel } from "../../../../t3-react/features/variables/data/rangeData";
+import {
+    getRangeLabel as inputRangeLabel,
+    getRangeOptions as inputGetRangeOptions,
+} from "../../../../t3-react/features/inputs/data/rangeData";
+import {
+    getRangeLabel as outputRangeLabel,
+    getRangeOptions as outputGetRangeOptions,
+} from "../../../../t3-react/features/outputs/data/rangeData";
+import {
+    getRangeLabel as variableRangeLabel,
+    getRangeOptions as variableGetRangeOptions,
+} from "../../../../t3-react/features/variables/data/rangeData";
 
 /** Which point table the grid shows. Matches the firmware's PARAM_TABLE_*. */
 export type ParameterPointType = "input" | "output" | "variable";
@@ -256,6 +265,120 @@ function makeCell(
     };
 }
 
+/** Resolve the range option list for a point (firmware table per point type).
+ *  digital_analog picks digital (0) vs analog (1) — same as the device. */
+function getRangeOptionsForType(
+    pointType: ParameterPointType,
+    digitalAnalog: number
+): { value: number; label: string }[] {
+    const opts =
+        pointType === "output"
+            ? outputGetRangeOptions(digitalAnalog)
+            : pointType === "variable"
+              ? variableGetRangeOptions(digitalAnalog)
+              : inputGetRangeOptions(digitalAnalog);
+    return (opts || []).map(o => ({ value: o.value, label: o.label }));
+}
+
+/** Build an LVGLDropdownWidget cell for the Range column.
+ *
+ * UI-only: in the EEZ editor this renders as a real LVGL dropdown (click to
+ * open the range list). Nothing here pushes to the device — the dropdown
+ * `selected` only reflects the point's current rangeField value. On export
+ * (firmware-export.ts) these are stripped back to a static label so the
+ * device keeps its own native range dialog.
+ */
+function makeRangeDropdown(
+    identifier: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    pt: InputPointData,
+    pointType: ParameterPointType,
+    fontName: string,
+    color: string
+): Record<string, any> {
+    const ts = Date.now().toString(36);
+    const uid = `${identifier}_${ts}_${_cellCounter++}`;
+    const da = parseInt(pt.digitalAnalog || "0", 10);
+    const rv = parseInt(pt.rangeField || "0", 10);
+    const ranges = getRangeOptionsForType(pointType, da);
+
+    // LVGL dropdown `options` is stored as a NEWLINE-JOINED STRING in the EEZ
+    // project (property type "array:string", edited as MultilineText). The
+    // simulator codegen passes it through `unescapeCString`, which preserves
+    // literal newlines — so `lv_dropdown_set_options` receives one option per
+    // line. `selected` is the zero-based index into the list. We include every
+    // range option label and always keep the point's current rangeField
+    // selected (fall back to index 0 if not found).
+    const options = ranges.map(o => o.label).join("\n");
+    const selIdx = ranges.findIndex(o => o.value === rv);
+    const selected = selIdx >= 0 ? selIdx : 0;
+
+    return {
+        objID: uid,
+        type: "LVGLDropdownWidget",
+        left: x,
+        top: y,
+        width: w,
+        height: h,
+        leftUnit: "px",
+        topUnit: "px",
+        widthUnit: "px",
+        heightUnit: "px",
+        customInputs: [],
+        customOutputs: [],
+        hiddenFlagType: "literal",
+        clickableFlag: true,
+        clickableFlagType: "literal",
+        checkedStateType: "literal",
+        disabledStateType: "literal",
+        widgetFlags:
+            "CLICKABLE|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
+        states: "",
+        style: {
+            objID: `${uid}_style_ref_${ts}`,
+            useStyle: "default",
+            conditionalStyles: [],
+            childStyles: [],
+        },
+        localStyles: {
+            objID: `${uid}_style_${ts}`,
+            definition: {
+                MAIN: {
+                    DEFAULT: {
+                        text_font: fontName,
+                        text_color: color,
+                        align: "TOP_LEFT",
+                        text_align: "LEFT",
+                        pad_left: 4,
+                        pad_right: 4,
+                        bg_color: "#16222F",
+                        bg_opa: 255,
+                        radius: 4,
+                        border_color: "#2C3E50",
+                        border_width: 1,
+                        border_opa: 255,
+                    },
+                },
+            },
+        },
+        groupIndex: 0,
+        eventHandlers: [],
+        timeline: "",
+        children: "",
+        options,
+        optionsType: "literal",
+        selected,
+        selectedType: "literal",
+        direction: "bottom",
+        identifier,
+        // Marker so the editor can hide/lock the auto-generated grid cells.
+        paramGrid: true,
+    };
+}
+
 /**
  * Fill the `parameters` screen's scrollable panel with a default grid.
  * Returns the number of cell widgets added (0 if the panel wasn't found).
@@ -335,19 +458,37 @@ export function generateParameterGrid(
     rows.forEach((pt, r) => {
         const y = headerY + rowH + 2 + r * rowH;
         for (const col of columns) {
-            cells.push(
-                makeCell(
-                    `param_grid_${pointType}_r${r}_c${col.key}`,
-                    col.x,
-                    y,
-                    col.w,
-                    rowH,
-                    gridCellText(pt, col.key, pointType),
-                    textColor,
-                    fontName,
-                    false
-                )
-            );
+            // Range cells become UI-only dropdowns in the editor (click to pick
+            // a range, never sent to the device); all other cells stay labels.
+            if (col.key === "range") {
+                cells.push(
+                    makeRangeDropdown(
+                        `param_grid_${pointType}_r${r}_c${col.key}`,
+                        col.x,
+                        y,
+                        col.w,
+                        rowH,
+                        pt,
+                        pointType,
+                        fontName,
+                        textColor
+                    )
+                );
+            } else {
+                cells.push(
+                    makeCell(
+                        `param_grid_${pointType}_r${r}_c${col.key}`,
+                        col.x,
+                        y,
+                        col.w,
+                        rowH,
+                        gridCellText(pt, col.key, pointType),
+                        textColor,
+                        fontName,
+                        false
+                    )
+                );
+            }
         }
     });
 
