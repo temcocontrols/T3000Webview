@@ -205,10 +205,13 @@ function makeCell(
     text: string,
     color: string,
     fontName: string,
-    isHeader: boolean
+    isHeader: boolean,
+    opts?: { clickable?: boolean; eventName?: string }
 ): Record<string, any> {
     const ts = Date.now().toString(36);
     const uid = `${identifier}_${ts}_${_cellCounter++}`;
+    const clickable = opts?.clickable ?? false;
+    const eventName = opts?.eventName;
     return {
         objID: uid,
         type: "LVGLLabelWidget",
@@ -223,11 +226,13 @@ function makeCell(
         customInputs: [],
         customOutputs: [],
         hiddenFlagType: "literal",
-        clickableFlag: false,
+        clickableFlag: clickable,
         clickableFlagType: "literal",
         checkedStateType: "literal",
         disabledStateType: "literal",
-        widgetFlags: "CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
+        widgetFlags:
+            (clickable ? "CLICKABLE|" : "") +
+            "CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
         states: "",
         style: {
             objID: `${uid}_style_ref_${ts}`,
@@ -254,7 +259,9 @@ function makeCell(
             },
         },
         groupIndex: 0,
-        eventHandlers: [],
+        eventHandlers: eventName
+            ? [{ eventName, handlerType: "flow" }]
+            : [],
         timeline: "",
         children: "",
         text,
@@ -280,49 +287,186 @@ function getRangeOptionsForType(
     return (opts || []).map(o => ({ value: o.value, label: o.label }));
 }
 
-/** Build an LVGLDropdownWidget cell for the Range column.
+/** Title shown on the popup opened when a Range grid cell is clicked (this is
+ *  the device's dialog title for digital ranges). */
+const RANGE_POPUP_TITLE = "Select digital range";
+
+/** Size of the range-picker popup panel. */
+const RANGE_POPUP_WIDTH = 320;
+const RANGE_POPUP_HEIGHT = 170;
+
+/** Opacity (0-255) of the dismiss backdrop behind an open popup. 0 = fully
+ *  transparent: it exists only to catch taps outside the popup (tapping the
+ *  grid area closes it) without adding any visible overlay / hiding the
+ *  screen title. */
+const RANGE_POPUP_BACKDROP_OPA = 0;
+
+/** How much bigger (px) the popup title font is vs the grid cell font. */
+const RANGE_POPUP_TITLE_FONT_DELTA = 6;
+
+/** Derive the popup title font from the grid font (e.g. "MONTSERRAT_12" →
+ *  "MONTSERRAT_18"). Falls back to the same font when it has no size suffix. */
+function bumpFontSize(fontName: string, delta: number): string {
+    const m = /^(.*?)(\d+)$/.exec(fontName);
+    if (!m) return fontName;
+    const size = parseInt(m[2], 10);
+    return `${m[1]}${Math.max(size + delta, 12)}`;
+}
+
+/** One clickable Range cell + the point it belongs to (for popup options). */
+interface RangeRowMeta {
+    rowIndex: number;
+    pt: InputPointData;
+    cell: Record<string, any>;
+}
+
+/** Build the hidden "Select digital range .." popup for one grid row.
  *
- * UI-only: in the EEZ editor this renders as a real LVGL dropdown (click to
- * open the range list). Nothing here pushes to the device — the dropdown
- * `selected` only reflects the point's current rangeField value. On export
- * (firmware-export.ts) these are stripped back to a static label so the
- * device keeps its own native range dialog.
+ * UI-only: clicking the row's Range cell in the EEZ editor shows this panel,
+ * which contains a real LVGL dropdown pre-loaded with the point's range
+ * options (the list the device's native range dialog would present). Nothing
+ * here pushes to the device — on export the popup + its flow wiring carry the
+ * `paramGridPopup` marker and are dropped, leaving only the static Range
+ * label (the device keeps its own native range dialog).
  */
-function makeRangeDropdown(
-    identifier: string,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    pt: InputPointData,
+function makeRangePopup(
+    baseId: string,
     pointType: ParameterPointType,
+    pt: InputPointData,
     fontName: string,
-    color: string
-): Record<string, any> {
+    titleFont: string,
+    textColor: string,
+    headerColor: string,
+    x: number,
+    y: number
+): { panel: Record<string, any>; dropdown: Record<string, any> } {
     const ts = Date.now().toString(36);
-    const uid = `${identifier}_${ts}_${_cellCounter++}`;
     const da = parseInt(pt.digitalAnalog || "0", 10);
     const rv = parseInt(pt.rangeField || "0", 10);
     const ranges = getRangeOptionsForType(pointType, da);
-
-    // LVGL dropdown `options` is stored as a NEWLINE-JOINED STRING in the EEZ
-    // project (property type "array:string", edited as MultilineText). The
-    // simulator codegen passes it through `unescapeCString`, which preserves
-    // literal newlines — so `lv_dropdown_set_options` receives one option per
-    // line. `selected` is the zero-based index into the list. We include every
-    // range option label and always keep the point's current rangeField
-    // selected (fall back to index 0 if not found).
     const options = ranges.map(o => o.label).join("\n");
     const selIdx = ranges.findIndex(o => o.value === rv);
     const selected = selIdx >= 0 ? selIdx : 0;
 
-    return {
-        objID: uid,
-        type: "LVGLDropdownWidget",
+    const panelUid = `${baseId}_panel_${ts}_${_cellCounter++}`;
+    const panel: Record<string, any> = {
+        objID: panelUid,
+        type: "LVGLPanelWidget",
         left: x,
         top: y,
-        width: w,
-        height: h,
+        width: RANGE_POPUP_WIDTH,
+        height: RANGE_POPUP_HEIGHT,
+        leftUnit: "px",
+        topUnit: "px",
+        widthUnit: "px",
+        heightUnit: "px",
+        customInputs: [],
+        customOutputs: [],
+        hiddenFlagType: "literal",
+        hiddenFlag: "true",
+        clickableFlag: true,
+        clickableFlagType: "literal",
+        checkedStateType: "literal",
+        disabledStateType: "literal",
+        widgetFlags: "CLICKABLE|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
+        states: "",
+        style: {
+            objID: `${panelUid}_style_ref_${ts}`,
+            useStyle: "default",
+            conditionalStyles: [],
+            childStyles: [],
+        },
+        localStyles: {
+            objID: `${panelUid}_style_${ts}`,
+            definition: {
+                MAIN: {
+                    DEFAULT: {
+                        bg_color: "#141C27",
+                        bg_opa: 240,
+                        radius: 10,
+                        border_color: "#8A93A0",
+                        border_width: 1,
+                        border_opa: 255,
+                        shadow_color: "#000000",
+                        shadow_opa: 180,
+                        shadow_width: 50,
+                        shadow_spread: 4,
+                        pad_left: 0,
+                        pad_right: 0,
+                        pad_top: 0,
+                        pad_bottom: 0,
+                    },
+                },
+            },
+        },
+        groupIndex: 0,
+        eventHandlers: [],
+        timeline: "",
+        children: [],
+        identifier: `${baseId}_panel`,
+        // UI-only: firmware-export drops paramGridPopup widgets.
+        paramGridPopup: true,
+    };
+
+    const titleUid = `${baseId}_title_${ts}_${_cellCounter++}`;
+    const title: Record<string, any> = {
+        objID: titleUid,
+        type: "LVGLLabelWidget",
+        left: 0,
+        top: 12,
+        width: RANGE_POPUP_WIDTH,
+        height: 40,
+        leftUnit: "px",
+        topUnit: "px",
+        widthUnit: "px",
+        heightUnit: "px",
+        customInputs: [],
+        customOutputs: [],
+        hiddenFlagType: "literal",
+        clickableFlag: false,
+        clickableFlagType: "literal",
+        checkedStateType: "literal",
+        disabledStateType: "literal",
+        widgetFlags: "CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
+        states: "",
+        style: {
+            objID: `${titleUid}_style_ref_${ts}`,
+            useStyle: "default",
+            conditionalStyles: [],
+            childStyles: [],
+        },
+        localStyles: {
+            objID: `${titleUid}_style_${ts}`,
+            definition: {
+                MAIN: {
+                    DEFAULT: {
+                        text_font: titleFont,
+                        text_color: headerColor,
+                        text_align: "CENTER",
+                        pad_left: 0,
+                        pad_right: 0,
+                    },
+                },
+            },
+        },
+        groupIndex: 0,
+        eventHandlers: [],
+        timeline: "",
+        children: "",
+        text: RANGE_POPUP_TITLE,
+        textType: "literal",
+        identifier: `${baseId}_title`,
+        paramGridPopup: true,
+    };
+
+    const dropdownUid = `${baseId}_dropdown_${ts}_${_cellCounter++}`;
+    const dropdown: Record<string, any> = {
+        objID: dropdownUid,
+        type: "LVGLDropdownWidget",
+        left: 24,
+        top: 62,
+        width: RANGE_POPUP_WIDTH - 48,
+        height: 40,
         leftUnit: "px",
         topUnit: "px",
         widthUnit: "px",
@@ -334,8 +478,114 @@ function makeRangeDropdown(
         clickableFlagType: "literal",
         checkedStateType: "literal",
         disabledStateType: "literal",
+        widgetFlags: "CLICKABLE|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
+        states: "",
+        style: {
+            objID: `${dropdownUid}_style_ref_${ts}`,
+            useStyle: "default",
+            conditionalStyles: [],
+            childStyles: [],
+        },
+        localStyles: {
+            objID: `${dropdownUid}_style_${ts}`,
+            definition: {
+                MAIN: {
+                    DEFAULT: {
+                        text_font: fontName,
+                        text_color: textColor,
+                        align: "TOP_LEFT",
+                        text_align: "LEFT",
+                        pad_left: 6,
+                        pad_right: 6,
+                        bg_color: "#1E2A38",
+                        bg_opa: 255,
+                        radius: 6,
+                        border_color: "#3A4C62",
+                        border_width: 1,
+                        border_opa: 255,
+                    },
+                },
+            },
+        },
+        groupIndex: 0,
+        eventHandlers: [{ eventName: "VALUE_CHANGED", handlerType: "flow" }],
+        timeline: "",
+        children: "",
+        options,
+        optionsType: "literal",
+        selected,
+        selectedType: "literal",
+        direction: "bottom",
+        identifier: `${baseId}_dropdown`,
+        paramGridPopup: true,
+    };
+
+    panel.children.push(title, dropdown);
+    return { panel, dropdown };
+}
+
+/** Remove range-picker popups/flow artifacts previously generated for one point
+ *  type so re-imports/regenerations never stack duplicates. */
+function cleanupRangePopupEditors(
+    page: any,
+    pointType: ParameterPointType
+): void {
+    const prefix = `range_popup_${pointType}_`;
+    if (Array.isArray(page.components)) {
+        for (let i = page.components.length - 1; i >= 0; i--) {
+            const c: any = page.components[i];
+            const id = String(c?.identifier || "");
+            const oid = String(c?.objID || "");
+            if (id.startsWith(prefix) || oid.startsWith(prefix)) {
+                page.components.splice(i, 1);
+            }
+        }
+    }
+    if (Array.isArray(page.connectionLines)) {
+        for (let i = page.connectionLines.length - 1; i >= 0; i--) {
+            if (String(page.connectionLines[i]?.objID || "").startsWith(prefix)) {
+                page.connectionLines.splice(i, 1);
+            }
+        }
+    }
+}
+
+/** Build the hidden (fully transparent) dismiss layer behind the range popups.
+ *  It covers the grid area below the screen title, sitting above the grid but
+ *  below the row popups. Tapping it (anywhere outside the open popup) closes
+ *  the popup without dimming the page or hiding the title — the same
+ *  tap-outside-to-dismiss UX as the device dialog. UI-only: marked
+ *  `paramGridPopup` so it never reaches the device. */
+function makeRangeBackdrop(
+    baseId: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number
+): Record<string, any> {
+    const ts = Date.now().toString(36);
+    const uid = `${baseId}_${ts}_${_cellCounter++}`;
+    return {
+        objID: uid,
+        type: "LVGLPanelWidget",
+        left: x,
+        top: y,
+        width: w,
+        height: h,
+        leftUnit: "px",
+        topUnit: "px",
+        widthUnit: "px",
+        heightUnit: "px",
+        customInputs: [],
+        customOutputs: [],
+        hiddenFlagType: "literal",
+        hiddenFlag: "true",
+        clickableFlag: true,
+        clickableFlagType: "literal",
+        checkedStateType: "literal",
+        disabledStateType: "literal",
         widgetFlags:
-            "CLICKABLE|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
+            "CLICKABLE|ADV_HITTEST|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE",
         states: "",
         style: {
             objID: `${uid}_style_ref_${ts}`,
@@ -348,35 +598,282 @@ function makeRangeDropdown(
             definition: {
                 MAIN: {
                     DEFAULT: {
-                        text_font: fontName,
-                        text_color: color,
-                        align: "TOP_LEFT",
-                        text_align: "LEFT",
-                        pad_left: 4,
-                        pad_right: 4,
-                        bg_color: "#16222F",
-                        bg_opa: 255,
-                        radius: 4,
-                        border_color: "#2C3E50",
-                        border_width: 1,
-                        border_opa: 255,
+                        bg_color: "#000000",
+                        bg_opa: RANGE_POPUP_BACKDROP_OPA,
+                        radius: 0,
+                        // No border / shadow: the dismiss layer must be fully
+                        // invisible (it only catches taps outside the popup).
+                        border_color: "#000000",
+                        border_width: 0,
+                        border_opa: 0,
+                        shadow_width: 0,
+                        shadow_opa: 0,
+                        pad_left: 0,
+                        pad_right: 0,
+                        pad_top: 0,
+                        pad_bottom: 0,
                     },
                 },
             },
         },
         groupIndex: 0,
-        eventHandlers: [],
+        eventHandlers: [{ eventName: "CLICKED", handlerType: "flow" }],
         timeline: "",
         children: "",
-        options,
-        optionsType: "literal",
-        selected,
-        selectedType: "literal",
-        direction: "bottom",
-        identifier,
-        // Marker so the editor can hide/lock the auto-generated grid cells.
-        paramGrid: true,
+        identifier: baseId,
+        // UI-only: firmware-export drops paramGridPopup widgets.
+        paramGridPopup: true,
     };
+}
+
+/** Create one hidden popup per Range row on the `parameters` page and wire it
+ *  to the row's Range cell:
+ *    - Range cell CLICKED            → show the backdrop + that row's popup
+ *    - popup dropdown VALUE_CHANGED  → hide the popup + backdrop (range picked)
+ *    - backdrop CLICKED (tap outside)→ hide the backdrop + all popups
+ *  Uses the same LVGLActionComponent + connectionLine wiring the loader uses
+ *  for device popups (SysModePanel etc.), so it executes in EEZ Run mode. All
+ *  artifacts are marked `paramGridPopup` (dropped again on export). */
+function attachRangePopupEditors(
+    page: any,
+    container: any,
+    panel: any,
+    pointType: ParameterPointType,
+    rangeRows: RangeRowMeta[],
+    fontName: string,
+    titleFont: string,
+    textColor: string,
+    headerColor: string
+): void {
+    if (!rangeRows.length) return;
+
+    const comps = page.components || (page.components = []);
+    const lines = page.connectionLines || (page.connectionLines = []);
+
+    // Center the popup over the parameters content area (container1). The
+    // panels inside it are scrollable and can be taller than the viewport, so
+    // use the container's visible region rather than the (deep) panel geometry.
+    const containerLeft = Number(container?.left) || 0;
+    const containerTop = Number(container?.top) || 0;
+    const containerW = Number(container?.width) || 480;
+    const containerH = Number(container?.height) || 280;
+    const popupX =
+        containerLeft + Math.max(0, Math.round((containerW - RANGE_POPUP_WIDTH) / 2));
+    const popupY =
+        containerTop + Math.max(0, Math.round((containerH - RANGE_POPUP_HEIGHT) / 2));
+
+    // Hidden (transparent) dismiss backdrop sized to the grid panel's VISIBLE
+    // area (its scroll viewport), starting below the screen's title bar. It
+    // therefore never dims/hides the "Parameter Setup" header and does not
+    // extend down past the visible grid into the strip below (Update button
+    // area). Pushed before any popup so the row popups draw on top of it.
+    const titleBar = (page.components || []).find(
+        c =>
+            c &&
+            c.type === "LVGLPanelWidget" &&
+            typeof c.identifier === "string" &&
+            c.identifier.startsWith("change_config_title")
+    );
+    const titleBottom = titleBar
+        ? (Number(titleBar.top) || 0) + (Number(titleBar.height) || 40)
+        : containerTop + 40;
+    const panelLeft = containerLeft + (Number(panel?.left) || 0);
+    const panelTop = containerTop + (Number(panel?.top) || 0);
+    const panelW =
+        panel && Number(panel?.width) > 0 ? Number(panel.width) : containerW;
+    const panelH =
+        panel && Number(panel?.height) > 0
+            ? Number(panel.height)
+            : Math.max(0, containerH - Math.max(0, titleBottom - containerTop));
+    const gridBottom = Math.min(panelTop + panelH, containerTop + containerH);
+    let dismissTop = Math.min(Math.max(panelTop, titleBottom), gridBottom);
+    let dismissH = Math.max(0, gridBottom - dismissTop);
+    // Fallback: if the panel reports no usable viewport, cover from below the
+    // title to the bottom of the content area so the backdrop still exists.
+    if (dismissH <= 0) {
+        dismissTop = Math.min(
+            containerTop + containerH,
+            Math.max(containerTop, titleBottom)
+        );
+        dismissH = Math.max(0, containerTop + containerH - dismissTop);
+    }
+    const backdropBase = `range_popup_${pointType}_backdrop`;
+    const backdrop = makeRangeBackdrop(
+        backdropBase,
+        panelLeft,
+        dismissTop,
+        panelW,
+        dismissH
+    );
+    comps.push(backdrop);
+
+    // Stack the popup action components below any the loader already made.
+    let top = 1000;
+    for (const c of comps) {
+        if (c && c.type === "LVGLActionComponent" && typeof c.top === "number") {
+            top = Math.max(top, c.top + 70);
+        }
+    }
+
+    // Shared backdrop actions: show it (when any Range cell is clicked) and
+    // hide it (when a range is picked or the backdrop itself is tapped).
+    const showBgAid = genObjId(`${backdropBase}_show`);
+    comps.push({
+        objID: showBgAid,
+        type: "LVGLActionComponent",
+        left: 20,
+        top,
+        width: 350,
+        height: 50,
+        customInputs: [],
+        customOutputs: [],
+        actions: [
+            {
+                objID: genObjId(`${backdropBase}_show_a`),
+                action: "objSetFlagHidden",
+                object: backdropBase,
+                objectType: "literal",
+                hidden: false,
+                hiddenType: "literal",
+            },
+        ],
+        paramGridPopup: true,
+    });
+    top += 70;
+    const hideBgAid = genObjId(`${backdropBase}_hide`);
+    comps.push({
+        objID: hideBgAid,
+        type: "LVGLActionComponent",
+        left: 20,
+        top,
+        width: 350,
+        height: 50,
+        customInputs: [],
+        customOutputs: [],
+        actions: [
+            {
+                objID: genObjId(`${backdropBase}_hide_a`),
+                action: "objSetFlagHidden",
+                object: backdropBase,
+                objectType: "literal",
+                hidden: true,
+                hiddenType: "literal",
+            },
+        ],
+        paramGridPopup: true,
+    });
+    top += 70;
+
+    for (const meta of rangeRows) {
+        const base = `range_popup_${pointType}_r${meta.rowIndex}`;
+        const { panel: popup, dropdown } = makeRangePopup(
+            base,
+            pointType,
+            meta.pt,
+            fontName,
+            titleFont,
+            textColor,
+            headerColor,
+            popupX,
+            popupY
+        );
+        comps.push(popup);
+
+        // Show this row's popup (and the backdrop) when its Range cell is clicked.
+        const showAid = genObjId(`${base}_show`);
+        comps.push({
+            objID: showAid,
+            type: "LVGLActionComponent",
+            left: 20,
+            top,
+            width: 350,
+            height: 50,
+            customInputs: [],
+            customOutputs: [],
+            actions: [
+                {
+                    objID: genObjId(`${base}_show_a`),
+                    action: "objSetFlagHidden",
+                    object: `${base}_panel`,
+                    objectType: "literal",
+                    hidden: false,
+                    hiddenType: "literal",
+                },
+            ],
+            paramGridPopup: true,
+        });
+        lines.push({
+            objID: genObjId(`${base}_show_c`),
+            source: meta.cell.objID,
+            output: "CLICKED",
+            target: showAid,
+            input: "@seqin",
+        });
+        lines.push({
+            objID: genObjId(`${base}_show_bg_c`),
+            source: meta.cell.objID,
+            output: "CLICKED",
+            target: showBgAid,
+            input: "@seqin",
+        });
+        top += 70;
+
+        // Hide the popup once a range is picked inside it, or when the user
+        // taps outside it (the backdrop). Picking also hides the backdrop.
+        const hideAid = genObjId(`${base}_hide`);
+        comps.push({
+            objID: hideAid,
+            type: "LVGLActionComponent",
+            left: 20,
+            top,
+            width: 350,
+            height: 50,
+            customInputs: [],
+            customOutputs: [],
+            actions: [
+                {
+                    objID: genObjId(`${base}_hide_a`),
+                    action: "objSetFlagHidden",
+                    object: `${base}_panel`,
+                    objectType: "literal",
+                    hidden: true,
+                    hiddenType: "literal",
+                },
+            ],
+            paramGridPopup: true,
+        });
+        lines.push({
+            objID: genObjId(`${base}_hide_c`),
+            source: dropdown.objID,
+            output: "VALUE_CHANGED",
+            target: hideAid,
+            input: "@seqin",
+        });
+        lines.push({
+            objID: genObjId(`${base}_pick_c`),
+            source: dropdown.objID,
+            output: "VALUE_CHANGED",
+            target: hideBgAid,
+            input: "@seqin",
+        });
+        lines.push({
+            objID: genObjId(`${base}_dismiss_c`),
+            source: backdrop.objID,
+            output: "CLICKED",
+            target: hideAid,
+            input: "@seqin",
+        });
+        top += 70;
+    }
+
+    // Tapping the backdrop also hides the backdrop itself.
+    lines.push({
+        objID: genObjId(`${backdropBase}_dismiss_c`),
+        source: backdrop.objID,
+        output: "CLICKED",
+        target: hideBgAid,
+        input: "@seqin",
+    });
 }
 
 /**
@@ -400,6 +897,9 @@ export function generateParameterGrid(
 
     const pointType: ParameterPointType = options?.pointType ?? "input";
     const panelId = options?.panelId || PANEL_BY_TYPE[pointType] || "panel4";
+    // Drop any range-popup artifacts this point type generated on a previous
+    // run so re-imports/regenerations never stack duplicate popups/wiring.
+    cleanupRangePopupEditors(page, pointType);
     // Each point type renders into its own stacked panel. The primary panel
     // (panel4 = INPUT) exists from the imported screen; the output/variable
     // panels are created by cloning it on first use.
@@ -426,6 +926,12 @@ export function generateParameterGrid(
         const size = parseInt(String(fontName.split("_")[1] || "12"), 10) || 12;
         projectFonts.push({ name: fontName, source: { size } });
     }
+    // Larger font used for the range-picker popup title.
+    const popupTitleFont = bumpFontSize(fontName, RANGE_POPUP_TITLE_FONT_DELTA);
+    if (!projectFonts.some((f: any) => f && f.name === popupTitleFont)) {
+        const size = parseInt(String(popupTitleFont.split("_")[1] || "12"), 10) || 12;
+        projectFonts.push({ name: popupTitleFont, source: { size } });
+    }
     const textColor = options?.textColor ?? "#FFFFFF";
     const headerColor = options?.headerColor ?? "#9CC8F5";
 
@@ -434,6 +940,8 @@ export function generateParameterGrid(
     panel.children = existing.filter((c: any) => !(c && c.paramGrid));
 
     const cells: Record<string, any>[] = [];
+    /** Clickable Range cells (one per data row) — each opens its own popup. */
+    const rangeRows: RangeRowMeta[] = [];
     const headerY = 4;
 
     // Header row
@@ -458,22 +966,27 @@ export function generateParameterGrid(
     rows.forEach((pt, r) => {
         const y = headerY + rowH + 2 + r * rowH;
         for (const col of columns) {
-            // Range cells become UI-only dropdowns in the editor (click to pick
-            // a range, never sent to the device); all other cells stay labels.
             if (col.key === "range") {
-                cells.push(
-                    makeRangeDropdown(
-                        `param_grid_${pointType}_r${r}_c${col.key}`,
-                        col.x,
-                        y,
-                        col.w,
-                        rowH,
-                        pt,
-                        pointType,
-                        fontName,
-                        textColor
-                    )
+                // Range cells are clickable LABELS in the grid. Clicking one
+                // opens a "Select digital range .." popup (a hidden panel with
+                // an LVGL dropdown of the point's range options) — the editor
+                // analog of the device's native range dialog. UI-only: on
+                // export these cells go back to static labels and the popups
+                // are dropped (paramGridPopup).
+                const cell = makeCell(
+                    `param_grid_${pointType}_r${r}_c${col.key}`,
+                    col.x,
+                    y,
+                    col.w,
+                    rowH,
+                    gridCellText(pt, col.key, pointType),
+                    textColor,
+                    fontName,
+                    false,
+                    { clickable: true, eventName: "CLICKED" }
                 );
+                cells.push(cell);
+                rangeRows.push({ rowIndex: r, pt, cell });
             } else {
                 cells.push(
                     makeCell(
@@ -544,6 +1057,20 @@ export function generateParameterGrid(
         pad_top: 0,
         pad_bottom: 0,
     };
+
+    // Add the "Select digital range .." popups (one per row) + the flow wiring
+    // that opens them when a Range cell is clicked.
+    attachRangePopupEditors(
+        page,
+        container,
+        panel,
+        pointType,
+        rangeRows,
+        fontName,
+        popupTitleFont,
+        textColor,
+        headerColor
+    );
 
     return { added: cells.length };
 }

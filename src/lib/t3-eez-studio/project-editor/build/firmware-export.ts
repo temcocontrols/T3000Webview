@@ -65,6 +65,10 @@ function restoreDeviceWidgetName(name: string): string {
 // ── Recursively transform one component tree ──
 function transformComponent(c: any): Record<string, any> | null {
     const t: string = c.type || "";
+    // UI-only parameter-grid range popups (editor preview) — never deployed.
+    // These are the hidden "Select digital range .." panels plus their
+    // objSetFlagHidden flow components; the device has its own range dialog.
+    if (c.paramGridPopup === true) return null;
     if (SKIP_TYPES.has(t)) return null;
 
     // Unwrap screen widget — promote children directly
@@ -161,7 +165,11 @@ function transformComponent(c: any): Record<string, any> | null {
     if (ls?.definition) obj.style = ls.definition;
 
     // ── Events (optional, any widget) ──
-    const events = c.eventHandlers;
+    // Parameter-grid cells are UI-only: the editor wires CLICKED handlers onto
+    // the clickable Range cells to open their popup, but that must NOT reach
+    // the device — the firmware handles the range edit itself. Drop events for
+    // every paramGrid cell so they export as plain static labels.
+    const events = c.paramGrid === true ? undefined : c.eventHandlers;
     if (events?.length) {
         obj.events = {};
         for (const e of events) {
@@ -254,6 +262,12 @@ function transformComponent(c: any): Record<string, any> | null {
         obj.hidden = c.hiddenFlag;
     }
     if (c.clickableFlag != null && !c.clickableFlag) {
+        obj.clickable = false;
+    }
+    // Grid cells are static on the device (the firmware drives their edits), so
+    // force clickable off even though the editor marks the Range cells
+    // clickable in order to open their popup.
+    if (c.paramGrid === true) {
         obj.clickable = false;
     }
 

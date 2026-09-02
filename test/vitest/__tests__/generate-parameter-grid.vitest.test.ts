@@ -31,9 +31,9 @@ function paramPanel(proj: any, panelId: string) {
     return container.children.find((c: any) => c.identifier === panelId);
 }
 
-// Cell display text: label cells expose `.text`; Range cells are UI-only
-// dropdowns exposing `.options` (newline-joined string) + `.selected`
-// (editor-interactive, stripped on export). Read whichever the cell type has.
+// Cell display text: every grid cell is an LVGLLabelWidget exposing `.text`
+// (Range cells are clickable labels that open a popup on click — the popup's
+// inner dropdown carries the options list).
 function cellText(c: any): string {
     if (!c) return "";
     if (typeof c.text === "string") return c.text;
@@ -84,12 +84,70 @@ describe("parameter grid generation", () => {
         console.log("row0 range:", firstRowRange && cellText(firstRowRange));
         console.log("input row0:", cells.slice(6, 12).map(cellText).join(" | "));
 
-        // Range data-row cells are UI-only dropdowns (editor-interactive).
+        // Range data-row cells are clickable LABELS that open a "Select digital
+        // range .." popup (they used to be inline LVGL dropdowns).
         expect(firstRowRange).toBeTruthy();
-        expect(firstRowRange.type).toBe("LVGLDropdownWidget");
-        expect(typeof firstRowRange.options).toBe("string");
-        expect(firstRowRange.options.split("\n").length).toBeGreaterThan(0);
-        expect(typeof firstRowRange.selected).toBe("number");
+        expect(firstRowRange.type).toBe("LVGLLabelWidget");
+        expect(typeof firstRowRange.text).toBe("string");
+        expect(firstRowRange.clickableFlag).toBe(true);
+        expect(firstRowRange.eventHandlers).toEqual([
+            { eventName: "CLICKED", handlerType: "flow" },
+        ]);
+
+        // Each row's Range cell has a hidden popup on the parameters page wired
+        // so CLICKED shows it and the popup dropdown's VALUE_CHANGED hides it.
+        const page = proj.userPages.find((p: any) => p.name === "parameters");
+        const popup = (page.components || []).find(
+            (c: any) => c.identifier === "range_popup_input_r0_panel"
+        );
+        expect(popup).toBeTruthy();
+        expect(popup.hiddenFlag).toBe("true");
+        expect(popup.paramGridPopup).toBe(true);
+        const popupTitle = (popup.children || []).find(
+            (c: any) => c.identifier === "range_popup_input_r0_title"
+        );
+        expect(popupTitle && popupTitle.text).toBe("Select digital range");
+        const popupDropdown = (popup.children || []).find(
+            (c: any) => c.identifier === "range_popup_input_r0_dropdown"
+        );
+        expect(popupDropdown && popupDropdown.type).toBe("LVGLDropdownWidget");
+        expect(popupDropdown.eventHandlers).toEqual([
+            { eventName: "VALUE_CHANGED", handlerType: "flow" },
+        ]);
+
+        // A hidden dim backdrop covers the content area while a popup is open;
+        // tapping it (outside the popup) dismisses the popup.
+        const backdrop = (page.components || []).find(
+            (c: any) => c.identifier === "range_popup_input_backdrop"
+        );
+        expect(backdrop).toBeTruthy();
+        expect(backdrop.hiddenFlag).toBe("true");
+        expect(backdrop.paramGridPopup).toBe(true);
+        expect(backdrop.eventHandlers).toEqual([
+            { eventName: "CLICKED", handlerType: "flow" },
+        ]);
+
+        // 5 flow lines per row (show popup, show backdrop, VALUE_CHANGED hide
+        // popup, VALUE_CHANGED hide backdrop, backdrop dismiss) + 1 backdrop
+        // dismiss-hide line = 5*15 + 1
+        const popupLines = (page.connectionLines || []).filter((l: any) =>
+            String(l.objID).startsWith("range_popup_input_")
+        );
+        expect(popupLines.length).toBe(5 * 15 + 1);
+        expect(
+            popupLines.some(
+                (l: any) =>
+                    l.source === firstRowRange.objID && l.output === "CLICKED"
+            )
+        ).toBe(true);
+        expect(
+            popupLines.some((l: any) => l.output === "VALUE_CHANGED")
+        ).toBe(true);
+        expect(
+            popupLines.some(
+                (l: any) => l.source === backdrop.objID && l.output === "CLICKED"
+            )
+        ).toBe(true);
     }, 30000);
 
     it("generates an OUTPUT grid into its own panel (firmware fields: +SW col), hidden by default", async () => {
