@@ -1221,13 +1221,15 @@ function wireParameterGridSwitch(project: any): void {
         const hideIds = (Object.keys(PANEL_BY_TYPE) as ParameterPointType[])
             .filter(t => t !== type)
             .map(t => PANEL_BY_TYPE[t]);
-        const actions: Array<{ id: string; hidden: boolean }> =
-            hideIds.map(id => ({ id, hidden: true }));
-        // Only emit a "show" action when the target isn't the default-visible
-        // INPUT panel (it's already visible; showing it again is a no-op).
-        if (showId !== PANEL_BY_TYPE.input) {
-            actions.push({ id: showId, hidden: false });
-        }
+        // Always show the selected panel and hide the other two. The INPUT
+        // panel also gets an explicit "show": otherwise, after switching to
+        // Outputs/Variables (which hide INPUT) and coming back, clicking
+        // Inputs would only hide the other two and INPUT stays hidden → the
+        // input grid appears empty.
+        const actions: Array<{ id: string; hidden: boolean }> = [
+            ...hideIds.map(id => ({ id, hidden: true })),
+            { id: showId, hidden: false },
+        ];
         for (const a of actions) {
             const aid = genObjId("param_switch");
             comps.push({

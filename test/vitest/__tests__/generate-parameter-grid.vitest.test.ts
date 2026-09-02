@@ -288,18 +288,38 @@ describe("parameter grid generation", () => {
         const switchActs = acts.filter((a: any) =>
             (a.actions || []).some((x: any) => x.action === "objSetFlagHidden")
         );
-        // input btn: 2 hides; output btn: 2 hides + 1 show; variable btn: 2 hides + 1 show
-        expect(switchActs.length).toBe(8);
+        // Each button (input/output/variable): 2 hides + 1 show of its own
+        // panel = 3 actions each (INPUT also gets an explicit show so it isn't
+        // left hidden after switching away and back).
+        expect(switchActs.length).toBe(9);
 
         const lines = mm.connectionLines || [];
         const switchLines = lines.filter((l: any) =>
             [inputBtn.objID, outputBtn.objID, variableBtn.objID].includes(l.source)
         );
-        // 8 switch lines + 3 pre-existing changeScreen→parameters lines.
-        expect(switchLines.length).toBe(11);
+        // 9 switch lines + 3 pre-existing changeScreen→parameters lines.
+        expect(switchLines.length).toBe(12);
         expect(
             switchLines.filter((l: any) => String(l.objID).startsWith("param_switch")).length
-        ).toBe(8);
+        ).toBe(9);
+        // The Inputs button must have an explicit "show panel4" action too.
+        expect(
+            switchActs.some(
+                (a: any) =>
+                    (a.actions || []).some(
+                        (x: any) =>
+                            x.action === "objSetFlagHidden" &&
+                            x.object === "panel4" &&
+                            x.hidden === false
+                    ) &&
+                    lines.some(
+                        (l: any) =>
+                            l.source === inputBtn.objID &&
+                            l.target === a.objID &&
+                            l.output === "CLICKED"
+                    )
+            )
+        ).toBe(true);
 
         await saveProject(proj);
     }, 30000);
