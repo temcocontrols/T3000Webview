@@ -239,14 +239,21 @@ function transformComponent(c: any): Record<string, any> | null {
             }
             break;
 
-        case "dropdown":
-            if (c.options?.length) {
-                obj.options = c.options.map((o: any) =>
-                    typeof o === "string" ? o : o.label || o.text || "?"
-                );
-            }
+        case "dropdown": {
+            // EEZ stores LVGL dropdown `options` as a NEWLINE-JOINED STRING in
+            // the project (array:string edited as MultilineText) — handle both
+            // that and a plain string array.
+            const options: string[] = typeof c.options === "string"
+                ? c.options.split("\n").filter((line: string) => line !== "")
+                : Array.isArray(c.options)
+                  ? c.options.map((o: any) =>
+                        typeof o === "string" ? o : o.label || o.text || "?"
+                    )
+                  : [];
+            if (options.length > 0) obj.options = options;
             if (c.selected != null) obj.selected = c.selected;
             break;
+        }
 
         case "user_widget":
             // Reference the user widget by name

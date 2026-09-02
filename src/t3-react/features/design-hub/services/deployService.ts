@@ -3,9 +3,17 @@
  *
  * Used by BOTH the EEZ editor toolbar ("Deploy to Device") and the Design Hub
  * project detail page, so every deploy entry point shares the same logic:
- *   export screens + images → write device-export/ + deploy-manifest.json →
- *   push to the chosen device via direct REST → record deploy log + activity →
+ *   export screens + images → write device-export/ backup → auto-diff against
+ *   the last successful deploy-manifest.json → push ONLY the changed screens /
+ *   images via direct REST → refresh the manifest → record log + activity →
  *   bind the project to the chosen device.
+ *
+ * Deploy is incremental and automatic — no manual selection. Every screen and
+ * image is hashed and compared with the previous manifest; only the changed
+ * PNG(s)/screen(s) are pushed (single-screen PUT / image push). First deploy or
+ * "everything changed" falls back to one full deployAllScreens() call. The
+ * manifest (which stores the hashes) is only refreshed after a fully
+ * successful push so a failed deploy is retried next time.
  *
  * The EEZ/LVGL push is the canonical "deploy to device" for EEZ projects
  * everywhere. Non-EEZ projects (e.g. HVAC) keep their own refresh executor,
@@ -114,6 +122,33 @@ async function loadProjectFromDisk(filePath: string): Promise<any> {
     return JSON.parse(await r.text());
 }
 
+/** Read the previous deploy manifest (the last SUCCESSFUL deploy baseline). */
+async function readPreviousManifest(manifestPath: string): Promise<any | null> {
+    try {
+        const r = await fetch(
+            `/api/eez-studio/read-text-file?path=${encodeURIComponent(manifestPath)}`
+        );
+        if (!r.ok) return null;
+        const text = await r.text();
+        const parsed = text ? JSON.parse(text) : null;
+        return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+/** Deterministic content signature (length + FNV-1a) used to diff deploys.
+ *  Only used to decide whether a screen/image actually changed since the last
+ *  successful deploy — not a cryptographic hash. */
+function contentSignature(text: string): string {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) {
+        h ^= text.charCodeAt(i);
+        h = (h * 0x01000193) >>> 0;
+    }
+    return `${text.length}:${h.toString(16)}`;
+}
+
 /**
  * Deploy an EEZ/LVGL project to a device: export → device-export + manifest →
  * push → log → bind. Returns a result the drawer can show inline.
@@ -131,17 +166,29 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
 
     // 1. Generate device JSON + images (front side).
     const screens = transformToDeviceJson(project);
+    const screenEntries = Object.entries(screens);
+    const screenNames = screenEntries.map(([name]) => name);
     const images = deviceClient.extractDeviceImages(project as any);
 
-    // 2. Save device-export/ (backup) + deploy-manifest.json.
+    // Content signatures used to detect what actually changed since the last
+    // successful deploy (the deploy-manifest.json baseline).
+    const screenSignatures: Record<string, string> = {};
+    for (const [name, screenData] of screenEntries) {
+        screenSignatures[name] = contentSignature(JSON.stringify(screenData));
+    }
+    const imageSignatures: Record<string, string> = {};
+    for (const img of images) {
+        imageSignatures[img.name] = contentSignature(img.data_base64);
+    }
+
+    // 2. Save device-export/ as a full local backup (all screens + images).
     await makeFolder(deviceExportDir);
-    let count = 0;
-    for (const [screenName, screenData] of Object.entries(screens)) {
+    const count = screenEntries.length;
+    for (const [screenName, screenData] of screenEntries) {
         await writeTextFile(
             deviceExportDir + "\\" + screenName + ".json",
             JSON.stringify({ [screenName]: screenData }, null, 2)
         );
-        count++;
     }
     const imageDir = deviceExportDir + "\\images";
     if (images.length > 0) {
@@ -157,27 +204,28 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
             );
         }
     }
-    await writeTextFile(
-        manifestPath,
-        JSON.stringify(
-            {
-                exportedAt: new Date().toISOString(),
-                serialNumber: device.serialNumber,
-                panelId: device.panelId,
-                screenCount: count,
-                imageCount: images.length,
-                screens: Object.keys(screens),
-                images: images.map((i) => ({
-                    name: i.name,
-                    width: i.width,
-                    height: i.height,
-                    color_format: i.color_format,
-                })),
-            },
-            null,
-            2
-        )
+
+    // Diff against the last SUCCESSFUL deploy (manifest baseline). New/edited
+    // screens and images are the ONLY things pushed — no manual selection.
+    const previous = await readPreviousManifest(manifestPath);
+    const prevScreenHashes: Record<string, string> =
+        previous?.screenHashes && typeof previous.screenHashes === "object"
+            ? previous.screenHashes
+            : {};
+    const prevImageHashes: Record<string, string> =
+        previous?.imageHashes && typeof previous.imageHashes === "object"
+            ? previous.imageHashes
+            : {};
+    const changedScreens = screenEntries
+        .filter(([name]) => prevScreenHashes[name] !== screenSignatures[name])
+        .map(([name]) => name);
+    const changedImages = images.filter(
+        (img) => prevImageHashes[img.name] !== imageSignatures[img.name]
     );
+    const hasChanges = changedScreens.length > 0 || changedImages.length > 0;
+    // No baseline yet (first deploy) or every screen changed → push everything.
+    const needsFullDeploy =
+        !previous || changedScreens.length === screenEntries.length;
 
     // 3. Bind the project to the chosen device (disk binding + hub binding).
     try {
@@ -201,30 +249,102 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         /* hub binding is best-effort */
     }
 
-    // 4. Push screens + images to the chosen device (direct REST).
+    // 4. Push ONLY what changed to the chosen device (direct REST). This runs
+    //    automatically on every "Deploy to Device" — no user selection needed.
     let pushOk = false;
     let pushMessage = "";
     let deployed = 0;
     let imagesDeployed = 0;
-    try {
-        const ip = device.ip || getDeviceBinding(opts.filePath)?.ip || "";
-        const conn = await deviceClient.connect(
-            ip,
-            device.panelId ?? device.serialNumber,
-            device.serialNumber
-        );
-        if (conn.error) throw new Error(conn.error);
-        const result = await deviceClient.deployAllScreens(project);
-        deployed = result?.deployed ?? 0;
-        imagesDeployed = result?.imagesDeployed ?? 0;
+    const deployedScreens: string[] = [];
+
+    if (!hasChanges) {
+        // Nothing differs from the last successful deploy.
         pushOk = true;
-        pushMessage =
-            result?.status === "error"
-                ? `Pushed ${deployed}/${count} screens to device`
-                : `Pushed ${deployed} screen${deployed === 1 ? "" : "s"} + ${imagesDeployed} image${imagesDeployed === 1 ? "" : "s"} to device`;
-    } catch (e: any) {
-        pushOk = false;
-        pushMessage = `Device push failed: ${e?.message || e}`;
+        pushMessage = "No changes to deploy — device is already up to date";
+    } else {
+        try {
+            const ip = device.ip || getDeviceBinding(opts.filePath)?.ip || "";
+            const conn = await deviceClient.connect(
+                ip,
+                device.panelId ?? device.serialNumber,
+                device.serialNumber
+            );
+            if (conn.error) throw new Error(conn.error);
+
+            if (needsFullDeploy) {
+                // First deploy, or everything changed → one full push
+                // (images first, then all screens).
+                const result = await deviceClient.deployAllScreens(project);
+                deployed = result?.deployed ?? 0;
+                imagesDeployed = result?.imagesDeployed ?? 0;
+                const status = result?.status ?? "ok";
+                pushOk = status === "ok";
+                pushMessage =
+                    status === "ok"
+                        ? `Pushed ${deployed} screen${deployed === 1 ? "" : "s"} + ${imagesDeployed} image${imagesDeployed === 1 ? "" : "s"} to device`
+                        : `Pushed ${deployed}/${count} screens (${status})`;
+            } else {
+                // Incremental: push the changed images first (screens may
+                // reference them), then only the changed screens.
+                if (changedImages.length > 0) {
+                    const imgRes = await deviceClient.pushImages(changedImages);
+                    imagesDeployed = imgRes.deployed;
+                    if (imgRes.failed > 0) {
+                        throw new Error(
+                            `${imgRes.failed} image${imgRes.failed === 1 ? "" : "s"} failed to upload`
+                        );
+                    }
+                }
+                const failed: string[] = [];
+                for (const name of changedScreens) {
+                    try {
+                        await deviceClient.deployScreen(name, screens[name]);
+                        deployed++;
+                        deployedScreens.push(name);
+                    } catch (e: any) {
+                        failed.push(name);
+                    }
+                }
+                pushOk = failed.length === 0;
+                pushMessage = pushOk
+                    ? changedScreens.length > 0
+                        ? `Deployed ${deployed} changed screen${deployed === 1 ? "" : "s"} + ${imagesDeployed} changed image${imagesDeployed === 1 ? "" : "s"}`
+                        : `Updated ${imagesDeployed} changed image${imagesDeployed === 1 ? "" : "s"}`
+                    : `Failed ${failed.length}/${changedScreens.length} screens: ${failed.join(", ")}`;
+            }
+        } catch (e: any) {
+            pushOk = false;
+            pushMessage = `Device push failed: ${e?.message || e}`;
+        }
+    }
+
+    // The deploy manifest doubles as the change-detection baseline, so it is
+    // only refreshed once the push fully succeeded — otherwise the next deploy
+    // retries the same changes.
+    if (hasChanges && pushOk) {
+        await writeTextFile(
+            manifestPath,
+            JSON.stringify(
+                {
+                    exportedAt: new Date().toISOString(),
+                    serialNumber: device.serialNumber,
+                    panelId: device.panelId,
+                    screenCount: count,
+                    imageCount: images.length,
+                    screens: screenNames,
+                    images: images.map((i) => ({
+                        name: i.name,
+                        width: i.width,
+                        height: i.height,
+                        color_format: i.color_format,
+                    })),
+                    screenHashes: screenSignatures,
+                    imageHashes: imageSignatures,
+                },
+                null,
+                2
+            )
+        );
     }
 
     // 5. Record deploy log + activity.
