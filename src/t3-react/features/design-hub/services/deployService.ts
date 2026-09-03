@@ -238,12 +238,16 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     }
 
     // 2. Save device-export/ as a full local backup (all screens + images).
+    //    Files are written MINIFIED and UNWRAPPED so they byte-match the
+    //    device-native format that device-import/ stores (compact JSON, no
+    //    { "<screen>": ... } wrapper). transformToDeviceJson already returns
+    //    the native nested schema { bg_color, fonts, bitmaps, widgets }.
     await makeFolder(deviceExportDir);
     const count = screenEntries.length;
     for (const [screenName, screenData] of screenEntries) {
         await writeTextFile(
             deviceExportDir + "\\" + screenName + ".json",
-            JSON.stringify({ [screenName]: screenData }, null, 2)
+            JSON.stringify(screenData)
         );
     }
     const imageDir = deviceExportDir + "\\images";
