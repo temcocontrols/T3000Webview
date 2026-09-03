@@ -172,22 +172,6 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         throw new Error(`Cannot load project for deploy: ${opts.filePath}`);
     }
 
-    // ── Diagnostics: what did we actually load from disk? ──
-    console.log("[deploy] filePath =", opts.filePath);
-    console.log(
-        "[deploy] project loaded: userPages =",
-        (project?.userPages || []).length,
-        ", fonts =",
-        (project?.fonts || []).length,
-        ", bitmaps =",
-        (project?.bitmaps || []).length
-    );
-    for (const pg of project?.userPages || []) {
-        console.log(
-            `[deploy] page "${pg?.name}": components=${(pg?.components || []).length} lines=${(pg?.connectionLines || []).length}`
-        );
-    }
-
     const baseFolder = opts.filePath.replace(/[\\/][^\\/]+$/, "");
     const deviceExportDir = baseFolder + "\\device-export";
     const manifestPath = deviceExportDir + "\\deploy-manifest.json";
@@ -197,34 +181,6 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     const screenEntries = Object.entries(screens);
     const screenNames = screenEntries.map(([name]) => name);
     const images = deviceClient.extractDeviceImages(project as any);
-
-    // ── Diagnostics: what did transformToDeviceJson produce per screen? ──
-    const screenEntriesTyped = screenEntries as [string, any][];
-    const perScreenTiny = screenEntriesTyped.every(
-        ([, s]) => Object.keys(s?.widgets || {}).length <= 1
-    );
-    for (const [name, s] of screenEntriesTyped) {
-        const keys = Object.keys(s?.widgets || {});
-        console.log(
-            `[deploy] screen "${name}": widgets=${keys.length} bytes=${JSON.stringify(s).length} first=${keys.slice(0, 6).join(",")}`
-        );
-    }
-    if (perScreenTiny) {
-        // Every screen came out with just a background → dump what the on-disk
-        // page components look like so we can see what is being dropped.
-        for (const pg of project?.userPages || []) {
-            const comps = pg?.components || [];
-            console.log(
-                `[deploy][diag] page "${pg?.name}": components=${comps.length} types=${comps
-                    .slice(0, 15)
-                    .map(
-                        (c: any) =>
-                            (c && c.type) || c?.constructor?.name || "?"
-                    )
-                    .join(", ")}`
-            );
-        }
-    }
 
     // Content signatures used to detect what actually changed since the last
     // successful deploy (the deploy-manifest.json baseline).
