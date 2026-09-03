@@ -91,7 +91,7 @@ export interface DeployLogEntry {
   /** Deployed screen names (EEZ/LVGL manifest detail). */
   screens?: string[];
   /** Deployed image manifests (EEZ/LVGL manifest detail). */
-  images?: { name: string; width: number; height: number; color_format?: number }[];
+  images?: { name: string; width: number; height: number; color_format?: number | string }[];
   /** On-disk manifest path (EEZ/LVGL device-export), if known. */
   manifestPath?: string;
 }

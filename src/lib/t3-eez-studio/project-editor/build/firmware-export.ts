@@ -8,16 +8,25 @@
  */
 
 // ── Widget type mapping (LVGL prefix → firmware sub_type) ──
+// Must cover every LVGL widget type the loader (firmware-loader.ts SUB_TYPE_MAP)
+// can produce, so a round-trip import → deploy restores the full screen
+// (image buttons, text areas, rollers, keyboards, ... are NOT dropped).
 const TYPE_MAP: Record<string, string> = {
     LVGLLabelWidget: "label",
     LVGLButtonWidget: "button",
+    LVGLImgbuttonWidget: "imagebutton",
     LVGLArcWidget: "arc",
     LVGLBarWidget: "bar",
     LVGLImageWidget: "image",
     LVGLSwitchWidget: "switch",
-    LVGLPanelWidget: "panel",
-    LVGLDropdownWidget: "dropdown",
     LVGLSliderWidget: "slider",
+    LVGLDropdownWidget: "dropdown",
+    LVGLTextareaWidget: "textarea",
+    LVGLRollerWidget: "roller",
+    LVGLPanelWidget: "panel",
+    LVGLCalendarWidget: "calendar",
+    LVGLCheckboxWidget: "checkbox",
+    LVGLKeyboardWidget: "keyboard",
     LVGLUserWidgetWidget: "user_widget",
 };
 
@@ -63,7 +72,13 @@ function restoreDeviceWidgetName(name: string): string {
 }
 
 // ── Recursively transform one component tree ──
-function transformComponent(c: any): Record<string, any> | null {
+// `registerObj` lets the caller capture each EEZ objID → exported device widget
+// name so page connectionLines (widget events → actions) still resolve after
+// widgets are promoted out of an LVGLScreenWidget wrapper.
+function transformComponent(
+    c: any,
+    registerObj?: (objID: string, ident: string) => void
+): Record<string, any> | null {
     const t: string = c.type || "";
     // UI-only parameter-grid range popups (editor preview) — never deployed.
     // These are the hidden "Select digital range .." panels plus their
@@ -75,7 +90,7 @@ function transformComponent(c: any): Record<string, any> | null {
     if (t === "LVGLScreenWidget") {
         const result: Record<string, any> = {};
         for (const child of c.children || []) {
-            const r = transformComponent(child);
+            const r = transformComponent(child, registerObj);
             if (r) Object.assign(result, r);
         }
         return result;
@@ -86,6 +101,7 @@ function transformComponent(c: any): Record<string, any> | null {
     // ── Action component (flow logic — changeScreen, setVariable, etc.) ──
     if (t === "LVGLActionComponent" && c.actions?.length) {
         const ident = c.objID?.slice(0, 8) || ("act_" + Math.random().toString(36).slice(2, 8));
+        if (registerObj && c.objID) registerObj(c.objID, ident);
         return { [ident]: {
             type: "Widget",
             sub_type: "action",
@@ -255,6 +271,60 @@ function transformComponent(c: any): Record<string, any> | null {
             break;
         }
 
+        case "imagebutton":
+            // Reconstruct the device image-button fields (inverse of loader):
+            // device uses img_pressed / img_released / img_disabled.
+            if (c.imageReleased) obj.img_released = c.imageReleased;
+            if (c.imagePressed) obj.img_pressed = c.imagePressed;
+            else if (c.imageReleased) obj.img_pressed = c.imageReleased;
+            if (c.imageDisabled) obj.img_disabled = c.imageDisabled;
+            break;
+
+        case "textarea":
+            // Text areas carry obj_text + placeholder + one_line on the device.
+            if (c.text != null && c.text !== "") {
+                obj.obj_text = c.text;
+                obj.text_type = c.textType || "literal";
+            }
+            if (c.placeholder) obj.placeholder = c.placeholder;
+            if (c.oneLineMode) obj.one_line = true;
+            break;
+
+        case "roller": {
+            // Roller options are stored like dropdown options (newline string
+            // or array) and go back as a plain array to the device.
+            const options: string[] = typeof c.options === "string"
+                ? c.options.split("\n").filter((line: string) => line !== "")
+                : Array.isArray(c.options)
+                  ? c.options.map((o: any) =>
+                        typeof o === "string" ? o : o.label || o.text || "?"
+                    )
+                  : [];
+            if (options.length > 0) obj.options = options;
+            if (c.selected != null) obj.selected = c.selected;
+            break;
+        }
+
+        case "calendar":
+            // Calendar date/header fields (device uses today_year etc.).
+            if (c.todayYear != null) obj.today_year = c.todayYear;
+            if (c.todayMonth != null) obj.today_month = c.todayMonth;
+            if (c.todayDay != null) obj.today_day = c.todayDay;
+            if (c.header) obj.header = c.header;
+            break;
+
+        case "checkbox":
+            // Checkbox label text lives in obj_text on the device.
+            if (c.text != null && c.text !== "") {
+                obj.obj_text = c.text;
+                obj.text_type = c.textType || "literal";
+            }
+            break;
+
+        case "keyboard":
+            // No extra device fields — geometry / style / events already exported.
+            break;
+
         case "user_widget":
             // Reference the user widget by name
             if (c.userWidgetPageName) obj.widget = c.userWidgetPageName;
@@ -283,9 +353,13 @@ function transformComponent(c: any): Record<string, any> | null {
     if (children?.length) {
         obj.children = {};
         for (const child of children) {
-            const r = transformComponent(child);
+            const r = transformComponent(child, registerObj);
             if (r) Object.assign(obj.children, r);
         }
+    }
+
+    if (registerObj && c.objID) {
+        registerObj(c.objID, ident);
     }
 
     return { [ident]: obj };
@@ -327,15 +401,17 @@ export function transformToDeviceJson(
         const allWidgets: Record<string, any> = {};
 
         for (const comp of page.components || []) {
-            const r = transformComponent(comp);
-            if (r) {
-                const entry = Object.entries(r)[0];
-                if (entry) {
-                    const [ident, widget] = entry;
-                    allWidgets[ident] = widget;
-                    if (comp.objID) objIdToIdent[comp.objID] = ident;
-                    if (widget.sub_type === "action") actionWidgets[ident] = widget;
-                }
+            const r = transformComponent(comp, (objID, ident) => {
+                objIdToIdent[objID] = ident;
+            });
+            if (!r) continue;
+            // A page can hold an LVGLScreenWidget whose children are the real
+            // widgets — transformComponent promotes ALL of them into one result,
+            // so add every returned widget (previously only the FIRST was kept,
+            // which made every screen export with just its background panel).
+            for (const [ident, widget] of Object.entries(r)) {
+                allWidgets[ident] = widget;
+                if (widget.sub_type === "action") actionWidgets[ident] = widget;
             }
         }
 

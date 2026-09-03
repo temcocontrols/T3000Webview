@@ -241,7 +241,7 @@ export const designHubService = {
     screenCount?: number;
     imageCount?: number;
     screens?: string[];
-    images?: { name: string; width: number; height: number; color_format?: number }[];
+    images?: { name: string; width: number; height: number; color_format?: number | string }[];
   } | null> {
     try {
       const host = window.location.hostname || 'localhost';

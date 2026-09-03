@@ -66,7 +66,7 @@ export interface DeployEezResult {
     success: boolean;
     message: string;
     screens?: string[];
-    images?: { name: string; width: number; height: number; color_format?: number }[];
+    images?: { name: string; width: number; height: number; color_format?: number | string }[];
     screenCount?: number;
     imageCount?: number;
     manifestPath?: string;
@@ -155,20 +155,76 @@ function contentSignature(text: string): string {
  */
 export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEezResult> {
     const { hubProject, device } = opts;
-    let project = opts.project;
-    if (!project) {
+    // Deploy ALWAYS exports from the saved project FILE on disk.
+    // transformToDeviceJson reads raw JSON — feeding it an in-memory EEZ
+    // Document (model objects) made every widget except the background panel
+    // disappear (tiny/broken device-export files). The EEZ editor Toolbar
+    // saves the project before opening the Deploy drawer, so the file is up to
+    // date (unsaved edits included).
+    let project: any;
+    try {
         project = await loadProjectFromDisk(opts.filePath);
+    } catch (e) {
+        // Last resort: use whatever the caller handed us.
+        project = opts.project;
+    }
+    if (!project) {
+        throw new Error(`Cannot load project for deploy: ${opts.filePath}`);
+    }
+
+    // ── Diagnostics: what did we actually load from disk? ──
+    console.log("[deploy] filePath =", opts.filePath);
+    console.log(
+        "[deploy] project loaded: userPages =",
+        (project?.userPages || []).length,
+        ", fonts =",
+        (project?.fonts || []).length,
+        ", bitmaps =",
+        (project?.bitmaps || []).length
+    );
+    for (const pg of project?.userPages || []) {
+        console.log(
+            `[deploy] page "${pg?.name}": components=${(pg?.components || []).length} lines=${(pg?.connectionLines || []).length}`
+        );
     }
 
     const baseFolder = opts.filePath.replace(/[\\/][^\\/]+$/, "");
     const deviceExportDir = baseFolder + "\\device-export";
     const manifestPath = deviceExportDir + "\\deploy-manifest.json";
 
-    // 1. Generate device JSON + images (front side).
+    // 1. Generate device JSON + images (front side) from the on-disk project.
     const screens = transformToDeviceJson(project);
     const screenEntries = Object.entries(screens);
     const screenNames = screenEntries.map(([name]) => name);
     const images = deviceClient.extractDeviceImages(project as any);
+
+    // ── Diagnostics: what did transformToDeviceJson produce per screen? ──
+    const screenEntriesTyped = screenEntries as [string, any][];
+    const perScreenTiny = screenEntriesTyped.every(
+        ([, s]) => Object.keys(s?.widgets || {}).length <= 1
+    );
+    for (const [name, s] of screenEntriesTyped) {
+        const keys = Object.keys(s?.widgets || {});
+        console.log(
+            `[deploy] screen "${name}": widgets=${keys.length} bytes=${JSON.stringify(s).length} first=${keys.slice(0, 6).join(",")}`
+        );
+    }
+    if (perScreenTiny) {
+        // Every screen came out with just a background → dump what the on-disk
+        // page components look like so we can see what is being dropped.
+        for (const pg of project?.userPages || []) {
+            const comps = pg?.components || [];
+            console.log(
+                `[deploy][diag] page "${pg?.name}": components=${comps.length} types=${comps
+                    .slice(0, 15)
+                    .map(
+                        (c: any) =>
+                            (c && c.type) || c?.constructor?.name || "?"
+                    )
+                    .join(", ")}`
+            );
+        }
+    }
 
     // Content signatures used to detect what actually changed since the last
     // successful deploy (the deploy-manifest.json baseline).
@@ -200,7 +256,7 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
             );
             await fetch(
                 `/api/eez-studio/write-file?path=${encodeURIComponent(imageDir + "\\" + img.name + ".png")}`,
-                { method: "POST", body: base64ToBytes(img.data_base64) }
+                { method: "POST", body: base64ToBytes(img.data_base64) as unknown as BodyInit }
             );
         }
     }
@@ -234,6 +290,7 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
             panelId: device.panelId ?? device.serialNumber,
             serialNumber: device.serialNumber,
             panelName: device.deviceName || hubProject.name,
+            importedAt: new Date().toISOString(),
         });
     } catch {
         /* binding file is best-effort */

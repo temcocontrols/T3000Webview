@@ -855,7 +855,7 @@ const RunEditSwitchControls = observer(
         static contextType = ProjectContext;
         declare context: React.ContextType<typeof ProjectContext>;
 
-        state = { deployOpen: false };
+        state: { deployOpen: boolean } = { deployOpen: false };
 
         get deployProjectInfo() {
             const projectStore = this.context;
@@ -895,11 +895,20 @@ const RunEditSwitchControls = observer(
             return previewStore.state === "building";
         }
 
-        handleDeploy = () => {
+        handleDeploy = async () => {
             const projectStore = this.context;
             if (!projectStore.filePath) {
                 notification.error("Save the project first before deploying.");
                 return;
+            }
+            // Persist the current project to disk first, then let the shared
+            // deploy pipeline export from the SAVED file (raw JSON). Deploying
+            // from the in-memory EEZ Document model objects made every widget
+            // except the background panel disappear (tiny/broken device-export).
+            try {
+                await projectStore.doSave();
+            } catch (e) {
+                console.error("Save before deploy failed", e);
             }
             // Open the shared Deploy-to-Device drawer: pick a device, deploy
             // (real push), and view deploy logs — same logic as Design Hub.
@@ -997,7 +1006,6 @@ const RunEditSwitchControls = observer(
                             open={this.state.deployOpen}
                             onClose={() => this.setState({ deployOpen: false })}
                             project={this.deployProjectInfo}
-                            eezProject={this.context.project}
                             filePath={this.context.filePath}
                         />
                     )}
