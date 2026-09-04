@@ -61,10 +61,10 @@ export async function importProjectFromDevice(
     const stagingDir = `${projectDir}/device-import`;
     const log = onLog;
 
-    device.ip = "127.0.0.1:8080";
-
+    // Use the REAL device IP from the caller's device record (design hub list,
+    // EEZ home device list, or the stored project binding). No mock override.
     log(`Importing from ${device.name}`);
-    log(`  → IP: ${device.ip || "(mock)"}  SN: ${device.serialNumber}`);
+    log(`  → IP: ${device.ip || "(no IP on record)"}  SN: ${device.serialNumber}`);
     log(`  → Project: ${projectDir}`);
 
     // Step 0 — create project folder skeleton
@@ -80,7 +80,7 @@ export async function importProjectFromDevice(
             `Cannot reach device${device.ip ? ` at ${device.ip}` : " (no IP on record)"}: ${conn.error}`
         );
     }
-    log(`✔ Step 1 — Connected via ${conn.mode.toUpperCase()}${device.ip ? ` (${device.ip})` : " (mock)"}`);
+    log(`✔ Step 1 — Connected via ${conn.mode.toUpperCase()}${device.ip ? ` (${device.ip})` : ""}`);
 
     // Step 2 — device summary (screen names, counts, sizes)
     log("=> Step 2 — Fetching device info...");
