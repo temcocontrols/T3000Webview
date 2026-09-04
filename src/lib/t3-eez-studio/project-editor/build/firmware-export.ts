@@ -596,6 +596,21 @@ function emitWidget(c: any, ctx: NativeCtx, allRaw: Set<string>): { key: string;
                 obj.value_left_type = c.valueLeftType || "expression";
             }
             if (c.mode) obj.mode = c.mode;
+            // ── Arc-only: device-native angles (lv_arc_set_bg_angles /
+            //    lv_arc_set_rotation). EEZ stores them as bgStartAngle /
+            //    bgEndAngle / rotation; WITHOUT them the loader re-imports an
+            //    arc with undefined integers → EEZ "must be an integer" errors.
+            if (mapped === "arc") {
+                if (c.rotationType !== "expression" && c.rotation != null) {
+                    obj.rotation = Number(c.rotation);
+                }
+                if (c.bgStartAngleType !== "expression" && c.bgStartAngle != null) {
+                    obj.bg_start_angle = Number(c.bgStartAngle);
+                }
+                if (c.bgEndAngleType !== "expression" && c.bgEndAngle != null) {
+                    obj.bg_end_angle = Number(c.bgEndAngle);
+                }
+            }
             break;
 
         case "image": {
