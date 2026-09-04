@@ -82,7 +82,10 @@ const DeployLogRow: React.FC<{
   onToggle: () => void;
   wrap?: boolean;
 }> = ({ log, open, onToggle, wrap = false }) => {
-  const hasDetail = (log.screens && log.screens.length > 0) || (log.images && log.images.length > 0);
+  const hasDetail =
+    (log.screens && log.screens.length > 0) ||
+    (log.images && log.images.length > 0) ||
+    (log.steps && log.steps.length > 0);
   return (
     <div style={{ borderRadius: 8, marginBottom: 6, background: '#fff' }}>
       <div
@@ -121,6 +124,20 @@ const DeployLogRow: React.FC<{
       </div>
       {open && hasDetail && (
         <div style={{ borderTop: '1px solid #eef1f6', padding: '8px 12px', background: '#f8fafc', fontSize: 12, color: '#4a5a6c', lineHeight: 1.6 }}>
+          {log.steps && log.steps.length > 0 && (
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ fontWeight: 600, color: '#1c2b3a', marginBottom: 4 }}>Steps</div>
+              {log.steps.map((s) => (
+                <div key={s.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ color: s.status === 'error' ? '#d13438' : s.status === 'skipped' ? '#b8860b' : '#2e9b4f' }}>
+                    {s.status === 'error' ? '✖' : s.status === 'skipped' ? '—' : '✔'}
+                  </span>
+                  <span>{s.label}</span>
+                  {s.detail && <span style={{ color: '#7a8699' }}>· {s.detail}</span>}
+                </div>
+              ))}
+            </div>
+          )}
           {log.screens && log.screens.length > 0 && (
             <div style={{ marginBottom: 4 }}>
               <span style={{ fontWeight: 600, color: '#1c2b3a' }}>Screens ({log.screens.length}): </span>
@@ -517,7 +534,7 @@ export const ProjectDetailPage: React.FC = () => {
             </div>
           )}
 
-          <Button size="medium" appearance="primary" icon={<RocketRegular style={{ fontSize: 10 }} />} onClick={() => setDeployOpen(true)} style={{ fontWeight: 500 }}>
+          <Button size="medium" appearance="primary" icon={<RocketRegular style={{ fontSize: 10 }} />} onClick={() => setDeployOpen(true)} style={{ fontWeight: 500, fontSize: 12 }}>
             Deploy to device
           </Button>
 
