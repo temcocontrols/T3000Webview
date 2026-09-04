@@ -1007,6 +1007,9 @@ const RunEditSwitchControls = observer(
                             onClose={() => this.setState({ deployOpen: false })}
                             project={this.deployProjectInfo}
                             filePath={this.context.filePath}
+                            // Defensive auto-save: persist the live project again
+                            // right before the push (shown as the first log step).
+                            onSaveProject={() => (this.context as any).doSave()}
                         />
                     )}
                 </div>

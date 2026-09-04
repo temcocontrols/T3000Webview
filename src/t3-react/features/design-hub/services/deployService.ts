@@ -25,7 +25,10 @@ import { getDeviceBinding, setDeviceBinding } from "project-editor/build/device-
 import { writeTextFile } from "project-editor/build/build";
 import { makeFolder } from "eez-studio-shared/util-electron";
 import { designHubService } from "./designHubService";
-import type { HubProject } from "../types";
+import type { DeployStepInfo, HubProject } from "../types";
+
+/** Re-export so the drawer / callers don't need to import the model file. */
+export type { DeployStepInfo } from "../types";
 
 /** A deployable device (from the device tree API + connectivity fields). */
 export interface DeployDevice {
@@ -60,6 +63,12 @@ export interface DeployEezOptions {
     filePath: string;
     /** Device to deploy to (picked in the drawer, or the currently-bound one). */
     device: DeployTarget;
+    /** Live step feed — called as each deploy step completes (progress UI). */
+    onStep?: (step: DeployStepInfo) => void;
+    /** Persist the in-memory EEZ project to disk before exporting (editor path).
+     *  Runs FIRST and is shown as the "save" step in the log. Omit when the
+     *  project on disk is already current (e.g. Design Hub). */
+    save?: () => Promise<void>;
 }
 
 export interface DeployEezResult {
@@ -71,6 +80,8 @@ export interface DeployEezResult {
     imageCount?: number;
     manifestPath?: string;
     deployed?: number;
+    /** Ordered steps executed during this deploy (for the live UI + log history). */
+    steps?: DeployStepInfo[];
 }
 
 /** Fetch the deployable device list (same source as the Design Hub dialog). */
@@ -155,6 +166,36 @@ function contentSignature(text: string): string {
  */
 export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEezResult> {
     const { hubProject, device } = opts;
+
+    // ── Step log (what has been done, in order) ──
+    const steps: DeployStepInfo[] = [];
+    const emitStep = (
+        id: string,
+        label: string,
+        detail?: string,
+        status: DeployStepInfo["status"] = "done",
+        error?: string
+    ) => {
+        const info: DeployStepInfo = { id, label, detail, status, error };
+        steps.push(info);
+        const mark = status === "done" ? "✔" : status === "error" ? "✖" : "▪";
+        // eslint-disable-next-line no-console
+        console.log(`[deploy] ${mark} ${label}${detail ? ` — ${detail}` : ""}${error ? `: ${error}` : ""}`);
+        opts.onStep?.(info);
+    };
+
+    // 0. Auto-save the in-memory project to disk FIRST (editor path) so the
+    //    export below reads fresh JSON with all unsaved edits included.
+    if (opts.save) {
+        try {
+            await opts.save();
+            emitStep("save", "Saved project to disk", "auto-save before export");
+        } catch (e: any) {
+            emitStep("save", "Saved project to disk", undefined, "error", e?.message || String(e));
+            throw new Error(`Auto-save failed before deploy: ${e?.message || e}`);
+        }
+    }
+
     // Deploy ALWAYS exports from the saved project FILE on disk.
     // transformToDeviceJson reads raw JSON — feeding it an in-memory EEZ
     // Document (model objects) made every widget except the background panel
@@ -171,6 +212,11 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     if (!project) {
         throw new Error(`Cannot load project for deploy: ${opts.filePath}`);
     }
+    emitStep(
+        "load",
+        "Loaded project from disk",
+        `${(project?.userPages || []).length} pages, ${(project?.fonts || []).length} fonts, ${(project?.bitmaps || []).length} bitmaps`
+    );
 
     const baseFolder = opts.filePath.replace(/[\\/][^\\/]+$/, "");
     const deviceExportDir = baseFolder + "\\device-export";
@@ -181,6 +227,11 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     const screenEntries = Object.entries(screens);
     const screenNames = screenEntries.map(([name]) => name);
     const images = deviceClient.extractDeviceImages(project as any);
+
+    emitStep("export", "Exported project to device JSON", `${screenNames.length} screens`);
+    if (images.length > 0) {
+        emitStep("images", "Extracted device images", `${images.length} images`);
+    }
 
     // Content signatures used to detect what actually changed since the last
     // successful deploy (the deploy-manifest.json baseline).
@@ -220,6 +271,11 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
             );
         }
     }
+    emitStep(
+        "backup",
+        "Wrote device-export/ backup files",
+        `${screenNames.length} screen JSONs${images.length > 0 ? ` + ${images.length} image PNGs` : ""}`
+    );
 
     // Diff against the last SUCCESSFUL deploy (manifest baseline). New/edited
     // screens and images are the ONLY things pushed — no manual selection.
@@ -242,6 +298,13 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     // No baseline yet (first deploy) or every screen changed → push everything.
     const needsFullDeploy =
         !previous || changedScreens.length === screenEntries.length;
+    emitStep(
+        "diff",
+        "Compared with last deploy baseline",
+        !previous
+            ? "no previous baseline → full deploy"
+            : `${changedScreens.length} screen(s), ${changedImages.length} image(s) changed`
+    );
 
     // 3. Bind the project to the chosen device (disk binding + hub binding).
     try {
@@ -265,6 +328,11 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     } catch {
         /* hub binding is best-effort */
     }
+    emitStep(
+        "bind",
+        "Bound project to device",
+        `SN ${device.serialNumber}${device.ip ? ` · ${device.ip}` : ""}${device.deviceName ? ` · ${device.deviceName}` : ""}`
+    );
 
     // 4. Push ONLY what changed to the chosen device (direct REST). This runs
     //    automatically on every "Deploy to Device" — no user selection needed.
@@ -278,6 +346,7 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         // Nothing differs from the last successful deploy.
         pushOk = true;
         pushMessage = "No changes to deploy — device is already up to date";
+        emitStep("push", "No changes to push", "device already up to date", "skipped");
     } else {
         try {
             const ip = device.ip || getDeviceBinding(opts.filePath)?.ip || "";
@@ -287,6 +356,11 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
                 device.serialNumber
             );
             if (conn.error) throw new Error(conn.error);
+            emitStep(
+                "connect",
+                "Connected to device REST API",
+                `${ip} (SN ${device.serialNumber})`
+            );
 
             if (needsFullDeploy) {
                 // First deploy, or everything changed → one full push
@@ -300,6 +374,13 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
                     status === "ok"
                         ? `Pushed ${deployed} screen${deployed === 1 ? "" : "s"} + ${imagesDeployed} image${imagesDeployed === 1 ? "" : "s"} to device`
                         : `Pushed ${deployed}/${count} screens (${status})`;
+                emitStep(
+                    "push-all",
+                    "Deployed all screens (full push)",
+                    `${deployed}/${count} screens + ${imagesDeployed} images`,
+                    pushOk ? "done" : "error",
+                    pushOk ? undefined : `device returned ${status}`
+                );
             } else {
                 // Incremental: push the changed images first (screens may
                 // reference them), then only the changed screens.
@@ -311,6 +392,11 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
                             `${imgRes.failed} image${imgRes.failed === 1 ? "" : "s"} failed to upload`
                         );
                     }
+                    emitStep(
+                        "push-images",
+                        "Pushed changed images",
+                        `${imagesDeployed} image${imagesDeployed === 1 ? "" : "s"} uploaded`
+                    );
                 }
                 const failed: string[] = [];
                 for (const name of changedScreens) {
@@ -318,8 +404,20 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
                         await deviceClient.deployScreen(name, screens[name]);
                         deployed++;
                         deployedScreens.push(name);
+                        emitStep(
+                            `push-screen:${name}`,
+                            `Deployed screen "${name}"`,
+                            `${Math.round(JSON.stringify(screens[name]).length / 1024)} KB`
+                        );
                     } catch (e: any) {
                         failed.push(name);
+                        emitStep(
+                            `push-screen:${name}`,
+                            `Deploy screen "${name}"`,
+                            undefined,
+                            "error",
+                            e?.message || String(e)
+                        );
                     }
                 }
                 pushOk = failed.length === 0;
@@ -328,10 +426,21 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
                         ? `Deployed ${deployed} changed screen${deployed === 1 ? "" : "s"} + ${imagesDeployed} changed image${imagesDeployed === 1 ? "" : "s"}`
                         : `Updated ${imagesDeployed} changed image${imagesDeployed === 1 ? "" : "s"}`
                     : `Failed ${failed.length}/${changedScreens.length} screens: ${failed.join(", ")}`;
+                if (changedScreens.length > 0) {
+                    emitStep(
+                        "push-screens",
+                        "Pushed changed screens",
+                        pushOk
+                            ? `${deployed}/${changedScreens.length} screens deployed`
+                            : `${deployed} of ${changedScreens.length} screens deployed, failed: ${failed.join(", ")}`,
+                        pushOk ? "done" : "error"
+                    );
+                }
             }
         } catch (e: any) {
             pushOk = false;
             pushMessage = `Device push failed: ${e?.message || e}`;
+            emitStep("push", "Deploy to device", undefined, "error", e?.message || String(e));
         }
     }
 
@@ -362,6 +471,18 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
                 2
             )
         );
+        emitStep(
+            "manifest",
+            "Saved deploy manifest (new baseline)",
+            `${count} screens + ${images.length} images hashed`
+        );
+    } else {
+        emitStep(
+            "manifest",
+            "Deploy manifest not updated",
+            hasChanges ? "push incomplete — will retry on next deploy" : "no changes this run",
+            "skipped"
+        );
     }
 
     // 5. Record deploy log + activity.
@@ -386,6 +507,7 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
             screens: Object.keys(screens),
             images: manifestImages,
             manifestPath,
+            steps,
         });
     } catch {
         /* log is best-effort */
@@ -414,5 +536,6 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         imageCount: images.length,
         manifestPath,
         deployed,
+        steps,
     };
 }

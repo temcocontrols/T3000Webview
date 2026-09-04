@@ -78,6 +78,18 @@ export interface ActivityItem {
   projectId?: string;
 }
 
+/** One completed step of a deploy run ("what was done"). */
+export interface DeployStepInfo {
+  /** Stable step id, e.g. "load", "export", "diff", "push-screen-home_screen". */
+  id: string;
+  /** Past-tense label, e.g. "Loaded project from disk". */
+  label: string;
+  /** Short outcome detail, e.g. "13 pages, 9 fonts". */
+  detail?: string;
+  status: 'done' | 'skipped' | 'error';
+  error?: string;
+}
+
 /** A single deployment attempt for a project (persisted per-project). */
 export interface DeployLogEntry {
   id: string;
@@ -94,6 +106,8 @@ export interface DeployLogEntry {
   images?: { name: string; width: number; height: number; color_format?: number | string }[];
   /** On-disk manifest path (EEZ/LVGL device-export), if known. */
   manifestPath?: string;
+  /** Ordered steps executed during this deploy (detailed progress). */
+  steps?: DeployStepInfo[];
 }
 
 export interface LibraryItem {
