@@ -124,3 +124,7 @@ Consolidate hardcoded `http://localhost:9103` → relative `/api/...` URLs.
 To update Haystack tags with periodic updates through GitHub Actions
 
 More details=> Proposal: Fixes for specific enthalpy units
+
+## 2026-09-07
+
+For the RS485 scan device list, see more details in the email: Fwd: [Temco Controls Forum] [T3000 Software] Webview: adding links to other graphics screens.
