@@ -90,11 +90,13 @@ export async function importProjectFromDevice(
             `${info.screen_size.width}x${info.screen_size.height}`
     );
 
-    // Step 3 — load each screen individually (order = device info's screens
-    // list as-is; the device is responsible for reporting the correct order).
+    // Step 3 — load each screen individually. The order comes from
+    // info.screens, which the client normalizes from the device's screen1..N
+    // map (the device is the authority on screen sequence: screen1 = 1, ...).
     log(`=> Step 3 — Loading ${info.screen_count} screens...`);
     const stagingScreens: { name: string; json: any }[] = [];
-    for (const screenName of info.screens) {
+    for (let i = 0; i < info.screens.length; i++) {
+        const screenName = info.screens[i];
         const screen = await client.loadScreen(screenName);
         const screenPath = `${stagingDir}/${screenName}.json`;
         await fetch(`/api/eez-studio/write-file?path=${encodeURIComponent(screenPath)}`, {
@@ -104,7 +106,7 @@ export async function importProjectFromDevice(
         });
         stagingScreens.push(screen);
         const kb = Math.round(JSON.stringify(screen.json).length / 1024);
-        log(`  → ${screen.name} — ${kb}KB`);
+        log(`  → screen${i + 1}: ${screen.name} — ${kb}KB`);
     }
     log(`✔ Step 3 — Loaded ${stagingScreens.length} screens`);
 

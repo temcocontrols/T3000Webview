@@ -382,14 +382,26 @@ async fn device_info(State(st): State<AppState>) -> Json<Value> {
         }
     }
     // Values match the real ESP32 device (dynamic_display_api.c info_handler).
+    // Newer firmware reports `screens` as an ordered OBJECT map whose numeric
+    // suffix (screen1, screen2, ...) is the load order, and also lists the
+    // image/font names (not just counts).
+    let screens_obj: serde_json::Value = {
+        let mut m = serde_json::Map::new();
+        for (i, name) in names.iter().enumerate() {
+            m.insert(format!("screen{}", i + 1), serde_json::Value::String(name.clone()));
+        }
+        serde_json::Value::Object(m)
+    };
     Json(json!({
         "panel_name": st.meta.get("panel_name").and_then(|v| v.as_str()).unwrap_or("T3-ESP32"),
         "serial_number": st.meta.get("serial_number").and_then(|v| v.as_i64()).unwrap_or(0),
         "screen_size": { "width": 480, "height": 320 },
         "screen_count": screens.len(),
-        "screens": names,
+        "screens": screens_obj,
         "image_count": images.len(),
+        "images": images.iter().cloned().collect::<Vec<_>>(),
         "font_count": fonts.len(),
+        "fonts": fonts.iter().cloned().collect::<Vec<_>>(),
         "firmware_version": "1.0.0",
         "lvgl_version": "9.1.0",
         "dark_theme": true,

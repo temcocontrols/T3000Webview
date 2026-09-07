@@ -88,6 +88,7 @@ export interface DeviceInfoResponse {
     serial_number: number;
     screen_size: { width: number; height: number };
     screen_count: number;
+    /** Screen names in device load order (normalized — see normalizeInfoScreens). */
     screens: string[];
     image_count: number;
     font_count: number;
@@ -95,6 +96,10 @@ export interface DeviceInfoResponse {
     lvgl_version: string;
     dark_theme: boolean;
     color_format: string;
+    /** Bitmap names present on the device (newer firmware). */
+    images?: string[];
+    /** Font names present on the device (newer firmware). */
+    fonts?: string[];
 }
 
 /** Connection mode determined at connect time. */
@@ -125,7 +130,11 @@ const MOCK_BASE = "/api/eez-device";
 
 /** Real ESP32 dynamic-display REST API (device port 80, base path /api/eez-device). */
 const REST_BASE = "/api/eez-device";
-const REACHABILITY_TIMEOUT_MS = 2000;
+// Reachability probe timeout. Do NOT make this tiny: the probe goes through the
+// local proxy → Rust backend → the WiFi ESP32, which measured ~2.8s round trip
+// for a healthy device (a 2s cap made it look "unreachable" while Postman, with
+// no cap, worked). 10s still fails fast enough for a genuinely dead device.
+const REACHABILITY_TIMEOUT_MS = 10000;
 const REQUEST_TIMEOUT_MS = 30000;
 /** Longer budget for deploy/push ops — the device writes screens/images to
  *  flash, and a FULL deploy of every screen over WiFi can take well over the
@@ -183,6 +192,47 @@ function pngDimensionsFromBase64(b64: string): { width: number; height: number }
 // DeviceRestClient
 // ═══════════════════════════════════════════════════════════════════
 
+/**
+ * Normalize the `screens` field of /device/info. Older firmware reports a plain
+ * string[] (the array order IS the sequence); newer firmware reports an OBJECT
+ * map whose KEYS carry the sequence explicitly:
+ *   { "screen1": "start_up_screen", "screen2": "home_screen", ... }
+ * Both become an ordered string[] in device load order. For the map form the
+ * numeric suffix is the AUTHORITATIVE order (screen1 → 1 … screen13 → 13),
+ * regardless of the JSON key insertion order — so `screen10` always sorts after
+ * `screen9` (not after `screen1` as a plain lexicographic sort would). Keys that
+ * are not of the screen<N> form are kept after the numbered ones, in their
+ * original insertion order (stable sort).
+ */
+function normalizeInfoScreens(screens: any): string[] {
+    if (Array.isArray(screens)) {
+        // Legacy firmware: the array order is the device sequence — trust it.
+        return screens.filter((s): s is string => typeof s === "string");
+    }
+    if (screens && typeof screens === "object") {
+        const entries = Object.entries(screens).map(([key, value]) => ({
+            // The numeric part of "screen<N>" is the sequence index.
+            index: /^screen(\d+)$/i.exec(key)?.[1] !== undefined ? Number(/^screen(\d+)$/i.exec(key)![1]) : null,
+            value,
+        }));
+        entries.sort((a, b) => {
+            const ia = a.index ?? Number.MAX_SAFE_INTEGER;
+            const ib = b.index ?? Number.MAX_SAFE_INTEGER;
+            if (ia !== ib) return ia - ib;
+            return 0; // stable → keeps insertion order for unnumbered keys
+        });
+        return entries
+            .map((e) => e.value)
+            .filter((v): v is string => typeof v === "string");
+    }
+    return [];
+}
+
+/** Coerce an optional JSON array of names into string[]. */
+function toStringArray(value: any): string[] | undefined {
+    return Array.isArray(value) ? value.filter((s): s is string => typeof s === "string") : undefined;
+}
+
 export class DeviceRestClient {
     private mode: ConnectionMode = "rest";
     private deviceIp: string = "";
@@ -231,7 +281,12 @@ export class DeviceRestClient {
         //     return { mode: "bacnet", panelId: this.panelId, serialNumber: this.serialNumber };
         // }
 
-        return { mode: "rest", error: `Device "${deviceIp}" is unreachable via its REST API` };
+        return {
+            mode: "rest",
+            error:
+                `Device "${deviceIp}" is unreachable via its REST API ` +
+                `(${restUrl("device/info", deviceIp)})`,
+        };
     }
 
     /**
@@ -280,7 +335,24 @@ export class DeviceRestClient {
         if (!response.ok) {
             throw new Error(`Device returned ${response.status}`);
         }
-        return response.json();
+        const json = (await response.json()) as any;
+        return {
+            panel_name: json.panel_name ?? "",
+            serial_number: json.serial_number ?? 0,
+            screen_size: json.screen_size ?? { width: 0, height: 0 },
+            screen_count: json.screen_count ?? 0,
+            // screens may arrive as a string[] (legacy) or an object map
+            // {screen1:name,...} — normalize to an ordered name[].
+            screens: normalizeInfoScreens(json.screens),
+            image_count: json.image_count ?? 0,
+            font_count: json.font_count ?? 0,
+            firmware_version: json.firmware_version ?? "",
+            lvgl_version: json.lvgl_version ?? "",
+            dark_theme: json.dark_theme ?? false,
+            color_format: json.color_format ?? "",
+            images: toStringArray(json.images),
+            fonts: toStringArray(json.fonts),
+        };
     }
 
     // ── Full Sync: Load All ───────────────────────────────────────

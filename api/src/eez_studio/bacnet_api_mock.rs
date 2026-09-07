@@ -28,7 +28,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Mutex;
 use tracing::{error, info};
 
@@ -245,9 +245,16 @@ pub struct DeviceInfoResponse {
     pub serial_number: i32,
     pub screen_size: ScreenSize,
     pub screen_count: usize,
-    pub screens: Vec<String>,
+    /// Screen names keyed by 1-based load index (screen1..screenN) — matches
+    /// the real device /device/info shape (the frontend normalizes this to an
+    /// ordered name list).
+    pub screens: BTreeMap<String, String>,
     pub image_count: usize,
+    /// Bitmap names present on the device.
+    pub images: Vec<String>,
     pub font_count: usize,
+    /// Font names present on the device.
+    pub fonts: Vec<String>,
     pub firmware_version: String,
     /// LVGL version detected from firmware C files (e.g. "9.1.0")
     pub lvgl_version: String,
@@ -373,11 +380,46 @@ pub async fn get_device_info() -> Result<Json<DeviceInfoResponse>, StatusCode> {
         })?;
 
     let screen_names: Vec<String> = screens.iter().map(|s| s.name.clone()).collect();
+
+    // Collect per-screen bitmap/font names too — the real device lists them in
+    // /device/info (not just counts).
+    let mut image_names: BTreeSet<String> = BTreeSet::new();
+    let mut font_names: BTreeSet<String> = BTreeSet::new();
+    for s in &screens {
+        if let Some(bitmaps) = s.json.get("bitmaps").and_then(|b| b.as_array()) {
+            for v in bitmaps {
+                if let Some(n) = v.as_str() {
+                    image_names.insert(n.to_string());
+                }
+            }
+        }
+        if let Some(fonts) = s.json.get("fonts").and_then(|f| f.as_array()) {
+            for v in fonts {
+                // Font entry: [name, size] tuple or {name, size} object.
+                if let Some(n) = v
+                    .as_array()
+                    .and_then(|a| a.first())
+                    .and_then(|x| x.as_str())
+                {
+                    font_names.insert(n.to_string());
+                } else if let Some(n) = v.get("name").and_then(|x| x.as_str()) {
+                    font_names.insert(n.to_string());
+                }
+            }
+        }
+    }
+    // screens: {screen1: name, screen2: name, ...} — matches the real device.
+    let screens_map: BTreeMap<String, String> = screen_names
+        .iter()
+        .enumerate()
+        .map(|(i, n)| (format!("screen{}", i + 1), n.clone()))
+        .collect();
+
     let (image_count, font_count, display_width, display_height, lvgl_version, dark_theme, color_format) =
         scan_firmware_metadata(&dir);
 
     info!("get_device_info: {} screens, {} images, {} fonts, {}x{}, lvgl={}, dark={}, fmt={}",
-        screen_names.len(), image_count, font_count, display_width, display_height,
+        screen_names.len(), image_names.len(), font_names.len(), display_width, display_height,
         lvgl_version, dark_theme, color_format);
 
     Ok(Json(DeviceInfoResponse {
@@ -385,9 +427,11 @@ pub async fn get_device_info() -> Result<Json<DeviceInfoResponse>, StatusCode> {
         serial_number: 0,
         screen_size: ScreenSize { width: display_width, height: display_height },
         screen_count: screen_names.len(),
-        screens: screen_names,
+        screens: screens_map,
         image_count,
+        images: image_names.into_iter().collect(),
         font_count,
+        fonts: font_names.into_iter().collect(),
         firmware_version: "1.0.0".into(),
         lvgl_version,
         dark_theme,
