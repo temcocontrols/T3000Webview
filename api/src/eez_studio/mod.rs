@@ -441,7 +441,11 @@ pub async fn proxy_device_rest(
     let url = format!("http://{}:{}/{}", host, port, path);
 
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(35))
+        // 120s budget for the device round trip — a FULL deploy writes every
+        // screen to the device flash over WiFi and can exceed the old 35s cap
+        // (which, combined with the 10s dev-proxy timeout, surfaced as a
+        // frontend "socket hang up" even though the device was fine).
+        .timeout(std::time::Duration::from_secs(120))
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
 

@@ -127,6 +127,10 @@ const MOCK_BASE = "/api/eez-device";
 const REST_BASE = "/api/eez-device";
 const REACHABILITY_TIMEOUT_MS = 2000;
 const REQUEST_TIMEOUT_MS = 30000;
+/** Longer budget for deploy/push ops — the device writes screens/images to
+ *  flash, and a FULL deploy of every screen over WiFi can take well over the
+ *  30s general timeout (surfaced earlier as a proxy "socket hang up"). */
+const DEPLOY_TIMEOUT_MS = 120000;
 
 /**
  * Resolve the REST base URL depending on mock/real mode.
@@ -371,7 +375,7 @@ export class DeviceRestClient {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ screens }),
-                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+                signal: AbortSignal.timeout(DEPLOY_TIMEOUT_MS),
             }
         );
         if (!response.ok) {
@@ -468,7 +472,7 @@ export class DeviceRestClient {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: img.name, data_base64: img.data_base64 }),
-                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+                signal: AbortSignal.timeout(DEPLOY_TIMEOUT_MS),
             }
         );
         if (!response.ok) {
@@ -543,7 +547,7 @@ export class DeviceRestClient {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ json }),
-                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+                signal: AbortSignal.timeout(DEPLOY_TIMEOUT_MS),
             }
         );
         if (!response.ok) {

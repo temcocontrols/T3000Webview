@@ -223,7 +223,18 @@ module.exports = configure(function (/* ctx */) {
           target: "http://localhost:9103",
           changeOrigin: true,
           secure: false,
-          proxyTimeout: 10000,
+          // NOTE: Vite applies proxyTimeout as an IDLE timeout on the proxy→Rust
+          // socket (proxyReq.setTimeout), NOT a total-request cap and NOT per-route.
+          // It only needs to exceed the longest SILENT stretch Rust may have while
+          // the browser waits — so a single large value is correct for all routes.
+          // 300s (not 10s/120s) so it stays above the Rust AI-provider budget (300s):
+          // POST /api/ai/chat is a long SSE stream and a "thinking"/tool-call gap with
+          // no event for >120s would otherwise be cut. It also covers a FULL "Deploy
+          // to Device" (flashing every screen over WiFi). A bigger value only lengthens
+          // the worst-case hang when Rust accepts a connection then goes silent — the
+          // "backend down → fail fast" path is ECONNREFUSED, which fires immediately
+          // and is unaffected by this number.
+          proxyTimeout: 300000,
           configure: (proxy) => {
             // When the Rust backend (T3000) is down, respond 502 fast instead of
             // hanging — otherwise blocking calls (e.g. EEZ store sync XHR) freeze the UI.
