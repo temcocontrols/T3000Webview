@@ -114,6 +114,20 @@ export class LVGLRollerWidget extends LVGLWidget {
             object: LVGLRollerWidget,
             jsObject: Partial<LVGLRollerWidget>
         ) => {
+            // Same normalization as the dropdown: older imports wrote `options`
+            // as an ARRAY, but EEZ stores it as a NEWLINE-JOINED STRING
+            // (array:string literal).
+            const rawOptions: any = (jsObject as any).options;
+            if (Array.isArray(rawOptions)) {
+                jsObject.options = rawOptions
+                    .map((o: any) =>
+                        typeof o === "string"
+                            ? o
+                            : o?.label || o?.text || o?.id || ""
+                    )
+                    .join("\n");
+            }
+
             if (jsObject.optionsType == undefined) {
                 jsObject.optionsType = "literal";
             }

@@ -881,26 +881,34 @@ function firmwareWidgetToComponent(
     // ── Dropdown ──
     if (lvglType === "LVGLDropdownWidget") {
         if (w.options?.length) {
-            comp.options = w.options.map(o =>
-                typeof o === "string" ? o : (o as any).label || (o as any).text || "?"
-            );
+            // EEZ stores LVGL dropdown `options` as a NEWLINE-JOINED STRING
+            // (array:string literal, e.g. "BACnet Slave\nModbus Slave"), NOT an
+            // array. Writing an array here made the editor concatenate the
+            // options (unescapeCString indexes the value as a string) → the
+            // dropdown rendered as ONE merged option with combined text.
+            comp.options = w.options
+                .map(o => (typeof o === "string" ? o : (o as any).label || (o as any).text || "?"))
+                .join("\n");
         } else {
             // Ensure options is never undefined (prevents unescapeCString crash)
-            comp.options = ["--"];
+            comp.options = "--";
         }
+        comp.optionsType = "literal";
         if (w.selected != null) comp.selected = w.selected;
     }
 
     // ── Roller ──
     if (lvglType === "LVGLRollerWidget") {
         if (w.options?.length) {
-            comp.options = w.options.map(o =>
-                typeof o === "string" ? o : (o as any).label || (o as any).text || "?"
-            );
+            // Roller options follow the same convention as dropdown options:
+            // a NEWLINE-JOINED STRING (array:string literal), not an array.
+            comp.options = w.options
+                .map(o => (typeof o === "string" ? o : (o as any).label || (o as any).text || "?"))
+                .join("\n");
         }
         // Default options so roller doesn't crash on empty
         if (!comp.options || comp.options.length === 0) {
-            comp.options = ["--"];
+            comp.options = "--";
         }
         comp.optionsType = "literal";
     }

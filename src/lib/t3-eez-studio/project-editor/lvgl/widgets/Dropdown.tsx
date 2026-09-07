@@ -111,6 +111,22 @@ export class LVGLDropdownWidget extends LVGLWidget {
             object: LVGLDropdownWidget,
             jsObject: Partial<LVGLDropdownWidget>
         ) => {
+            // Older imports (firmware-loader) wrote `options` as an ARRAY, but
+            // the EEZ dropdown model stores it as a NEWLINE-JOINED STRING
+            // (array:string literal, e.g. "BACnet Slave\nModbus Slave").
+            // Normalize on load so each option renders on its own line instead
+            // of being concatenated into one merged dropdown item.
+            const rawOptions: any = (jsObject as any).options;
+            if (Array.isArray(rawOptions)) {
+                jsObject.options = rawOptions
+                    .map((o: any) =>
+                        typeof o === "string"
+                            ? o
+                            : o?.label || o?.text || o?.id || ""
+                    )
+                    .join("\n");
+            }
+
             if (jsObject.optionsType == undefined) {
                 jsObject.optionsType = "literal";
             }
