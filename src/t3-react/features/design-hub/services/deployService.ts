@@ -20,6 +20,7 @@
  * which hosts pass in via `onDeploy` (see DeployDeviceDrawer).
  */
 import { transformToDeviceJson } from "project-editor/build/firmware-export";
+import { contentSignature } from "project-editor/build/deploy-manifest";
 import { base64ToBytes, deviceClient } from "project-editor/build/device-rest-client";
 import { getDeviceBinding, setDeviceBinding } from "project-editor/build/device-binding";
 import { writeTextFile } from "project-editor/build/build";
@@ -146,18 +147,6 @@ async function readPreviousManifest(manifestPath: string): Promise<any | null> {
     } catch {
         return null;
     }
-}
-
-/** Deterministic content signature (length + FNV-1a) used to diff deploys.
- *  Only used to decide whether a screen/image actually changed since the last
- *  successful deploy — not a cryptographic hash. */
-function contentSignature(text: string): string {
-    let h = 0x811c9dc5;
-    for (let i = 0; i < text.length; i++) {
-        h ^= text.charCodeAt(i);
-        h = (h * 0x01000193) >>> 0;
-    }
-    return `${text.length}:${h.toString(16)}`;
 }
 
 /**

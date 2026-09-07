@@ -17,6 +17,8 @@ import { DeviceRestClient } from "./device-rest-client";
 import { firmwareToProject } from "./firmware-loader";
 import { setDeviceBinding } from "./device-binding";
 import { generateAllParameterGrids } from "./generate-parameter-grid";
+import { transformToDeviceJson } from "./firmware-export";
+import { buildDeployManifest } from "./deploy-manifest";
 
 export interface DeviceImportInfo {
     name: string;
@@ -220,6 +222,38 @@ export async function importProjectFromDevice(
         });
     } catch (err) {
         console.error("[device-import] device binding failed:", err);
+    }
+
+    // Step 5.5 — Seed the deploy baseline (device-export/deploy-manifest.json)
+    // so the FIRST "Deploy to Device" after "Load from device" is incremental:
+    // a no-op when nothing changed, otherwise ONLY the edited screen(s)/image(s)
+    // get pushed — never an unconditional full re-push of every screen. We hash
+    // the SAME export the deploy pipeline produces (transformToDeviceJson +
+    // extractDeviceImages over the just-saved .eez-project), so an unchanged
+    // project round-trips to identical signatures and the device is treated as
+    // already up to date.
+    try {
+        const exportDir = `${projectDir}/device-export`;
+        await makeFolder(exportDir);
+        const deviceScreens = transformToDeviceJson(project);
+        const imageJson = client.extractDeviceImages(project as any);
+        const manifest = buildDeployManifest({
+            screens: deviceScreens,
+            images: imageJson,
+            serialNumber: device.serialNumber,
+            panelId: device.panelId,
+        });
+        await fetch(
+            `/api/eez-studio/write-text-file?path=${encodeURIComponent(exportDir + "/deploy-manifest.json")}`,
+            { method: "POST", body: JSON.stringify(manifest, null, 2) }
+        );
+        log(
+            `✔ Step 5.5 — Deploy baseline seeded (${manifest.screenCount} screens, ` +
+                `${manifest.imageCount} images) — first deploy will only push changes`
+        );
+    } catch (err) {
+        console.error("[device-import] deploy baseline seeding failed:", err);
+        log("  → deploy baseline skipped (first deploy will do a full push)");
     }
 
     return { project, projectPath, screenCount: stagingScreens.length, loadedImageCount };
