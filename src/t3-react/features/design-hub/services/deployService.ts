@@ -20,7 +20,7 @@
  * which hosts pass in via `onDeploy` (see DeployDeviceDrawer).
  */
 import { transformToDeviceJson } from "project-editor/build/firmware-export";
-import { contentSignature } from "project-editor/build/deploy-manifest";
+import { canonicalSignature, contentSignature } from "project-editor/build/deploy-manifest";
 import { base64ToBytes, deviceClient } from "project-editor/build/device-rest-client";
 import { getDeviceBinding, setDeviceBinding } from "project-editor/build/device-binding";
 import { writeTextFile } from "project-editor/build/build";
@@ -149,6 +149,48 @@ async function readPreviousManifest(manifestPath: string): Promise<any | null> {
     }
 }
 
+/** Hash scheme stored in deploy-manifest.json (canonical screen hashes). */
+const MANIFEST_HASH_VERSION = 2;
+
+/** Raw native screen JSON that "Load from device" cached in device-import/
+ *  (device-import/<screen>.json) — null when absent. This is the actual content
+ *  the device had when it was loaded, so it is the authoritative first-deploy
+ *  baseline: an unchanged re-export must NOT be pushed back to the device. */
+async function readImportStagingScreen(baseFolder: string, name: string): Promise<any | null> {
+    try {
+        const r = await fetch(
+            `/api/eez-studio/read-text-file?path=${encodeURIComponent(baseFolder + "\\device-import\\" + name + ".json")}`
+        );
+        if (!r.ok) return null;
+        const text = await r.text();
+        const parsed = text ? JSON.parse(text) : null;
+        return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+/** Content signature of a staging bitmap PNG (device-import/imgs/<name>.png) —
+ *  null when absent. Compared against the project bitmap base64 so an unedited
+ *  image (data URLs survive the editor round trip byte-for-byte) is skipped. */
+async function readImportStagingImageSignature(baseFolder: string, name: string): Promise<string | null> {
+    try {
+        const r = await fetch(
+            `/api/eez-studio/read-file?path=${encodeURIComponent(baseFolder + "\\device-import\\imgs\\" + name + ".png")}`
+        );
+        if (!r.ok) return null;
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        let binary = "";
+        const CHUNK = 0x8000;
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+        }
+        return contentSignature(btoa(binary));
+    } catch {
+        return null;
+    }
+}
+
 /**
  * Deploy an EEZ/LVGL project to a device: export → device-export + manifest →
  * push → log → bind. Returns a result the drawer can show inline.
@@ -223,10 +265,13 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     }
 
     // Content signatures used to detect what actually changed since the last
-    // successful deploy (the deploy-manifest.json baseline).
+    // successful deploy (the deploy-manifest.json baseline). Screens are hashed
+    // CANONICALLY (order-insensitive) so an unedited screen exported by
+    // firmware-export matches the raw screen JSON the device returned during
+    // "Load from device" even when the two use a different key order.
     const screenSignatures: Record<string, string> = {};
     for (const [name, screenData] of screenEntries) {
-        screenSignatures[name] = contentSignature(JSON.stringify(screenData));
+        screenSignatures[name] = canonicalSignature(screenData);
     }
     const imageSignatures: Record<string, string> = {};
     for (const img of images) {
@@ -269,14 +314,47 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     // Diff against the last SUCCESSFUL deploy (manifest baseline). New/edited
     // screens and images are the ONLY things pushed — no manual selection.
     const previous = await readPreviousManifest(manifestPath);
+    // Only trust manifests written by the CURRENT hash scheme — an older/seed
+    // manifest (lossy pre-editor hashes or the earlier order-sensitive scheme)
+    // would report every screen as changed and force a full deploy.
+    const manifestUsable = !!previous && previous.hashVersion === MANIFEST_HASH_VERSION;
     const prevScreenHashes: Record<string, string> =
-        previous?.screenHashes && typeof previous.screenHashes === "object"
+        manifestUsable && previous.screenHashes && typeof previous.screenHashes === "object"
             ? previous.screenHashes
             : {};
     const prevImageHashes: Record<string, string> =
-        previous?.imageHashes && typeof previous.imageHashes === "object"
+        manifestUsable && previous.imageHashes && typeof previous.imageHashes === "object"
             ? previous.imageHashes
             : {};
+    let baselineSource: string | null = manifestUsable ? "manifest" : null;
+
+    // First deploy of a project that was "Loaded from device": there is no
+    // usable deploy-manifest yet, but the device ALREADY holds exactly the
+    // screens that were read back into device-import/. Use that staging as the
+    // baseline so an UNCHANGED import deploys nothing instead of an
+    // unconditional full re-push. (The raw import file itself can't be the
+    // baseline: it is stored in the flat EEZ layout, which firmware-export only
+    // serializes fully AFTER the editor has re-saved it into the nested layout.)
+    if (!manifestUsable) {
+        let foundStaging = false;
+        for (const [name] of screenEntries) {
+            const staging = await readImportStagingScreen(baseFolder, name);
+            if (staging) {
+                prevScreenHashes[name] = canonicalSignature(staging);
+                foundStaging = true;
+            }
+        }
+        if (foundStaging) {
+            baselineSource = "device-import";
+            // Compare the project bitmaps against the PNGs pulled at import
+            // (bitmap data URLs survive the editor round trip byte-for-byte).
+            for (const img of images) {
+                const sig = await readImportStagingImageSignature(baseFolder, img.name);
+                if (sig) prevImageHashes[img.name] = sig;
+            }
+        }
+    }
+
     const changedScreens = screenEntries
         .filter(([name]) => prevScreenHashes[name] !== screenSignatures[name])
         .map(([name]) => name);
@@ -284,15 +362,16 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         (img) => prevImageHashes[img.name] !== imageSignatures[img.name]
     );
     const hasChanges = changedScreens.length > 0 || changedImages.length > 0;
-    // No baseline yet (first deploy) or every screen changed → push everything.
+    // No baseline at all (brand-new project, nothing on the device) or every
+    // screen changed → push everything.
     const needsFullDeploy =
-        !previous || changedScreens.length === screenEntries.length;
+        !baselineSource || changedScreens.length === screenEntries.length;
     emitStep(
         "diff",
         "Compared with last deploy baseline",
-        !previous
-            ? "no previous baseline → full deploy"
-            : `${changedScreens.length} screen(s), ${changedImages.length} image(s) changed`
+        !baselineSource
+            ? "no baseline → full deploy"
+            : `${changedScreens.length} screen(s), ${changedImages.length} image(s) changed vs ${baselineSource}`
     );
 
     // 3. Bind the project to the chosen device (disk binding + hub binding).
@@ -435,12 +514,15 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
 
     // The deploy manifest doubles as the change-detection baseline, so it is
     // only refreshed once the push fully succeeded — otherwise the next deploy
-    // retries the same changes.
-    if (hasChanges && pushOk) {
+    // retries the same changes. It is also written after a first deploy that
+    // established the baseline from device-import/ (even when nothing changed)
+    // so later deploys diff against the manifest instead of re-reading staging.
+    if (pushOk && (hasChanges || baselineSource === "device-import")) {
         await writeTextFile(
             manifestPath,
             JSON.stringify(
                 {
+                    hashVersion: MANIFEST_HASH_VERSION,
                     exportedAt: new Date().toISOString(),
                     serialNumber: device.serialNumber,
                     panelId: device.panelId,

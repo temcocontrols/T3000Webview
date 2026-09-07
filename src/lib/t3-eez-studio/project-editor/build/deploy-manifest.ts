@@ -29,6 +29,31 @@ export function contentSignature(text: string): string {
     return `${text.length}:${h.toString(16)}`;
 }
 
+/** Recursively sort object keys (arrays keep their order) so two objects with
+ *  the same content but different key order hash identically. */
+export function canonicalize(value: any): any {
+    if (Array.isArray(value)) {
+        return value.map(canonicalize);
+    }
+    if (value && typeof value === "object") {
+        const out: Record<string, any> = {};
+        for (const key of Object.keys(value).sort()) {
+            out[key] = canonicalize(value[key]);
+        }
+        return out;
+    }
+    return value;
+}
+
+/** Order-insensitive signature for an object/array tree. Used to compare a
+ *  screen exported by firmware-export against the raw screen JSON the device
+ *  returned during "Load from device" — the two may carry the same content but
+ *  in a different key order, so an order-sensitive hash would report every
+ *  screen as "changed" and force a full deploy. */
+export function canonicalSignature(value: any): string {
+    return contentSignature(JSON.stringify(canonicalize(value)));
+}
+
 export interface DeployManifestImage {
     name: string;
     width?: number;
