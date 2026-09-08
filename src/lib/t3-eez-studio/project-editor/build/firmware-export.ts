@@ -13,6 +13,8 @@
  * Each output file goes to `<projectDir>/device-export/<screen_name>.json`.
  */
 
+import { STYLE_ENUM_PROPS } from "./lvgl-style-enum-props";
+
 // ── Widget type mapping (LVGL prefix → firmware sub_type) ──
 // Must cover every LVGL widget type the loader (firmware-loader.ts SUB_TYPE_MAP)
 // can produce, so a round-trip import → deploy restores the full screen
@@ -491,6 +493,10 @@ function sanitizeStyle(
                 ctx.usedFonts.set(id, fontSizeFor(ctx, project, v, id));
             } else if ((key === "bg_img_src" || key === "src") && typeof v === "string" && v) {
                 ctx.usedBitmaps.add(v);
+            } else if (STYLE_ENUM_PROPS.has(key) && typeof v === "string") {
+                // EEZ stores enum tokens UPPERCASE ("CENTER"); the device-native
+                // JSON uses lowercase ("center"). Emit the device form.
+                node[key] = v.trim().toLowerCase();
             }
         }
     };
@@ -522,6 +528,41 @@ function isBackgroundPanel(c: any, ctx: NativeCtx): boolean {
     if (c.identifier) return false;
     return (c.left ?? 0) === 0 && (c.top ?? 0) === 0 &&
         (c.width ?? 0) === ctx.displayW && (c.height ?? 0) === ctx.displayH;
+}
+
+/** Device top-level flex fields and the EEZ style prop that carries each. */
+const FLEX_FIELD_FROM_STYLE: Record<string, string> = {
+    flex_flow: "flex_flow",
+    flex_main_place: "flex_main",
+    flex_cross_place: "flex_cross",
+    flex_track_place: "flex_track",
+};
+
+/** Move flex layout props from an EEZ style def (MAIN.DEFAULT) to the device's
+ *  top-level flex fields, deleting them from the style (the device reads flex
+ *  on the container object, not inside `style`). Values are already lowercase
+ *  (sanitizeStyle lowercases the STYLE_ENUM_PROPS). */
+function liftFlexToTopLevel(style: any): Record<string, string> {
+    const out: Record<string, string> = {};
+    const mainDefault = style?.MAIN?.DEFAULT;
+    if (!mainDefault || typeof mainDefault !== "object") return out;
+    for (const [from, to] of Object.entries(FLEX_FIELD_FROM_STYLE)) {
+        if (typeof mainDefault[from] === "string") {
+            out[to] = mainDefault[from];
+            delete mainDefault[from];
+        }
+    }
+    // EEZ flex/linear layouts also set `layout` — not a device style prop.
+    if (mainDefault.layout === "flex" || mainDefault.layout === "FLEX") {
+        delete mainDefault.layout;
+    }
+    if (Object.keys(mainDefault).length === 0) {
+        if (style.MAIN && typeof style.MAIN === "object") {
+            delete style.MAIN.DEFAULT;
+            if (Object.keys(style.MAIN).length === 0) delete style.MAIN;
+        }
+    }
+    return out;
 }
 
 /** EEZ literal flags are stored as the STRING "true"/"false". */
@@ -558,8 +599,17 @@ function emitWidget(c: any, ctx: NativeCtx, allRaw: Set<string>): { key: string;
 
     // ── Style + align (optional) ──
     const { style, align } = sanitizeStyle(c.localStyles?.definition, ctx, ctx.project);
-    if (style && Object.keys(style).length) obj.style = style;
     if (align) obj.align = align;
+    if (style) {
+        // Lift container flex layout out of `style` to the device's TOP-LEVEL
+        // flex fields (flex_flow/flex_main/flex_cross/flex_track). The device
+        // lays out children (e.g. the 8 schedule rows on SchedulePanelMain)
+        // from these top-level fields — leaving them inside `style` would strip
+        // them on a round-trip and every row would collapse onto the last one.
+        const flexTop = liftFlexToTopLevel(style);
+        for (const [k, v] of Object.entries(flexTop)) obj[k] = v;
+        if (Object.keys(style).length) obj.style = style;
+    }
 
     // ── Native font / bitmap recording from type-specific fields ──
     if (c.text != null && c.text !== "") {

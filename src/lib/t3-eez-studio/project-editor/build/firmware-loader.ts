@@ -5,6 +5,8 @@
  * Reverse of firmware-export.ts.
  */
 
+import { STYLE_ENUM_PROPS } from "./lvgl-style-enum-props";
+
 /** Convert PascalCase or camelCase to snake_case (matching EEZ's identifier convention). */
 function toSnakeCase(name: string): string {
     return name
@@ -962,6 +964,15 @@ function firmwareWidgetToComponent(
                     for (const [prop, value] of Object.entries(props)) {
                         if (prop === "text_font" && typeof value === "string") {
                             cleanedStyle[part][state][prop] = value.replace(/^lv_font_/, "").toUpperCase();
+                        } else if (
+                            STYLE_ENUM_PROPS.has(prop) &&
+                            typeof value === "string"
+                        ) {
+                            // Device JSON stores enum tokens LOWERCASE ("center",
+                            // "ver", "full"); EEZ stores them UPPERCASE ("CENTER",
+                            // "VER", "FULL"). Normalize so the editor preview and
+                            // property grid actually apply them.
+                            cleanedStyle[part][state][prop] = value.trim().toUpperCase();
                         } else {
                             cleanedStyle[part][state][prop] = value;
                         }
@@ -1151,6 +1162,63 @@ function firmwareWidgetToComponent(
                     const cs = (child as any).localStyles?.definition;
                     if (cs) for (const p of Object.values(cs) as any[]) for (const s of Object.values(p||{}) as any[]) if (s&&typeof s==="object") delete s.align;
                     xOff += (child.width || 30) + 2;
+                }
+            }
+        }
+
+        // Preserve the flex layout in the EEZ model (container style props) so
+        // "Deploy to Device" can re-emit the device's TOP-LEVEL flex fields
+        // (flex_flow/flex_main/flex_cross/flex_track). If flex is dropped, a
+        // round-trip strips it and flex children (e.g. the 8 schedule rows on
+        // SchedulePanelMain) all collapse onto the last one (only the 8th shows).
+        const flexDs = (comp.localStyles?.definition as any)?.MAIN?.DEFAULT;
+        if (flexDs && typeof flexDs === "object") {
+            flexDs["flex_flow"] = flexFlow.toUpperCase();
+            const placeFromDevice = (v: unknown, key: string) => {
+                if (typeof v === "string" && v) flexDs[key] = v.toUpperCase();
+            };
+            placeFromDevice((w as any).flex_main, "flex_main_place");
+            placeFromDevice((w as any).flex_cross, "flex_cross_place");
+            placeFromDevice((w as any).flex_track, "flex_track_place");
+        }
+    }
+
+    // ── Fallback: reconstruct a column list when a container's children are all
+    // STACKED at the same spot (same top/left/height) but carry NO flex metadata
+    // (e.g. the 8 schedule rows after a round trip stripped flex_flow — the real
+    // device JSON shows them all at x:0,y:0). The firmware renders such rows as a
+    // vertical list, so synthesize the column flex on the container (Deploy then
+    // re-emits it as top-level flex_flow) and space the rows by their height.
+    // Only 3+ IDENTICAL visible boxes trigger it — a genuine overlay rarely stacks
+    // that many same-size, same-position visible widgets.
+    if (!flexFlow) {
+        const kids = (comp.children || []).filter((c) => !(c as any).hiddenFlag);
+        const first = kids[0];
+        const stacked =
+            kids.length >= 3 &&
+            !!first &&
+            kids.every(
+                (c) =>
+                    (c.top ?? 0) === (first.top ?? 0) &&
+                    (c.left ?? 0) === (first.left ?? 0) &&
+                    (c.height ?? 0) === (first.height ?? 0)
+            );
+        if (stacked) {
+            const ds: any = (comp.localStyles?.definition as any)?.MAIN?.DEFAULT;
+            if (ds && typeof ds === "object") {
+                ds["flex_flow"] = "COLUMN";
+                ds["flex_main_place"] = "START";
+                ds["flex_cross_place"] = "START";
+                ds["flex_track_place"] = "SPACE_BETWEEN";
+                const padTop = Number(((w.style as any)?.MAIN?.DEFAULT?.pad_top) ?? 0);
+                const padLeft = Number(((w.style as any)?.MAIN?.DEFAULT?.pad_left) ?? 0);
+                let yOff = padTop;
+                for (const child of kids) {
+                    child.top = yOff;
+                    child.left = padLeft;
+                    const cs = (child as any).localStyles?.definition;
+                    if (cs) for (const p of Object.values(cs) as any[]) for (const s of Object.values(p||{}) as any[]) if (s&&typeof s==="object") delete s.align;
+                    yOff += (child.height || 30) + 2;
                 }
             }
         }

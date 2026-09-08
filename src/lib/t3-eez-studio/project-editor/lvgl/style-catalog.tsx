@@ -163,7 +163,8 @@ function makeEnumPropertyInfo(
                 : (value: number) => codeToEnumItem[value.toString()],
             valueToNum: lvglStyleProp.valueToNum
                 ? lvglStyleProp.valueToNum
-                : (value: string) => enumItemToCode[value.toString()],
+                : (value: string) =>
+                      enumItemToCode[(value || "").trim().toUpperCase()],
             valueBuild: lvglStyleProp.valueBuild
                 ? lvglStyleProp.valueBuild
                 : (value: string) => buildPrefix + value
