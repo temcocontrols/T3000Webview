@@ -1109,7 +1109,22 @@ function firmwareWidgetToComponent(
     // flagScrollDirection (LV_DIR_* enum: none/top/left/bottom/right/hor/ver/all)
     // and make sure the SCROLLABLE flag is present. "BOTH" is not a valid EEZ
     // enum value — it maps to "all" (LV_DIR_ALL = HOR|VER).
-    const fwScrollable = (w as any).scrollable || (w as any).scroll;
+    // Some device screens (the schedule screens) mark a scroll VIEWPORT not
+    // with `scrollable` but with a SCROLLBAR style part whose state is VISIBLE:
+    //   - schedule_screen's SchedulePanelMain     → SCROLLBAR.CHECKED bg_opa:255
+    //   - schedule_edit_screen's SchedulePanelMain1 → SCROLLBAR.CHECKED bg_opa:255
+    // while their per-row panels carry only an INVISIBLE SCROLLBAR.DEFAULT
+    // (bg_opa:0) and must NOT be treated as scroll containers. Without this
+    // check those two screens import without scrolling even though the device
+    // scrolls them.
+    const sbStates = (w.style as any)?.SCROLLBAR as Record<string, any> | undefined;
+    const hasVisibleScrollbar =
+        !!sbStates &&
+        Object.values(sbStates).some((s: any) => {
+            const opa = s && typeof s === "object" ? (s as any).bg_opa : undefined;
+            return opa === undefined || Number(opa) > 0;
+        });
+    const fwScrollable = (w as any).scrollable || (w as any).scroll || hasVisibleScrollbar;
     if (fwScrollable || (w as any).scroll_dir) {
         const dir = String((w as any).scroll_dir || "").toUpperCase();
         const dirMap: Record<string, string> = {
@@ -1125,12 +1140,32 @@ function firmwareWidgetToComponent(
             BOTTOM: "bottom",
             NONE: "none",
         };
-        if (dir) comp.flagScrollDirection = dirMap[dir] || "all";
+        if (dir) {
+            comp.flagScrollDirection = dirMap[dir] || "all";
+        } else if (hasVisibleScrollbar) {
+            // Scrollbar-styled viewports scroll both ways on the device.
+            comp.flagScrollDirection = "all";
+        }
         const flags = comp.widgetFlags || "";
         if (flags.indexOf("SCROLLABLE") === -1) {
             comp.widgetFlags = flags
                 ? `${flags}|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW`
                 : "SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW";
+        }
+        comp.flagScrollbarMode = comp.flagScrollbarMode || "AUTO";
+
+        // A scroll viewport renders pad 0 on the device. When its device JSON
+        // omits pad_* (e.g. schedule_edit_screen's SchedulePanelMain1, the
+        // parameters Panel4), EEZ would otherwise inject its own default top
+        // padding → a phantom empty strip above the scroll content. Pin the
+        // missing pads to 0. Only scrollable panels reach this, so no
+        // non-scrolling screen (network/protocols/...) is affected.
+        const ds = comp.localStyles?.definition?.MAIN?.DEFAULT as Record<string, any> | undefined;
+        if (ds && typeof ds === "object") {
+            if (ds.pad_left === undefined) ds.pad_left = 0;
+            if (ds.pad_right === undefined) ds.pad_right = 0;
+            if (ds.pad_top === undefined) ds.pad_top = 0;
+            if (ds.pad_bottom === undefined) ds.pad_bottom = 0;
         }
     }
 
