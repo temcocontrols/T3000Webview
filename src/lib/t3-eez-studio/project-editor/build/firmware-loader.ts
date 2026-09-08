@@ -638,17 +638,25 @@ function firmwareWidgetToComponent(
     let widthVal = w.width ?? 0;
     let heightVal = w.height ?? 0;
 
-    // Detect alignment from firmware (e.g. LV_ALIGN_CENTER → "CENTER")
+    // Detect alignment from firmware (e.g. LV_ALIGN_CENTER → "CENTER").
     // Panels wider than the display with center align get pushed off-screen.
-    // Strip the align so they render at their raw x/y position instead.
+    // Only that wide-panel "center" case is stripped (its x/y were meant for
+    // scrollable centering, not a real offset, so it resets to 0). A widget
+    // that genuinely has NO align uses LVGL's default TOP_LEFT anchor, so its
+    // x/y ARE the offset and MUST be preserved — otherwise every import→export
+    // round trip drifts it to (0,0), e.g. the schedule_edit_screen's Schedule
+    // picker (Dropdown9, device x:280,y:-10, no align) or the time screen's
+    // ChangeDateBtn "03-02-26" (x:-10,y:-10, no align).
     const firmwareAlign = (w as any).align as string | undefined;
-    const effectiveAlign = (firmwareAlign === "center" && widthVal > 480) ? undefined : firmwareAlign;
+    const strippedWideCenter = firmwareAlign === "center" && widthVal > 480;
+    const effectiveAlign = strippedWideCenter ? undefined : firmwareAlign;
 
-    // In LVGL, x/y are OFFSETS from the aligned position when align is set.
-    // When we strip center align from wide panels, the offset was meant for
-    // scrollable centering — reset to 0 so the panel starts at parent's top-left.
-    const leftVal = effectiveAlign ? (w.x_pos ?? 0) : 0;
-    const topVal = effectiveAlign ? (w.y_pos ?? 0) : 0;
+    // In LVGL, x/y are OFFSETS from the aligned position when align is set; with
+    // no align they are offsets from the parent's top-left. Either way they are
+    // kept. Only the stripped wide-center panel resets to 0 so it starts at the
+    // parent's top-left instead of inheriting its scroll-centering offset.
+    const leftVal = strippedWideCenter ? 0 : (w.x_pos ?? 0);
+    const topVal = strippedWideCenter ? 0 : (w.y_pos ?? 0);
 
     // For content-sized labels, estimate width/height from font size.
     // The "align: CENTER" style (set below) handles positioning natively in LVGL.
