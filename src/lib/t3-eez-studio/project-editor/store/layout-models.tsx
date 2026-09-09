@@ -189,6 +189,15 @@ export class LayoutModels extends AbstractLayoutModels {
         icon: "material:view_compact"
     };
 
+    static VARIABLES_TAB: FlexLayout.IJsonTabNode = {
+        type: "tab",
+        enableClose: false,
+        name: "Variables",
+        component: "variables",
+        icon: "svg:variable",
+        id: LayoutModels.VARIABLES_TAB_ID
+    };
+
     static COMPONENTS_PALETTE_TAB: FlexLayout.IJsonTabNode = {
         type: "tab",
         enableClose: false,
@@ -271,7 +280,8 @@ export class LayoutModels extends AbstractLayoutModels {
                 LayoutModels.BITMAPS_TAB,
                 LayoutModels.THEMES_TAB,
                 LayoutModels.LVGL_GROUPS_TAB,
-                LayoutModels.BREAKPOINTS_TAB
+                LayoutModels.BREAKPOINTS_TAB,
+                LayoutModels.VARIABLES_TAB
             ]
         });
 
@@ -391,7 +401,7 @@ export class LayoutModels extends AbstractLayoutModels {
         return [
             {
                 name: "rootEditor",
-                version: 127,
+                version: 129,
                 json: {
                     global: LayoutModels.GLOBAL_OPTIONS,
                     borders: this.borders,
@@ -467,36 +477,17 @@ export class LayoutModels extends AbstractLayoutModels {
                                 children: []
                             },
                             {
-                                type: "row",
+                                type: "tabset",
                                 weight: 20,
+                                enableClose: false,
                                 children: [
                                     {
-                                        type: "tabset",
-                                        weight: 2,
-                                        children: [
-                                            {
-                                                type: "tab",
-                                                enableClose: false,
-                                                name: "Properties",
-                                                id: LayoutModels.PROPERTIES_TAB_ID,
-                                                component: "propertiesPanel",
-                                                icon: "svg:properties"
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        type: "tabset",
-                                        weight: 1,
-                                        children: [
-                                            {
-                                                type: "tab",
-                                                enableClose: false,
-                                                name: "Variables",
-                                                component: "variables",
-                                                icon: "svg:variable",
-                                                id: LayoutModels.VARIABLES_TAB_ID
-                                            }
-                                        ]
+                                        type: "tab",
+                                        enableClose: false,
+                                        name: "Properties",
+                                        id: LayoutModels.PROPERTIES_TAB_ID,
+                                        component: "propertiesPanel",
+                                        icon: "svg:properties"
                                     }
                                 ]
                             }
