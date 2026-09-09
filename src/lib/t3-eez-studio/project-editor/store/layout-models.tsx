@@ -391,53 +391,74 @@ export class LayoutModels extends AbstractLayoutModels {
         return [
             {
                 name: "rootEditor",
-                version: 115,
+                version: 119,
                 json: {
                     global: LayoutModels.GLOBAL_OPTIONS,
                     borders: this.borders,
                     layout: {
                         type: "row",
                         children: [
+                            // LEFT AREA — flexlayout alternates split orientation
+                            // with nesting depth (root is horizontal). To split the
+                            // left region into two side-by-side columns we need an
+                            // even-depth row container, hence the extra wrapper.
                             {
                                 type: "row",
-                                weight: 15,
+                                weight: 24,
                                 children: [
                                     {
-                                        type: "tabset",
+                                        type: "row",
                                         weight: 1,
-                                        enableClose: false,
                                         children: [
-                                            LayoutModels.PAGES_TAB,
-                                            LayoutModels.WIDGETS_TAB,
-                                            LayoutModels.ACTIONS_TAB
-                                        ]
-                                    },
-                                    {
-                                        type: "tabset",
-                                        weight: 1,
-                                        enableClose: false,
-                                        children: [
+                                            // LEFT COLUMN 1 — Pages (and User
+                                            // Widgets / Actions) on top, Variables
+                                            // stacked below it.
                                             {
-                                                type: "tab",
-                                                enableClose: false,
-                                                name: "Widgets Structure",
-                                                component: "flow-structure",
-                                                icon: "svg:hierarchy"
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        type: "tabset",
-                                        weight: 1,
-                                        enableClose: false,
-                                        children: [
+                                                type: "row",
+                                                weight: 1,
+                                                children: [
+                                                    {
+                                                        type: "tabset",
+                                                        weight: 1.2,
+                                                        enableClose: false,
+                                                        children: [
+                                                            LayoutModels.PAGES_TAB,
+                                                            LayoutModels.WIDGETS_TAB,
+                                                            LayoutModels.ACTIONS_TAB
+                                                        ]
+                                                    },
+                                                    {
+                                                        type: "tabset",
+                                                        weight: 1,
+                                                        enableClose: false,
+                                                        children: [
+                                                            {
+                                                                type: "tab",
+                                                                enableClose: false,
+                                                                name: "Variables",
+                                                                component: "variables",
+                                                                icon: "svg:variable",
+                                                                id: LayoutModels.VARIABLES_TAB_ID
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            // LEFT COLUMN 2 — Widgets Structure in
+                                            // its own full-height column.
                                             {
-                                                type: "tab",
+                                                type: "tabset",
+                                                weight: 1.1,
                                                 enableClose: false,
-                                                name: "Variables",
-                                                component: "variables",
-                                                icon: "svg:variable",
-                                                id: LayoutModels.VARIABLES_TAB_ID
+                                                children: [
+                                                    {
+                                                        type: "tab",
+                                                        enableClose: false,
+                                                        name: "Widgets Structure",
+                                                        component: "flow-structure",
+                                                        icon: "svg:hierarchy"
+                                                    }
+                                                ]
                                             }
                                         ]
                                     }
@@ -445,7 +466,7 @@ export class LayoutModels extends AbstractLayoutModels {
                             },
                             {
                                 type: "tabset",
-                                weight: 65,
+                                weight: 56,
                                 enableDeleteWhenEmpty: false,
                                 enableClose: false,
                                 id: LayoutModels.EDITOR_MODE_EDITORS_TABSET_ID,
