@@ -310,7 +310,75 @@ export const Canvas = observer(
                 requestAnimationFrame(this.updateClientRect);
         };
 
+        isPointerOnScrollbar(clientX: number, clientY: number) {
+            const div = this.div;
+            if (!div) {
+                return false;
+            }
+
+            const rect = div.getBoundingClientRect();
+
+            const hasVScroll = div.scrollHeight > div.clientHeight + 1;
+            const hasHScroll = div.scrollWidth > div.clientWidth + 1;
+
+            // width/height of the vertical/horizontal scrollbar. When the
+            // scrollbar doesn't reserve layout space (overlay scrollbars) fall
+            // back to a nominal width so clicks on it are still ignored.
+            let vScrollbarWidth = div.offsetWidth - div.clientWidth;
+            if (vScrollbarWidth <= 0) {
+                vScrollbarWidth = hasVScroll ? 14 : 0;
+            }
+
+            let hScrollbarHeight = div.offsetHeight - div.clientHeight;
+            if (hScrollbarHeight <= 0) {
+                hScrollbarHeight = hasHScroll ? 14 : 0;
+            }
+
+            // vertical scrollbar is on the right edge
+            if (
+                vScrollbarWidth > 0 &&
+                clientX > rect.right - vScrollbarWidth &&
+                clientX <= rect.right &&
+                clientY >= rect.top &&
+                clientY <= rect.bottom
+            ) {
+                return true;
+            }
+
+            // horizontal scrollbar is at the bottom edge
+            if (
+                hScrollbarHeight > 0 &&
+                clientY > rect.bottom - hScrollbarHeight &&
+                clientY <= rect.bottom &&
+                clientX >= rect.left &&
+                clientX <= rect.right
+            ) {
+                return true;
+            }
+
+            return false;
+        }
+
+        onCanvasPointerDownCapture = (event: PointerEvent) => {
+            if (this.isPointerOnScrollbar(event.clientX, event.clientY)) {
+                // The pointer is over the native scrollbar - stop the canvas
+                // drag/selection from starting. We don't call preventDefault,
+                // so the native scrollbar scrolling still works.
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+            }
+        };
+
         componentDidMount() {
+            // Intercept pointer-down in the capture phase (registered before
+            // the drag handler) so that clicking/dragging the scrollbar never
+            // starts a canvas drag or a selection.
+            this.div.addEventListener(
+                "pointerdown",
+                this.onCanvasPointerDownCapture,
+                true
+            );
+
             this.draggable.attach(this.div);
 
             this.div.addEventListener("wheel", this.onWheel, {
@@ -321,6 +389,12 @@ export const Canvas = observer(
         }
 
         componentWillUnmount() {
+            this.div.removeEventListener(
+                "pointerdown",
+                this.onCanvasPointerDownCapture,
+                true
+            );
+
             this.draggable.attach(null);
 
             this.div.removeEventListener("wheel", this.onWheel);
@@ -842,11 +916,17 @@ export const Canvas = observer(
             return (
                 <div
                     ref={(ref: any) => (this.div = ref!)}
-                    className={classNames({
-                        EezStudio_FlowCanvasContainer_DragAndDropActive:
-                            this.props.dragAndDropActive
-                    })}
-                    style={style}
+                    className={classNames(
+                        "EezStudio_FlowCanvasScrollContainer",
+                        {
+                            EezStudio_FlowCanvasContainer_DragAndDropActive:
+                                this.props.dragAndDropActive
+                        }
+                    )}
+                    style={{
+                        ...style,
+                        overflow: "auto"
+                    }}
                     onContextMenu={this.onContextMenu}
                     onPointerMove={this.onPointerMove}
                 >

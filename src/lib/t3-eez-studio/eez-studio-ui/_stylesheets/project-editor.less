@@ -809,6 +809,33 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+.EezStudio_FlowCanvasContainer .EezStudio_FlowCanvasScrollContainer {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 transparent;
+
+    &::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: #a9a9a9;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+}
+
 .EezStudio_FlowCanvasContainer {
     all: initial;
 
