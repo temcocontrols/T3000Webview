@@ -588,6 +588,20 @@ export function firmwareToProject(
                 }
             }
 
+            // Structure-driven scroll normalization (any screen — no name checks).
+            // The EEZ editor preview only scrolls a viewport when the overflowing
+            // content are DIRECT children AND the viewport is a flex column
+            // (schedule_screen's SchedulePanelMain is exactly that and scrolls).
+            // When the device JSON nests that content in an oversized,
+            // non-scrollable inner panel (schedule_edit_screen: the 8 grid rows
+            // live in a 790x300 Panel8 under the scrollable 480x220
+            // SchedulePanelMain1), promote the wrapper's flex column onto the
+            // scrollable viewport so it becomes the same shape that scrolls.
+            // schedule_edit is built natively on the device (ui_ScheduleEditScreen.c
+            // scrolls it by default), so this preview-only reshaping is harmless
+            // to the device/deploy.
+            normalizeScrollableContentWrappers(widgetComponents);
+
             return {
                 objID: pageId,
                 name: s.name,
@@ -622,6 +636,73 @@ export function firmwareToProject(
         colors: [],
         themes: [],
     };
+}
+
+/**
+ * Structure-driven scroll normalization (any screen — no per-screen name checks).
+ * The EEZ editor preview only scrolls a viewport when the overflowing content are
+ * DIRECT children of the scrollable widget AND the viewport is a flex column
+ * (schedule_screen's SchedulePanelMain = SCROLLABLE + flex_flow COLUMN + direct
+ * rows, which scrolls). When the device JSON represents that scroll content as a
+ * single oversized, non-scrollable inner panel (schedule_edit_screen nests its 8
+ * grid rows in a 790x300 Panel8 under the scrollable 480x220 SchedulePanelMain1),
+ * this promotes the wrapper's flex column onto the scrollable viewport so it
+ * becomes the exact shape that scrolls. Rule: a SCROLLABLE widget whose direct
+ * child is a bigger, non-scrollable panel that itself has children gets those
+ * children hoisted and the wrapper's flex layout moved onto the viewport. The
+ * affected screen is built natively on the device, so this preview reshaping is
+ * harmless to the device/deploy.
+ */
+function normalizeScrollableContentWrappers(comps: Record<string, any>[]): void {
+    const isScrollable = (c: any) =>
+        !!c && typeof (c.widgetFlags || "") === "string" && (c.widgetFlags as string).indexOf("SCROLLABLE") !== -1;
+
+    const walk = (list: Record<string, any>[]): void => {
+        for (const c of list) {
+            if (!c || typeof c !== "object" || !Array.isArray(c.children)) continue;
+            if (isScrollable(c)) {
+                let i = 0;
+                while (i < c.children.length) {
+                    const wrapper = c.children[i];
+                    if (!wrapper || typeof wrapper !== "object") {
+                        i++;
+                        continue;
+                    }
+                    const wrapperKids = Array.isArray(wrapper.children) ? (wrapper.children as any[]) : [];
+                    const oversized =
+                        wrapperKids.length > 0 &&
+                        !isScrollable(wrapper) &&
+                        (Number(wrapper.width) > Number(c.width) || Number(wrapper.height) > Number(c.height));
+                    if (!oversized) {
+                        i++;
+                        continue;
+                    }
+                    // Move the wrapper's flex column onto the scrollable viewport
+                    // so EEZ lays the rows out + scrolls them (schedule_screen shape).
+                    const wds = wrapper.localStyles?.definition?.MAIN?.DEFAULT;
+                    const cds = c.localStyles?.definition?.MAIN?.DEFAULT;
+                    if (wds && typeof wds === "object" && cds && typeof cds === "object") {
+                        for (const key of ["flex_flow", "flex_main_place", "flex_cross_place", "flex_track_place"]) {
+                            if (wds[key] !== undefined) cds[key] = wds[key];
+                        }
+                    }
+                    // The wrapper's rows were materialized inside it offset by its
+                    // top padding; shift them up so the grid starts flush at the
+                    // viewport top (removes the empty strip above the header).
+                    const topPad = wds && typeof wds.pad_top === "number" ? wds.pad_top : 0;
+                    if (topPad !== 0) {
+                        for (const kid of wrapperKids) {
+                            if (kid && typeof kid.top === "number") kid.top -= topPad;
+                        }
+                    }
+                    c.children.splice(i, 1, ...wrapperKids);
+                    i += wrapperKids.length;
+                }
+            }
+            walk(c.children);
+        }
+    };
+    walk(comps);
 }
 
 function firmwareWidgetToComponent(
