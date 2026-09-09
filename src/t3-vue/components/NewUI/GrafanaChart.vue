@@ -87,7 +87,6 @@ const panelProps = computed(() => ({
 
 const handlePropsUpdate = (newProps: any) => {
   // Handle any prop updates from the React component
-  console.log('Panel props updated:', newProps);
 };
 
 // Setup auto-refresh

@@ -57,29 +57,7 @@ export default defineComponent({
       const heightScale = weldData.value.height / defaultHeight;
       const tranXScale = weldData.value.translate[0] / defaultWidth;
       const tranYScale = weldData.value.translate[1] / defaultHeight;
-
-      // console.log(
-      //   "Weld.vue -> setup -> recalculateScale",
-      //   "orgin-(w,h)",
-      //   defaultWidth,
-      //   defaultHeight,
-      //   "changed-(w,h)",
-      //   weldData.value.width,
-      //   weldData.value.height,
-      //   "dw",
-      //   defaultWidth,
-      //   "dh",
-      //   defaultHeight,
-      //   "sw",
-      //   widthScale,
-      //   "sh",
-      //   heightScale,
-      //   "tx",
-      //   tranXScale,
-      //   "ty",
-      //   tranYScale
-      // );
-
+ 
       return { widthScale, heightScale, tranXScale, tranYScale };
     };
 

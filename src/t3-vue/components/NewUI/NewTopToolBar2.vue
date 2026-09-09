@@ -551,7 +551,6 @@ const showMoreDevices = () => {
 }
 
 const onClick: MenuProps['onClick'] = ({ key }) => {
-  console.log(`Click on item ${key}`);
   new CtxMenuUtil().HandleMenuClick(`${key}`, {});
 };
 

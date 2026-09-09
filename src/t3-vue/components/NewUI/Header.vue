@@ -103,8 +103,6 @@ const menuItems = [
 const handleMenuClick = (key: string) => {
   topMenuCurrent.value = [key];
   mobileMenuVisible.value = false; // Close mobile menu after selection
-
-  console.log(`Menu item clicked: ${key}`, topMenuCurrent.value);
 };
 
 onMounted(() => {
@@ -126,7 +124,6 @@ onMounted(() => {
 
   if (matchedItem) {
     topMenuCurrent.value = [matchedItem.key];
-    console.log(`Set active menu from URL: ${matchedItem.key}`);
   }
 });
 

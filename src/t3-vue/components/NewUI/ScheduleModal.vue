@@ -178,7 +178,6 @@ const columns = [
 
 // Event handlers
 const onStatusChange = (record: ScheduleItem) => {
-  console.log('Status changed:', record);
 };
 
 // Event handlers

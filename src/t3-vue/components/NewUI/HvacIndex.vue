@@ -92,7 +92,6 @@ export default defineComponent({
     };
 
     const openDetails = (unit: HvacUnit) => {
-      console.log('Opening details for unit:', unit.id);
       // Implementation for opening details view
     };
 

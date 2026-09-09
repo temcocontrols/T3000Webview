@@ -152,13 +152,6 @@ export class T3000Api {
     endTime: number,
     interval: number = 5000
   ): T3000ApiResponse {
-    console.log('[T3000Api] Generating mock data:', {
-      channelIds,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
-      interval
-    });
-
     const channels: T3000ApiResponse['channels'] = {}
 
     // Mock channel definitions
@@ -221,7 +214,6 @@ export class T3000Api {
       channels
     };
 
-    console.log('[T3000Api] Generated mock data result:', result);
     return result;
   }
 

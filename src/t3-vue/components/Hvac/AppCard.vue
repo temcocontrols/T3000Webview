@@ -153,10 +153,8 @@ function deleteAppAction(app) {
         });
     })
     .onCancel(() => {
-      // console.log('>>>> Cancel')
     })
     .onDismiss(() => {
-      // console.log('I am triggered on both OK and Cancel')
     });
 }
 function updateApp(app, data) {

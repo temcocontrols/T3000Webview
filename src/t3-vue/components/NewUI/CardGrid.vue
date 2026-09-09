@@ -100,12 +100,10 @@ export default {
     ])
     
     const onSearch = (value) => {
-      console.log('Search:', value)
       // Implement search logic
     }
     
     const onPageChange = (page, pageSize) => {
-      console.log('Page:', page, 'Size:', pageSize)
       // Implement pagination logic
     }
     

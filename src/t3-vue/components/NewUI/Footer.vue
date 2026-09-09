@@ -73,7 +73,6 @@ export default {
   },
   setup() {
     const onSubscribe = (value) => {
-      console.log('Subscribed:', value)
       // Implement subscribe logic
     }
 

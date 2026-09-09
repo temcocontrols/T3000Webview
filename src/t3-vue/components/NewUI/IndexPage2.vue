@@ -371,8 +371,6 @@ import T3ContextMenu from "@t3-vue/components/NewUI/T3ContextMenu.vue";
 const metaData = { title: "HVAC Drawer" };
 useMeta(metaData);
 
-console.log('[PanelLoad] *** IndexPage2.vue (/new/new-ui) setup() running ***');
-
 const keycon = new KeyController(); // Initialize key controller for handling keyboard events
 const $q: QVueGlobals = useQuasar(); // Access Quasar framework instance
 
@@ -475,7 +473,6 @@ const zoom = Hvac.IdxPage.zoom;
 
 // Dev mode only
 if (process.env.DEV) {
-  // console.log("process.env.dev",T3000_Data)
   demoDeviceData().then((data) => {
     T3000_Data.value.panelsData = data.data;
     T3000_Data.value.panelsRanges = data.ranges;

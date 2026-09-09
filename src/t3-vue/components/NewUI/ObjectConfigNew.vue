@@ -321,7 +321,6 @@ const item = computed({
     return props.current;
   },
   set(newValue) {
-    console.log("item set", newValue);
     const oldValue = props.current;
     if (newValue === oldValue) return;
     emit("update:object", newValue);

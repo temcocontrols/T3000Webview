@@ -320,11 +320,6 @@ export default {
           pointArray.push(p52);
         }
 
-        // console.log(`IndexPage.vue->calculateDuctPathPoints->--#moveable-item-${currentItem.id}-----`);
-        // console.log(`IndexPage.vue->calculateDuctPathPoints->--isStartOverlap,isEndOverlap`, isStartOverlap, isEndOverlap);
-        // console.log('IndexPage.vue->calculateDuctPathPoints->--pointArray', pointArray);
-        // console.log('IndexPage.vue->calculateDuctPathPoints->------------------------------------------------');
-
         // Make the shape closed
         pointArray.push(p1);
 
@@ -571,15 +566,6 @@ export default {
         crossItemList.forEach((crossItem, crossIndex) => {
           const { crossPath, crossLinePoints } = crossItem;
 
-          /*
-          console.log('AAAAAAAAAAAAA crossPath', crossItem.crossPath);
-          console.log('AAAAAAAAAAAAA cross start path', crossPath.segments[crossStartIndex].point);
-          console.log('AAAAAAAAAAAAA cross end path', crossPath.segments[crossEndIndex].point);
-          console.log('AAAAAAAAAAAAA cross start point', crossLinePoints[crossedStartIndex]);
-          console.log('AAAAAAAAAAAAA cross end point', crossLinePoints[crossedEndIndex]);
-          console.log('AAAAAAAAAAAAA cross crossStartIndex，crossEndIndex', crossStartIndex, crossEndIndex);
-          */
-
           // path
           if (crossPath.segments[crossStartIndex] !== null && crossPath.segments[crossStartIndex] !== undefined) {
             crossPath.segments[crossStartIndex].point = startCircle.position;
@@ -754,12 +740,7 @@ export default {
         const delta = event.delta;
         crossPath.position.x += delta.x;
 
-        // console.log('CCCCCC 1 cross-current', [item.startPoint.position.x, item.startPoint.position.y], [item.endPoint.position.x, item.endPoint.position.y]);
-
         lpos.map((itm, index) => {
-
-          // console.log(`CCCCCC -------${index} start------------------`)
-          // console.log(`CCCCCC 2 cross-${index}`, [itm.startPoint.position.x, itm.startPoint.position.y], [itm.endPoint.position.x, itm.endPoint.position.y]);
 
           itm.startPoint.position.x += delta.x;
           itm.endPoint.position.x += delta.x;
@@ -768,20 +749,6 @@ export default {
 
           const { weldStartIndex, weldEndIndex } = itm.weldPathIndex;
           const { weldedStartIndex, weldedEndIndex } = itm.weldedPathIndex;
-
-          /*
-          console.log('CCCCCC 3 weld',
-            [weldPath.segments[weldStartIndex].point.x, weldPath.segments[weldStartIndex].point.y],
-            [weldPath.segments[weldEndIndex].point.x, weldPath.segments[weldEndIndex].point.y]
-          );
-
-          console.log('CCCCCC 4 weld-point',
-            [weldedLinePoints[weldedStartIndex].startPoint.position.x, weldedLinePoints[weldedStartIndex].startPoint.position.y],
-            [weldedLinePoints[weldedEndIndex].endPoint.position.x, weldedLinePoints[weldedEndIndex].endPoint.position.y]
-          );
-
-          console.log(`CCCCCC -------${index} end------------------`)
-          */
 
           if (weldPath.segments[weldStartIndex] !== null && weldPath.segments[weldStartIndex] !== undefined) {
             weldPath.segments[weldStartIndex].point = itm.startPoint.position;

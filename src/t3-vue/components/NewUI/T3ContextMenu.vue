@@ -96,7 +96,6 @@ const selectedColor = ref<string>('#1890ff'); // Default color
 
 // Color change handler
 const handleColorChange = (color: string) => {
-  console.log('Color changed to:', color);
   message.info(`Background color changed to ${color}`);
   // Here you would update the background color of the selected element
 };
@@ -110,15 +109,12 @@ const handleMenuClick = (e: { key: string }) => {
   switch (e.key) {
     case 'item1':
       message.info('Item 1 clicked');
-      console.log('Item 1 action executed');
       break;
     case 'item2':
       message.info('Item 2 clicked');
-      console.log('Item 2 action executed');
       break;
     case 'item4':
       message.info('Item 4 clicked');
-      console.log('Item 4 action executed');
       break;
     default:
       break;
@@ -128,7 +124,6 @@ const handleMenuClick = (e: { key: string }) => {
 // Submenu click handlers
 const handleSubMenuClick = (key: string) => {
   message.info(`Submenu ${key} clicked`);
-  console.log(`Submenu ${key} action executed`);
 };
 
 // Define types for menu structure

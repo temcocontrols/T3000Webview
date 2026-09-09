@@ -469,7 +469,6 @@ export default {
 
     const onRequest = (props) => {
       // TODO: Implement server-side pagination
-      console.log('Table request:', props)
     }
 
     onMounted(() => {

@@ -158,11 +158,6 @@ export default defineComponent({
     }
 
     const updateWeldModel = (weldModel, itemList) => {
-      // console.log(
-      //   "ObjectType.vue -> updateWeldModel | recieve from child",
-      //   weldModel,
-      //   itemList
-      // );
       emit("updateWeldModel", weldModel, itemList);
     };
 

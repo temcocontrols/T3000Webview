@@ -422,8 +422,6 @@ const transferDatesToDisplay = (): void => {
     const byteIndex = Math.floor(overallBit / 8)
     const bitInByte = overallBit % 8
     data[byteIndex] = 1 << bitInByte
-
-    console.log(`Test data created: March day 3 should be set at byte ${byteIndex}, bit ${bitInByte}`)
   }
 
   // Clear existing schedule data
@@ -502,14 +500,10 @@ const transferDatesToDisplay = (): void => {
     }
 
     // Extract selected days from the month bits
-    console.log(`${monthKey}: monthBits = 0x${monthBits.toString(16)}, binary = ${monthBits.toString(2).padStart(32, '0')}`)
-
     for (let dayBit = 0; dayBit < 31; dayBit++) {
       if ((monthBits >> dayBit) & 1) {
         const day = dayBit + 1  // Standard mapping: bit 0 = day 1, bit 1 = day 2, etc.
         const dateStr = `${currentYear.value}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-
-        console.log(`  ${monthKey}: Bit ${dayBit} set -> Day ${day} (${dateStr})`)
 
         // Validate the date exists in the month
         const testDate = dayjs(dateStr)
@@ -590,8 +584,6 @@ const transferSelectedDatesToHex = (): number[] => {
       }
     })
 
-    console.log(`${monthKey}: monthBits = 0x${monthBits.toString(16)}, binary = ${monthBits.toString(2).padStart(32, '0')}`)
-
     if (monthIndex === 0) {
       // January: Direct 4-byte copy (matching C++ approach)
       for (let byteOffset = 0; byteOffset < 4; byteOffset++) {
@@ -616,7 +608,6 @@ const transferSelectedDatesToHex = (): number[] => {
     }
   }
 
-  console.log('Generated hex array:', data.map(b => `0x${b.toString(16).padStart(2, '0')}`).join(', '))
   return data
 }
 

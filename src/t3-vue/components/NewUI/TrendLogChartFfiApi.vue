@@ -869,7 +869,6 @@ const saveSeriesVisibility = (): void => {
     const key = getVisibilityStorageKey()
     const arr = dataSeries.value.map(s => s.visible ? 1 : 0)
     localStorage.setItem(key, JSON.stringify(arr))
-    console.log('[SeriesVis] SAVE', key, arr)
   } catch (e) {
     LogUtil.Warn('Failed to save series visibility', e)
   }
@@ -879,14 +878,12 @@ const loadSeriesVisibility = (): void => {
   try {
     const key = getVisibilityStorageKey()
     const raw = localStorage.getItem(key)
-    console.log('[SeriesVis] LOAD', key, 'raw=', raw, 'seriesCount=', dataSeries.value.length)
     if (!raw) return
     const arr: number[] = JSON.parse(raw)
     if (!Array.isArray(arr)) return
     dataSeries.value.forEach((s, i) => {
       if (i < arr.length) s.visible = !!arr[i]
     })
-    console.log('[SeriesVis] APPLIED', arr)
   } catch (e) {
     LogUtil.Warn('Failed to load series visibility', e)
   }
@@ -984,11 +981,7 @@ const getCustomTickConfig = (customStartDate: Date, customEndDate: Date) => {
 // Debug function to verify data generation intervals
 const debugDataIntervals = () => {
   const visibleSeries = dataSeries.value.filter(series => series.visible)
-  if (visibleSeries.length === 0) return
-
-  console.log('=== DATA INTERVAL DEBUG ===')
-  console.log(`Expected interval: ${getInternalIntervalSeconds()} seconds`)
-  console.log(`TimeBase: ${timeBase.value}`)
+  if (visibleSeries.length === 0) return 
 
   visibleSeries.forEach((series, index) => {
     if (series.data.length < 2) return
@@ -1001,26 +994,13 @@ const debugDataIntervals = () => {
     }
 
     const avgInterval = intervals.reduce((sum, val) => sum + val, 0) / intervals.length
-    console.log(`Series ${index + 1} (${series.name}):`)
-    console.log(`  Data points: ${series.data.length}`)
-    console.log(`  Average interval: ${avgInterval.toFixed(1)} seconds`)
-    console.log(`  First intervals: ${intervals.map(i => i.toFixed(1)).join(', ')} seconds`)
   })
-  console.log('=========================')
 }
 
 // Computed property to track current interval for debugging
 const currentDataInterval = computed(() => {
   const internalSec = getInternalIntervalSeconds()
   const roundedSec = getRoundedIntervalSeconds(internalSec)
-
-  // Disabled debug logging for production
-  // console.log(`Data Interval - Internal: ${internalSec}sec, Rounded for display: ${roundedSec}sec`, {
-  //   minuteInterval: props.itemData?.t3Entry?.minute_interval_time,
-  //   secondInterval: props.itemData?.t3Entry?.second_interval_time,
-  //   timeBase: timeBase.value
-  // })
-
   return { internalSec, roundedSec }
 })
 

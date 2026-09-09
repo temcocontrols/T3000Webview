@@ -525,7 +525,6 @@ export default defineComponent({
     const showRulersGrid = ref(props.rulersGridVisible ? "Enable" : "Disable");
     watch(() => props.rulersGridVisible, (newVal) => {
       showRulersGrid.value = newVal ? "Enable" : "Disable";
-      // console.log('showRulersGrid props,show-rulers-grid', props.rulersGridVisible, showRulersGrid);
     })
 
     return {

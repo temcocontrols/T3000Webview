@@ -563,7 +563,6 @@ export default defineComponent({
     const route = useRoute();
 
     const navigateTo = (routeName) => {
-      // console.log(router);
       router.push({ path: routeName });
     }
 

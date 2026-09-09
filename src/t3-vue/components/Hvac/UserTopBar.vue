@@ -88,7 +88,6 @@ export default {
     function navigateToLogin() {
       // Get the current route path to redirect back after login
       const currentPath = router.currentRoute.value.path;
-      console.log("Redirecting to login from:", currentPath);
       router.push({ path: '/login', query: { redirect: currentPath } });
     }
 

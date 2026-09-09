@@ -95,13 +95,6 @@ export const T3000Panel: React.FC<T3000PanelProps> = ({
   width,
   height
 }) => {
-  console.log('[GrafanaPanel] Received props:', {
-    data,
-    timeRange,
-    config,
-    width,
-    height
-  });
 
   // Simple theme object since useTheme2 is broken
   const theme = {
@@ -200,7 +193,6 @@ export const T3000Panel: React.FC<T3000PanelProps> = ({
             <SimpleButton
               variant="secondary"
               onClick={() => {
-                console.log('[GrafanaPanel] Manual test data generation');
                 // Test data generation directly
                 const { t3000Api } = require('./api');
                 t3000Api.getData({
@@ -211,7 +203,6 @@ export const T3000Panel: React.FC<T3000PanelProps> = ({
                   },
                   channels: [1, 2, 3, 4, 5]
                 }).then(result => {
-                  console.log('[GrafanaPanel] Test result:', result);
                 });
               }}
             >

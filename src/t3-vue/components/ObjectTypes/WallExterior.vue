@@ -90,8 +90,6 @@ export default defineComponent({
         const width = Math.abs(maxX - minX);
         const height = Math.abs(maxY - minY);
 
-        console.log('AutoJoinWall getNewWidthHeight', 'width', width, 'height', height);
-
         return { width, height: height, margin: -60 };
       }
     }
@@ -157,12 +155,9 @@ export default defineComponent({
       }
 
       const refreshSvg = (newData) => {
-        console.log('AutoJoinWall refreshSvg', svgData);
-
         svgRef.value.clear();
 
         const newWidthHeight = getNewWidthHeight();
-        console.log('AutoJoinWall refreshSvg', 'newWidthHeight', newWidthHeight);
         svgRef.value.size(newWidthHeight.width, newWidthHeight.height);
         renderSvg(newData);
       }

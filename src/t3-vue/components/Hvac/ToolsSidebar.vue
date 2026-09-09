@@ -240,10 +240,8 @@ function renameLibItem(item) {
       emit("renameLibItem", item, data);
     })
     .onCancel(() => {
-      // console.log('>>>> Cancel')
     })
     .onDismiss(() => {
-      // console.log('I am triggered on both OK and Cancel')
     });
 }
 
@@ -256,7 +254,6 @@ const imgTabUploader = ref({
 });
 
 function imageFileAdded(file) {
-  console.log("file", file);
   imgTabUploader.value.uploadBtnDisabled = false;
   imgTabUploader.value.file = file;
 }

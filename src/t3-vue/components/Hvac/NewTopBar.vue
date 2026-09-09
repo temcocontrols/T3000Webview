@@ -287,7 +287,6 @@ export default defineComponent({
 
     const navigateToLogin = () => {
       // Navigate to login with current route as redirect parameter
-      console.log("Redirecting to login from:", route.path);
       router.push({
         path: '/login',
         query: { redirect: route.path }

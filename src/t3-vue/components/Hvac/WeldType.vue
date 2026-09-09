@@ -206,7 +206,6 @@ export default defineComponent({
   },
   emits: ["autoManualToggle", "objectClicked", "changeValue"],
   setup(props, { emit }) {
-    // console.log("item", props.item);
     const range = computed(() => {
       return IdxUtils.getEntryRange(props?.item?.t3Entry);
     });
