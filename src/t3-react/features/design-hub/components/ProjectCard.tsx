@@ -2,8 +2,8 @@
  * Design Hub — Project Card
  * Real preview thumbnail, favorite pin, selection, and quick actions.
  */
-import React, { useState } from 'react';
-import { Button, Spinner, Tooltip } from '@fluentui/react-components';
+import React, { useMemo } from 'react';
+import { Button, Tooltip } from '@fluentui/react-components';
 import {
   OpenRegular,
   ArrowUploadRegular,
@@ -15,9 +15,8 @@ import { getDrawingType } from '../drawingTypes';
 import { HubIcon } from '../icons';
 import { DrawingPreview } from './DrawingPreview';
 import { DeleteProjectPopover } from './DeleteProjectPopover';
-import { useDesignHubStore } from '../store/designHubStore';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
-import { useStatusBarStore } from '@t3-react/store/statusBarStore';
+import { designHubService } from '../services/designHubService';
 import styles from '../pages/DesignHubPage.module.css';
 
 function timeAgo(iso: string): string {
@@ -35,6 +34,8 @@ function timeAgo(iso: string): string {
 export const ProjectCard: React.FC<{
   project: HubProject;
   onBind: (project: HubProject) => void;
+  /** Bound projects open the Deploy drawer from the card action button. */
+  onDeploy?: (project: HubProject) => void;
   selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: (projectId: string) => void;
@@ -44,6 +45,7 @@ export const ProjectCard: React.FC<{
 }> = ({
   project,
   onBind,
+  onDeploy,
   selectMode = false,
   selected = false,
   onToggleSelect,
@@ -53,10 +55,20 @@ export const ProjectCard: React.FC<{
 }) => {
   const type = getDrawingType(project.typeId);
   const accent = type.accent;
-  const deployProject = useDesignHubStore((s) => s.deployProject);
   const deviceStatuses = useDeviceTreeStore((s) => s.deviceStatuses);
-  const setMessage = useStatusBarStore((s) => s.setMessage);
-  const [busy, setBusy] = useState(false);
+  const devices = useDeviceTreeStore((s) => s.devices);
+
+  // Bound/deploy context for the card's dynamic tooltip (device name + last deploy).
+  const boundDeviceName = useMemo(() => {
+    if (!project.serialNumber) return undefined;
+    return devices.find((d) => d.serialNumber === project.serialNumber)?.nameShowOnTree;
+  }, [devices, project.serialNumber]);
+  const lastDeploy = useMemo(() => {
+    if (!project.serialNumber) return undefined;
+    const logs = designHubService.listDeployLogs(project.id);
+    return logs && logs.length > 0 ? logs[0] : undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id, project.serialNumber, project.updatedAt]);
 
   const hasPreview = project.source === 'hvac';
 
@@ -88,19 +100,44 @@ export const ProjectCard: React.FC<{
     window.location.hash = `#${project.openPath}`;
   };
 
-  const handleDeploy = async () => {
+  // One device-action button whose meaning follows the project state:
+  //   - unbound           → open the Bind dialog
+  //   - bound / deployed  → open the Deploy drawer (deploy / change device)
+  const handleDeviceAction = () => {
     if (!project.serialNumber) {
       onBind(project);
       return;
     }
-    setBusy(true);
-    setMessage(`Deploying "${project.name}"…`, 'info');
-    const result = await deployProject(project);
-    setBusy(false);
-    setMessage(result.message, result.success ? 'success' : 'error');
+    onDeploy?.(project);
   };
 
   const locationBits = [project.building, project.floor, project.room].filter(Boolean);
+
+  // Rich, live tooltip once the project is bound to a device.
+  const deviceTooltip = !project.serialNumber ? (
+    'Bind to device'
+  ) : (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 280, fontSize: 12 }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: devStatusColor, flexShrink: 0 }} />
+        <span>{project.status === 'deployed' ? 'Deployed' : 'Bound'}</span>
+        <span style={{ opacity: 0.6 }}>·</span>
+        <span>{boundDeviceName || `SN ${project.serialNumber}`}</span>
+      </span>
+      <span style={{ opacity: 0.85 }}>SN {project.serialNumber}</span>
+      {locationBits.length > 0 && <span style={{ opacity: 0.85 }}>{locationBits.join(' · ')}</span>}
+      <span style={{ opacity: lastDeploy && lastDeploy.status === 'error' ? 0.95 : 0.75 }}>
+        {lastDeploy
+          ? `Last ${lastDeploy.status === 'error' ? 'deploy failed' : 'deploy'}: ${timeAgo(lastDeploy.timestamp)} · ${
+              lastDeploy.screenCount != null ? `${lastDeploy.screenCount} items` : lastDeploy.message
+            }`
+          : 'Not deployed yet'}
+      </span>
+      <span style={{ opacity: 0.6, marginTop: 2 }}>
+        Click to {project.status === 'deployed' ? 'deploy again / change device' : 'deploy'}
+      </span>
+    </div>
+  );
 
   const cardClick = () => {
     if (selectMode) {
@@ -199,13 +236,12 @@ export const ProjectCard: React.FC<{
             <Button size="small" appearance="subtle" icon={<OpenRegular />} onClick={open} />
           </Tooltip>
           {type.deviceAware && (
-            <Tooltip content={project.serialNumber ? 'Deploy to device' : 'Bind to device'} relationship="label">
+            <Tooltip content={deviceTooltip} relationship="label">
               <Button
                 size="small"
                 appearance="subtle"
-                icon={busy ? <Spinner size="tiny" /> : <ArrowUploadRegular />}
-                onClick={handleDeploy}
-                disabled={busy}
+                icon={<ArrowUploadRegular />}
+                onClick={handleDeviceAction}
               />
             </Tooltip>
           )}

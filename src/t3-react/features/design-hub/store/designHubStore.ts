@@ -24,6 +24,11 @@ import {
 } from '../services/projectCatalog';
 import { addCustomDrawingType } from '../drawingTypes';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
+import {
+  clearDeviceBinding,
+  getDeviceBinding,
+  setDeviceBinding,
+} from 'project-editor/build/device-binding';
 
 interface DesignHubState {
   projects: HubProject[];
@@ -381,6 +386,30 @@ export const useDesignHubStore = create<DesignHubState>()(
 
       bindProject: (projectId, binding) => {
         const updated = designHubService.saveProjectBinding(projectId, binding);
+        // Real on-disk projects (EEZ/LVGL) are rebuilt from the catalog on every
+        // reload, so persist the binding on the disk binding map too — otherwise
+        // a bind made here would vanish and the card would ask to bind again.
+        const proj = get().projects.find((p) => p.id === projectId);
+        if (proj?.folder) {
+          try {
+            const filePath = `project/${proj.folder}/${proj.folder}.eez-project`;
+            if (binding.serialNumber) {
+              const existing = getDeviceBinding(filePath);
+              setDeviceBinding(filePath, {
+                ip: existing?.ip || '',
+                panelId: existing?.panelId ?? binding.serialNumber,
+                serialNumber: binding.serialNumber,
+                panelName: existing?.panelName || proj.name,
+                importedAt: existing?.importedAt || new Date().toISOString(),
+                status: 'bound',
+              });
+            } else {
+              clearDeviceBinding(filePath);
+            }
+          } catch {
+            /* disk binding is best-effort */
+          }
+        }
         set((s) => {
           const projects = s.projects.map((p) =>
             p.id === projectId

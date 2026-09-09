@@ -45,7 +45,11 @@ function timeAgo(iso: string): string {
   }
 }
 
-export const ProjectsGrid: React.FC<{ onBind: (project: HubProject) => void }> = ({ onBind }) => {
+export const ProjectsGrid: React.FC<{
+  onBind: (project: HubProject) => void;
+  /** Bound projects open the Deploy drawer from their card action button. */
+  onDeploy: (project: HubProject) => void;
+}> = ({ onBind, onDeploy }) => {
   const projects = useDesignHubStore((s) => s.projects);
   const activeTab = useDesignHubStore((s) => s.activeTab);
   const search = useDesignHubStore((s) => s.search);
@@ -275,6 +279,7 @@ export const ProjectsGrid: React.FC<{ onBind: (project: HubProject) => void }> =
               key={p.id}
               project={p}
               onBind={onBind}
+              onDeploy={onDeploy}
               selectMode={selectMode}
               selected={selectedIds.includes(p.id)}
               onToggleSelect={toggleSelect}

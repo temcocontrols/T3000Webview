@@ -18,6 +18,7 @@
 
 import type { HubProject } from '../types';
 import { getDrawingType } from '../drawingTypes';
+import { getDeviceBinding } from 'project-editor/build/device-binding';
 
 export interface EezProjectEntry {
   folder: string;
@@ -54,6 +55,10 @@ function iso(secs: number): string {
 
 function eezToHubProject(e: EezProjectEntry): HubProject {
   const type = getDrawingType('lvgl-9-5');
+  // A project imported via "Load from Device" (or deployed) carries a device
+  // binding keyed by its file path → surface it so the card shows it as bound
+  // (and opens Deploy, not Bind).
+  const binding = getDeviceBinding(e.file_path);
   return {
     id: `eez:${e.folder}`,
     name: e.name,
@@ -64,7 +69,8 @@ function eezToHubProject(e: EezProjectEntry): HubProject {
     engine: type.engine,
     createdAt: iso(e.modified),
     updatedAt: iso(e.modified),
-    status: 'local',
+    serialNumber: binding?.serialNumber,
+    status: binding?.status ?? (binding?.serialNumber ? 'bound' : 'local'),
     source: 'eez',
     openPath: `/t3000/eez?open=${encodeURIComponent(e.file_path)}`,
     lvglVersion: e.lvgl_version ?? undefined,

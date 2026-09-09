@@ -9,6 +9,7 @@ import { ArrowDownloadRegular, ArrowUploadRegular, SparkleRegular, ErrorCircleRe
 import type { DrawingType, HubProject } from '../types';
 import { useDesignHubStore } from '../store/designHubStore';
 import { designHubService } from '../services/designHubService';
+import type { DeployTarget } from '../services/deployService';
 import { getDrawingType } from '../drawingTypes';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { HeroHeader } from '../components/HeroHeader';
@@ -21,6 +22,7 @@ import { ProjectsGrid } from '../components/ProjectsGrid';
 // import { SharedLibraries } from '../components/SharedLibraries'; // hidden for now (user, 2026-08-22)
 // import { ActivityPanel } from '../components/ActivityPanel'; // hidden for now (user, 2026-08-22)
 import { BindDeviceDialog } from '../components/BindDeviceDialog';
+import { DeployDeviceDrawer } from '../components/DeployDeviceDrawer';
 import { NewDrawingDialog } from '../components/NewDrawingDialog';
 import { EezExamplesDrawer } from '../components/EezExamplesDrawer';
 // 'New Type' hidden for now — only the 4 core types (user, 2026-08-22)
@@ -38,6 +40,7 @@ export const DesignHubPage: React.FC = () => {
   const loadError = useDesignHubStore((s) => s.loadError);
   const setActiveTab = useDesignHubStore((s) => s.setActiveTab);
   const bindProject = useDesignHubStore((s) => s.bindProject);
+  const deployProject = useDesignHubStore((s) => s.deployProject);
   const exportHub = useDesignHubStore((s) => s.exportHub);
   const importHub = useDesignHubStore((s) => s.importHub);
   const importFile = useDesignHubStore((s) => s.importFile);
@@ -51,6 +54,7 @@ export const DesignHubPage: React.FC = () => {
 
   // Dialog state
   const [bindingProject, setBindingProject] = useState<HubProject | null>(null);
+  const [deployTarget, setDeployTarget] = useState<HubProject | null>(null);
   const [newDrawingType, setNewDrawingType] = useState<DrawingType | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -218,6 +222,34 @@ export const DesignHubPage: React.FC = () => {
 
   const handleBindSave = (binding: { serialNumber?: number; building?: string; floor?: string; room?: string }) => {
     if (bindingProject) bindProject(bindingProject.id, binding);
+  };
+
+  // Bound/deployed card action → open the Deploy drawer (re-deploy / change device).
+  const handleDeployOpen = (project: HubProject) => setDeployTarget(project);
+
+  // Deploy drawer execution: the drawer itself pushes EEZ/LVGL projects via
+  // deployEezProject(); this fallback runs for non-EEZ engines (e.g. HVAC).
+  const handleDeployAction = async (device: DeployTarget) => {
+    if (!deployTarget) return { success: false, message: 'No project selected' };
+    if (device.serialNumber) {
+      bindProject(deployTarget.id, {
+        serialNumber: device.serialNumber,
+        building: device.building,
+        floor: device.floor,
+        room: device.room,
+      });
+    }
+    const target = device.serialNumber ?? deployTarget.serialNumber;
+    return deployProject(
+      { ...deployTarget, serialNumber: target },
+      { deviceName: device.deviceName }
+    );
+  };
+
+  // After any deploy finishes, refresh the grid so status pills + tooltips update.
+  const handleDeployed = (result: { success: boolean; message: string }) => {
+    setMessage(result.message, result.success ? 'success' : 'error');
+    refresh();
   };
 
   const handleBackup = () => {
@@ -412,7 +444,7 @@ export const DesignHubPage: React.FC = () => {
         */}
 
         <div id="hub-projects">
-          <ProjectsGrid onBind={handleBind} />
+          <ProjectsGrid onBind={handleBind} onDeploy={handleDeployOpen} />
         </div>
 
         {/* Hub Tools row hidden for now (user, 2026-08-22) — Backup/Restore stay in File menu.
@@ -469,6 +501,16 @@ export const DesignHubPage: React.FC = () => {
         onClose={() => setBindingProject(null)}
         onBind={handleBindSave}
       />
+      {/* Deploy drawer — opened from the card action of a bound/deployed project. */}
+      {deployTarget && (
+        <DeployDeviceDrawer
+          open
+          project={deployTarget}
+          onClose={() => setDeployTarget(null)}
+          onDeploy={handleDeployAction}
+          onDeployed={handleDeployed}
+        />
+      )}
       {/* New Type dialog hidden for now (user, 2026-08-22)
       <NewTypeDialog
         open={newTypeOpen}

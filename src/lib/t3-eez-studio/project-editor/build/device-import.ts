@@ -219,6 +219,7 @@ export async function importProjectFromDevice(
             serialNumber: device.serialNumber,
             panelName: device.name,
             importedAt: new Date().toISOString(),
+            status: 'bound',
         });
     } catch (err) {
         console.error("[device-import] device binding failed:", err);

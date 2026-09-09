@@ -18,6 +18,10 @@ export interface DeviceBinding {
     panelName: string;
     /** When the project was imported/bound. */
     importedAt: string;
+    /** Binding/deploy state so the hub card keeps showing bound/deployed after a reload. */
+    status?: 'bound' | 'deployed';
+    /** When the last successful deploy to this device happened. */
+    deployedAt?: string;
 }
 
 const STORAGE_KEY = "eezDeviceBindings";

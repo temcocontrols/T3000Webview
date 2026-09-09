@@ -382,6 +382,7 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
             serialNumber: device.serialNumber,
             panelName: device.deviceName || hubProject.name,
             importedAt: new Date().toISOString(),
+            status: "bound",
         });
     } catch {
         /* binding file is best-effort */
@@ -594,6 +595,25 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         }
     } catch {
         /* activity is best-effort */
+    }
+
+    // Reflect the final deploy state on the disk binding so the hub card keeps
+    // showing "Deployed" (not just "Bound") across reloads.
+    if (pushOk) {
+        try {
+            const prev = getDeviceBinding(opts.filePath);
+            setDeviceBinding(opts.filePath, {
+                ip: device.ip || prev?.ip || "",
+                panelId: device.panelId ?? device.serialNumber,
+                serialNumber: device.serialNumber,
+                panelName: device.deviceName || hubProject.name,
+                importedAt: prev?.importedAt || new Date().toISOString(),
+                status: "deployed",
+                deployedAt: new Date().toISOString(),
+            });
+        } catch {
+            /* binding is best-effort */
+        }
     }
 
     return {
