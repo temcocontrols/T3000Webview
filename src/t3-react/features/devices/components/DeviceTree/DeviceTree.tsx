@@ -127,7 +127,6 @@ const TreeNodeItem: React.FC<{ node: TreeNode; level: number }> = React.memo(({ 
     if (device) {
       connectDevice(device.serialNumber);
       // TODO: Navigate to device detail view
-      console.log('Open device:', device.serialNumber);
     }
   }, [connectDevice]);
 

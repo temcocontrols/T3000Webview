@@ -66,7 +66,7 @@ export class SettingsUpdateApi {
    * };
    * const result = await SettingsUpdateApi.updateDeviceSettings(updatedSettings);
    * if (result.success) {
-   *   console.log('Settings updated successfully');
+   *   LogUtil.Info('Settings updated successfully');
    * }
    * ```
    */
@@ -82,12 +82,12 @@ export class SettingsUpdateApi {
       const serializedData = SettingsRefreshApi.serializeSettingsData(settings);
 
       // ── ByteCompare: SEND vs RECV ─────────────────────────────────────────
-      console.log('[ByteCompare][SEND] Raw 400-byte array going to C++:', [...serializedData]);
-      console.log('[ByteCompare][SEND] Length:', serializedData.length);
+      LogUtil.Info('[ByteCompare][SEND] Raw 400-byte array going to C++:', [...serializedData]);
+      LogUtil.Info('[ByteCompare][SEND] Length:', serializedData.length);
 
       const recvRaw = SettingsRefreshApi._lastReceivedRaw;
       if (recvRaw.length === 0) {
-        console.warn('[ByteCompare][DIFF] No RECV array stored — load settings first before comparing');
+        LogUtil.Warn('[ByteCompare][DIFF] No RECV array stored — load settings first before comparing');
       } else {
         const diffs: { offset: number; recv: number; send: number }[] = [];
         const maxLen = Math.max(recvRaw.length, serializedData.length);
@@ -97,11 +97,11 @@ export class SettingsUpdateApi {
           if (r !== s) diffs.push({ offset: i, recv: r, send: s });
         }
         if (diffs.length === 0) {
-          console.log('[ByteCompare][DIFF] Arrays are IDENTICAL ✓');
+          LogUtil.Info('[ByteCompare][DIFF] Arrays are IDENTICAL ✓');
         } else {
-          console.warn(`[ByteCompare][DIFF] ${diffs.length} byte(s) differ:`);
+          LogUtil.Warn(`[ByteCompare][DIFF] ${diffs.length} byte(s) differ:`);
           diffs.forEach(({ offset, recv, send }) => {
-            console.warn(`  offset ${offset}: RECV=0x${recv.toString(16).padStart(2,'0').toUpperCase()} (${recv})  SEND=0x${send.toString(16).padStart(2,'0').toUpperCase()} (${send})`);
+            LogUtil.Warn(`  offset ${offset}: RECV=0x${recv.toString(16).padStart(2,'0').toUpperCase()} (${recv})  SEND=0x${send.toString(16).padStart(2,'0').toUpperCase()} (${send})`);
           });
         }
       }

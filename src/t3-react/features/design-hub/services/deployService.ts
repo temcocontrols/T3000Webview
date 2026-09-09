@@ -211,7 +211,6 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         steps.push(info);
         const mark = status === "done" ? "✔" : status === "error" ? "✖" : "▪";
         // eslint-disable-next-line no-console
-        console.log(`[deploy] ${mark} ${label}${detail ? ` — ${detail}` : ""}${error ? `: ${error}` : ""}`);
         opts.onStep?.(info);
     };
 

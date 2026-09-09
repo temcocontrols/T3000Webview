@@ -94,16 +94,13 @@ export const BuildingsPage: React.FC = () => {
   usePageRefresh(handleRefresh);
 
   const handleAdd = () => {
-    console.log('Add building');
   };
 
   const handleDelete = () => {
-    console.log('Delete building');
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    console.log('Search query:', e.target.value);
   };
 
   // Display data with 10 empty rows when no buildings

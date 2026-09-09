@@ -699,7 +699,6 @@ export const SettingsPageMobile: React.FC = () => {
           objectinstance: device.object_instance,
         });
         // TODO: parse resp.data when C++ implements this — mirrors Str_Email_point fields
-        console.log('[fetchExternalSettings] Email FFI response:', resp);
       } catch {}
 
       // ── Users (entryType 14 = ENUM_USER_NAME) ────────────────────────────────
@@ -721,7 +720,6 @@ export const SettingsPageMobile: React.FC = () => {
           }));
           setUserLoginSettings(prev => ({ ...prev, users }));
         }
-        console.log('[fetchExternalSettings] Users FFI response:', resp);
       } catch {}
 
       // ── Expansion IO (entryType 37 = READEXT_IO_T3000) ───────────────────────
@@ -736,7 +734,6 @@ export const SettingsPageMobile: React.FC = () => {
           objectinstance: device.object_instance,
         });
         // TODO: parse resp.data when C++ implements this — mirrors Str_Extio_point fields
-        console.log('[fetchExternalSettings] Expansion IO FFI response:', resp);
       } catch {}
     } finally {
       await transport.disconnect();

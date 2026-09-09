@@ -59,7 +59,6 @@ export const HvacDrawingArea: React.FC = () => {
 
         // Trigger refresh
         // TODO: Call refreshObjects() when library is fully connected
-        console.log('Drawing continuous object - angle:', angle, 'distance:', distance);
       }
     }
   };

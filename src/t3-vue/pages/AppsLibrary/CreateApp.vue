@@ -128,7 +128,6 @@ async function SaveApp() {
   if (!user.value) {
     return;
   }
-  console.log("fileUploaderRef.value", fileUploaderRef.value);
   if (fileUploaderRef.value?.uppy.getFiles()?.length > 0) {
     fileUploaderRef.value.upload();
     return;

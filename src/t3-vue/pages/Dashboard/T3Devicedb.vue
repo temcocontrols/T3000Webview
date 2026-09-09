@@ -930,7 +930,6 @@ const importData = () => {
         try {
           const data = JSON.parse(e.target?.result)
           // Process imported data
-          console.log('Imported data:', data)
           $q.notify({
             type: 'positive',
             message: 'Data imported successfully'

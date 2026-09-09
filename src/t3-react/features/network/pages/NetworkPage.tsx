@@ -173,7 +173,6 @@ export const NetworkPage: React.FC = () => {
   useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSettings = () => {
-    console.log('Settings clicked');
   };
 
   // Display networks with empty rows when no data

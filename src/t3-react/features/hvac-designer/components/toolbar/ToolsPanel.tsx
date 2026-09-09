@@ -237,8 +237,6 @@ const useStyles = makeStyles({
 });
 
 export const ToolsPanel: React.FC = () => {
-  console.log('🟡 [ToolsPanel] Mounted — left sidebar tools panel is alive');
-
   const styles = useStyles();
   const { setActiveTool } = useHvacDesignerStore();
   const [openItems, setOpenItems] = useState<string[]>(['Basic', 'General', 'Pipe', 'Duct', 'Room', 'Metrics', 'User']);

@@ -249,7 +249,6 @@ const deviceTreeData = ref([
 
 // Function to handle device selection
 const onDeviceSelect = (selectedKeys: string[], info: any) => {
-  console.log('Selected', selectedKeys, info);
   deviceSelectedKeys.value = selectedKeys; // Update selected keys
 
   // Update scheduleTableData based on the selected device
@@ -283,10 +282,7 @@ const onDeviceSelect = (selectedKeys: string[], info: any) => {
 const editSchedule = (record: ScheduleTableItem): void => {
   // Switch to the weekly tab
   activeTab.value = 'weekly';
-
-  // Log the schedule being edited
-  console.log('Editing schedule:', record);
-
+  
   // Additional functionality can be added here to use the record data
   // such as highlighting the relevant schedule in the weekly view
 };

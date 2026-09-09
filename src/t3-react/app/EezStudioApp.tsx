@@ -60,6 +60,7 @@ import { ErrorCircleRegular, ArrowClockwiseRegular } from "@fluentui/react-icons
 import "eez-studio-ui/_stylesheets/main.less";
 import "eez-studio-ui/_stylesheets/main-dark-runtime.less";
 import "flexlayout-react/style/light.css";
+import { LogUtil } from "@/lib/t3-hvac";
 
 const useBackendStyles = makeStyles({
     bar: {
@@ -244,7 +245,6 @@ export function EezStudioApp() {
                             (t: any) => t.filePath === openPath
                         );
                         if (opened) {
-                            console.log("[EEZ-Examples] openProject succeeded:", openPath);
                         } else if (attempts++ < 40) {
                             setTimeout(tryOpen, 300);
                         }
@@ -262,7 +262,6 @@ export function EezStudioApp() {
                 if (mounted) {
                     if (wizardOpenedRef.current) return;
                     wizardOpenedRef.current = true;
-                    console.log("[EEZ-Examples] EezStudioApp open-project —", openPath);
                     tryOpen();
                     return;
                 }
@@ -291,7 +290,7 @@ export function EezStudioApp() {
                     w.wizardModelExamples.createDirectory =
                         exCreateDirectory !== "false";
                 }
-                console.log("[EEZ-Examples] EezStudioApp handoff — folder:",
+                LogUtil.Info("[EEZ-Examples] EezStudioApp handoff — folder:",
                     w.wizardModelExamples.folder,
                     "type:", w.wizardModelExamples.type,
                     "name:", w.wizardModelExamples.name,
@@ -333,14 +332,14 @@ export function EezStudioApp() {
                     });
                     if (cancelled) return;
                     if (ok) {
-                        console.log(`[EEZ-Examples] autoCreate succeeded (attempt ${attempt})`);
+                        LogUtil.Info(`[EEZ-Examples] autoCreate succeeded (attempt ${attempt})`);
                         return;
                     }
                     if (attempt === 3) {
-                        console.error("[EEZ-Examples] autoCreate failed after 3 attempts");
+                        LogUtil.Error("[EEZ-Examples] autoCreate failed after 3 attempts");
                         return;
                     }
-                    console.warn(`[EEZ-Examples] autoCreate attempt ${attempt} failed, retrying...`);
+                    LogUtil.Warn(`[EEZ-Examples] autoCreate attempt ${attempt} failed, retrying...`);
                     if (cleanupFolder) {
                         try {
                             await fetch(`/api/eez-studio/delete-recursive?path=${encodeURIComponent(cleanupFolder)}&force=true`, { method: "DELETE" });
@@ -367,7 +366,7 @@ export function EezStudioApp() {
                             if (params?.get("name") && params?.get("location")) {
                                 // Direct-to-editor: create the example project now
                                 // (downloads + saves, then opens the editor).
-                                console.log("[EEZ-Examples] EezStudioApp create-from-example — type=", params.get("type"), "name=", params.get("name"), "location=", params.get("location"));
+                                LogUtil.Info("[EEZ-Examples] EezStudioApp create-from-example — type=", params.get("type"), "name=", params.get("name"), "location=", params.get("location"));
                                 setTimeout(() => createWithRetry(() => w.createProjectFromExample()), 1000);
                             } else {
                                 w.showNewExampleProjectWizard();
@@ -377,7 +376,7 @@ export function EezStudioApp() {
                                 // Direct-to-editor: create a NEW LVGL template
                                 // project (from the design hub create dialog) and
                                 // open the editor — never show the wizard form.
-                                console.log("[EEZ-Examples] EezStudioApp create-from-template — new=", wizardType, "name=", params.get("name"), "location=", params.get("location"));
+                                LogUtil.Info("[EEZ-Examples] EezStudioApp create-from-template — new=", wizardType, "name=", params.get("name"), "location=", params.get("location"));
                                 setTimeout(() => createWithRetry(() => w.createProjectFromTemplate()), 1000);
                             } else {
                                 w.showNewProjectWizard();

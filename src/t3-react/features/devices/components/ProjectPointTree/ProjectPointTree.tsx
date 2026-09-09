@@ -186,7 +186,6 @@ const ProjectDeviceNode: React.FC<{
     const handleOpen = useCallback(() => {
       if (deviceInfo.serialNumber) {
         connectDevice(deviceInfo.serialNumber);
-        console.log('Open device:', deviceInfo.serialNumber);
       }
     }, [connectDevice, deviceInfo.serialNumber]);
 

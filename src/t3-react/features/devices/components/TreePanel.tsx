@@ -47,12 +47,9 @@ export const TreePanel: React.FC = () => {
     const initializeDevices = async () => {
       // Prevent duplicate runs in StrictMode
       if (hasInitialized.current) {
-        //console.log('[TreePanel] Already initialized, skipping...');
         return;
       }
       hasInitialized.current = true;
-
-      //console.log('[TreePanel] First-time initialization...');
 
       // First, check database
       await fetchDevices();

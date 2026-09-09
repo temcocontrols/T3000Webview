@@ -129,7 +129,6 @@ export const SystemLogsPage: React.FC = () => {
       const day = String(today.getDate()).padStart(2, '0');
       const mmdd = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
       const fallbackDate = `${yearMonth}/${mmdd}`;
-      console.log('📅 Using fallback date:', fallbackDate);
       setSelectedDate(fallbackDate);
     }
   };
@@ -140,13 +139,10 @@ export const SystemLogsPage: React.FC = () => {
 
     setLoading(true);
     try {
-      console.log('📁 Loading log files for date:', datePath);
       const response = await fetch(`${API_BASE_URL}/files?date=${encodeURIComponent(datePath)}`);
-      console.log('📁 Response status:', response.status);
 
       if (response.ok) {
         const files: { name: string; size: number }[] = await response.json();
-        console.log('📁 Loaded files:', files);
 
         const logFileList: LogFile[] = files.map(file => {
           const { category, icon, displayName } = getLogCategory(file.name);
@@ -165,7 +161,6 @@ export const SystemLogsPage: React.FC = () => {
 
         // Auto-select first file
         if (logFileList.length > 0 && !selectedFile) {
-          console.log('📁 Auto-selecting first file:', logFileList[0]);
           setSelectedFile(logFileList[0]);
         }
       } else {
@@ -182,15 +177,12 @@ export const SystemLogsPage: React.FC = () => {
   const loadLogContent = async (file: LogFile, datePath: string) => {
     setLoading(true);
     try {
-      console.log('📄 Loading log content:', file.name, 'for date:', datePath);
       const response = await fetch(
         `${API_BASE_URL}/content?date=${encodeURIComponent(datePath)}&file=${encodeURIComponent(file.name)}`
       );
-      console.log('📄 Response status:', response.status);
 
       if (response.ok) {
         const content = await response.text();
-        console.log('📄 Loaded content, length:', content.length);
         setLogContent(content);
         parseLogContent(content);
       } else {

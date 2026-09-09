@@ -8,7 +8,6 @@
  * Loads descriptor files for devices
  */
 export async function loadDescriptors(): Promise<void> {
-  console.log('Loading descriptors...');
   // TODO: Implement load descriptors logic
   // This should open a file dialog to select descriptor files
   // and load them into the system
@@ -19,7 +18,6 @@ export async function loadDescriptors(): Promise<void> {
  * Writes current configuration to device flash memory
  */
 export async function writeIntoFlash(): Promise<void> {
-  console.log('Writing into flash...');
   // TODO: Implement write into flash logic
   // This should write the current configuration to the device's flash memory
 }
@@ -29,7 +27,6 @@ export async function writeIntoFlash(): Promise<void> {
  * Manages GSM modem connection settings
  */
 export async function gsmConnection(): Promise<void> {
-  console.log('Opening GSM connection...');
   // TODO: Implement GSM connection logic
   // This should open a dialog for GSM modem connection configuration
 }

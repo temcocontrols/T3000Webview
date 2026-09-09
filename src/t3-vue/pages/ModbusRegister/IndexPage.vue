@@ -825,7 +825,6 @@ onMounted(() => {
 
 // Event listener for messages from the webview
 window.chrome?.webview?.addEventListener("message", (arg) => {
-  console.log("Recieved a message from webview", arg.data);
   if ("action" in arg.data) {
     if (arg.data.action === "GET_SELECTED_DEVICE_INFO_RES") {
       // Find the product device mapping based on product id

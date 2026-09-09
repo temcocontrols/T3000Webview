@@ -107,8 +107,6 @@ const PROJECT_TYPE_NAMES: Record<string, string> = {
 
 function buildExamples(catalog: any): ExampleItem[] {
   const raw = Array.isArray(catalog.catalog) ? catalog.catalog : [];
-  console.log('[EEZ-Examples] buildExamples — raw catalog entries:', raw.length);
-  console.log('[EEZ-Examples] raw projectType values:', raw.map((e: any) => e?.projectType));
   const startIds = new Set<string>(
     (Array.isArray(catalog.catalogAtStart) ? catalog.catalogAtStart : []).map(exampleId)
   );
@@ -132,8 +130,6 @@ function buildExamples(catalog: any): ExampleItem[] {
       };
     })
     .filter((x): x is ExampleItem => x !== null);
-  console.log('[EEZ-Examples] LVGL examples found:', result.length,
-    result.slice(0, 5).map((x) => ({ type: x.type, name: x.name, id: x.id })));
   return result;
 }
 
@@ -162,7 +158,6 @@ export const EezExamplesDrawer: React.FC<Props> = ({ open, onClose, onCount }) =
 
     const finish = (list: ExampleItem[]) => {
       if (cancelled) return;
-      console.log('[EEZ-Examples] drawer finished with', list.length, 'examples');
       setExamples(list);
       onCount?.(list.length);
       // Keep the selection valid if the list changed.
@@ -183,7 +178,6 @@ export const EezExamplesDrawer: React.FC<Props> = ({ open, onClose, onCount }) =
         // Empty right after load() — the async catalog download is still
         // running. Keep re-reading until it lands (long window, ~60s), like the
         // reactive wizard does.
-        console.log('[EEZ-Examples] catalog empty after load(), polling for async download...');
         let attempts = 0;
         const poll = () => {
           if (cancelled) return;
@@ -201,7 +195,6 @@ export const EezExamplesDrawer: React.FC<Props> = ({ open, onClose, onCount }) =
       })
       .catch((err: any) => {
         if (!cancelled) {
-          console.log('[EEZ-Examples] drawer load error:', err);
           setError(err?.message || String(err));
           setLoading(false);
         }

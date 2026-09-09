@@ -860,13 +860,11 @@ const objectsRef = ref(null); // Reference to objects
 
 // Lifecycle hook for component mount
 onMounted(() => {
-  console.log('[PanelLoad] *** IndexPage.vue (/) onMounted ***');
   Hvac.IdxPage.initQuasar($q);
   Hvac.IdxPage.initPage();
 });
 
 function updateDeviceModel(isActive, data) {
-  console.log('= Idx updateDeviceModel ===', isActive, data)
   deviceModel.value.active = isActive;
   deviceModel.value.data = data;
 
@@ -961,7 +959,6 @@ function refreshObjects() {
 // Adds an action to the history for undo/redo functionality
 function addActionToHistory(title) {
   if (process.env.DEV) {
-    // console.log(title); // Log the action title in development mode
   }
   if (title !== "Move Object") {
     setTimeout(() => {
@@ -1921,7 +1918,6 @@ keycon.keydown(["ctrl", "b"], (e) => {
 keycon.keydown(["insert"], (e) => {
   // T3000.Hvac.KiOpt.InitKeyInsertOpt(insertT3EntryDialog.value);
   T3000.Hvac.KiOpt.InsertT3EntryDialog();
-  // console.log('IndexPage keycon ', Data.insertT3EntryDialog.value)
 });
 
 // Open the dialog to link a T3 entry
@@ -2261,10 +2257,6 @@ function readFile(file) {
 // Save an image to the library or online storage
 async function saveLibImage(file) {
   if (user.value) {
-
-    console.log('= Idx saveLibImage file', file);
-    console.log('= Idx saveLibImage user', user.value);
-
     liveApi
       .post("hvacTools", {
         json: {
@@ -2584,11 +2576,6 @@ function handleMenuAction(action, val) {
 function reloadPanelsData() {
   T3000_Data.value.loadingPanel = null;
 
-  console.log('[PanelLoad] IndexPage.vue reloadPanelsData | isBuiltInEdge:', isBuiltInEdge.value,
-    '| panelsList:', T3000_Data.value.panelsList.length,
-    '| panelsData:', T3000_Data.value.panelsData.length,
-    '| path:', isBuiltInEdge.value ? 'WebViewClient' : 'WebSocketClient');
-
   if (isBuiltInEdge.value) {
     Hvac.WebClient.GetPanelsList();
   }
@@ -2596,33 +2583,6 @@ function reloadPanelsData() {
     Hvac.WsClient.GetPanelsList();
   }
 }
-
-// // Refresh linked entries with updated panel data
-// function refreshLinkedEntries(panelData) {
-//   appState.value.items
-//     .filter((i) => i.t3Entry?.type)
-//     .forEach((item) => {
-//       const linkedEntry = panelData.find(
-//         (ii) =>
-//           ii.index === item.t3Entry.index &&
-//           ii.type === item.t3Entry.type &&
-//           ii.pid === item.t3Entry.pid
-//       );
-//       if (linkedEntry && linkedEntry.id) {
-
-//         const tempBefore = linkedEntry.value;
-
-//         let newLkValue = linkedEntry.value >= 1000 ? linkedEntry.value / 1000 : linkedEntry.value;
-//         linkedEntry.value = newLkValue;
-//         item.t3Entry = linkedEntry;
-
-//         console.log('= Idx RefreshLinkedEntries before, after', tempBefore, linkedEntry.value);
-
-//         refreshObjectStatus(item);
-//       }
-//     });
-// }
-
 
 // Table data based on selected schedule
 const scheduleTableData = computed(() => {
@@ -2773,7 +2733,6 @@ function lockToggle() {
 
 // Handle object click events based on t3Entry type
 function objectClicked(item) {
-  console.log('= Idx objectClicked /', item, item.t3Entry);
   // if (!locked.value) return;
   if (item.t3Entry?.type === "GRP") {
 
@@ -2941,8 +2900,6 @@ function toggleClicked(item, type, ev) {
   }
 
   save(false, true);
-
-  // console.log('toggleClicked->after item', item.t3Entry)
 }
 
 function setTheSettingContextMenuVisible() {
@@ -3401,8 +3358,6 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
         const pathItem = pathItemList?.find(
           (itx) => itx?.item?.id === weldItem?.id
         );
-        // console.log('IndexPage.vue->updateWeldModelCanvas->pathItem', pathItem);
-        // console.log('IndexPage.vue->updateWeldModelCanvas->weldItem', weldModel.width, weldModel.height);
         if (pathItem) {
           weldItem.width = pathItem.newPos.width;
           weldItem.height = pathItem.newPos.height;
@@ -3415,15 +3370,12 @@ const updateWeldModelCanvas = (weldModel, pathItemList) => {
 };
 
 function viewportLeftClick(ev) {
-  // console.log('IndexPage.vue->viewportLeftClick->ev', ev);
   ev.preventDefault();
 
   const check = !locked.value && selectedTool.value.name !== 'Pointer' && selectedTool.value.name != "Wall" && !isDrawing.value
     && selectedTool.value.name != "Int_Ext_Wall" && selectedTool.value.name != "Duct";
 
   if (check) {
-    // console.log('IndexPage.vue->viewportLeftClick->locked,selectedTool', locked, selectedTool);
-
     // Manually create a shape at the mouse current position
 
     var ePosition = {

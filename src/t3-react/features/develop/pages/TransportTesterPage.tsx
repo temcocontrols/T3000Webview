@@ -150,6 +150,7 @@ const JsonTreeViewer: React.FC<{ json: string }> = ({ json }) => {
 
 // API Configuration
 import { API_BASE_URL as BASE_URL } from '../../../config/constants';
+import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
 const API_BASE_URL = `${BASE_URL}/api`;
 
 type TransportType = 'websocket' | 'ffi' | 'webview2';
@@ -349,7 +350,7 @@ export const TransportTesterPage: React.FC = () => {
       const duration = Date.now() - startTime;
 
       // Log what C++ actually returned for debugging
-      console.log('C++ Response:', transportResponse);
+      LogUtil.Info('C++ Response:', transportResponse);
 
       // Parse the response - C++ returns JSON directly (with action and data fields)
       const success = response.ok && !transportResponse.error;

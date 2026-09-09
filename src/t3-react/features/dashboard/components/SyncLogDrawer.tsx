@@ -63,11 +63,9 @@ export const SyncLogDrawer: React.FC<Props> = ({ open, onClose }) => {
         ...(cat !== 'all' ? { category: cat } : {}),
       });
       const url = `${API_BASE_URL}/api/sync/event-log?${qs}`;
-      console.log('[SyncLogDrawer] fetching:', url);
       const res = await fetch(url);
       if (!res.ok) throw new Error(`event-log: HTTP ${res.status}`);
       const data = await res.json();
-      console.log('[SyncLogDrawer] got entries:', data.total);
       setEntries(data.entries);
       setTotal(data.total);
       setAllCategories(Array.isArray(data.categories) ? data.categories : []);

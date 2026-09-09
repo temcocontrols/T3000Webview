@@ -1,5 +1,7 @@
 // Comprehensive browser stub for Electron — all APIs as no-ops
 
+import LogUtil from "@/lib/vue/T3000/Hvac/Util/LogUtil";
+
 const noop = () => { };
 const noopAsync = () => Promise.resolve();
 const noopObj = () => ({});
@@ -136,7 +138,7 @@ export const ipcRenderer = {
             input.click();
         }
         if (ch === "open-database-file") {
-            console.log("[electron-kitchen] open-database-file: opening native file dialog via API");
+            LogUtil.Info("[electron-kitchen] open-database-file: opening native file dialog via API");
             fetch("/api/eez-studio/pick-open-file", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -148,17 +150,17 @@ export const ipcRenderer = {
                 .then(r => r.json())
                 .then((data: { file_path?: string; cancelled?: boolean }) => {
                     if (data.file_path) {
-                        console.log("[electron-kitchen] database-file-selected:", data.file_path);
+                        LogUtil.Info("[electron-kitchen] database-file-selected:", data.file_path);
                         const name = data.file_path.split(/[\\/]/).pop() || "";
                         emitIPC("database-file-selected", null, { filePath: data.file_path, name });
                     } else {
-                        console.log("[electron-kitchen] open-database-file cancelled");
+                        LogUtil.Info("[electron-kitchen] open-database-file cancelled");
                     }
                 })
-                .catch(err => console.error("[electron-kitchen] pick-open-file failed:", err));
+                .catch(err => LogUtil.Error("[electron-kitchen] pick-open-file failed:", err));
         }
         if (ch === "create-database-file") {
-            console.log("[electron-kitchen] create-database-file: opening native save dialog via API");
+            LogUtil.Info("[electron-kitchen] create-database-file: opening native save dialog via API");
             fetch("/api/eez-studio/pick-save-file", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -171,7 +173,7 @@ export const ipcRenderer = {
                 .then(r => r.json())
                 .then(async (data: { file_path?: string; cancelled?: boolean }) => {
                     if (data.file_path) {
-                        console.log("[electron-kitchen] database-file-created:", data.file_path);
+                        LogUtil.Info("[electron-kitchen] database-file-created:", data.file_path);
                         // Create an empty file at the chosen path
                         try {
                             const resp = await fetch("/api/eez-studio/write-text-file?path=" + encodeURIComponent(data.file_path), {
@@ -179,17 +181,17 @@ export const ipcRenderer = {
                                 body: "",
                                 headers: { "Content-Type": "text/plain" }
                             });
-                            console.log("[electron-kitchen] write response:", resp.status);
+                            LogUtil.Info("[electron-kitchen] write response:", resp.status);
                             if (resp.ok) {
                                 const name = data.file_path.split(/[\\/]/).pop() || "";
                                 emitIPC("database-file-created", null, { filePath: data.file_path, name });
                             }
-                        } catch (e) { console.error("[electron-kitchen] Create DB error:", e); }
+                        } catch (e) { LogUtil.Error("[electron-kitchen] Create DB error:", e); }
                     } else {
-                        console.log("[electron-kitchen] create-database-file cancelled");
+                        LogUtil.Info("[electron-kitchen] create-database-file cancelled");
                     }
                 })
-                .catch(err => console.error("[electron-kitchen] pick-save-file failed:", err));
+                .catch(err => LogUtil.Error("[electron-kitchen] pick-save-file failed:", err));
         }
 
         // Dispatch to renderer-registered IPC handlers (home/main.tsx, tabs-store.tsx, ...)
@@ -267,9 +269,9 @@ function fallbackCopyTextToClipboard(text: string) {
     textarea.select();
     try {
         document.execCommand("copy");
-        console.log("clipboard: text copied via fallback");
+        LogUtil.Info("clipboard: text copied via fallback");
     } catch (err) {
-        console.error("clipboard fallback failed:", err);
+        LogUtil.Error("clipboard fallback failed:", err);
     }
     document.body.removeChild(textarea);
 }

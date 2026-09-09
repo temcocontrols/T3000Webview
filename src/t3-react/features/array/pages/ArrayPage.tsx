@@ -151,7 +151,6 @@ const ArrayPage: React.FC = () => {
   useRegisterCsvHandlers(handleExport, handleImport);
 
   const handleSettings = () => {
-    console.log('Settings clicked');
   };
 
   // Display arrays with empty rows when no data (show 10 empty rows)

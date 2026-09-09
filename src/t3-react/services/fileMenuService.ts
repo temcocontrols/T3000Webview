@@ -331,7 +331,6 @@ export class FileMenuService {
       }
     } catch (error) {
       // User cancelled or error occurred
-      console.log('Save dialog cancelled or error:', error);
       return null;
     }
   }

@@ -347,8 +347,6 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
   // CSV operations (global context — Export/Import to CSV)
   const { triggerExport, triggerImport, isExportAvailable, isImportAvailable } = useCsvOperations();
 
-  // console.log('🎯 Header rendering...', { location: location.pathname, user, toolbarConfig });
-
   // Helper function to convert TreeNode to DeviceInfo
   const convertTreeNodeToDeviceInfo = (node: any): DeviceInfo => ({
     serialNumber: node.id,
