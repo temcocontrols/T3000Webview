@@ -391,7 +391,7 @@ export class LayoutModels extends AbstractLayoutModels {
         return [
             {
                 name: "rootEditor",
-                version: 119,
+                version: 127,
                 json: {
                     global: LayoutModels.GLOBAL_OPTIONS,
                     borders: this.borders,
@@ -404,22 +404,23 @@ export class LayoutModels extends AbstractLayoutModels {
                             // even-depth row container, hence the extra wrapper.
                             {
                                 type: "row",
-                                weight: 24,
+                                weight: 32.4,
                                 children: [
                                     {
                                         type: "row",
                                         weight: 1,
                                         children: [
                                             // LEFT COLUMN 1 — Pages (and User
-                                            // Widgets / Actions) on top, Variables
-                                            // stacked below it.
+                                            // Widgets / Actions) on top (shorter),
+                                            // Components Palette (draggable widgets)
+                                            // stacked below it (taller).
                                             {
                                                 type: "row",
-                                                weight: 1,
+                                                weight: 1.65,
                                                 children: [
                                                     {
                                                         type: "tabset",
-                                                        weight: 1.2,
+                                                        weight: 0.8,
                                                         enableClose: false,
                                                         children: [
                                                             LayoutModels.PAGES_TAB,
@@ -429,17 +430,10 @@ export class LayoutModels extends AbstractLayoutModels {
                                                     },
                                                     {
                                                         type: "tabset",
-                                                        weight: 1,
+                                                        weight: 1.7,
                                                         enableClose: false,
                                                         children: [
-                                                            {
-                                                                type: "tab",
-                                                                enableClose: false,
-                                                                name: "Variables",
-                                                                component: "variables",
-                                                                icon: "svg:variable",
-                                                                id: LayoutModels.VARIABLES_TAB_ID
-                                                            }
+                                                            LayoutModels.COMPONENTS_PALETTE_TAB
                                                         ]
                                                     }
                                                 ]
@@ -448,7 +442,7 @@ export class LayoutModels extends AbstractLayoutModels {
                                             // its own full-height column.
                                             {
                                                 type: "tabset",
-                                                weight: 1.1,
+                                                weight: 1.25,
                                                 enableClose: false,
                                                 children: [
                                                     {
@@ -466,7 +460,7 @@ export class LayoutModels extends AbstractLayoutModels {
                             },
                             {
                                 type: "tabset",
-                                weight: 56,
+                                weight: 47.6,
                                 enableDeleteWhenEmpty: false,
                                 enableClose: false,
                                 id: LayoutModels.EDITOR_MODE_EDITORS_TABSET_ID,
@@ -494,7 +488,14 @@ export class LayoutModels extends AbstractLayoutModels {
                                         type: "tabset",
                                         weight: 1,
                                         children: [
-                                            LayoutModels.COMPONENTS_PALETTE_TAB
+                                            {
+                                                type: "tab",
+                                                enableClose: false,
+                                                name: "Variables",
+                                                component: "variables",
+                                                icon: "svg:variable",
+                                                id: LayoutModels.VARIABLES_TAB_ID
+                                            }
                                         ]
                                     }
                                 ]
