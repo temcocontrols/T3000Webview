@@ -3,6 +3,18 @@
 Quick-reference tables, a glossary of the words you'll see in the UI, and answers to common
 questions.
 
+**In this chapter**
+
+1. [Feature matrix](#1-feature-matrix)
+2. [Routes](#2-routes) — the addresses behind the screens
+3. [Where projects live](#3-where-projects-live)
+4. [Keyboard shortcuts](#4-keyboard-shortcuts)
+5. [Status badges](#5-status-badges)
+6. [Glossary](#6-glossary)
+7. [FAQ](#7-faq)
+8. [Error messages you may see](#8-error-messages-you-may-see)
+9. [Where to go next](#9-where-to-go-next)
+
 ---
 
 ### 1. Feature matrix
@@ -50,13 +62,21 @@ Handy link parameters the editor understands (used internally when you start fro
 
 ### 3. Where projects live
 
-Each project is a folder containing:
+Every project is a folder on the T3000 host, named after the project — or, for an imported
+project, `<device>_SN<serial>`:
+
+```
+project/<name>/
+  ├── <name>.eez-project          ← the file you open and save
+  ├── device-import/              ← screens read from the controller, plus imgs/
+  └── device-export/              ← screens written by deploy, plus images/ and deploy-manifest.json
+```
 
 | Item | Meaning |
 |---|---|
 | `<name>.eez-project` | The project file. This is the file you open and save. |
-| `device-import/` | Created by **Load from Device** — the screens and images read from the controller. |
-| `device-export/` | Created by **Deploy** — the exported screens and images, plus the deploy manifest used to detect changes. |
+| `device-import/` | Created by **Load from Device** — one JSON per screen plus `imgs/`. Kept as the baseline for the project's first deploy. |
+| `device-export/` | Created by **Deploy** — the exported screens and images, plus `deploy-manifest.json` used to detect changes. |
 
 The Design Hub's **Project History** reads the projects from this location, so anything you
 create appears there.
@@ -104,6 +124,9 @@ create appears there.
 | **Deploy** | Sending the project to the controller. |
 | **Snapshot** | A saved copy of a project's state, kept for comparison or restore. |
 | **Manifest** | The record of the last successful deploy, used to send only changed screens and images. |
+| **Screen JSON** | The document the device stores for each screen. See [Design Studio (Tstat11) API → Screen JSON Format](../../bacnet-api/screen-json.md). |
+| **Device API** | The controller's HTTP API (port 80) used by import and deploy, reached through the T3000 host. |
+| **Import baseline** | The `device-import/` screens, used as the comparison for a project's first deploy. |
 
 ---
 
@@ -136,7 +159,8 @@ that were not sent are retried.
 modify an existing project.
 
 **Where are my projects stored?**
-On the T3000 host, one folder per project (see §3). The Design Hub lists them under
+On the T3000 host, one folder per project (see
+[3. Where projects live](#3-where-projects-live)). The Design Hub lists them under
 **Project History**.
 
 **How do I back up a project?**
@@ -155,6 +179,14 @@ internet access to fetch the examples.
 **Why is my text showing boxes instead of characters?**
 The font does not contain those characters. Add them to the font's character set.
 
+**What does the device actually store for a screen?**
+One JSON document per screen — background colour, fonts, bitmaps and a widget tree with events.
+See [Design Studio (Tstat11) API → Screen JSON Format](../../bacnet-api/screen-json.md).
+
+**Do screens travel over BACnet or over HTTP?**
+Design Studio uses the controller's HTTP API through the T3000 host. The BACnet JSON commands
+are a separate path — see [Design Studio (Tstat11) API → Commands](../../bacnet-api/commands.md).
+
 ---
 
 ### 8. Error messages you may see
@@ -170,6 +202,7 @@ The font does not contain those characters. Add them to the font's character set
 
 ### 9. Where to go next
 
+- The device API and the screen JSON it stores — [Design Studio (Tstat11) API](../../bacnet-api/README.md).
 - Developer-oriented design documents live in this folder:
   [`../device-firmware-lvgl-architecture.md`](../device-firmware-lvgl-architecture.md),
   [`../import-from-device-design.md`](../import-from-device-design.md),

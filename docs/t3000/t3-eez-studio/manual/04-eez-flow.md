@@ -6,6 +6,16 @@ interacts with it or when a value changes — without writing code.
 > Flow is available only in **LVGL with Flow 9.5** projects. If your project was created as
 > plain **LVGL 9.5**, the Flow section is not shown.
 
+**In this chapter**
+
+1. [What Flow is for](#1-what-flow-is-for) — when you need it and when you do not
+2. [The Flow section](#2-the-flow-section) — where flows live in the editor
+3. [Components](#3-components) — the building blocks
+4. [Starting a flow from a widget event](#4-starting-a-flow-from-a-widget-event)
+5. [Worked example — a button that raises a setpoint](#5-worked-example-a-button-that-raises-a-setpoint)
+6. [Testing flows](#6-testing-flows)
+7. [Notes and limitations](#7-notes-and-limitations)
+
 ---
 
 ### 1. What Flow is for
@@ -56,7 +66,7 @@ Typical groups:
 |---|---|---|
 | **Variables** | Get Variable, Set Variable, Watch Variable | Read and write the project's variables. |
 | **Actions** | Output, Delay, Animate, Is True | Make something happen, wait, animate, or branch. |
-| **Widget events** | Clicked, Value Changed | Start a flow when the user interacts with a widget. |
+| **Widget events** | Clicked, Value Changed, Screen Loaded | Start a flow when the user interacts with a widget, or when a screen opens. |
 | **Screens** | Change Screen | Navigate to another page. |
 
 A component has **inputs** (values it needs), **outputs** (values it produces), and an
@@ -73,11 +83,19 @@ The usual pattern is *widget event → action*.
 3. Add a handler and choose the event, for example:
    - **CLICKED** — the user tapped the widget.
    - **VALUE_CHANGED** — a slider, switch or dropdown changed.
+   - **SCREEN_LOADED** — the screen has just opened. Useful for a splash screen that advances
+     by itself.
 4. Choose **flow** as the handler type, and create or select the flow it should run.
 
 ![A widget event bound to a flow](images/18-flow-widget-event.png)
 
 *Figure 4.3 — A widget event handler pointing at a flow.*
+
+> **What it becomes on the device.** An event handler is stored in the screen's JSON under
+> `events`, with one or more `actions`. A button that toggles a panel's visibility exports as
+> two `flag_modify` actions on `CLICKED`; the start-up screen exports a `screen_change` on
+> `SCREEN_LOADED`. See the worked examples and **Events and actions** in
+> [Screen JSON — Format Reference](../../bacnet-api/screen-json.md).
 
 ---
 
@@ -112,12 +130,19 @@ Goal: pressing a button increases a `setpoint` variable by 1 and shows the new v
 
 ### 7. Notes and limitations
 
-- Flow logic runs as part of the project. If you change a flow, the project must be saved and
-  deployed again for the device to be updated.
+- Flow is part of the project: **save** it (and deploy) for your changes to take effect.
 - Keep flows small and readable — a screen with one clear flow per action is easier to debug
   than one very large flow.
 - Variables that should survive a restart have a **persist** setting; leave it off for purely
   visual values.
+
+If a flow does not run when you expect:
+
+- The project must have Flow support — if there is no **Flow** section, it was created as plain
+  LVGL.
+- The widget's event handler must be set to type **flow**, and must point at the flow you built.
+- The flow must be wired **from** an event component; a flow with no entry point never runs.
+- Try **Run (F5)** and watch the variable readout in the toolbar.
 
 ---
 

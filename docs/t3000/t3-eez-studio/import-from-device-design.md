@@ -1,7 +1,7 @@
 # Import from Device — as built
 
-**Status:** the pipeline below is what ships. The original design is kept at the end as an
-appendix — its endpoint names are **not** the real ones.
+The pipeline below is the current implementation; the original design is kept at the end as an
+appendix.
 
 Import the screens a T3 controller currently holds, convert them into an `.eez-project`, and
 open the result in the editor.
@@ -68,9 +68,7 @@ Progress is reported through the `onLog` callback using `=>` / `✔` / `X` / `�
 deploy — see
 [device-interface-deployment-via-bacnet-design.md](device-interface-deployment-via-bacnet-design.md).
 
-> **There is no resume cache.** Every import re-fetches every screen and rewrites the staging
-> folder. (The original design claimed re-imports would skip already-fetched screens — that was
-> never implemented.)
+> **Every import re-fetches every screen** and rewrites the staging folder.
 
 ---
 
@@ -86,11 +84,12 @@ deploy — see
 
 ---
 
-# Appendix — Original import design (superseded)
+# Appendix — Original import design
 
-> **Historical.** Written before the shared pipeline existed. These endpoints are **wrong** for
-> the current code — there is no `/api/devices`, no `/api/files/mkdir`, no `/api/files/write`,
-> no `/api/v1/screens`, and **no BACnet fallback**. Use §2 above instead.
+> **Historical.** Written before the shared pipeline existed. The endpoints below do not match
+> the current code — use [2. Pipeline](#2-pipeline-importprojectfromdevice) above. In particular
+> there is no `/api/devices`, no `/api/files/*`,
+> no `/api/v1/screens` and no BACnet fallback.
 
 ## 1. UI Layout
 

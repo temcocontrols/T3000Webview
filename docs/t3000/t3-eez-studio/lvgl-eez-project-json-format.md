@@ -7,9 +7,8 @@ The `.eez-project` file is a JSON document that describes a complete LVGL UI pro
 **Context:** The T3000 Webview platform uses EEZ Studio (browser-based) as its UI designer. Projects designed in the browser export to this JSON format. The format is consumed by:
 - The browser-based simulator (renders the UI in a web canvas using LVGL WASM)
 - The Rust backend (provides font extraction & file management)
-- The embedded firmware — stores and serves the screens over its REST API; it does **not**
-  render them yet (the panel still draws the compiled SquareLine UI). See
-  [device-firmware-lvgl-architecture.md](device-firmware-lvgl-architecture.md).
+- The embedded firmware — stores and serves the screens over its REST API, and renders the UI
+  with LVGL. See [device-firmware-lvgl-architecture.md](device-firmware-lvgl-architecture.md).
 
 ### Two Output Formats
 
@@ -25,7 +24,6 @@ flowchart TD
     E --> F["ESP32 device - stored in SPIFFS"]
     F -->|"read back"| I["Import from Device transform"]
     I --> A
-    F -.->|"not rendered yet"| H["LVGL display keeps drawing the compiled SquareLine UI"]
 ```
 
 | Button | Output | Consumer | Size (Smart Home example) |

@@ -12,7 +12,7 @@ paths, so no documentation edit is needed once an image exists.
 | `02-hub-guide-steps.png` | The **4-step guide strip** (Choose a type → Pick a device → Design & edit → Deploy). |
 | `03-hub-create-by-type.png` | The **Create by Type** tiles with all four types. |
 | `04-hub-project-history.png` | **Project History**: sort, view toggles, select, search and the type tabs. |
-| `05-hub-project-card.png` | A single **project card** with its actions and status badge. |
+| `05-hub-project-card.png` | A single **project card** with its actions and status badge. Also used as figure 2.6. |
 | `06-lvgl-examples-drawer.png` | The **LVGL Examples** drawer with its filter chips. |
 
 ## Still needed
@@ -20,10 +20,10 @@ paths, so no documentation edit is needed once an image exists.
 | Filename | Figure | What to capture |
 |---|---|---|
 | `07-hub-device-bar.png` | 1.3 | The **device bar** with a device selected — name plus the *On this device / Deployed / Unbound* counters. Crop to the bar. |
-| `08-lvgl-create-new.png` | 2.1 | The **New LVGL project** dialog, **Create New** tab: Name, Location, *Create directory*, *Project file path* preview. |
-| `09-lvgl-load-from-device.png` | 2.4 | The same dialog, **Load from Device** tab, with the device list expanded. |
-| `10-lvgl-import-step-log.png` | 2.5 | The **import progress** state with the detail log expanded. |
-| `11-lvgl-example-create.png` | 2.3 | The **create-from-example** dialog (Name / Location / Create directory). |
+| `08-lvgl-create-new.png` | 2.1 | The **New LVGL project** dialog, **Create New** tab, with a name typed in so the *Project file path* preview is filled. |
+| `09-lvgl-load-from-device.png` | 2.4 | The same dialog, **Load from Device** tab, device list expanded with **one device selected**. |
+| `10-lvgl-import-step-log.png` | 2.5 | The **import progress**: step rows with at least one ✔ and the detail log expanded. |
+| `11-lvgl-example-create.png` | 2.3 | The **create-from-example** dialog with Name and Location filled in. |
 | `12-editor-overview.png` | 1.7, 3.1 | The **project editor** with a page open — left navigation, canvas, right-hand tabs. |
 | `13-editor-widgets-palette.png` | 3.2 | The **Components Palette** with a few widget groups expanded. |
 | `14-editor-properties.png` | 3.3 | The **Properties** panel for a selected widget. |
@@ -45,3 +45,5 @@ paths, so no documentation edit is needed once an image exists.
 - Keep the **light theme** for consistency across the manual.
 - The two editor figures (1.7 and 3.1) share `12-editor-overview.png`, so it only needs
   capturing once.
+- `05-hub-project-card.png` is used twice as well (figures 1.6 and 2.6).
+- For dialogs, fill the fields in before capturing so the preview/derived values are visible.

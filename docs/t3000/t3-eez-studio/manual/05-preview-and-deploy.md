@@ -7,6 +7,16 @@ T3000 which controller the project belongs to, and sending the design to that co
 Design  →  Preview (Run)  →  Bind a device  →  Deploy  →  Deployed
 ```
 
+**In this chapter**
+
+1. [Preview before you deploy](#1-preview-before-you-deploy) — Run, Debug and Full Sim
+2. [Bind a project to a device](#2-bind-a-project-to-a-device)
+3. [Deploy](#3-deploy) — from the editor or from the hub
+4. [What a deploy actually does](#4-what-a-deploy-actually-does) — the incremental pipeline
+5. [Watching a deploy](#5-watching-a-deploy) — steps, log and history
+6. [Project detail page](#6-project-detail-page) — preview, statistics, snapshots
+7. [Troubleshooting deploys](#7-troubleshooting-deploys)
+
 ---
 
 ### 1. Preview before you deploy
@@ -95,8 +105,15 @@ The deploy is **incremental**: after the first time, only what changed is sent t
 Because step 4 compares content, re-deploying without changes does nothing — the drawer
 reports that everything is already up to date.
 
+> **The first deploy after Load from Device** compares against the screens the device returned
+> during the import (`device-import/`). Import a project, change nothing and deploy — nothing
+> is sent, because the device already has it.
+
 > If a deploy fails partway through, the comparison baseline is **not** updated, so the next
 > deploy retries the remaining changes.
+
+The format the screens are converted into is documented in
+[Design Studio (Tstat11) API → Screen JSON Format](../../bacnet-api/screen-json.md).
 
 ---
 
@@ -142,6 +159,8 @@ always compare or restore.
 | The deploy reports "nothing changed" | The exported project matches the last successful deploy. Edit and save the project, then deploy again. |
 | Deploy is slow on the first run | The first deploy sends every screen and image. Later deploys send only changes. |
 | The device does not show the new design | Re-run the deploy and confirm every step finished with a ✔ in the log. |
+| A large project fails partway with a connection error | A big first deploy can exceed the deploy timeout over a slow link. Deploy again — only the screens that did not make it are retried. |
+| The device answers during import but not during deploy (or the reverse) | Its API only runs while the panel is on the network. While it is in Wi-Fi setup mode the API is down. |
 
 ---
 

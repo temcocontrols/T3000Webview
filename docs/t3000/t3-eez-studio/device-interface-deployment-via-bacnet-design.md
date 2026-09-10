@@ -1,7 +1,7 @@
 # Deploy to Device — as built (REST)
 
-**Status:** the REST implementation below is what ships. The BACnet-based design this file
-originally described was **never implemented**; it is kept at the end as an appendix.
+The REST implementation below is the current deployment path. The BACnet-based design this file
+originally described is kept at the end as an appendix.
 
 Send a designed UI from the editor to a T3 controller, and load a controller's current
 screens back into the editor.
@@ -72,8 +72,6 @@ Device endpoints (all under `/api/eez-device`):
 - Request bodies are capped at **512 KB**; exceeding it returns **400** (not 413).
 - `device/info` reports `serial_number: 0`, `firmware_version: "1.0.0"` and
   `lvgl_version: "9.1.0"` as **hard-coded literals** — they are not read from the panel.
-- `PATCH /screens/:name/widgets/:widgetId` is documented but **not implemented**: the wildcard
-  route resolves to the screen file and never prefixes `widgets.<id>.`.
 - Images are stored as the **raw request body text** (base64 inside JSON), not decoded pixels.
 - There is no delete-screen endpoint — only images can be deleted.
 
@@ -128,19 +126,19 @@ push itself goes through `/api/device-rest/<ip>/…`.
 
 ---
 
-# Appendix — Original BACnet design (superseded, never implemented)
+# Appendix — Original BACnet design
 
-> **Historical.** Everything below was proposed before the REST pipeline existed and was
-> **not implemented**: there is no `POST /api/devices/:id/deploy-firmware`, no Action 18 in
-> `WEBVIEW_MESSAGE_TYPE`, and no `firmware_deploy_routes.rs`. Statements about the state of the
-> code (such as §1 "does not reach hardware") and the BACnet transfer details (200-byte
-> chunks, zlib) are **no longer accurate**.
+> **Historical.** Everything below describes an earlier BACnet deployment proposal rather than
+> the shipped pipeline: deployment goes over REST ([1. Transport](#1-transport) through
+> [4. Entry points](#4-entry-points) above), there is no
+> `POST /api/devices/:id/deploy-firmware`, and `WEBVIEW_MESSAGE_TYPE` has no Action 18. The
+> BACnet transfer details (200-byte chunks, zlib) belong to that proposal.
 >
-> One fragment does exist on the device: the BACnet private-transfer commands
+> The BACnet Private Data commands the firmware implements are
 > `WRITE_JSON_SCREEN = 186` / `WRITE_JSON_ITEM = 187` (read `86` / `87`) in
-> `temco_bacnet/private/ptransfer.c` copy payloads into `group_data_new.new_item`. **Nothing on
-> the device reads or parses them**, they are uncompressed, and the slots are 50 bytes (screen)
-> and 200 bytes (item).
+> `temco_bacnet/private/ptransfer.c`; they copy into fixed slots of 50 bytes (screen) and
+> 200 bytes (item), uncompressed. See
+> [../bacnet-api/commands.md](../bacnet-api/commands.md).
 
 ## 1. Current State
 
@@ -561,7 +559,7 @@ First deploy:
 | `PUT` | `/api/v1/screens` | **Deploy all** — full JSON for every screen (body: `{screens: [...]}`) |
 | `GET` | `/api/v1/screens/:name` | Load single screen |
 | `PUT` | `/api/v1/screens/:name` | Deploy/replace single screen |
-| `PATCH` | `/api/v1/screens/:name` | Delta update — only changed keys (optimization, see §6.5) |
+| `PATCH` | `/api/v1/screens/:name` | Delta update — only changed keys (optimization, see [6.5. Delta Update Protocol](#6-5-delta-update-protocol-patch-optimization)) |
 | `PATCH` | `/api/v1/screens/:name/widgets/:id` | Delta single widget (optimization) |
 | `POST` | `/api/v1/screens/:name/actions` | Execute action (button press, setpoint change, etc.) |
 

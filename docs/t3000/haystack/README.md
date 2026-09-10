@@ -59,7 +59,8 @@ No bridge needed — connects directly via `"type": "http"` to `http://localhost
 | `POST /api/haystack/rebuild` | Rebuild tags for serials |
 | `POST /api/haystack/sync` | Sync from official defs.json |
 
-See [v4-haystack-mcp-complete.md](./v4-haystack-mcp-complete.md) §5 for full MCP tool schemas.
+See **Protocol** in [v4-haystack-mcp-complete.md](./v4-haystack-mcp-complete.md) for the MCP
+transport and method schemas, and **Tool Manifest** for the tool list.
 
 ## Frontend Pages
 

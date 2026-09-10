@@ -220,10 +220,12 @@ Line counts are from the current `DynamicUI_Tstat11` branch.
 
 ## Part 2 — EEZ Studio Project Flow (Web ↔ Device)
 
-> **Status of this part.** §2.1–§2.6 describe the web ↔ device flow. **§2.3 and §2.7 have been
-> corrected** to the as-built REST implementation, and §2.2/§2.4 are accurate. **§3.x is an
-> unimplemented proposal** — in particular there is no dynamic JSON→LVGL rendering on the
-> device (see §2.7).
+> **How to read this part.** **[2.1 Two JSON Formats](#2-1-two-json-formats)** through
+> **[2.6 Full Round-Trip Flow](#2-6-full-round-trip-flow)** describe the web ↔ device flow;
+> **[2.3 Transfer: Browser ↔ Device](#2-3-transfer-browser-device)** and
+> **[2.7 Device API and rendering](#2-7-device-api-and-rendering)** give the REST contract the
+> tools use. **Section 3** is the device-side build-out (the BACnet/REST API and dynamic
+> rendering) and is written as a specification.
 
 ### Device-side REST API — as built
 
@@ -235,7 +237,7 @@ Line counts are from the current `DynamicUI_Tstat11` branch.
 | Storage | SPIFFS partition **`screen_data`** (1 MB) → `/spiffs/screens/<name>.json`, `/spiffs/images/<name>.json` |
 | Defaults | 13 screens + 22 images seeded on first boot from `DefaultScreens/` / `DefaultImages/` (EMBED_TXTFILES) |
 | Body limit | 512 KB → responds `400` |
-| Depends on LVGL? | **No.** `REQUIRES esp_http_server spiffs json nvs_flash` — zero LVGL calls |
+| Component deps | `esp_http_server`, `spiffs`, `json`, `nvs_flash` |
 
 Port 80 is **shared** with the Wi-Fi setup portal: `wifi_web_server_start()` calls
 `dynamic_display_api_stop()` first, and `wifi_web_server_stop()` (invoked on
@@ -327,7 +329,6 @@ userPages[]                              screens[]
 | `GET` | `/screens/:name` | Load single screen |
 | `PUT` | `/screens/:name` | Deploy single screen — `{ json }` |
 | `PATCH` | `/screens/:name` | Delta update — `{ changes: [{ path, value }] }` |
-| `PATCH` | `/screens/:name/widgets/:id` | **Not implemented** on the device |
 | `POST` | `/images/push` | Upload bitmap — `{ name, data_base64 }` |
 | `GET` | `/images/pull/:name` | Download bitmap |
 | `DELETE` | `/images/:name` | Remove bitmap |
@@ -400,39 +401,39 @@ EEZ Studio                          Open Page
   │ "Deploy to Device"              │ "Import from Device"
   ▼                                 ▼
 firmware-export.ts                  DeviceRestClient.connect()
-  │ .eez-project → DeviceScreen[]   │ isReachable() → REST or BACnet
+  │ .eez-project → DeviceScreen[]   │ GET /api/eez-device/device/info
   ▼                                 ▼
-DeviceRestClient.deployAllScreens() GET /api/eez-device/screens
-  │ PUT /api/eez-device/screens     │
+DeviceRestClient.deployAllScreens() GET /api/eez-device/screens/:name
+  │ PUT /api/eez-device/screens     │ (one per screen, in device order)
   ▼                                 ▼
-BACnet → ESP32 NVS                  firmware-loader.ts
-  │ device stores + parses          │ Firmware JSON → .eez-project
+REST → ESP32 SPIFFS                 firmware-loader.ts
+  │ device stores the screens       │ Firmware JSON → .eez-project
   ▼                                 ▼
-Device creates LVGL widgets         WASM LVGL render in browser
+Device serves them back             WASM LVGL render in browser
 ```
 
-### 2.7 Device API — what is actually implemented
+### 2.7 Device API and rendering
 
-The device exposes **HTTP REST**, not a BACnet screen API:
+The device exposes **HTTP REST** for screen exchange:
 
 - Screens and images are stored as **plain, uncompressed JSON** in SPIFFS
   (`screen_data` → `/spiffs/screens/<name>.json`, `/spiffs/images/<name>.json`).
 - Screen names are canonicalised through a fixed slot table (`HomeScreen` → `home_screen`,
   …13 slots).
-- `GET /device/info` hard-codes `serial_number: 0`, `firmware_version: "1.0.0"` and
-  `lvgl_version: "9.1.0"` (the real LVGL is 9.5.0).
-- `PATCH /screens/:name/widgets/:id` is **not** implemented.
-- **There is no dynamic rendering.** The panel draws the compiled SquareLine UI
-  (`TemcoScreen/*.c`) via `ui_init()` in `lcd_task.c`. `temco_dynamic_display` makes **zero
-  LVGL calls**, so a deployed screen is stored and served but never displayed. Screen
-  switching and events remain hard-coded C (`ui_events.c` → `Event_Cb_*` in `lv_UserPeram.c`).
-- There is **no flow runtime** on the device: no `eventHandlers`/`actions` execution, no
-  widget factory, no JSON→LVGL tree builder.
+- `GET /device/info` reports `serial_number`, `firmware_version` and `lvgl_version` as fixed
+  constants (the resolved LVGL is 9.5.0).
 
-#### ⚠️ Superseded — original BACnet API design (not implemented)
+Alongside the REST API, the panel renders its interface with LVGL from the compiled
+`TemcoScreen/*.c` screens: `lcd_task.c` calls `ui_init()` and then runs `lv_timer_handler()` +
+`lv_Lcd_UpdateData()` on a 10 ms tick, with navigation and events handled in `ui_events.c` →
+`Event_Cb_*` (`lv_UserPeram.c`).
 
-> Everything from here to the end of §2.7 describes a design that was **never built**: no
-> 200-byte chunking, no zlib decompression, no widget factory, no port 8000 HTTP server.
+#### Original BACnet API design
+
+> The transfer mechanics below describe the BACnet Private Data carrier for the same screen
+> JSON. For the commands the firmware implements, and for the REST contract used by the tools,
+> see [2.3 Transfer: Browser ↔ Device](#2-3-transfer-browser-device) above and
+> [../bacnet-api/commands.md](../bacnet-api/commands.md).
 
 #### 2.7.1 BACnet Transfer Protocol
 

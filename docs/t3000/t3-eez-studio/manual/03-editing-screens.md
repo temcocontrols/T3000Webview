@@ -3,6 +3,18 @@
 This chapter walks through the LVGL editor and the everyday tasks: creating pages, placing
 widgets, and managing styles, fonts and images.
 
+**In this chapter**
+
+1. [The editor at a glance](#1-the-editor-at-a-glance) — the areas and the toolbar
+2. [Pages (your screens)](#2-pages-your-screens) — adding screens and the start page
+3. [Adding and arranging widgets](#3-adding-and-arranging-widgets) — the palette and Properties
+4. [Styles, themes and colours](#4-styles-themes-and-colours)
+5. [Fonts](#5-fonts)
+6. [Bitmaps (images)](#6-bitmaps-images)
+7. [Variables](#7-variables)
+8. [Saving your work](#8-saving-your-work)
+9. [Where to go next](#9-where-to-go-next)
+
 ---
 
 ### 1. The editor at a glance
@@ -50,7 +62,8 @@ The **start page** is the page that appears first when the UI loads. Make sure e
 page is set as the start page.
 
 > If a page is not the size you expect, check the project's **display width / height** in the
-> project settings — the canvas uses that as the frame.
+> project settings — the canvas uses that as the frame. For the Tstat11, design at
+> **480 × 320** (see **What you need** in [01 — Overview](01-overview.md)).
 
 ---
 
@@ -86,8 +99,12 @@ Common actions:
 
 - **Move / resize** — drag the widget or its handles on the canvas.
 - **Group things** — place widgets inside a **Panel** so they move together.
-- **Name it** — give important widgets a meaningful name; you will reference them from Flow
-  and from the device parameter grids.
+- **Name it** — give important widgets a meaningful name: a flow action targets a widget **by
+  name**, and the same names appear in the device's screen JSON.
+
+> **What the device stores.** Every widget you place becomes an object in the screen's JSON —
+> `sub_type`, position, `style` and `events`. See
+> [Design Studio (Tstat11) API → Screen JSON Format](../../bacnet-api/screen-json.md).
 
 #### Properties
 
@@ -149,7 +166,8 @@ Text needs a font that contains the characters you use.
 3. Set the **Image** widget's **src** to that bitmap name.
 
 The editor pre-processes images into the format the device needs, so you can use ordinary PNG
-files while designing.
+files while designing. Images reach the device as **separate assets referenced by name** — they
+are not embedded inside the screen.
 
 ---
 
@@ -187,6 +205,8 @@ before deploying to catch missing fonts, images or bindings.
 - Add behaviour to the screen — [04 — Adding Logic with EEZ Flow](04-eez-flow.md).
 - Try it out and send it to the controller —
   [05 — Preview, Bind & Deploy](05-preview-and-deploy.md).
+- See exactly what a screen becomes on the device —
+  [Design Studio (Tstat11) API → Screen JSON Format](../../bacnet-api/screen-json.md).
 
 ---
 

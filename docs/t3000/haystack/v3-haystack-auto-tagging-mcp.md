@@ -296,7 +296,7 @@ fn eval_rules(label, units, object_type, rules) -> Option<&CompiledRule> {
 
 ### 5.1 Existing (Unchanged from v2)
 
-All v2 routes remain under `/api/haystack/` — tags CRUD, point-tags read/write, tag-tree, replace-tag, sync. See [v2-haystack-current-implementation.md](./v2-haystack-current-implementation.md) §3.
+All v2 routes remain under `/api/haystack/` — tags CRUD, point-tags read/write, tag-tree, replace-tag, sync. See **REST API Routes** in [v2-haystack-current-implementation.md](./v2-haystack-current-implementation.md).
 
 ### 5.2 Auto-Tagging Routes
 
