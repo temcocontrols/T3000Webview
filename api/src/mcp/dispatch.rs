@@ -2573,6 +2573,7 @@ pub async fn execute_tool(
                 ("Guides", &[("Best Practices", "guides/best-practices"), ("Troubleshooting", "guides/troubleshooting"), ("Performance Tuning", "guides/performance-tuning"), ("FAQ", "guides/faq")]),
                 ("Building Platform", &[("Overview", "building-platform/overview"), ("Control Messages", "building-platform/control-messages/message-index"), ("BACnet Commands", "building-platform/bacnet-commands"), ("Data Structures", "building-platform/data-structures"), ("Device Settings Structure", "building-platform/device-settings-structure")]),
                 ("Haystack & MCP", &[("Claude Desktop Setup", "haystack/mcp-claude-desktop"), ("VS Code Copilot Setup", "haystack/mcp-vscode-copilot"), ("MCP API Examples", "haystack/mcp-api-examples")]),
+                ("Design Studio (LVGL)", &[("Manual Home", "t3-eez-studio/README"), ("Overview", "t3-eez-studio/manual/01-overview"), ("Creating a Project", "t3-eez-studio/manual/02-creating-projects"), ("Designing Screens", "t3-eez-studio/manual/03-editing-screens"), ("EEZ Flow", "t3-eez-studio/manual/04-eez-flow"), ("Preview, Bind & Deploy", "t3-eez-studio/manual/05-preview-and-deploy"), ("Reference & FAQ", "t3-eez-studio/manual/06-reference-and-faq")]),
             ].into_iter().map(|(title, items)| {
                 let items: Vec<Value> = items.iter().map(|(t, p)| json!({"title": t, "path": p})).collect();
                 json!({"section": title, "items": items, "count": items.len()})

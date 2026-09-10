@@ -120,6 +120,19 @@ export const docStructure: DocSection[] = [
       { title: 'FDD Native Engine (Design)', path: 't3000/haystack/fdd-native-engine' },
     ],
   },
+  {
+    title: 'Design Studio (LVGL)',
+    icon: 'AppsList',
+    items: [
+      { title: 'Manual Home', path: 't3000/t3-eez-studio/README' },
+      { title: 'Overview', path: 't3000/t3-eez-studio/manual/01-overview' },
+      { title: 'Creating a Project', path: 't3000/t3-eez-studio/manual/02-creating-projects' },
+      { title: 'Designing Screens', path: 't3000/t3-eez-studio/manual/03-editing-screens' },
+      { title: 'EEZ Flow', path: 't3000/t3-eez-studio/manual/04-eez-flow' },
+      { title: 'Preview, Bind & Deploy', path: 't3000/t3-eez-studio/manual/05-preview-and-deploy' },
+      { title: 'Reference & FAQ', path: 't3000/t3-eez-studio/manual/06-reference-and-faq' },
+    ],
+  },
 ];
 
 /**
