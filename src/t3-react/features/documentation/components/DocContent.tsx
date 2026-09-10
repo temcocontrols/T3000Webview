@@ -66,6 +66,42 @@ function resolveDocPath(currentPath: string, href: string): string | null {
   return docPath.startsWith('t3000/') ? docPath : `t3000/${docPath}`;
 }
 
+/**
+ * Slug used for heading anchors, so documents can link to a section with
+ * `[text](#some-heading)` exactly like they do on GitHub.
+ */
+function slugify(text: string): string {
+  return text
+    .replace(/<[^>]+>/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/** Give every heading an id so in-page `#anchor` links have something to scroll to. */
+function addHeadingAnchors(html: string): string {
+  return html.replace(/<h([1-6])>([\s\S]*?)<\/h\1>/g, (match, level, inner) => {
+    if (/id=/.test(match)) return match;
+    return `<h${level} id="${slugify(inner)}">${inner}</h${level}>`;
+  });
+}
+
+/**
+ * External links (http/https) open in a new tab. Internal documentation links
+ * are left untouched — those are routed by the click handler below.
+ */
+function externalLinksInNewTab(html: string): string {
+  return html.replace(
+    /<a\s+href="(https?:\/\/[^"]+)"/gi,
+    '<a target="_blank" rel="noopener noreferrer" href="$1"'
+  );
+}
+
+/** Post-processing applied to every rendered markdown document. */
+function processMarkdownHtml(html: string): string {
+  return externalLinksInNewTab(addHeadingAnchors(html));
+}
+
 export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
   const { content, loading, error } = useMarkdownContent(path);
   const [mode, setMode] = useState<DocMode>('user');
@@ -80,6 +116,15 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
 
     const href = anchor.getAttribute('href');
     if (!href) return;
+
+    // In-page links ("#some-heading") must be handled here: a raw hash would be
+    // interpreted as a route change by the HashRouter and break navigation.
+    if (href.startsWith('#')) {
+      event.preventDefault();
+      const target = document.getElementById(decodeURIComponent(href.slice(1)));
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
 
     const docPath = resolveDocPath(path, href);
     if (!docPath) return;
@@ -103,9 +148,13 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
     const hasTechnical = content.includes('<!-- TECHNICAL -->');
     const hasExample = path === 't3000/building-platform/device-settings-structure';
 
+    // Standard markdown (and GitHub) treats a single newline as a space, so
+    // hard-wrapped source lines reflow into one full-width paragraph. With
+    // `breaks: true` every wrapped line became a <br>, which made wrapped docs
+    // render as a ragged column that only filled part of the content area.
     const marked = new Marked({
       gfm: true,
-      breaks: true,
+      breaks: false,
     });
 
     if (!hasUserGuide && !hasTechnical) {
@@ -116,7 +165,7 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
         hasExample,
         userGuideHtml: '',
         technicalHtml: '',
-        fullHtml: marked.parse(content) as string,
+        fullHtml: processMarkdownHtml(marked.parse(content) as string),
       };
     }
 
@@ -152,9 +201,9 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
       hasUserGuide,
       hasTechnical,
       hasExample,
-      userGuideHtml: userGuideContent ? marked.parse(userGuideContent) as string : '',
-      technicalHtml: technicalContent ? marked.parse(technicalContent) as string : '',
-      fullHtml: marked.parse(content) as string,
+      userGuideHtml: userGuideContent ? processMarkdownHtml(marked.parse(userGuideContent) as string) : '',
+      technicalHtml: technicalContent ? processMarkdownHtml(marked.parse(technicalContent) as string) : '',
+      fullHtml: processMarkdownHtml(marked.parse(content) as string),
     };
   }, [content, path]);
 

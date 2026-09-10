@@ -19,7 +19,7 @@ paths, so no documentation edit is needed once an image exists.
 
 | Filename | Figure | What to capture |
 |---|---|---|
-| `07-hub-device-bar.png` | 1.2 | The **device bar** with a device selected — name plus the *On this device / Deployed / Unbound* counters. Crop to the bar. |
+| `07-hub-device-bar.png` | 1.3 | The **device bar** with a device selected — name plus the *On this device / Deployed / Unbound* counters. Crop to the bar. |
 | `08-lvgl-create-new.png` | 2.1 | The **New LVGL project** dialog, **Create New** tab: Name, Location, *Create directory*, *Project file path* preview. |
 | `09-lvgl-load-from-device.png` | 2.4 | The same dialog, **Load from Device** tab, with the device list expanded. |
 | `10-lvgl-import-step-log.png` | 2.5 | The **import progress** state with the detail log expanded. |

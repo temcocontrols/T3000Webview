@@ -135,6 +135,12 @@
   align-self: stretch;
 }
 
+/* Don't add extra space above the first block of a page (e.g. the h2 title
+   that starts a manual page). */
+.markdown > :first-child {
+  margin-top: 0;
+}
+
 .markdown h1 {
   font-size: 16px;
   font-weight: 600;
@@ -250,18 +256,14 @@
 }
 
 .markdown img {
-  max-width: min(100%, 760px);
+  /* Screenshots fill the full width of the content area. */
+  width: 100%;
+  max-width: 100%;
   height: auto;
   margin: 12px 0;
   border-radius: 4px;
   border: 1px solid #edebe9;
   display: block;
-}
-
-@media (max-width: 900px) {
-  .markdown img {
-    max-width: 100%;
-  }
 }
 
 .markdown hr {

@@ -1,11 +1,11 @@
-# 06 — Reference & FAQ
+## 06 — Reference & FAQ
 
 Quick-reference tables, a glossary of the words you'll see in the UI, and answers to common
 questions.
 
 ---
 
-## 1. Feature matrix
+### 1. Feature matrix
 
 | Capability | LVGL 9.5 | LVGL with Flow 9.5 |
 |---|:--:|:--:|
@@ -27,7 +27,7 @@ questions.
 
 ---
 
-## 2. Routes
+### 2. Routes
 
 | Route | Screen |
 |---|---|
@@ -48,7 +48,7 @@ Handy link parameters the editor understands (used internally when you start fro
 
 ---
 
-## 3. Where projects live
+### 3. Where projects live
 
 Each project is a folder containing:
 
@@ -63,7 +63,7 @@ create appears there.
 
 ---
 
-## 4. Keyboard shortcuts
+### 4. Keyboard shortcuts
 
 | Shortcut | Action |
 |---|---|
@@ -76,7 +76,7 @@ create appears there.
 
 ---
 
-## 5. Status badges
+### 5. Status badges
 
 | Badge | Meaning |
 |---|---|
@@ -87,7 +87,7 @@ create appears there.
 
 ---
 
-## 6. Glossary
+### 6. Glossary
 
 | Term | Meaning |
 |---|---|
@@ -107,7 +107,7 @@ create appears there.
 
 ---
 
-## 7. FAQ
+### 7. FAQ
 
 **Which project type should I choose?**
 Start with **LVGL 9.5** if the UI only displays things. Choose **LVGL with Flow 9.5** as soon
@@ -157,7 +157,7 @@ The font does not contain those characters. Add them to the font's character set
 
 ---
 
-## 8. Error messages you may see
+### 8. Error messages you may see
 
 | Message | Meaning / what to do |
 |---|---|
@@ -168,11 +168,11 @@ The font does not contain those characters. Add them to the font's character set
 
 ---
 
-## 9. Where to go next
+### 9. Where to go next
 
 - Developer-oriented design documents live in this folder:
   [`../device-firmware-lvgl-architecture.md`](../device-firmware-lvgl-architecture.md),
   [`../import-from-device-design.md`](../import-from-device-design.md),
   [`../device-interface-deployment-via-bacnet-design.md`](../device-interface-deployment-via-bacnet-design.md),
   [`../lvgl-eez-project-json-format.md`](../lvgl-eez-project-json-format.md).
-- Back to the start: [Manual home](../README.md).
+- Back to the start: [Getting Started](../README.md).

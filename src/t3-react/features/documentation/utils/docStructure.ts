@@ -121,10 +121,10 @@ export const docStructure: DocSection[] = [
     ],
   },
   {
-    title: 'Design Studio (LVGL)',
+    title: 'Design Studio (Tstat11)',
     icon: 'AppsList',
     items: [
-      { title: 'Manual Home', path: 't3000/t3-eez-studio/README' },
+      { title: 'Getting Started', path: 't3000/t3-eez-studio/README' },
       { title: 'Overview', path: 't3000/t3-eez-studio/manual/01-overview' },
       { title: 'Creating a Project', path: 't3000/t3-eez-studio/manual/02-creating-projects' },
       { title: 'Designing Screens', path: 't3000/t3-eez-studio/manual/03-editing-screens' },

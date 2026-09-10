@@ -1,4 +1,4 @@
-# 02 — Creating a Project
+## 02 — Creating a Project
 
 There are three ways to get an LVGL project. All three end with the project open in the
 editor.
@@ -11,7 +11,7 @@ editor.
 
 ---
 
-## 1. Way 1 — Create New
+### 1. Way 1 — Create New
 
 1. In the Design Hub, click the **LVGL 9.5** or **LVGL with Flow 9.5** tile.
 2. The **New …** dialog opens on the **Create New** tab.
@@ -36,7 +36,7 @@ file is `project/my-ui/my-ui.eez-project`.
 
 ---
 
-## 2. Way 2 — Start from an Example
+### 2. Way 2 — Start from an Example
 
 The examples are real LVGL projects published by EEZ, filtered to the LVGL types.
 
@@ -72,7 +72,7 @@ The example is copied into your project folder and opened in the editor.
 
 ---
 
-## 3. Way 3 — Load from Device
+### 3. Way 3 — Load from Device
 
 This reads the screens currently on a controller into a new project, so you can view and edit
 what the device already shows.
@@ -110,7 +110,7 @@ Behind the scenes the import:
 
 ---
 
-## 4. After creation
+### 4. After creation
 
 Whichever way you used, the project now appears in **Project History** on the Design Hub,
 under the tab for its type, with the status **Unbound** until you bind a device.
@@ -125,7 +125,7 @@ From here you can:
 
 ---
 
-## 5. Troubleshooting
+### 5. Troubleshooting
 
 | Symptom | What to check |
 |---|---|

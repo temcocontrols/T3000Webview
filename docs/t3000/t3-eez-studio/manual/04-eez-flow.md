@@ -1,4 +1,4 @@
-# 04 — Adding Logic with EEZ Flow
+## 04 — Adding Logic with EEZ Flow
 
 **EEZ Flow** is the visual logic editor. It lets a screen *do* something when the user
 interacts with it or when a value changes — without writing code.
@@ -8,7 +8,7 @@ interacts with it or when a value changes — without writing code.
 
 ---
 
-## 1. What Flow is for
+### 1. What Flow is for
 
 Use Flow when the UI must react:
 
@@ -25,7 +25,7 @@ Flow. Reach for Flow when you need to connect widgets, variables and timing.
 
 ---
 
-## 2. The Flow section
+### 2. The Flow section
 
 Open **Actions / Flow** in the left navigation. Flow projects also get two extra tabs in the
 editor:
@@ -42,7 +42,7 @@ follows the connections from a starting point (an event) to the end.
 
 ---
 
-## 3. Components
+### 3. Components
 
 Drag components from the palette and wire them together.
 
@@ -64,7 +64,7 @@ A component has **inputs** (values it needs), **outputs** (values it produces), 
 
 ---
 
-## 4. Starting a flow from a widget event
+### 4. Starting a flow from a widget event
 
 The usual pattern is *widget event → action*.
 
@@ -81,7 +81,7 @@ The usual pattern is *widget event → action*.
 
 ---
 
-## 5. Worked example — a button that raises a setpoint
+### 5. Worked example — a button that raises a setpoint
 
 Goal: pressing a button increases a `setpoint` variable by 1 and shows the new value.
 
@@ -100,7 +100,7 @@ Goal: pressing a button increases a `setpoint` variable by 1 and shows the new v
 
 ---
 
-## 6. Testing flows
+### 6. Testing flows
 
 - **Run (F5)** runs the project in the editor so you can click through the UI and watch values
   change. Use the variable status readout in the toolbar to see current values.
@@ -110,7 +110,7 @@ Goal: pressing a button increases a `setpoint` variable by 1 and shows the new v
 
 ---
 
-## 7. Notes and limitations
+### 7. Notes and limitations
 
 - Flow logic runs as part of the project. If you change a flow, the project must be saved and
   deployed again for the device to be updated.

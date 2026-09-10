@@ -1,11 +1,11 @@
-# 03 — Designing Screens
+## 03 — Designing Screens
 
 This chapter walks through the LVGL editor and the everyday tasks: creating pages, placing
 widgets, and managing styles, fonts and images.
 
 ---
 
-## 1. The editor at a glance
+### 1. The editor at a glance
 
 ![The project editor](images/12-editor-overview.png)
 
@@ -18,7 +18,7 @@ widgets, and managing styles, fonts and images.
 | **Right-hand tabs** | Inspectors: **Properties**, **Components Palette**, **Styles**, **Fonts**, **Bitmaps**, **Themes** (and **Breakpoints** in Flow projects). |
 | **Top toolbar** | File and edit commands, **Check** / **Build**, run controls, and **Deploy to Device**. |
 
-### Toolbar controls
+#### Toolbar controls
 
 | Control | Purpose |
 |---|---|
@@ -36,7 +36,7 @@ widgets, and managing styles, fonts and images.
 
 ---
 
-## 2. Pages (your screens)
+### 2. Pages (your screens)
 
 A **page** is one screen on the controller's display.
 
@@ -54,7 +54,7 @@ page is set as the start page.
 
 ---
 
-## 3. Adding and arranging widgets
+### 3. Adding and arranging widgets
 
 Open the **Components Palette** on the right, then drag a widget onto the canvas.
 
@@ -89,7 +89,7 @@ Common actions:
 - **Name it** — give important widgets a meaningful name; you will reference them from Flow
   and from the device parameter grids.
 
-### Properties
+#### Properties
 
 With a widget selected, use the **Properties** tab to set its position, size, text, style and
 behaviour.
@@ -111,7 +111,7 @@ Fields you will use most:
 
 ---
 
-## 4. Styles, themes and colours
+### 4. Styles, themes and colours
 
 - **Styles** (right-hand **Styles** tab) are reusable appearance definitions — background,
   border, padding, text colour, font. Apply a style to many widgets so a change in one place
@@ -127,7 +127,7 @@ Fields you will use most:
 
 ---
 
-## 5. Fonts
+### 5. Fonts
 
 Text needs a font that contains the characters you use.
 
@@ -141,7 +141,7 @@ Text needs a font that contains the characters you use.
 
 ---
 
-## 6. Bitmaps (images)
+### 6. Bitmaps (images)
 
 1. Open **Bitmaps** in the left navigation.
 2. Add your image file (PNG works well). Give it a short, meaningful name — this is the name
@@ -153,7 +153,7 @@ files while designing.
 
 ---
 
-## 7. Variables
+### 7. Variables
 
 **Variables** hold values your UI uses — a counter, a mode, a temperature, a flag.
 
@@ -169,7 +169,7 @@ controller reading with a variable keeps the screen updated without redeploying.
 
 ---
 
-## 8. Saving your work
+### 8. Saving your work
 
 - **Save** (or the usual save shortcut) writes the project to disk as
   `<project>.eez-project`.
@@ -182,7 +182,7 @@ before deploying to catch missing fonts, images or bindings.
 
 ---
 
-## 9. Where to go next
+### 9. Where to go next
 
 - Add behaviour to the screen — [04 — Adding Logic with EEZ Flow](04-eez-flow.md).
 - Try it out and send it to the controller —

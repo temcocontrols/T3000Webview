@@ -1,56 +1,54 @@
-# LVGL Studio — User Manual
+## Design Studio (Tstat11)
 
-**LVGL Studio** is the T3000 embedded-touchscreen designer. You draw screens for a T3
-controller, add logic, preview everything in the browser, and send the finished design to
-the device — without writing firmware code.
+**Design Studio (Tstat11)** is T3000's designer for embedded touchscreen UIs. You draw
+screens for the **Tstat11** display, preview them in the browser, and deploy them to the
+controller — without writing firmware code.
 
-You reach it from the **Design Hub**:
+You reach it from the **Design Hub**: open the Design Hub, pick an **LVGL** tile, and the
+editor opens.
 
-```
-Design Hub  →  #/t3000/design  →  "LVGL 9.5" or "LVGL with Flow 9.5" tile  →  editor
-```
+> **Powered by EEZ Studio**
+>
+> The editor core — the LVGL project editor, the `.eez-project` file format, the **EEZ Flow**
+> logic engine and the browser preview runtime — is integrated from the open-source
+> [**EEZ Studio**](https://github.com/eez-open/studio) project (a free, cross-platform,
+> GPL-3.0 tool for embedded GUIs, by Envox d.o.o.).
+>
+> Because of this, the editor looks and behaves like EEZ Studio and uses the same vocabulary:
+> *pages*, *widgets*, *styles*, *variables* and *Flow*. **This manual documents the T3000
+> workflow around that core** — the Design Hub, creating a project, binding a device and
+> deploying — rather than re-teaching the editor itself.
 
-> **New here?** Read [01 — Overview](manual/01-overview.md), then
-> [02 — Creating a Project](manual/02-creating-projects.md). Everything else can be read
-> on demand.
+### Start here in 3 steps
 
----
+| Step | What you do |
+|---|---|
+| **1. Pick a project type** | In the Design Hub, click the **LVGL 9.5** tile (plain UI) or **LVGL with Flow 9.5** (UI + logic). |
+| **2. Create the project** | **Create New** for a blank project, **LVGL Examples** to start from a ready-made design, or **Load from Device** to pull the screens already on a controller. |
+| **3. Design, preview, deploy** | Build your screens in the editor, preview with **Run (F5)**, then **Bind** a device and click **Deploy to Device**. |
 
-## What you can build
+### The two project types
 
-| Project type | Pick this when you want… |
+| Project type | Choose it when you want… |
 |---|---|
 | **LVGL 9.5** | A touchscreen UI made of pages, widgets, styles, fonts and images. |
-| **LVGL with Flow 9.5** | The same UI **plus** visual logic — button presses that change values, screens that react to data, animations and timers. |
+| **LVGL with Flow 9.5** | The same UI **plus** visual logic — a button that changes a value, a screen that reacts to data, animations and timers. |
 
-Both types produce an `.eez-project` file, preview in the browser, and deploy to a device.
+Both types produce an `.eez-project` file, preview in the browser and deploy to a device.
+Flow is a project setting, so it is not an irreversible choice.
 
----
-
-## Quick start (5 minutes)
-
-1. **Open the Design Hub** and pick a type tile (`LVGL 9.5` or `LVGL with Flow 9.5`).
-2. **Create the project** — either **Create New**, **start from an Example**, or
-   **Load from Device** to pull the screens already on a controller.
-3. **Design your screens** in the editor, preview them, then **Bind** a device and click
-   **Deploy to Device**.
-
----
-
-## Chapters
+### Manual chapters
 
 | # | Chapter | What's inside |
 |---|---|---|
-| 01 | [Overview](manual/01-overview.md) | What LVGL Studio is, the two project types, and a tour of every screen. |
+| 01 | [Overview](manual/01-overview.md) | What Design Studio (Tstat11) is, the two project types, and a tour of every screen. |
 | 02 | [Creating a Project](manual/02-creating-projects.md) | The three ways to start: Create New, from an Example, Load from Device. |
 | 03 | [Designing Screens](manual/03-editing-screens.md) | The editor tour and how to build pages with widgets, styles, fonts and images. |
 | 04 | [Adding Logic with EEZ Flow](manual/04-eez-flow.md) | Flow components, events, variables, and a worked example. |
 | 05 | [Preview, Bind & Deploy](manual/05-preview-and-deploy.md) | Preview in the browser, bind a controller, and deploy your design. |
 | 06 | [Reference & FAQ](manual/06-reference-and-faq.md) | Feature matrix, routes, file locations, shortcuts, glossary and troubleshooting. |
 
----
-
-## Feature matrix
+### What you can do
 
 | Capability | LVGL 9.5 | LVGL with Flow 9.5 |
 |---|:--:|:--:|
@@ -68,25 +66,16 @@ Both types produce an `.eez-project` file, preview in the browser, and deploy to
 | Start from an EEZ example project | ✅ | ✅ |
 | Load existing screens off a device | ✅ | ✅ |
 
----
+### Related documentation
 
-## What this manual does not cover
+**Device-side logic** — how the controller receives, stores and renders the screens, and the
+display REST API it exposes — is documented with the firmware:
 
-- The **HVAC** designer and the **LCD UI / thermostat simulator** (the other two tiles on
-  the Design Hub).
-- T3000 device setup — see *Quick Start* and *Device Management* in the main documentation.
-- Firmware internals and the on-device JSON format. Those are covered by the developer
-  documents in this same folder:
-  - [`device-firmware-lvgl-architecture.md`](device-firmware-lvgl-architecture.md)
-  - [`import-from-device-design.md`](import-from-device-design.md)
-  - [`device-interface-deployment-via-bacnet-design.md`](device-interface-deployment-via-bacnet-design.md)
-  - [`lvgl-eez-project-json-format.md`](lvgl-eez-project-json-format.md)
+- [DEVICE_REST_API_DISPLAY.md — firmware display REST API](https://github.com/temcocontrols/T3-programmable-controller-on-ESP32/blob/DynamicUI_Tstat11/components/temco_dynamic_display/DEVICE_REST_API_DISPLAY.md)
 
----
+**Developer design docs** for this feature live in this folder:
 
-## Screenshots in this manual
-
-The chapters reference images in [`manual/images/`](manual/images/). Those placeholders are
-listed (with the exact filename and what each should show) in
-[`manual/images/README.md`](manual/images/README.md) — drop the screenshot in with the
-matching filename and it appears automatically.
+- [`device-firmware-lvgl-architecture.md`](device-firmware-lvgl-architecture.md)
+- [`import-from-device-design.md`](import-from-device-design.md)
+- [`device-interface-deployment-via-bacnet-design.md`](device-interface-deployment-via-bacnet-design.md)
+- [`lvgl-eez-project-json-format.md`](lvgl-eez-project-json-format.md)

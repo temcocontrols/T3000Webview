@@ -1,4 +1,4 @@
-# 05 — Preview, Bind & Deploy
+## 05 — Preview, Bind & Deploy
 
 This chapter covers the last part of the workflow: checking the UI in the browser, telling
 T3000 which controller the project belongs to, and sending the design to that controller.
@@ -9,7 +9,7 @@ Design  →  Preview (Run)  →  Bind a device  →  Deploy  →  Deployed
 
 ---
 
-## 1. Preview before you deploy
+### 1. Preview before you deploy
 
 Always preview before deploying. The editor runs your project so you can click through it
 exactly as a user would.
@@ -34,7 +34,7 @@ produce.
 
 ---
 
-## 2. Bind a project to a device
+### 2. Bind a project to a device
 
 Binding records **which controller this project belongs to**. It is remembered with the
 project, so the next deploy already knows the target.
@@ -56,15 +56,15 @@ The project status changes from **Unbound** to **Bound**.
 
 ---
 
-## 3. Deploy
+### 3. Deploy
 
-### From the editor
+#### From the editor
 
 1. Save the project (the deploy saves automatically as its first step anyway).
 2. Click **Deploy to Device** in the toolbar.
 3. In the deploy drawer, confirm the device and start the deploy.
 
-### From the Design Hub
+#### From the Design Hub
 
 1. Open the project's detail page (**More (details & manage)** on the card), or use the deploy
    action available for the project.
@@ -78,7 +78,7 @@ Either entry point runs the **same** deploy pipeline.
 
 ---
 
-## 4. What a deploy actually does
+### 4. What a deploy actually does
 
 The deploy is **incremental**: after the first time, only what changed is sent to the device.
 
@@ -100,7 +100,7 @@ reports that everything is already up to date.
 
 ---
 
-## 5. Watching a deploy
+### 5. Watching a deploy
 
 The drawer shows each step with a status (running, done, skipped, or error) and, when you
 expand it, a per-step detail line. After a deploy completes, the project's **deploy history**
@@ -112,7 +112,7 @@ keeps the log — device, time, screens and images sent, and any error.
 
 ---
 
-## 6. Project detail page
+### 6. Project detail page
 
 **More (details & manage)** on a project card opens the detail page:
 
@@ -133,7 +133,7 @@ always compare or restore.
 
 ---
 
-## 7. Troubleshooting deploys
+### 7. Troubleshooting deploys
 
 | Symptom | What to check |
 |---|---|
