@@ -2,10 +2,10 @@
 
 ## Part 1 — Current Firmware (SquareLine Studio)
 
-**Branch:** `Bhavik-Tstate-11`  
+**Branch:** `DynamicUI_Tstat11`  
 **Tool:** SquareLine Studio 1.6.0  
 **LVGL:** 9.5.0 (via ESP-IDF component manager)  
-**Display:** ILI9341 320×240 via hardware SPI + external touch
+**Display:** 480 × 320 (landscape) via hardware SPI + GT911 touch (I2C)
 
 ---
 
@@ -24,9 +24,10 @@
 │  │ → LCD_Write  │    │ (SquareLine gen)     │               │
 │  │   Bitmap()   │    │ ui_HomeScreen.c      │               │
 │  └──────────────┘    │ ui_MainMenu.c        │               │
-│                      │ ui_ScheduleEdit.c    │               │
+│                      │ ui_ScheduleEdit*.c   │               │
+│                      │ ui_RemoteAccess.c    │               │
 │  ┌──────────────┐    │ ui_NetworkConfig.c   │               │
-│  │ my_touch_read│    │ ...11 screens total  │               │
+│  │ my_touch_read│    │ ...12 screens total  │               │
 │  │ → TouchGet   │    └──────────┬──────────┘               │
 │  │   Inputs()   │               │                            │
 │  └──────────────┘    ┌──────────▼──────────┐               │
@@ -198,21 +199,53 @@ target_sources(${COMPONENT_LIB} PRIVATE ${TEMCO_SCREEN_SOURCES})
 
 | File | Screen | Lines | Purpose |
 |------|--------|-------|---------|
-| `ui_StartUpScreen.c` | Boot splash | ~50 | Logo + initialization |
-| `ui_HomeScreen.c` | Main thermostat | 868 | Temperature, humidity, fan, mode |
-| `ui_MainMenu.c` | Settings menu | 349 | Navigation to sub-screens |
-| `ui_WifiConfig.c` | WiFi settings | 326 | SSID, password, scan |
-| `ui_NetworkConfig.c` | Network settings | 769 | IP, subnet, BACnet port |
-| `ui_Protocols.c` | Protocol config | 371 | BACnet, Modbus settings |
-| `ui_Parameters.c` | Parameter viewer | 151 | Device parameters |
-| `ui_Time.c` | Clock settings | 557 | Date/time/schedule |
-| `ui_ScheduleScreen.c` | Schedule overview | 666 | Weekly program list |
-| `ui_ScheduleEditScreen.c` | Schedule editor | 2,608 | Day/time/temp editing |
-| `ui_HolidayCalenderScreen.c` | Holiday calendar | 107 | Holiday date picker |
+| `ui_StartUpScreen.c` | Boot splash | 65 | Logo + initialization |
+| `ui_HomeScreen.c` | Main thermostat | 1,104 | Temperature, humidity, fan, mode |
+| `ui_MainMenu.c` | Settings menu | 547 | Navigation to sub-screens |
+| `ui_WifiConfig.c` | WiFi settings | 319 | SSID, password, scan |
+| `ui_NetworkConfig.c` | Network settings | 675 | IP, subnet, BACnet port |
+| `ui_Protocols.c` | Protocol config | 377 | BACnet, Modbus settings |
+| `ui_Parameters.c` | Parameter viewer | 170 | Device parameters |
+| `ui_Time.c` | Clock settings | 664 | Date/time/schedule |
+| `ui_ScheduleScreen.c` | Schedule overview | 965 | Weekly program list |
+| `ui_ScheduleEditScreen.c` | Schedule editor | 1,934 | Day/time/temp editing |
+| `ui_HolidayCalenderScreen.c` | Holiday calendar | 128 | Holiday date picker |
+| `ui_RemoteAccess.c` | Remote access | 182 | WireGuard / DDNS entry |
+
+**12 screens.** Also compiled from `TemcoScreen/`: `ui.c`, `ui_events.c` (214), `ui_helpers.c`
+(354), `ui_comp_hook.c`, `ui_font_Arial80.c` and 16 `ui_img_*.c` bitmap assets.
+Line counts are from the current `DynamicUI_Tstat11` branch.
 
 ---
 
 ## Part 2 — EEZ Studio Project Flow (Web ↔ Device)
+
+> **Status of this part.** §2.1–§2.6 describe the web ↔ device flow. **§2.3 and §2.7 have been
+> corrected** to the as-built REST implementation, and §2.2/§2.4 are accurate. **§3.x is an
+> unimplemented proposal** — in particular there is no dynamic JSON→LVGL rendering on the
+> device (see §2.7).
+
+### Device-side REST API — as built
+
+| Aspect | Reality |
+|---|---|
+| Component | `components/temco_dynamic_display` |
+| Public API | `dynamic_display_api_start()` / `_stop()` / `dynamic_display_reset_to_defaults()` |
+| Server | `esp_http_server` on **port 80**, `max_uri_handlers = 20` |
+| Storage | SPIFFS partition **`screen_data`** (1 MB) → `/spiffs/screens/<name>.json`, `/spiffs/images/<name>.json` |
+| Defaults | 13 screens + 22 images seeded on first boot from `DefaultScreens/` / `DefaultImages/` (EMBED_TXTFILES) |
+| Body limit | 512 KB → responds `400` |
+| Depends on LVGL? | **No.** `REQUIRES esp_http_server spiffs json nvs_flash` — zero LVGL calls |
+
+Port 80 is **shared** with the Wi-Fi setup portal: `wifi_web_server_start()` calls
+`dynamic_display_api_stop()` first, and `wifi_web_server_stop()` (invoked on
+`IP_EVENT_STA_GOT_IP`) starts the display API again. So the display API is only reachable while
+the panel is connected to the network — deploying to a panel that is in setup/SoftAP mode fails.
+
+The canonical contract lives with the firmware:
+`components/temco_dynamic_display/DEVICE_REST_API_DISPLAY.md`. Deployment from the web app is
+documented in
+[device-interface-deployment-via-bacnet-design.md](device-interface-deployment-via-bacnet-design.md).
 
 ### Architecture
 
@@ -276,31 +309,31 @@ userPages[]                              screens[]
 
 ### 2.3 Transfer: Browser ↔ Device
 
-**Two paths** (auto-detected by `DeviceRestClient`):
+**One path** — REST through the T3000 host proxy. There is no BACnet fallback:
 
-| Path | Direction | Endpoint | Transport |
-|------|-----------|----------|-----------|
-| **REST** (primary) | Push | `PUT /api/v1/screens` | HTTP to ESP32 port 8000 |
-| | Pull | `GET /api/v1/screens` | HTTP from ESP32 port 8000 |
-| **BACnet** (fallback) | Push | `POST /api/eez-device/screens/push/:panelId` | HTTP → Rust → BACnet → Device |
-| | Pull | `POST /api/eez-device/screens/pull/:panelId` | HTTP → Rust → BACnet → Device |
+| Direction | Call | Real transport |
+|-----------|------|----------------|
+| Push | `PUT /api/eez-device/screens/:name` (or `/screens` for all) | Browser → T3000 proxy `/api/device-rest/<ip>/…` → ESP32 **port 80** |
+| Pull | `GET /api/eez-device/screens/:name` | same |
+| Images | `POST /api/eez-device/images/push`, `GET /images/pull/:name` | same |
 
-**API surface (`/api/eez-device/*`):**
+**API surface (`/api/eez-device/*`, all reached through the proxy):**
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
+| `GET` | `/device/info` | Screen list + counts (`screens` is an object keyed `screen1..N`) |
 | `GET` | `/screens` | Load all screens |
-| `PUT` | `/screens` | Deploy all screens |
+| `PUT` | `/screens` | Deploy all screens — `{ screens: [{ name, json }] }` |
 | `GET` | `/screens/:name` | Load single screen |
-| `PUT` | `/screens/:name` | Deploy single screen |
-| `PATCH` | `/screens/:name` | Delta update |
-| `PATCH` | `/screens/:name/widgets/:id` | Widget delta |
-| `POST` | `/screens/push/:panelId` | BACnet push |
-| `POST` | `/screens/pull/:panelId` | BACnet pull |
-| `POST` | `/images/push/:panelId` | Upload bitmap |
-| `GET` | `/images/pull/:panelId/:name` | Download bitmap |
-| `DELETE` | `/images/:panelId/:name` | Remove bitmap |
-| `GET` | `/devices` | List devices |
+| `PUT` | `/screens/:name` | Deploy single screen — `{ json }` |
+| `PATCH` | `/screens/:name` | Delta update — `{ changes: [{ path, value }] }` |
+| `PATCH` | `/screens/:name/widgets/:id` | **Not implemented** on the device |
+| `POST` | `/images/push` | Upload bitmap — `{ name, data_base64 }` |
+| `GET` | `/images/pull/:name` | Download bitmap |
+| `DELETE` | `/images/:name` | Remove bitmap |
+
+Note there is **no `/devices` endpoint on the device** — the device list comes from the T3000
+host backend (`GET http://<host>:9103/api/t3_device/devices`).
 
 ### 2.4 Import: Firmware JSON → .eez-project
 
@@ -378,9 +411,28 @@ BACnet → ESP32 NVS                  firmware-loader.ts
 Device creates LVGL widgets         WASM LVGL render in browser
 ```
 
-### 2.7 Device BACnet API
+### 2.7 Device API — what is actually implemented
 
-When the real device supports EEZ Studio screens, it exposes a BACnet-based API for screen push/pull.
+The device exposes **HTTP REST**, not a BACnet screen API:
+
+- Screens and images are stored as **plain, uncompressed JSON** in SPIFFS
+  (`screen_data` → `/spiffs/screens/<name>.json`, `/spiffs/images/<name>.json`).
+- Screen names are canonicalised through a fixed slot table (`HomeScreen` → `home_screen`,
+  …13 slots).
+- `GET /device/info` hard-codes `serial_number: 0`, `firmware_version: "1.0.0"` and
+  `lvgl_version: "9.1.0"` (the real LVGL is 9.5.0).
+- `PATCH /screens/:name/widgets/:id` is **not** implemented.
+- **There is no dynamic rendering.** The panel draws the compiled SquareLine UI
+  (`TemcoScreen/*.c`) via `ui_init()` in `lcd_task.c`. `temco_dynamic_display` makes **zero
+  LVGL calls**, so a deployed screen is stored and served but never displayed. Screen
+  switching and events remain hard-coded C (`ui_events.c` → `Event_Cb_*` in `lv_UserPeram.c`).
+- There is **no flow runtime** on the device: no `eventHandlers`/`actions` execution, no
+  widget factory, no JSON→LVGL tree builder.
+
+#### ⚠️ Superseded — original BACnet API design (not implemented)
+
+> Everything from here to the end of §2.7 describes a design that was **never built**: no
+> 200-byte chunking, no zlib decompression, no widget factory, no port 8000 HTTP server.
 
 #### 2.7.1 BACnet Transfer Protocol
 

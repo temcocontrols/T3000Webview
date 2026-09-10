@@ -27,7 +27,7 @@ browser JS → browser-stub fs.promises.readFile()
       → T3Web/t3-eez/resources/eez-framework-amalgamation/eez-flow.h
 ```
 
-`data_root()` (in `api/src/t3_eez_studio/mod.rs`) → `{current_dir}/T3Web/t3-eez/`.
+`data_root()` (in `api/src/eez_studio/mod.rs`) → `{current_dir}/T3Web/t3-eez/`.
 
 ---
 
@@ -212,8 +212,7 @@ Both the DLL and its runtime resources originate from a single `target/release/`
 |------|------|
 | `api/build.rs` | Three copy helpers; copies all resources into `target/<profile>/T3Web/t3-eez/resources/` |
 | `api/src/server.rs` | Mounts `/eez-studio-wasm`, `/eez-studio-assets`, SPA fallback |
-| `api/src/t3_eez_studio/mod.rs` | `data_root()` → `{cwd}/T3Web/t3-eez/`; `read_text_file` handler |
-| `api/src/t3_eez_studio/bridge_routes.rs` | `/api/eez-studio/*` routes for file read/write |
+| `api/src/eez_studio/mod.rs` | `data_root()` → `{cwd}/T3Web/t3-eez/`; `read_text_file` handler; registers the `/api/eez-studio/*` file routes via `bridge_routes()` |
 | `quasar.config.js` | Vite dev proxy for `/eez-studio-wasm` and `/eez-studio-assets` |
 | `../../studio-wasm-libs/release/` | Origin: framework amalgamation + WASM runtimes |
 | `../../eez-studio/resources/docker-build/` | Origin: Docker build scripts |

@@ -7,7 +7,9 @@ The `.eez-project` file is a JSON document that describes a complete LVGL UI pro
 **Context:** The T3000 Webview platform uses EEZ Studio (browser-based) as its UI designer. Projects designed in the browser export to this JSON format. The format is consumed by:
 - The browser-based simulator (renders the UI in a web canvas using LVGL WASM)
 - The Rust backend (provides font extraction & file management)
-- The embedded firmware (creates LVGL widgets dynamically on the device)
+- The embedded firmware — stores and serves the screens over its REST API; it does **not**
+  render them yet (the panel still draws the compiled SquareLine UI). See
+  [device-firmware-lvgl-architecture.md](device-firmware-lvgl-architecture.md).
 
 ### Two Output Formats
 
@@ -19,13 +21,11 @@ flowchart TD
     A -->|"Save" button| B[.eez-project JSON]
     A -->|"Deploy to Device" button| C[Firmware JSON]
     B --> D[Disk / Editor reload]
-    C --> E[BACnet Transfer]
-    E --> F[Hardware Firmware]
-    F -->|Parse JSON| G[EEZ Embedded Runtime]
-    G -->|Create widgets| H[LVGL Display]
-
-    H -.->|"Import from Device"| I[Reverse transform]
-    I -.-> A
+    C --> E["HTTP REST via the T3000 proxy"]
+    E --> F["ESP32 device - stored in SPIFFS"]
+    F -->|"read back"| I["Import from Device transform"]
+    I --> A
+    F -.->|"not rendered yet"| H["LVGL display keeps drawing the compiled SquareLine UI"]
 ```
 
 | Button | Output | Consumer | Size (Smart Home example) |
@@ -63,8 +63,8 @@ flowchart TD
   "settings": {
     "general": {
       "projectVersion": "v3",          // project format version
-      "projectType": "lvgl",          // "lvgl" | "dashboard" | "lvgl+flow"
-      "lvglVersion": "9.5.0",             // "8.4.0" | "9.0" | "9.2.2" | "9.3.0" | "9.4.0" | "9.5.0"
+      "projectType": "lvgl",          // undefined | firmware | firmware-module | resource | applet | dashboard | lvgl | iext | eez-gui-lite
+      "lvglVersion": "9.5.0",             // "8.4.0" | "9.2.2" | "9.3.0" | "9.4.0" | "9.5.0"
       "flowSupport": true,            // enables flow engine for widget bindings
       "displayWidth": 800,            // target display width in px
       "displayHeight": 480,           // target display height in px
@@ -95,7 +95,7 @@ flowchart TD
 **Key fields for embedded runtime:**
 | Field | Purpose |
 |---|---|
-| `projectType` | Determines if flow engine is needed |
+| `projectType` | `"lvgl"` — the only value a T3000 LVGL project uses. Enabling Flow is the separate boolean `flowSupport`, not a project type |
 | `lvglVersion` | Select correct LVGL API version (8.x vs 9.x) |
 | `displayWidth/Height` | Set LVGL display buffer size |
 | `colorFormat` | Set `LV_COLOR_DEPTH` and byte order |
@@ -1045,7 +1045,7 @@ void update_widget_recursive(cJSON *w) {
     "general": {
       "projectVersion": "v3",
       "projectType": "lvgl",
-      "lvglVersion": "9.0",
+      "lvglVersion": "9.5.0",
       "flowSupport": true,
       "displayWidth": 800,
       "displayHeight": 480,
@@ -1377,7 +1377,7 @@ register_font(font->name, lvgl_font);
 | Font source metadata | `size`, `bpp` at top level | `source: { filePath, size }` nested object |
 | Image fields | `width`, `height`, `format`, `data` | `image` (data URI), `bpp`, `lvglBinaryOutputFormat`, `lvglDither` |
 | Image encoding | Raw base64, format specified via `format` string | `data:image/png;base64,...` data URI, always PNG |
-| LVGL version | `"8.4.0"` | `"9.0"`, `"9.2.2"`, `"9.3.0"`, `"9.4.0"`, `"9.5.0"` |
+| LVGL version | `"8.4.0"` | `"9.2.2"`, `"9.3.0"`, `"9.4.0"`, `"9.5.0"` |
 | Rendering engine field | Not present | `renderingEngine: "LVGL"` |
 
 ---

@@ -1,12 +1,146 @@
-# Device Interface Deployment via BACnet — Design
+# Deploy to Device — as built (REST)
 
-Send firmware screens from the EEZ Editor to T3000 hardware devices, and load them back for display in EEZ Studio.
+**Status:** the REST implementation below is what ships. The BACnet-based design this file
+originally described was **never implemented**; it is kept at the end as an appendix.
 
-1. **Push firmware to device** — Transfer the screen definitions from the editor to the hardware controller.
+Send a designed UI from the editor to a T3 controller, and load a controller's current
+screens back into the editor.
 
-2. **Pull firmware from device** — Load the stored screen definitions back from the hardware for rendering in EEZ Studio.
+- **Deploy (push)** — export the `.eez-project`, diff it against the last successful deploy,
+  and push only what changed to the device.
+- **Load from Device (pull)** — read the device's screens and images into a new
+  `.eez-project`. See [import-from-device-design.md](import-from-device-design.md).
+- **Save** — `.eez-project` → device-native screen JSON. See
+  [lvgl-eez-project-json-format.md](lvgl-eez-project-json-format.md).
+
+The user-facing walkthrough is in the manual:
+[manual/05-preview-and-deploy.md](manual/05-preview-and-deploy.md).
+
+> The filename still says `bacnet` for link stability. The content is REST.
 
 ---
+
+## 1. Transport
+
+Screens travel over **HTTP REST through the T3000 host** — not BACnet:
+
+```
+Browser → /api/device-rest/<device-ip>/api/eez-device/<endpoint>
+        → T3000 backend proxy → ESP32 HTTP server, port 80
+```
+
+| Piece | Where |
+|---|---|
+| Client | `src/lib/t3-eez-studio/project-editor/build/device-rest-client.ts` |
+| Base URL | `restUrl()` → `/api/device-rest/${deviceIp}/api/eez-device/${path}` |
+| Proxy | T3000 backend — `api/src/eez_studio/mod.rs` → `proxy_device_rest` (the device sends no CORS headers, so the browser cannot call it directly) |
+| Deploy timeout | `DEPLOY_TIMEOUT_MS = 120000` for push operations; 30 s for reads |
+| Device server | firmware `components/temco_dynamic_display` (`esp_http_server`, port 80) |
+| Device storage | SPIFFS partition `screen_data` → `/spiffs/screens/<name>.json` |
+
+`DeviceRestClient` is **REST-only**. The BACnet fallback from the original design was dropped —
+the fallback code paths in `device-rest-client.ts` are commented out, and `USE_MOCK = false`.
+
+`connect(ip, panelId, serialNumber)` probes `GET device/info` and returns
+`{ mode: "rest", deviceIp }`, or an `error` when the device is unreachable. Timeouts:
+10 s reachability, 30 s request, 120 s deploy.
+
+> The client's own docstring still says it talks "straight to the device" — that comment is
+> stale; every request goes through the T3000 proxy path above.
+
+---
+
+## 2. Endpoint contract
+
+Device endpoints (all under `/api/eez-device`):
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/device/info` | Screen list + counts. `screens` is an **object** keyed `screen1..N`, not an array |
+| `GET` | `/screens` | All screens |
+| `GET` | `/screens/:name` | One screen |
+| `PUT` | `/screens` | Deploy all — body `{ screens: [{ name, json }] }` |
+| `PUT` | `/screens/:name` | Deploy one — body `{ json }` |
+| `PATCH` | `/screens/:name` | Dot-path delta — body `{ changes: [{ path, value }] }` |
+| `POST` | `/images/push` | Upload image — body `{ name, data_base64 }` |
+| `GET` | `/images/pull/:name` | Download image |
+| `DELETE` | `/images/:name` | Remove image |
+| `POST` | `/reset-defaults`, `/set-default-screens`, `/load-default-screens` | Default-screen management |
+
+**Limits and gaps (as implemented):**
+
+- Request bodies are capped at **512 KB**; exceeding it returns **400** (not 413).
+- `device/info` reports `serial_number: 0`, `firmware_version: "1.0.0"` and
+  `lvgl_version: "9.1.0"` as **hard-coded literals** — they are not read from the panel.
+- `PATCH /screens/:name/widgets/:widgetId` is documented but **not implemented**: the wildcard
+  route resolves to the screen file and never prefixes `widgets.<id>.`.
+- Images are stored as the **raw request body text** (base64 inside JSON), not decoded pixels.
+- There is no delete-screen endpoint — only images can be deleted.
+
+Legacy BACnet-style aliases exist on the device (`POST /screens/push/:panelId`,
+`POST /screens/pull/:panelId`) but the client does not use them.
+
+---
+
+## 3. Deploy pipeline (incremental)
+
+`src/t3-react/features/design-hub/services/deployService.ts` → `deployEezProject()` is the
+single deploy implementation. Both the editor toolbar (**Deploy to Device**) and the Design Hub
+drawer call it.
+
+| # | Step | Notes |
+|---|---|---|
+| 1 | **save** | Editor path only — persist the in-memory project first |
+| 2 | **load** | Read `.eez-project` from disk via `GET /api/eez-studio/read-text-file` |
+| 3 | **export** | `transformToDeviceJson()` → one device screen per page; `extractDeviceImages()` → bitmaps |
+| 4 | **backup** | Write `device-export/<Screen>.json` (minified) + `device-export/images/<name>.png` |
+| 5 | **diff** | Compare against `device-export/deploy-manifest.json` |
+| 6 | **bind** | `setDeviceBinding(filePath, { ip, panelId, serialNumber, … })` |
+| 7 | **push** | Changed images (`POST images/push`), then changed screens (`PUT /screens/:name`). A full deploy calls `deployAllScreens()` → `PUT /screens` |
+| 8 | **manifest** | Rewrite `deploy-manifest.json` **only after a fully successful push** |
+| 9 | **log** | Append to the deploy log and mark the project **Deployed** |
+
+### Change detection
+
+- `MANIFEST_HASH_VERSION = 2`, stored in `deploy-manifest.json`.
+- Screens use `canonicalSignature()` (`project-editor/build/deploy-manifest.ts`) —
+  **order-insensitive**, so a re-export that only reorders keys is not a change.
+- Images use `contentSignature()`.
+- **First deploy / no usable manifest:** the baseline falls back to what the device returned
+  during *Load from Device* — `device-import/<screen>.json` and `device-import/imgs/<name>.png`.
+  That is the authoritative "what the device already had" snapshot, so an unchanged re-export is
+  **not** pushed back.
+- Nothing changed → the push step reports *skipped*.
+- A **failed** push does not update the manifest, so the next deploy retries the remainder.
+
+---
+
+## 4. Entry points
+
+| Entry point | File |
+|---|---|
+| Editor toolbar → **Deploy to Device** | `src/lib/t3-eez-studio/project-editor/project/ui/Toolbar.tsx` |
+| Design Hub drawer / project detail | `src/t3-react/features/design-hub/components/DeployDeviceDrawer.tsx` |
+| Device lookup (both) | `fetchDeployDevices()` → `GET http://<host>:9103/api/t3_device/devices` |
+
+Port **9103** is the T3000 host backend, not the device. It is only used to list devices; the
+push itself goes through `/api/device-rest/<ip>/…`.
+
+---
+
+# Appendix — Original BACnet design (superseded, never implemented)
+
+> **Historical.** Everything below was proposed before the REST pipeline existed and was
+> **not implemented**: there is no `POST /api/devices/:id/deploy-firmware`, no Action 18 in
+> `WEBVIEW_MESSAGE_TYPE`, and no `firmware_deploy_routes.rs`. Statements about the state of the
+> code (such as §1 "does not reach hardware") and the BACnet transfer details (200-byte
+> chunks, zlib) are **no longer accurate**.
+>
+> One fragment does exist on the device: the BACnet private-transfer commands
+> `WRITE_JSON_SCREEN = 186` / `WRITE_JSON_ITEM = 187` (read `86` / `87`) in
+> `temco_bacnet/private/ptransfer.c` copy payloads into `group_data_new.new_item`. **Nothing on
+> the device reads or parses them**, they are uncompressed, and the slots are 50 bytes (screen)
+> and 200 bytes (item).
 
 ## 1. Current State
 
