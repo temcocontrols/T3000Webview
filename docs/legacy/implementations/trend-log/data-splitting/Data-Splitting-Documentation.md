@@ -131,12 +131,12 @@
 
 | Feature | Status | Document Reference |
 |---------|--------|-------------------|
-| Copy-Delete Strategy | ✅ Working | Implementation Guide §4 |
-| Monthly Partitioning | ✅ Active | Implementation Guide §6 |
-| WAL/SHM Cleanup | ✅ Working | Implementation Guide §4.5 |
-| Query Service | ✅ Working | Implementation Guide §10 |
-| Query Logging | ✅ Enhanced | Implementation Guide §4.4 |
-| Main DB Deletion | ⚠️ Testing Mode | Implementation Guide §2 |
+| Copy-Delete Strategy | ✅ Working | [Implementation Guide](Data-Splitting-Implementation-Guide.md) → **Migration Strategy** |
+| Monthly Partitioning | ✅ Active | [Implementation Guide](Data-Splitting-Implementation-Guide.md) → **Configuration** |
+| WAL/SHM Cleanup | ✅ Working | [Implementation Guide](Data-Splitting-Implementation-Guide.md) → **Flow Diagrams** → *WAL/SHM Cleanup Flow* |
+| Query Service | ✅ Working | [Implementation Guide](Data-Splitting-Implementation-Guide.md) → **API Reference** |
+| Query Logging | ✅ Enhanced | [Implementation Guide](Data-Splitting-Implementation-Guide.md) → **Flow Diagrams** → *Multi-Partition Query Flow* |
+| Main DB Deletion | ⚠️ Testing Mode | [Implementation Guide](Data-Splitting-Implementation-Guide.md) → **Current Implementation Status** |
 
 ### Key Implementation Files
 

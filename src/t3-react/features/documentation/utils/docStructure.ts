@@ -133,6 +133,15 @@ export const docStructure: DocSection[] = [
       { title: 'Reference & FAQ', path: 't3000/t3-eez-studio/manual/06-reference-and-faq' },
     ],
   },
+  {
+    title: 'Design Studio (Tstat11) API',
+    icon: 'Code',
+    items: [
+      { title: 'Overview', path: 't3000/bacnet-api/README' },
+      { title: 'Screen JSON Format', path: 't3000/bacnet-api/screen-json' },
+      { title: 'Commands', path: 't3000/bacnet-api/commands' },
+    ],
+  },
 ];
 
 /**
