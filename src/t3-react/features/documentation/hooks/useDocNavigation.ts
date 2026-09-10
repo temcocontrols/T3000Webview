@@ -4,6 +4,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { docStructure } from '../utils/docStructure';
 
 export function useDocNavigation(initialPath: string = 't3000/quick-start/overview') {
   const navigate = useNavigate();
@@ -25,34 +26,25 @@ export function useDocNavigation(initialPath: string = 't3000/quick-start/overvi
     new Set(['Shared DB'])
   );
 
-  // Auto-expand section based on current path
+  // Auto-expand the section that contains the current page. Resolved from
+  // docStructure so every section (including newly added ones) is covered.
   useEffect(() => {
     const pathFromUrl = getDocPathFromUrl();
     setCurrentPath(pathFromUrl);
 
-    // Auto-expand the section containing the current page
-    if (pathFromUrl.includes('shared-db/')) {
-      setExpandedSections(prev => {
-        const next = new Set(prev);
-        next.add('Shared DB');
-        return next;
-      });
-    } else if (pathFromUrl.includes('architecture')) {
-      setExpandedSections(prev => new Set(prev).add('Architecture'));
-    } else if (pathFromUrl.includes('device-management')) {
-      setExpandedSections(prev => new Set(prev).add('Device Management'));
-    } else if (pathFromUrl.includes('data-points')) {
-      setExpandedSections(prev => new Set(prev).add('Data Points'));
-    } else if (pathFromUrl.includes('features')) {
-      setExpandedSections(prev => new Set(prev).add('Features'));
-    } else if (pathFromUrl.includes('api-reference')) {
-      setExpandedSections(prev => new Set(prev).add('API Reference'));
-    } else if (pathFromUrl.includes('guides')) {
-      setExpandedSections(prev => new Set(prev).add('Guides'));
-    } else if (pathFromUrl.includes('building-platform')) {
-      setExpandedSections(prev => new Set(prev).add('Building Platform'));
-    } else if (pathFromUrl.includes('haystack')) {
-      setExpandedSections(prev => new Set(prev).add('Haystack & MCP'));
+    const containingSection = docStructure.find((section) =>
+      section.items.some(
+        (item) =>
+          pathFromUrl === item.path || pathFromUrl.startsWith(item.path + '/')
+      )
+    );
+
+    if (containingSection) {
+      setExpandedSections((prev) =>
+        prev.has(containingSection.title)
+          ? prev
+          : new Set(prev).add(containingSection.title)
+      );
     }
   }, [getDocPathFromUrl]);
 

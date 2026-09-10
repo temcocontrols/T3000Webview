@@ -28,11 +28,65 @@ interface ParsedContent {
   fullHtml: string;
 }
 
+/**
+ * Resolve a relative markdown link (e.g. "03-editing-screens.md", "../README.md")
+ * against the path of the document it appears in, and return the documentation
+ * path used by the viewer/route (always prefixed with "t3000/").
+ *
+ * Absolute URLs, mailto:, in-page anchors and root-relative paths are not
+ * touched — they should keep their default browser behaviour.
+ */
+function resolveDocPath(currentPath: string, href: string): string | null {
+  const target = href.split('#')[0].split('?')[0].trim();
+  if (!target) return null;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(target)) return null; // http:, https:, mailto:, ...
+  if (target.startsWith('/') || target.startsWith('#')) return null;
+
+  // Only markdown pages are routed through the viewer; links to other assets
+  // (png, pdf, zip, ...) keep their default browser behaviour.
+  const extension = target.match(/\.([a-z0-9]+)$/i);
+  if (extension && extension[1].toLowerCase() !== 'md') return null;
+
+  const withoutExt = target.replace(/\.md$/i, '');
+  const baseDir = currentPath.split('/').slice(0, -1);
+  const parts = [...baseDir, ...withoutExt.split('/')];
+
+  const resolved: string[] = [];
+  for (const part of parts) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      resolved.pop();
+      continue;
+    }
+    resolved.push(part);
+  }
+
+  const docPath = resolved.join('/');
+  if (!docPath) return null;
+  return docPath.startsWith('t3000/') ? docPath : `t3000/${docPath}`;
+}
+
 export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
   const { content, loading, error } = useMarkdownContent(path);
   const [mode, setMode] = useState<DocMode>('user');
 
-  const parsedContent = useMemo<ParsedContent>(() => {
+  // Markdown is injected as raw HTML, so relative links would otherwise be
+  // resolved by the browser against the app URL (e.g. "/03-editing-screens.md").
+  // Intercept them and route to the matching documentation page instead.
+  const handleMarkdownClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!onNavigate) return;
+    const anchor = (event.target as HTMLElement).closest?.('a');
+    if (!anchor) return;
+
+    const href = anchor.getAttribute('href');
+    if (!href) return;
+
+    const docPath = resolveDocPath(path, href);
+    if (!docPath) return;
+
+    event.preventDefault();
+    onNavigate(docPath);
+  };  const parsedContent = useMemo<ParsedContent>(() => {
     if (!content) {
       return {
         hasUserGuide: false,
@@ -152,6 +206,7 @@ export const DocContent: React.FC<DocContentProps> = ({ path, onNavigate }) => {
     contentToRender = (
       <div
         className={styles.markdown}
+        onClick={handleMarkdownClick}
         dangerouslySetInnerHTML={{ __html: htmlToRender }}
       />
     );

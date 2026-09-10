@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { DocSidebar, DocContent, DocBreadcrumb } from '../components';
 import { useDocNavigation } from '../hooks/useDocNavigation';
+import { docStructure } from '../utils/docStructure';
 import styles from './DocumentationPage.module.css';
 
 export const DocumentationPage: React.FC = () => {
@@ -18,11 +19,13 @@ export const DocumentationPage: React.FC = () => {
     isSectionExpanded,
   } = useDocNavigation();
 
-  // Get all expanded sections as a Set
+  // Get all expanded sections as a Set.
+  // Derived from docStructure so a new navigation section is expandable without
+  // also having to edit a hard-coded list here.
   const expandedSections = new Set(
-    ['Quick Start', 'Shared DB', 'Architecture', 'Device Management', 'Data Points', 'Features', 'API Reference', 'Guides', 'Building Platform', 'Haystack & MCP'].filter(
-      (title) => isSectionExpanded(title)
-    )
+    docStructure
+      .map((section) => section.title)
+      .filter((title) => isSectionExpanded(title))
   );
 
   return (
