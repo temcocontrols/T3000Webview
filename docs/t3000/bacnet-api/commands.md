@@ -1,14 +1,23 @@
-# Design Studio (Tstat11) API — Commands
+# Design Studio (Tstat11) API — Endpoints
 
-The BACnet private-transfer commands used to move screen JSON to and from a T3 controller, and
-their HTTP REST equivalents.
+Two independent paths carry the same screen JSON to and from a T3 controller:
+
+- **HTTP REST** — served by the firmware on port 80; this is what Design Studio and the web
+  tools call (sections 4–5 below: endpoints and an example).
+- **BACnet private transfer** — firmware-side commands driven by T3000's own tooling, **not used
+  by the web tools** (sections 1–3 below: command IDs, payload slots, configuration flag).
+
+They are separate APIs — there is no one-command-per-endpoint mapping between them.
 
 ---
 
-## 1. Command IDs
+## 1. BACnet private transfer — command IDs
+
+> Scope: this path is driven by T3000's own tooling, not by Design Studio / EEZ Studio — the web
+> tools use the [HTTP REST API](#4-http-rest-the-path-the-tools-use) instead.
 
 Defined in the `CommandRequest` enum (`temco_bacnet/private/ud_str.h`, duplicated in
-`main/ud_str.h`):
+`main/ud_str.h` — both in the ESP32 firmware):
 
 | Command | Value | Direction | Purpose |
 |---|---|---|---|
@@ -21,7 +30,7 @@ Read/write are paired: read ≤ 100, write > 100.
 
 ---
 
-## 2. Where the payload lands
+## 2. BACnet private transfer — where the payload lands
 
 Both write commands copy their payload into a union member of the group element structure:
 
@@ -75,7 +84,7 @@ element size, the slice start/end, and the bytes.
 
 ---
 
-## 3. Configuration flag
+## 3. BACnet private transfer — configuration flag
 
 `webview_json_flash` (NVS key `FLASH_JASON`, `main/user_data.h`) selects the layout
 convention:
@@ -94,26 +103,26 @@ panel data, so they persist across a reboot.
 
 ---
 
-## 4. REST equivalents (the path that works)
+## 4. HTTP REST (the path the tools use)
 
-The device also exposes HTTP REST (`components/temco_dynamic_display`, `esp_http_server` on
-**port 80**). The web tools use this exclusively, through the T3000 proxy:
+The device exposes HTTP REST (`components/temco_dynamic_display`, `esp_http_server` on
+**port 80**). Design Studio and the web tools call this exclusively, through the T3000 proxy:
 
 ```
 Browser → /api/device-rest/<device-ip>/api/eez-device/<endpoint>
         → T3000 backend (proxy_device_rest) → ESP32
 ```
 
-| Purpose | BACnet command | REST endpoint |
-|---|---|---|
-| Read one screen | `READ_JSON_SCREEN` | `GET /api/eez-device/screens/:name` |
-| Read all screens | `READ_JSON_SCREEN` | `GET /api/eez-device/screens` |
-| Screen summary | `READ_JSON_SCREEN` | `GET /api/eez-device/device/info` |
-| Write one screen | `WRITE_JSON_SCREEN` | `PUT /api/eez-device/screens/:name` — body `{ "json": { … } }` |
-| Write all screens | `WRITE_JSON_SCREEN` | `PUT /api/eez-device/screens` — body `{ "screens": [ { "name", "json" } ] }` |
-| Patch a screen | — | `PATCH /api/eez-device/screens/:name` — body `{ "changes": [ { "path", "value" } ] }` |
-| Push an image | `WRITE_JSON_ITEM` | `POST /api/eez-device/images/push` — body `{ "name", "data_base64" }` |
-| Read an image | `READ_JSON_ITEM` | `GET /api/eez-device/images/pull/:name` |
+| Method & endpoint | Purpose |
+|---|---|
+| `GET /api/eez-device/device/info` | Screen summary — names + counts |
+| `GET /api/eez-device/screens` | Read all screens |
+| `GET /api/eez-device/screens/:name` | Read one screen |
+| `PUT /api/eez-device/screens` — body `{ "screens": [ { "name", "json" } ] }` | Write all screens |
+| `PUT /api/eez-device/screens/:name` — body `{ "json": { … } }` | Write one screen |
+| `PATCH /api/eez-device/screens/:name` — body `{ "changes": [ { "path", "value" } ] }` | Delta update |
+| `POST /api/eez-device/images/push` — body `{ "name", "data_base64" }` | Push an image |
+| `GET /api/eez-device/images/pull/:name` | Read an image |
 
 BACnet-style aliases also exist on the device (`POST /api/eez-device/screens/push/:panelId`,
 `POST …/screens/pull/:panelId`) but the client does not use them.
@@ -140,7 +149,7 @@ GET /api/device-rest/192.168.1.50/api/eez-device/device/info
   "screen_size": { "width": 480, "height": 320 },
   "screen_count": 13,
   "screens": { "screen1": "start_up_screen", "screen2": "home_screen", "screen3": "main_menu" },
-  "image_count": 16,
+  "image_count": 22,
   "lvgl_version": "9.1.0",
   "color_format": "RGB565"
 }

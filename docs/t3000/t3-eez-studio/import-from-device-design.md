@@ -89,7 +89,8 @@ deploy — see
 > **Historical.** Written before the shared pipeline existed. The endpoints below do not match
 > the current code — use [2. Pipeline](#2-pipeline-importprojectfromdevice) above. In particular
 > there is no `/api/devices`, no `/api/files/*`,
-> no `/api/v1/screens` and no BACnet fallback.
+> no `/api/v1/screens` and no BACnet fallback. The shipped transport is
+> `GET/PUT /api/eez-device/screens…` on **port 80**, through the T3000 proxy.
 
 ## 1. UI Layout
 

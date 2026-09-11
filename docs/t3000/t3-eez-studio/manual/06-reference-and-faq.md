@@ -125,7 +125,7 @@ create appears there.
 | **Snapshot** | A saved copy of a project's state, kept for comparison or restore. |
 | **Manifest** | The record of the last successful deploy, used to send only changed screens and images. |
 | **Screen JSON** | The document the device stores for each screen. See [Design Studio (Tstat11) API → Screen JSON Format](../../bacnet-api/screen-json.md). |
-| **Device API** | The controller's HTTP API (port 80) used by import and deploy, reached through the T3000 host. |
+| **Device API** | The controller's HTTP API (port 80), defined in the ESP32 firmware; T3000 proxies browser requests to the device. |
 | **Import baseline** | The `device-import/` screens, used as the comparison for a project's first deploy. |
 
 ---
@@ -184,8 +184,9 @@ One JSON document per screen — background colour, fonts, bitmaps and a widget 
 See [Design Studio (Tstat11) API → Screen JSON Format](../../bacnet-api/screen-json.md).
 
 **Do screens travel over BACnet or over HTTP?**
-Design Studio uses the controller's HTTP API through the T3000 host. The BACnet JSON commands
-are a separate path — see [Design Studio (Tstat11) API → Commands](../../bacnet-api/commands.md).
+Design Studio uses the controller's HTTP API — the firmware serves it, and T3000 proxies the
+browser's requests to the device. The BACnet JSON commands are a separate path used by T3000's
+own tooling — see [Design Studio (Tstat11) API → Endpoints](../../bacnet-api/commands.md).
 
 ---
 

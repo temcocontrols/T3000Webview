@@ -139,7 +139,7 @@ export const docStructure: DocSection[] = [
     items: [
       { title: 'Overview', path: 't3000/bacnet-api/README' },
       { title: 'Screen JSON Format', path: 't3000/bacnet-api/screen-json' },
-      { title: 'Commands', path: 't3000/bacnet-api/commands' },
+      { title: 'Endpoints', path: 't3000/bacnet-api/commands' },
     ],
   },
 ];
@@ -166,7 +166,7 @@ export function findDocByPath(path: string): DocItem | undefined {
  * Get breadcrumb trail for a path
  */
 export function getBreadcrumbs(path: string): Array<{ title: string; path?: string }> {
-  const breadcrumbs = [{ title: 'Documentation', path: '' }];
+  const breadcrumbs: Array<{ title: string; path?: string }> = [{ title: 'Documentation', path: '' }];
 
   // Handle t3000 docs
   if (path.startsWith('t3000/')) {

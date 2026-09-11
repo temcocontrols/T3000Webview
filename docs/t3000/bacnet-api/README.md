@@ -3,13 +3,13 @@
 How Design Studio (Tstat11) talks to a T3 controller, and how the controller stores its
 touchscreen definition as JSON — the reference for the API and the data behind it.
 
-- **HTTP REST** — the path Design Studio / EEZ Studio use: the device serves it on port 80, and
-  the T3000 host proxies it for the browser.
-- **BACnet private transfer** — the T3000 (C++/BACnet) path: screens as JSON over BACnet
-  Private Data commands.
+- **HTTP REST** — the path Design Studio / EEZ Studio use: the ESP32 firmware serves the API on
+  port 80, and T3000 proxies it for the browser (the device sends no CORS headers).
+- **BACnet private transfer** — screens as JSON over BACnet Private Data commands; the firmware
+  implements the handlers, T3000 (C++ / T3000.exe) drives them for its own tooling.
 
 Both use the **same screen JSON document**. The format is documented in
-[screen-json.md](screen-json.md); the commands are in [commands.md](commands.md).
+[screen-json.md](screen-json.md); the endpoints and commands are in [commands.md](commands.md).
 
 > **Full device-side detail:** every endpoint, payload, status code and limit is specified in
 > [DEVICE_REST_API_DISPLAY.md — firmware display REST API](https://github.com/temcocontrols/T3-programmable-controller-on-ESP32/blob/DynamicUI_Tstat11/components/temco_dynamic_display/DEVICE_REST_API_DISPLAY.md)
@@ -61,11 +61,11 @@ Images are **separate assets**, referenced by name from `bitmaps` and from a wid
 
 | | **BACnet private transfer** | **HTTP REST** |
 |---|---|---|
-| Where | `temco_bacnet/private/ptransfer.c` | `components/temco_dynamic_display` |
+| Where | `temco_bacnet/private/ptransfer.c` (ESP32 firmware) | `components/temco_dynamic_display` (ESP32 firmware) |
 | Endpoint / command | `READ_JSON_SCREEN` 86, `READ_JSON_ITEM` 87, `WRITE_JSON_SCREEN` 186, `WRITE_JSON_ITEM` 187 | `GET/PUT /api/eez-device/screens…` |
 | Storage | `group_data_new.new_item` in the `GRP_POINT` flash page | SPIFFS partition `screen_data` (`/spiffs/screens/<name>.json`) |
 | Chunk size | 50 bytes per screen slot, 200 bytes per item slot | one HTTP request (512 KB cap) |
-| Used by | T3000 (C++ / T3000.exe) | Design Studio, EEZ Studio, the tools in this repo |
+| Used by | T3000 (C++ / T3000.exe) for internal tooling | Design Studio, EEZ Studio, the tools in this repo |
 
 > **Which path to use.** Design Studio and EEZ Studio use the REST path: deploy a project and
 > its screens land in SPIFFS, ready to be read back. The BACnet path carries the same JSON for
@@ -134,7 +134,7 @@ involved.
 
 ## 4. Next
 
-- [commands.md](commands.md) — the BACnet commands, the data structures, and the REST
-  equivalents.
+- [commands.md](commands.md) — the REST endpoints, and the BACnet private-transfer commands with
+  their data structures.
 - [screen-json.md](screen-json.md) — the full JSON reference, with worked widgets, events and
   actions from a real controller.
