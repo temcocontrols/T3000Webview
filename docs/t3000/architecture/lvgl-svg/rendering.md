@@ -101,7 +101,8 @@ Within a part: shape → text → image.
 | widget `scroll` | child group `translate(-x,-y)` + `clipPath` | |
 | object `clip` | `clip-path` on the object `<g>` | source: dump `clip` (content box of a scrollable object) with the widget model as override; rounded when MAIN has a radius |
 | `LINE_*` | `<polyline>`/`<path>` + `stroke-dasharray`, `stroke-linecap` | |
-| `ARC_*` | `<path>` arc stroke; `ARC_ROUNDED` → `stroke-linecap:round` | angles in LVGL 0.1° units. **Implemented detail:** the LVGL point at θ is `(cx + r·cosθ, cy − r·sinθ)`, i.e. the SVG point at φ = −θ — so the *sweep magnitude* comes from the LVGL delta while `sweep-flag` is **0** (the negative SVG angle direction). Deriving either from SVG angles instead draws the long way round whenever `start` ≠ 0 |
+| `ARC_*` | `<path>` arc stroke; `ARC_ROUNDED` → `stroke-linecap:round` | angles are in LVGL 0.1° units and come from the arc widget itself; a part that carries arc styling but no angles is drawn as a full circle. **Implemented detail:** the LVGL point at θ is `(cx + r·cosθ, cy − r·sinθ)`, i.e. the SVG point at φ = −θ — so the *sweep magnitude* comes from the LVGL delta while `sweep-flag` is **0** (the negative SVG angle direction). Deriving either from SVG angles instead draws the long way round whenever `start` ≠ 0 |
+| Part `area` | the part's shapes are drawn in that box instead of the object's | only scrollbars carry one; a part without an area is assumed to fill the object, which is why parts whose geometry LVGL computes at draw time are not emitted at all (see [wasm bridge §3](./wasm-bridge.md#3-encoding-decisions)) |
 | `IMG_*` | `<image>` sized by natural size × scale and placed by `IMG_ALIGN`; recolor via `<filter><feColorMatrix>` | see §7 — geometry from the dump, source from the model |
 | `BLEND_MODE`, `COLOR_FILTER_*` | CSS `mix-blend-mode` / filter | **approximate** — tracked in the scorecard |
 

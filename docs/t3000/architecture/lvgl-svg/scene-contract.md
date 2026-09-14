@@ -69,6 +69,9 @@ type ScenePart = {
   part: 'MAIN'|'SCROLLBAR'|'INDICATOR'|'KNOB'|'SELECTED'|'ITEMS'|'CURSOR'|'TEXTAREA_PLACEHOLDER';
   state: 'default'|'pressed'|'checked'|'focused'|'disabled'|'edited';
   area?: { x: number; y: number; w: number; h: number };  // when the part differs from the object
+                            // (a scrollbar strip) — see §4; parts whose geometry LVGL computes at
+                            // draw time are not emitted at all rather than drawn as the whole box
+                            // (e.g. a scrollbar strip) — see §4
   bg?: { color?: string; opacity?: number;
          grad?: { color: string; stop: number; dir: string; opacity?: number } };
   bgImage?: { srcId: string; opacity?: number; recolor?: string; recolorOpacity?: number; tiled?: boolean };
@@ -80,8 +83,7 @@ type ScenePart = {
   line?: { points: number[]; width?: number; color?: string; opacity?: number;
            dashWidth?: number; dashGap?: number; rounded?: boolean };
   arc?: { start: number; end: number; width?: number; color?: string; opacity?: number;
-          rounded?: boolean; bgColor?: string; bgOpacity?: number };  // 0.1° units, LVGL
-  img?: { srcId: string; opacity?: number; recolor?: string; recolorOpacity?: number;
+          rounded?: boolean; bgColor?: string; bgOpacity?: number };  // 0.1° units, LVGL  img?: { srcId: string; opacity?: number; recolor?: string; recolorOpacity?: number;
           rotation?: number; zoom?: number; pivotX?: number; pivotY?: number;
           // geometry from LVGL (the model cannot know the decoded bitmap size). Both are absent
           // together when LVGL reports no size (e.g. a LV_SYMBOL_* source is a font glyph).
@@ -107,7 +109,9 @@ type ScenePart = {
 | `text.str` | `lv_label_get_text` / span text | new reader, same file |
 | `img.naturalWidth`, `img.naturalHeight` | `lv_image_get_src_width` / `lv_image_get_src_height` | emitted as `imgW`/`imgH`, only when both > 0 |
 | `img.align` | `lv_image_get_align` | emitted as `imgAlign`, the raw `LV_IMAGE_ALIGN_*` value; `imageAlignName()` maps it, because the enum order is not alphabetical and `10` has no public name |
-| `arc.start/end` | `lv_arc_get_*` | new reader, same file |
+| `arc.start/end` | `lv_arc_get_angle_start` / `lv_arc_get_angle_end` for `lv_arc_class`; a full-circle default otherwise | `start` may legitimately be 0, so the angles are emitted even when zero |
+| part `area` | `lv_obj_get_scrollbar_area` | emitted only for parts that do not fill the object's box. A part's geometry is otherwise assumed to be the object's box, so a part without an area must not be emitted unless it really fills it |
+| `SCROLLBAR`, arc `KNOB` | deliberately not emitted | LVGL decides their geometry at draw time (scrollbar mode and content size; the arc's rotation, mode and knob offset). A part that cannot be placed would be painted as the whole box, which is visible as a phantom shape — see [wasm bridge §3](./wasm-bridge.md#3-encoding-decisions) |
 | `objId`, `index` | TS side knows objID (`widgets/Base.tsx:1524 lvglCreate`); `index` from the dump order | no C work |
 | `name` | `getLvglObjectNameFromIndex` is `static const char *` (`flow.cpp:618`) — **not** exported and not visible from `studio_api.cpp`. Reach it via the Flow hooks (`flow.cpp:707`, `:748`) or add a small reader | optional; `objId` is the identity the editor needs |
 
