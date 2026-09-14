@@ -2,7 +2,13 @@
 
 **Scope:** Tstat11 / LVGL **9.5** editor — replace the design-time *canvas* rendering surface with *SVG*.
 **Branch:** `feature/lvgl-svg-renderer`
-**Status:** design complete and code-verified; **4 decisions pending** before P1 code.
+**Status:** **P1, P2 and P3 are built.** The renderer, the WASM scene dump, the proxy context, the runtime
+subclasses and the flag-gated component all exist; 94 unit tests plus an 18-check WASM smoke test pass. The
+only edit to a pre-existing source file is the single flagged branch in `features/page/page.tsx`. Flag default
+is **OFF**, so the canvas path is what runs unless it is switched on.
+
+Remaining: **P4** (selection/hit-testing), **P5** (fidelity scorecard), **P6** (default on for 9.5).
+D1–D4 are still formally open but the working defaults (D1a, D2a, D3a, D4a) are what is implemented.
 **Non-goal:** removing canvas from the product — it stays as the pixel-truth preview and run/flow renderer.
 
 > **Hard rule: additive only.**
@@ -46,7 +52,16 @@
   and the **styles-editor preview** (`LVGLStylesEditorRuntime`, `page-runtime.ts:1777`) which stays on canvas
   (see [runtime integration §1](./runtime-integration.md#1-the-seam-verified)).
 
+## Status
+
+P0 (inventory) → P1 (bridge) → P2 (renderer) → P3 (integration) are **built and verified**, plus the first
+fidelity pass (object clipping + image natural size/alignment) and a hardening pass for the stale-cached-WASM
+failure that could leave the surface blank. Verified live against a real 13-page device project imported from
+a T3-LB controller: text, images at their true size and scrolled containers all draw.
+P4 (selection/hit-testing), P5 (fidelity scorecard) and P6 (default ON for 9.5 design mode) are outstanding —
+see [decisions §4](./decisions.md#4-sequencing--status).
+
 ## Next step
 
-**P2 can start immediately** (hand-written `scene.json` fixtures, no WASM rebuild, unit-testable).
-**P1** (the 3 C functions in `studio-wasm-libs` + 9.5 rebuild) follows independently.
+**P4** — selection / hit-testing / overlay, so the SVG surface is editable, not just readable. The scene
+already labels every group with `data-ptr` / `data-objid` / `data-type`, which is what the overlay needs.

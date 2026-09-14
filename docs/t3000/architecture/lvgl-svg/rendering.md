@@ -44,9 +44,16 @@ overlay group (selection handles, marquee, guides) is always last → on top
       <g data-part="INDICATOR">…</g>
     </g>
   </g>
-  <g id="overlay">…editor affordances…</g>
+  <g id="overlay">
+    …editor affordances (P4)…
+    <g id="notice"><text/>…</g>   <!-- only while a failure is being reported -->
+  </g>
 </svg>
 ```
+
+(The implementation groups the defs as `<g id="defs">` rather than `<defs>`: a `clipPath`/gradient/filter is
+never rendered directly, only referenced by id, so its container element does not matter — and using a plain
+group keeps the imperative patcher in charge of children in both cases.)
 
 - `data-ptr` — patch key (identity across frames).
 - `data-objid` — project widget objID → selection/hit-testing maps straight back to the model.
@@ -54,6 +61,9 @@ overlay group (selection handles, marquee, guides) is always last → on top
 - `pointer-events`: only `MAIN` and `INDICATOR`/`KNOB` receive pointer events; decorative parts are inert.
 - Deterministic def ids (hash of the parameter tuple) keep the DOM stable across frames, so `defs` is
   never rebuilt when nothing changed.
+- `#notice` is the only overlay content emitted before P4: a short message shown when the surface cannot
+  paint (see [runtime integration §7a](./runtime-integration.md#7a-failure-modes-why-the-surface-can-be-blank-and-what-it-does-about-it)).
+  It lives in `#overlay` so a scene patch can never erase it, and `clearNotice()`/`teardown()` remove it.
 
 ## 4. Draw order
 
@@ -86,9 +96,10 @@ Within a part: shape → text → image.
 | `TRANSFORM_*` | `<g transform="translate(px,py) rotate(a) scale(k) translate(-px,-py)">` | pivot from `TRANSFORM_PIVOT_*` |
 | `TRANSLATE_*` | same `<g>` transform list | |
 | widget `scroll` | child group `translate(-x,-y)` + `clipPath` | |
+| object `clip` | `clip-path` on the object `<g>` | source: dump `clip` (content box of a scrollable object) with the widget model as override; rounded when MAIN has a radius |
 | `LINE_*` | `<polyline>`/`<path>` + `stroke-dasharray`, `stroke-linecap` | |
-| `ARC_*` | `<path>` arc stroke; `ARC_ROUNDED` → `stroke-linecap:round` | angles in LVGL 0.1° units |
-| `IMG_*` | `<image>` + `opacity`; recolor via `<filter><feColorMatrix>` | |
+| `ARC_*` | `<path>` arc stroke; `ARC_ROUNDED` → `stroke-linecap:round` | angles in LVGL 0.1° units. **Implemented detail:** the LVGL point at θ is `(cx + r·cosθ, cy − r·sinθ)`, i.e. the SVG point at φ = −θ — so the *sweep magnitude* comes from the LVGL delta while `sweep-flag` is **0** (the negative SVG angle direction). Deriving either from SVG angles instead draws the long way round whenever `start` ≠ 0 |
+| `IMG_*` | `<image>` sized by natural size × scale and placed by `IMG_ALIGN`; recolor via `<filter><feColorMatrix>` | see §7 — geometry from the dump, source from the model |
 | `BLEND_MODE`, `COLOR_FILTER_*` | CSS `mix-blend-mode` / filter | **approximate** — tracked in the scorecard |
 
 ## 6. Text
@@ -110,10 +121,31 @@ fidelity scorecard demands it for specific fonts.
 
 - Source: project bitmaps are already `data:image/png;base64,…` (import path keeps PNG) → straight into
   `<image href>`; no conversion layer needed.
-- `rotation`/`zoom`/`pivot` → group transform around the image.
+- **Source and geometry come from different places.** The dump deliberately never emits pixels; the widget
+  model holds the asset *name*, which the editor resolves to a data URI (`project._assets.maps.name` →
+  `bitmaps` → `entry.object.image`). LVGL owns the *geometry* (`imgW`/`imgH`/`imgAlign`), because only the
+  running LVGL knows the decoded bitmap size. `wireToScene` merges the two.
+- **Placement** (`imagePlacement()`), in order of preference:
+
+  | Dump state | Box emitted | `preserveAspectRatio` |
+  |---|---|---|
+  | `imgW`/`imgH` present, align not STRETCH/TILE | natural size × scale, positioned by align | `none` |
+  | `imgW`/`imgH` present, align `STRETCH`/`TILE` | the widget box (scale ignored) | `none` |
+  | no `imgW`/`imgH` (font symbol source, or older build) | the widget box | `xMidYMid meet` (legacy, never distorted) |
+
+- **Alignment** maps `LV_IMAGE_ALIGN_*` → name with an explicit table (`imageAlignName()`), because the enum
+  order is *not* alphabetical (`BOTTOM_*` precede `LEFT_MID`/`RIGHT_MID`) and `10` is an internal
+  `AUTO_TRANSFORM` marker with no public name. The x and y axes are tested separately: `TOP_MID`/`BOTTOM_MID`
+  centre only horizontally, `LEFT_MID`/`RIGHT_MID` centre only vertically.
+- **No double scaling.** When the box is known, the scale lives in `width`/`height` and the transform is
+  rotation-only; only the legacy unknown-size path keeps `scale()` about the pivot.
+- **Overflow** → a `<g clip-path>` around the image when the placed box exceeds the widget (LVGL clips an
+  image to its widget). Well-sized icons produce no clip def.
 - `recolor` + opacity → `<feColorMatrix>` on the specific image (one filter per distinct recolor/opacity
   pair, cached in `defs`).
 - Animated images / Lottie: **T3 decision** (canvas island or frame stepping) — out of P2.
+- *Known gap:* a `LV_SYMBOL_*` source is a font glyph in LVGL, so `lv_image_get_src_width/height` reports 0
+  and the natural path cannot apply. Those images fall back to filling the widget box.
 
 ## 8. Update strategy & performance
 

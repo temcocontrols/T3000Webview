@@ -9,10 +9,11 @@ Additive-only: **new functions appended** to the shared bridge file; no existing
 
 | Item | Location | Change type |
 |---|---|---|
-| New dump functions + helpers | `studio-wasm-libs/lvgl-runtime/common/src/studio_api.cpp` | **append only** |
-| Build | `studio-wasm-libs/lvgl-runtime/v9.5.0/**` + `build-all.bat` | no source edit |
-| Artifact propagation | `api/build.rs` (existing) → app assets | no source edit |
-| JS binding | **new** `project-editor/lvgl/svg/scene-dump.ts` | new file |
+| New dump functions + helpers | **new file** `studio-wasm-libs/lvgl-runtime/common/src/svg_scene_dump.cpp` | ✅ built — new translation unit, **no existing file edited** |
+| Build | **new** `studio-wasm-libs/build-lvgl-95.bat` (9.5 only) | ✅ — the v9.5 CMake globs `common/src`, so nothing else changed |
+| Artifact propagation | CMake install → `studio-wasm-libs/release/wasm/` → `api/build.rs:99,109` → `wasm/lvgl/9.5.0/` | ✅ verified, no source edit |
+| JS binding | `project-editor/lvgl/svg/scene-dump.ts` | ✅ built |
+| Verification | **new** `scripts/lvgl-svg-dump-smoke.mjs` — runs the real WASM in Node | ✅ all checks pass; it also freezes `captured-9.5.0.json`, the real dump the tests replay |
 
 `common/` is shared by v8.4.0 … v9.5.0, so every new function is wrapped in
 `#if LVGL_VERSION_MAJOR >= 9` and returns a negative code otherwise. Only the **9.5** artifact is built
@@ -23,16 +24,17 @@ and used initially; the other versions keep using the canvas path untouched.
 ```c
 // Append to studio_api.cpp (new functions only)
 
-// Serialise the object tree rooted at `root` as the Scene JSON (see scene-contract doc).
-// returns bytes written (>=0), or -(required) if outLen is too small.
+// Serialise the object tree rooted at `root` as Scene JSON (see scene-contract doc).
+// returns bytes written (>=0), or -(requiredSize + 1) when outLen is too small.
 EM_PORT_API(int32_t) lvglDumpScene(lv_obj_t *root, char *out, int32_t outLen);
-
-// Root screen pointer for the currently loaded page (avoids the TS side tracking it).
-EM_PORT_API(lv_obj_t *) lvglGetActiveScreen(void);
 
 // Number of objects in a subtree — lets the renderer size its scratch buffer cheaply.
 EM_PORT_API(int32_t) lvglCountObjects(lv_obj_t *root);
 ```
+
+**`lvglGetActiveScreen` was dropped** (it was in the original design). The TS runtime already holds the
+LVGL screen pointer on the page (`page._lvglObj` — the same field `getObjects()` uses), so exposing it from
+C would have duplicated the `current_screen` state that is private to `studio_api.cpp` for no gain.
 
 New **file-local statics** (all new, no edits to existing ones):
 
@@ -54,19 +56,30 @@ Style values come from the **already-exported** getters (`lvglObjGetStylePropCol
 functions are exported automatically. `lvgl-runtime/v9.5.0/exported-functions.txt` (1948 entries,
 **zero** `_lvgl*`) is not involved for these symbols.
 
-**Why append rather than add a new .cpp:** a new translation unit would require editing the existing
-`CMakeLists.txt` source list; appending new functions to `studio_api.cpp` is the strictly additive option.
+**A new `.cpp` needs no CMake edit.** This design originally appended to `studio_api.cpp` because a new
+translation unit was assumed to require touching the source list. Reading the v9.5 `CMakeLists.txt` showed
+`file(GLOB_RECURSE SOURCES ... ../common/src/*.cpp)`, and the build script re-runs configure every time, so a
+new file is picked up automatically — strictly *more* additive, and what was actually done
+(`svg_scene_dump.cpp`). `EM_PORT_API` exports it with no edit to `exported-functions.txt`: that file lists
+1948 symbols including **zero** `_lvgl*`, yet `Module['_lvglDumpScene']` is present in the built glue, which
+confirms `EMSCRIPTEN_KEEPALIVE` is what exports these symbols.
 
 ## 3. Encoding decisions
 
 | Decision | Choice | Why |
 |---|---|---|
-| Colour | emit the **raw uint32** from `lvglObjGetStylePropColor` | zero C-side formatting; TS converts once, reusing existing colour helpers; smaller payload |
+| Colour | emit the **raw uint32** from `lvglObjGetStylePropColor` (**wire** format) | zero C-side formatting; smaller payload. `scene-dump.ts` converts it to `#rrggbb` for the Scene, reusing the existing TS colour helpers, so LVGL's byte order is defined in exactly one place — the renderer only ever sees `#rrggbb` |
 | Byte order | **confirmed in P1** with a known-colour fixture (assert round-trip) | LVGL stores colour in a 32-bit struct; do not assume |
 | Text | UTF-8 JSON string, escaped | labels are the only place with arbitrary bytes |
 | Omission | absent field = LVGL default | payload size; renderer treats absence as "do not draw" |
 | Numbers | integers where LVGL is integral; floats for `angle`/`zoom` | matches LVGL semantics |
-| Order | parents before children, ascending index | renderer nests in one pass, no lookahead |
+| Order | parents before children, sibling index ascending | renderer nests in one pass, no lookahead |
+| Parts | `p` is the **slot** (0..7 → MAIN, SCROLLBAR, INDICATOR, KNOB, SELECTED, ITEMS, CURSOR, TEXTAREA_PLACEHOLDER), emitted only when the part has something to draw | small on the wire and stable even if LVGL renumbers a part; `TICKS` has no slot (v8 only) |
+| Text | C emits only the resolved `textColor` / `textOpa` / `fontSize`; the **string** comes from the EEZ widget model | the model is the design-time truth, and it removes any need for class-specific readers in C |
+| Images | C emits **geometry only** — `imgW`, `imgH`, `imgAlign` — and **no source**; the model supplies the data URI | LVGL is the only side that knows the decoded bitmap size, the model is the only side that knows which asset was chosen. The asset name (`"wifisym"`) in the model is resolved to the bitmap data URI via `project._assets.maps.name`; both halves must be merged (see scene-contract §4) or images render as nothing. `imgW`/`imgH` are emitted only when *both* are > 0, which is exactly the bitmap case — a `LV_SYMBOL_*` source is a font glyph and reports 0, so no size is invented for it |
+| `clip` | the **content box** (`lv_obj_get_content_coords`, `{x,y,w,h}`) of an object with `LV_OBJ_FLAG_SCROLLABLE` | that is the region LVGL clips children to. Emitted only when the flag is set, so a plain object costs no bytes. The widget model may override, and the MAIN radius is carried onto the clip so a rounded container clips rounded |
+| `index` | sibling z-order within the parent (`lv_obj_get_index`), **not** an app creation index | that is what paint order needs; stable identity comes from `ptr` + `objId` |
+| Byte order | **resolved, no guessing**: the existing export already returns `(r<<16)|(g<<8)|b` for LVGL 9, so the wire value *is* `0xRRGGBB` | verified in `studio_api.cpp:88` and asserted by the smoke test (`bgColor=0xf5f5f5`) |
 
 ## 4. JS binding
 
@@ -94,16 +107,25 @@ export class SceneDump {
 
 ## 5. Build & propagation
 
-1. Edit only inside `studio-wasm-libs/lvgl-runtime/common/src/studio_api.cpp`.
-2. Build 9.5: `cd studio-wasm-libs && .\build-all.bat` (or the v9.5-only script).
-3. Output lands in `studio-wasm-libs/release/wasm/`; Rust `api/build.rs` copies it to the served folder
-   `eez-studio-wasm/wasm/lvgl/{version}/` (build.rs:96), which is where the loader fetches it:
-   `/eez-studio-wasm/wasm/lvgl/${version}/${fileName}` (`lvgl-versions.ts:635`).
-   **Verified:** no LVGL runtime artifact is committed in this repo (only `lz4.js/wasm` + a README are
-   tracked under `project-editor/flow/runtime/wasm/`), so rebuilding requires **no tracked-file change here** —
-   with one caveat to confirm in P1: `lvgl-versions.ts:556` also references a relative dev/Electron path
-   (`project-editor/flow/runtime/wasm/lvgl_runtime_v9.5.0.js`) that does not exist in the tree; confirm the
-   browser 9.5 path resolves to the served folder.
+1. Edit only the new `studio-wasm-libs/lvgl-runtime/common/src/svg_scene_dump.cpp`.
+2. Build 9.5 only: `studio-wasm-libs\build-lvgl-95.bat` (new; mirrors `build-lvgl-9x.bat`). It needs the
+   toolchain the other scripts already assume: `C:\QN\temcocontrols\emsdk`, CMake, ninja.
+   **Do not** assign `PATH` with `set PATH=...` in the same `cmd` invocation — that discards the emsdk
+   entries `emsdk_env.bat` just added and `emcmake` stops resolving.
+3. Verify: `node scripts/lvgl-svg-dump-smoke.mjs` — runs the real WASM in Node (and rewrites the captured
+   fixture the tests replay).
+4. Propagation is automatic: CMake installs into `studio-wasm-libs/release/wasm/`, and `api/build.rs:99`
+   copies `lvgl_runtime_v9.5.0.{js,wasm}` into `wasm/lvgl/9.5.0/` on the next Rust build.
+   **Verified:** no LVGL runtime artifact is tracked in this repo (only `lz4.js/wasm` + a README under
+   `project-editor/flow/runtime/wasm/`), so rebuilding requires **no tracked-file change here**.
+   Still open: `lvgl-versions.ts:556` also references a relative dev/Electron path
+   (`project-editor/flow/runtime/wasm/lvgl_runtime_v9.5.0.js`) that does not exist in the tree; the browser
+   path resolves to the served folder (`lvgl-versions.ts:635`), which is the case that matters.
+5. Serving the rebuilt files is enough **only if the browser does not still hold an old `.wasm`**: the glue JS
+   is fetched with `cache: "no-store"`, but the binary is fetched from a plain URL served without
+   `Cache-Control`/`ETag`, so it can be reused indefinitely under heuristic freshness. The client detects that
+   (module booted, dump missing) and refreshes the cached artifacts itself — see
+   [runtime integration §7a](./runtime-integration.md#7a-failure-modes-why-the-surface-can-be-blank-and-what-it-does-about-it).
 4. Never edit or copy into `api/target/`.
 
 ## 6. Performance budget

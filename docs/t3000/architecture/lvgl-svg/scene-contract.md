@@ -38,17 +38,22 @@ Rules:
 ```ts
 type SceneObject = {
   ptr: number;              // lv_obj_t*  — identity + SVG node key
-  parentPtr?: number;       // absent for the root screen
-  index: number;            // lvgl creation index (stable within a page)
+  parentPtr?: number;       // absent for the root screen (the wire sends 0)
+  index: number;            // sibling z-order within the parent (lv_obj_get_index),
+                            // NOT an app-level creation index
   name?: string;            // lvgl object name when set
   objId?: string;           // project widget objID  → emitted as data-objid
   type: string;             // sub_type: label|button|slider|... (declared in widgets/*.tsx)
   hidden?: boolean;
-  opacity?: number;         // 0..255 LVGL OPA → 0..1
+  opacity?: number;         // 0..1, already converted. ABSENT means LVGL's default for opacity,
+                            // which is LV_OPA_COVER (1) — NOT 0. An explicit 0 is transparent.
+                            // Renderers must use alphaOf(); treating absence as 0 erases every
+                            // shape that simply did not set BG_OPA.
 
   area: { x: number; y: number; w: number; h: number };   // lv_obj_get_coords()
   radius?: number | { tl: number; tr: number; br: number; bl: number };
-  clip?: { x: number; y: number; w: number; h: number; radius?: number };
+  clip?: { x: number; y: number; w: number; h: number; radius?: number };  // see §4 — from the
+                            // dump's content box when the object is scrollable, else the model's
   transform?: { angle?: number; zoom?: number; pivotX?: number; pivotY?: number;
                 scaleX?: number; scaleY?: number; skewX?: number; skewY?: number };
   scroll?: { x: number; y: number };
@@ -75,7 +80,13 @@ type ScenePart = {
   arc?: { start: number; end: number; width?: number; color?: string; opacity?: number;
           rounded?: boolean; bgColor?: string; bgOpacity?: number };  // 0.1° units, LVGL
   img?: { srcId: string; opacity?: number; recolor?: string; recolorOpacity?: number;
-          rotation?: number; zoom?: number; pivotX?: number; pivotY?: number };
+          rotation?: number; zoom?: number; pivotX?: number; pivotY?: number;
+          // geometry from LVGL (the model cannot know the decoded bitmap size). Both are absent
+          // together when LVGL reports no size (e.g. a LV_SYMBOL_* source is a font glyph).
+          naturalWidth?: number; naturalHeight?: number;
+          align?: string };   // LV_IMAGE_ALIGN_* name — CENTER, TOP_LEFT, TOP_MID, TOP_RIGHT,
+                              // BOTTOM_LEFT, BOTTOM_MID, BOTTOM_RIGHT, LEFT_MID, RIGHT_MID,
+                              // STRETCH, TILE, CONTAIN (see imageAlignName())
   blendMode?: string;
   colorFilter?: { color: string; opacity: number };
 };
@@ -85,19 +96,29 @@ type ScenePart = {
 
 | Scene field | Bridge call | Notes |
 |---|---|---|
-| `area`, `clip` | LVGL 9.5 coords / `lv_obj_get_coords` | no new style code |
+| `area` | `lv_obj_get_coords` | no new style code |
+| `clip` | `lv_obj_get_content_coords`, gated on `LV_OBJ_FLAG_SCROLLABLE` | emitted as `"clip":{x,y,w,h}`. This is the box LVGL clips children to — without it a scrolled container's children spill. `radius` is taken from MAIN so a rounded container clips rounded. The widget model may supply a clip when the dump has none; the dump wins when both exist |
 | `bg.color`, `border.color`, `outline.color`, `shadow.color`, `text.color`, `line.color`, `arc.color` | `lvglObjGetStylePropColor(obj, part, state, prop)` | **already exported** |
 | widths / radii / opacity / spacing / offsets | `lvglObjGetStylePropNum(obj, part, state, prop)` | **already exported** |
 | `text.fontId`, `size` | `lvglObjGetStylePropBuiltInFont` / `...FontAddr` | **already exported** |
-| `img.srcId`, `bgImage.srcId` | `lvgl_image_get_src` / `lvgl_obj_get_style_bg_image_src` | new readers, same file |
+| `img.srcId`, `bgImage.srcId` | **widget model, not the dump** — `LVGLImageWidget.image` / `LVGLImgbuttonWidget.imageReleased` hold an *asset name*, resolved to the bitmap's data URI through `project._assets.maps.name.getAllObjectsOfType("bitmaps")` (the same map `preloadImages()` uses) | no C work. The dump never emits image sources, so a missing merge silently produces **no `<image>` at all** — that was a real bug, not a fidelity gap |
 | `text.str` | `lv_label_get_text` / span text | new reader, same file |
+| `img.naturalWidth`, `img.naturalHeight` | `lv_image_get_src_width` / `lv_image_get_src_height` | emitted as `imgW`/`imgH`, only when both > 0 |
+| `img.align` | `lv_image_get_align` | emitted as `imgAlign`, the raw `LV_IMAGE_ALIGN_*` value; `imageAlignName()` maps it, because the enum order is not alphabetical and `10` has no public name |
 | `arc.start/end` | `lv_arc_get_*` | new reader, same file |
 | `objId`, `index` | TS side knows objID (`widgets/Base.tsx:1524 lvglCreate`); `index` from the dump order | no C work |
 | `name` | `getLvglObjectNameFromIndex` is `static const char *` (`flow.cpp:618`) — **not** exported and not visible from `studio_api.cpp`. Reach it via the Flow hooks (`flow.cpp:707`, `:748`) or add a small reader | small C work; **optional for P1** — `objId` is the identity the editor needs |
 
-**Colour format:** the dump emits `#rrggbb` strings; the byte order and theme resolution must reuse the
-existing TS helpers (`lvgl/page-runtime.ts` `parseColor` :613, `getColorNum` :629,
-`getThemedColorInProject` :576) rather than re-deriving — single source of truth.
+**Colour format — two layers, do not conflate them:**
+
+| Layer | Format | Where |
+|---|---|---|
+| WASM wire | raw `uint32` from `lvglObjGetStylePropColor` | `lvglDumpScene` → `scene-dump.ts` |
+| Scene | `#rrggbb` string | everything the renderer sees |
+
+`scene-dump.ts` performs the conversion once, reusing the existing TS helpers (`lvgl/page-runtime.ts`
+`parseColor` :613, `getColorNum` :629, `getThemedColorInProject` :576), so LVGL's byte order and theme
+resolution stay defined in one place and the renderer never has to know about them.
 
 ## 5. Buffer protocol
 
