@@ -1,6 +1,6 @@
-# LVGL 9.5 — SVG Renderer: measured primitive inventory (P0)
+# LVGL 9.5 — SVG Renderer: measured primitive inventory
 
-Companion to [plan.md](./plan.md).
+Companion to [architecture.md](./architecture.md).
 **Measured, not estimated** — extracted from `project-editor/lvgl/**` on 2026-09-11.
 
 - Widgets scanned: `src/lib/t3-eez-studio/project-editor/lvgl/widgets/*.tsx` — **41 files = 40 widgets + `Base.tsx`**
@@ -93,7 +93,7 @@ LVGL computes these before painting; the renderer consumes the **resulting coord
 `ANIM`, `ANIM_DURATION`, `ANIM_SPEED`, `ANIM_TIME`, `TRANSITION`
 → design mode ignores them; run/animation uses a throttled re-dump (plan §6).
 
-### 2.4 Approximate or requires a decision (7)
+### 2.4 Approximate or unmapped (7)
 
 | Property / widget | Issue | Option |
 |---|---|---|
@@ -115,13 +115,14 @@ LVGL computes these before painting; the renderer consumes the **resulting coord
 | **T2 — layered/animated** | `Spinner`, `AnimationImage`, `Scale`, `Meter` | parts + animation frames; `AnimationImage` needs frame stepping |
 | **T3 — procedural** | `Chart`, `QRCode`, `Colorwheel`, `Lottie`, `Canvas` | drawn by callbacks → canvas island or draw-layer hook |
 
-**P0 conclusion:** 31 of 40 widgets are T1 (pure style→SVG). T3 is 5 widgets and is the §7 decision in the plan.
+**Conclusion:** 31 of 40 widgets are T1 (pure style→SVG). The five T3 widgets are excluded from the surface
+(see [invariants §1.2](./invariants.md#12-procedural-widgets-are-outside-the-surface)).
 
 ---
 
-## 4. Fixtures and the fidelity gate (P5 input)
+## 4. Fixtures and the fidelity gate
 
-Fixture pages to add (new files, dev-only), chosen to cover the tiers:
+Fixture pages (dev-only), chosen to cover the tiers:
 
 1. **Text** — labels with several fonts, sizes, letter/line spacing, overflow.
 2. **Boxes** — panels with radius, border sides, outline, shadow, gradient.
@@ -129,16 +130,17 @@ Fixture pages to add (new files, dev-only), chosen to cover the tiers:
 4. **Media** — images at scale/rotation/recolour, plus one animated image.
 5. **Dashboard** — mixed page with 20+ objects and nesting (real-world stress).
 
-Diff method (new code, `svg/svg-diff.ts`): render the same page twice — canvas (existing runtime) and SVG
-(new) — rasterise the SVG, compare per-pixel + per-object bounding boxes, and print a per-widget scorecard.
-Gate: T1 widgets must match; T2/T3 documented deltas.
+Diff method (see [fidelity harness](./fidelity-harness.md)): render the same page twice — canvas (existing
+runtime) and SVG (new) — rasterise the SVG, compare per-pixel and per-object bounding boxes, and emit a
+per-widget scorecard. T1 is expected to match within the tolerance; T2 and T3 deltas are documented.
 
 ---
 
-## 5. What this changes in the plan
+## 5. Consequences for the implementation
 
-- The SVG renderer is a **style-property renderer over parts**, not a per-widget renderer:
-  8 parts × the property groups in §2.1 is the whole drawing model.
+- The renderer is a **style-property renderer over parts**, not a per-widget renderer: the 8 parts × the
+  property groups in §2.1 are the whole drawing model.
 - `widgets/*.tsx` needs **no changes** — the parts/properties metadata already exists there and in
   `style-catalog.tsx`; the dump surfaces the resolved values.
-- 31/40 widgets are T1, so P2 can land a useful surface before the T3 decision is settled.
+- Unknown widget types still render, because drawing depends only on the parts and properties the dump
+  reports.

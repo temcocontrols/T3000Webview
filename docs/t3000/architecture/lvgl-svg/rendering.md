@@ -1,7 +1,8 @@
-# LVGL SVG Renderer — Rendering Design
+# LVGL SVG Renderer — Rendering
 
-Part of the [design set](./README.md). Status: **design, no code yet**.
-Additive-only: all of this lives in the **new** `project-editor/lvgl/svg/` folder.
+The `svg/` modules, the DOM contract, draw order, and the rules that map LVGL style properties to SVG.
+
+Part of the [document set](./README.md). All of this lives in `project-editor/lvgl/svg/`.
 
 ---
 
@@ -45,7 +46,7 @@ overlay group (selection handles, marquee, guides) is always last → on top
     </g>
   </g>
   <g id="overlay">
-    …editor affordances (P4)…
+    …selection frame, handles…
     <g id="notice"><text/>…</g>   <!-- only while a failure is being reported -->
   </g>
 </svg>
@@ -61,13 +62,15 @@ group keeps the imperative patcher in charge of children in both cases.)
 - `pointer-events`: only `MAIN` and `INDICATOR`/`KNOB` receive pointer events; decorative parts are inert.
 - Deterministic def ids (hash of the parameter tuple) keep the DOM stable across frames, so `defs` is
   never rebuilt when nothing changed.
-- `#notice` is the only overlay content emitted before P4: a short message shown when the surface cannot
-  paint (see [runtime integration §7a](./runtime-integration.md#7a-failure-modes-why-the-surface-can-be-blank-and-what-it-does-about-it)).
+- `#notice` is the only overlay content emitted independently of a selection: a short message shown when
+  the surface cannot paint (see
+  [runtime integration §7a](./runtime-integration.md#7a-failure-modes-why-the-surface-can-be-blank-and-what-it-does-about-it)).
   It lives in `#overlay` so a scene patch can never erase it, and `clearNotice()`/`teardown()` remove it.
 
 ## 4. Draw order
 
-Per object, LVGL paints in this order; the renderer mirrors it (P2 verifies against the canvas):
+Per object, LVGL paints in this order; the renderer mirrors it (the fidelity harness verifies it against the
+canvas):
 
 1. `shadow`
 2. `bg` (fill + gradient)
@@ -114,8 +117,9 @@ Within a part: shape → text → image.
 5. **Baseline.** LVGL positions text by ascent; the renderer computes per-line `y` from `size` + `ascent`
    using the same font metrics table (fallback constant if metrics are unavailable).
 
-*Decision D3 (plan §7):* same-TTF `<text>` first (fast, close); per-glyph `<path>` outlines only if the
-fidelity scorecard demands it for specific fonts.
+Text is emitted as real text so it can be selected, styled and measured by the browser. If a specific font
+proves inaccurate in the scorecard, per-glyph `<path>` outlines are an additional emitter and do not change
+the scene contract.
 
 ## 7. Images
 
@@ -143,7 +147,8 @@ fidelity scorecard demands it for specific fonts.
   image to its widget). Well-sized icons produce no clip def.
 - `recolor` + opacity → `<feColorMatrix>` on the specific image (one filter per distinct recolor/opacity
   pair, cached in `defs`).
-- Animated images / Lottie: **T3 decision** (canvas island or frame stepping) — out of P2.
+- Animated images / Lottie: drawn by callbacks rather than by style properties, so they are outside the
+  surface like the other procedural widgets (see [invariants §1.2](./invariants.md#12-procedural-widgets-are-outside-the-surface)).
 - *Known gap:* a `LV_SYMBOL_*` source is a font glyph in LVGL, so `lv_image_get_src_width/height` reports 0
   and the natural path cannot apply. Those images fall back to filling the widget box.
 

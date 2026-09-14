@@ -1,8 +1,10 @@
-# LVGL SVG Renderer — Runtime Integration Design
+# LVGL SVG Renderer — Runtime Integration
 
-Part of the [design set](./README.md). Status: **design, no code yet**.
-Additive-only: **`lvgl/page-runtime.ts` is not modified.** We extend it, and hook the frame through a proxy
-context.
+How the SVG surface attaches to the existing page runtime: the proxy-context seam, the runtime
+subclasses, the repaint policy, and the failure modes.
+
+Part of the [document set](./README.md). `lvgl/page-runtime.ts` is not modified — it is extended, and the
+frame is intercepted through a proxy context.
 
 ---
 
@@ -24,25 +26,27 @@ context.
 Because the canvas surface is **three operations**, a proxy context is a complete and safe hook — and it
 needs **no method overrides at all**.
 
-**A second surface uses a different seam (out of scope for P1–P6).** `LVGLStylesEditorRuntime` (`:1777`)
+**A second surface uses a different seam (not covered by the SVG surface).** `LVGLStylesEditorRuntime`
+(`:1777`)
 builds a synthetic page containing *every* registered widget and paints a 400×400 preview to a canvas — but
 it is **not** reachable from `features/page/page.tsx`. It mounts itself from its own constructor (`:1869`)
 and only receives its canvas later, via `setSelectedStyle(style, canvas)` (`:2076-2080`), so the canvas is
 `null` throughout `mount()`: a proxy for it would have to be installed at `setSelectedStyle`, not at
 construction. It therefore stays on canvas in this design (consistent with the preview policy in
-[decisions D1](./decisions.md)) and is called out rather than silently missed.
+[invariants §1.1](./invariants.md#11-run-mode-renders-on-the-canvas)) and is called out rather than silently missed.
 
 ## 2. Two integration options
 
-| | **A. Proxy 2-D context (chosen)** | **B. `tick` override (later optimisation)** |
+| | **A. Proxy 2-D context (in use)** | **B. `tick` override (available optimisation)** |
 |---|---|---|
 | Mechanism | pass a stub object where the runtime calls `getContext("2d")`; on `putImageData` → dump scene → patch SVG | subclass the runtime and replace the `tick` field to dump + patch instead of blitting |
 | Existing code touched | **none** | none (new subclass only) |
-| Base code still runs | yes — `_mainLoop()`, `ImageData` allocation, `ctxPage` bookkeeping | no — duplicated 4 lines of loop logic in the subclass |
-| Cost | one wasted `Uint8ClampedArray` + `ImageData` per frame (≈614 KB memcpy at 480×320) | removes that waste |
-| Risk | low | medium (must replicate error/scheduling semantics) |
+| Base code still runs | yes — `_mainLoop()`, `ImageData` allocation, `ctxPage` bookkeeping | no — the loop logic is duplicated in the subclass |
+| Cost | one `Uint8ClampedArray` + `ImageData` per frame (≈614 KB memcpy at 480×320) | removes that waste |
+| Risk | low | medium (must replicate error and scheduling semantics) |
 
-**Plan:** ship A in P3; adopt B only if the frame cost shows up in the budget (`?svgStats=1`).
+Option B is worth adopting only if the per-frame cost shows up in the budget (`?svgStats=1`); the two are
+mutually exclusive and do not affect the scene contract.
 
 ## 3. New classes (new file `svg/page-runtime-svg.ts`)
 
@@ -89,14 +93,14 @@ LVGLSvgPage.componentDidMount
   └─ new SceneDump(wasmRef)  +  new SvgSink(svgEl, {w,h})
      └─ new LVGLSvgPageEditorRuntime(page, ctx, flowContext)   // ctx = proxy
         └─ runtime.mount()      → boots WASM (unchanged), schedules base rAF
-           every frame: base tick → our proxy.putImageData → onFrame()
+           every frame: base tick → proxy `putImageData` → `onFrame()`
                                    → (design mode) dump only if dirty → sink.update(scene)
 componentWillUnmount → runtime.unmount()   // base cancels rAF; sink teardown is ours
 ```
 
 - `mount()` still calls `preloadImages()` and the widget create pass (`widgets/Base.tsx lvglCreate`) —
   untouched, which is what guarantees layout truth.
-- Base `tick` has a silent `catch { /* canvas detached during unmount */ }` (`:1035`) — therefore **our
+- Base `tick` has a silent `catch { /* canvas detached during unmount */ }` (`:1035`) — therefore the
   `onFrame()` must never throw**; all failures are caught inside the proxy and logged once.
 
 ## 6. Update strategy (dirty tracking)
@@ -120,7 +124,7 @@ missed, configurable via `?svgStats=1`.
 
 | Path | Reason |
 |---|---|
-| `LVGLPageViewerRuntime` (`:1201`, run mode via `flow/runtime/wasm-runtime.tsx:302`) | decision D1 — Flow execution + animations keep pixel truth initially |
+| `LVGLPageViewerRuntime` (`:1201`, run mode via `flow/runtime/wasm-runtime.tsx:302`) | run mode stays pixel-truth; see [invariants §1.1](./invariants.md#11-run-mode-renders-on-the-canvas) |
 | Other LVGL versions (8.4.0 … 9.4.0) | only 9.5 is built with the dump function |
 | `LVGLStylesEditorRuntime` (`:1777`) | style-editor preview swatches — out of scope |
 | Pixel-preview toggle | permanent regression oracle |
@@ -168,7 +172,8 @@ Mitigation (`runtime-artifacts.ts`, additive):
    cannot be a timing artefact.
 3. `refreshLvglRuntimeArtifacts(version)` re-fetches the artifacts with `cache: "reload"`, latched per
    session so a per-frame failure cannot become a request storm.
-4. The user is told to reload — we do **not** reload for them, because the editor can hold unsaved edits.
+4. The page is not reloaded automatically: the editor can hold unsaved edits, so the reload is left to the
+   user. The notice states whether a normal reload suffices or a hard reload is required.
    After the refresh a plain F5 is enough; if the cache is refusing to update, the notice says to
    hard-reload (Ctrl+Shift+R).
 5. A post-mount timeout (2.5 s) re-checks `diagnose()`. This matters because the frame loop is
@@ -197,7 +202,7 @@ serving a modified `.wasm`:
 | network copy good, cached copy old (the reported Firefox case) | notice “the **cached** … has no scene dump. Hard-reload the page (Ctrl+Shift+R)” — no abort, no mount |
 | both good | mounts normally (`diagnose: "ok"`) |
 
-### 7b. The cache guard — fixing it for *every* LVGL surface
+## 7b. The cache guard — fixing it for *every* LVGL surface
 
 The pre-flight above only protects the SVG component. The abort is **not** specific to it: the reported
 trace went through `lvgl/Page.tsx:41` (the **canvas** `LVGLPage`), because that surface also mounts
@@ -240,6 +245,6 @@ Operational consequence: after rebuilding the LVGL runtime, deploying the files 
 |---|---|
 | Base code gains a new `ctx` call in future | Proxy fallback absorbs it; dev-mode unknown-member logging surfaces it |
 | Frame cost of the (still-allocated) `ImageData` | `?svgStats=1` measures; escalate to option B |
-| Errors swallowed by base `catch` | our `onFrame` never throws; own try/catch + `[lvgl-svg]` logging |
+| Errors swallowed by base `catch` | `onFrame` never throws; it has its own try/catch + `[lvgl-svg]` logging |
 | Widget code relying on canvas pixels (e.g. reading back the context) | verified none: `widget-common.tsx:70` only uses `instanceof`; no `getImageData` on the page ctx |
 | Page switch / re-mount | mirror `LVGLPage`'s `componentDidUpdate` re-create pattern; sink is re-created with the runtime |

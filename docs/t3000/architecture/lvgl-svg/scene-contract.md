@@ -1,7 +1,9 @@
-# LVGL SVG Renderer — Scene Contract (design)
+# LVGL SVG Renderer — Scene Contract
 
-Part of the [design set](./README.md). Status: **design, no code yet**.
-Additive-only: this contract is satisfied by **new** files; nothing here changes existing code.
+The exact data the WASM bridge hands to the SVG renderer, so the C side, the TypeScript renderer and the
+fixtures agree on one definition.
+
+Part of the [document set](./README.md).
 
 ---
 
@@ -107,7 +109,7 @@ type ScenePart = {
 | `img.align` | `lv_image_get_align` | emitted as `imgAlign`, the raw `LV_IMAGE_ALIGN_*` value; `imageAlignName()` maps it, because the enum order is not alphabetical and `10` has no public name |
 | `arc.start/end` | `lv_arc_get_*` | new reader, same file |
 | `objId`, `index` | TS side knows objID (`widgets/Base.tsx:1524 lvglCreate`); `index` from the dump order | no C work |
-| `name` | `getLvglObjectNameFromIndex` is `static const char *` (`flow.cpp:618`) — **not** exported and not visible from `studio_api.cpp`. Reach it via the Flow hooks (`flow.cpp:707`, `:748`) or add a small reader | small C work; **optional for P1** — `objId` is the identity the editor needs |
+| `name` | `getLvglObjectNameFromIndex` is `static const char *` (`flow.cpp:618`) — **not** exported and not visible from `studio_api.cpp`. Reach it via the Flow hooks (`flow.cpp:707`, `:748`) or add a small reader | optional; `objId` is the identity the editor needs |
 
 **Colour format — two layers, do not conflate them:**
 

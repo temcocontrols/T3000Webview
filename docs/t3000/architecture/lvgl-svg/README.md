@@ -1,67 +1,99 @@
-# LVGL SVG Renderer — design set
+# LVGL SVG Renderer
 
-**Scope:** Tstat11 / LVGL **9.5** editor — replace the design-time *canvas* rendering surface with *SVG*.
-**Branch:** `feature/lvgl-svg-renderer`
-**Status:** **P1, P2 and P3 are built.** The renderer, the WASM scene dump, the proxy context, the runtime
-subclasses and the flag-gated component all exist; 94 unit tests plus an 18-check WASM smoke test pass. The
-only edit to a pre-existing source file is the single flagged branch in `features/page/page.tsx`. Flag default
-is **OFF**, so the canvas path is what runs unless it is switched on.
+Architecture and reference documentation for the SVG rendering surface of the LVGL 9.5 page editor.
 
-Remaining: **P4** (selection/hit-testing), **P5** (fidelity scorecard), **P6** (default on for 9.5).
-D1–D4 are still formally open but the working defaults (D1a, D2a, D3a, D4a) are what is implemented.
-**Non-goal:** removing canvas from the product — it stays as the pixel-truth preview and run/flow renderer.
+**Subject.** The design-time rendering surface of LVGL pages. `LVGLPage` renders the LVGL WASM
+framebuffer into a `<canvas>`; the SVG surface renders the same LVGL object tree as DOM elements
+(`<svg class="lvgl-svg">` + `<g data-ptr>…`) from a scene dump taken from the running LVGL instance.
 
-> **Hard rule: additive only.**
-> New files, new functions, new classes. No deletions, no refactors. The single existing editor site that
-> would change is `features/page/page.tsx:930` (one flag-gated branch, default **OFF** → byte-identical
-> behaviour). See [decisions §2](./decisions.md) for the full contract.
+**Out of scope.** The canvas surface is not removed; it remains the pixel-truth reference for the
+fidelity harness, the renderer for run/flow mode, and the fallback for every LVGL version other than
+9.5.
 
 ---
 
-## Index
+## Document index
 
-| Doc | Contents |
+| Document | Contents |
 |---|---|
-| [plan](./plan.md) | verified create/import flows, the single canvas choke point, architecture, phases P0–P6, risks, guardrails |
-| [primitives](./primitives.md) | **measured** P0 — 40 widgets, the LVGL-9 part set (+`ANY`), all 115 `LV_STYLE_*` constants categorised, T1–T3 tiers |
-| [scene-contract](./scene-contract.md) | the dump payload: envelope, object, parts, field→bridge mapping, buffer protocol, fixtures |
-| [wasm-bridge](./wasm-bridge.md) | new C functions, encoding decisions, JS binding, build, perf budget, P1 checklist |
+| [architecture](./architecture.md) | Entry paths, the single rendering choke point, module inventory, integration seams, constraints |
+| [primitives](./primitives.md) | Measured inventory: 40 widgets, the LVGL 9 part set, `LV_STYLE_*` categorisation, T1–T3 tiers |
+| [scene-contract](./scene-contract.md) | The dump payload: envelope, object, parts, field→bridge mapping, buffer protocol |
+| [wasm-bridge](./wasm-bridge.md) | C functions, encoding rules, JS binding, build and propagation, performance budget |
 | [rendering](./rendering.md) | `svg/` modules, DOM contract, draw order, property→SVG rules, text, images, update strategy |
-| [runtime-integration](./runtime-integration.md) | the proxy-context seam, subclassing, lifecycle, dirty tracking, what stays on canvas |
-| [editor-integration](./editor-integration.md) | component contract, flag, the one touch point, selection/hit-testing, overlay, zoom/pan |
-| [fidelity-harness](./fidelity-harness.md) | canvas-as-oracle comparison, metrics, thresholds, scorecard, fixtures, invocation |
-| [decisions](./decisions.md) | D1–D4, additive contract, build integrity, sequencing, sign-off |
+| [runtime-integration](./runtime-integration.md) | Proxy-context seam, subclassing, lifecycle, repaint policy, failure modes |
+| [editor-integration](./editor-integration.md) | Component contract, feature flag, the single pre-existing edit site, hit-testing, overlay, zoom/pan |
+| [fidelity-harness](./fidelity-harness.md) | Canvas-as-oracle comparison, metrics, thresholds, scorecard, measured results |
+| [invariants](./invariants.md) | Scope boundaries, the additive contract, build integrity rules, behaviour guarantees |
 
-## Read in this order
+---
 
-1. [plan](./plan.md) — why the work is small (one choke point) and what happens when.
-2. [primitives](./primitives.md) — the measured surface area (the renderer is style-over-parts, not per-widget).
-3. [decisions](./decisions.md) — answer D1–D4 to unblock.
-4. [wasm-bridge](./wasm-bridge.md) + [rendering](./rendering.md) — the two build streams (P1 and P2).
+## Module map
 
-## Key verified facts
+```
+studio-wasm-libs/lvgl-runtime/common/src/svg_scene_dump.cpp   C: lvglDumpScene / lvglCountObjects
+studio-wasm-libs/build-lvgl-95.bat                            9.5-only build script
 
-- The **page editor runtime's** entire canvas use is 3 calls (`fillStyle`+`fillRect`, `putImageData`,
-  `clearRect`), so a **proxy 2-D context** hooks the frame with **zero** method overrides and **zero** edits to
-  `page-runtime.ts`.
-- New WASM functions **auto-export** (`EM_PORT_API` = `EMSCRIPTEN_KEEPALIVE`), so no export-list edit.
-- **No artifact in this repo** needs replacing for P1 — the LVGL runtime is built externally and served from
-  `eez-studio-wasm/wasm/lvgl/<ver>/`.
-- 31 of 40 widgets are pure style→SVG (T1); 5 are procedural (T3) and are decision D2.
-- Design mode has **two** canvas surfaces: the page surface (`features/page/page.tsx:930` — the SVG target)
-  and the **styles-editor preview** (`LVGLStylesEditorRuntime`, `page-runtime.ts:1777`) which stays on canvas
-  (see [runtime integration §1](./runtime-integration.md#1-the-seam-verified)).
+src/lib/t3-eez-studio/project-editor/lvgl/svg/
+    scene.ts                 Scene types + parseScene / walkScene / alphaOf / zoomOf / degreesOf
+    svg-renderer.ts          pure Scene -> draw tree (style-over-parts, not per-widget)
+    svg-sink.ts              owns <svg>, #defs, #content, #overlay; patching, notice, selection group
+    scene-dump.ts            lvglDumpScene binding, wire->Scene mapping, widget-model merge
+    svg-context.ts           createSvgContext(): the proxy 2D context (frame hook, optional mirror)
+    page-runtime-svg.ts      runtime subclasses + SvgPaintPipeline
+    paint-policy.ts          pure: when to dump the scene, when to touch the DOM
+    hit-test.ts              pure: pointer target -> object; click -> selection intent
+    overlay.ts               pure: selection frame + handle draw tree
+    feature-flag.ts          surface switch + development switches (svg / svgDiff / svgStats)
+    runtime-artifacts.ts     artifact URLs, byte-level inspection, cache refresh
+    runtime-cache-guard.ts   per-tab cache key for the runtime artifacts
+    svg-diff.ts              pure fidelity metrics (pixel diff, IoU, verdicts, scorecard)
+    svg-diff-harness.ts      browser capture of both surfaces + scorecard rows
+    LVGLSvgPage.tsx          React host for the surface
+    index.ts                 barrel
+```
 
-## Status
+Tests: `test/vitest/__tests__/lvgl-svg-*.test.ts` cover the pure modules; `lvgl-svg-captured.test.ts`
+replays a real dump frozen by `scripts/lvgl-svg-dump-smoke.mjs` (`test/vitest/fixtures/lvgl-svg/`).
 
-P0 (inventory) → P1 (bridge) → P2 (renderer) → P3 (integration) are **built and verified**, plus the first
-fidelity pass (object clipping + image natural size/alignment) and a hardening pass for the stale-cached-WASM
-failure that could leave the surface blank. Verified live against a real 13-page device project imported from
-a T3-LB controller: text, images at their true size and scrolled containers all draw.
-P4 (selection/hit-testing), P5 (fidelity scorecard) and P6 (default ON for 9.5 design mode) are outstanding —
-see [decisions §4](./decisions.md#4-sequencing--status).
+---
 
-## Next step
+## Data flow (one frame)
 
-**P4** — selection / hit-testing / overlay, so the SVG surface is editable, not just readable. The scene
-already labels every group with `data-ptr` / `data-objid` / `data-type`, which is what the overlay needs.
+```
+LVGL object tree (WASM)
+   │  lvglDumpScene(root, out, outLen)            C, bounds-checked JSON
+   ▼
+wire JSON ──► parseSceneDump() ──► Scene          scene-dump.ts
+                 │  + widget-model merge (text string, image source)
+                 ▼
+          renderScene(scene) -> { roots, defs }    svg-renderer.ts      (pure)
+                 ▼
+          SvgSink.update()                         svg-sink.ts          (keyed DOM patching)
+                 ▼
+          <svg class="lvgl-svg">  #defs | #content | #overlay
+```
+
+Frame trigger: the base runtime blits the LVGL framebuffer through `ctx`; the proxy context converts
+that call into a paint callback. Repaint timing is specified in
+[runtime-integration](./runtime-integration.md); the DOM contract is in
+[rendering](./rendering.md).
+
+---
+
+## Invariants
+
+1. **The surface is rendered from LVGL's resolved state.** Layout, colours, fonts and part geometry come
+   from the scene dump; nothing is re-derived in TypeScript.
+2. **Only the frame output is replaced.** The base runtime classes still boot WASM, build the widget tree
+   and run their own loops; the SVG runtimes subclass them and are used by the existing `instanceof`
+   checks.
+3. **A missing, stale or malformed scene dump never crashes the editor.** The surface reports the cause,
+   keeps the last painted scene, and the canvas path stays available. Nothing outside the SVG surface
+   depends on the dump.
+4. **Text strings and image sources come from the widget model; everything else comes from LVGL.**
+5. **The surface switch is reversible at runtime** and is only consulted after the LVGL version gate.
+6. **`renderScene` is pure data.** No DOM access, no WASM calls, no observable reads — which is what
+   allows the renderer to be tested without a browser.
+7. **The SVG nodes are the only place LVGL objects have DOM presence**, which is what makes DOM-based
+   hit-testing, selection overlay and the fidelity harness possible.

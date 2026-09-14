@@ -1,7 +1,10 @@
-# LVGL SVG Renderer — WASM Bridge Design
+# LVGL SVG Renderer — WASM Bridge
 
-Part of the [design set](./README.md). Status: **design, no code yet**.
-Additive-only: **new functions appended** to the shared bridge file; no existing function is edited.
+The C entry points that dump the LVGL object tree, the encoding rules, the JavaScript binding, and how the
+build propagates.
+
+Part of the [document set](./README.md). The bridge is a new translation unit; no existing function is
+edited.
 
 ---
 
@@ -9,11 +12,11 @@ Additive-only: **new functions appended** to the shared bridge file; no existing
 
 | Item | Location | Change type |
 |---|---|---|
-| New dump functions + helpers | **new file** `studio-wasm-libs/lvgl-runtime/common/src/svg_scene_dump.cpp` | ✅ built — new translation unit, **no existing file edited** |
-| Build | **new** `studio-wasm-libs/build-lvgl-95.bat` (9.5 only) | ✅ — the v9.5 CMake globs `common/src`, so nothing else changed |
-| Artifact propagation | CMake install → `studio-wasm-libs/release/wasm/` → `api/build.rs:99,109` → `wasm/lvgl/9.5.0/` | ✅ verified, no source edit |
-| JS binding | `project-editor/lvgl/svg/scene-dump.ts` | ✅ built |
-| Verification | **new** `scripts/lvgl-svg-dump-smoke.mjs` — runs the real WASM in Node | ✅ all checks pass; it also freezes `captured-9.5.0.json`, the real dump the tests replay |
+| New dump functions + helpers | **new file** `studio-wasm-libs/lvgl-runtime/common/src/svg_scene_dump.cpp` | new translation unit; no existing file edited |
+| Build | **new** `studio-wasm-libs/build-lvgl-95.bat` (9.5 only) | the v9.5 CMake globs `common/src`, so nothing else changes |
+| Artifact propagation | CMake install → `studio-wasm-libs/release/wasm/` → `api/build.rs:99,109` → `wasm/lvgl/9.5.0/` | no source edit |
+| JS binding | `project-editor/lvgl/svg/scene-dump.ts` | new file |
+| Verification | `scripts/lvgl-svg-dump-smoke.mjs` — runs the real WASM in Node | also freezes `captured-9.5.0.json`, the real dump the tests replay |
 
 `common/` is shared by v8.4.0 … v9.5.0, so every new function is wrapped in
 `#if LVGL_VERSION_MAJOR >= 9` and returns a negative code otherwise. Only the **9.5** artifact is built
@@ -69,7 +72,7 @@ confirms `EMSCRIPTEN_KEEPALIVE` is what exports these symbols.
 | Decision | Choice | Why |
 |---|---|---|
 | Colour | emit the **raw uint32** from `lvglObjGetStylePropColor` (**wire** format) | zero C-side formatting; smaller payload. `scene-dump.ts` converts it to `#rrggbb` for the Scene, reusing the existing TS colour helpers, so LVGL's byte order is defined in exactly one place — the renderer only ever sees `#rrggbb` |
-| Byte order | **confirmed in P1** with a known-colour fixture (assert round-trip) | LVGL stores colour in a 32-bit struct; do not assume |
+| Byte order | asserted against a known colour in the smoke test (round-trip) | LVGL stores colour in a 32-bit struct; it must not be assumed |
 | Text | UTF-8 JSON string, escaped | labels are the only place with arbitrary bytes |
 | Omission | absent field = LVGL default | payload size; renderer treats absence as "do not draw" |
 | Numbers | integers where LVGL is integral; floats for `angle`/`zoom` | matches LVGL semantics |
@@ -146,10 +149,11 @@ export class SceneDump {
 | Malformed JSON | parse in try/catch; on failure keep last scene |
 | Buffer thrash | grow ×2; if > 1 MB, log and stop growing (dump skipped) |
 
-## 8. P1 acceptance checklist
+## 8. Bridge requirements
 
-- [ ] `_lvglDumpScene`, `_lvglGetActiveScreen`, `_lvglCountObjects` are visible on the module object.
-- [ ] Dump of a fixture page contains every object, correct `area`, correct parent/child order.
-- [ ] Colour round-trip asserted against a known colour.
-- [ ] 1000 consecutive dumps show no heap growth and stay within the time budget.
-- [ ] Existing canvas rendering is byte-identical before/after the rebuild (no regression from the appended code).
+- `_lvglDumpScene` and `_lvglCountObjects` are visible on the module object without editing the export list.
+- The dump of a page contains every object, with correct `area` and correct parent/child order.
+- A colour round-trip against a known colour is asserted, so the byte order is defined by a test rather
+  than by assumption.
+- Repeated dumps do not grow the heap and stay within the time budget of §6.
+- Canvas rendering is unchanged by the added translation unit.

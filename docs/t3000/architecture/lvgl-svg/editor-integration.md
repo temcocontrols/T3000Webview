@@ -1,7 +1,10 @@
-# LVGL SVG Renderer — Editor Integration Design
+# LVGL SVG Renderer — Editor Integration
 
-Part of the [design set](./README.md). Status: **design, no code yet**.
-Additive-only: one flagged branch in existing code (§3); everything else is new files.
+The surface component, its feature flag, the single pre-existing edit site, and the editing behaviour the
+surface provides (hit-testing, selection overlay, zoom/pan).
+
+Part of the [document set](./README.md). One flagged branch exists in pre-existing code
+([§3](#3-the-single-pre-existing-edit-site)); everything else is new files.
 
 ---
 
@@ -45,41 +48,45 @@ export function isSvgRendererEnabled(projectStore?): boolean
 
 Precedence (first match wins):
 
-1. URL `?svg=1` / `?svg=0` — per-session override for testing (survives the HashRouter query handling used
-   elsewhere in this app, e.g. `EezStudioApp.tsx:215-219`).
+1. URL `?svg=1` / `?svg=0` — per-session override, read from the query whether it appears in
+   `location.search` or inside the hash (`EezStudioApp.tsx:215-219` reads its own parameters the same way).
 2. `localStorage["t3.lvgl.svgRenderer"]` = `"1"` / `"0"`.
-3. Default **OFF**.
+3. Default: **enabled** for the supported LVGL version; the version gate is applied by the caller before the
+   flag is consulted.
 
-**Deliberately not** a project-settings field: that would change the `.eez-project` schema, which is shared
-with the device/firmware tooling. Keeping the flag out of the project file also means the same project can
-be opened with or without SVG.
+The flag is not a project-settings field: that would change the `.eez-project` schema, which is shared with
+the device/firmware tooling. Keeping the choice out of the project file also allows one project to be opened
+with or without the SVG surface.
 
-## 3. The single touch point
+## 3. The single pre-existing edit site
 
-| Site | Change | Flag OFF |
+| Site | Change | With the flag off |
 |---|---|---|
-| `project-editor/features/page/page.tsx:930` — `<LVGLPage page={this} flowContext={flowContext} />` inside the `isLVGL` branch (`:923-931`) | `isSvgRendererEnabled() ? <LVGLSvgPage …/> : <LVGLPage …/>` | code path identical to today |
+| `project-editor/features/page/page.tsx` — `<LVGLPage page={this} flowContext={flowContext} />` inside the `isLVGL` branch (`:923-931`) | the branch also checks the LVGL version and renders `<LVGLSvgPage …/>` instead | identical code path |
 
-Why unavoidable: `LVGLPage` is imported directly at `page.tsx:73`; there is no registry indirection for the
-page component (unlike the runtime, which *is* registered via `project-editor-create.tsx:227`).
+This is unavoidable: `LVGLPage` is imported directly at `page.tsx:73`, and there is no registry
+indirection for the page component — unlike the runtime, which *is* registered through
+`project-editor-create.tsx:227`.
 
-**Alternative with zero source edits:** a Vite/barrel alias so `project-editor/lvgl/Page` resolves to the new
-component. Config-only, but **global** (no per-user flag, no A/B on one machine) and it hides the choice from
-readers. Recommendation: the flagged branch (decision D4).
+The alternative, a build-time Vite/barrel alias resolving `project-editor/lvgl/Page` to the new component,
+needs no source edit but is global (no per-user override) and hides the choice from a reader of the branch.
 
 ## 4. Selection & hit-testing
 
-- Every object group carries `data-objid` (see [rendering design](./rendering.md#3-dom-contract)),
-  so a DOM `click`/`pointerdown` maps straight to the project widget.
-- Hit-testing uses the browser's own SVG hit-testing (no manual geometry): only `MAIN` and interactive parts
-  receive pointer events.
-- Selection actions reuse the existing editor selection model and actions. **P4 target (located):**
-  `project-editor/flow/editor/context.tsx`, `mouse-handler.tsx`, `flow-document.tsx`, `editor.tsx`,
-  `bounding-rects.ts` — route SVG pointer events into the same path, so undo/redo, multi-select modifiers,
-  keyboard shortcuts and property-panel sync keep working unchanged. `bounding-rects.ts` is a candidate to
-  reuse for the overlay geometry.
-- Because SVG nodes are real elements, selection rectangles and per-object overlays can be derived from the
-  DOM rather than from a model round-trip (an advantage over the canvas path).
+- Every object group carries `data-ptr` and `data-objid` (see [rendering §3](./rendering.md#3-dom-contract)),
+  so a DOM `pointerdown` maps directly to the project widget.
+- Hit-testing uses the browser's own SVG hit-testing rather than manual geometry: the pointer event's
+  target is walked up to the nearest annotated group (`hit-test.ts`), so no coordinate arithmetic and no
+  LVGL round-trip is involved.
+- Selection goes through the existing editor model. The integration points are
+  `flow/editor/{context.tsx,flow-document.tsx,editor.tsx,bounding-rects.ts}`:
+  `document.findObjectById(getId(widget))` produces the adapter and `viewState.selectObject` /
+  `selectObjects` / `deselectAllObjects` apply it, so undo/redo, the property panel, the widgets tree and
+  modifier handling behave exactly as they do elsewhere in the editor.
+- The selected objects' rectangles are taken from the scene (`area`), which is also the coordinate space of
+the `<svg>` viewBox — no projection through the viewport transform is needed.
+- Because SVG nodes are real elements, per-object boxes can also be read back from the DOM
+  (`getBBox()`), which is what the fidelity harness uses for its `bboxIoU` comparison.
 
 ## 5. Overlay (`<g id="overlay">`)
 
@@ -90,7 +97,7 @@ Drawn **after** `#content`, so it is always on top:
 | Selection outline + handles | selected objects' `area` (scene) or node `getBBox()` |
 | Marquee | pointer drag in empty space |
 | Guides / rulers / snap lines | existing editor behaviour, re-expressed as SVG |
-| Failure notice (`<g id="notice">`) | `SvgSink.showNotice()` — already implemented; the only overlay content before P4. A blank surface must explain itself (see [runtime integration §7a](./runtime-integration.md#7a-failure-modes-why-the-surface-can-be-blank-and-what-it-does-about-it)) |
+| Failure notice (`<g id="notice">`) | `SvgSink.showNotice()` — a short message shown when the surface cannot paint, and the only overlay content that exists independently of a selection (see [runtime integration §7a](./runtime-integration.md#7a-failure-modes-why-the-surface-can-be-blank-and-what-it-does-about-it)) |
 
 This is the piece that later becomes the **shared overlay for the HVAC merge** — an SVG overlay works above
 either substrate, which is exactly why the SVG direction was chosen.
@@ -101,19 +108,28 @@ Wrap `#content` in `<g transform="translate(tx,ty) scale(k)">` driven by the exi
 (`flowContext.viewState.transform`). Improvement over the canvas path: the existing component switches to
 `imageRendering: "pixelated"` above 2× zoom (`lvgl/Page.tsx:88-92`) — SVG stays crisp at any zoom.
 
-## 7. Interaction parity checklist (P4 acceptance)
+## 7. Interaction behaviour
 
-- [ ] Click select, ctrl/shift multi-select, click-empty deselect
-- [ ] Drag move, nudge with arrows, resize, rotate (where supported today)
-- [ ] Z-order operations reflect immediately
-- [ ] Property panel edits repaint the surface
-- [ ] Undo/redo replays visual state correctly
-- [ ] Page switch while selected → clean teardown, no orphan nodes
-- [ ] Zoom/pan identical bounds/behaviour to canvas mode
+Behaviour the surface provides, and the constraints it must respect:
 
-## 8. Out of scope (deliberately)
+- Click selects; ctrl/meta/shift click adds to or removes from the selection; a click on empty space clears
+  it (`hit-test.ts`).
+- Move, resize and rotate are performed through the property panel and the widgets tree. The surface does
+  not implement drag handles — the canvas path has no such interaction either, so there is no parity gap.
+  The `data-ptr`/`data-objid` attributes are in place if drag handling is added later, since the editor's
+  own mouse handlers resolve their target from `[data-eez-flow-object-id]` attributes.
+- Z-order changes and property-panel edits repaint the surface: repaint is polled on the frame heartbeat and
+  the DOM is only patched when the dumped scene changes ([rendering §8](./rendering.md)).
+- Undo/redo replays visual state, because selection and edits go through the editor's own history.
+- Switching pages tears the surface down cleanly: the runtime is unmounted, the sink clears `#content`, the
+  notice and selection groups are removed, and the scratch buffer is freed.
+- Zoom and pan are unchanged: the `<svg>` sits inside the container that already applies the view transform,
+  and its `viewBox` is in page units, so the surface stays crisp instead of being resampled.
 
-- Run mode (`LVGLPageViewerRuntime`) — decision D1.
+## 8. Out of scope
+
+- Run mode (`LVGLPageViewerRuntime`) — renders on the canvas; see
+  [invariants §1.1](./invariants.md#11-run-mode-renders-on-the-canvas).
 - LVGL versions other than 9.5.
 - Changing any existing editor behaviour, chrome, menus or project format.
 - Removing the canvas path — it stays as the pixel-preview oracle.

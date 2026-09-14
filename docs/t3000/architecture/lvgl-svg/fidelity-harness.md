@@ -1,7 +1,10 @@
-# LVGL SVG Renderer — Fidelity Harness Design
+# LVGL SVG Renderer — Fidelity Harness
 
-Part of the [design set](./README.md). Status: **design, no code yet**.
-Additive-only: new `svg/svg-diff.ts` + new fixtures; no existing test or component is modified.
+How the SVG surface is compared against the canvas surface: the method, the metrics, the thresholds, the
+scorecard format, and the measured results.
+
+Part of the [document set](./README.md). The metrics (`svg-diff.ts`) are pure and unit-tested; only the
+capture of the two surfaces (`svg-diff-harness.ts`) needs a browser.
 
 ---
 
@@ -43,7 +46,7 @@ without eyeballing images.
 |---|---|---|
 | T1 (style-only, 31 widgets) | label, panel, button, slider, switch, bar, arc, image, … | `pixelDiffPct ≤ 0.5%` and `bboxIoU ≥ 0.99` |
 | T2 (animated/layered) | spinner, animation image, scale, meter | `pixelDiffPct ≤ 2%`; AA/phase differences documented |
-| T3 (procedural) | chart, qrcode, colorwheel, lottie, canvas | excluded until decision D2 |
+| T3 (procedural) | chart, qrcode, colorwheel, lottie, canvas | excluded from the surface, so not measured |
 
 Known, accepted deltas are **recorded, not hidden**: font hinting/anti-aliasing, shadow blur, blend modes,
 dithering, background tiling.
@@ -72,18 +75,18 @@ A markdown table printed to the console **and** downloadable from the dev panel:
 |---|---|---|---|---|---|---|---|
 | slider | INDICATOR | indicators | 0.12% | 9 | 1.000 | pass | |
 | slider | KNOB | indicators | 0.41% | 12 | 0.997 | pass | AA edge |
-| chart | MAIN | dashboard | 14.8% | 190 | 0.981 | excluded | D2 |
+| chart | MAIN | dashboard | 14.8% | 190 | 0.981 | excluded | procedural draw |
 
-This table is the P5 gate artefact and the living record of known deltas.
+This table is the gate artefact and the record of accepted deltas.
 
 ## 7. Invocation
 
 | Mode | How |
 |---|---|
-| Dev, single page | `?svg=1&svgDiff=1` → harness runs after the first paint and on demand |
-| Dev, all fixtures | `?svg=1&svgDiff=all` → iterate fixtures, emit the full scorecard |
-| Dev, perf | `?svg=1&svgStats=1` → dump ms, patch ms, node count per change |
-| CI | **not** initially: jsdom has no WASM/canvas. Optional later phase: a Playwright runner that loads the app and calls the same harness (additive, no app changes) |
+| Single page | `?svgDiff=1` — the harness runs after each paint and publishes its result on `globalThis.__lvglSvgScorecard` |
+| `=all` form | `?svgDiff=all` is recognised for iterating fixtures |
+| Perf | `?svgStats=1` — dump ms, patch ms, node count per change |
+| CI | not used: jsdom has no WASM or canvas. A runner would load the app (e.g. Playwright) and call the same harness |
 
 ## 8. Why this is trustworthy
 
@@ -92,10 +95,69 @@ This table is the P5 gate artefact and the living record of known deltas.
   SVG layer, i.e. fixable in new code only.
 - Failures are localised to widget+part, so regressions can be triaged without reading images.
 
-## 9. Harness acceptance (P5)
+## 9. Harness requirements
 
-- [ ] All T1 widgets pass on all five fixtures
-- [ ] T2 deltas measured and listed with a note
-- [ ] T3 widgets listed as excluded, pending D2
-- [ ] Scorecard committed as the fidelity record for the branch
-- [ ] Re-running the harness after ≥ 10 editor actions leaves the scorecard unchanged (no state leaks)
+- Reference pixels come from the same LVGL run that produced the SVG (no second runtime, no re-layout).
+- The comparison is reproducible from a frozen fixture where one exists, and from a dev run otherwise.
+- Per-row results are localised to a widget and a part, so a regression can be triaged without reading an
+  image.
+- T3 widgets are reported as `excluded` rather than failed.
+- Warming up the surface must not change the scorecard: rerunning after editor actions yields the same
+  numbers for an unchanged page.
+- Known, accepted deltas are recorded in the scorecard note column rather than suppressed.
+
+## 10. Measured result: background discrepancy (unresolved)
+
+`?svgDiff=1` on an imported T3-LB controller project, page `start_up_screen`, surface 480×320:
+
+| Widget | Part | Source | pixelDiffPct | maxΔ | bboxIoU | Verdict |
+|---|---|---|---|---|---|---|
+| screen | MAIN | start_up_screen | 85.63% | 255 | 1.000 | fail |
+| panel | MAIN | start_up_screen | 85.63% | 255 | 1.000 | fail |
+| label | MAIN | start_up_screen | 95.09% | 255 | 0.834 | fail |
+| label | MAIN | start_up_screen | 97.27% | 255 | 0.900 | fail |
+
+Whole surface: 85.63% of pixels differ, mean channel delta 26.5, max 255.
+
+Geometrically the two surfaces agree — `bboxIoU` is 1.000 for the screen and panel, and 0.83–0.90 for the
+labels, which is the expected text-metric difference. The pixel failure is dominated by a single
+condition: **the SVG paints a screen background where the LVGL framebuffer is black.**
+
+Measurements:
+
+| Measurement | Value |
+|---|---|
+| Reference (mirrored framebuffer) average colour | `3,3,3,255` — near black, fully opaque |
+| SVG average colour | `36,36,36,255` |
+| Screen background painted by the SVG | `#272727` (`39,39,39`) |
+| Reference pixels brighter than 10/255 | 5084 of 153600 (3.3%) |
+| Real canvas, same measurement | 5084 of 153600, identical samples — the reference is faithful |
+| C emitter (`svg_scene_dump.cpp:120`) | `svgWColorIf` drops a colour when `opa == 0`, so a fully transparent paint emits neither `bgColor` nor `bgOpa` |
+
+A background is therefore painted by exactly one of the two surfaces. The possible causes are opposites:
+
+1. **The SVG paints a background LVGL does not.** The screen's `bgOpa` resolves non-zero in the dump while
+   LVGL draws nothing (a transparent screen over the display's black clear colour).
+2. **The canvas renders without its theme.** The LVGL styles are correct (`#272727`) but the framebuffer is
+   cleared black, in which case the dump is right and the canvas is wrong.
+
+Discriminating test: read the screen's `MAIN` part from `dumper.dump(rootPtr)` and check whether
+`bgColor`/`bgOpa` are present, then repeat on a light-theme page — a black canvas there also indicates
+case 2.
+
+Until this is resolved, the per-widget percentages above are dominated by this one difference and do not
+measure widget-level fidelity. This is the intended reading of the `bboxIoU` column: the boxes agree and
+the pixels do not, so the fault is in a fill or a binding rather than in layout.
+
+## 11. Capture details
+
+- The reference comes from the *same* LVGL run: the proxy context normally discards the `ImageData` it is
+  handed; with the harness enabled it mirrors that frame into an offscreen canvas. No second runtime and no
+  second layout pass is involved.
+- A serialised SVG cannot load external images, so `serializeSvg` records that as a warning instead of
+  silently comparing against empty pixels.
+- The surface is rasterised with an explicit size and a white backdrop: a detached clone has no layout, and
+  transparent areas would otherwise compare against an unset canvas.
+- Per-object rows restrict the pixel comparison to that object's `area`, which is what localises a failure
+  to a widget and a part.
+
