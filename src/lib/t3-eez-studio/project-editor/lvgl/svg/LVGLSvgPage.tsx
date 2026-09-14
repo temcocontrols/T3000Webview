@@ -1,0 +1,532 @@
+/**
+ * LVGL 9 SVG renderer — React host (P3).
+ *
+ * ADDITIVE: new file. Mirrors `lvgl/Page.tsx` (same props, same lifecycle, same visual
+ * decorations) so it is a drop-in alternative selected by the feature flag.
+ *
+ * Shape matters: `LVGLPage` is an `observer` class component with `static contextType =
+ * ProjectContext` that reads observables in `render()` and branches on `this.context.runtime`.
+ * A thin function component would silently lose all three, so this mirrors that structure.
+ *
+ * The DOM contract is in docs/t3000/architecture/lvgl-svg/rendering.md §3: `<defs>`, `#content` and
+ * `#overlay` are created and owned imperatively by `SvgSink` (not by JSX), so React never fights the
+ * patcher over children it did not render.
+ */
+
+import React from "react";
+import { observer } from "mobx-react";
+
+import { ProjectContext } from "project-editor/project/context";
+import type { Page } from "project-editor/features/page/page";
+import type { IFlowContext } from "project-editor/flow/flow-interfaces";
+import { settingsController } from "home/settings";
+import { ProjectEditor } from "project-editor/project-editor-interface";
+import type { LVGLPageRuntime } from "project-editor/lvgl/page-runtime";
+
+import { SceneDump } from "./scene-dump";
+import type { SceneDumpWasm, SceneWidgetInfo, SceneWidgetLookup } from "./scene-dump";
+import { SvgSink } from "./svg-sink";
+import { createSvgContext } from "./svg-context";
+import {
+    LVGLSvgNonActivePageViewerRuntime,
+    LVGLSvgPageEditorRuntime,
+} from "./page-runtime-svg";
+import type { SvgPaintFailure, SvgPipeline } from "./page-runtime-svg";
+import { SVG_RENDERER_SUPPORTED_VERSION } from "./feature-flag";
+import {
+    inspectLvglRuntimeArtifacts,
+    refreshLvglRuntimeArtifacts,
+} from "./runtime-artifacts";
+import { installLvglRuntimeCacheGuard } from "./runtime-cache-guard";
+
+/*
+ * Installed at module scope, and `page.tsx` imports this module statically, so it is in place before
+ * any LVGL surface mounts — including the canvas page, which this file does not control and which
+ * aborts on a stale cached artifact just as loudly (see runtime-cache-guard.ts).
+ */
+installLvglRuntimeCacheGuard();
+
+type SvgRuntime = LVGLSvgPageEditorRuntime | LVGLSvgNonActivePageViewerRuntime;
+
+/**
+ * `LVGLLabelWidget` → `label`.
+ *
+ * Only used for `data-type` (debugging and hit-testing); nothing in the renderer branches on it.
+ * Obtained by deriving from the class name rather than reaching into per-widget class info, which
+ * keeps this component free of widget-specific knowledge.
+ */
+function subTypeOf(className: string): string {
+    return className.replace(/^LVGL/, "").replace(/Widget$/, "").toLowerCase();
+}
+
+/**
+ * Build the LVGL pointer → widget-model index for the scene enrichment.
+ *
+ * The runtime already holds `widget._lvglObj` for every widget it created, so identity, type, name
+ * and the label string need no cooperation from the C side. Widgets LVGL creates internally (for
+ * example a tabview's burrowed tab bar) simply have no entry and are still rendered.
+ *
+ * The index is built **lazily on first lookup**, not when the component is constructed: widget
+ * `_lvglObj` pointers are only assigned while the runtime mounts and creates the LVGL objects, so
+ * an index built at construction time is empty. If the first build yields nothing, one retry
+ * happens — enough to cover "looked up before mount finished" without rebuilding on every miss
+ * (LVGL-internal objects legitimately have no widget).
+ */
+function buildWidgetLookup(page: Page, project: unknown): SceneWidgetLookup {
+    let index: Map<number, SceneWidgetInfo> | undefined;
+    /** widget `image` is an ASSET NAME (e.g. "wifisym"); this maps it to the bitmap data URI. */
+    const imageData = new Map<string, string>();
+
+    const resolveImageData = (name: string): string | undefined => {
+        if (!name) {
+            return undefined;
+        }
+        if (imageData.size === 0) {
+            // Same asset map the runtime uses in `preloadImages()`
+            // (`project._assets.maps.name.getAllObjectsOfType("bitmaps")`).
+            const maps = (project as any)?._assets?.maps?.name;
+            const bitmaps: unknown[] =
+                typeof maps?.getAllObjectsOfType === "function"
+                    ? maps.getAllObjectsOfType("bitmaps")
+                    : [];
+            for (const entry of bitmaps) {
+                const record = entry as { name?: string; object?: { image?: unknown } };
+                const data = record?.object?.image;
+                if (record?.name && typeof data === "string" && data.length > 0) {
+                    imageData.set(record.name, data);
+                }
+            }
+        }
+        return imageData.get(name);
+    };
+
+    const build = (): Map<number, SceneWidgetInfo> => {
+        const map = new Map<number, SceneWidgetInfo>();
+        const widgets =
+            (page as unknown as { _lvglWidgets?: unknown[] })._lvglWidgets ?? [];
+
+        for (const widget of widgets) {
+            const record = widget as {
+                _lvglObj?: number;
+                objID?: string;
+                name?: string;
+                type?: string;
+                hidden?: boolean;
+                text?: unknown;
+                image?: unknown;
+                imageReleased?: unknown;
+            };
+            const ptr = record._lvglObj;
+            if (!ptr) {
+                continue;
+            }
+            const info: SceneWidgetInfo = {};
+            if (record.objID) {
+                info.objId = record.objID;
+            }
+            if (typeof record.type === "string") {
+                info.type = subTypeOf(record.type);
+            }
+            if (record.name) {
+                info.name = record.name;
+            }
+            if (record.hidden) {
+                info.hidden = true;
+            }
+            // Labels (and the label children buttons are built from) expose `.text`. Font/colour
+            // come from the LVGL dump; anything more specific is left to the fidelity work in P5.
+            if (typeof record.text === "string" && record.text.length > 0) {
+                info.text = { str: record.text };
+            }
+            /*
+             * Image sources. `LVGLImageWidget` carries `image`; `LVGLImgbuttonWidget` carries one
+             * per state and "released" is the design-time default. Both are ASSET NAMES, so they
+             * must be resolved to the bitmap's data URI before they can be an <image href>.
+             * Without this, images silently never appeared — no <image> element was ever emitted.
+             */
+            const typeName = typeof record.type === "string" ? record.type : "";
+            if (typeName.indexOf("Image") !== -1 || typeName.indexOf("Imgbutton") !== -1) {
+                const raw =
+                    (typeof record.image === "string" && record.image) ||
+                    (typeof record.imageReleased === "string" && record.imageReleased) ||
+                    "";
+                const data = raw ? resolveImageData(raw) : undefined;
+                if (data) {
+                    info.img = { srcId: data };
+                }
+            }
+            map.set(ptr, info);
+        }
+        return map;
+    };
+
+    return ptr => {
+        if (!index) {
+            index = build();
+        }
+        let found = index.get(ptr);
+        if (!found && index.size === 0) {
+            index = build();
+            found = index.get(ptr);
+        }
+        return found;
+    };
+}
+
+export const LVGLSvgPage = observer(
+    class LVGLSvgPage extends React.Component<{
+        page: Page;
+        flowContext: IFlowContext;
+    }> {
+        static contextType = ProjectContext;
+        declare context: React.ContextType<typeof ProjectContext>;
+
+        private svgRef = React.createRef<SVGSVGElement>();
+        private runtime: SvgRuntime | undefined;
+        private sink: SvgSink | undefined;
+        private dumper: SceneDump | undefined;
+        /** First failure time, so a boot race is not reported as a broken surface. */
+        private failureStartedAt = 0;
+        /** Reasons already explained in the console, so a per-frame failure logs once. */
+        private readonly reportedReasons = new Set<string>();
+        /** The stale-runtime refresh runs at most once per mounted surface. */
+        private staleRuntimeRecoveryStarted = false;
+
+        createPageRuntime() {
+            const { page, flowContext } = this.props;
+            const svg = this.svgRef.current;
+            if (!svg) {
+                return;
+            }
+
+            const width = this.displayWidth();
+            const height = this.displayHeight();
+
+            this.sink = new SvgSink(svg, { w: width, h: height });
+            // The WASM module only exists once the base runtime has booted it, so resolution is
+            // deferred: before that, isAvailable() is false and dump() returns undefined.
+            this.dumper = new SceneDump(() => this.wasmModule());
+
+            const ctx = createSvgContext({
+                onFrame: () => this.runtime?.paintScene(),
+                onClearPage: () => this.sink?.clearPage(),
+                onUnexpectedMember: member => {
+                    // Surfaces a future base-class canvas call instead of hiding it.
+                    console.debug(
+                        `[lvgl-svg] unexpected canvas member "${member}" (ignored)`
+                    );
+                },
+            });
+
+            this.runtime = this.context.runtime
+                ? new LVGLSvgNonActivePageViewerRuntime(
+                      page,
+                      width,
+                      height,
+                      ctx
+                  )
+                : new LVGLSvgPageEditorRuntime(page, ctx, flowContext);
+
+            const pipeline: SvgPipeline = {
+                sink: this.sink,
+                dumper: this.dumper,
+                lookup: buildWidgetLookup(page, this.context.project),
+                onPaintFailed: info => this.handlePaintFailure(info),
+            };
+            this.runtime.attachSvgPipeline(pipeline);
+            void this.mountWhenArtifactsAreUsable();
+            this.exposeDevHandle();
+        }
+
+        /**
+         * Boot the runtime only once the artifacts it is about to load are known to be current.
+         *
+         * A `.wasm` older than the glue JavaScript makes Emscripten's `assignWasmExports` assert and
+         * abort the module, and because `mount()` returns nothing that abort reaches the console as an
+         * uncaught promise rejection — it cannot be caught, and it happens *before* any of the runtime
+         * diagnostics below can report anything. So this is checked up front, on the bytes.
+         */
+        private async mountWhenArtifactsAreUsable(): Promise<void> {
+            const runtime = this.runtime;
+            if (!runtime) {
+                return;
+            }
+
+            const status = await inspectLvglRuntimeArtifacts(
+                SVG_RENDERER_SUPPORTED_VERSION
+            );
+
+            // The page may have been switched while the artifacts were being checked.
+            if (this.runtime !== runtime) {
+                return;
+            }
+
+            if (status === "stale-server" || status === "stale-cache") {
+                // Mounting would abort inside the glue. Explain the real cause instead, and leave
+                // the surface empty rather than half-initialised.
+                this.reportUnusableArtifacts(status);
+                return;
+            }
+
+            runtime.mount();
+            this.scheduleRuntimeCheck();
+        }
+
+        /** The artifacts cannot work: say why, in the terms of whoever can fix it. */
+        private reportUnusableArtifacts(
+            status: "stale-server" | "stale-cache"
+        ): void {
+            const version = SVG_RENDERER_SUPPORTED_VERSION;
+            const detail =
+                status === "stale-server"
+                    ? [
+                          `LVGL SVG surface: the served lvgl_runtime_v${version}.wasm has no scene dump.`,
+                          "The deployed 9.5 runtime is older than this editor build.",
+                      ]
+                    : [
+                          `LVGL SVG surface: the cached lvgl_runtime_v${version}.wasm has no scene dump.`,
+                          "Hard-reload the page (Ctrl+Shift+R) to pick up the current build.",
+                      ];
+            console.error(`[lvgl-svg] ${detail[0]} (${status})`);
+            this.sink?.showNotice(detail.join("\n"));
+        }
+
+        /**
+         * Dev-only inspection handle (`globalThis.__lvglSvg`).
+         *
+         * A blank surface is indistinguishable from an empty page from the outside, and the fidelity
+         * harness (P5) needs the sink and the dumper anyway, so this is the smallest way to make both
+         * reachable from the console. Not present in production builds.
+         */
+        private exposeDevHandle(): void {
+            if (!import.meta.env?.DEV) {
+                return;
+            }
+            (globalThis as any).__lvglSvg = {
+                sink: this.sink,
+                dumper: this.dumper,
+                runtime: this.runtime,
+                wasm: () => this.wasmModule(),
+                diagnose: () => this.dumper?.diagnose(),
+                /** Force the stale-runtime path (verifies the notice without a stale cache). */
+                reportStale: () => void this.handleStaleRuntime(),
+            };
+        }
+
+        /**
+         * A failed paint must never be silent: a blank surface looks like an empty page.
+         *
+         * Boot races (`no-root`, `no-module`, `not-booted`) are waited out — the base runtime is
+         * still initialising WASM — while `no-dump` is acted on immediately, because a booted module
+         * without `lvglDumpScene` can only mean a stale cached `.wasm` (see `runtime-artifacts.ts`).
+         */
+        private handlePaintFailure(info: SvgPaintFailure): void {
+            if (info.attempts <= 1) {
+                this.failureStartedAt = Date.now();
+            }
+
+            if (info.reason === "no-dump") {
+                void this.handleStaleRuntime();
+                return;
+            }
+
+            const elapsed = Date.now() - this.failureStartedAt;
+            if (info.transient) {
+                // Normally resolves within a frame or two; only complain if it really drags on.
+                if (elapsed > 2000) {
+                    this.notifyOnce(
+                        "boot",
+                        "Waiting for the LVGL runtime to start…"
+                    );
+                }
+                return;
+            }
+
+            this.notifyOnce(
+                info.reason,
+                "The LVGL scene dump returned an unusable payload (see the console)."
+            );
+        }
+
+        /** Show a message in the overlay and log the cause once. */
+        private notifyOnce(key: string, message: string): void {
+            if (!this.reportedReasons.has(key)) {
+                this.reportedReasons.add(key);
+                console.warn(`[lvgl-svg] ${message}`);
+            }
+            this.sink?.showNotice(message);
+        }
+
+        /**
+         * The loaded 9.5 WASM has no scene dump, so the SVG surface cannot paint.
+         *
+         * The glue JavaScript is always fetched with `cache: "no-store"` but the `.wasm` binary is
+         * fetched from a plain URL that is served without `Cache-Control`/`ETag`, so a browser may
+         * keep using an old binary indefinitely (heuristic freshness). Re-fetch the artifacts with
+         * the cache bypassed so the stored entry is replaced, and tell the user to reload — the
+         * reload is left to them because the editor may hold unsaved edits.
+         */
+        private async handleStaleRuntime(): Promise<void> {
+            const version = SVG_RENDERER_SUPPORTED_VERSION;
+            if (this.staleRuntimeRecoveryStarted) {
+                // Recovery already ran for this tab. Keep the instruction on screen instead of
+                // going quiet, so a page switch cannot land on a blank surface with no explanation.
+                this.sink?.showNotice(
+                    [
+                        `LVGL SVG surface: cached ${version} WebAssembly is out of date.`,
+                        "Hard-reload the page (Ctrl+Shift+R) to pick up the current build.",
+                    ].join("\n")
+                );
+                return;
+            }
+            this.staleRuntimeRecoveryStarted = true;
+            this.notifyOnce(
+                "no-dump",
+                `LVGL SVG surface: the loaded ${version} runtime has no scene dump ` +
+                    `(stale cached WebAssembly). Refreshing it now.`
+            );
+            this.sink?.showNotice(
+                [
+                    `LVGL SVG surface: cached ${version} WebAssembly is out of date.`,
+                    "Refreshing it — a page reload will then render with SVG.",
+                ].join("\n")
+            );
+
+            const outcome = await refreshLvglRuntimeArtifacts(version);
+            if (outcome === "already-refreshed") {
+                this.sink?.showNotice(
+                    [
+                        `LVGL SVG surface: cached ${version} WebAssembly is still out of date.`,
+                        "Hard-reload the page (Ctrl+Shift+R) to pick up the current build.",
+                    ].join("\n")
+                );
+            } else if (outcome === "failed") {
+                this.sink?.showNotice(
+                    [
+                        `LVGL SVG surface: could not refresh the ${version} WebAssembly.`,
+                        "Hard-reload the page (Ctrl+Shift+R) to pick up the current build.",
+                    ].join("\n")
+                );
+            } else {
+                this.sink?.showNotice(
+                    [
+                        `LVGL SVG surface: refreshed the cached ${version} WebAssembly.`,
+                        "Reload the page (F5) to render with SVG.",
+                    ].join("\n")
+                );
+            }
+        }
+
+        /**
+         * Deterministic safety net. The frame loop is the primary detector, but it is idle-driven in
+         * design mode: if it stops after the first failed frame, the check below still runs.
+         */
+        private scheduleRuntimeCheck(): void {
+            const dumper = this.dumper;
+            if (!dumper) {
+                return;
+            }
+            window.setTimeout(() => {
+                // Ignore the result if the surface was remounted (page switch) meanwhile.
+                if (this.dumper !== dumper) {
+                    return;
+                }
+                if (dumper.diagnose() === "no-dump") {
+                    void this.handleStaleRuntime();
+                }
+            }, 2500);
+        }
+
+        componentDidMount() {
+            this.createPageRuntime();
+        }
+
+        componentDidUpdate() {
+            // Mirrors lvgl/Page.tsx exactly, so page switches behave identically.
+            if (this.runtime) {
+                this.runtime.unmount();
+                this.runtime = undefined;
+            }
+            this.sink?.teardown();
+            this.sink = undefined;
+            this.createPageRuntime();
+        }
+
+        componentWillUnmount() {
+            setTimeout(() => {
+                this.runtime?.unmount();
+                this.sink?.teardown();
+                this.dumper?.dispose();
+                this.sink = undefined;
+                this.dumper = undefined;
+                this.runtime = undefined;
+            });
+        }
+
+        private wasmModule(): SceneDumpWasm | undefined {
+            const wasm = (this.runtime as unknown as { wasm?: unknown })?.wasm;
+            return wasm as SceneDumpWasm | undefined;
+        }
+
+        private displayWidth(): number {
+            const width = this.props.page.width;
+            return typeof width === "number" && !isNaN(width) && width >= 1 ? width : 1;
+        }
+
+        private displayHeight(): number {
+            const height = this.props.page.height;
+            return typeof height === "number" && !isNaN(height) && height >= 1
+                ? height
+                : 1;
+        }
+
+        render() {
+            // Read the same observables the canvas component reads, so this component reacts to
+            // them exactly as the canvas surface did.
+            this.context.project.settings.general.lvglVersion;
+            this.context.project.settings.general.darkTheme;
+
+            const width = this.displayWidth();
+            const height = this.displayHeight();
+            const page = ProjectEditor.getPage(
+                this.props.flowContext.document.flow.object
+            );
+
+            // `this.context` is the ProjectStore itself; the display settings live on the
+            // flowContext's projectStore (same source the canvas component reads).
+            const general = this.props.flowContext.projectStore.project.settings.general;
+
+            // The canvas viewport decorations, re-expressed as CSS on the <svg>.
+            const style: React.CSSProperties = {
+                imageRendering:
+                    this.props.flowContext.viewState.transform.scale > 2
+                        ? "pixelated"
+                        : "auto",
+            };
+
+            if (
+                !(page && page.isUsedAsUserWidget) &&
+                (general.circularDisplay || general.displayBorderRadius != 0)
+            ) {
+                style.borderRadius = general.circularDisplay
+                    ? Math.min(width, height)
+                    : general.displayBorderRadius;
+                style.border = `1px solid ${
+                    settingsController.isDarkTheme ? "#444" : "#eee"
+                }`;
+                style.transform = "translate(-1px, -1px)";
+            }
+
+            return (
+                <svg
+                    ref={this.svgRef}
+                    className="lvgl-svg"
+                    width={width}
+                    height={height}
+                    viewBox={`0 0 ${width} ${height}`}
+                    style={style}
+                />
+            );
+        }
+    }
+);
