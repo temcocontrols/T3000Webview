@@ -125,6 +125,52 @@ missed, configurable via `?svgStats=1`.
 | `LVGLStylesEditorRuntime` (`:1777`) | style-editor preview swatches — out of scope |
 | Pixel-preview toggle | permanent regression oracle |
 
+## 7a. Failure modes: why the surface can be blank, and what it does about it
+
+A design surface that fails to paint looks exactly like an empty page, so every persistent failure is
+reported (visible notice in `#overlay` + one `console.warn`). `SvgPaintPipeline` classifies the reason and
+the component decides:
+
+| Reason | Meaning | Handling |
+|---|---|---|
+| `no-root` | `page._lvglObj` is not set yet — WASM is still booting | transient; only complained about after ~2 s |
+| `no-module` / `not-booted` | the runtime has not created its WASM module, or its exports are not assigned yet | transient, same |
+| `no-dump` | module booted (its other wasm exports exist) but `_lvglDumpScene` is missing | **never** a boot race ⇒ stale artifact, see below |
+| `bad-payload` | the dump returned something `parseScene` rejects | persistent; notice + console |
+
+### The stale-artifact trap (verified in the wild)
+
+The Emscripten glue JavaScript is always fetched fresh (`fetch(jsUrl, { cache: "no-store" })` then imported
+from a blob URL, `lvgl-versions.ts`), but **the `.wasm` binary is fetched by that glue from a plain URL**
+(`lvgl-versions.ts` sets `globalThis.__lvglWasmUrl`) and therefore goes through the ordinary HTTP cache.
+That response is served with **no `Cache-Control` and no `ETag`** — only `Last-Modified`:
+
+```
+Content-Type: application/wasm
+Last-Modified: <deploy time>
+```
+
+RFC 9111 §4.2.2 lets a browser treat such a response as fresh for a heuristic fraction of its age (and not
+revalidate). For an artifact that is weeks old the window is days-to-weeks, so a browser can keep running an
+**old `.wasm` beside a fresh glue** indefinitely. If that binary predates `lvglDumpScene`, the surface mounts
+with an empty `#defs`/`#content`/`#overlay` — observed exactly like that in Firefox while the same URL
+rendered normally in a browser whose cache had been refreshed.
+
+Mitigation (`runtime-artifacts.ts`, additive):
+
+1. A booted module without the dump is diagnosed as `no-dump` — conclusive, because Emscripten assigns all
+   wasm exports at once, so `_malloc` present + `_lvglDumpScene` absent cannot be a timing artefact.
+2. `refreshLvglRuntimeArtifacts(version)` re-fetches the `.wasm` (and `.js`) with `cache: "reload"`, which
+   **replaces the stored entry**. Latched per session, so a per-frame failure cannot become a request storm.
+3. The user is told to reload — we do **not** reload for them, because the editor can hold unsaved edits.
+   After the refresh a plain F5 is enough; if the refresh already ran and the module is still old, the notice
+   says to hard-reload (Ctrl+Shift+R).
+4. A post-mount timeout (2.5 s) re-checks `diagnose()`. This matters because the frame loop is **idle-driven**:
+   if it stops after a failed frame, the paint path alone would never report again.
+
+Operational consequence: after rebuilding the LVGL runtime, deploying the files is still required (see
+[wasm-bridge §5](./wasm-bridge.md#5-build--propagation)), but no longer requires telling users to hard-reload.
+
 ## 8. Risks
 
 | Risk | Mitigation |
