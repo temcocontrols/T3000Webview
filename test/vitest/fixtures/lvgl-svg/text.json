@@ -1,0 +1,134 @@
+{
+    "sceneVersion": 1,
+    "width": 480,
+    "height": 320,
+    "rootPtr": 1,
+    "_fixture": "text — fonts, sizes, letter/line spacing, alignment, explicit newlines, decor, overflow clip",
+    "objects": [
+        {
+            "ptr": 1,
+            "index": 0,
+            "type": "screen",
+            "area": { "x": 0, "y": 0, "w": 480, "h": 320 },
+            "parts": [{ "part": "MAIN", "bg": { "color": "#ffffff" } }]
+        },
+        {
+            "ptr": 2,
+            "parentPtr": 1,
+            "index": 1,
+            "type": "label",
+            "objId": "title",
+            "area": { "x": 20, "y": 20, "w": 440, "h": 40 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "text": {
+                        "str": "Supply Air Temperature",
+                        "fontId": "lv_font_montserrat_24",
+                        "size": 24,
+                        "color": "#111827",
+                        "align": "TOP_CENTER",
+                        "letterSpace": 1
+                    }
+                }
+            ]
+        },
+        {
+            "ptr": 3,
+            "parentPtr": 1,
+            "index": 2,
+            "type": "label",
+            "objId": "multiline",
+            "area": { "x": 20, "y": 80, "w": 200, "h": 80 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "text": {
+                        "str": "Line one\nLine two\nLine three",
+                        "fontId": "lv_font_montserrat_16",
+                        "size": 16,
+                        "color": "#374151",
+                        "align": "TOP_LEFT",
+                        "lineSpace": 4
+                    }
+                }
+            ]
+        },
+        {
+            "ptr": 4,
+            "parentPtr": 1,
+            "index": 3,
+            "type": "label",
+            "objId": "decorated",
+            "area": { "x": 240, "y": 80, "w": 200, "h": 30 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "text": {
+                        "str": "Underlined value",
+                        "size": 16,
+                        "color": "#0000ff",
+                        "align": "CENTER",
+                        "decor": "UNDERLINE"
+                    }
+                }
+            ]
+        },
+        {
+            "ptr": 5,
+            "parentPtr": 1,
+            "index": 4,
+            "type": "label",
+            "objId": "clipped",
+            "area": { "x": 240, "y": 120, "w": 120, "h": 24 },
+            "radius": 4,
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "text": {
+                        "str": "A very long value that must be clipped",
+                        "size": 16,
+                        "color": "#b91c1c",
+                        "align": "LEFT",
+                        "overflow": "CLIP"
+                    }
+                }
+            ]
+        },
+        {
+            "ptr": 6,
+            "parentPtr": 1,
+            "index": 5,
+            "type": "span",
+            "objId": "span1",
+            "area": { "x": 20, "y": 200, "w": 300, "h": 30 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "text": {
+                        "str": "Span with no font size (defaults to 14)",
+                        "align": "TOP_LEFT"
+                    }
+                }
+            ]
+        },
+        {
+            "ptr": 7,
+            "parentPtr": 1,
+            "index": 6,
+            "type": "label",
+            "objId": "bottom-right",
+            "area": { "x": 20, "y": 250, "w": 200, "h": 50 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "text": {
+                        "str": "bottom right",
+                        "size": 14,
+                        "align": "BOTTOM_RIGHT"
+                    }
+                }
+            ]
+        }
+    ]
+}

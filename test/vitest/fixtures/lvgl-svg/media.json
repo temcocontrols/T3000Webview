@@ -1,0 +1,116 @@
+{
+    "sceneVersion": 1,
+    "width": 480,
+    "height": 320,
+    "rootPtr": 1,
+    "_fixture": "media — <image> href/opacity/recolor, rotation+zoom+pivot, tiled bgImage, and a bg gradient under an image",
+    "_png": "1x1 transparent PNG data URI is used as a stand-in for a project bitmap",
+    "objects": [
+        {
+            "ptr": 1,
+            "index": 0,
+            "type": "screen",
+            "area": { "x": 0, "y": 0, "w": 480, "h": 320 },
+            "parts": [{ "part": "MAIN", "bg": { "color": "#20242b" } }]
+        },
+        {
+            "ptr": 2,
+            "parentPtr": 1,
+            "index": 1,
+            "type": "image",
+            "objId": "plain",
+            "area": { "x": 20, "y": 20, "w": 64, "h": 64 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "img": {
+                        "srcId": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+                        "opacity": 1
+                    }
+                }
+            ]
+        },
+        {
+            "ptr": 3,
+            "parentPtr": 1,
+            "index": 2,
+            "type": "image",
+            "objId": "rotated",
+            "area": { "x": 120, "y": 20, "w": 64, "h": 64 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "img": {
+                        "srcId": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+                        "rotation": 450,
+                        "zoom": 512,
+                        "pivotX": 152,
+                        "pivotY": 52,
+                        "opacity": 0.75
+                    }
+                }
+            ]
+        },
+        {
+            "ptr": 4,
+            "parentPtr": 1,
+            "index": 3,
+            "type": "image",
+            "objId": "recolored",
+            "area": { "x": 220, "y": 20, "w": 64, "h": 64 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "img": {
+                        "srcId": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+                        "recolor": "#ff0000",
+                        "recolorOpacity": 0.5
+                    }
+                }
+            ]
+        },
+        {
+            "ptr": 5,
+            "parentPtr": 1,
+            "index": 4,
+            "type": "imgbutton",
+            "objId": "tiled",
+            "area": { "x": 20, "y": 120, "w": 120, "h": 80 },
+            "radius": 6,
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "bg": { "color": "#2f3540" },
+                    "bgImage": {
+                        "srcId": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+                        "tiled": true,
+                        "opacity": 0.4
+                    },
+                    "border": { "color": "#6b7480", "width": 1 }
+                }
+            ]
+        },
+        {
+            "ptr": 6,
+            "parentPtr": 1,
+            "index": 5,
+            "type": "panel",
+            "objId": "grad-with-image",
+            "area": { "x": 180, "y": 120, "w": 160, "h": 80 },
+            "radius": 8,
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "bg": {
+                        "color": "#123456",
+                        "grad": { "color": "#654321", "stop": 128, "dir": "RADIAL_CENTER", "opacity": 1 }
+                    },
+                    "bgImage": {
+                        "srcId": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+                        "opacity": 0.9
+                    }
+                }
+            ]
+        }
+    ]
+}

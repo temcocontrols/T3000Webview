@@ -1,0 +1,200 @@
+{
+    "sceneVersion": 1,
+    "width": 480,
+    "height": 320,
+    "rootPtr": 1,
+    "_fixture": "indicators — slider/switch/checkbox/bar/arc/led/spinner parts, states, and the LVGL-9 part vocabulary",
+    "objects": [
+        {
+            "ptr": 1,
+            "index": 0,
+            "type": "screen",
+            "area": { "x": 0, "y": 0, "w": 480, "h": 320 },
+            "parts": [{ "part": "MAIN", "bg": { "color": "#101418" } }]
+        },
+        {
+            "ptr": 2,
+            "parentPtr": 1,
+            "index": 1,
+            "type": "slider",
+            "objId": "slider1",
+            "area": { "x": 20, "y": 30, "w": 200, "h": 12 },
+            "radius": 6,
+            "parts": [
+                { "part": "MAIN", "state": "default", "bg": { "color": "#333c46" } },
+                {
+                    "part": "INDICATOR",
+                    "state": "default",
+                    "area": { "x": 20, "y": 30, "w": 120, "h": 12 },
+                    "bg": { "color": "#2196f3" }
+                },
+                {
+                    "part": "KNOB",
+                    "state": "pressed",
+                    "area": { "x": 132, "y": 24, "w": 24, "h": 24 },
+                    "radius": 12,
+                    "bg": { "color": "#ffffff" },
+                    "border": { "color": "#2196f3", "width": 2 }
+                }
+            ]
+        },
+        {
+            "ptr": 3,
+            "parentPtr": 1,
+            "index": 2,
+            "type": "switch",
+            "objId": "switch1",
+            "area": { "x": 20, "y": 70, "w": 60, "h": 28 },
+            "radius": 14,
+            "parts": [
+                { "part": "MAIN", "state": "checked", "bg": { "color": "#4caf50" } },
+                {
+                    "part": "INDICATOR",
+                    "state": "checked",
+                    "area": { "x": 34, "y": 70, "w": 46, "h": 28 },
+                    "bg": { "color": "#4caf50" }
+                },
+                {
+                    "part": "KNOB",
+                    "state": "checked",
+                    "area": { "x": 48, "y": 72, "w": 24, "h": 24 },
+                    "radius": 12,
+                    "bg": { "color": "#ffffff" }
+                }
+            ]
+        },
+        {
+            "ptr": 4,
+            "parentPtr": 1,
+            "index": 3,
+            "type": "checkbox",
+            "objId": "check1",
+            "area": { "x": 120, "y": 70, "w": 100, "h": 24 },
+            "parts": [
+                { "part": "MAIN", "state": "checked", "bg": { "color": "#4caf50" }, "radius": 4 },
+                {
+                    "part": "INDICATOR",
+                    "state": "checked",
+                    "area": { "x": 122, "y": 72, "w": 20, "h": 20 },
+                    "bg": { "color": "#ffffff" },
+                    "radius": 3
+                }
+            ]
+        },
+        {
+            "ptr": 5,
+            "parentPtr": 1,
+            "index": 4,
+            "type": "bar",
+            "objId": "bar1",
+            "area": { "x": 20, "y": 110, "w": 200, "h": 16 },
+            "radius": 8,
+            "parts": [
+                { "part": "MAIN", "bg": { "color": "#2a2f36" } },
+                {
+                    "part": "INDICATOR",
+                    "area": { "x": 20, "y": 110, "w": 140, "h": 16 },
+                    "bg": { "color": "#ff9800" },
+                    "radius": 8
+                }
+            ]
+        },
+        {
+            "ptr": 6,
+            "parentPtr": 1,
+            "index": 5,
+            "type": "arc",
+            "objId": "arc1",
+            "area": { "x": 20, "y": 150, "w": 100, "h": 100 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "arc": {
+                        "start": 1350,
+                        "end": 4050,
+                        "width": 12,
+                        "color": "#4fc3f7",
+                        "opacity": 1,
+                        "rounded": true,
+                        "bgColor": "#263238",
+                        "bgOpacity": 1
+                    }
+                },
+                {
+                    "part": "KNOB",
+                    "area": { "x": 104, "y": 186, "w": 14, "h": 14 },
+                    "radius": 7,
+                    "bg": { "color": "#ffffff" }
+                }
+            ]
+        },
+        {
+            "ptr": 7,
+            "parentPtr": 1,
+            "index": 6,
+            "type": "led",
+            "objId": "led1",
+            "area": { "x": 150, "y": 160, "w": 14, "h": 14 },
+            "radius": 7,
+            "parts": [{ "part": "MAIN", "bg": { "color": "#00e676" } }]
+        },
+        {
+            "ptr": 8,
+            "parentPtr": 1,
+            "index": 7,
+            "type": "spinner",
+            "objId": "spinner1",
+            "area": { "x": 180, "y": 150, "w": 60, "h": 60 },
+            "parts": [
+                { "part": "MAIN", "bg": { "color": "#000000", "opacity": 0 } },
+                {
+                    "part": "INDICATOR",
+                    "arc": {
+                        "start": 0,
+                        "end": 900,
+                        "width": 6,
+                        "color": "#ffffff",
+                        "rounded": true
+                    }
+                }
+            ]
+        },
+        {
+            "ptr": 9,
+            "parentPtr": 1,
+            "index": 8,
+            "type": "textarea",
+            "objId": "ta1",
+            "area": { "x": 260, "y": 150, "w": 180, "h": 60 },
+            "radius": 6,
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "bg": { "color": "#1c1f24" },
+                    "border": { "color": "#556677", "width": 1 }
+                },
+                {
+                    "part": "TEXTAREA_PLACEHOLDER",
+                    "text": {
+                        "str": "Enter a value",
+                        "fontId": "lv_font_montserrat_14",
+                        "size": 14,
+                        "color": "#8a949e",
+                        "align": "LEFT"
+                    }
+                },
+                {
+                    "part": "CURSOR",
+                    "area": { "x": 264, "y": 152, "w": 1, "h": 18 },
+                    "bg": { "color": "#4fc3f7" }
+                },
+                {
+                    "part": "SCROLLBAR",
+                    "area": { "x": 436, "y": 150, "w": 4, "h": 60 },
+                    "bg": { "color": "#556677", "opacity": 0.6 },
+                    "radius": 2
+                }
+            ]
+        }
+    ]
+}

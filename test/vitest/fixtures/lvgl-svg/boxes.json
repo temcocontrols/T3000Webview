@@ -1,0 +1,93 @@
+{
+    "sceneVersion": 1,
+    "width": 480,
+    "height": 320,
+    "bgColor": "#0b0e13",
+    "rootPtr": 1,
+    "_fixture": "boxes — radius (uniform + per corner), border sides, outline, shadow, gradient, opacity",
+    "objects": [
+        {
+            "ptr": 1,
+            "index": 0,
+            "type": "screen",
+            "objId": "root",
+            "area": { "x": 0, "y": 0, "w": 480, "h": 320 },
+            "parts": [{ "part": "MAIN", "state": "default", "bg": { "color": "#0b0e13" } }]
+        },
+        {
+            "ptr": 2,
+            "parentPtr": 1,
+            "index": 1,
+            "type": "panel",
+            "objId": "panel1",
+            "area": { "x": 20, "y": 20, "w": 200, "h": 120 },
+            "radius": 12,
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "state": "default",
+                    "bg": {
+                        "color": "#223344",
+                        "opacity": 0.9,
+                        "grad": { "color": "#445566", "stop": 160, "dir": "TOP", "opacity": 1 }
+                    },
+                    "border": { "color": "#8899aa", "opacity": 1, "width": 2, "side": "FULL" },
+                    "outline": { "color": "#ff8800", "opacity": 0.8, "width": 1, "pad": 3 },
+                    "shadow": {
+                        "color": "#000000",
+                        "opacity": 0.5,
+                        "width": 8,
+                        "spread": 2,
+                        "ofsX": 2,
+                        "ofsY": 3
+                    }
+                }
+            ]
+        },
+        {
+            "ptr": 3,
+            "parentPtr": 1,
+            "index": 2,
+            "type": "container",
+            "objId": "corners",
+            "area": { "x": 240, "y": 20, "w": 120, "h": 80 },
+            "radius": { "tl": 16, "tr": 0, "br": 16, "bl": 0 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "state": "default",
+                    "bg": { "color": "#335577" },
+                    "border": { "color": "#ffffff", "width": 2, "side": "TOP|LEFT", "post": true }
+                }
+            ]
+        },
+        {
+            "ptr": 4,
+            "parentPtr": 1,
+            "index": 3,
+            "type": "panel",
+            "objId": "ghost",
+            "area": { "x": 240, "y": 120, "w": 120, "h": 60 },
+            "opacity": 0.5,
+            "radius": 4,
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "state": "default",
+                    "bg": { "color": "#aa0000", "opacity": 0.75 },
+                    "outline": { "color": "#00ff00", "width": 2, "pad": 0 }
+                }
+            ]
+        },
+        {
+            "ptr": 5,
+            "parentPtr": 1,
+            "index": 4,
+            "type": "panel",
+            "objId": "hidden-one",
+            "hidden": true,
+            "area": { "x": 400, "y": 200, "w": 40, "h": 40 },
+            "parts": [{ "part": "MAIN", "bg": { "color": "#123456" } }]
+        }
+    ]
+}

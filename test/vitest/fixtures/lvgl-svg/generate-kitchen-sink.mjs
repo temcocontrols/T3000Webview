@@ -1,0 +1,171 @@
+/**
+ * Regenerates `kitchen-sink.json` — the exhaustive fixture that puts every registered LVGL
+ * widget, with every part it declares, into one scene.
+ *
+ * Why a generator: the widget/part list is data that changes when a widget is added, and the
+ * renderer must never silently miss one. Run it when `lvgl/widgets/index.ts` changes:
+ *
+ *     node test/vitest/fixtures/lvgl-svg/generate-kitchen-sink.mjs
+ *
+ * Source of truth for the widget list: the `registerClass()` calls in
+ * `src/lib/t3-eez-studio/project-editor/lvgl/widgets/index.ts` (40 widgets).
+ *
+ * PART NOTE: `Meter` declares `TICKS` in the editor, but `TICKS` exists only in LVGL_PARTS_8.
+ * It is deliberately NOT emitted here — on LVGL 9 ticks are ITEMS (minor) / INDICATOR (major),
+ * and `parseScene` rejects `TICKS` on purpose.
+ */
+
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** widget file base name -> LVGL 9 parts it renders (parts declared in the editor). */
+const WIDGETS = [
+    ["AnimationImage", ["MAIN"]],
+    ["Arc", ["MAIN", "INDICATOR", "KNOB"]],
+    ["Bar", ["MAIN", "INDICATOR"]],
+    ["Button", ["MAIN"]],
+    ["ButtonMatrix", ["MAIN", "ITEMS"]],
+    ["Calendar", ["MAIN", "ITEMS"]],
+    ["Canvas", ["MAIN"]],
+    ["Chart", ["MAIN", "ITEMS", "INDICATOR"]],
+    ["Checkbox", ["MAIN", "INDICATOR"]],
+    ["Colorwheel", ["MAIN", "KNOB"]],
+    ["Container", ["MAIN"]],
+    ["Dropdown", ["MAIN", "SELECTED"]],
+    ["Image", ["MAIN"]],
+    ["Imgbutton", ["MAIN"]],
+    ["Keyboard", ["MAIN", "ITEMS"]],
+    ["Label", ["MAIN"]],
+    ["Led", ["MAIN"]],
+    ["Line", ["MAIN"]],
+    ["List", ["MAIN", "SCROLLBAR"]],
+    ["Lottie", ["MAIN"]],
+    ["Menu", ["MAIN"]],
+    ["MessageBox", ["MAIN"]],
+    ["Meter", ["MAIN", "INDICATOR", "ITEMS"]],
+    ["Panel", ["MAIN", "SCROLLBAR"]],
+    ["QRCode", ["MAIN"]],
+    ["Roller", ["MAIN", "SELECTED"]],
+    ["Scale", ["MAIN", "ITEMS", "INDICATOR"]],
+    ["Screen", ["MAIN", "SCROLLBAR"]],
+    ["Slider", ["MAIN", "INDICATOR", "KNOB"]],
+    ["Span", ["MAIN"]],
+    ["Spinbox", ["MAIN", "SELECTED", "CURSOR"]],
+    ["Spinner", ["MAIN", "INDICATOR"]],
+    ["Switch", ["MAIN", "INDICATOR", "KNOB"]],
+    ["Tab", ["MAIN"]],
+    ["Table", ["MAIN", "ITEMS", "SCROLLBAR"]],
+    ["Tabview", ["MAIN"]],
+    [
+        "Textarea",
+        ["MAIN", "SELECTED", "CURSOR", "SCROLLBAR", "TEXTAREA_PLACEHOLDER"],
+    ],
+    ["TileView", ["MAIN"]],
+    ["UserWidget", ["MAIN", "SCROLLBAR"]],
+    ["Window", ["MAIN"]],
+];
+
+const COLS = 8;
+const CELL = 56;
+const GAP = 4;
+const MARGIN = 4;
+
+const CELL_COLORS = ["#1e242c", "#232a34", "#2a3038", "#333c46", "#3d4652"];
+const PART_COLORS = {
+    MAIN: "#2b3340",
+    SCROLLBAR: "#556677",
+    INDICATOR: "#4fc3f7",
+    KNOB: "#ffffff",
+    SELECTED: "#263042",
+    ITEMS: "#ff9800",
+    CURSOR: "#4fc3f7",
+    TEXTAREA_PLACEHOLDER: "#8a949e",
+};
+
+const width = COLS * CELL + (COLS + 1) * GAP;
+const rows = Math.ceil(WIDGETS.length / COLS);
+const height = rows * CELL + (rows + 1) * GAP;
+
+const objects = [
+    {
+        ptr: 1,
+        index: 0,
+        type: "screen",
+        objId: "root",
+        area: { x: 0, y: 0, w: width, h: height },
+        parts: [{ part: "MAIN", bg: { color: "#0b0e13" } }],
+    },
+];
+
+WIDGETS.forEach(([name, parts], i) => {
+    const col = i % COLS;
+    const row = Math.floor(i / COLS);
+    const x = GAP + col * (CELL + GAP);
+    const y = GAP + row * (CELL + GAP);
+    const type = String(name).toLowerCase();
+
+    const sceneParts = parts.map(part => {
+        const scenePart = {
+            part,
+            state: "default",
+            bg: {
+                color: PART_COLORS[part] ?? "#808080",
+                opacity: part === "KNOB" ? 1 : 0.85,
+            },
+        };
+        // Carve out a slightly smaller box for non-MAIN parts so the renderer's per-part
+        // `area` handling is exercised everywhere, not just in the indicators fixture.
+        if (part !== "MAIN") {
+            scenePart.area = {
+                x: x + 8,
+                y: y + 8,
+                w: CELL - 16,
+                h: CELL - 16,
+            };
+        }
+        return scenePart;
+    });
+
+    sceneParts[0] = {
+        ...sceneParts[0],
+        bg: { color: CELL_COLORS[i % CELL_COLORS.length], opacity: 1 },
+        border: { color: "#3a4250", width: 1, side: "FULL" },
+        text: {
+            str: String(name),
+            fontId: "lv_font_montserrat_14",
+            size: 10,
+            color: "#c9d1d9",
+            align: "TOP_LEFT",
+        },
+    };
+
+    objects.push({
+        ptr: 100 + i,
+        parentPtr: 1,
+        index: i + 1,
+        type,
+        objId: `w-${type}`,
+        area: { x, y, w: CELL, h: CELL },
+        radius: 6,
+        parts: sceneParts,
+    });
+});
+
+const scene = {
+    sceneVersion: 1,
+    width,
+    height,
+    bgColor: "#0b0e13",
+    rootPtr: 1,
+    _fixture:
+        "kitchen-sink — every registered LVGL widget with every part it declares; generated by generate-kitchen-sink.mjs",
+    objects,
+};
+
+const here = dirname(fileURLToPath(import.meta.url));
+const target = join(here, "kitchen-sink.json");
+writeFileSync(target, JSON.stringify(scene, null, 4) + "\n", "utf8");
+console.log(
+    `wrote ${target} — ${WIDGETS.length} widgets, ${objects.length} objects, ${height}px tall`
+);

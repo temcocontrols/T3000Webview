@@ -1,0 +1,159 @@
+{
+    "sceneVersion": 1,
+    "width": 480,
+    "height": 320,
+    "bgColor": "#0f1216",
+    "rootPtr": 1,
+    "_fixture": "dashboard — realistic nesting (screen > panel > panel > widgets), mixed parts, gradients, clipping",
+    "objects": [
+        {
+            "ptr": 1, "index": 0, "type": "screen", "objId": "root",
+            "area": { "x": 0, "y": 0, "w": 480, "h": 320 },
+            "parts": [{ "part": "MAIN", "bg": { "color": "#0f1216" } }]
+        },
+        {
+            "ptr": 2, "parentPtr": 1, "index": 1, "type": "panel", "objId": "header",
+            "area": { "x": 0, "y": 0, "w": 480, "h": 44 },
+            "parts": [
+                {
+                    "part": "MAIN",
+                    "bg": { "color": "#1b2028", "grad": { "color": "#2b3340", "stop": 255, "dir": "TOP", "opacity": 1 } },
+                    "border": { "color": "#2f3742", "width": 1, "side": "BOTTOM" }
+                }
+            ]
+        },
+        {
+            "ptr": 3, "parentPtr": 2, "index": 2, "type": "label", "objId": "title",
+            "area": { "x": 12, "y": 10, "w": 300, "h": 24 },
+            "parts": [{ "part": "MAIN", "text": { "str": "AHU-1 — Overview", "fontId": "lv_font_montserrat_16", "size": 16, "color": "#e6edf3", "align": "TOP_LEFT" } }]
+        },
+        {
+            "ptr": 4, "parentPtr": 1, "index": 3, "type": "panel", "objId": "card1",
+            "area": { "x": 12, "y": 56, "w": 220, "h": 120 },
+            "radius": 10,
+            "parts": [
+                { "part": "MAIN", "bg": { "color": "#171c23" }, "border": { "color": "#2b3340", "width": 1 }, "shadow": { "color": "#000000", "opacity": 0.4, "width": 6, "ofsX": 0, "ofsY": 2 } }
+            ]
+        },
+        {
+            "ptr": 5, "parentPtr": 4, "index": 4, "type": "label", "objId": "card1-title",
+            "area": { "x": 22, "y": 66, "w": 200, "h": 20 },
+            "parts": [{ "part": "MAIN", "text": { "str": "Supply Temp", "size": 14, "color": "#8a949e", "align": "TOP_LEFT" } }]
+        },
+        {
+            "ptr": 6, "parentPtr": 4, "index": 5, "type": "label", "objId": "card1-value",
+            "area": { "x": 22, "y": 90, "w": 200, "h": 34 },
+            "parts": [{ "part": "MAIN", "text": { "str": "18.4 °C", "fontId": "lv_font_montserrat_24", "size": 24, "color": "#4fc3f7", "align": "TOP_LEFT" } }]
+        },
+        {
+            "ptr": 7, "parentPtr": 4, "index": 6, "type": "slider", "objId": "card1-setpoint",
+            "area": { "x": 22, "y": 138, "w": 200, "h": 10 },
+            "radius": 5,
+            "parts": [
+                { "part": "MAIN", "bg": { "color": "#2a2f36" } },
+                { "part": "INDICATOR", "area": { "x": 22, "y": 138, "w": 120, "h": 10 }, "bg": { "color": "#4fc3f7" } },
+                { "part": "KNOB", "area": { "x": 130, "y": 134, "w": 18, "h": 18 }, "radius": 9, "bg": { "color": "#ffffff" } }
+            ]
+        },
+        {
+            "ptr": 8, "parentPtr": 1, "index": 7, "type": "panel", "objId": "card2",
+            "area": { "x": 244, "y": 56, "w": 220, "h": 120 },
+            "radius": 10,
+            "parts": [
+                { "part": "MAIN", "bg": { "color": "#171c23" }, "border": { "color": "#2b3340", "width": 1 }, "shadow": { "color": "#000000", "opacity": 0.4, "width": 6, "ofsX": 0, "ofsY": 2 } }
+            ]
+        },
+        {
+            "ptr": 9, "parentPtr": 8, "index": 8, "type": "panel", "objId": "card2-inner",
+            "area": { "x": 254, "y": 66, "w": 200, "h": 60 },
+            "radius": 6,
+            "parts": [{ "part": "MAIN", "bg": { "color": "#1e242c" } }]
+        },
+        {
+            "ptr": 10, "parentPtr": 9, "index": 9, "type": "bar", "objId": "card2-bar",
+            "area": { "x": 264, "y": 76, "w": 180, "h": 14 },
+            "radius": 7,
+            "parts": [
+                { "part": "MAIN", "bg": { "color": "#2a2f36" } },
+                { "part": "INDICATOR", "area": { "x": 264, "y": 76, "w": 108, "h": 14 }, "bg": { "color": "#ff9800" }, "radius": 7 }
+            ]
+        },
+        {
+            "ptr": 11, "parentPtr": 9, "index": 10, "type": "label", "objId": "card2-label",
+            "area": { "x": 264, "y": 96, "w": 180, "h": 20 },
+            "parts": [{ "part": "MAIN", "text": { "str": "Fan 60%", "size": 14, "color": "#e6edf3", "align": "TOP_LEFT" } }]
+        },
+        {
+            "ptr": 12, "parentPtr": 8, "index": 11, "type": "switch", "objId": "card2-occupied",
+            "area": { "x": 254, "y": 136, "w": 50, "h": 26 },
+            "radius": 13,
+            "parts": [
+                { "part": "MAIN", "state": "checked", "bg": { "color": "#4caf50" } },
+                { "part": "KNOB", "state": "checked", "area": { "x": 278, "y": 138, "w": 22, "h": 22 }, "radius": 11, "bg": { "color": "#ffffff" } }
+            ]
+        },
+        {
+            "ptr": 13, "parentPtr": 1, "index": 12, "type": "panel", "objId": "footer",
+            "area": { "x": 12, "y": 188, "w": 452, "h": 120 },
+            "radius": 10,
+            "clip": { "x": 12, "y": 188, "w": 452, "h": 120, "radius": 10 },
+            "scroll": { "x": 0, "y": 12 },
+            "parts": [
+                { "part": "MAIN", "bg": { "color": "#151a21" }, "border": { "color": "#2b3340", "width": 1 } },
+                { "part": "SCROLLBAR", "area": { "x": 458, "y": 188, "w": 4, "h": 120 }, "bg": { "color": "#3a4250", "opacity": 0.5 }, "radius": 2 }
+            ]
+        },
+        {
+            "ptr": 14, "parentPtr": 13, "index": 13, "type": "checkbox", "objId": "opt1",
+            "area": { "x": 24, "y": 200, "w": 200, "h": 22 },
+            "parts": [
+                { "part": "MAIN", "state": "checked", "bg": { "color": "#4caf50" }, "radius": 4 },
+                { "part": "INDICATOR", "state": "checked", "area": { "x": 26, "y": 202, "w": 18, "h": 18 }, "bg": { "color": "#ffffff" }, "radius": 3 }
+            ]
+        },
+        {
+            "ptr": 15, "parentPtr": 13, "index": 14, "type": "label", "objId": "opt1-label",
+            "area": { "x": 52, "y": 200, "w": 180, "h": 22 },
+            "parts": [{ "part": "MAIN", "text": { "str": "Enable economizer", "size": 14, "color": "#e6edf3", "align": "TOP_LEFT" } }]
+        },
+        {
+            "ptr": 16, "parentPtr": 13, "index": 15, "type": "dropdown", "objId": "mode",
+            "area": { "x": 24, "y": 232, "w": 200, "h": 32 },
+            "radius": 6,
+            "parts": [
+                { "part": "MAIN", "bg": { "color": "#1e242c" }, "border": { "color": "#2b3340", "width": 1 }, "text": { "str": "Auto", "size": 14, "color": "#e6edf3", "align": "LEFT" } },
+                { "part": "SELECTED", "area": { "x": 26, "y": 234, "w": 196, "h": 28 }, "bg": { "color": "#263042", "opacity": 0.6 } }
+            ]
+        },
+        {
+            "ptr": 17, "parentPtr": 13, "index": 16, "type": "led", "objId": "fault-led",
+            "area": { "x": 420, "y": 240, "w": 16, "h": 16 },
+            "radius": 8,
+            "parts": [{ "part": "MAIN", "bg": { "color": "#ff3b30" } }]
+        },
+        {
+            "ptr": 18, "parentPtr": 13, "index": 17, "type": "label", "objId": "fault-label",
+            "area": { "x": 300, "y": 238, "w": 116, "h": 20 },
+            "parts": [{ "part": "MAIN", "text": { "str": "Filter fault", "size": 14, "color": "#ff8a80", "align": "TOP_RIGHT" } }]
+        },
+        {
+            "ptr": 19, "parentPtr": 1, "index": 18, "type": "tabview", "objId": "tabs",
+            "area": { "x": 12, "y": 316, "w": 452, "h": 40 },
+            "parts": [{ "part": "MAIN", "bg": { "color": "#1b2028" } }]
+        },
+        {
+            "ptr": 20, "parentPtr": 19, "index": 19, "type": "tab", "objId": "tab1",
+            "area": { "x": 12, "y": 316, "w": 90, "h": 36 },
+            "parts": [
+                { "part": "MAIN", "bg": { "color": "#232a34" }, "text": { "str": "Status", "size": 14, "color": "#e6edf3", "align": "CENTER" } }
+            ]
+        },
+        {
+            "ptr": 21, "parentPtr": 19, "index": 20, "type": "tab", "objId": "tab2",
+            "area": { "x": 106, "y": 316, "w": 90, "h": 36 },
+            "parts": [
+                { "part": "MAIN", "bg": { "color": "#2b3340" }, "text": { "str": "Trends", "size": 14, "color": "#ffffff", "align": "CENTER" } }
+            ]
+        }
+    ]
+}
