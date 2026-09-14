@@ -90,6 +90,7 @@ Drawn **after** `#content`, so it is always on top:
 | Selection outline + handles | selected objects' `area` (scene) or node `getBBox()` |
 | Marquee | pointer drag in empty space |
 | Guides / rulers / snap lines | existing editor behaviour, re-expressed as SVG |
+| Failure notice (`<g id="notice">`) | `SvgSink.showNotice()` — already implemented; the only overlay content before P4. A blank surface must explain itself (see [runtime integration §7a](./runtime-integration.md#7a-failure-modes-why-the-surface-can-be-blank-and-what-it-does-about-it)) |
 
 This is the piece that later becomes the **shared overlay for the HVAC merge** — an SVG overlay works above
 either substrate, which is exactly why the SVG direction was chosen.

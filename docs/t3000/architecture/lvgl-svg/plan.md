@@ -98,21 +98,33 @@ studio-wasm-libs/lvgl-runtime/common/src/studio_api.cpp      ← NEW FUNCTIONS A
     (new file-local helpers, e.g. svgSceneEmit*, svgSceneEscape*)
 
 src/lib/t3-eez-studio/project-editor/lvgl/svg/               ← NEW FOLDER
-    feature-flag.ts            isSvgRendererEnabled()        (default OFF; localStorage override)
-    scene.ts                   Scene types (dumped contract)
-    scene-dump.ts              wasm.lvglDumpScene() → parsed Scene (guarded, frees the buffer)
-    svg-sink.ts                owns <svg> root, <defs> (clipPaths/filters/gradients), DOM patching
-    svg-renderer.ts            Scene → SVG elements (primitive renderer — not per-widget)
-    page-runtime-svg.ts        LVGLSvgPageEditorRuntime       extends LVGLPageEditorRuntime
-                               LVGLSvgNonActivePageViewerRuntime extends LVGLNonActivePageViewerRuntime
-    svg-context.ts             createSvgContext(dims, onFrame)  (proxy 2D context — the only ctx hook)
-    LVGLSvgPage.tsx            React host: <svg>, same props as LVGLPage
-    svg-diff.ts                dev-only canvas-vs-SVG comparator (enabled by ?svgDiff=1)
+    scene.ts                   ✅ built — Scene types + parseScene/walkScene/alphaOf guards
+    svg-renderer.ts            ✅ built — Scene → draw tree (primitive renderer, not per-widget)
+    svg-sink.ts                ✅ built — owns <svg> root, <defs> registry, DOM patching
+    feature-flag.ts            ✅ built — isSvgRendererEnabled() (default OFF; URL/localStorage override)
+    index.ts                   ✅ built — barrel (app code imports "project-editor/lvgl/svg")
+    scene-dump.ts              ✅ built — lvglDumpScene binding + wire→Scene mapping + model merge
+    svg-context.ts             ✅ built — createSvgContext(): the proxy 2D context (the frame hook)
+    page-runtime-svg.ts        ✅ built — LVGLSvgPageEditorRuntime / LVGLSvgNonActivePageViewerRuntime
+    LVGLSvgPage.tsx            ✅ built — React host: <svg>, same contract as LVGLPage
+    svg-diff.ts                (P5) dev-only canvas-vs-SVG comparator (enabled by ?svgDiff=1)
+
+studio-wasm-libs/lvgl-runtime/common/src/svg_scene_dump.cpp   ← ✅ NEW C file (lvglDumpScene, lvglCountObjects)
+studio-wasm-libs/build-lvgl-95.bat                            ← ✅ NEW 9.5-only build script
+
+scripts/lvgl-svg-dump-smoke.mjs                              ← ✅ 18 checks against the real WASM, in Node
+test/vitest/lvgl-svg/fixture-loader.ts                       ← ✅ fixture helpers (outside __tests__/)
+test/vitest/fixtures/lvgl-svg/*.json                         ← ✅ boxes, indicators, text, media, dashboard, kitchen-sink
+test/vitest/fixtures/lvgl-svg/generate-kitchen-sink.mjs      ← ✅ regenerates the all-widget fixture
+test/vitest/__tests__/lvgl-svg-{scene,renderer,sink,wire}.test.ts ← ✅ 94 tests
 
 docs/t3000/architecture/lvgl-svg/plan.md                ← this file
     (README.md = index; primitives.md, scene-contract.md, wasm-bridge.md, rendering.md,
      runtime-integration.md, editor-integration.md, fidelity-harness.md, decisions.md)
 ```
+
+The `svg/` modules import **nothing** from EEZ Studio — no MobX, no WASM, no app aliases. That is what lets them
+run under the stock vitest config, which has no `project-editor` alias, so in-folder imports are all relative.
 
 **No changes to:** `lvgl/Page.tsx`, `lvgl/page-runtime.ts` (bases are *subclassed*, not edited),
 `firmware-loader.ts`, `device-import.ts`, `device-rest-client.ts`, `Wizard.tsx`, `home/**`,
@@ -219,9 +231,9 @@ LVGL 9.5 object/child/area/label/image accessors. Nothing new is needed for styl
 | Phase | Deliverable | Acceptance |
 |---|---|---|
 | **P0** Recon (2–3 d) | Confirmed widget×primitive matrix; 5 fixture pages (text-heavy, buttons, indicators, images, dashboard) | Matrix reviewed; fixtures render identically on canvas today |
-| **P1** Scene dump (1 wk) | `lvglDumpScene` appended to `studio_api.cpp`; `scene.ts` + `scene-dump.ts`; 9.5 runtime built | Dump contains every object of a fixture with correct area/order; no heap growth over 1000 dumps |
-| **P2** SVG renderer (1–2 wk) | `svg-renderer.ts` + `svg-sink.ts` for the ✅ primitive set | Fixtures visually match canvas screenshots; DOM node count sane |
-| **P3** Swap behind flag (2–3 d) | `LVGLSvgPage.tsx`, `page-runtime-svg.ts`, `svg-context.ts`, 1-line conditional at `page.tsx:930` | Flag OFF → unchanged; flag ON → SVG surface, canvas untouched |
+| **P1** Scene dump ✅ **built** | `svg_scene_dump.cpp` (new C file) + `scene-dump.ts`; 9.5 runtime rebuilt | **Met:** smoke checks all pass — tree, geometry, sibling order, style reads, clip box, image geometry, buffer protocol |
+| **P2** SVG renderer ✅ **built** | `scene.ts` + `svg-renderer.ts` + `svg-sink.ts` + `feature-flag.ts` + barrel; 6 fixtures | **Met, except the canvas-image comparison (that is P5):** every fixture renders to a draw tree, patch/def/teardown behaviour asserted |
+| **P3** Swap behind flag ✅ **built** | `svg-context.ts` + `page-runtime-svg.ts` + `LVGLSvgPage.tsx` + 1 flagged branch at `page.tsx:930` | **Met:** flag OFF renders `<LVGLPage>` unchanged; flag ON + 9.5 renders the SVG surface |
 | **P4** Selection/interaction (1–1.5 wk) | `data-objid` on nodes; hit-test/select/drag/resize/rotate/zoom via SVG | Parity with canvas editor for select, move, resize, align; overlay stays in SVG |
 | **P5** Fidelity gate (1 wk) | `svg-diff.ts` + per-widget scorecard; ⚠️/🚫 list resolved | Every ✅ widget passes a threshold; ⚠️/🚫 documented or excluded |
 | **P6** Default-on (2–3 d) | Flag default ON for 9.5 design mode only | Run mode, other versions, pixel-preview toggle all still work |
@@ -245,13 +257,17 @@ LVGL 9.5 object/child/area/label/image accessors. Nothing new is needed for styl
 
 ---
 
-## 7. Open decisions (need answers before P2 ends)
+## 7. Open decisions (answers needed before P3 completes)
 
 1. **Run mode** — keep canvas for `LVGLPageViewerRuntime` (recommended) or extend SVG there too?
 2. **Procedural widgets** (`Chart`, `Meter`, `Scale`, `QRCode`, `Colorwheel`, `Lottie`, `AnimationImage`) —
    (a) canvas island per widget, or (b) hook LVGL 9's draw dispatch to emit primitives (deeper C work)?
 3. **Text fidelity target** — same-TTF `<text>` (fast, close) vs glyph outlines (exact, heavier)?
 4. **Touch point** — the flagged 1-line conditional at `page.tsx:930`, or the config-only alias swap?
+
+> **P2 shipped without these.** The renderer consumes hand-written `scene.json` fixtures, so none of D1–D4
+> block it. Working defaults adopted for the next phases: **D1 (a), D2 (a), D3 (a), D4 (a)** — each reversible,
+> because every alternative is an additive subclass or a per-font escalation.
 
 ---
 

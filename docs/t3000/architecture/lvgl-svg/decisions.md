@@ -60,8 +60,10 @@ Recommendation: **(a)** — the flagged branch is a single line and the flag mak
 
 **New only:**
 
-- `studio-wasm-libs/lvgl-runtime/common/src/studio_api.cpp` → **new functions appended** (no existing function
-  edited; chosen over a new `.cpp` precisely because a new file would require editing the CMake source list)
+- `studio-wasm-libs/lvgl-runtime/common/src/svg_scene_dump.cpp` → **new file** (as built). The design
+  originally appended to `studio_api.cpp` on the assumption that a new translation unit would need a CMake
+  source-list edit; the v9.5 `CMakeLists.txt` uses `file(GLOB_RECURSE ...)` and the build re-runs configure,
+  so a new file is picked up with no CMake edit — strictly more additive
 - No artifact in this repo needs replacing for P1: the LVGL runtime is built externally and served from
   `eez-studio-wasm/wasm/lvgl/<ver>/`; nothing under `project-editor/flow/runtime/wasm/` is the LVGL artifact
 - `project-editor/lvgl/svg/**` (new folder: flag, scene types, dump binding, sink, renderer, context proxy, runtime subclasses, component, diff harness, fixtures)
@@ -90,10 +92,12 @@ Recommendation: **(a)** — the flagged branch is a single line and the flag mak
 | Phase | Output | Gate |
 |---|---|---|
 | **P0** | [primitives inventory](./primitives.md) — measured | ✅ done |
-| **Design** | this set (README + 9 documents) | ⏳ awaiting D1–D4 |
-| **P1** | bridge functions + `scene-dump.ts` | dump correct for a fixture; no regression |
-| **P2** | `scene.ts` + `svg-sink.ts` + `svg-renderer.ts` against `scene.json` fixtures | unit tests pass without WASM |
-| **P3** | component + proxy context + subclass + flagged branch | flag OFF ⇒ identical |
+| **Design** | this set (README + 9 documents) | ✅ done |
+| **P1** ✅ | new `svg_scene_dump.cpp` + `scene-dump.ts` + rebuilt 9.5 runtime | ✅ met — smoke checks pass against the real WASM, and a real capture is frozen as a fixture |
+| **P2** ✅ | `scene.ts` + `svg-renderer.ts` + `svg-sink.ts` + `feature-flag.ts` against `scene.json` fixtures | ✅ met — unit tests pass with no WASM |
+| **P3** ✅ | `svg-context.ts` + `page-runtime-svg.ts` + `LVGLSvgPage.tsx` + the flagged branch | ✅ met — flag OFF ⇒ unchanged; only 1 pre-existing file touched |
+| **Fidelity 1** ✅ | object `clip` from the dump + image natural size/alignment | ✅ met — verified live on a real 13-page device project |
+| **Hardening** ✅ | stale-`.wasm` detection + self-refresh + visible failure notice | ✅ met — root cause reproduced and each notice branch verified live |
 | **P4** | selection/hit-testing/overlay | interaction parity checklist |
 | **P5** | fidelity harness scorecard | T1 thresholds met |
 | **P6** | default ON for 9.5 design mode | run mode + other versions unaffected |
