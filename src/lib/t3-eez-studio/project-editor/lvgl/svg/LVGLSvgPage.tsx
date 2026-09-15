@@ -225,6 +225,8 @@ export const LVGLSvgPage = observer(
         private selectionDisposer: (() => void) | undefined;
         /** P5 harness: offscreen copy of the LVGL framebuffer, only when `?svgDiff=1`. */
         private harnessMirror: HTMLCanvasElement | undefined;
+        /** Scene signature of the previous harness run, for `harnessSceneSettled()`. */
+        private lastHarnessSceneSignature: string | undefined;
         /** P5 harness: guards against overlapping runs (rasterisation is async). */
         private harnessRunning = false;
         /** First failure time, so a boot race is not reported as a broken surface. */
@@ -339,6 +341,27 @@ export const LVGLSvgPage = observer(
         }
 
         /**
+         * Was this scene already on screen the last time the harness ran?
+         *
+         * The harness runs on EVERY paint — including the frames a page switch takes — and a scorecard
+         * read from a transitional frame looks catastrophic (measured: `schedule_screen` reported 65%
+         * over 4 rows immediately after a switch, against 8% over 68 rows once settled). A signature of
+         * what the scene is (identity + geometry, not timing) is enough to tell the two apart, and the
+         * caller records it on the result.
+         */
+        private harnessSceneSettled(scene: Scene): boolean {
+            const signature = scene.objects
+                .map(
+                    object =>
+                        `${object.ptr}:${object.area.x},${object.area.y},${object.area.w},${object.area.h}`
+                )
+                .join(";");
+            const settled = this.lastHarnessSceneSignature === signature;
+            this.lastHarnessSceneSignature = signature;
+            return settled;
+        }
+
+        /**
          * Make the reference canvas hold a complete frame.
          *
          * LVGL renders incrementally, so the harness cannot assume the pixels it captures cover the
@@ -419,6 +442,18 @@ export const LVGLSvgPage = observer(
                 );
                 const { tierForObject, tierNote, isProceduralType } = await import("./svg-diff");
                 const { partHasDrawing: hasDrawing } = await import("./scene-dump");
+                const { hiddenSubtree } = await import("./scene");
+                /*
+                 * Objects LVGL does not paint are not measured.
+                 *
+                 * The dump walks the whole object tree, hidden sub-screens included, so a page can
+                 * carry twice as many objects as it shows. A hidden object has no SVG node by design,
+                 * which left the harness comparing its box against the visible page's pixels: measured
+                 * `time` `panel/MAIN 15.04%` and `button/MAIN 19.52%`, both with no node and therefore
+                 * no box either. The predicate is the renderer's own, so the two cannot disagree.
+                 */
+                const notVisible = hiddenSubtree(scene.objects);
+                const measured = scene.objects.filter(object => !notVisible.has(object.ptr));
                 /*
                  * Objects drawn from a procedural ancestor's private state are excluded with it.
                  * `scene.objects` is flat and parents precede children, so one pass suffices.
@@ -432,25 +467,43 @@ export const LVGLSvgPage = observer(
                     }
                 }
                 /*
-                 * Every descendant's box, per object, for the row exclusions. One pass over the flat
-                 * scene: a child is appended to each of its ancestors, so a nested grandchild is
-                 * excluded from its parent's row as well as from its grandparent's.
+                 * Every box inside this object that belongs to ANOTHER object, for the row exclusions.
+                 *
+                 * Two cases, one rule: a container's box contains everything its children draw, so
+                 * measuring the container over its whole box reports its children's deltas a second
+                 * time (measured: holiday_calender_screen's panel at 79% while the only wrong thing
+                 * inside was the calendar); and an unrelated widget can sit on top — home_screen's
+                 * gauges have their numeric labels as SIBLINGS, not children, so the glyph
+                 * anti-aliasing of "11" was being charged to the arc's row (6-9% of a 230x230 box that
+                 * is otherwise pixel-aligned). Subtracting every contained box attributes each pixel to
+                 * the object that drew it, and each of those objects still has its own row.
+                 *
+                 * Overlapping-but-not-contained siblings are the one case this cannot separate; they
+                 * remain shared between their two rows.
                  */
-                const byPtr = new Map(scene.objects.map(object => [object.ptr, object]));
-                const descendants = new Map<number, SceneRect[]>();
-                for (const object of scene.objects) {
-                    let ancestor = object.parentPtr;
-                    for (let depth = 0; ancestor != null && depth < 32; depth++) {
-                        const list = descendants.get(ancestor);
-                        if (list) {
-                            list.push(object.area);
-                        } else {
-                            descendants.set(ancestor, [object.area]);
+                const excludes = new Map<number, SceneRect[]>();
+                for (const object of measured) {
+                    const list: SceneRect[] = [];
+                    for (const other of measured) {
+                        if (other === object) {
+                            continue;
                         }
-                        ancestor = byPtr.get(ancestor)?.parentPtr;
+                        const a = object.area;
+                        const b = other.area;
+                        if (
+                            b.x >= a.x &&
+                            b.y >= a.y &&
+                            b.x + b.w <= a.x + a.w &&
+                            b.y + b.h <= a.y + a.h
+                        ) {
+                            list.push(b);
+                        }
+                    }
+                    if (list.length > 0) {
+                        excludes.set(object.ptr, list);
                     }
                 }
-                const objects = scene.objects.map(object => {
+                const objects = measured.map(object => {
                     const node = svg.querySelector(`[data-ptr="${object.ptr}"]`);
                     const box = (node as SVGGraphicsElement | null)?.getBBox?.();
                     /*
@@ -476,13 +529,9 @@ export const LVGLSvgPage = observer(
                         tier: tierForObject(tierInput),
                         note: tierNote(tierInput),
                         /*
-                         * A container's box contains its children's drawing, so measuring it over the
-                         * whole box reports its children's deltas a second time — under every ancestor
-                         * (measured: `holiday_calender_screen`'s panel at 22% while the only wrong thing
-                         * inside it was the calendar). Subtracting the descendants leaves the
-                         * container's own chrome, and each descendant is still measured on its own row.
+                         * A row is measured on the pixels ITS object drew — see `excludes`.
                          */
-                        exclude: descendants.get(object.ptr),
+                        exclude: excludes.get(object.ptr),
                         /*
                          * An object with nothing drawable of its own is not measurable: a textarea's
                          * internal label sits inside the textarea that paints the placeholder, so its
@@ -498,6 +547,8 @@ export const LVGLSvgPage = observer(
                     width: scene.width,
                     height: scene.height,
                     source: this.props.page.name ?? "page",
+                    settled: this.harnessSceneSettled(scene),
+                    notVisible: notVisible.size,
                     objects,
                 });
                 console.log(describeHarnessResult(result));

@@ -40,7 +40,7 @@ import type {
     SceneShadow,
     SceneText,
 } from "./scene";
-import { alphaOf, degreesOf, zoomOf } from "./scene";
+import { alphaOf, degreesOf, hiddenSubtree, zoomOf } from "./scene";
 
 // ---------------------------------------------------------------------------------------
 // deterministic def ids
@@ -693,16 +693,36 @@ function renderLine(key: string, line: SceneLine): DrawNode | undefined {
 }
 
 function renderArc(key: string, arc: SceneArc, area: SceneRect): DrawNode[] {
-    const width = arc.width ?? arc.bgWidth ?? 1;
-    const radius = Math.max(0, (Math.min(area.w, area.h) - width) / 2);
-    const cx = area.x + area.w / 2;
-    const cy = area.y + area.h / 2;
+    const cx = arc.centerX ?? area.x + area.w / 2;
+    const cy = arc.centerY ?? area.y + area.h / 2;
+    /*
+     * LVGL's arc radius is the OUTER edge of the band, not its centreline: `lv_draw_sw_arc()` masks
+     * the ring between `coords` and `coords` inset by `dsc->width`, and `lv_arc.c` passes `arc_r`
+     * (and `arc_r - get_indicator_max_pad()` for the indicator) straight through as that radius. An
+     * SVG stroke is centred on its path, so the path radius is the outer edge minus half the stroke —
+     * measured on home_screen's 230 px gauge, where drawing the stroke at the reported radius put the
+     * whole ring 3.5 px outside the canvas's (21.7% of the row differing against 5.1%).
+     *
+     * The `(min(w, h) - width) / 2` fallback is for a scene with no ring on it (a hand-built fixture,
+     * or a dump from before the ring was carried): it is the same half-width rule for an arc that
+     * fills its box.
+     */
+    const centreline = (outer: number | undefined, strokeWidth: number) =>
+        outer != null
+            ? Math.max(0, outer - strokeWidth / 2)
+            : Math.max(0, (Math.min(area.w, area.h) - strokeWidth) / 2);
+
+    const trackWidth = arc.bgWidth ?? arc.width ?? 1;
+    const width = arc.width ?? trackWidth;
     const nodes: DrawNode[] = [];
 
     if (arc.bgColor) {
-        // The track is its own sweep: a default-themed arc runs 270 degrees, not a full circle.
+        // The track is its own sweep: a default-themed arc runs 270 degrees, not a full circle — and
+        // it is NOT inset (only the indicator is).
+        const trackRadius = centreline(arc.radius, trackWidth);
         const track =
-            arcPath(cx, cy, radius, arc.bgStart ?? 0, arc.bgEnd ?? 3600) ?? fullCirclePath(cx, cy, radius);
+            arcPath(cx, cy, trackRadius, arc.bgStart ?? 0, arc.bgEnd ?? 3600) ??
+            fullCirclePath(cx, cy, trackRadius);
         nodes.push({
             key: `${key}-track`,
             tag: "path",
@@ -711,7 +731,7 @@ function renderArc(key: string, arc: SceneArc, area: SceneRect): DrawNode[] {
                 fill: "none",
                 stroke: arc.bgColor,
                 "stroke-opacity": alphaOf(arc.bgOpacity),
-                "stroke-width": arc.bgWidth ?? width,
+                "stroke-width": trackWidth,
             },
         });
     }
@@ -721,6 +741,8 @@ function renderArc(key: string, arc: SceneArc, area: SceneRect): DrawNode[] {
         return nodes;
     }
 
+    const valueOuter = arc.radius != null ? arc.radius - (arc.inset ?? 0) : undefined;
+    const radius = centreline(valueOuter, width);
     let d = arcPath(cx, cy, radius, arc.start, arc.end);
     if (!d) {
         // A full 360° arc has no distinct endpoints; fall back to a circle.
@@ -1231,7 +1253,9 @@ function renderObject(obj: SceneObject, defs: DefCollector): DrawNode {
  * Render a whole scene.
  *
  * Hidden objects (and their subtrees) are not emitted: LVGL does not paint them either, and
- * the editor keeps its own visibility affordances in the overlay group.
+ * the editor keeps its own visibility affordances in the overlay group. The predicate lives in
+ * `hiddenSubtree` because the fidelity harness has to exclude exactly the same set — measuring an
+ * object the renderer rightly skipped compares the visible page against a node that does not exist.
  */
 export function renderScene(scene: Scene): RenderOutput {
     const defs = new DefCollector();
@@ -1242,19 +1266,23 @@ export function renderScene(scene: Scene): RenderOutput {
         byPtr.set(obj.ptr, obj);
     }
 
-    const hidden = new Set<number>();
+    const hidden = hiddenSubtree(scene.objects);
     const nodeByPtr = new Map<number, DrawNode>();
     const roots: DrawNode[] = [];
 
     // Scene.objects is flat with parents before children, so one pass nests everything.
     for (const obj of scene.objects) {
+        if (hidden.has(obj.ptr)) {
+            continue;
+        }
         const parentPtr = obj.parentPtr;
-        const parent =
-            parentPtr != null && !hidden.has(parentPtr)
-                ? nodeByPtr.get(parentPtr)
-                : undefined;
-        const reachable = parentPtr == null || parent != null;
-        if (obj.hidden || !reachable) {
+        const parent = parentPtr != null ? nodeByPtr.get(parentPtr) : undefined;
+        /*
+         * A parent that is missing from the node map is either hidden (already in the set) or not
+         * part of this scene at all — a subtree scene dump, for example. Neither is reachable, and
+         * neither is painted.
+         */
+        if (parentPtr != null && parent == null) {
             hidden.add(obj.ptr);
             continue;
         }

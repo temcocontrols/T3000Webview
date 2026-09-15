@@ -16,6 +16,7 @@ import type {
 } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/scene-dump";
 import { createSvgContext, isSvgContext } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/svg-context";
 import { renderScene } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/svg-renderer";
+import { hiddenSubtree } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/scene";
 import {
     SVG_RENDERER_STORAGE_KEY,
     SVG_RENDERER_SUPPORTED_VERSION,
@@ -427,6 +428,47 @@ describe("scene-dump — wire mapping", () => {
         expect(child.scroll).toEqual({ x: 0, y: 5 });
     });
 
+    /*
+     * `hiddenSubtree` is the one predicate the renderer and the fidelity harness both use, so it is
+     * pinned here: the renderer must not paint these objects, and the harness must not measure them.
+     * They disagreed before this existed — the harness measured the hidden half of every page, which
+     * on `time` is 21 of 48 objects, against pixels that belong to the visible page (measured
+     * `panel/MAIN 15.04%` of pure noise, with no SVG node to compare against).
+     */
+    it("collects a hidden object and its whole subtree into one set", () => {
+        const scene = parseSceneDump(
+            JSON.stringify({
+                sceneVersion: 1,
+                width: 100,
+                height: 100,
+                objects: [
+                    { ptr: 1, area: { x: 0, y: 0, w: 100, h: 100 }, parts: [] },
+                    { ptr: 2, parentPtr: 1, area: { x: 0, y: 0, w: 10, h: 10 }, hidden: true, parts: [] },
+                    // a child of a hidden object is not itself flagged — it is hidden by inheritance
+                    { ptr: 3, parentPtr: 2, area: { x: 0, y: 0, w: 10, h: 10 }, parts: [] },
+                    { ptr: 4, parentPtr: 3, area: { x: 0, y: 0, w: 10, h: 10 }, parts: [] },
+                    { ptr: 5, parentPtr: 1, area: { x: 0, y: 0, w: 10, h: 10 }, parts: [] },
+                ],
+            })
+        )!;
+        expect([...hiddenSubtree(scene.objects)].sort((a, b) => a - b)).toEqual([2, 3, 4]);
+    });
+
+    it("hides nothing when nothing is flagged", () => {
+        const scene = parseSceneDump(
+            JSON.stringify({
+                sceneVersion: 1,
+                width: 10,
+                height: 10,
+                objects: [
+                    { ptr: 1, area: { x: 0, y: 0, w: 10, h: 10 }, parts: [] },
+                    { ptr: 2, parentPtr: 1, area: { x: 0, y: 0, w: 5, h: 5 }, parts: [] },
+                ],
+            })
+        )!;
+        expect(hiddenSubtree(scene.objects).size).toBe(0);
+    });
+
     it("treats parentPtr 0 as 'no parent'", () => {
         const scene = wireToScene(WIRE);
         expect(scene.objects[0].parentPtr).toBeUndefined();
@@ -611,14 +653,58 @@ describe("scene-dump — wire mapping", () => {
         expect(node.attrs["href"]).toBe("data:image/png;base64,iVBORw0KGgo=");
     });
 
-    it("filters parts the widget does not declare", () => {
-        const scene = wireToScene(WIRE, ptr =>
-            ptr === 200 ? { type: "slider", parts: ["MAIN", "INDICATOR"] } : undefined
+    it("invents no part a widget's own draw path could not have produced", () => {
+        /*
+         * This used to be a filter against a declared `parts` list on the widget model — a list
+         * nothing ever populated, so the filter never fired (`SceneWidgetInfo.parts` is gone). What
+         * actually prevents a phantom part is structural, in the dump: a part is emitted only once its
+         * box is known (`svgPartArea()`) and the slots LVGL never draws from an object's box
+         * (SELECTED, ITEMS, CURSOR) are dropped outright. So a panel — which inherits the theme's
+         * scrollbar/indicator styling — must never gain those parts, whatever the model says.
+         */
+        const panelWire: WireScene = JSON.parse(JSON.stringify(WIRE));
+        panelWire.objects[1].parts = [
+            { p: 0, bgColor: 0x112233, bgOpa: 255 },
+            // The theme's scrollbar and indicator, as the old dump would have reported them: styled,
+            // not placed. Neither is on the wire now, but if one ever reappears it must stay out.
+            { p: 1, bgColor: 0x616161, bgOpa: 102 },
+            { p: 2, bgColor: 0x2196f3, bgOpa: 255 },
+            { p: 5, bgColor: 0xff9800, bgOpa: 255 },
+            { p: 6, bgColor: 0xff0000, bgOpa: 255 },
+        ];
+        const scene = wireToScene(panelWire, ptr =>
+            ptr === 200 ? { type: "panel" } : undefined
         );
-        expect(scene.objects[1].parts.map(p => p.part)).toEqual([
-            "MAIN",
-            "INDICATOR",
-        ]);
+        const names = scene.objects[1].parts.map(part => part.part);
+        expect(names).toContain("MAIN");
+        expect(names).not.toContain("ITEMS");
+        expect(names).not.toContain("CURSOR");
+        expect(names).not.toContain("SELECTED");
+        // A part the dump placed keeps its own box: that is what stops a thin scrollbar strip being
+        // painted as a filled box the size of the object.
+        expect(scene.objects[0].parts[0].area).toBeUndefined();
+        const placed = wireToScene(WIRE).objects[0].parts;
+        expect(placed.every(part => part.part === "MAIN")).toBe(true);
+    });
+
+    it("cannot paint the placeholder slot of an object that has no placeholder", () => {
+        /*
+         * Slot 7 (TEXTAREA_PLACEHOLDER) is on the wire for every object, because the theme resolves a
+         * text font for every part and the dump cannot tell "used" from "inherited". The hazard is a
+         * phantom box; the guard is that the part can only draw when the merge puts a STRING in it, and
+         * that only happens for a textarea or for a model that declares a placeholder.
+         */
+        const plain = wireToScene(WIRE).objects[1];
+        const slot = plain.parts.find(part => part.part === "TEXTAREA_PLACEHOLDER")!;
+        expect(slot.text).toBeUndefined();
+        // And with no text it renders nothing at all.
+        const scene = parseSceneDump(JSON.stringify(WIRE))!;
+        const nodes = (function flatten(list: any[]): any[] {
+            return (list ?? []).flatMap(node => [node, ...flatten(node.children ?? [])]);
+        })(renderScene(scene).roots);
+        expect(
+            nodes.some(node => node.key.indexOf("TEXTAREA_PLACEHOLDER") !== -1)
+        ).toBe(false);
     });
 
     it("wraps a part-level opa as a layer opacity", () => {
@@ -633,6 +719,64 @@ describe("scene-dump — wire mapping", () => {
         // Scene contract requires a non-empty type.
         const scene = wireToScene(WIRE);
         expect(scene.objects[1].type).toBe("object");
+    });
+
+    it("carries the arc's ring and the indicator's inset onto both parts", () => {
+        /*
+         * `get_center()` insets the object's box by the MAIN pads, and the indicator is drawn at
+         * `arc_r - get_indicator_max_pad()`. Neither is derivable from the area, so both travel with
+         * the parts that draw on them — otherwise the track and the sweep can land on different
+         * circles (measured on home_screen: the track drawn 6-7 px outside the canvas's ring).
+         */
+        const wire: WireScene = JSON.parse(JSON.stringify(WIRE));
+        // object 0 is the visible root; object 1 is `hidden` in this fixture and never reaches the
+        // renderer (which is itself worth knowing: a hidden subtree produces no nodes at all).
+        wire.objects[0].parts = [
+            {
+                p: 0,
+                arcWidth: 7,
+                arcColor: 0x62b7ff,
+                arcOpa: 120,
+                arcBgStart: 900,
+                arcBgEnd: 4500,
+                arcCx: 240,
+                arcCy: 160,
+                arcR: 105,
+            },
+            {
+                p: 2,
+                arcWidth: 7,
+                arcColor: 0x62b7ff,
+                arcOpa: 255,
+                arcStart: 900,
+                arcEnd: 2340,
+                arcCx: 240,
+                arcCy: 160,
+                arcR: 105,
+                arcInset: 6,
+            },
+        ];
+        const child = wireToScene(wire).objects[0];
+        const track = child.parts.find(part => part.part === "MAIN")!.arc!;
+        const indicator = child.parts.find(part => part.part === "INDICATOR")!.arc!;
+        expect(track.centerX).toBe(240);
+        expect(track.radius).toBe(105);
+        // Only the indicator is inset: the track is the outer ring.
+        expect(track.inset).toBeUndefined();
+        expect(indicator.radius).toBe(105);
+        expect(indicator.inset).toBe(6);
+
+        // And the renderer draws them on those circles — as the band's OUTER edge, because LVGL's arc
+        // radius is the outer edge (`lv_draw_sw_arc` masks between `coords` and coords-inset-by-width)
+        // while an SVG stroke is centred on its path: 105 - 7/2 = 101.5, and 105 - 6 - 7/2 = 95.5.
+        const nodes = (function flatten(list: any[]): any[] {
+            return (list ?? []).flatMap(node => [node, ...flatten(node.children ?? [])]);
+        })(renderScene(wireToScene(wire)).roots);
+        const trackNode = nodes.find(node => node.key.endsWith("-arc-track"))!;
+        const valueNode = nodes.find(node => node.key.endsWith("-arc-value"))!;
+        expect(String(trackNode.attrs.d)).toContain("A101.5 101.5");
+        expect(String(trackNode.attrs["stroke-width"])).toBe("7");
+        expect(String(valueNode.attrs.d)).toContain("A95.5 95.5");
     });
 
     it("maps the arc sweep emitted for arc widgets", () => {

@@ -160,6 +160,14 @@ try {
     if (typeof Module._lv_arc_create === "function") {
         const arcPtr = Module._lv_arc_create(screenPtr);
         Module._lv_obj_set_size(arcPtr, 100, 100);
+        /*
+         * `lv_obj_set_size` only records the size; the coords (which the ring is computed from) are
+         * only produced by a layout pass. Without this the arc is 0x0 and every geometric assertion
+         * below passes for the wrong reason.
+         */
+        if (typeof Module._lv_obj_update_layout === "function") {
+            Module._lv_obj_update_layout(arcPtr);
+        }
         Module._lv_arc_set_angles(arcPtr, 0, 90);
         Module._lv_arc_set_bg_angles(arcPtr, 0, 360);
         const arc = dump(arcPtr).json.objects[0];
@@ -174,6 +182,34 @@ try {
             "an arc background sweep is emitted in tenths of a degree",
             !!main && main.arcBgStart === 0 && main.arcBgEnd === 3600,
             `arcBgStart=${main && main.arcBgStart} arcBgEnd=${main && main.arcBgEnd}`
+        );
+        /*
+         * The ring: lv_arc.c insets the box by the MAIN pads before taking half its size, so the
+         * renderer cannot derive the centre and radius from the area. Without these the whole gauge
+         * was drawn on a circle a few pixels outside the canvas's (measured on home_screen: track at
+         * 104-105 against 111.5, 9.27% of the row's pixels differing at a tolerance of 8).
+         */
+        check(
+            "an arc reports the ring it is drawn on",
+            !!main &&
+                typeof main.arcCx === "number" &&
+                typeof main.arcCy === "number" &&
+                main.arcR > 0,
+            main ? `c=(${main.arcCx},${main.arcCy}) r=${main.arcR}` : "no MAIN part"
+        );
+        check(
+            "the arc's indicator reports how far inside the ring it is drawn",
+            !!indicator && typeof indicator.arcInset === "number" && indicator.arcInset >= 0,
+            indicator ? `arcInset=${indicator.arcInset}` : "no INDICATOR part"
+        );
+        check(
+            "the arc's centre lies inside its own box",
+            !!main &&
+                main.arcCx >= arc.area.x &&
+                main.arcCx <= arc.area.x + arc.area.w &&
+                main.arcCy >= arc.area.y &&
+                main.arcCy <= arc.area.y + arc.area.h,
+            main ? `c=(${main.arcCx},${main.arcCy}) in ${JSON.stringify(arc.area)}` : "no MAIN part"
         );
         if (typeof Module._lv_obj_delete === "function") {
             Module._lv_obj_delete(arcPtr);

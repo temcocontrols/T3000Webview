@@ -5,6 +5,8 @@
 import { describe, expect, it } from "vitest";
 import {
     TIER_THRESHOLDS,
+    TIER_TOLERANCE,
+    compareInk,
     diffImages,
     hasPixels,
     iouOf,
@@ -15,13 +17,14 @@ import {
     isProceduralType,
     tierForObject,
     tierNote,
+    toleranceForTier,
     verdictFor,
 } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/svg-diff";
 import type {
     RgbaImage,
     ScorecardRow,
 } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/svg-diff";
-import { firstFontUrl } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/svg-diff-harness";
+import { describeSkippedObjects, firstFontUrl } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/svg-diff-harness";
 
 describe("svg-diff — tiers come from what the object is, not from the size of the diff", () => {
     it("excludes the widgets LVGL draws procedurally", () => {
@@ -120,6 +123,25 @@ describe("svg-diff-harness — embedding the page's web fonts", () => {
     it("returns nothing for a local-only source", () => {
         expect(firstFontUrl('local("Montserrat"), local("Montserrat-Medium")')).toBeUndefined();
         expect(firstFontUrl("")).toBeUndefined();
+    });
+});
+
+describe("svg-diff-harness — the objects a scorecard does not cover", () => {
+    /*
+     * The dump walks the whole LVGL tree, hidden sub-screens included: `time` holds 48 objects and
+     * paints 27 of them, cross-checked against `lv_obj_is_visible` (27 visible, and a node for
+     * exactly those 27). Measuring the other 21 meant comparing a box against pixels that belong to
+     * the visible page, with no SVG node and therefore no box IoU either — measured
+     * `panel/MAIN 15.04%` and `button/MAIN 19.52%` of pure noise on `time` alone.
+     */
+    it("says how many objects were left out, and says nothing when there are none", () => {
+        expect(describeSkippedObjects(21)).toEqual([
+            "21 object(s) not visible on this page (LVGL hides them) — not measured",
+        ]);
+        // Zero and absent are the same thing here: a page whose objects are all visible has no
+        // caveat to report, and an empty warning list is not the same as a missing one.
+        expect(describeSkippedObjects(0)).toEqual([]);
+        expect(describeSkippedObjects(undefined)).toEqual([]);
     });
 });
 
@@ -392,6 +414,96 @@ describe("svg-diff — verdicts", () => {
     });
 });
 
+describe("svg-diff — the ink mask for rasterised content", () => {
+    /** A 10x2 image with a 2px-wide "glyph" at x = 3,4, drawn at the same place unless told otherwise. */
+    function withGlyph(x: number, colour: [number, number, number, number] = [255, 255, 255, 255]): RgbaImage {
+        let image = solid(10, 2, [0, 0, 0, 255]);
+        image = withPixel(image, x, 0, colour);
+        image = withPixel(image, x + 1, 0, colour);
+        image = withPixel(image, x, 1, colour);
+        image = withPixel(image, x + 1, 1, colour);
+        return image;
+    }
+
+    it("reports 0% when the ink is in the same place, whatever the channel values", () => {
+        /*
+         * This is the whole point: a glyph bitmap (LVGL) and a glyph outline (the browser) put ink in
+         * the same pixels and disagree on the coverage of the edges. The measured case is a correct
+         * 14-18 px label reading 12-26% per channel at a tolerance of 30 — and 0-12% as a mask.
+         */
+        const reference = withGlyph(3);
+        // The same ink, painted "thicker" (a slightly different coverage on every pixel).
+        const thicker = withGlyph(3, [150, 150, 150, 255]);
+        const result = compareInk(reference, thicker, { region: { x: 0, y: 0, w: 10, h: 2 } });
+        expect(result.inkDiffPct).toBe(0);
+        expect(result.referenceInk).toBe(4);
+    });
+
+    it("reports 100% when the ink is missing, and again when it is somewhere else", () => {
+        const reference = withGlyph(3);
+        const empty = solid(10, 2, [0, 0, 0, 255]);
+        expect(
+            compareInk(reference, empty, { region: { x: 0, y: 0, w: 10, h: 2 } }).inkDiffPct
+        ).toBe(100);
+
+        // Displaced by 3 px: outside the one-pixel tolerance, so still unmatched ink.
+        const moved = withGlyph(6);
+        expect(
+            compareInk(reference, moved, { region: { x: 0, y: 0, w: 10, h: 2 }, matchRadius: 1 })
+                .inkDiffPct
+        ).toBe(100);
+        // One pixel over is the tolerated case (a stroke landing half a pixel off).
+        const shifted = withGlyph(4);
+        expect(
+            compareInk(reference, shifted, { region: { x: 0, y: 0, w: 10, h: 2 }, matchRadius: 1 })
+                .inkDiffPct
+        ).toBe(0);
+    });
+
+    it("counts ink the candidate has and the reference does not", () => {
+        // A string drawn twice, or a shape that should not be there, is visible in `extraInk`.
+        const reference = withGlyph(3);
+        let doubled = withGlyph(3);
+        doubled = withPixel(doubled, 7, 0, [255, 255, 255, 255]);
+        doubled = withPixel(doubled, 7, 1, [255, 255, 255, 255]);
+        const result = compareInk(reference, doubled, { region: { x: 0, y: 0, w: 10, h: 2 } });
+        expect(result.extraInk).toBe(2);
+        expect(result.missingInk).toBe(0);
+        // 2 unmatched of 4 + 6 ink pixels.
+        expect(result.inkDiffPct).toBeCloseTo(20, 5);
+    });
+
+    it("ignores ink in a box that belongs to another row", () => {
+        // Same rule as the pixel diff: a container is not judged on what its children draw.
+        const reference = withGlyph(3);
+        const candidate = solid(10, 2, [0, 0, 0, 255]);
+        const excluded = compareInk(reference, candidate, {
+            region: { x: 0, y: 0, w: 10, h: 2 },
+            exclude: [{ x: 3, y: 0, w: 2, h: 2 }],
+        });
+        expect(excluded.referenceInk).toBe(0);
+        expect(excluded.inkDiffPct).toBe(0);
+    });
+
+    it("decides a rasterised row when the row carries a mask", () => {
+        // A row inside the ink budget passes even though its pixel percentage is far above the T2
+        // pixel budget; one above the budget fails.
+        const base: ScorecardRow = {
+            widget: "label",
+            part: "MAIN",
+            source: "home_screen",
+            pixelDiffPct: 24,
+            maxChannelDelta: 40,
+            tier: "T2",
+            tolerance: 30,
+        };
+        expect(verdictFor({ ...base, inkDiffPct: 3 })).toBe("pass");
+        expect(verdictFor({ ...base, inkDiffPct: 60 })).toBe("fail");
+        // Without a mask the per-channel budget is still applied.
+        expect(verdictFor({ ...base, pixelDiffPct: 1 })).toBe("pass");
+    });
+});
+
 describe("svg-diff — scorecard output", () => {
     it("builds a row from a diff result", () => {
         const reference = solid(4, 4, [0, 0, 0, 255]);
@@ -427,8 +539,40 @@ describe("svg-diff — scorecard output", () => {
                 note: "D2",
             },
         ]);
-        expect(markdown).toContain("| slider | INDICATOR | indicators | 0.12% | 9 | 1.000 | pass |");
-        expect(markdown).toContain("| chart | MAIN | dashboard | 14.80% | 190 | n/a | excluded | D2 |");
+        expect(markdown).toContain(
+            "| slider | INDICATOR | indicators | 8 | 0.12% | n/a | 9 | 1.000 | pass |"
+        );
+        expect(markdown).toContain(
+            "| chart | MAIN | dashboard | 8 | 14.80% | n/a | 190 | n/a | excluded | D2 |"
+        );
         expect(markdown).toContain("**Summary:** 1 pass, 0 fail, 1 excluded.");
+    });
+
+    it("measures each tier at the tolerance its content needs, and says so", () => {
+        /*
+         * The tolerance and the match radius are one decision: a correct 14-18 px label reads 12-26%
+         * at a tolerance of 8 *with* a 1 px radius and 1.6% at 30, for the same frame, because the
+         * ink boxes agree within a pixel and what differs is stroke coverage (LVGL's hinted bitmap
+         * against the browser's outline). T1 is style-only, so it keeps the strict tolerance.
+         */
+        expect(toleranceForTier("T1")).toBe(8);
+        expect(toleranceForTier("T2")).toBe(30);
+        expect(TIER_TOLERANCE.T2).toBeGreaterThan(TIER_TOLERANCE.T1);
+
+        // A row's own tolerance wins when the caller set one (the harness does, per tier).
+        const row: ScorecardRow = {
+            widget: "label",
+            part: "MAIN",
+            source: "home_screen",
+            pixelDiffPct: 1.5,
+            maxChannelDelta: 40,
+            tier: "T2",
+            tolerance: 30,
+        };
+        expect(verdictFor(row)).toBe("pass");
+        // The tolerance is never a free pass on the budget itself.
+        expect(verdictFor({ ...row, pixelDiffPct: 2.5 })).toBe("fail");
+        // ...and it travels with the number, so a pasted scorecard is self-describing.
+        expect(scorecardToMarkdown([row])).toContain("| label | MAIN | home_screen | 30 |");
     });
 });
