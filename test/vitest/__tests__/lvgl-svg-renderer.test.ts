@@ -162,14 +162,15 @@ describe("renderer — indicators (parts, states, arcs)", () => {
         expect(attr(value, "stroke-linecap")).toBe("round");
         expect(attr(value, "stroke-width")).toBe(12);
         // 1350 → 4050 (tenths of a degree) is a 270° sweep → large-arc-flag = 1.
-        // sweep-flag stays 0: increasing LVGL angle is the negative SVG angle direction.
+        // sweep-flag 1: LVGL's angle grows clockwise on screen (`y = cy + sin(a)·r`), the same
+        // direction as SVG's positive-angle sweep.
         expect(String(attr(value, "d"))).toContain("A");
-        expect(String(attr(value, "d"))).toContain(" 1 0 ");
+        expect(String(attr(value, "d"))).toContain(" 1 1 ");
     });
 
     it("renders a partial arc without the large-arc flag", () => {
         const value = requireNode(out, "p8-INDICATOR-arc-value");
-        expect(String(attr(value, "d"))).toContain(" 0 0 ");
+        expect(String(attr(value, "d"))).toContain(" 0 1 ");
     });
 
     it("draws a track-only arc part as its own sweep, not a full ring", () => {
@@ -201,7 +202,7 @@ describe("renderer — indicators (parts, states, arcs)", () => {
         expect(nodes.some(node => node.key.endsWith("-value"))).toBe(false);
         const track = nodes.find(node => node.key.endsWith("-track"));
         expect(track).toBeTruthy();
-        expect(String(attr(track!, "d"))).toContain(" 1 0 ");
+        expect(String(attr(track!, "d"))).toContain(" 1 1 ");
     });
 
     it("renders a textarea placeholder, cursor and scrollbar as separate parts", () => {

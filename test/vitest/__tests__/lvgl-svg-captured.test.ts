@@ -95,7 +95,10 @@ describe("captured LVGL 9.5 dump → SVG", () => {
         expect(child.index).toBe(0);
         expect(child2.index).toBe(1);
         expect(child.parts.find(p => p.part === "MAIN")!.border!.width).toBe(2);
-        expect(child.parts.find(p => p.part === "MAIN")!.border!.side).toBe("FULL");
+        // LVGL's default side is FULL and the wire omits values equal to the default, so an absent
+        // side means "all four sides" — NONE (0) is emitted explicitly, which is what stops the
+        // renderer from drawing a frame LVGL does not draw.
+        expect(child.parts.find(p => p.part === "MAIN")!.border!.side).toBeUndefined();
     });
 
     it("renders the captured scene into real SVG DOM", () => {
@@ -212,9 +215,10 @@ describe("captured LVGL 9.5 dump → SVG", () => {
         const label = svg.querySelector("text")!;
         expect(label).not.toBeNull();
         expect(label.textContent).toBe("Supply Temp");
-        // Colour and size came from the LVGL dump, not from the model.
+        // Colour and size came from the LVGL dump, not from the model. The dump reports a font's
+        // LINE HEIGHT (16 here); the nominal size the browser needs is 14.
         expect(label.getAttribute("fill")).toBe("#212121");
-        expect(Number(label.getAttribute("font-size"))).toBe(16);
+        expect(Number(label.getAttribute("font-size"))).toBe(14);
 
         sink.teardown();
     });

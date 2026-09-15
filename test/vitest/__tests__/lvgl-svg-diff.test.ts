@@ -12,12 +12,138 @@ import {
     rowFromDiff,
     scorecardToMarkdown,
     summariseScorecard,
+    tierForObject,
+    tierNote,
     verdictFor,
 } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/svg-diff";
 import type {
     RgbaImage,
     ScorecardRow,
 } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/svg-diff";
+import { firstFontUrl } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/svg-diff-harness";
+
+describe("svg-diff — tiers come from what the object is, not from the size of the diff", () => {
+    it("excludes the widgets LVGL draws procedurally", () => {
+        for (const type of ["calendar", "buttonmatrix", "chart", "qrcode", "table", "scale"]) {
+            expect(tierForObject({ type })).toBe("T3");
+            expect(tierNote({ type })).toContain("D2");
+        }
+        // The type comes from the widget model, so case and padding must not matter.
+        expect(tierForObject({ type: " Calendar " })).toBe("T3");
+    });
+
+    it("relaxes the threshold for content LVGL rasterises itself", () => {
+        // Glyph bitmaps and images are rasterised by LVGL's own engine: a browser cannot match them
+        // pixel for pixel, so the tier is T2 (2%, IoU 0.95) rather than T1 (0.5%, 0.99).
+        expect(tierForObject({ type: "label", carriesTextOrImage: true })).toBe("T2");
+        expect(tierForObject({ type: "image", carriesTextOrImage: true })).toBe("T2");
+        expect(tierNote({ type: "label", carriesTextOrImage: true })).toContain("rasterises");
+    });
+
+    it("keeps pure vector style at T1", () => {
+        for (const type of ["panel", "button", "object", "arc"]) {
+            expect(tierForObject({ type })).toBe("T1");
+            expect(tierNote({ type })).toBeUndefined();
+        }
+        // A procedural widget outranks its content: it is excluded, not merely relaxed.
+        expect(tierForObject({ type: "calendar", carriesTextOrImage: true })).toBe("T3");
+    });
+
+    it("fails a rasterised row whose content does not match", () => {
+        const row = rowFromDiff(
+            { widget: "label", part: "MAIN", source: "home_screen", tier: "T2", note: tierNote({ type: "label", carriesTextOrImage: true }) },
+            { compared: 100, differing: 30, pixelDiffPct: 30, maxChannelDelta: 200, meanChannelDelta: 60 },
+            0.93
+        );
+        expect(verdictFor(row)).toBe("fail");
+    });
+
+    it("does not gate rasterised content on the box (ink cannot fill a line box)", () => {
+        // Correct text rows measure 0.92-0.94 because the SVG box is the ink and the LVGL area is the
+        // layout box, so the IoU is a diagnostic there — matching the design doc's T2 rule.
+        const row = rowFromDiff(
+            { widget: "label", part: "MAIN", source: "home_screen", tier: "T2", note: tierNote({ type: "label", carriesTextOrImage: true }) },
+            { compared: 100, differing: 1, pixelDiffPct: 1, maxChannelDelta: 40, meanChannelDelta: 5 },
+            0.5
+        );
+        expect(TIER_THRESHOLDS.T2.bboxIoU).toBeUndefined();
+        expect(verdictFor(row)).toBe("pass");
+    });
+
+    it("reports a procedural row as excluded however large its diff is", () => {
+        const row = rowFromDiff(
+            {
+                widget: "calendar",
+                part: "MAIN",
+                source: "holiday_calender_screen",
+                tier: tierForObject({ type: "calendar" }),
+                note: tierNote({ type: "calendar" }),
+            },
+            { compared: 100, differing: 100, pixelDiffPct: 100, maxChannelDelta: 255, meanChannelDelta: 200 }
+        );
+        expect(verdictFor(row)).toBe("excluded");
+        const summary = summariseScorecard([row]);
+        expect(summary.excluded).toBe(1);
+        expect(summary.fail).toBe(0);
+        // The reason is written down, not implied.
+        expect(scorecardToMarkdown([row])).toContain("decision D2");
+    });
+});
+
+describe("svg-diff-harness — embedding the page's web fonts", () => {
+    /*
+     * A `data:` URL raster is an isolated document: it cannot use the page's font faces, so text
+     * would be measured with a fallback family. These cases cover reading the URL out of the
+     * `src:` descriptors browsers and bundlers actually emit.
+     */
+    it("reads the URL out of every src form a bundler emits", () => {
+        expect(firstFontUrl("url(Montserrat-Medium.ttf)")).toBe("Montserrat-Medium.ttf");
+        expect(firstFontUrl('url("a.woff2") format("woff2")')).toBe("a.woff2");
+        expect(firstFontUrl("url('a.woff') format('woff'), url(b.ttf)")).toBe("a.woff");
+        expect(firstFontUrl("url( data:font/ttf;base64,AA== ) format('truetype')")).toBe(
+            "data:font/ttf;base64,AA=="
+        );
+    });
+
+    it("returns nothing for a local-only source", () => {
+        expect(firstFontUrl('local("Montserrat"), local("Montserrat-Medium")')).toBeUndefined();
+        expect(firstFontUrl("")).toBeUndefined();
+    });
+});
+
+describe("svg-diff — the match radius for rasterised content", () => {
+    it("absorbs a stroke that lands a pixel over, without softening the severity metrics", () => {
+        // A vertical stroke at x=4 against the same stroke at x=5: identical geometry, sub-pixel
+        // rasterisation shift — what a browser-drawn glyph against an LVGL bitmap looks like.
+        const ref = withPixel(solid(10, 1, [0, 0, 0, 255]), 4, 0, [255, 255, 255, 255]);
+        const shifted = withPixel(solid(10, 1, [0, 0, 0, 255]), 5, 0, [255, 255, 255, 255]);
+
+        const exact = diffImages(ref, shifted);
+        expect(exact.differing).toBe(2);
+        expect(exact.pixelDiffPct).toBe(20);
+
+        const dilated = diffImages(ref, shifted, { matchRadius: 1 });
+        expect(dilated.differing).toBe(0);
+        // Severity is still reported exactly, so a bad row cannot hide behind the radius.
+        expect(dilated.maxChannelDelta).toBe(255);
+        expect(dilated.meanChannelDelta).toBe(exact.meanChannelDelta);
+    });
+
+    it("still catches content that moved beyond the radius", () => {
+        const ref = withPixel(solid(10, 1, [0, 0, 0, 255]), 4, 0, [255, 255, 255, 255]);
+        const moved = withPixel(solid(10, 1, [0, 0, 0, 255]), 8, 0, [255, 255, 255, 255]);
+        expect(diffImages(ref, moved, { matchRadius: 1 }).differing).toBeGreaterThan(0);
+    });
+
+    it("does not borrow pixels across the region boundary", () => {
+        // The white pixel sits outside the compared box, so the empty box must not match it.
+        const ref = withPixel(solid(10, 1, [0, 0, 0, 255]), 9, 0, [255, 255, 255, 255]);
+        const empty = solid(10, 1, [0, 0, 0, 255]);
+        const result = diffImages(ref, empty, { region: { x: 0, y: 0, w: 3, h: 1 }, matchRadius: 1 });
+        expect(result.differing).toBe(0);
+        expect(result.compared).toBe(3);
+    });
+});
 
 /** `width`×`height` image filled with one colour. */
 function solid(width: number, height: number, rgba: [number, number, number, number]): RgbaImage {

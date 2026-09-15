@@ -235,6 +235,38 @@ const WIRE: WireScene = {
     ],
 };
 
+/**
+ * A textarea whose own text is empty. LVGL draws the placeholder instead, in the
+ * TEXTAREA_PLACEHOLDER part's style, so both part slots carry a text colour (the theme resolves a
+ * text colour for MAIN as well: a label's is white, the placeholder's is grey).
+ */
+const TEXTAREA_WIRE: WireScene = {
+    sceneVersion: 1,
+    width: 480,
+    height: 320,
+    rootPtr: 300,
+    objects: [
+        {
+            ptr: 300,
+            parentPtr: 0,
+            index: 0,
+            area: { x: 136, y: 35, w: 241, h: 123 },
+            parts: [
+                {
+                    p: 0,
+                    borderWidth: 2,
+                    borderColor: 0x2f3237,
+                    borderOpa: 255,
+                    textColor: 0xffffff,
+                    textOpa: 255,
+                    fontSize: 52,
+                },
+                { p: 7, textColor: 0x616161, textOpa: 255, fontSize: 52 },
+            ],
+        },
+    ],
+};
+
 describe("scene-dump — wire mapping", () => {
     it("maps part slots to LVGL 9 part names (slot 7 is the textarea placeholder)", () => {
         expect(WIRE_PART_NAMES[0]).toBe("MAIN");
@@ -337,9 +369,12 @@ describe("scene-dump — wire mapping", () => {
         );
         const text = scene.objects[0].parts[0].text!;
         expect(text.str).toBe("Hello");
-        // colour + size came from the LVGL dump
+        // colour came from the LVGL dump
         expect(text.color).toBe("#ff0000");
-        expect(text.size).toBe(18);
+        // 18 is the LVGL font's LINE HEIGHT: the nominal size is 16 and the baseline 15
+        // (line_height - base_line, read from lv_font_montserrat_16).
+        expect(text.size).toBe(16);
+        expect(text.baseline).toBe(15);
         expect(text.opacity).toBe(1);
         expect(scene.objects[0].objId).toBe("label1");
         expect(scene.objects[0].type).toBe("label");
@@ -359,6 +394,130 @@ describe("scene-dump — wire mapping", () => {
     it("drops the text entirely when the widget has none", () => {
         const scene = wireToScene(WIRE);
         expect(scene.objects[0].parts[0].text).toBeUndefined();
+    });
+
+    it("draws an empty textarea's placeholder in the placeholder part's style", () => {
+        /*
+         * LVGL draws the placeholder (part TEXTAREA_PLACEHOLDER) whenever a textarea's text is
+         * empty, and the dump cannot see the string — so without this merge an empty textarea
+         * renders as nothing at all. The colour is deliberately NOT MAIN's: the theme's placeholder
+         * grey resolves through slot 7 only.
+         */
+        const scene = wireToScene(TEXTAREA_WIRE, ptr =>
+            ptr === 300 ? { type: "textarea", placeholder: "88.8" } : undefined
+        );
+        const placeholder = scene.objects[0].parts.find(
+            part => part.part === "TEXTAREA_PLACEHOLDER"
+        )!;
+        expect(placeholder.text!.str).toBe("88.8");
+        expect(placeholder.text!.color).toBe("#616161");
+        // line_height 52 is Montserrat 48, whose ascent (baseline) is 43.
+        expect(placeholder.text!.size).toBe(48);
+        expect(placeholder.text!.baseline).toBe(43);
+        expect(placeholder.text!.opacity).toBe(1);
+        // MAIN stays text-free: the placeholder is not the object's own text.
+        expect(scene.objects[0].parts.find(part => part.part === "MAIN")!.text).toBeUndefined();
+
+        const node = findTag(renderScene(scene).roots, "text");
+        expect(node).toBeDefined();
+        expect(node.attrs["fill"]).toBe("#616161");
+        expect(JSON.stringify(node)).toContain("88.8");
+    });
+
+    it("leaves a textarea's MAIN text-free (its internal label draws it)", () => {
+        // LVGL draws a textarea's text through `ta->label = lv_label_create(obj)`, which the dump
+        // emits as its own object with the content box the text belongs in. Drawing the model's
+        // string on the textarea as well painted every value twice.
+        const scene = wireToScene(TEXTAREA_WIRE, ptr =>
+            ptr === 300
+                ? { type: "textarea", text: { str: "72.5" }, placeholder: "88.8" }
+                : undefined
+        );
+        const parts = scene.objects[0].parts;
+        expect(parts.find(part => part.part === "MAIN")!.text).toBeUndefined();
+        // A textarea's model text can be stale (the Flow writes it at run time), so its placeholder
+        // is drawn from the model until the runtime reports otherwise.
+        expect(parts.find(part => part.part === "TEXTAREA_PLACEHOLDER")!.text!.str).toBe("88.8");
+    });
+
+    it("invents no placeholder for a widget that has none", () => {
+        const scene = wireToScene(TEXTAREA_WIRE, ptr =>
+            ptr === 300 ? { type: "textarea" } : undefined
+        );
+        expect(scene.objects[0].parts.some(part => part.part === "TEXTAREA_PLACEHOLDER")).toBe(
+            false
+        );
+    });
+
+    it("prefers the live string from the dump over the model's", () => {
+        // The Flow runtime writes label text at run time, so the model only holds the design-time
+        // value; the dump's string is what the canvas actually draws.
+        const scene = wireToScene(
+            { ...WIRE, objects: [{ ...WIRE.objects[0], liveText: "72.5", liveTextPart: 0 }, WIRE.objects[1]] },
+            ptr => (ptr === 100 ? { type: "label", text: { str: "0.0" } } : undefined)
+        );
+        const text = scene.objects[0].parts[0].text!;
+        expect(text.str).toBe("72.5");
+        // Styling still comes from the dump.
+        expect(text.color).toBe("#ff0000");
+        expect(text.size).toBe(16);
+    });
+
+    it("fills the placeholder part from the live text", () => {
+        const scene = wireToScene(
+            { ...TEXTAREA_WIRE, objects: [{ ...TEXTAREA_WIRE.objects[0], liveText: "SetPoint", liveTextPart: 7 }] },
+            ptr => (ptr === 300 ? { type: "textarea" } : undefined)
+        );
+        const placeholder = scene.objects[0].parts.find(
+            part => part.part === "TEXTAREA_PLACEHOLDER"
+        )!;
+        expect(placeholder.text!.str).toBe("SetPoint");
+        expect(placeholder.text!.color).toBe("#616161");
+        expect(scene.objects[0].parts.find(part => part.part === "MAIN")!.text).toBeUndefined();
+    });
+
+    it("falls back to the model for a live string holding a symbol glyph", () => {
+        // LVGL's LV_SYMBOL_* glyphs live in a private-use range the SVG has no font for, so the
+        // model's string (which the editor resolves to an icon) is kept instead.
+        const scene = wireToScene(
+            { ...WIRE, objects: [{ ...WIRE.objects[0], liveText: "\uF2B5 fan", liveTextPart: 0 }, WIRE.objects[1]] },
+            ptr => (ptr === 100 ? { type: "label", text: { str: "Fan" } } : undefined)
+        );
+        expect(scene.objects[0].parts[0].text!.str).toBe("Fan");
+    });
+
+    it("carries the content box LVGL draws text in", () => {
+        // The theme pads widgets even when the model declares no padding, so text drawn at the
+        // object's box lands several pixels off (measured: 11 px high, 10 px left).
+        const scene = wireToScene({
+            ...WIRE,
+            objects: [
+                { ...WIRE.objects[0], textArea: { x: 5, y: 7, w: 40, h: 20 } },
+                WIRE.objects[1],
+            ],
+        });
+        expect(scene.objects[0].textArea).toEqual({ x: 5, y: 7, w: 40, h: 20 });
+        // Absent means "not padded": the object's own box is its text box.
+        expect(scene.objects[1].textArea).toBeUndefined();
+    });
+
+    it("draws text in the content box, on LVGL's baseline", () => {
+        const scene = wireToScene(
+            {
+                ...WIRE,
+                objects: [
+                    { ...WIRE.objects[0], textArea: { x: 10, y: 12, w: 60, h: 30 } },
+                    WIRE.objects[1],
+                ],
+            },
+            ptr => (ptr === 100 ? { type: "label", text: { str: "Hi" } } : undefined)
+        );
+        const node = findTag(renderScene(scene).roots, "text");
+        expect(node).toBeDefined();
+        expect(node.attrs["font-size"]).toBe(16);
+        const tspan = node.children[0];
+        expect(tspan.attrs["x"]).toBe(10);
+        expect(tspan.attrs["y"]).toBe(12 + 15);
     });
 
     it("carries a widget-model image source into the MAIN part", () => {
