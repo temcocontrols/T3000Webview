@@ -51,6 +51,72 @@ without eyeballing images.
 Known, accepted deltas are **recorded, not hidden**: font hinting/anti-aliasing, shadow blur, blend modes,
 dithering, background tiling.
 
+### 4a. Revision after the first real page sweep (2026-09-15)
+
+The tier is now assigned from **what a row is**, never from the size of its diff — a tier granted
+because a diff is large is how a scorecard stops meaning anything:
+
+| Tier | Assigned when | Enforced |
+|---|---|---|
+| T1 | any part is pure vector style (bg, border, arc, line) | 0.5% and IoU 0.99 |
+| T2 | any part carries text or a bitmap | 2%, **IoU not enforced**, compared with a **1 px match radius** |
+| T3 | the widget is in `PROCEDURAL_WIDGET_TYPES` (`buttonmatrix`, `calendar`, `chart`, `qrcode`, `colorwheel`, `lottie`, `canvas`, `table`, `scale`) | excluded (decision D2), with the reason in the row's `note` |
+
+Two measurements forced this:
+
+- **The box cannot be gated on rasterised content.** The SVG node's box is the *ink* (`getBBox()` of
+  a `<text>`) while the LVGL area is the *layout* box, so correct text rows measure 0.92–0.94 IoU —
+  0.95 failed every correct label. A 5–10 px misplacement still drops below 0.9, and a wrong string
+  fails on pixels long before that.
+- **An exact pixel comparison cannot judge glyphs.** LVGL paints a glyph from its own hinted bitmap,
+  the browser from an outline, so a stroke lands half a pixel over: correct 14–18 px labels differ on
+  25–74% of their pixels exactly. A 1 px match radius (candidate ink accepted when the reference holds
+  matching ink within one pixel, clamped to the row's region) brings those to 15–30% while a missing
+  or displaced string still fails. `maxChannelDelta`/`meanChannelDelta` stay exact, so severity is
+  never softened.
+
+### 4b. Revision after the second sweep (2026-09-15, later)
+
+Three more rules, each from a measurement that showed a **false failure** — a row failing for pixels
+that belong to something else:
+
+1. **T3 is inherited.** A procedural widget's children are ordinary `object`s drawn from its private
+   state (a calendar's day cells), so a descendant of a T3 row is T3 itself (`insideProcedural`).
+   Without it one out-of-scope calendar produced ~10 failures on `holiday_calender_screen`.
+2. **A row is measured on its own pixels.** A container's box contains everything its children draw,
+   so measuring a container over its whole box reports its children's deltas again — once per
+   ancestor. The row carries `exclude` (its descendants' boxes, filled in by the page from the flat
+   scene) and `diffImages` skips those pixels for both the comparison *and* the match-radius
+   neighbourhood, so a container can neither absorb nor re-report its child's ink. Measured effect:
+   `holiday_calender_screen`'s panel reported 79% while the only wrong thing inside it was the
+   (excluded) calendar.
+3. **A row that draws nothing is not a row.** An object whose parts all come back empty draws nothing
+   of its own — its box is covered by the widget that owns it (measured: a textarea's internal label,
+   `object<textarea`, sits inside the textarea that paints the placeholder). Such a row is recorded as
+   T3 with a note (`drawsNothing`, decided by `partHasDrawing()` on the merged Scene, not by the DOM)
+   instead of failing on its owner's pixels.
+
+And two measurement bugs in the harness itself:
+
+- **The candidate raster was filled white.** The app's pages are dark, so every transparent pixel of
+  every row differed by a full 255 channels and each percentage was inflated (whole-surface
+  `schedule_screen` read 8.02% against 5.04% for the same frame). The raster is now filled with the
+  reference's own backdrop colour (`backdropOf()` reads the reference's top-left pixel). This is
+  right where the page is uniform and still approximate where a panel of another colour covers a
+  row's box; the proper fix is for the surface to paint the page background it does not currently
+  draw at all (`Scene.bgColor` is `undefined` — the dump emits no scene-level colour).
+- **The scorecard often holds a transitional frame.** The harness runs on *every* paint, so reading
+  `__lvglSvgScorecard` right after a page switch can catch a 4-row, 65%-different frame. A trustworthy
+  read polls until `rows.length`, `rows[0].source` and `whole.pixelDiffPct` stop changing and
+  `rows[0].source` names the page asked for.
+
+Known open question, deliberately not decided by tuning: **tolerance vs radius**. With the default
+tolerance of 8 a correct label still reads 12–26% *with* a 1 px radius; at 30 the same row reads 1.6%
+(ink boxes agree within a pixel: canvas `x=193 y=264 94×14` against SVG `x=193 y=264 93×14`). A T2
+budget of 2% therefore has no meaning until the tolerance it was measured at is stated. Either raise
+the tolerance for T2 (the tier that exists *because* LVGL rasterises the content itself) or raise the
+radius — and record the choice here with this data.
+
 ## 5. Fixtures
 
 New, additive, under a dev fixtures folder:
