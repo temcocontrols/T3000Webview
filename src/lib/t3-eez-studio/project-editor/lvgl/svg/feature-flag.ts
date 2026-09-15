@@ -1,19 +1,20 @@
 /**
  * LVGL 9 SVG renderer — feature flag.
  *
- * ADDITIVE: new file. Defaults to OFF, so with no override the editor behaves exactly as it
- * does today (the canvas path).
+ * ADDITIVE: new file.
+ *
+ * Default: **ON for the supported LVGL version** (P6). The version gate lives at the call site
+ * (`features/page/page.tsx`), which only reaches this flag when
+ * `lvglVersion === SVG_RENDERER_SUPPORTED_VERSION`, so no other version is affected. Rollback is one
+ * override away, and both controls are read on every render:
+ *
+ *   1. URL  `?svg=0` / `&svg=0`   — per-session opt-out
+ *   2. localStorage["t3.lvgl.svgRenderer"] = "0"
+ *   3. default: ON (9.5 only)
  *
  * Deliberately NOT a project setting: `.eez-project` is shared with the device/firmware
  * tooling, and keeping the choice out of the project file means the same project can be
  * opened with or without the SVG surface (and A/B'd on one machine).
- *
- * Precedence (first match wins):
- *   1. URL  ?svg=1 / ?svg=0     — per-session override, read from location.search.
- *      Under HashRouter the query lives in location.search, not location.hash
- *      (see EezStudioApp.tsx, which parses create params the same way).
- *   2. localStorage["t3.lvgl.svgRenderer"] = "1" | "0"
- *   3. default: OFF
  *
  * Only LVGL 9.5 is supported by the SVG surface; other versions always stay on canvas.
  */
@@ -85,7 +86,31 @@ export function isSvgRendererEnabled(search?: string): boolean {
     if (fromUrl !== undefined) {
         return fromUrl;
     }
-    return readStoredOverride() ?? false;
+    // P6: on by default for the supported version — the caller has already checked the version.
+    return readStoredOverride() ?? true;
+}
+
+/**
+ * Development switch for the fidelity harness (`?svgDiff=1`, or `=all` for every fixture).
+ *
+ * Kept separate from the renderer flag so the harness can be run on demand without changing which
+ * surface is displayed — and so it is never on by accident in a normal session.
+ */
+export function isSvgDiffEnabled(search?: string): boolean {
+    if (typeof window === "undefined") {
+        return false;
+    }
+    const text = search ?? currentQueryText();
+    return /[?&]svgDiff=(1|all)(?![0-9])/.test(text);
+}
+
+/** Development switch for the paint statistics (`?svgStats=1`): dump ms, patch ms, node count. */
+export function isSvgStatsEnabled(search?: string): boolean {
+    if (typeof window === "undefined") {
+        return false;
+    }
+    const text = search ?? currentQueryText();
+    return /[?&]svgStats=1(?![0-9])/.test(text);
 }
 
 /** Persist an explicit choice (dev/testing convenience; the URL override still wins). */

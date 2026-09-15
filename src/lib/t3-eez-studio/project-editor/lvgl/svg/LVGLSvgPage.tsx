@@ -14,25 +14,30 @@
  */
 
 import React from "react";
+import { autorun } from "mobx";
 import { observer } from "mobx-react";
 
 import { ProjectContext } from "project-editor/project/context";
 import type { Page } from "project-editor/features/page/page";
 import type { IFlowContext } from "project-editor/flow/flow-interfaces";
+import { getId } from "project-editor/core/object";
 import { settingsController } from "home/settings";
 import { ProjectEditor } from "project-editor/project-editor-interface";
 import type { LVGLPageRuntime } from "project-editor/lvgl/page-runtime";
 
 import { SceneDump } from "./scene-dump";
 import type { SceneDumpWasm, SceneWidgetInfo, SceneWidgetLookup } from "./scene-dump";
+import type { Scene } from "./scene";
 import { SvgSink } from "./svg-sink";
 import { createSvgContext } from "./svg-context";
+import { hitTestElement, nextSelection, selectionAction } from "./hit-test";
+import { renderSelectionOverlay } from "./overlay";
 import {
     LVGLSvgNonActivePageViewerRuntime,
     LVGLSvgPageEditorRuntime,
 } from "./page-runtime-svg";
 import type { SvgPaintFailure, SvgPipeline } from "./page-runtime-svg";
-import { SVG_RENDERER_SUPPORTED_VERSION } from "./feature-flag";
+import { SVG_RENDERER_SUPPORTED_VERSION, isSvgDiffEnabled, isSvgStatsEnabled } from "./feature-flag";
 import {
     inspectLvglRuntimeArtifacts,
     refreshLvglRuntimeArtifacts,
@@ -72,8 +77,19 @@ function subTypeOf(className: string): string {
  * happens — enough to cover "looked up before mount finished" without rebuilding on every miss
  * (LVGL-internal objects legitimately have no widget).
  */
-function buildWidgetLookup(page: Page, project: unknown): SceneWidgetLookup {
+interface WidgetIndex {
+    lookup: SceneWidgetLookup;
+    /** LVGL pointer → flow object id, filled in by the same pass. */
+    flowObjectIds: Map<number, string>;
+}
+
+function buildWidgetLookup(page: Page, project: unknown): WidgetIndex {
     let index: Map<number, SceneWidgetInfo> | undefined;
+    /**
+     * LVGL pointer → flow object id. The editor's selection works in terms of `getId(object)`, not
+     * the widget's user-visible `objID`, so the SVG surface needs this to select what was clicked.
+     */
+    const flowObjectIds = new Map<number, string>();
     /** widget `image` is an ASSET NAME (e.g. "wifisym"); this maps it to the bitmap data URI. */
     const imageData = new Map<string, string>();
 
@@ -120,6 +136,10 @@ function buildWidgetLookup(page: Page, project: unknown): SceneWidgetLookup {
             if (!ptr) {
                 continue;
             }
+            const flowObjectId = getId(widget as never);
+            if (flowObjectId) {
+                flowObjectIds.set(ptr, flowObjectId);
+            }
             const info: SceneWidgetInfo = {};
             if (record.objID) {
                 info.objId = record.objID;
@@ -160,7 +180,7 @@ function buildWidgetLookup(page: Page, project: unknown): SceneWidgetLookup {
         return map;
     };
 
-    return ptr => {
+    const lookup: SceneWidgetLookup = ptr => {
         if (!index) {
             index = build();
         }
@@ -171,6 +191,8 @@ function buildWidgetLookup(page: Page, project: unknown): SceneWidgetLookup {
         }
         return found;
     };
+
+    return { lookup, flowObjectIds };
 }
 
 export const LVGLSvgPage = observer(
@@ -185,6 +207,16 @@ export const LVGLSvgPage = observer(
         private runtime: SvgRuntime | undefined;
         private sink: SvgSink | undefined;
         private dumper: SceneDump | undefined;
+        /** The last painted scene — the exact areas the selection overlay draws around. */
+        private scene: Scene | undefined;
+        /** LVGL pointer → flow object id, filled by the widget index. */
+        private flowObjectIds = new Map<number, string>();
+        /** Re-draws the overlay when the editor selection changes. */
+        private selectionDisposer: (() => void) | undefined;
+        /** P5 harness: offscreen copy of the LVGL framebuffer, only when `?svgDiff=1`. */
+        private harnessMirror: HTMLCanvasElement | undefined;
+        /** P5 harness: guards against overlapping runs (rasterisation is async). */
+        private harnessRunning = false;
         /** First failure time, so a boot race is not reported as a broken surface. */
         private failureStartedAt = 0;
         /** Reasons already explained in the console, so a per-frame failure logs once. */
@@ -210,6 +242,9 @@ export const LVGLSvgPage = observer(
             const ctx = createSvgContext({
                 onFrame: () => this.runtime?.paintScene(),
                 onClearPage: () => this.sink?.clearPage(),
+                // The fidelity harness needs the pixels the base runtime blits; capturing them here
+                // gives it the LVGL framebuffer from the same run (see `svg-diff-harness.ts`).
+                mirror: this.createHarnessMirror(width, height),
                 onUnexpectedMember: member => {
                     // Surfaces a future base-class canvas call instead of hiding it.
                     console.debug(
@@ -227,16 +262,190 @@ export const LVGLSvgPage = observer(
                   )
                 : new LVGLSvgPageEditorRuntime(page, ctx, flowContext);
 
+            const index = buildWidgetLookup(page, this.context.project);
+            this.flowObjectIds = index.flowObjectIds;
             const pipeline: SvgPipeline = {
                 sink: this.sink,
                 dumper: this.dumper,
-                lookup: buildWidgetLookup(page, this.context.project),
+                lookup: index.lookup,
+                onPainted: (scene, ms) => {
+                    // The overlay frames are derived from the resolved LVGL areas, so it must be
+                    // redrawn whenever the scene changes (move, resize, page switch).
+                    this.scene = scene;
+                    this.updateOverlay();
+                    if (this.harnessMirror) {
+                        void this.runHarness(scene, ms);
+                    }
+                },
                 onPaintFailed: info => this.handlePaintFailure(info),
             };
             this.runtime.attachSvgPipeline(pipeline);
+            this.observeSelection();
             void this.mountWhenArtifactsAreUsable();
             this.exposeDevHandle();
         }
+
+        /**
+         * Re-draw the overlay when the editor selection changes.
+         *
+         * Deliberately an `autorun` rather than a read in `render()`: `componentDidUpdate` unmounts
+         * and remounts the whole runtime (mirroring `lvgl/Page.tsx`), so making the component
+         * re-render on every selection change would tear down and rebuild the LVGL runtime — far too
+         * expensive for a drawing update.
+         */
+        private observeSelection(): void {
+            this.selectionDisposer?.();
+            this.selectionDisposer = autorun(() => {
+                // Touch the observable so this autorun re-runs whenever the selection changes.
+                const ids = this.selectedFlowObjectIds();
+                this.updateOverlay(ids);
+            });
+        }
+
+        /** Flow object ids of the current editor selection (what `data-objid`/`getId` agree on). */
+        private selectedFlowObjectIds(): string[] {
+            const selected =
+                (this.props.flowContext.viewState as unknown as {
+                    selectedObjects?: Array<{ id: string }>;
+                })?.selectedObjects ?? [];
+            return selected.map(adapter => adapter.id);
+        }
+
+        /** Map flow object ids back to LVGL pointers so the overlay can frame them. */
+        private updateOverlay(ids: string[] = this.selectedFlowObjectIds()): void {
+            const sink = this.sink;
+            const scene = this.scene;
+            if (!sink || !scene) {
+                return;
+            }
+            const wanted = new Set(ids);
+            const selectedPtrs = new Set<number>();
+            for (const [ptr, flowObjectId] of this.flowObjectIds) {
+                if (wanted.has(flowObjectId)) {
+                    selectedPtrs.add(ptr);
+                }
+            }
+            sink.setOverlay(renderSelectionOverlay(scene.objects, selectedPtrs));
+        }
+
+        /**
+         * Create the harness's reference target, but only when explicitly asked for (`?svgDiff=1`).
+         *
+         * Never attached to the document: nothing displays it, it exists purely to receive the frames
+         * the base runtime blits, so the scorecard can compare the SVG against the actual LVGL pixels
+         * produced by the *same* run — no second runtime, no second layout pass.
+         */
+        private createHarnessMirror(
+            width: number,
+            height: number
+        ): HTMLCanvasElement | undefined {
+            if (!isSvgDiffEnabled()) {
+                return undefined;
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            this.harnessMirror = canvas;
+            return canvas;
+        }
+
+        /**
+         * Run the fidelity comparison and report it.
+         *
+         * Rows are built from the *scene* (which parts exist and where LVGL put them) crossed with the
+         * SVG nodes the renderer produced, so a failure names a widget and a part instead of just
+         * "some pixels differ".
+         */
+        private async runHarness(scene: Scene, patchMs: number): Promise<void> {
+            const mirror = this.harnessMirror;
+            const svg = this.svgRef.current;
+            if (!mirror || !svg || this.harnessRunning) {
+                return;
+            }
+            this.harnessRunning = true;
+            try {
+                const { runFidelityHarness, describeHarnessResult } = await import(
+                    "./svg-diff-harness"
+                );
+                const objects = scene.objects.map(object => {
+                    const node = svg.querySelector(`[data-ptr="${object.ptr}"]`);
+                    const box = (node as SVGGraphicsElement | null)?.getBBox?.();
+                    return {
+                        widget: object.type,
+                        part: "MAIN",
+                        area: object.area,
+                        nodeRect: box
+                            ? { x: box.x, y: box.y, w: box.width, h: box.height }
+                            : undefined,
+                        tier: "T1" as const,
+                    };
+                });
+                const result = await runFidelityHarness({
+                    svg,
+                    canvas: mirror,
+                    width: scene.width,
+                    height: scene.height,
+                    source: this.props.page.name ?? "page",
+                    objects,
+                });
+                console.log(describeHarnessResult(result));
+                for (const warning of result.warnings) {
+                    console.warn(`[lvgl-svg] harness: ${warning}`);
+                }
+                if (isSvgStatsEnabled()) {
+                    console.log(
+                        `[lvgl-svg] stats: objects=${scene.objects.length} nodes=${this.sink?.nodeCount} patchMs=${patchMs} dumpMs=included`
+                    );
+                }
+                // Exposed for the dev panel / Playwright: the scorecard artefact.
+                (globalThis as any).__lvglSvgScorecard = result;
+            } catch (error) {
+                console.warn(
+                    `[lvgl-svg] harness failed: ${(error as Error).message}`
+                );
+            } finally {
+                this.harnessRunning = false;
+            }
+        }
+
+        /**
+         * Click-to-select. The SVG surface is the only place where LVGL objects have DOM presence,
+         * so this is where a click can actually identify a widget; it then goes through the existing
+         * selection actions (`viewState`), which is what keeps undo/redo, the property panel and the
+         * widgets tree in sync without any parallel selection model.
+         */
+        private handlePointerDown = (
+            event: React.PointerEvent<SVGSVGElement>
+        ): void => {
+            const viewState = this.props.flowContext.viewState as unknown as {
+                selectedObjects?: Array<{ id: string }>;
+                selectObjects?: (objects: unknown[]) => void;
+                deselectAllObjects?: () => void;
+            };
+            if (!viewState?.selectObjects || !viewState.deselectAllObjects) {
+                return;
+            }
+
+            const hit = hitTestElement(event.target as Element);
+            const flowObjectId = hit
+                ? this.flowObjectIds.get(hit.ptr ?? -1) ?? hit.objId
+                : undefined;
+            const current = this.selectedFlowObjectIds();
+            const alreadySelected =
+                flowObjectId !== undefined && current.indexOf(flowObjectId) !== -1;
+            const action = selectionAction(event, alreadySelected);
+            const next = nextSelection(action, current, flowObjectId);
+
+            if (next.length === 0) {
+                viewState.deselectAllObjects();
+            } else {
+                const adapters = next
+                    .map(id => this.props.flowContext.document.findObjectById(id))
+                    .filter(adapter => !!adapter);
+                viewState.selectObjects(adapters);
+            }
+            this.updateOverlay(next);
+        };
 
         /**
          * Boot the runtime only once the artifacts it is about to load are known to be current.
@@ -308,6 +517,8 @@ export const LVGLSvgPage = observer(
                 runtime: this.runtime,
                 wasm: () => this.wasmModule(),
                 diagnose: () => this.dumper?.diagnose(),
+                /** The P5 harness reference (offscreen LVGL framebuffer), when it exists. */
+                mirror: () => this.harnessMirror,
                 /** Force the stale-runtime path (verifies the notice without a stale cache). */
                 reportStale: () => void this.handleStaleRuntime(),
             };
@@ -454,12 +665,15 @@ export const LVGLSvgPage = observer(
 
         componentWillUnmount() {
             setTimeout(() => {
+                this.selectionDisposer?.();
+                this.selectionDisposer = undefined;
                 this.runtime?.unmount();
                 this.sink?.teardown();
                 this.dumper?.dispose();
                 this.sink = undefined;
                 this.dumper = undefined;
                 this.runtime = undefined;
+                this.scene = undefined;
             });
         }
 
@@ -525,6 +739,7 @@ export const LVGLSvgPage = observer(
                     height={height}
                     viewBox={`0 0 ${width} ${height}`}
                     style={style}
+                    onPointerDown={this.handlePointerDown}
                 />
             );
         }

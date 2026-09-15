@@ -71,6 +71,14 @@ import { validators } from "eez-studio-shared/validation";
 import * as eezGuiDraw from "project-editor/flow/editor/eez-gui-draw";
 import type { WasmRuntime } from "project-editor/flow/runtime/wasm-runtime";
 import { LVGLPage } from "project-editor/lvgl/Page";
+// SVG design surface (additive, feature-flagged, default OFF). See
+// docs/t3000/architecture/lvgl-svg/ - with the flag off this branch renders <LVGLPage> exactly
+// as before, so the canvas path is unchanged.
+import { LVGLSvgPage } from "project-editor/lvgl/svg/LVGLSvgPage";
+import {
+    SVG_RENDERER_SUPPORTED_VERSION,
+    isSvgRendererEnabled,
+} from "project-editor/lvgl/svg/feature-flag";
 import type { LVGLPageRuntime } from "project-editor/lvgl/page-runtime";
 import type { LVGLBuild } from "project-editor/lvgl/build";
 import { visitObjects } from "project-editor/core/search";
@@ -921,13 +929,24 @@ export class Page extends Flow {
         }
 
         if (flowContext.projectStore.projectTypeTraits.isLVGL) {
+            // The SVG surface is opt-in and only the 9.5 runtime has the scene-dump build, so every
+            // other version (and every unflagged session) keeps the canvas path below.
+            const useSvgSurface =
+                isSvgRendererEnabled() &&
+                flowContext.projectStore.project.settings.general.lvglVersion ===
+                    SVG_RENDERER_SUPPORTED_VERSION;
+
             return (
                 <>
                     <ComponentEnclosure
                         component={this}
                         flowContext={flowContext}
                     />
-                    <LVGLPage page={this} flowContext={flowContext} />
+                    {useSvgSurface ? (
+                        <LVGLSvgPage page={this} flowContext={flowContext} />
+                    ) : (
+                        <LVGLPage page={this} flowContext={flowContext} />
+                    )}
                 </>
             );
         }

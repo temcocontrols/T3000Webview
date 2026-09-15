@@ -650,24 +650,32 @@ function renderLine(key: string, line: SceneLine): DrawNode | undefined {
 }
 
 function renderArc(key: string, arc: SceneArc, area: SceneRect): DrawNode[] {
-    const width = arc.width ?? 1;
+    const width = arc.width ?? arc.bgWidth ?? 1;
     const radius = Math.max(0, (Math.min(area.w, area.h) - width) / 2);
     const cx = area.x + area.w / 2;
     const cy = area.y + area.h / 2;
     const nodes: DrawNode[] = [];
 
     if (arc.bgColor) {
+        // The track is its own sweep: a default-themed arc runs 270 degrees, not a full circle.
+        const track =
+            arcPath(cx, cy, radius, arc.bgStart ?? 0, arc.bgEnd ?? 3600) ?? fullCirclePath(cx, cy, radius);
         nodes.push({
             key: `${key}-track`,
             tag: "path",
             attrs: {
-                d: fullCirclePath(cx, cy, radius),
+                d: track,
                 fill: "none",
                 stroke: arc.bgColor,
                 "stroke-opacity": alphaOf(arc.bgOpacity),
-                "stroke-width": width,
+                "stroke-width": arc.bgWidth ?? width,
             },
         });
+    }
+
+    if (arc.start == null || arc.end == null) {
+        // Track-only part (an arc's MAIN): there is no value sweep to draw.
+        return nodes;
     }
 
     let d = arcPath(cx, cy, radius, arc.start, arc.end);

@@ -102,6 +102,8 @@ export class SvgSink {
     private readonly defsIndex = new Map<string, SVGElement>();
     /** The failure notice group, when one is showing. */
     private noticeElement: SVGGElement | undefined;
+    /** Editor affordances (selection frame/handles) — a sibling of the notice. */
+    private selectionGroup: SVGGElement | undefined;
     private disposed = false;
 
     constructor(
@@ -149,6 +151,35 @@ export class SvgSink {
             this.contentGroup.removeChild(this.contentGroup.firstChild);
         }
         this.childIndex.delete(this.contentGroup);
+    }
+
+    /**
+     * Replace the editor overlay content (selection frame, handles, marquee).
+     *
+     * Kept in its own child group so it can be patched without touching the failure notice, which
+     * lives directly in `#overlay` and must survive anything the editor draws.
+     */
+    setOverlay(nodes: DrawNode[]): void {
+        if (this.disposed) {
+            return;
+        }
+        let group = this.selectionGroup;
+        if (!group) {
+            group = document.createElementNS(SVG_NS, "g") as SVGGElement;
+            group.setAttribute("id", "selection");
+            this.overlayGroup.appendChild(group);
+            this.selectionGroup = group;
+        }
+        this.patchChildren(group, nodes);
+    }
+
+    /** Remove all overlay affordances (page switch / teardown). */
+    clearOverlay(): void {
+        if (this.selectionGroup) {
+            this.selectionGroup.remove();
+            this.childIndex.delete(this.selectionGroup);
+            this.selectionGroup = undefined;
+        }
     }
 
     /**
@@ -208,6 +239,7 @@ export class SvgSink {
         // the sink is disposed.
         this.clearPage();
         // Overlay affordances belong to the page that is going away, so they must not outlive it.
+        this.clearOverlay();
         this.clearNotice();
         this.disposed = true;
         this.childIndex.clear();
