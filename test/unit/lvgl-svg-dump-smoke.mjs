@@ -243,21 +243,20 @@ try {
             : ""
     );
 
-    // Clipping (new): a scrollable object reports the content box its children are clipped to.
+    /*
+     * Clipping: LVGL clips a parent's children to the PARENT'S OWN BOX (lv_refr.c intersects the
+     * parent layer with obj->coords unless the object has LV_OBJ_FLAG_OVERFLOW_VISIBLE), so the dump
+     * only has to say whether the object clips at all — the box is the area it already emits.
+     */
     check(
-        "scrollable objects report a clip box",
-        !!root && !!root.clip && root.clip.w > 0 && root.clip.h > 0,
-        root && root.clip ? JSON.stringify(root.clip) : "none"
+        "an object with children reports that it clips them",
+        !!root && root.clipChildren === true,
+        root ? `clipChildren=${root.clipChildren}` : "none"
     );
     check(
-        "the clip box lies inside the object bounds",
-        !!root &&
-            !!root.clip &&
-            root.clip.x >= root.area.x &&
-            root.clip.y >= root.area.y &&
-            root.clip.x + root.clip.w <= root.area.x + root.area.w + 1 &&
-            root.clip.y + root.clip.h <= root.area.y + root.area.h + 1,
-        root && root.clip ? `clip ${JSON.stringify(root.clip)} in area ${JSON.stringify(root.area)}` : "none"
+        "an object with no children reports no clip",
+        !child || child.clipChildren === undefined,
+        child ? `clipChildren=${child.clipChildren}` : "none"
     );
 
     // Image geometry (new): an image with no source must NOT invent a size.

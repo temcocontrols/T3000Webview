@@ -160,23 +160,23 @@ describe("captured LVGL 9.5 dump → SVG", () => {
         sink.teardown();
     });
 
-    it("carries the LVGL 9 clip box, and invents no image geometry without a source", () => {
-        // A scrollable object reports the box its children are clipped to; without it the
-        // renderer cannot stop children spilling outside a scrolled container.
-        expect(wire.objects[0].clip).toBeDefined();
-        expect(wire.objects[0].clip.w).toBe(wire.objects[0].area.w);
-        expect(wire.objects[0].clip.h).toBe(wire.objects[0].area.h);
+    it("reports which objects clip their children, and invents no image geometry without a source", () => {
+        // LVGL clips children to the parent's own box (lv_refr.c), so the dump only has to say
+        // WHETHER an object clips; the box it clips to is the area it already carries. The screen
+        // holds children, so it clips.
+        expect(wire.objects[0].clipChildren).toBe(true);
         // The image widget was created WITHOUT a source, so no size may be reported for it.
         expect(wire.objects.some(object => object.imgW !== undefined)).toBe(false);
     });
 
-    it("maps a dump clip box onto the object, with the MAIN radius", () => {
+    it("maps the clip flag onto the object's own box", () => {
         const scene = parseSceneDump(loadCaptured())!;
         const screen = scene.objects[0];
         expect(screen.clip).toBeDefined();
         expect(screen.clip!.w).toBe(screen.area.w);
-        // The screen's MAIN part set radius 12 in the smoke test, so the clip is rounded to match.
-        expect(screen.clip!.radius).toBe(12);
+        expect(screen.clip!.h).toBe(screen.area.h);
+        // No radius: LVGL clips children square unless the object sets `clip_corner`.
+        expect(screen.clip!.radius).toBeUndefined();
     });
 
     it("renders the object clip as a clipPath reference", () => {
@@ -194,7 +194,7 @@ describe("captured LVGL 9.5 dump → SVG", () => {
         // The referenced def really exists — a bare id would leave clipping silently disabled.
         const id = reference.slice("url(#".length, -1);
         expect(svg.querySelector(`#defs clipPath[id="${id}"]`)).not.toBeNull();
-        // Every lv_obj is scrollable in LVGL 9, so clip defs are not unique to the screen.
+        // Every object that holds children gets one, so clip defs are not unique to the screen.
         expect(
             svg.querySelectorAll('#defs clipPath[id^="lvgl-clip-"]').length
         ).toBeGreaterThan(0);

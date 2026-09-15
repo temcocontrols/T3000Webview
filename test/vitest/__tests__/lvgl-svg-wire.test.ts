@@ -7,6 +7,7 @@ import {
     borderSideName,
     imageAlignName,
     parseSceneDump,
+    textAlignName,
     wireToScene,
 } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/scene-dump";
 import type {
@@ -267,6 +268,47 @@ const TEXTAREA_WIRE: WireScene = {
     ],
 };
 
+/**
+ * A checkbox as the dump reports one.
+ *
+ * MAIN carries only the label — the widget draws no chrome of its own there. The marker is a part of
+ * its own: the theme gives INDICATOR `bg_opa = COVER`, `border_width = 2` in the primary colour and
+ * `pad_all = 3`, and lv_checkbox_draw() places it at the leading edge of the object's own box, so
+ * its box is on the wire. A dump with no INDICATOR at all is what left every checkbox row failing:
+ * the canvas painted a 22x22 blue ring where the SVG painted nothing.
+ */
+const CHECKBOX_WIRE: WireScene = {
+    sceneVersion: 1,
+    width: 480,
+    height: 320,
+    rootPtr: 400,
+    objects: [
+        {
+            ptr: 400,
+            parentPtr: 0,
+            index: 0,
+            area: { x: 176, y: 64, w: 128, h: 22 },
+            textArea: { x: 204, y: 67, w: 100, h: 16 },
+            parts: [
+                { p: 0, textColor: 0xfafafa, textOpa: 255, fontSize: 18 },
+                {
+                    p: 2,
+                    area: { x: 176, y: 64, w: 22, h: 22 },
+                    bgColor: 0x282b30,
+                    bgOpa: 255,
+                    borderWidth: 2,
+                    borderColor: 0x2196f3,
+                    borderOpa: 255,
+                    radius: 32767,
+                    textColor: 0xffffff,
+                    textOpa: 255,
+                    fontSize: 18,
+                },
+            ],
+        },
+    ],
+};
+
 describe("scene-dump — wire mapping", () => {
     it("maps part slots to LVGL 9 part names (slot 7 is the textarea placeholder)", () => {
         expect(WIRE_PART_NAMES[0]).toBe("MAIN");
@@ -291,6 +333,34 @@ describe("scene-dump — wire mapping", () => {
             128 / 255,
             5
         );
+    });
+
+    it("carries LVGL's resolved text alignment for the text it draws", () => {
+        /*
+         * The alignment is not decoration: a centred string is placed from the middle of its box
+         * outwards, so it has to come from the runtime. It is emitted for MAIN and for the
+         * textarea placeholder (part 7), which LVGL draws with the placeholder part's own
+         * alignment — measured on network_config, where the canvas centred "168" at x = 253 while
+         * the SVG had it at the box's edge (x = 241).
+         */
+        expect(textAlignName(0)).toBe("AUTO");
+        expect(textAlignName(1)).toBe("LEFT");
+        expect(textAlignName(2)).toBe("CENTER");
+        expect(textAlignName(3)).toBe("RIGHT");
+        expect(textAlignName(undefined)).toBeUndefined();
+        expect(textAlignName(9)).toBeUndefined();
+
+        const wire: WireScene = JSON.parse(JSON.stringify(TEXTAREA_WIRE));
+        wire.objects[0].parts[0].textAlign = 1;
+        wire.objects[0].parts[1].textAlign = 2;
+        // The runtime reported what it is drawing: a textarea with no text draws its placeholder,
+        // and the placeholder is the part whose alignment governs where the string lands.
+        wire.objects[0].liveText = "168";
+        wire.objects[0].liveTextPart = 7;
+        const parts = wireToScene(wire).objects[0].parts;
+        const placeholder = parts.find(p => p.part === "TEXTAREA_PLACEHOLDER")!;
+        expect(placeholder.text!.str).toBe("168");
+        expect(placeholder.text!.textAlign).toBe("CENTER");
     });
 
     it("turns the border side bitmask into names", () => {
@@ -619,6 +689,55 @@ describe("scene-dump — wire mapping", () => {
         expect(indicator.arc!.bgColor).toBeUndefined();
     });
 
+    it("keeps a checkbox's marker as its own INDICATOR part, with the dump's box", () => {
+        const scene = wireToScene(CHECKBOX_WIRE);
+        const checkbox = scene.objects[0];
+        expect(checkbox.parts.map(p => p.part)).toEqual(["MAIN", "INDICATOR"]);
+
+        const marker = checkbox.parts[1];
+        expect(marker.area).toEqual({ x: 176, y: 64, w: 22, h: 22 });
+        expect(marker.bg!.color).toBe("#282b30");
+        expect(marker.bg!.opacity).toBe(1);
+        expect(marker.border!.width).toBe(2);
+        expect(marker.border!.color).toBe("#2196f3");
+        // LV_RADIUS_CIRCLE: the renderer clamps it to half the shorter side, i.e. a circle.
+        expect(marker.radius).toBe(32767);
+        // The label stays on MAIN, so the marker must not inherit it.
+        expect(marker.text).toBeUndefined();
+    });
+
+    it("places a checkbox's label in the box the widget computes, not the content box", () => {
+        // lv_checkbox_draw() starts the text one `pad_column` after the marker, which the object's
+        // content box knows nothing about: text drawn at the content box landed 28 px to the left
+        // (measured on network_config: canvas x = 204, SVG x = 176).
+        const checkbox = wireToScene(CHECKBOX_WIRE).objects[0];
+        expect(checkbox.textArea).toEqual({ x: 204, y: 67, w: 100, h: 16 });
+
+        const rendered = renderScene(
+            wireToScene(CHECKBOX_WIRE, ptr =>
+                ptr === 400
+                    ? { objId: "cb1", type: "checkbox", text: { str: "Auto(DHCP)" } }
+                    : undefined
+            )
+        );
+        const text = findTag(rendered.roots, "text");
+        expect(text.attrs.x).toBe(204);
+    });
+
+    it("carries a checked checkbox's tick as a symbol background image", () => {
+        /*
+         * The theme's `cb_marker_checked` sets `bg_image_src = LV_SYMBOL_OK`, and lv_obj_draw.c
+         * draws a symbol background in the part's own text font and text colour. It has no bitmap
+         * source, so it travels as a codepoint.
+         */
+        const wire: WireScene = JSON.parse(JSON.stringify(CHECKBOX_WIRE));
+        wire.objects[0].parts[1].bgSymbol = "\uF00C";
+        const marker = wireToScene(wire).objects[0].parts[1];
+        expect(marker.bgImage!.symbol).toBe("\uF00C");
+        // A symbol is not a bitmap: there is no source id to point <image href> at.
+        expect(marker.bgImage!.srcId).toBe("");
+    });
+
     it("carries a part-level area when the part is not the object's box", () => {
         // A scrollbar is a thin strip; without this it was painted as a filled box the size of the
         // object (the source of the phantom shapes).
@@ -663,7 +782,7 @@ const GEOMETRY_WIRE: WireScene = {
             parentPtr: 0,
             index: -1,
             area: { x: 0, y: 0, w: 200, h: 200 },
-            clip: { x: 8, y: 8, w: 184, h: 184 },
+            clipChildren: true,
             parts: [{ p: 0, bgColor: 0xffffff, bgOpa: 255, radius: 10 }],
         },
         {
@@ -699,16 +818,16 @@ describe("scene-dump — clip and image geometry", () => {
         expect(imageAlignName(undefined)).toBeUndefined();
     });
 
-    it("takes the clip box from the dump and rounds it with the MAIN radius", () => {
+    it("clips children to the object's OWN box, not its content box", () => {
+        /*
+         * LVGL intersects the parent layer with `obj->coords` for every object without
+         * LV_OBJ_FLAG_OVERFLOW_VISIBLE (lv_refr.c) — scrollable or not. The content box is smaller,
+         * and using it erased real content: on schedule_screen the canvas drew a table row's labels
+         * at y = 252..264 inside a panel whose content box ends at y = 254.
+         */
         const scene = wireToScene(GEOMETRY_WIRE);
-        expect(scene.objects[0].clip).toEqual({
-            x: 8,
-            y: 8,
-            w: 184,
-            h: 184,
-            radius: 10,
-        });
-        // An object with no clip stays unclipped.
+        expect(scene.objects[0].clip).toEqual({ x: 0, y: 0, w: 200, h: 200 });
+        // An object the runtime did not report as clipping stays unclipped.
         expect(scene.objects[1].clip).toBeUndefined();
     });
 

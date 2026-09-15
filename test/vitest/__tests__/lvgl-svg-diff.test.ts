@@ -12,6 +12,7 @@ import {
     rowFromDiff,
     scorecardToMarkdown,
     summariseScorecard,
+    isProceduralType,
     tierForObject,
     tierNote,
     verdictFor,
@@ -47,6 +48,17 @@ describe("svg-diff — tiers come from what the object is, not from the size of 
         }
         // A procedural widget outranks its content: it is excluded, not merely relaxed.
         expect(tierForObject({ type: "calendar", carriesTextOrImage: true })).toBe("T3");
+    });
+
+    it("excludes the children of a procedural widget with it", () => {
+        // A calendar's day cells are ordinary objects drawn from the calendar's private state, so a
+        // page reports them as failures unless the exclusion is inherited.
+        expect(tierForObject({ type: "object", insideProcedural: true })).toBe("T3");
+        expect(tierNote({ type: "object", insideProcedural: true })).toContain("ancestor procedural");
+        expect(isProceduralType("calendar")).toBe(true);
+        expect(isProceduralType("panel")).toBe(false);
+        // Inheritance never leaks the other way: a normal child stays measurable.
+        expect(tierForObject({ type: "label", carriesTextOrImage: true })).toBe("T2");
     });
 
     it("fails a rasterised row whose content does not match", () => {
@@ -246,6 +258,49 @@ describe("svg-diff — pixel metrics", () => {
             region: { x: 2, y: 2, w: 100, h: 100 },
         });
         expect(result.compared).toBe(4);
+    });
+
+    it("leaves out the boxes another row already measures", () => {
+        /*
+         * A container's box contains its children's drawing, so a container measured over its whole
+         * box reports its children's deltas a second time (measured: holiday_calender_screen's panel
+         * at 22% while the only wrong thing inside it was the calendar). Excluding the descendants
+         * leaves the container's own chrome.
+         */
+        const reference = solid(10, 10, [0, 0, 0, 255]);
+        const candidate = withPixel(reference, 1, 1, [255, 255, 255, 255]);
+        // Measured over the whole box, the child's pixel is the container's failure...
+        expect(diffImages(reference, candidate).pixelDiffPct).toBe(1);
+        // ...and it is not once the child's box is excluded.
+        const excluded = diffImages(reference, candidate, {
+            exclude: [{ x: 1, y: 1, w: 1, h: 1 }],
+        });
+        expect(excluded.pixelDiffPct).toBe(0);
+        expect(excluded.compared).toBe(99);
+    });
+
+    it("never borrows a neighbouring pixel from an excluded box", () => {
+        /*
+         * With a match radius the comparison looks one pixel away for evidence of the ink. A pixel
+         * inside a box this row does not own is not evidence: it belongs to whichever row measures
+         * that box, so borrowing it would let a container absorb its child's content.
+         */
+        // The reference has ink at x = 2 only; the candidate puts its ink at x = 1.
+        const reference = withPixel(solid(3, 1, [0, 0, 0, 255]), 2, 0, [255, 255, 255, 255]);
+        const candidate = withPixel(solid(3, 1, [0, 0, 0, 255]), 1, 0, [255, 255, 255, 255]);
+        const region = { x: 0, y: 0, w: 3, h: 1 };
+
+        // The ink at x = 2 is one pixel from x = 1, so the shift is forgiven...
+        expect(diffImages(reference, candidate, { region, matchRadius: 1 }).pixelDiffPct).toBe(0);
+        // ...unless x = 2 belongs to another row, which is what the exclusion says.
+        const excluded = diffImages(reference, candidate, {
+            region,
+            matchRadius: 1,
+            exclude: [{ x: 2, y: 0, w: 1, h: 1 }],
+        });
+        expect(excluded.pixelDiffPct).toBe(50);
+        // Only the two owned pixels were compared.
+        expect(excluded.compared).toBe(2);
     });
 
     it("refuses to compare different sizes instead of hiding the mismatch", () => {

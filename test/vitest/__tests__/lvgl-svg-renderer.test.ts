@@ -73,6 +73,22 @@ describe("renderer — boxes (radius, border sides, outline, shadow, gradient)",
         expect(gradients[0].children![1].attrs!["stop-color"]).toBe("#445566");
     });
 
+    it("ramps from the BACKGROUND colour to the gradient colour, carrying bg_opa on both stops", () => {
+        /*
+         * LVGL draws `bg_color` -> `bg_grad_color` between `bg_main_stop` and `bg_grad_stop`
+         * (`lv_obj_init_draw_rect_dsc()` fills exactly those two stops). Emitting a fade of
+         * `bg_grad_color` from transparent instead drops the start colour — measurably: 74% of a
+         * gradient-filled button's box differed from the canvas.
+         */
+        const stops = defsWithPrefix(out, "lingrad")[0].children!;
+        // The fixture's MAIN bg is #223344 at 0.9 opacity with grad #445566 at stop 160.
+        expect(stops[0].attrs!["stop-color"]).toBe("#223344");
+        expect(stops[0].attrs!["offset"]).toBe(0);
+        expect(stops[0].attrs!["stop-opacity"]).toBeCloseTo(0.9, 5);
+        expect(stops[1].attrs!["offset"]).toBeCloseTo(160 / 255, 5);
+        expect(stops[1].attrs!["stop-opacity"]).toBeCloseTo(0.9, 5);
+    });
+
     it("is consistent: the non-gradients in the fixture still use flat fill-opacity", () => {
         const ghostBg = requireNode(out, "p4-MAIN-bg");
         expect(attr(ghostBg, "fill")).toBe("#aa0000");
@@ -216,6 +232,74 @@ describe("renderer — indicators (parts, states, arcs)", () => {
         const keys = flat(out.roots).map(n => n.key);
         expect(keys.some(key => key.includes("TICKS"))).toBe(false);
     });
+
+    it("draws a symbol background image as a vector glyph, not as an <image>", () => {
+        /*
+         * A checked checkbox's tick is `bg_image_src = LV_SYMBOL_OK` — a FontAwesome codepoint, not
+         * a bitmap. It is drawn in the part's own text colour and font size (lv_obj_draw.c), which
+         * is what the wire's text styling on that part is for.
+         */
+        const scene = parseScene({
+            sceneVersion: 1,
+            width: 100,
+            height: 100,
+            rootPtr: 1,
+            objects: [
+                {
+                    ptr: 1,
+                    index: 0,
+                    type: "checkbox",
+                    area: { x: 0, y: 0, w: 100, h: 100 },
+                    parts: [
+                        {
+                            part: "INDICATOR",
+                            state: "default",
+                            area: { x: 0, y: 0, w: 22, h: 22 },
+                            bgImage: { srcId: "", symbol: "\uF00C" },
+                            text: { str: "", color: "#ffffff", size: 18 },
+                        },
+                    ],
+                },
+            ],
+        });
+        const nodes = flat(renderScene(scene).roots);
+        const tick = nodes.find(node => node.key === "p1-INDICATOR-bgimg")!;
+        expect(tick.tag).toBe("path");
+        expect(attr(tick, "stroke")).toBe("#ffffff");
+        expect(attr(tick, "stroke-linecap")).toBe("round");
+        // Traced in a 0..1 box and scaled to the part (22x22), so the tick fills the marker.
+        expect(attr(tick, "d")).toBe("M 3.96,11.44 L 9.24,16.72 L 18.04,5.72");
+        expect(attr(tick, "stroke-width")).toBeCloseTo(2.88, 2);
+        expect(nodes.some(node => node.tag === "image")).toBe(false);
+    });
+
+    it("falls back to the codepoint for a symbol it has not traced", () => {
+        const scene = parseScene({
+            sceneVersion: 1,
+            width: 100,
+            height: 100,
+            rootPtr: 1,
+            objects: [
+                {
+                    ptr: 1,
+                    index: 0,
+                    type: "checkbox",
+                    area: { x: 0, y: 0, w: 100, h: 100 },
+                    parts: [
+                        {
+                            part: "INDICATOR",
+                            state: "default",
+                            bgImage: { srcId: "", symbol: "\uF0C8" },
+                        },
+                    ],
+                },
+            ],
+        });
+        const nodes = flat(renderScene(scene).roots);
+        const symbol = nodes.find(node => node.key === "p1-INDICATOR-bgimg")!;
+        expect(symbol.tag).toBe("text");
+        expect(symbol.children![0].text).toBe("\uF0C8");
+    });
 });
 
 describe("renderer — text", () => {
@@ -226,6 +310,58 @@ describe("renderer — text", () => {
         expect(attr(requireNode(out, "p7-MAIN-text"), "text-anchor")).toBe("end");
         // BOTTOM_RIGHT anchors to the area's right edge.
         expect(attr(requireNode(out, "p7-MAIN-text"), "x")).toBe(220);
+    });
+
+    it("moves only the horizontal axis for the runtime's textAlign", () => {
+        /*
+         * LVGL's `text_align` cannot move a line box vertically: `lv_draw_label` puts the first
+         * line's baseline at `box.y + base_line` whatever the alignment is. So a centred string must
+         * stay at the box's top — centring both axes (which is what `align` means when a caller uses
+         * it for a layout name like BOTTOM_RIGHT) would sink every centred label by half the box.
+         */
+        const withAlign = (text: Record<string, unknown>) =>
+            parseScene({
+                sceneVersion: 1,
+                width: 100,
+                height: 100,
+                rootPtr: 1,
+                objects: [
+                    {
+                        ptr: 1,
+                        index: 0,
+                        type: "label",
+                        area: { x: 0, y: 0, w: 100, h: 40 },
+                        parts: [
+                            {
+                                part: "MAIN",
+                                state: "default",
+                                text: { str: "Hi", size: 16, baseline: 13, ...text },
+                            },
+                        ],
+                    },
+                ],
+            });
+        const node = (text: Record<string, unknown>) =>
+            flat(renderScene(withAlign(text)).roots).find(n => n.key === "p1-MAIN-text")!;
+
+        const left = node({});
+        const centre = node({ textAlign: "CENTER" });
+        const right = node({ textAlign: "RIGHT" });
+
+        expect(attr(centre, "text-anchor")).toBe("middle");
+        expect(attr(centre, "x")).toBe(50);
+        expect(attr(right, "text-anchor")).toBe("end");
+        expect(attr(right, "x")).toBe(100);
+        // AUTO is the base direction's leading edge, i.e. the same place LEFT draws.
+        expect(attr(node({ textAlign: "AUTO" }), "x")).toBe(attr(left, "x"));
+
+        // The baseline never moves: 0 + baseline 13.
+        for (const candidate of [left, centre, right]) {
+            expect(candidate.children![0].attrs!.y).toBe(13);
+        }
+        // `align` still drives both axes, as the earlier fixtures expect.
+        expect(attr(node({ align: "CENTER" }), "x")).toBe(50);
+        expect(node({ align: "CENTER" }).children![0].attrs!.y).toBe((40 - 16) / 2 + 13);
     });
 
     it("lays out explicit newlines with line spacing", () => {
