@@ -85,14 +85,65 @@ export {
     LVGLSvgPageEditorRuntime,
 } from "./page-runtime-svg";
 
-export type { SvgPipeline } from "./page-runtime-svg";
+export type { SvgPipeline, SvgPaintFailure } from "./page-runtime-svg";
+
+export {
+    hitTestElement,
+    isAdditiveClick,
+    nextSelection,
+    selectionAction,
+} from "./hit-test";
+
+export type {
+    PointerHit,
+    PointerModifiers,
+    SelectionAction,
+} from "./hit-test";
+
+export { renderSelectionOverlay } from "./overlay";
+
+export type { SelectionOverlayStyle } from "./overlay";
+
+export { POLL_INTERVAL_MS, isSceneUnchanged, shouldDumpScene } from "./paint-policy";
+
+export {
+    hasWasmExportName,
+    inspectLvglRuntimeArtifacts,
+    lvglRuntimeArtifactUrls,
+    refreshLvglRuntimeArtifacts,
+} from "./runtime-artifacts";
+
+export { installLvglRuntimeCacheGuard, stampArtifactUrl } from "./runtime-cache-guard";
 
 export { LVGLSvgPage } from "./LVGLSvgPage";
 
 export {
     SVG_RENDERER_STORAGE_KEY,
     SVG_RENDERER_SUPPORTED_VERSION,
+    isSvgDiffEnabled,
     isSvgRendererEnabled,
+    isSvgStatsEnabled,
     parseSvgOverride,
     setSvgRendererEnabled,
 } from "./feature-flag";
+
+export {
+    TIER_THRESHOLDS,
+    diffImages,
+    rectIoU,
+    rowFromDiff,
+    scorecardToMarkdown,
+    summariseScorecard,
+    verdictFor,
+} from "./svg-diff";
+
+export type { DiffResult, RgbaImage, ScorecardRow, Verdict } from "./svg-diff";
+
+export {
+    captureCanvas,
+    captureSvg,
+    describeHarnessResult,
+    runFidelityHarness,
+} from "./svg-diff-harness";
+
+export type { HarnessInput, HarnessResult } from "./svg-diff-harness";

@@ -129,6 +129,7 @@ function buildWidgetLookup(page: Page, project: unknown): WidgetIndex {
                 type?: string;
                 hidden?: boolean;
                 text?: unknown;
+                placeholder?: unknown;
                 image?: unknown;
                 imageReleased?: unknown;
             };
@@ -157,6 +158,14 @@ function buildWidgetLookup(page: Page, project: unknown): WidgetIndex {
             // come from the LVGL dump; anything more specific is left to the fidelity work in P5.
             if (typeof record.text === "string" && record.text.length > 0) {
                 info.text = { str: record.text };
+            }
+            /*
+             * A textarea's placeholder string. LVGL draws it, in place of the text, whenever the
+             * textarea's text is empty — and only the widget model knows the string, so without
+             * this every empty textarea rendered as nothing (see `wireToScene`).
+             */
+            if (typeof record.placeholder === "string" && record.placeholder.length > 0) {
+                info.placeholder = record.placeholder;
             }
             /*
              * Image sources. `LVGLImageWidget` carries `image`; `LVGLImgbuttonWidget` carries one
@@ -329,6 +338,36 @@ export const LVGLSvgPage = observer(
         }
 
         /**
+         * Make the reference canvas hold a complete frame.
+         *
+         * LVGL renders incrementally, so the harness cannot assume the pixels it captures cover the
+         * whole screen; invalidating the active screen and refreshing synchronously is what turns
+         * "whatever has been redrawn so far" into a full frame.
+         */
+        private forceFullReferenceFrame(): void {
+            const lvgl = this.wasmModule() as unknown as
+                | Record<string, ((...args: unknown[]) => unknown) | undefined>
+                | undefined;
+            const invalidate = lvgl?._lv_obj_invalidate;
+            const screenActive = lvgl?._lv_screen_active;
+            const refrNow = lvgl?._lv_refr_now;
+            const displayDefault = lvgl?._lv_display_get_default;
+            if (
+                typeof invalidate !== "function" ||
+                typeof screenActive !== "function" ||
+                typeof refrNow !== "function" ||
+                typeof displayDefault !== "function"
+            ) {
+                return; // an older runtime without the refresh hooks: leave the frame as it is
+            }
+            const screen = screenActive();
+            if (screen) {
+                invalidate(screen);
+            }
+            refrNow(displayDefault());
+        }
+
+        /**
          * Create the harness's reference target, but only when explicitly asked for (`?svgDiff=1`).
          *
          * Never attached to the document: nothing displays it, it exists purely to receive the frames
@@ -364,6 +403,16 @@ export const LVGLSvgPage = observer(
             }
             this.harnessRunning = true;
             try {
+                /*
+                 * Paint the whole screen into the reference canvas first.
+                 *
+                 * LVGL blits only the areas it invalidated, so a mirror that has just been created
+                 * stays black wherever nothing has been redrawn yet — and the scorecard then compared
+                 * the SVG against a mostly-empty frame: every object reported a 40-96% pixel delta
+                 * while its box matched (bboxIoU 0.85-1.0). Invalidating the screen and refreshing
+                 * now makes the reference a complete frame, which is what the comparison assumes.
+                 */
+                this.forceFullReferenceFrame();
                 const { runFidelityHarness, describeHarnessResult } = await import(
                     "./svg-diff-harness"
                 );
