@@ -222,14 +222,15 @@ function arcPath(
     lvglStart: number,
     lvglEnd: number
 ): string | undefined {
-    // LVGL: 0.1° units, 0° at 3 o'clock, and the arc runs from `start` to `end` in the
-    // increasing-angle (visually counter-clockwise) direction.
+    // LVGL: 0.1° units, 0° at 3 o'clock, and the angle grows CLOCKWISE on screen — LVGL places a
+    // point at `(cx + sin(a + 90)·r, cy + sin(a)·r)`, i.e. 90° is below the centre, because its y
+    // axis points down. SVG's own coordinates are the same way up, so the mapping is direct:
+    // (cx + r·cosθ, cy + r·sinθ) with sweep-flag 1 ("positive angle direction" = clockwise).
     //
-    // Converting to SVG: the point at LVGL angle θ is (cx + r·cosθ, cy − r·sinθ), which is the
-    // same as the SVG point at φ = −θ. So increasing LVGL angle means *decreasing* SVG angle,
-    // and SVG's sweep-flag must therefore be 0 (negative angle direction). The sweep magnitude
-    // is the LVGL delta — computing it in SVG space instead would take the long way round
-    // whenever start ≠ 0.
+    // This was the other way round (the angle was negated and sweep-flag 0, on the assumption that
+    // LVGL measures counter-clockwise), which mirrored every gauge: on `home_screen` the canvas
+    // painted the sweep at 90..234° while the SVG painted it at 216..360°, so the bright sweep and
+    // the dim track swapped places over ~3000 px.
     let sweepTenths = lvglEnd - lvglStart;
     while (sweepTenths <= 0) {
         sweepTenths += 3600;
@@ -241,14 +242,14 @@ function arcPath(
     const sweepDegrees = sweepTenths / 10;
 
     const rad = (deg: number) => (deg * Math.PI) / 180;
-    const startSvg = -lvglStart / 10;
-    const endSvg = -lvglEnd / 10;
-    const x0 = cx + r * Math.cos(rad(startSvg));
-    const y0 = cy + r * Math.sin(rad(startSvg));
-    const x1 = cx + r * Math.cos(rad(endSvg));
-    const y1 = cy + r * Math.sin(rad(endSvg));
+    const startDeg = lvglStart / 10;
+    const endDeg = lvglEnd / 10;
+    const x0 = cx + r * Math.cos(rad(startDeg));
+    const y0 = cy + r * Math.sin(rad(startDeg));
+    const x1 = cx + r * Math.cos(rad(endDeg));
+    const y1 = cy + r * Math.sin(rad(endDeg));
     const largeArc = sweepDegrees > 180 ? 1 : 0;
-    return `M${x0} ${y0} A${r} ${r} 0 ${largeArc} 0 ${x1} ${y1}`;
+    return `M${x0} ${y0} A${r} ${r} 0 ${largeArc} 1 ${x1} ${y1}`;
 }
 
 function fullCirclePath(cx: number, cy: number, r: number): string {
@@ -268,6 +269,18 @@ function fontFamilyOf(fontId: string | undefined): string {
         return "Montserrat, sans-serif";
     }
     return `'${fontId}', sans-serif`;
+}
+
+/**
+ * LVGL's built-in Montserrat faces are MEDIUM, so the SVG has to ask for that weight or the browser
+ * substitutes the 400 cut of the family (when a bundled face exists at all) and every glyph is
+ * slightly lighter and narrower than the canvas's.
+ */
+function fontWeightOf(fontId: string | undefined): number | undefined {
+    if (!fontId || fontId.indexOf("montserrat") !== -1) {
+        return 500;
+    }
+    return undefined;
 }
 
 function gradientDirection(dir: string | undefined): {
@@ -308,17 +321,33 @@ function gradientDirection(dir: string | undefined): {
 
 function gradientFill(
     defs: DefCollector,
+    fromColor: string | undefined,
     grad: SceneGradient,
     baseOpacity: number
 ): string {
     const geometry = gradientDirection(grad.dir);
+    /*
+     * LVGL ramps from `bg_color` to `bg_grad_color`, between `bg_main_stop` and `bg_grad_stop`
+     * (`lv_obj_init_draw_rect_dsc()` copies exactly those four style values into the two stops).
+     * This used to emit a fade of `bg_grad_color` from transparent instead, which dropped the start
+     * colour entirely: on a gradient-filled button 74% of the box differed.
+     *
+     * `bg_opa` applies to the whole gradient, so it multiplies both stops; `bg_main_opa` and
+     * `bg_grad_opa` are each stop's own opacity (both default to opaque).
+     */
+    const fromStop = Math.max(0, Math.min(1, (grad.fromStop ?? 0) / 255));
+    const gradStop = Math.max(0, Math.min(1, grad.stop / 255));
+    const start = fromColor ?? "#000000";
     return defs.url(
         geometry.kind === "radial" ? "rgrad" : "lingrad",
         {
             c: grad.color,
+            f: start,
             s: grad.stop,
+            fs: grad.fromStop ?? 0,
             d: grad.dir,
             o: grad.opacity,
+            fo: grad.fromOpacity,
             b: baseOpacity,
         },
         id => ({
@@ -337,15 +366,19 @@ function gradientFill(
                 {
                     id: id + "-a",
                     tag: "stop",
-                    attrs: { offset: 0, "stop-color": grad.color, "stop-opacity": 0 },
+                    attrs: {
+                        offset: fromStop,
+                        "stop-color": start,
+                        "stop-opacity": baseOpacity * (grad.fromOpacity ?? 1),
+                    },
                 },
                 {
                     id: id + "-b",
                     tag: "stop",
                     attrs: {
-                        offset: Math.max(0, Math.min(1, grad.stop / 255)),
+                        offset: gradStop,
                         "stop-color": grad.color,
-                        "stop-opacity": alphaOf(grad.opacity ?? 1) * baseOpacity,
+                        "stop-opacity": baseOpacity * (grad.opacity ?? 1),
                     },
                 },
             ],
@@ -430,8 +463,20 @@ function renderText(
     const lines = String(text.str).split("\n");
     const lineSpace = text.lineSpace ?? 0;
     const lineHeight = size + lineSpace;
-    const align = (text.align ?? "LEFT").toUpperCase();
-    const ascent = size * 0.8; // approximation; font metrics arrive with D3 escalation
+    /*
+     * Horizontal alignment comes from the runtime when it reported one (`textAlign` is exactly what
+     * `lv_obj_init_draw_label_dsc()` read), and only then falls back to the caller's `align`. The
+     * vertical half is never taken from `textAlign`: LVGL's `text_align` cannot move a line box
+     * vertically, so a centred string still starts at the box's top.
+     */
+    const align = (text.textAlign ?? text.align ?? "LEFT").toUpperCase();
+    const vertical = (text.align ?? "").toUpperCase();
+    /*
+     * LVGL positions glyphs against a baseline it computes from the font (`line_height -
+     * base_line`); the scene carries that value so the SVG does not have to guess. `size * 0.8`
+     * remains only as a fallback for fonts the runtime could not identify.
+     */
+    const ascent = text.baseline ?? size * 0.8;
 
     let anchor = "start";
     let x = area.x;
@@ -445,12 +490,9 @@ function renderText(
 
     const blockHeight = lines.length * lineHeight - lineSpace;
     let firstBaseline = area.y + ascent;
-    if (align.indexOf("BOTTOM") !== -1) {
+    if (vertical.indexOf("BOTTOM") !== -1) {
         firstBaseline = area.y + area.h - (blockHeight - ascent);
-    } else if (
-        align.indexOf("CENTER") !== -1 ||
-        align.indexOf("MID") !== -1
-    ) {
+    } else if (vertical.indexOf("CENTER") !== -1 || vertical.indexOf("MID") !== -1) {
         firstBaseline = area.y + (area.h - blockHeight) / 2 + ascent;
     }
 
@@ -458,6 +500,7 @@ function renderText(
         x,
         "font-family": fontFamilyOf(text.fontId),
         "font-size": size,
+        "font-weight": fontWeightOf(text.fontId),
         "text-anchor": anchor,
         fill: text.color ?? "#000000",
         "fill-opacity": alphaOf(text.opacity),
@@ -817,6 +860,85 @@ function renderOutline(
     });
 }
 
+/**
+ * LVGL symbol codepoints the renderer can draw.
+ *
+ * A part's `bg_image_src` may be a SYMBOL — a FontAwesome codepoint from LVGL's private-use range —
+ * and the default theme uses exactly one: the tick on a CHECKED checkbox (`cb_marker_checked` sets
+ * `LV_SYMBOL_OK`). LVGL draws it as a letter in the part's own text font and text colour, and the
+ * app has no icon font, so the shapes are traced here as paths in a 0..1 box that is then scaled to
+ * the part's box. The wire always carries the codepoint, so a symbol added later needs no C change:
+ * an untraced one falls back to a text run (tofu rather than a silently empty box).
+ */
+const SYMBOL_PATHS: Record<string, string> = {
+    // LV_SYMBOL_OK (U+F00C) — a checkmark, stroked rather than filled. Command letters are their own
+    // tokens so the points can be scaled without parsing the path: see renderBgSymbol.
+    "\uF00C": "M 0.18,0.52 L 0.42,0.76 L 0.82,0.26",
+};
+
+function renderBgSymbol(
+    key: string,
+    symbol: string,
+    area: SceneRect,
+    text: SceneText | undefined
+): DrawNode {
+    const color = text?.color ?? "#000000";
+    const opacity = alphaOf(text?.opacity);
+    const path = SYMBOL_PATHS[symbol];
+    if (!path) {
+        return {
+            key,
+            tag: "text",
+            attrs: {
+                x: area.x + area.w / 2,
+                y: area.y + area.h / 2,
+                "font-family": fontFamilyOf(text?.fontId),
+                "font-size": text?.size ?? area.h,
+                "font-weight": fontWeightOf(text?.fontId),
+                "text-anchor": "middle",
+                "dominant-baseline": "central",
+                fill: color,
+                "fill-opacity": opacity,
+            },
+            children: [{ key: `${key}-t`, tag: "tspan", attrs: {}, text: symbol }],
+        };
+    }
+    /*
+     * The traced box is 0..1 in both axes, so the glyph follows the marker's shape. The stroke is a
+     * fraction of the glyph's own size (LVGL draws the tick at the part's text font size, which the
+     * theme keeps small for this marker).
+     */
+    const size = text?.size ?? Math.min(area.w, area.h);
+    // 2 decimals: a scaled 0..1 point lands on values like 11.440000000000001 in binary floating
+    // point, and the path is written into the SVG verbatim.
+    const round = (value: number) => Math.round(value * 100) / 100;
+    const scaled = path
+        .split(" ")
+        .map(token => {
+            if (token === "M" || token === "L") {
+                return token;
+            }
+            const parts = token.split(",");
+            return `${round(area.x + Number(parts[0]) * area.w)},${round(
+                area.y + Number(parts[1]) * area.h
+            )}`;
+        })
+        .join(" ");
+    return {
+        key,
+        tag: "path",
+        attrs: {
+            d: scaled,
+            fill: "none",
+            stroke: color,
+            "stroke-opacity": opacity,
+            "stroke-width": Math.max(1.5, size * 0.16),
+            "stroke-linecap": "round",
+            "stroke-linejoin": "round",
+        },
+    };
+}
+
 function renderPart(
     obj: SceneObject,
     part: ScenePart,
@@ -824,6 +946,12 @@ function renderPart(
 ): DrawNode[] {
     const key = `p${obj.ptr}-${part.part}`;
     const area = part.area ?? obj.area;
+    /*
+     * Text is not drawn in the object's box: LVGL draws it in the CONTENT box (border and padding
+     * removed), and the theme pads widgets even when the model declares none. A part with its own
+     * box (a scrollbar strip) still wins.
+     */
+    const textArea = part.area ?? obj.textArea ?? obj.area;
     const radius = part.radius ?? obj.radius;
     const nodes: DrawNode[] = [];
     const partScale =
@@ -839,7 +967,7 @@ function renderPart(
         const fillOpacity = alphaOf(part.bg.opacity);
         const attrs: Record<string, string | number | undefined> = {
             fill: part.bg.grad
-                ? gradientFill(defs, part.bg.grad, fillOpacity)
+                ? gradientFill(defs, part.bg.color, part.bg.grad, fillOpacity)
                 : fill,
             "fill-opacity": part.bg.grad ? undefined : fillOpacity,
         };
@@ -860,8 +988,12 @@ function renderPart(
         );
     }
 
-    // 2. background image
-    if (part.bgImage) {
+    // 2. background image (a SYMBOL is a glyph, not a bitmap — see renderBgSymbol)
+    if (part.bgImage?.symbol) {
+        nodes.push(
+            renderBgSymbol(`${key}-bgimg`, part.bgImage.symbol, area, part.text)
+        );
+    } else if (part.bgImage) {
         const node = renderBgImage(`${key}-bgimg`, part.bgImage, area, defs);
         if (node) {
             nodes.push(node);
@@ -896,19 +1028,19 @@ function renderPart(
         }
     }
     if (part.text) {
-        const text = renderText(`${key}-text`, part.text, area);
+        const text = renderText(`${key}-text`, part.text, textArea);
         if (text) {
             if (needsTextClip(part.text)) {
                 text.attrs = {
                     ...(text.attrs ?? {}),
                     "clip-path": defs.url(
                         "textclip",
-                        { x: area.x, y: area.y, w: area.w, h: area.h, r: radius },
+                        { x: textArea.x, y: textArea.y, w: textArea.w, h: textArea.h, r: radius },
                         id => ({
                             id,
                             tag: "clipPath",
                             children: [
-                                clipShapeChild(id + "-shape", area, radius),
+                                clipShapeChild(id + "-shape", textArea, radius),
                             ],
                         })
                     ),
@@ -1024,6 +1156,35 @@ function objectTransform(obj: SceneObject): string | undefined {
     return parts.length > 0 ? parts.join(" ") : undefined;
 }
 
+/**
+ * How far this object's own drawing reaches outside its box.
+ *
+ * LVGL clips an object's own drawing to its coords grown by its EXT DRAW SIZE — an outline and a
+ * shadow are painted outside the box on purpose (`lv_obj_refr`: `obj_coords_ext`) — while its
+ * children are clipped to the plain coords. One SVG clip covers the object's group, so the box is
+ * grown by that reach: the outline and shadow stay visible and nothing LVGL keeps is cut.
+ */
+function ownDrawingMargin(obj: SceneObject): number {
+    const main = obj.parts.find(part => part.part === "MAIN");
+    let margin = 0;
+    if (main?.outline) {
+        margin = Math.max(
+            margin,
+            (main.outline.width ?? 0) + (main.outline.pad ?? 0)
+        );
+    }
+    if (main?.shadow) {
+        margin = Math.max(
+            margin,
+            (main.shadow.width ?? 0) +
+                (main.shadow.spread ?? 0) +
+                Math.abs(main.shadow.ofsX ?? 0) +
+                Math.abs(main.shadow.ofsY ?? 0)
+        );
+    }
+    return margin;
+}
+
 function renderObject(obj: SceneObject, defs: DefCollector): DrawNode {
     const attrs: Record<string, string | number | undefined> = {
         "data-ptr": obj.ptr,
@@ -1041,7 +1202,11 @@ function renderObject(obj: SceneObject, defs: DefCollector): DrawNode {
         attrs.opacity = opacity;
     }
     if (obj.clip) {
-        const clip = obj.clip;
+        const margin = ownDrawingMargin(obj);
+        const clip =
+            margin > 0
+                ? { ...expand(obj.clip, margin), radius: obj.clip.radius }
+                : obj.clip;
         attrs["clip-path"] = defs.url(
             "clip",
             { x: clip.x, y: clip.y, w: clip.w, h: clip.h, r: clip.radius },

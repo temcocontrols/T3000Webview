@@ -28,6 +28,7 @@ import type { LVGLPageRuntime } from "project-editor/lvgl/page-runtime";
 import { SceneDump } from "./scene-dump";
 import type { SceneDumpWasm, SceneWidgetInfo, SceneWidgetLookup } from "./scene-dump";
 import type { Scene } from "./scene";
+import type { SceneRect } from "./scene";
 import { SvgSink } from "./svg-sink";
 import { createSvgContext } from "./svg-context";
 import { hitTestElement, nextSelection, selectionAction } from "./hit-test";
@@ -416,9 +417,55 @@ export const LVGLSvgPage = observer(
                 const { runFidelityHarness, describeHarnessResult } = await import(
                     "./svg-diff-harness"
                 );
+                const { tierForObject, tierNote, isProceduralType } = await import("./svg-diff");
+                const { partHasDrawing: hasDrawing } = await import("./scene-dump");
+                /*
+                 * Objects drawn from a procedural ancestor's private state are excluded with it.
+                 * `scene.objects` is flat and parents precede children, so one pass suffices.
+                 */
+                const procedural = new Set<number>();
+                for (const object of scene.objects) {
+                    const insideAncestor =
+                        object.parentPtr != null && procedural.has(object.parentPtr);
+                    if (insideAncestor || isProceduralType(object.type)) {
+                        procedural.add(object.ptr);
+                    }
+                }
+                /*
+                 * Every descendant's box, per object, for the row exclusions. One pass over the flat
+                 * scene: a child is appended to each of its ancestors, so a nested grandchild is
+                 * excluded from its parent's row as well as from its grandparent's.
+                 */
+                const byPtr = new Map(scene.objects.map(object => [object.ptr, object]));
+                const descendants = new Map<number, SceneRect[]>();
+                for (const object of scene.objects) {
+                    let ancestor = object.parentPtr;
+                    for (let depth = 0; ancestor != null && depth < 32; depth++) {
+                        const list = descendants.get(ancestor);
+                        if (list) {
+                            list.push(object.area);
+                        } else {
+                            descendants.set(ancestor, [object.area]);
+                        }
+                        ancestor = byPtr.get(ancestor)?.parentPtr;
+                    }
+                }
                 const objects = scene.objects.map(object => {
                     const node = svg.querySelector(`[data-ptr="${object.ptr}"]`);
                     const box = (node as SVGGraphicsElement | null)?.getBBox?.();
+                    /*
+                     * Tier from what the object IS — procedural widget (or a descendant of one),
+                     * rasterised content, or pure vector style — never from the size of the diff: a
+                     * tier assigned because a diff is large is how a scorecard stops meaning anything.
+                     */
+                    const tierInput = {
+                        type: object.type,
+                        carriesTextOrImage: object.parts.some(
+                            part => !!(part.text?.str || part.img)
+                        ),
+                        insideProcedural:
+                            object.parentPtr != null && procedural.has(object.parentPtr),
+                    };
                     return {
                         widget: object.type,
                         part: "MAIN",
@@ -426,7 +473,23 @@ export const LVGLSvgPage = observer(
                         nodeRect: box
                             ? { x: box.x, y: box.y, w: box.width, h: box.height }
                             : undefined,
-                        tier: "T1" as const,
+                        tier: tierForObject(tierInput),
+                        note: tierNote(tierInput),
+                        /*
+                         * A container's box contains its children's drawing, so measuring it over the
+                         * whole box reports its children's deltas a second time — under every ancestor
+                         * (measured: `holiday_calender_screen`'s panel at 22% while the only wrong thing
+                         * inside it was the calendar). Subtracting the descendants leaves the
+                         * container's own chrome, and each descendant is still measured on its own row.
+                         */
+                        exclude: descendants.get(object.ptr),
+                        /*
+                         * An object with nothing drawable of its own is not measurable: a textarea's
+                         * internal label sits inside the textarea that paints the placeholder, so its
+                         * "diff" is that widget's. Detected from the scene, not from the DOM: a part
+                         * that carries no paint is exactly what the renderer leaves out.
+                         */
+                        drawsNothing: !object.parts.some(hasDrawing),
                     };
                 });
                 const result = await runFidelityHarness({
