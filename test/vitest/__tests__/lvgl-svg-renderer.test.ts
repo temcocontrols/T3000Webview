@@ -172,6 +172,38 @@ describe("renderer — indicators (parts, states, arcs)", () => {
         expect(String(attr(value, "d"))).toContain(" 0 0 ");
     });
 
+    it("draws a track-only arc part as its own sweep, not a full ring", () => {
+        // An arc widget's MAIN part is the track, and LVGL draws it between bg_angle_start/end — a
+        // default themed arc is a 270 degree track. Drawing it as a full circle was the bug, and a
+        // track part must not emit a value arc either.
+        const scene = parseScene({
+            sceneVersion: 1,
+            width: 100,
+            height: 100,
+            rootPtr: 1,
+            objects: [
+                {
+                    ptr: 1,
+                    index: 0,
+                    type: "object",
+                    area: { x: 0, y: 0, w: 100, h: 100 },
+                    parts: [
+                        {
+                            part: "MAIN",
+                            state: "default",
+                            arc: { bgColor: "#263238", bgWidth: 12, bgStart: 1350, bgEnd: 4050 },
+                        },
+                    ],
+                },
+            ],
+        });
+        const nodes = flat(renderScene(scene).roots);
+        expect(nodes.some(node => node.key.endsWith("-value"))).toBe(false);
+        const track = nodes.find(node => node.key.endsWith("-track"));
+        expect(track).toBeTruthy();
+        expect(String(attr(track!, "d"))).toContain(" 1 0 ");
+    });
+
     it("renders a textarea placeholder, cursor and scrollbar as separate parts", () => {
         const placeholder = requireNode(out, "p9-TEXTAREA_PLACEHOLDER-text");
         expect(placeholder.children![0].text).toBe("Enter a value");

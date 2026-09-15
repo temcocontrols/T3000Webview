@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+    NEVER_DRAWN_PART_NAMES,
     PART_PAINT_ORDER,
     SceneDump,
     WIRE_PART_NAMES,
@@ -278,16 +279,44 @@ describe("scene-dump — wire mapping", () => {
 
     it("orders parts by LVGL paint order, not by wire slot", () => {
         // The wire arrives as MAIN, ITEMS, SCROLLBAR, INDICATOR, TEXTAREA_PLACEHOLDER and must be
-        // emitted as MAIN, ITEMS, INDICATOR, TEXTAREA_PLACEHOLDER, SCROLLBAR.
+        // emitted as MAIN, INDICATOR, TEXTAREA_PLACEHOLDER, SCROLLBAR: TEXTAREA_PLACEHOLDER arrives
+        // last but is painted before the scrollbar, so the order cannot come from the wire.
+        // ITEMS is absent because a part LVGL never draws from an object's box is dropped.
         const child = wireToScene(WIRE).objects[1];
         expect(child.parts.map(p => p.part)).toEqual([
             "MAIN",
-            "ITEMS",
             "INDICATOR",
             "TEXTAREA_PLACEHOLDER",
             "SCROLLBAR",
         ]);
         expect(PART_PAINT_ORDER[PART_PAINT_ORDER.length - 1]).toBe("SCROLLBAR");
+    });
+
+    it("drops the parts LVGL never draws from an object's box", () => {
+        // The theme styles these on every object (SELECTED with a solid background), but only the
+        // widget that owns them can place them. A part with no area would otherwise be rendered as
+        // the object's whole box: a phantom shape over the widget.
+        const child = wireToScene({
+            ...WIRE,
+            objects: [
+                WIRE.objects[0],
+                {
+                    ...WIRE.objects[1],
+                    parts: [
+                        ...WIRE.objects[1].parts,
+                        { p: 4, bgColor: 0x2196f3, bgOpa: 255 },
+                        { p: 6, bgColor: 0x2196f3, bgOpa: 255 },
+                    ],
+                },
+            ],
+        }).objects[1];
+        expect(child.parts.map(p => p.part)).toEqual([
+            "MAIN",
+            "INDICATOR",
+            "TEXTAREA_PLACEHOLDER",
+            "SCROLLBAR",
+        ]);
+        expect(NEVER_DRAWN_PART_NAMES).toEqual(["SELECTED", "ITEMS", "CURSOR"]);
     });
 
     it("marks hidden objects and forwards scroll", () => {
@@ -375,6 +404,81 @@ describe("scene-dump — wire mapping", () => {
         // Scene contract requires a non-empty type.
         const scene = wireToScene(WIRE);
         expect(scene.objects[1].type).toBe("object");
+    });
+
+    it("maps the arc sweep emitted for arc widgets", () => {
+        // Without the angles the renderer can only draw a full circle, which turned every gauge into
+        // a ring. 0 is a real angle here, so it must survive the mapping.
+        const wire: WireScene = JSON.parse(JSON.stringify(WIRE));
+        wire.objects[1].parts = [
+            { p: 0, bgColor: 0x112233, bgOpa: 255 },
+            { p: 2, arcWidth: 7, arcColor: 0x62b7ff, arcOpa: 255, arcStart: 0, arcEnd: 144 },
+        ];
+        const child = wireToScene(wire).objects[1];
+        const indicator = child.parts.find(part => part.part === "INDICATOR")!;
+        expect(indicator.arc!.start).toBe(0);
+        expect(indicator.arc!.end).toBe(144);
+        expect(indicator.arc!.width).toBe(7);
+    });
+
+    it("keeps a full-circle default when no sweep is emitted", () => {
+        // Non-arc widgets that reuse arc styling (a spinner indicator) carry no angles.
+        const wire: WireScene = JSON.parse(JSON.stringify(WIRE));
+        wire.objects[1].parts = [
+            { p: 0, bgColor: 0x112233, bgOpa: 255 },
+            { p: 2, arcWidth: 4, arcColor: 0x4fc3f7, arcOpa: 255 },
+        ];
+        const child = wireToScene(wire).objects[1];
+        const indicator = child.parts.find(part => part.part === "INDICATOR")!;
+        expect(indicator.arc!.start).toBe(0);
+        expect(indicator.arc!.end).toBe(3600);
+    });
+
+    it("maps an arc's MAIN part as the track, over its own sweep", () => {
+        // An arc widget splits across two parts: MAIN is the track (LVGL draws it between
+        // bg_angle_start/end, which for a default themed arc is 270 degrees, not a full ring) and
+        // INDICATOR is the value sweep. A track part must not also become a value arc, or the track
+        // would be painted twice: once in the track colour and once in the value colour.
+        const wire: WireScene = JSON.parse(JSON.stringify(WIRE));
+        wire.objects[1].parts = [
+            { p: 0, arcWidth: 12, arcColor: 0x263238, arcOpa: 255, arcBgStart: 1350, arcBgEnd: 4050 },
+            { p: 2, arcWidth: 12, arcColor: 0x4fc3f7, arcOpa: 255, arcStart: 1350, arcEnd: 2025 },
+        ];
+        const child = wireToScene(wire).objects[1];
+        const main = child.parts.find(part => part.part === "MAIN")!;
+        expect(main.arc!.start).toBeUndefined();
+        expect(main.arc!.end).toBeUndefined();
+        expect(main.arc!.color).toBeUndefined();
+        expect(main.arc!.bgColor).toBe("#263238");
+        expect(main.arc!.bgStart).toBe(1350);
+        expect(main.arc!.bgEnd).toBe(4050);
+        expect(main.arc!.bgWidth).toBe(12);
+
+        const indicator = child.parts.find(part => part.part === "INDICATOR")!;
+        expect(indicator.arc!.start).toBe(1350);
+        expect(indicator.arc!.end).toBe(2025);
+        expect(indicator.arc!.bgColor).toBeUndefined();
+    });
+
+    it("carries a part-level area when the part is not the object's box", () => {
+        // A scrollbar is a thin strip; without this it was painted as a filled box the size of the
+        // object (the source of the phantom shapes).
+        const wire: WireScene = JSON.parse(JSON.stringify(WIRE));
+        wire.objects[0].parts = [
+            { p: 0, bgColor: 0x15171a, bgOpa: 255 },
+            {
+                p: 1,
+                bgColor: 0x616161,
+                bgOpa: 102,
+                radius: 32767,
+                area: { x: 470, y: 4, w: 6, h: 312 },
+            },
+        ];
+        const screen = wireToScene(wire).objects[0];
+        const scrollbar = screen.parts.find(part => part.part === "SCROLLBAR")!;
+        expect(scrollbar.area).toEqual({ x: 470, y: 4, w: 6, h: 312 });
+        // The object's own box is untouched by a part area.
+        expect(screen.area).toEqual({ x: 0, y: 0, w: 480, h: 320 });
     });
 
     it("parseSceneDump rejects unusable payloads instead of throwing", () => {
@@ -611,20 +715,38 @@ describe("feature flag — URL forms", () => {
         }
     });
 
-    it("defaults to OFF when nothing is set", () => {
+    it("defaults to ON for the supported version when nothing is set (P6)", () => {
         window.localStorage.removeItem(SVG_RENDERER_STORAGE_KEY);
-        expect(isSvgRendererEnabled("")).toBe(false);
-        expect(isSvgRendererEnabled("#/t3000/eez")).toBe(false);
+        expect(isSvgRendererEnabled("")).toBe(true);
+        expect(isSvgRendererEnabled("#/t3000/eez")).toBe(true);
+    });
+
+    it("still lets an explicit opt-out win over the default", () => {
+        // Rollback levers, both of which must keep working now that the default is ON.
+        window.localStorage.removeItem(SVG_RENDERER_STORAGE_KEY);
+        expect(isSvgRendererEnabled("?svg=0")).toBe(false);
+        expect(isSvgRendererEnabled("#/t3000/eez&svg=0")).toBe(false);
+
+        window.localStorage.setItem(SVG_RENDERER_STORAGE_KEY, "0");
+        try {
+            expect(isSvgRendererEnabled("")).toBe(false);
+            expect(isSvgRendererEnabled("#/t3000/eez")).toBe(false);
+            // ...and the URL can still force it back on.
+            expect(isSvgRendererEnabled("?svg=1")).toBe(true);
+        } finally {
+            window.localStorage.removeItem(SVG_RENDERER_STORAGE_KEY);
+        }
     });
 
     it("honours stored state when the URL says nothing", () => {
-        setSvgRendererEnabled(true);
+        setSvgRendererEnabled(false);
         try {
-            expect(isSvgRendererEnabled("")).toBe(true);
+            expect(isSvgRendererEnabled("")).toBe(false);
         } finally {
             setSvgRendererEnabled(undefined);
         }
-        expect(isSvgRendererEnabled("")).toBe(false);
+        // Unset again: back to the default, which is ON.
+        expect(isSvgRendererEnabled("")).toBe(true);
     });
 
     it("only targets 9.5", () => {
