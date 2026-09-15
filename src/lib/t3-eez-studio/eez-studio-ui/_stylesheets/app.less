@@ -13,6 +13,20 @@
     src: url(RobotoMono-Regular.ttf);
 }
 
+/*
+ * Montserrat Medium — the SVG surface renders LVGL's text with the browser's font engine, and LVGL's
+ * built-in `lv_font_montserrat_*` fonts are rasterised from exactly this face. Without it every
+ * glyph fell back to a generic sans-serif, so text matched LVGL in position but not in shape.
+ * Montserrat is licensed under the SIL Open Font License 1.1 (same file LVGL itself ships in
+ * `scripts/built_in_font/`).
+ */
+@font-face {
+    font-family: "Montserrat";
+    font-weight: 500;
+    font-display: block;
+    src: url(Montserrat-Medium.ttf);
+}
+
 * {
     user-select: none;
 }
