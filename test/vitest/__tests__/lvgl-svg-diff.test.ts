@@ -11,7 +11,10 @@ import {
     boxOffsetPx,
     compareInk,
     countInkEdges,
+    countDrawingEdges,
+    boundaryAllowancePx,
     diffImages,
+    exclusionBoxes,
     hasPixels,
     iouOf,
     pixelAllowancePx,
@@ -369,6 +372,122 @@ describe("svg-diff — pixel metrics", () => {
     });
 });
 
+describe("svg-diff — a row is measured on the pixels its own object drew", () => {
+    const box = (ptr: number, x: number, y: number, w: number, h: number) => ({
+        ptr,
+        area: { x, y, w, h },
+    });
+
+    it("gives a container its children's boxes, so their deltas are not reported twice", () => {
+        const panel = box(1, 0, 0, 200, 100);
+        const child = box(2, 20, 20, 60, 20);
+        const excludes = exclusionBoxes([panel, child]);
+        expect(excludes.get(1)).toEqual([child.area]);
+        expect(excludes.has(2)).toBe(false);
+    });
+
+    it("gives an overlapping sibling's shared part to the smaller box — the one drawn over it", () => {
+        /* network_config: a separator label's box holds the four octet textareas. */
+        const label = box(1, 172, 108, 198, 17);
+        const octet = box(2, 170, 100, 60, 30);
+        const excludes = exclusionBoxes([label, octet]);
+        /* Only the label's own box can be taken away, so the part that moves is 58x17 inside it. */
+        expect(excludes.get(1)).toEqual([{ x: 172, y: 108, w: 58, h: 17 }]);
+        expect(excludes.has(2)).toBe(false);
+    });
+
+    it("does not make a large object give up pixels to a box that merely touches it", () => {
+        const arc = box(1, 0, 0, 100, 100);
+        const beside = box(2, 100, 0, 40, 40);
+        expect(exclusionBoxes([arc, beside]).has(1)).toBe(false);
+    });
+
+    it("treats an identical box as containment, however ambiguous that is", () => {
+        /* LVGL does stack two objects on one box; each row then drops the other's, as before. */
+        const a = box(1, 0, 0, 50, 50);
+        const b = box(2, 0, 0, 50, 50);
+        const excludes = exclusionBoxes([a, b]);
+        expect(excludes.get(1)).toEqual([b.area]);
+        expect(excludes.get(2)).toEqual([a.area]);
+    });
+
+    it("has nothing to exclude when no object sits on another", () => {
+        expect(exclusionBoxes([box(1, 0, 0, 10, 10), box(2, 20, 20, 10, 10)]).size).toBe(0);
+    });
+});
+
+describe("svg-diff — the rasterisation allowance, for rows the ink mask cannot see", () => {
+    /** A 20x20 grey field with a 8x8 blob of another colour in the middle. */
+    const blob = (colour: number[], backdrop: number[]): RgbaImage => {
+        const data = new Uint8ClampedArray(20 * 20 * 4);
+        for (let y = 0; y < 20; y++) {
+            for (let x = 0; x < 20; x++) {
+                const inside = x >= 6 && x < 14 && y >= 6 && y < 14;
+                const [r, g, b] = inside ? colour : backdrop;
+                const i = (y * 20 + x) * 4;
+                data[i] = r;
+                data[i + 1] = g;
+                data[i + 2] = b;
+                data[i + 3] = 255;
+            }
+        }
+        return { width: 20, height: 20, data };
+    };
+    const region = { x: 0, y: 0, w: 20, h: 20 };
+
+    it("counts the bright ink's boundary when the drawing has bright ink", () => {
+        const edge = countInkEdges(blob([255, 255, 255], [0, 0, 0]), region);
+        expect(edge.inkPx).toBe(64);
+        expect(edge.edgePx).toBe(28); // the 8x8 square's one-pixel border: 4*8 minus the corners counted twice
+    });
+
+    it("counts the same boundary for a mid-tone shape the ink mask cannot see", () => {
+        /*
+         * `home_screen`'s button: face #456ad4 is luminance 106 against INK_THRESHOLD 110, so the
+         * bright-ink metric reports inkPx 0 and edgePx 0 while the button's rounded corners are
+         * anti-aliased differently by the two rasterisers. The same geometry, read against the
+         * region's own backdrop instead of one colour polarity of it.
+         */
+        const midTone = blob([0x45, 0x6a, 0xd4], [0x11, 0x1b, 0x35]);
+        expect(countInkEdges(midTone, region).inkPx).toBe(0);
+        expect(countInkEdges(midTone, region).edgePx).toBe(0);
+        expect(countDrawingEdges(midTone, region, undefined, 30)).toBe(28);
+    });
+
+    it("does not treat a smooth ramp as content", () => {
+        // A gradient changes by a unit per pixel: nothing in it is an edge, so it gets no allowance.
+        const data = new Uint8ClampedArray(20 * 20 * 4);
+        for (let y = 0; y < 20; y++) {
+            for (let x = 0; x < 20; x++) {
+                const i = (y * 20 + x) * 4;
+                data[i] = 20 + x;
+                data[i + 1] = 20 + x;
+                data[i + 2] = 20 + x;
+                data[i + 3] = 255;
+            }
+        }
+        expect(countDrawingEdges({ width: 20, height: 20, data }, region, undefined, 30)).toBe(0);
+    });
+
+    it("gives a row with bright ink its ink boundary, not the backdrop's", () => {
+        // The fallback is for rows the ink mask is blind to, so it must not fire on the others.
+        const bright = blob([255, 255, 255], [0, 0, 0]);
+        expect(boundaryAllowancePx(bright, region, undefined, 30)).toBe(
+            countInkEdges(bright, region).edgePx
+        );
+        const midTone = blob([0x45, 0x6a, 0xd4], [0x11, 0x1b, 0x35]);
+        expect(boundaryAllowancePx(midTone, region, undefined, 30)).toBe(
+            countDrawingEdges(midTone, region, undefined, 30)
+        );
+    });
+
+    it("keeps honouring the excluded boxes", () => {
+        const midTone = blob([0x45, 0x6a, 0xd4], [0x11, 0x1b, 0x35]);
+        const exclude = [{ x: 0, y: 0, w: 20, h: 20 }];
+        expect(countDrawingEdges(midTone, region, exclude, 30)).toBe(0);
+    });
+});
+
 describe("svg-diff — box agreement", () => {
     it("is 1 for identical rects", () => {
         expect(rectIoU({ x: 0, y: 0, w: 10, h: 10 }, { x: 0, y: 0, w: 10, h: 10 })).toBe(1);
@@ -477,6 +596,33 @@ describe("svg-diff — verdicts", () => {
     it("allows T2 its documented anti-aliasing delta", () => {
         expect(verdictFor({ ...baseRow, tier: "T2", pixelDiffPct: 1.5 })).toBe("pass");
         expect(verdictFor({ ...baseRow, tier: "T2", pixelDiffPct: 5 })).toBe("fail");
+    });
+
+    it("decides a rasterised row on the ink mask it has, and keeps the pixels as severity", () => {
+        /*
+         * Measured, not assumed — `home_screen`'s "HUMIDITY": 377 of 1620 pixels differ at tolerance 30
+         * and a 1 px radius (23%, against an allowance of 284), while the ink masks agree to 89.4%. The
+         * stroke map of the row shows the same eight letters, at the same pitch (best-fit shift 0), with
+         * the browser's stems one pixel wider on each side — the cause the ink metric models and the
+         * per-channel metric does not. T2's note says which of the two decides; this is that rule.
+         */
+        const text: ScorecardRow = {
+            ...baseRow,
+            tier: "T2",
+            comparedPx: 1620,
+            differingPx: 377,
+            edgePx: 284,
+            inkDiffPct: 10.6,
+            inkPx: 782,
+        };
+        expect(pixelAllowancePx(text)).toBe(284);
+        expect(verdictFor(text)).toBe("pass");
+        // What the rule must still catch: ink with no counterpart.
+        expect(verdictFor({ ...text, inkDiffPct: 100 })).toBe("fail");
+        // A mask taken on three ink pixels is not a measurement of a glyph.
+        expect(verdictFor({ ...text, inkPx: 3 })).toBe("fail");
+        // And a T1 row answers to both conditions, as before.
+        expect(verdictFor({ ...text, tier: "T1" })).toBe("fail");
     });
 
     it("judges a row on counts when it has them, with a boundary allowance for strokes", () => {
@@ -605,8 +751,51 @@ describe("svg-diff — the ink mask for rasterised content", () => {
         expect(result.inkDiffPct).toBeCloseTo(20, 5);
     });
 
-    it("ignores ink in a box that belongs to another row", () => {
-        // Same rule as the pixel diff: a container is not judged on what its children draw.
+    it("does not report a background as ink when both rasters agree on the colour", () => {
+        /*
+         * The ink mask is a hard luminance cut, so a background that sits ON it classifies one way in
+         * the reference and the other way in the candidate while the two colours are the same.
+         *
+         * Measured on `main_menu`: a panel's gradient crosses 110 one pixel earlier in the SVG than in
+         * the canvas, and the row for a LABEL drawn over that panel therefore reported 670 background
+         * pixels as "extra ink" — a 100% verdict over a 2-unit colour difference, on pixels the label
+         * does not paint at all. It is the same class of false failure as measuring a row with too
+         * little ink (`MIN_INK_PX`).
+         *
+         * With the row's tolerance, a mask flip the pixel metric cannot see is the cut moving, not ink.
+         * A real difference is unaffected: a glyph whose colour is 200 units apart stays counted.
+         */
+        const region = { x: 0, y: 0, w: 10, h: 2 };
+        // Luminance 105 (not ink) against 112 (ink) — a 11-unit colour difference across the cut.
+        const belowCut = solid(10, 2, [45, 120, 182, 255]);
+        const aboveCut = solid(10, 2, [49, 128, 193, 255]);
+
+        // Strict: every candidate pixel is unmatched ink and the reference has none.
+        const raw = compareInk(belowCut, aboveCut, { region });
+        expect(raw.extraInk).toBe(20);
+        expect(raw.inkDiffPct).toBe(100);
+
+        // With the row's tolerance the colours agree, so nothing was drawn and nothing is reported.
+        const tolerant = compareInk(belowCut, aboveCut, {
+            region,
+            tolerance: TIER_TOLERANCE.T2,
+        });
+        expect(tolerant.extraInk).toBe(0);
+        expect(tolerant.missingInk).toBe(0);
+        expect(tolerant.inkDiffPct).toBe(0);
+        // Counted, not hidden: a lot of these means the row's backdrop is worth looking at.
+        expect(tolerant.thresholdOnly).toBe(20);
+
+        // A missing glyph is 200+ units apart, so the tolerance changes nothing about it.
+        expect(
+            compareInk(withGlyph(3), solid(10, 2, [0, 0, 0, 255]), {
+                region,
+                tolerance: TIER_TOLERANCE.T2,
+            }).inkDiffPct
+        ).toBe(100);
+    });
+
+    it("ignores ink in a box that belongs to another row", () => {        // Same rule as the pixel diff: a container is not judged on what its children draw.
         const reference = withGlyph(3);
         const candidate = solid(10, 2, [0, 0, 0, 255]);
         const excluded = compareInk(reference, candidate, {
@@ -619,10 +808,12 @@ describe("svg-diff — the ink mask for rasterised content", () => {
 
     it("decides a rasterised row when the row carries a mask", () => {
         /*
-         * Both numbers must pass. The ink mask cannot see colour, and the pixel budget cannot see
-         * whether the glyph is there at all, so a row is only as good as its worst metric: measured, a
-         * correct label reads 3% of ink and 24% of pixels (over the T2 pixel budget, hence the ink
-         * mask), while a label whose node was removed reads 100% of ink and 95% of pixels.
+         * The mask decides and the per-channel number is severity — T2's own note says so, and the two
+         * numbers measure different things: only the mask has the rasteriser modelled in it. A correct
+         * label reads 3% of ink with 24% of its pixels differing at a tolerance of 30 and a 1 px radius,
+         * because the browser draws the outline a pixel wider on each side of every stem; a label whose
+         * node was removed reads 100% of ink. Judging the row on the pixels would fail every correct
+         * glyph — the reason the mask exists in the first place.
          */
         const base: ScorecardRow = {
             widget: "label",
@@ -633,8 +824,10 @@ describe("svg-diff — the ink mask for rasterised content", () => {
             tier: "T2",
             tolerance: 30,
         };
-        expect(verdictFor({ ...base, inkDiffPct: 3 })).toBe("fail");
+        expect(verdictFor({ ...base, inkDiffPct: 3 })).toBe("pass");
         expect(verdictFor({ ...base, inkDiffPct: 60 })).toBe("fail");
+        // A mask taken on a handful of pixels is not a measurement, so the pixels decide after all.
+        expect(verdictFor({ ...base, inkDiffPct: 3, inkPx: 3 })).toBe("fail");
         // A row inside both budgets, or without a mask to compare against.
         expect(verdictFor({ ...base, pixelDiffPct: 1, inkDiffPct: 3 })).toBe("pass");
         expect(verdictFor({ ...base, pixelDiffPct: 1 })).toBe("pass");

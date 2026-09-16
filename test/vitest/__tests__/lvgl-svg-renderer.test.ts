@@ -608,6 +608,56 @@ describe("renderer — media", () => {
             /^url\(#lvgl-rgrad-/
         );
     });
+
+    it("draws a non-tiled background image at the bitmap's own size, not stretched into the box", () => {
+        /*
+         * LVGL draws a background image at its SOURCE size, aligned in the object's box — it never
+         * scales it to fit. Measured on `home_screen`'s imgbutton, a 38x60 PNG in a 35x60 box read 0
+         * differing pixels with the bitmap top-left, 6 centred, 22 stretched and 128 letterboxed,
+         * which is what filling the box with a preserved aspect ratio amounts to.
+         */
+        const bgImage = requireNode(out, "p6-MAIN-bgimg");
+        expect(bgImage.tag).toBe("image");
+        // The fixture's stand-in bitmap really is 1x1, and its size is read from the file.
+        expect(attr(bgImage, "width")).toBe(1);
+        expect(attr(bgImage, "height")).toBe(1);
+        expect(attr(bgImage, "x")).toBe(180); // TOP_LEFT of the 180,120 160x80 panel
+        expect(attr(bgImage, "y")).toBe(120);
+        expect(attr(bgImage, "preserveAspectRatio")).toBe("none");
+    });
+
+    it("places a background image by the geometry it carries when the dump declares one", () => {
+        const scene = parseScene({
+            sceneVersion: 1,
+            width: 480,
+            height: 320,
+            rootPtr: 1,
+            objects: [
+                {
+                    ptr: 1,
+                    index: 0,
+                    type: "panel",
+                    area: { x: 180, y: 120, w: 160, h: 80 },
+                    parts: [
+                        {
+                            part: "MAIN",
+                            bgImage: {
+                                srcId: "data:image/png;base64,AAAA",
+                                naturalWidth: 40,
+                                naturalHeight: 30,
+                                align: "BOTTOM_RIGHT",
+                            },
+                        },
+                    ],
+                },
+            ],
+        })!;
+        const node = requireNode(renderScene(scene), "p1-MAIN-bgimg");
+        expect(attr(node, "width")).toBe(40);
+        expect(attr(node, "height")).toBe(30);
+        expect(attr(node, "x")).toBe(300); // 180 + 160 - 40
+        expect(attr(node, "y")).toBe(170); // 120 + 80 - 30
+    });
 });
 
 describe("renderer — dashboard (nesting, clip, scroll)", () => {

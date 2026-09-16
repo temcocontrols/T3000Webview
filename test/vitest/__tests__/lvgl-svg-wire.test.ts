@@ -25,6 +25,7 @@ import {
     parseSvgOverride,
     setSvgRendererEnabled,
 } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/feature-flag";
+import { IMAGE_FIXTURES } from "../fixtures/lvgl-svg/image-fixtures";
 
 // ---------------------------------------------------------------------------------------
 // a fake Emscripten module: a tiny heap plus the two-call size protocol
@@ -1123,6 +1124,48 @@ describe("scene-dump — clip and image geometry", () => {
                 : undefined
         );
         expect(scene.objects[1].parts[0].img!.align).toBe("TOP_MID"); // dump 2 wins over the model
+    });
+
+    it("reads the size from the bitmap when the dump describes none", () => {
+        /*
+         * An imgbutton draws its bitmap as a `bg_image_src`, which the dump does not describe at all
+         * (it emits geometry only for an `lv_image` object), so the size has to come from the bitmap.
+         * Without it the renderer letterboxed the image into the widget's box — measured on
+         * `home_screen`: 128 differing pixels, against 0 with the bitmap at its own size, top-left.
+         */
+        const wire: WireScene = JSON.parse(JSON.stringify(GEOMETRY_WIRE));
+        delete wire.objects[1].imgW;
+        delete wire.objects[1].imgH;
+        delete wire.objects[1].imgAlign;
+        const scene = wireToScene(wire, ptr =>
+            ptr === 2 ? { type: "imgbutton", img: { srcId: IMAGE_FIXTURES.png } } : undefined
+        );
+        const img = scene.objects[1].parts[0].img!;
+        expect(img.naturalWidth).toBe(IMAGE_FIXTURES.width);
+        expect(img.naturalHeight).toBe(IMAGE_FIXTURES.height);
+        expect(img.align).toBe("TOP_LEFT");
+        // The bitmap is drawn at its own size, hard against the box's top-left, not stretched into it.
+        const node = findTag(renderScene(scene).roots, "image");
+        expect(node.attrs.width).toBe(IMAGE_FIXTURES.width);
+        expect(node.attrs.height).toBe(IMAGE_FIXTURES.height);
+        expect(node.attrs.x).toBe(10);
+        expect(node.attrs.y).toBe(10);
+        expect(node.attrs.preserveAspectRatio).toBe("none");
+    });
+
+    it("leaves a widget type it cannot measure on the renderer's default alignment", () => {
+        const wire: WireScene = JSON.parse(JSON.stringify(GEOMETRY_WIRE));
+        delete wire.objects[1].imgW;
+        delete wire.objects[1].imgH;
+        delete wire.objects[1].imgAlign;
+        const scene = wireToScene(wire, ptr =>
+            ptr === 2 ? { type: "image", img: { srcId: IMAGE_FIXTURES.png } } : undefined
+        );
+        const img = scene.objects[1].parts[0].img!;
+        expect(img.naturalWidth).toBe(IMAGE_FIXTURES.width);
+        expect(img.align).toBeUndefined();
+        const node = findTag(renderScene(scene).roots, "image");
+        expect(node.attrs.x).toBe(10 + (60 - IMAGE_FIXTURES.width) / 2);
     });
 });
 
