@@ -45,6 +45,8 @@ export type {
     SceneTransform,
 } from "./scene";
 
+export { hiddenSubtree } from "./scene";
+
 export { renderScene } from "./svg-renderer";
 
 export { SvgSink, createSvgRoot } from "./svg-sink";
@@ -101,7 +103,6 @@ export type {
 } from "./hit-test";
 
 export { renderSelectionOverlay } from "./overlay";
-
 export type { SelectionOverlayStyle } from "./overlay";
 
 export { POLL_INTERVAL_MS, isSceneUnchanged, shouldDumpScene } from "./paint-policy";
@@ -128,21 +129,33 @@ export {
 } from "./feature-flag";
 
 export {
+    BOX_SLACK_PX,
+    INK_THRESHOLD,
+    MIN_INK_PX,
     TIER_THRESHOLDS,
+    TIER_TOLERANCE,
+    boxOffsetPx,
+    compareInk,
+    countInkEdges,
     diffImages,
+    pixelAllowancePx,
     rectIoU,
     rowFromDiff,
     scorecardToMarkdown,
     summariseScorecard,
+    tierForObject,
+    toleranceForTier,
     verdictFor,
 } from "./svg-diff";
 
-export type { DiffResult, RgbaImage, ScorecardRow, Verdict } from "./svg-diff";
+export type { DiffResult, InkEdges, InkMaskResult, RgbaImage, ScorecardRow, Verdict } from "./svg-diff";
 
 export {
     captureCanvas,
     captureSvg,
+    decidingMetric,
     describeHarnessResult,
+    describeSkippedObjects,
     runFidelityHarness,
 } from "./svg-diff-harness";
 

@@ -29,12 +29,14 @@ import type {
     SceneArc,
     SceneBgImage,
     SceneBorder,
+    SceneButtonMatrix,
     SceneGradient,
     SceneImage,
     SceneLine,
     SceneObject,
     SceneOutline,
     ScenePart,
+    ScenePartStyle,
     SceneRadius,
     SceneRect,
     SceneShadow,
@@ -256,19 +258,36 @@ function fullCirclePath(cx: number, cy: number, r: number): string {
     return `M${cx - r} ${cy} A${r} ${r} 0 1 0 ${cx + r} ${cy} A${r} ${r} 0 1 0 ${cx - r} ${cy} Z`;
 }
 
+/**
+ * Where LVGL's SYMBOL glyphs come from.
+ *
+ * `LV_SYMBOL_*` are FontAwesome codepoints in the private use area (LVGL generates its built-in fonts
+ * from `FontAwesome5-Solid+Brands+Regular.woff`), and Montserrat has no glyph at those codepoints.
+ * Without this family in the list the browser draws nothing at all for them: the calendar's `<` / `>`
+ * month arrows came out as empty squares, and so does every button, dropdown or roller that carries
+ * symbol text.
+ *
+ * The face is declared in `eez-studio-ui/_stylesheets/app.less`, next to Montserrat, over that same
+ * FontAwesome file — so the glyph shapes are the ones LVGL rasterises, not merely the same codepoints.
+ *
+ * Listed AFTER the text face, so ordinary characters never change: a browser resolves fonts per
+ * character and only falls through to this family for a codepoint the first one does not have.
+ */
+const SYMBOL_FONT_FAMILY = "'LVGL Symbols'";
+
 function fontFamilyOf(fontId: string | undefined): string {
     if (!fontId) {
-        return "Montserrat, sans-serif";
+        return `Montserrat, ${SYMBOL_FONT_FAMILY}, sans-serif`;
     }
     // LVGL built-ins look like lv_font_montserrat_14 / lv_font_unscii_8.
     const builtin = /^lv_font_(?:montserrat|source_han_sans|unscii)/.test(fontId);
     if (builtin) {
         if (fontId.indexOf("unscii") !== -1) {
-            return "'unscii', monospace";
+            return `'unscii', ${SYMBOL_FONT_FAMILY}, monospace`;
         }
-        return "Montserrat, sans-serif";
+        return `Montserrat, ${SYMBOL_FONT_FAMILY}, sans-serif`;
     }
-    return `'${fontId}', sans-serif`;
+    return `'${fontId}', ${SYMBOL_FONT_FAMILY}, sans-serif`;
 }
 
 /**
@@ -505,6 +524,18 @@ function renderText(
         fill: text.color ?? "#000000",
         "fill-opacity": alphaOf(text.opacity),
         "dominant-baseline": "alphabetic",
+        /*
+         * Spaces are drawing geometry, not formatting.
+         *
+         * SVG collapses runs of whitespace and strips it at both ends by default, so LVGL's own way of
+         * aligning a label in a fixed box — padding the string with spaces — was silently undone:
+         * `"Gateway              :"` came out 78.3 px wide instead of its 130 px box (IoU 0.579) and the
+         * IP editor's separator run `"      .      .  "` came out 17.09 px instead of 209 (IoU 0.081,
+         * ink 100%). LVGL advances the pen by a real space width, so the browser has to as well.
+         * The attribute keeps SVG 1.1 renderers honest and the style covers the CSS-driven ones
+         * (`white-space` is what Chrome consults for an SVG `<text>`).
+         */
+        "xml:space": "preserve",
     };
     if (text.letterSpace) {
         attrs["letter-spacing"] = text.letterSpace;
@@ -522,7 +553,7 @@ function renderText(
         key,
         tag: "text",
         attrs,
-        style: decoration ? { "text-decoration": decoration } : undefined,
+        style: { "white-space": "pre", ...(decoration ? { "text-decoration": decoration } : {}) },
         children: lines.map((line, index) => ({
             key: `${key}-l${index}`,
             tag: "tspan",
@@ -921,6 +952,8 @@ function renderBgSymbol(
                 "dominant-baseline": "central",
                 fill: color,
                 "fill-opacity": opacity,
+                // Same reason as `renderText`: a symbol's name may carry meaningful spaces.
+                "xml:space": "preserve",
             },
             children: [{ key: `${key}-t`, tag: "tspan", attrs: {}, text: symbol }],
         };
@@ -964,9 +997,10 @@ function renderBgSymbol(
 function renderPart(
     obj: SceneObject,
     part: ScenePart,
-    defs: DefCollector
+    defs: DefCollector,
+    keySuffix = ""
 ): DrawNode[] {
-    const key = `p${obj.ptr}-${part.part}`;
+    const key = `p${obj.ptr}-${part.part}${keySuffix}`;
     const area = part.area ?? obj.area;
     /*
      * Text is not drawn in the object's box: LVGL draws it in the CONTENT box (border and padding
@@ -1013,7 +1047,14 @@ function renderPart(
     // 2. background image (a SYMBOL is a glyph, not a bitmap — see renderBgSymbol)
     if (part.bgImage?.symbol) {
         nodes.push(
-            renderBgSymbol(`${key}-bgimg`, part.bgImage.symbol, area, part.text)
+            renderBgSymbol(
+                `${key}-bgimg`,
+                part.bgImage.symbol,
+                area,
+                // A symbol is drawn with the styling LVGL emitted for the codepoint; `part.text` is
+                // only a fallback (and is what an older runtime, which emitted no symbol style, has).
+                part.bgImage.text ?? part.text
+            )
         );
     } else if (part.bgImage) {
         const node = renderBgImage(`${key}-bgimg`, part.bgImage, area, defs);
@@ -1111,8 +1152,84 @@ function renderPart(
     return nodes;
 }
 
-function needsTextClip(text: SceneText): boolean {
-    if (!text.overflow) {
+/**
+ * The cells a button matrix draws itself.
+ *
+ * They are not parts of the object: LVGL walks its map and paints one rect and one text per cell,
+ * with the ITEMS-part style resolved for that cell's OWN state, so the dump emits the cells and the
+ * style of each state in use (see `svg_scene_dump.cpp`). A calendar is the case that matters most —
+ * its day grid is a button matrix, and without this the whole grid was missing from the SVG.
+ *
+ * Reusing `renderPart` for a cell's box is what keeps a cell identical to any other styled rect:
+ * gradient, border, radius, shadow and blend mode all come from the same code. The only thing a part
+ * renderer cannot do for a cell is place the text: LVGL centres the string itself (measuring it), so
+ * the box the dump reports is the text's own box and the text is drawn in it as-is.
+ */
+function renderButtonMatrix(
+    obj: SceneObject,
+    matrix: SceneButtonMatrix,
+    defs: DefCollector
+): DrawNode[] {
+    const nodes: DrawNode[] = [];
+
+    matrix.cells.forEach((cell, index) => {
+        const style = styleForCellState(matrix, cell.state);
+        const text = style?.text;
+
+        /*
+         * The state whose style applies: the cell's own, else the default one. A cell state with no
+         * style block cannot happen (the dump emits one per state a cell uses) but the default is the
+         * honest fallback — an unstyled cell is what LVGL draws with no state set.
+         */
+        nodes.push(
+            ...renderPart(
+                obj,
+                {
+                    part: "ITEMS",
+                    state: "default",
+                    area: cell.area,
+                    ...(style ?? {}),
+                    // The string belongs to the cell, not to the style.
+                    text: undefined,
+                },
+                defs,
+                `-cell${index}`
+            )
+        );
+
+        if (!cell.text) {
+            return;
+        }
+        const textNode = renderText(
+            `p${obj.ptr}-ITEMS-cell${index}-text`,
+            /*
+             * The string comes last: a cell style carries a text style with the same field names (its
+             * colour, font and alignment), and spreading it after `str` would overwrite the string
+             * with the style's empty placeholder.
+             */
+            { ...(text ?? {}), str: cell.text },
+            cell.textArea ?? cell.area
+        );
+        if (textNode) {
+            nodes.push(textNode);
+        }
+    });
+
+    return nodes;
+}
+
+/** The style LVGL resolved for a cell state, else the default one, else the first emitted. */
+function styleForCellState(
+    matrix: SceneButtonMatrix,
+    state: number
+): ScenePartStyle | undefined {
+    const exact = matrix.styles.find(entry => entry.state === state);
+    const fallback =
+        matrix.styles.find(entry => entry.state === 0) ?? matrix.styles[0];
+    return (exact ?? fallback)?.style;
+}
+
+function needsTextClip(text: SceneText): boolean {    if (!text.overflow) {
         return false;
     }
     const value = text.overflow.toUpperCase();
@@ -1245,6 +1362,13 @@ function renderObject(obj: SceneObject, defs: DefCollector): DrawNode {
     const children: DrawNode[] = [];
     for (const part of obj.parts) {
         children.push(...renderPart(obj, part, defs));
+    }
+    /*
+     * A button matrix's own drawing comes after its parts, as LVGL's draw handler does it (the
+     * object's background is painted first, then the cells).
+     */
+    if (obj.buttonMatrix) {
+        children.push(...renderButtonMatrix(obj, obj.buttonMatrix, defs));
     }
     return { key: `o${obj.ptr}`, tag: "g", attrs, children };
 }

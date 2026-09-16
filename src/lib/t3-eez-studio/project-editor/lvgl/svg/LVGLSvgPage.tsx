@@ -27,11 +27,12 @@ import type { LVGLPageRuntime } from "project-editor/lvgl/page-runtime";
 
 import { SceneDump } from "./scene-dump";
 import type { SceneDumpWasm, SceneWidgetInfo, SceneWidgetLookup } from "./scene-dump";
-import type { Scene } from "./scene";
+import type { Scene, SceneObject } from "./scene";
 import type { SceneRect } from "./scene";
+import { hiddenSubtree } from "./scene";
 import { SvgSink } from "./svg-sink";
 import { createSvgContext } from "./svg-context";
-import { hitTestElement, nextSelection, selectionAction } from "./hit-test";
+import { hitTestElement, isAdditiveClick, nextSelection, selectionAction } from "./hit-test";
 import { renderSelectionOverlay } from "./overlay";
 import {
     LVGLSvgNonActivePageViewerRuntime,
@@ -54,6 +55,33 @@ installLvglRuntimeCacheGuard();
 
 type SvgRuntime = LVGLSvgPageEditorRuntime | LVGLSvgNonActivePageViewerRuntime;
 
+/** Wait before re-measuring a scene the first verdict called unsettled. */
+const HARNESS_SETTLE_RETRY_MS = 300;
+
+/** Hard cap on measurement rounds, so an animating page cannot keep the harness busy forever. */
+const MAX_HARNESS_MEASURE_ROUNDS = 6;
+
+/**
+ * Hard cap on widget-index rebuilds per LVGL tree.
+ *
+ * A rebuild can land while the runtime is still assigning `_lvglObj` to the objects it just created,
+ * so the index is retried while that keeps changing what it maps. The cap is what stops an animating
+ * page from rebuilding on every frame.
+ */
+const MAX_INDEX_REBUILDS = 6;
+
+/** The part of the editor's view state this surface uses. */
+interface EditorViewState {
+    /** The editor's own selection calls — the ones the canvas path and the widgets tree make. */
+    selectObjects?: (objects: unknown[]) => void;
+    deselectAllObjects?: () => void;
+    /** Client pixels → page units, so pointer geometry can be compared with scene geometry. */
+    transform: {
+        scale: number;
+        clientToPagePoint(point: { x: number; y: number }): { x: number; y: number };
+    };
+}
+
 /**
  * `LVGLLabelWidget` → `label`.
  *
@@ -63,6 +91,42 @@ type SvgRuntime = LVGLSvgPageEditorRuntime | LVGLSvgNonActivePageViewerRuntime;
  */
 function subTypeOf(className: string): string {
     return className.replace(/^LVGL/, "").replace(/Widget$/, "").toLowerCase();
+}
+
+/**
+ * A scene's identity and geometry, for "is this the same frame?" comparisons.
+ *
+ * Identity plus geometry, deliberately not styling or timing: a paint that only restyles an object is
+ * still the same layout, while a tree that has gained, lost or moved an object is a different frame.
+ */
+function sceneSignature(scene: Scene): string {
+    return scene.objects
+        .map(
+            object =>
+                `${object.ptr}:${object.area.x},${object.area.y},${object.area.w},${object.area.h}`
+        )
+        .join(";");
+}
+
+/**
+ * A node's box restricted to the clip that hides part of it, or the box itself when nothing is clipped.
+ *
+ * `getBBox()` is blind to `clip-path`, so a clipped container reports the geometry its clip will hide.
+ * Used for the fidelity harness's box rule, where that difference is the difference between a correct
+ * row and a 233 px "misplacement".
+ */
+function clippedBox(box: SceneRect, clip: SceneRect | undefined): SceneRect {
+    if (!clip) {
+        return box;
+    }
+    const x = Math.max(box.x, clip.x);
+    const y = Math.max(box.y, clip.y);
+    return {
+        x,
+        y,
+        w: Math.max(0, Math.min(box.x + box.w, clip.x + clip.w) - x),
+        h: Math.max(0, Math.min(box.y + box.h, clip.y + clip.h) - y),
+    };
 }
 
 /**
@@ -82,6 +146,17 @@ interface WidgetIndex {
     lookup: SceneWidgetLookup;
     /** LVGL pointer → flow object id, filled in by the same pass. */
     flowObjectIds: Map<number, string>;
+    /**
+     * Throw the cached index away and re-read every widget's `_lvglObj`.
+     *
+     * The editor re-creates the LVGL page whenever the model changes (a drag, a property edit), and
+     * LVGL hands out *new* pointers for the re-created objects — so the index cannot be patched, its
+     * keys are gone. Everything that maps a pointer to a widget depends on this: without the rebuild
+     * the selection frame stops being drawn and a click stops selecting, silently, after the first
+     * edit. Measured: one trusted drag moved the screen pointer from 4552104 to 4557240 and left all
+     * four objects unmapped.
+     */
+    refresh: () => void;
 }
 
 function buildWidgetLookup(page: Page, project: unknown): WidgetIndex {
@@ -202,7 +277,12 @@ function buildWidgetLookup(page: Page, project: unknown): WidgetIndex {
         return found;
     };
 
-    return { lookup, flowObjectIds };
+    const refresh = (): void => {
+        flowObjectIds.clear();
+        index = build();
+    };
+
+    return { lookup, flowObjectIds, refresh };
 }
 
 export const LVGLSvgPage = observer(
@@ -221,6 +301,13 @@ export const LVGLSvgPage = observer(
         private scene: Scene | undefined;
         /** LVGL pointer → flow object id, filled by the widget index. */
         private flowObjectIds = new Map<number, string>();
+        /** The same index, kept so it can be rebuilt when the runtime re-creates its objects. */
+        private widgetIndex: WidgetIndex | undefined;
+        /** Scene root the widget index was built against; a different root means new pointers. */
+        private indexRootPtr: number | undefined;
+        /** How many scene objects the index currently maps, and how often it has been rebuilt. */
+        private indexCoverage = 0;
+        private indexRebuilds = 0;
         /** Re-draws the overlay when the editor selection changes. */
         private selectionDisposer: (() => void) | undefined;
         /** P5 harness: offscreen copy of the LVGL framebuffer, only when `?svgDiff=1`. */
@@ -275,6 +362,11 @@ export const LVGLSvgPage = observer(
                 : new LVGLSvgPageEditorRuntime(page, ctx, flowContext);
 
             const index = buildWidgetLookup(page, this.context.project);
+            this.widgetIndex = index;
+            // A fresh runtime means fresh LVGL objects, so the index has nothing cached yet.
+            this.indexRootPtr = undefined;
+            this.indexCoverage = 0;
+            this.indexRebuilds = 0;
             this.flowObjectIds = index.flowObjectIds;
             const pipeline: SvgPipeline = {
                 sink: this.sink,
@@ -284,6 +376,7 @@ export const LVGLSvgPage = observer(
                     // The overlay frames are derived from the resolved LVGL areas, so it must be
                     // redrawn whenever the scene changes (move, resize, page switch).
                     this.scene = scene;
+                    this.syncWidgetIndex(scene);
                     this.updateOverlay();
                     if (this.harnessMirror) {
                         void this.runHarness(scene, ms);
@@ -295,6 +388,48 @@ export const LVGLSvgPage = observer(
             this.observeSelection();
             void this.mountWhenArtifactsAreUsable();
             this.exposeDevHandle();
+        }
+
+        /**
+         * Rebuild the pointer → widget index when the runtime re-created its LVGL objects, and until it
+         * stops changing what it maps.
+         *
+         * The editor tears the page down and builds it again on every model change, so the whole tree —
+         * including the screen — gets new pointers, and the rebuild is triggered by that new root. One
+         * rebuild is not always enough: the runtime assigns `_lvglObj` as it creates the widgets, so a
+         * rebuild that lands mid-assignment maps only part of the scene. Measured, a resize left two of
+         * four objects unmapped, and nothing would ever have triggered another rebuild — the tree is
+         * stable afterwards, so the surface would have silently stopped selecting them.
+         *
+         * Coverage (how many of the scene's objects the index maps) is therefore the second signal: as
+         * long as a paint shows a different number, another rebuild is attempted, capped so an
+         * animating page cannot rebuild forever.
+         */
+        private syncWidgetIndex(scene: Scene): void {
+            const rootChanged = this.indexRootPtr !== scene.rootPtr;
+            if (rootChanged) {
+                this.indexRootPtr = scene.rootPtr;
+                this.indexCoverage = 0;
+                this.indexRebuilds = 0;
+            }
+
+            const coverage = scene.objects.reduce(
+                (count, object) => count + (this.flowObjectIds.has(object.ptr) ? 1 : 0),
+                0
+            );
+            const changed = coverage !== this.indexCoverage;
+            this.indexCoverage = coverage;
+
+            if ((!rootChanged && !changed) || this.indexRebuilds >= MAX_INDEX_REBUILDS) {
+                return;
+            }
+            this.indexRebuilds++;
+            this.widgetIndex?.refresh();
+            // Measured after the rebuild, so the next paint compares like with like.
+            this.indexCoverage = scene.objects.reduce(
+                (count, object) => count + (this.flowObjectIds.has(object.ptr) ? 1 : 0),
+                0
+            );
         }
 
         /**
@@ -330,35 +465,103 @@ export const LVGLSvgPage = observer(
             if (!sink || !scene) {
                 return;
             }
-            const wanted = new Set(ids);
-            const selectedPtrs = new Set<number>();
-            for (const [ptr, flowObjectId] of this.flowObjectIds) {
-                if (wanted.has(flowObjectId)) {
-                    selectedPtrs.add(ptr);
-                }
-            }
-            sink.setOverlay(renderSelectionOverlay(scene.objects, selectedPtrs));
+            sink.setOverlay(renderSelectionOverlay(scene.objects, this.ptrsFor(ids)));
         }
 
         /**
-         * Was this scene already on screen the last time the harness ran?
+         * LVGL pointers of the given flow object ids.
          *
-         * The harness runs on EVERY paint — including the frames a page switch takes — and a scorecard
-         * read from a transitional frame looks catastrophic (measured: `schedule_screen` reported 65%
-         * over 4 rows immediately after a switch, against 8% over 68 rows once settled). A signature of
-         * what the scene is (identity + geometry, not timing) is enough to tell the two apart, and the
-         * caller records it on the result.
+         * The widget index built from the page model is the source, so this and the `data-objid`
+         * attributes in the DOM always agree on which object is which.
+         */
+        private ptrsFor(ids: string[] = this.selectedFlowObjectIds()): Set<number> {
+            const wanted = new Set(ids);
+            const ptrs = new Set<number>();
+            for (const [ptr, flowObjectId] of this.flowObjectIds) {
+                if (wanted.has(flowObjectId)) {
+                    ptrs.add(ptr);
+                }
+            }
+            return ptrs;
+        }
+
+        /**
+         * Is the frame under measurement a complete, current frame?
+         *
+         * Two conditions, because one is not enough:
+         *
+         * 1. The runtime's tree still matches the scene the SVG was built from (re-dumped now). If the
+         *    page is still being built, the tree has already moved on and the measurement describes a
+         *    frame that never existed on screen.
+         * 2. The same scene has now been measured twice. A single paint can be complete and *still*
+         *    early: measured live on `home_screen`, the first paint after a switch held 4 objects and a
+         *    whole-surface delta of 11.59%, against 25 objects and 4.99% once the page finished.
+         *
+         * A false verdict is answered by re-measuring (`runHarness`), not by polling: the app repaints
+         * only when something changes, so waiting for a second paint on a static page waits forever —
+         * measured, `settled` stayed false indefinitely while the scorecard sat unchanged.
          */
         private harnessSceneSettled(scene: Scene): boolean {
-            const signature = scene.objects
-                .map(
-                    object =>
-                        `${object.ptr}:${object.area.x},${object.area.y},${object.area.w},${object.area.h}`
-                )
-                .join(";");
-            const settled = this.lastHarnessSceneSignature === signature;
+            const signature = sceneSignature(scene);
+            const current = this.dumper?.dumpScene(scene.rootPtr);
+            const matchesRuntime = current !== undefined && sceneSignature(current) === signature;
+            const measuredBefore = this.lastHarnessSceneSignature === signature;
             this.lastHarnessSceneSignature = signature;
-            return settled;
+            return matchesRuntime && measuredBefore;
+        }
+
+        /**
+         * Measure the newest scene, re-measuring it while the verdict says it is not settled.
+         *
+         * Two details matter here, both measured:
+         *
+         * - The loop re-reads `this.scene` every round, so a scene that changed while the SVG was being
+         *   rasterised (about a second) is measured as it stands rather than reported as somebody else's
+         *   frame.
+         * - A paint that happens while this is busy needs no queueing: the next round measures whatever
+         *   `this.scene` holds by then. Waiting for another *paint* instead (the first version of the
+         *   settled flag) never converged, because a static page is painted once and then never again.
+         *
+         * The round count is capped, so an animating page cannot keep the harness busy indefinitely.
+         */
+        private async runHarness(_scene: Scene, patchMs: number): Promise<void> {
+            if (this.harnessRunning) {
+                return;
+            }
+            this.harnessRunning = true;
+            try {
+                /*
+                 * Leave the frame before touching LVGL.
+                 *
+                 * The pipeline calls back into JavaScript from *inside* the runtime's paint call (the
+                 * canvas context is a JS proxy), so everything `runHarness` does synchronously runs with
+                 * a live wasm frame underneath it. Dumping the scene there is already questionable, but
+                 * `measureScene` also invalidates the screen and calls `lv_refr_now` — a full render
+                 * inside a render. Measured: moving a widget with `?svgDiff=1` aborted the runtime
+                 * (`Aborted(native code called abort())`, then "the LVGL scene dump returned an unusable
+                 * payload"), while the same drag with the harness off was clean (`diagnose: "ok"`, no
+                 * notice). One turn of the event loop is all it takes to be outside that stack, and the
+                 * frame being measured is already painted by then.
+                 */
+                await new Promise(resolve => window.setTimeout(resolve, 0));
+
+                for (let round = 0; round < MAX_HARNESS_MEASURE_ROUNDS; round++) {
+                    const target = this.scene;
+                    if (!target) {
+                        break;
+                    }
+                    const settled = this.harnessSceneSettled(target);
+                    await this.measureScene(target, patchMs, settled);
+                    if (settled) {
+                        break;
+                    }
+                    await new Promise(resolve =>
+                        window.setTimeout(resolve, HARNESS_SETTLE_RETRY_MS)
+                    );
+                }
+            } finally {
+                this.harnessRunning = false;
+            }
         }
 
         /**
@@ -413,19 +616,22 @@ export const LVGLSvgPage = observer(
         }
 
         /**
-         * Run the fidelity comparison and report it.
+         * Run the fidelity comparison for one scene and report it.
          *
          * Rows are built from the *scene* (which parts exist and where LVGL put them) crossed with the
          * SVG nodes the renderer produced, so a failure names a widget and a part instead of just
          * "some pixels differ".
          */
-        private async runHarness(scene: Scene, patchMs: number): Promise<void> {
+        private async measureScene(
+            scene: Scene,
+            patchMs: number,
+            settled: boolean
+        ): Promise<void> {
             const mirror = this.harnessMirror;
             const svg = this.svgRef.current;
-            if (!mirror || !svg || this.harnessRunning) {
+            if (!mirror || !svg) {
                 return;
             }
-            this.harnessRunning = true;
             try {
                 /*
                  * Paint the whole screen into the reference canvas first.
@@ -507,6 +713,22 @@ export const LVGLSvgPage = observer(
                     const node = svg.querySelector(`[data-ptr="${object.ptr}"]`);
                     const box = (node as SVGGraphicsElement | null)?.getBBox?.();
                     /*
+                     * The node's box is clamped to its own clip.
+                     *
+                     * `getBBox()` reports the geometry a clip-path will hide, so a container whose
+                     * children are clipped measured as if its drawing escaped the widget: the root
+                     * screen reported a 65-233 px overhang on four pages, and 8 px on every schedule
+                     * table panel, while its own pixels matched exactly (0-281 of 18300). The clip is
+                     * the object's own box for a child-clipping object, so clamping makes the box rule
+                     * measure what is actually painted.
+                     */
+                    const nodeRect = box
+                        ? clippedBox(
+                              { x: box.x, y: box.y, w: box.width, h: box.height },
+                              object.clip
+                          )
+                        : undefined;
+                    /*
                      * Tier from what the object IS — procedural widget (or a descendant of one),
                      * rasterised content, or pure vector style — never from the size of the diff: a
                      * tier assigned because a diff is large is how a scorecard stops meaning anything.
@@ -523,9 +745,7 @@ export const LVGLSvgPage = observer(
                         widget: object.type,
                         part: "MAIN",
                         area: object.area,
-                        nodeRect: box
-                            ? { x: box.x, y: box.y, w: box.width, h: box.height }
-                            : undefined,
+                        nodeRect,
                         tier: tierForObject(tierInput),
                         note: tierNote(tierInput),
                         /*
@@ -547,7 +767,7 @@ export const LVGLSvgPage = observer(
                     width: scene.width,
                     height: scene.height,
                     source: this.props.page.name ?? "page",
-                    settled: this.harnessSceneSettled(scene),
+                    settled,
                     notVisible: notVisible.size,
                     objects,
                 });
@@ -563,52 +783,125 @@ export const LVGLSvgPage = observer(
                 // Exposed for the dev panel / Playwright: the scorecard artefact.
                 (globalThis as any).__lvglSvgScorecard = result;
             } catch (error) {
-                console.warn(
-                    `[lvgl-svg] harness failed: ${(error as Error).message}`
-                );
-            } finally {
-                this.harnessRunning = false;
+                console.warn(`[lvgl-svg] harness failed: ${(error as Error).message}`);
             }
         }
 
         /**
-         * Click-to-select. The SVG surface is the only place where LVGL objects have DOM presence,
-         * so this is where a click can actually identify a widget; it then goes through the existing
-         * selection actions (`viewState`), which is what keeps undo/redo, the property panel and the
-         * widgets tree in sync without any parallel selection model.
+         * Click-to-select.
+         *
+         * The SVG surface is the only place where LVGL objects have DOM presence, so this is where a
+         * click can identify a widget; the click then goes through the editor's own selection actions
+         * (`viewState.selectObjects`/`deselectAllObjects`), which is what keeps undo/redo, the property
+         * panel and the widgets tree in sync without a second selection model here.
+         *
+         * Selection is the *only* pointer behaviour this surface implements. Drag-move, drag-resize,
+         * the marquee band, snap lines, zoom/pan and the undo entries they create belong to the
+         * editor's shared interaction layer, whose hotspots (`EezStudio_ComponentEnclosure` per widget,
+         * plus `EezStudio_FlowEditorSelection`) are laid over this surface exactly as they are over the
+         * canvas. Measured on a live page: dragging a switch here wrote `left/top` 196,48 → 221,60 into
+         * the model with one `Changed (Left, Top)` undo step, and the property panel followed — see
+         * `docs/t3000/architecture/lvgl-svg/editor-integration.md` §7.
          */
         private handlePointerDown = (
             event: React.PointerEvent<SVGSVGElement>
         ): void => {
-            const viewState = this.props.flowContext.viewState as unknown as {
-                selectedObjects?: Array<{ id: string }>;
-                selectObjects?: (objects: unknown[]) => void;
-                deselectAllObjects?: () => void;
-            };
-            if (!viewState?.selectObjects || !viewState.deselectAllObjects) {
+            if (event.button !== 0) {
+                // Middle/alt drag is panning, which the editor's canvas owns around this surface.
+                return;
+            }
+            if (!this.flowViewState().selectObjects) {
                 return;
             }
 
+            /*
+             * The DOM hit wins when there is one: the pointer landed on something the user can see, and
+             * the renderer's `pointer-events` policy has already decided what is clickable. The
+             * geometric fallback (topmost object whose box contains the point, in paint order) covers
+             * the parts that carry no fill, where the browser hit test finds nothing inside the
+             * widget's own box.
+             */
             const hit = hitTestElement(event.target as Element);
-            const flowObjectId = hit
-                ? this.flowObjectIds.get(hit.ptr ?? -1) ?? hit.objId
-                : undefined;
+            const ptr = this.widgetPtrAtPoint(this.pagePoint(event), hit?.ptr);
+            const flowObjectId =
+                ptr != null
+                    ? this.flowObjectIds.get(ptr) ??
+                      this.scene?.objects.find(object => object.ptr === ptr)?.objId
+                    : undefined;
+
             const current = this.selectedFlowObjectIds();
             const alreadySelected =
                 flowObjectId !== undefined && current.indexOf(flowObjectId) !== -1;
-            const action = selectionAction(event, alreadySelected);
-            const next = nextSelection(action, current, flowObjectId);
+            this.select(
+                nextSelection(
+                    selectionAction(event, alreadySelected),
+                    current,
+                    flowObjectId
+                )
+            );
+        };
 
-            if (next.length === 0) {
-                viewState.deselectAllObjects();
+        private flowViewState(): EditorViewState {
+            return this.props.flowContext.viewState as unknown as EditorViewState;
+        }
+
+        private pagePoint(event: React.PointerEvent<SVGSVGElement>): {
+            x: number;
+            y: number;
+        } {
+            const transform = this.flowViewState().transform;
+            return transform.clientToPagePoint({ x: event.clientX, y: event.clientY });
+        }
+
+        /** Objects a click may select: painted (not inside a hidden subtree), and owned by a widget. */
+        private selectableObjects(): SceneObject[] {
+            const scene = this.scene;
+            if (!scene) {
+                return [];
+            }
+            const hidden = hiddenSubtree(scene.objects);
+            return scene.objects.filter(
+                object => !hidden.has(object.ptr) && this.flowObjectIds.has(object.ptr)
+            );
+        }
+
+        /**
+         * The widget under a page point — the fallback for parts with no fill of their own.
+         *
+         * Topmost object whose box contains the point, in paint order, so the answer matches what the
+         * user sees rather than which element the browser happened to hit. Only addressable objects
+         * (painted, owned by a widget) take part, so a click can never select something invisible.
+         */
+        private widgetPtrAtPoint(
+            point: { x: number; y: number },
+            domPtr: number | undefined
+        ): number | undefined {
+            if (domPtr != null && this.flowObjectIds.has(domPtr)) {
+                return domPtr;
+            }
+            const candidates = this.selectableObjects().filter(
+                object =>
+                    point.x >= object.area.x &&
+                    point.x <= object.area.x + object.area.w &&
+                    point.y >= object.area.y &&
+                    point.y <= object.area.y + object.area.h
+            );
+            return candidates.length > 0 ? candidates[candidates.length - 1].ptr : undefined;
+        }
+
+        /** Apply a selection through the editor, then redraw the overlay. */
+        private select(ids: string[]): void {
+            const viewState = this.flowViewState();
+            if (ids.length === 0) {
+                viewState.deselectAllObjects?.();
             } else {
-                const adapters = next
+                const adapters = ids
                     .map(id => this.props.flowContext.document.findObjectById(id))
                     .filter(adapter => !!adapter);
-                viewState.selectObjects(adapters);
+                viewState.selectObjects?.(adapters);
             }
-            this.updateOverlay(next);
-        };
+            this.updateOverlay(ids);
+        }
 
         /**
          * Boot the runtime only once the artifacts it is about to load are known to be current.
@@ -684,7 +977,63 @@ export const LVGLSvgPage = observer(
                 mirror: () => this.harnessMirror,
                 /** Force the stale-runtime path (verifies the notice without a stale cache). */
                 reportStale: () => void this.handleStaleRuntime(),
+                /**
+                 * What a click would act on right now: the selection, the LVGL objects behind it and
+                 * the model rectangles the editor draws its own chrome from. There is no way to see any
+                 * of this from the outside — a click that selects the wrong widget looks exactly like
+                 * one that selects the right one until something unexpected is dragged.
+                 */
+                interaction: () => {
+                    const ids = this.selectedFlowObjectIds();
+                    return {
+                        selected: ids,
+                        selectedPtrs: [...this.ptrsFor(ids)],
+                        /** How much of the scene a click can actually address. */
+                        widgetPtrs: this.flowObjectIds.size,
+                        selectable: this.selectableObjects().length,
+                        sceneObjects: this.scene ? this.scene.objects.length : 0,
+                        /**
+                         * Objects the dump says LVGL does not paint, and the tree root the dump came
+                         * from. Both are inputs to the harness (`notVisible`), so a page that measures
+                         * nothing can be told apart from one whose objects are all hidden.
+                         */
+                        hiddenPtrs: this.scene ? [...hiddenSubtree(this.scene.objects)] : [],
+                        rootPtr: this.scene?.rootPtr ?? null,
+                        painted: this.sink
+                            ? this.sink.contentGroup.querySelectorAll("[data-ptr]").length
+                            : 0,
+                        /**
+                         * What the editor's shared layer is laid over this surface with: its own
+                         * hotpots (one per widget) and selection chrome. Empty means the pointer
+                         * gestures on this surface are the editor's alone and nothing else is here.
+                         */
+                        editorHotspots: document.querySelectorAll(
+                            ".EezStudio_ComponentEnclosure"
+                        ).length,
+                        selectionChrome: document.querySelectorAll(
+                            '.EezStudio_FlowEditorSelection [data-eez-flow-object-id], .EezStudio_FlowEditorSelection_ResizeHandle'
+                        ).length,
+                        rects: ids
+                            .map(id => this.rectOf(id))
+                            .filter((rect): rect is { id: string; left: number; top: number; width: number; height: number } => !!rect),
+                    };
+                },
             };
+        }
+
+        /** The editor's model rectangle for a flow object id, if it has one. */
+        private rectOf(id: string): {
+            id: string;
+            left: number;
+            top: number;
+            width: number;
+            height: number;
+        } | undefined {
+            const adapter = this.props.flowContext.document.findObjectById(id) as
+                | { rect?: { left: number; top: number; width: number; height: number } }
+                | undefined;
+            const rect = adapter?.rect;
+            return rect ? { id, ...rect } : undefined;
         }
 
         /**

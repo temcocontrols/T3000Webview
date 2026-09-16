@@ -27,6 +27,28 @@
     src: url(Montserrat-Medium.ttf);
 }
 
+/*
+ * The face LVGL's `LV_SYMBOL_*` glyphs come from — the SVG surface draws them as TEXT.
+ *
+ * A symbol is a FontAwesome codepoint in the private use area (`LV_SYMBOL_LEFT` is U+F053), and
+ * Montserrat has no glyph there, so the browser drew nothing at all for one: a calendar's month
+ * arrows, and every icon-only button, dropdown or roller, came out blank.
+ *
+ * This is the same FontAwesome build LVGL generates its own symbol bitmaps from — the file its
+ * `scripts/built_in_font/` ships and its build script consumes — so the shapes match the canvas's,
+ * not merely the codepoints. The SVG renderer lists it after Montserrat as a per-character fallback
+ * (see `fontFamilyOf` in `svg/svg-renderer.ts`), which is what keeps ordinary text untouched.
+ *
+ * FontAwesome Free is licensed under the SIL Open Font License 1.1.
+ */
+@font-face {
+    font-family: "LVGL Symbols";
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url("FontAwesome5-Solid+Brands+Regular.woff") format("woff");
+}
+
 * {
     user-select: none;
 }
