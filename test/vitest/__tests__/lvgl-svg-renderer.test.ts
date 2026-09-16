@@ -398,10 +398,165 @@ describe("renderer — text", () => {
 
     it("maps LVGL built-in fonts to web families", () => {
         expect(attr(requireNode(out, "p2-MAIN-text"), "font-family")).toBe(
-            "Montserrat, sans-serif"
+            "Montserrat, 'LVGL Symbols', sans-serif"
+        );
+    });
+
+    it("offers the symbol font as a per-character fallback", () => {
+        /*
+         * `LV_SYMBOL_*` are FontAwesome codepoints in the private use area, and Montserrat has no
+         * glyph there — so without this family the browser draws nothing at all for them, which is
+         * how a calendar's month arrows and every icon-only button came out blank.
+         *
+         * It is a FALLBACK, listed after the text face: fonts resolve per character, so ordinary
+         * letters never reach it and their rendering is unchanged.
+         */
+        const family = String(attr(requireNode(out, "p2-MAIN-text"), "font-family"));
+        expect(family.indexOf("Montserrat")).toBeLessThan(
+            family.indexOf("LVGL Symbols")
         );
     });
 });
+
+describe("renderer — button matrix cells", () => {
+    /*
+     * A button matrix draws its own content: a rect and a text per cell of its map, with the
+     * ITEMS-part style of that cell's own state. A calendar's day grid is one, so before the cells
+     * were emitted and rendered, an entire calendar was an empty card in the SVG.
+     */
+    const scene = parseScene({
+        sceneVersion: 1,
+        width: 200,
+        height: 120,
+        rootPtr: 1,
+        objects: [
+            {
+                ptr: 1,
+                index: 0,
+                type: "object",
+                area: { x: 0, y: 0, w: 200, h: 120 },
+                parts: [
+                    { part: "MAIN", state: "default", bg: { color: "#101010", opacity: 1 } },
+                ],
+                buttonMatrix: {
+                    cells: [
+                        {
+                            area: { x: 10, y: 20, w: 40, h: 24 },
+                            textArea: { x: 22, y: 23, w: 16, h: 17 },
+                            text: "Su",
+                            state: 1,
+                        },
+                        {
+                            area: { x: 55, y: 20, w: 40, h: 24 },
+                            textArea: { x: 70, y: 23, w: 6, h: 17 },
+                            text: "1",
+                            state: 0,
+                        },
+                        // A cell with no text: the box is drawn, nothing else.
+                        { area: { x: 100, y: 20, w: 40, h: 24 }, state: 0 },
+                    ],
+                    styles: [
+                        {
+                            state: 0,
+                            style: {
+                                bg: { color: "#202020", opacity: 1 },
+                                radius: 4,
+                                text: {
+                                    str: "",
+                                    color: "#fafafa",
+                                    size: 14,
+                                    baseline: 13,
+                                    textAlign: "CENTER",
+                                },
+                            },
+                        },
+                        {
+                            state: 1,
+                            style: {
+                                bg: { color: "#404040", opacity: 1 },
+                                text: { str: "", color: "#808080", size: 14, baseline: 13 },
+                            },
+                        },
+                    ],
+                },
+            },
+        ],
+    });
+    const out = renderScene(scene);
+
+    it("paints each cell's box in that cell's own state's style", () => {
+        expect(attr(requireNode(out, "p1-ITEMS-cell0-bg"), "fill")).toBe("#404040");
+        expect(attr(requireNode(out, "p1-ITEMS-cell1-bg"), "fill")).toBe("#202020");
+        // The cell box, not the object box: a cell drawn at the object's box would cover the widget.
+        const cell = requireNode(out, "p1-ITEMS-cell1-bg");
+        expect(attr(cell, "x")).toBe(55);
+        expect(attr(cell, "width")).toBe(40);
+        expect(attr(cell, "rx")).toBe(4);
+    });
+
+    it("places a cell's text in the box LVGL centred it in", () => {
+        /*
+         * LVGL centres a cell's text itself: it measures the string and shifts it into the middle of
+         * the button, then draws it in that measured box. The dump emits the box, so the renderer
+         * does not centre anything — it draws in the box it was given, and the string lands where the
+         * canvas has it. The two halves are visible here: an AUTO style puts the text at the box's
+         * leading edge, a CENTER style at its middle, and both are the middle of the BUTTON because
+         * the box is already the text's own size.
+         */
+        const disabled = requireNode(out, "p1-ITEMS-cell0-text");
+        // The run is carried by a tspan (so explicit newlines can be laid out one per line).
+        expect(disabled.children![0].text).toBe("Su");
+        expect(attr(disabled, "x")).toBe(22); // the emitted text box's leading edge
+        expect(attr(disabled, "font-size")).toBe(14);
+        expect(attr(disabled, "fill")).toBe("#808080");
+
+        const centred = requireNode(out, "p1-ITEMS-cell1-text");
+        expect(attr(centred, "x")).toBe(73); // 70 + 6 / 2 of a CENTER-styled cell
+        expect(attr(centred, "text-anchor")).toBe("middle");
+        expect(centred.children![0].text).toBe("1");
+    });
+
+    it("draws no text for a cell that carries none", () => {
+        expect(byKey(out, "p1-ITEMS-cell2-text")).toBeUndefined();
+        expect(byKey(out, "p1-ITEMS-cell2-bg")).toBeDefined();
+    });
+
+    it("paints the object's own parts before its cells, as LVGL does", () => {
+        const keys = out.roots[0].children!.map(n => n.key);
+        expect(keys.indexOf("p1-MAIN-bg")).toBeLessThan(keys.indexOf("p1-ITEMS-cell0-bg"));
+    });
+
+    it("falls back to the default state's style for an unlisted state", () => {
+        // The dump emits a style for every state a cell uses, so this is a safety net rather than a
+        // normal case: an unknown state must still be drawn as a button, not dropped.
+        const fallback = styleForStateProbe();
+        expect(fallback).toBe("#202020");
+    });
+});
+
+/** Renders a cell whose state has no style block and reports the fill it was given. */
+function styleForStateProbe(): unknown {
+    const scene = parseScene({
+        sceneVersion: 1,
+        width: 50,
+        height: 50,
+        rootPtr: 1,
+        objects: [
+            {
+                ptr: 1,
+                index: 0,
+                type: "object",
+                area: { x: 0, y: 0, w: 50, h: 50 },
+                parts: [{ part: "MAIN", state: "default" }],
+                buttonMatrix: {
+                    cells: [{ area: { x: 0, y: 0, w: 10, h: 10 }, state: 999 }],
+                    styles: [{ state: 0, style: { bg: { color: "#202020", opacity: 1 } } }],
+                },
+            },
+        ],
+    });
+    return attr(requireNode(renderScene(scene), "p1-ITEMS-cell0-bg"), "fill");
+}
 
 describe("renderer — media", () => {
     const out = renderScene(loadFixture("media"));

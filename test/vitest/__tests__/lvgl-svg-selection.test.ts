@@ -2,6 +2,9 @@
  * P4 tests: pointer hit-testing, selection semantics, and the selection overlay.
  *
  * All three modules are pure, so the interaction contract is pinned here rather than in the browser.
+ * What the *editor* does with those clicks — drag, resize, marquee, undo — is described in
+ * `docs/t3000/architecture/lvgl-svg/editor-integration.md` §7 and covered by the live checks recorded
+ * there, because it lives outside this surface.
  */
 
 import { describe, expect, it } from "vitest";
@@ -138,22 +141,9 @@ describe("overlay — selection frame", () => {
         expect(renderSelectionOverlay(OBJECTS, new Set())).toEqual([]);
     });
 
-    it("frames the selected object and adds eight handles", () => {
+    it("frames the selected object", () => {
         const nodes = renderSelectionOverlay(OBJECTS, new Set([2]));
-        // halo + outline + 8 handles
-        expect(nodes).toHaveLength(10);
-        expect(nodes.map(n => n.key)).toEqual([
-            "sel-2-halo",
-            "sel-2-outline",
-            "sel-2-handle-0",
-            "sel-2-handle-1",
-            "sel-2-handle-2",
-            "sel-2-handle-3",
-            "sel-2-handle-4",
-            "sel-2-handle-5",
-            "sel-2-handle-6",
-            "sel-2-handle-7",
-        ]);
+        expect(nodes.map(n => n.key)).toEqual(["sel-2-halo", "sel-2-outline"]);
     });
 
     it("uses the scene area verbatim", () => {
@@ -165,29 +155,24 @@ describe("overlay — selection frame", () => {
         expect(outline.attrs!.fill).toBe("none");
     });
 
-    it("places handles on the corners and edge midpoints", () => {
-        const nodes = renderSelectionOverlay(OBJECTS, new Set([2]), {
-            handleSize: 10,
-            strokeWidth: 1,
-        });
-        const handles = nodes.filter(n => n.key.startsWith("sel-2-handle-"));
-        // Centred on the boundary: half the handle sticks out on each side.
-        expect(handles.map(h => [h.attrs!.x, h.attrs!.y])).toEqual([
-            [5, 15],
-            [55, 15],
-            [105, 15],
-            [105, 30],
-            [105, 45],
-            [55, 45],
-            [5, 45],
-            [5, 30],
-        ]);
-    });
-
-    it("never swallows clicks — every overlay node is pointer-transparent", () => {
-        const nodes = renderSelectionOverlay(OBJECTS, new Set([1, 2]));
+    it("never swallows clicks", () => {
+        /*
+         * The frame sits above the scene in document order, so every node it draws must be
+         * pointer-transparent — otherwise the first click would select and every later click would land
+         * on the overlay.
+         *
+         * The interactive chrome (drag hotspot, resize handles, marquee band, snap lines) is the flow
+         * editor's, not this file's: `EezStudio_FlowEditorSelection` draws it above this surface, which
+         * is why dragging, resizing, marquee-selecting and undoing on the SVG behave exactly as they do
+         * on the canvas. Drawing a second set of handles here would promise a resize that can never
+         * happen, because the editor's layer takes the pointer first.
+         */
+        const nodes = renderSelectionOverlay(OBJECTS, new Set([1, 2]), { hoverPtr: 1 });
+        expect(nodes.length).toBeGreaterThan(0);
         for (const node of nodes) {
             expect(node.style!["pointer-events"]).toBe("none");
+            // Not even a cursor hint: the editor decides what is grabbable where.
+            expect(node.style?.cursor).toBeUndefined();
         }
     });
 
@@ -209,7 +194,7 @@ describe("overlay — selection frame", () => {
 
     it("does not draw a hover frame for an already-selected object", () => {
         const nodes = renderSelectionOverlay(OBJECTS, new Set([2]), { hoverPtr: 2 });
-        // 10 = selection frame with handles, not an extra hover pair.
-        expect(nodes).toHaveLength(10);
+        // One frame, not an extra hover pair.
+        expect(nodes).toHaveLength(2);
     });
 });

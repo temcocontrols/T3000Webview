@@ -4,12 +4,17 @@
 
 import { describe, expect, it } from "vitest";
 import {
+    BOX_SLACK_PX,
+    MIN_INK_PX,
     TIER_THRESHOLDS,
     TIER_TOLERANCE,
+    boxOffsetPx,
     compareInk,
+    countInkEdges,
     diffImages,
     hasPixels,
     iouOf,
+    pixelAllowancePx,
     rectIoU,
     rowFromDiff,
     scorecardToMarkdown,
@@ -28,12 +33,27 @@ import { describeSkippedObjects, firstFontUrl } from "../../../src/lib/t3-eez-st
 
 describe("svg-diff — tiers come from what the object is, not from the size of the diff", () => {
     it("excludes the widgets LVGL draws procedurally", () => {
-        for (const type of ["calendar", "buttonmatrix", "chart", "qrcode", "table", "scale"]) {
+        for (const type of ["chart", "qrcode", "colorwheel", "lottie", "canvas", "table", "scale"]) {
             expect(tierForObject({ type })).toBe("T3");
             expect(tierNote({ type })).toContain("D2");
         }
         // The type comes from the widget model, so case and padding must not matter.
-        expect(tierForObject({ type: " Calendar " })).toBe("T3");
+        expect(tierForObject({ type: " Chart " })).toBe("T3");
+    });
+
+    it("measures a button matrix and a calendar like any other widget", () => {
+        /*
+         * Both used to be excluded: the cells of a button matrix are drawn by the widget itself, from
+         * a map string that is not on the wire. The dump emits them now (`svgEmitButtonMatrix()`), the
+         * renderer draws them, so a calendar's day grid is a real row — with the calendar's own MAIN
+         * background as the vector part of it.
+         */
+        expect(tierForObject({ type: "buttonmatrix" })).toBe("T1");
+        expect(tierForObject({ type: "calendar" })).toBe("T1");
+        // Its cells and its header carry text, which is the T2 relaxation.
+        expect(tierForObject({ type: "calendar", carriesTextOrImage: true })).toBe("T2");
+        expect(isProceduralType("calendar")).toBe(false);
+        expect(isProceduralType("buttonmatrix")).toBe(false);
     });
 
     it("relaxes the threshold for content LVGL rasterises itself", () => {
@@ -49,16 +69,15 @@ describe("svg-diff — tiers come from what the object is, not from the size of 
             expect(tierForObject({ type })).toBe("T1");
             expect(tierNote({ type })).toBeUndefined();
         }
-        // A procedural widget outranks its content: it is excluded, not merely relaxed.
-        expect(tierForObject({ type: "calendar", carriesTextOrImage: true })).toBe("T3");
+        expect(tierForObject({ type: "panel", carriesTextOrImage: true })).toBe("T2");
     });
 
     it("excludes the children of a procedural widget with it", () => {
-        // A calendar's day cells are ordinary objects drawn from the calendar's private state, so a
-        // page reports them as failures unless the exclusion is inherited.
+        // A chart's legend or a canvas's internal objects are ordinary objects drawn from their
+        // owner's private state, so a page reports them as failures unless it is inherited.
         expect(tierForObject({ type: "object", insideProcedural: true })).toBe("T3");
         expect(tierNote({ type: "object", insideProcedural: true })).toContain("ancestor procedural");
-        expect(isProceduralType("calendar")).toBe(true);
+        expect(isProceduralType("chart")).toBe(true);
         expect(isProceduralType("panel")).toBe(false);
         // Inheritance never leaks the other way: a normal child stays measurable.
         expect(tierForObject({ type: "label", carriesTextOrImage: true })).toBe("T2");
@@ -88,11 +107,11 @@ describe("svg-diff — tiers come from what the object is, not from the size of 
     it("reports a procedural row as excluded however large its diff is", () => {
         const row = rowFromDiff(
             {
-                widget: "calendar",
+                widget: "chart",
                 part: "MAIN",
-                source: "holiday_calender_screen",
-                tier: tierForObject({ type: "calendar" }),
-                note: tierNote({ type: "calendar" }),
+                source: "dashboard",
+                tier: tierForObject({ type: "chart" }),
+                note: tierNote({ type: "chart" }),
             },
             { compared: 100, differing: 100, pixelDiffPct: 100, maxChannelDelta: 255, meanChannelDelta: 200 }
         );
@@ -205,6 +224,24 @@ function withPixel(
     data[offset + 2] = rgba[2];
     data[offset + 3] = rgba[3];
     return { width: image.width, height: image.height, data };
+}
+
+/** One colour of an image, as a fresh image — a shape drawn over a background. */
+function inkRect(
+    image: RgbaImage,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    rgba: [number, number, number, number] = [255, 255, 255, 255]
+): RgbaImage {
+    let result = image;
+    for (let dy = 0; dy < h; dy++) {
+        for (let dx = 0; dx < w; dx++) {
+            result = withPixel(result, x + dx, y + dy, rgba);
+        }
+    }
+    return result;
 }
 
 describe("svg-diff — pixel metrics", () => {
@@ -362,6 +399,38 @@ describe("svg-diff — box agreement", () => {
     });
 });
 
+describe("svg-diff — how far ink may stick out of the object's box", () => {
+    const area = { x: 15, y: 0, w: 450, h: 40 };
+
+    it("is 0 for any box that is inside", () => {
+        // The measured title panel: a border drawn inside the object's box.
+        expect(boxOffsetPx(area, { x: 16, y: 2, w: 448, h: 37 })).toBe(0);
+        expect(boxOffsetPx(area, area)).toBe(0);
+        /*
+         * A glyph run is narrower than the line box it sits in — but its ink can be a fraction of a
+         * pixel TALLER than it, because a `<text>` box is the ink extent while the LVGL area is the
+         * line box (measured: `98,78 194x16` against `98,77.4 189.3x16.8`). That is why the rule is a
+         * slack and not "inside": 0.6 px of overhang passes, 4 px does not.
+         */
+        expect(
+            boxOffsetPx({ x: 98, y: 78, w: 194, h: 16 }, { x: 98, y: 77.4, w: 189.3, h: 16.8 })
+        ).toBeCloseTo(0.6, 5);
+        expect(BOX_SLACK_PX).toBeGreaterThan(0.6);
+    });
+
+    it("is the largest overhang, in pixels, for a box that sticks out", () => {
+        // 2 px past the right edge and 3 px above the top.
+        expect(boxOffsetPx(area, { x: 15, y: -3, w: 452, h: 43 })).toBe(3);
+        // A completely displaced shape is far outside the slack.
+        expect(boxOffsetPx(area, { x: 300, y: 100, w: 450, h: 40 })).toBe(285);
+        // Half a stroke of bleed is inside the slack, a full stroke of displacement is not.
+        expect(boxOffsetPx(area, { x: 14, y: 0, w: 450, h: 40 })).toBeLessThanOrEqual(BOX_SLACK_PX);
+        expect(boxOffsetPx(area, { x: 15 - BOX_SLACK_PX - 1, y: 0, w: 450, h: 40 })).toBeGreaterThan(
+            BOX_SLACK_PX
+        );
+    });
+});
+
 describe("svg-diff — verdicts", () => {
     const baseRow: ScorecardRow = {
         widget: "slider",
@@ -384,16 +453,79 @@ describe("svg-diff — verdicts", () => {
     });
 
     it("fails on box agreement even when the pixels are close", () => {
-        expect(verdictFor({ ...baseRow, bboxIoU: 0.5 })).toBe("fail");
+        /*
+         * The box rule is the OFFSET, not the IoU, and it applies to T1 — the shapes the renderer
+         * places. The IoU is reported but never decides: a layout box and a renderer's ink extent are
+         * different rectangles on purpose (measured — a title panel `15,0 450x40` whose border is drawn
+         * inside lands at `16,2 448x37`, IoU 0.921, with 0.12% of pixels differing). Ink that overhangs
+         * the box by more than `BOX_SLACK_PX` is a misplacement.
+         */
+        expect(verdictFor({ ...baseRow, boxOffsetPx: BOX_SLACK_PX + 0.5 })).toBe("fail");
+        expect(verdictFor({ ...baseRow, bboxIoU: 0.5 })).toBe("pass");
+        // Shrinking is not evidence: a text run, an inset border and a partly-filled container all do it.
+        expect(verdictFor({ ...baseRow, boxOffsetPx: 0 })).toBe("pass");
+        // The bleed a correct row produces is inside the slack.
+        expect(verdictFor({ ...baseRow, boxOffsetPx: BOX_SLACK_PX })).toBe("pass");
+        // A text run's ink may overhang its line box, so the rule is not applied to T2 rows.
+        expect(verdictFor({ ...baseRow, tier: "T2", boxOffsetPx: 7.5 })).toBe("pass");
     });
 
     it("does not fail a row that has no box to compare", () => {
-        expect(verdictFor({ ...baseRow, bboxIoU: undefined })).toBe("pass");
+        expect(verdictFor({ ...baseRow, bboxIoU: undefined, boxOffsetPx: undefined })).toBe("pass");
     });
 
     it("allows T2 its documented anti-aliasing delta", () => {
         expect(verdictFor({ ...baseRow, tier: "T2", pixelDiffPct: 1.5 })).toBe("pass");
         expect(verdictFor({ ...baseRow, tier: "T2", pixelDiffPct: 5 })).toBe("fail");
+    });
+
+    it("judges a row on counts when it has them, with a boundary allowance for strokes", () => {
+        /*
+         * A ring is the case this exists for: `home_screen`'s 2 px gauge ring over radius 104 reads
+         * 675 differing pixels (1.53% of its 44100 px box — over any area-proportional budget) with an
+         * ink boundary of 723, every differing pixel on one of the ring's two edges, and ink masks that
+         * agree to 0.0%. One pixel of allowance per boundary pixel is the geometric statement "two
+         * rasterisers disagree on the boundary"; the area budget still applies to a filled shape.
+         */
+        const ring: ScorecardRow = {
+            ...baseRow,
+            comparedPx: 44100,
+            differingPx: 675,
+            edgePx: 723,
+            pixelDiffPct: 1.53,
+            inkDiffPct: 0,
+        };
+        expect(pixelAllowancePx(ring)).toBe(723);
+        expect(verdictFor(ring)).toBe("pass");
+        // A filled panel with the same pixel diff has almost no boundary, so the area budget decides.
+        const panel: ScorecardRow = { ...ring, differingPx: 675, edgePx: 40, inkDiffPct: undefined };
+        expect(pixelAllowancePx(panel)).toBeCloseTo(220.5, 1);
+        expect(verdictFor(panel)).toBe("fail");
+
+        // Ink in the wrong place fails even when the boundary allowance would cover the pixels.
+        expect(verdictFor({ ...ring, inkDiffPct: 100 })).toBe("fail");
+    });
+
+    it("falls back to the bare percentage for a row without counts", () => {
+        expect(pixelAllowancePx(baseRow)).toBeUndefined();
+        expect(verdictFor({ ...baseRow, pixelDiffPct: 0.4 })).toBe("pass");
+        expect(verdictFor({ ...baseRow, pixelDiffPct: 0.6 })).toBe("fail");
+    });
+
+    it("reports a row with nothing comparable as unmeasured, not as a pass", () => {
+        /*
+         * The root screen's region is entirely covered by its children's boxes — excluded so their
+         * drawing is not charged to it twice — so nothing is left to compare. Saying "pass" there is how
+         * a scorecard overstates itself; the count is reported so the denominator stays honest.
+         */
+        const empty: ScorecardRow = { ...baseRow, comparedPx: 0, differingPx: 0, edgePx: 0 };
+        expect(verdictFor(empty)).toBe("unmeasured");
+        expect(summariseScorecard([empty, baseRow])).toMatchObject({
+            pass: 1,
+            fail: 0,
+            unmeasured: 1,
+        });
+        expect(scorecardToMarkdown([empty])).toContain("1 unmeasured");
     });
 
     it("excludes T3 rather than failing it", () => {
@@ -486,8 +618,12 @@ describe("svg-diff — the ink mask for rasterised content", () => {
     });
 
     it("decides a rasterised row when the row carries a mask", () => {
-        // A row inside the ink budget passes even though its pixel percentage is far above the T2
-        // pixel budget; one above the budget fails.
+        /*
+         * Both numbers must pass. The ink mask cannot see colour, and the pixel budget cannot see
+         * whether the glyph is there at all, so a row is only as good as its worst metric: measured, a
+         * correct label reads 3% of ink and 24% of pixels (over the T2 pixel budget, hence the ink
+         * mask), while a label whose node was removed reads 100% of ink and 95% of pixels.
+         */
         const base: ScorecardRow = {
             widget: "label",
             part: "MAIN",
@@ -497,10 +633,114 @@ describe("svg-diff — the ink mask for rasterised content", () => {
             tier: "T2",
             tolerance: 30,
         };
-        expect(verdictFor({ ...base, inkDiffPct: 3 })).toBe("pass");
+        expect(verdictFor({ ...base, inkDiffPct: 3 })).toBe("fail");
         expect(verdictFor({ ...base, inkDiffPct: 60 })).toBe("fail");
-        // Without a mask the per-channel budget is still applied.
+        // A row inside both budgets, or without a mask to compare against.
+        expect(verdictFor({ ...base, pixelDiffPct: 1, inkDiffPct: 3 })).toBe("pass");
         expect(verdictFor({ ...base, pixelDiffPct: 1 })).toBe("pass");
+    });
+
+    it("applies the ink budget to T1 as well", () => {
+        // Measured on `schedule_screen`: six buttons read 0.30% of pixels with ink masks that disagree
+        // on 100%, because the renderer drew ink where the canvas has none.
+        const button: ScorecardRow = {
+            widget: "button",
+            part: "MAIN",
+            source: "schedule_screen",
+            pixelDiffPct: 0.3,
+            maxChannelDelta: 90,
+            comparedPx: 2400,
+            differingPx: 7,
+            edgePx: 0,
+            tier: "T1",
+        };
+        expect(verdictFor(button)).toBe("pass");
+        expect(verdictFor({ ...button, inkDiffPct: 100, inkPx: 400 })).toBe("fail");
+        expect(verdictFor({ ...button, inkDiffPct: 0, inkPx: 400 })).toBe("pass");
+    });
+
+    it("ignores an ink mask taken on a handful of pixels", () => {
+        /*
+         * With one or two ink pixels, the metric measures the luminance threshold, not ink: a single
+         * pixel crossing `INK_THRESHOLD` reads as 100%. Measured across the thirteen pages, every such
+         * failing row held 1-22 ink pixels (`panel inkPx=6 px=14/13919`, `button inkPx=1 px=2/657`)
+         * while every row where the metric did real work held 300-1248. Those rows are judged on
+         * pixels instead, which is the stricter metric at that size.
+         */
+        const row: ScorecardRow = {
+            widget: "button",
+            part: "MAIN",
+            source: "schedule_screen",
+            pixelDiffPct: 0.3,
+            maxChannelDelta: 91,
+            comparedPx: 1593,
+            differingPx: 3,
+            edgePx: 0,
+            tier: "T1",
+            inkPx: 3,
+        };
+        expect(MIN_INK_PX).toBeGreaterThan(22);
+        expect(verdictFor({ ...row, inkDiffPct: 100 })).toBe("pass");
+        // ...and once there is enough ink for the mask to mean something, it decides again.
+        expect(verdictFor({ ...row, inkDiffPct: 100, inkPx: 300 })).toBe("fail");
+    });
+
+    it("does not fail a T1 row on an overhang that nothing visible produces", () => {
+        /*
+         * `getBBox()` counts transparent geometry, so a row whose pixels and ink both match exactly has
+         * no visible misplacement to report however far its node's box reaches (measured:
+         * `schedule_edit_screen` labels at +7.5 px with 0 of 1200 pixels differing, ink 0.0%).
+         */
+        const invisible: ScorecardRow = {
+            widget: "label",
+            part: "MAIN",
+            source: "schedule_edit_screen",
+            pixelDiffPct: 0,
+            maxChannelDelta: 0,
+            tier: "T1",
+            tolerance: 30,
+            comparedPx: 1200,
+            differingPx: 0,
+            edgePx: 0,
+            inkPx: 40,
+            inkDiffPct: 0,
+            boxOffsetPx: 7.5,
+        };
+        expect(verdictFor(invisible)).toBe("pass");
+        // One visible pixel is enough for the overhang to mean something.
+        expect(verdictFor({ ...invisible, differingPx: 1 })).toBe("fail");
+    });
+
+    it("counts ink and its boundary, so a stroke can be given a geometric allowance", () => {
+        /*
+         * A 4 px wide inked band in a 10x4 region: 16 ink pixels, all of them on the band's boundary
+         * (a 2 px tall band has no interior rows). One pixel of allowance per boundary pixel is what
+         * lets a correct 2 px ring pass: measured on `home_screen`'s gauge, 675 differing pixels with
+         * 723 boundary pixels, while the ink masks agree to 0.0%.
+         */
+        const band = inkRect(solid(10, 4, [0, 0, 0, 255]), 3, 0, 4, 2);
+        const edges = countInkEdges(band, { x: 0, y: 0, w: 10, h: 4 });
+        expect(edges.inkPx).toBe(8);
+        expect(edges.edgePx).toBe(8);
+
+        // A filled region has no interior boundary of its own except the region's edge: two full rows
+        // plus two full columns, corners counted once.
+        const filled = solid(10, 4, [255, 255, 255, 255]);
+        expect(countInkEdges(filled, { x: 0, y: 0, w: 10, h: 4 })).toEqual({
+            inkPx: 40,
+            edgePx: 24,
+        });
+
+        // Another row's box contributes no ink and no boundary.
+        expect(
+            countInkEdges(band, { x: 0, y: 0, w: 10, h: 4 }, [{ x: 3, y: 0, w: 4, h: 2 }])
+        ).toEqual({ inkPx: 0, edgePx: 0 });
+
+        // A dark region has none either — the fallback for those rows is the percentage budget.
+        expect(countInkEdges(solid(10, 4, [0, 0, 0, 255]), { x: 0, y: 0, w: 10, h: 4 })).toEqual({
+            inkPx: 0,
+            edgePx: 0,
+        });
     });
 });
 
@@ -540,12 +780,33 @@ describe("svg-diff — scorecard output", () => {
             },
         ]);
         expect(markdown).toContain(
-            "| slider | INDICATOR | indicators | 8 | 0.12% | n/a | 9 | 1.000 | pass |"
+            "| slider | INDICATOR | indicators | 30 | 0.12% | n/a | n/a | n/a | n/a | n/a | 9 | 1.000 | n/a | pass |"
         );
         expect(markdown).toContain(
-            "| chart | MAIN | dashboard | 8 | 14.80% | n/a | 190 | n/a | excluded | D2 |"
+            "| chart | MAIN | dashboard | 8 | 14.80% | n/a | n/a | n/a | n/a | n/a | 190 | n/a | n/a | excluded | D2 |"
         );
         expect(markdown).toContain("**Summary:** 1 pass, 0 fail, 1 excluded.");
+    });
+
+    it("shows the counts a verdict was taken on, so a pasted table stays auditable", () => {
+        const markdown = scorecardToMarkdown([
+            {
+                widget: "arc",
+                part: "MAIN",
+                source: "home_screen",
+                pixelDiffPct: 1.53,
+                maxChannelDelta: 208,
+                comparedPx: 44100,
+                differingPx: 675,
+                edgePx: 723,
+                inkPx: 1690,
+                inkDiffPct: 0,
+                tier: "T1",
+            },
+        ]);
+        expect(markdown).toContain(
+            "| arc | MAIN | home_screen | 30 | 1.53% | 675/44100 | 723 | 723 | 0.00 | 1690 | 208 | n/a | n/a | pass |"
+        );
     });
 
     it("measures each tier at the tolerance its content needs, and says so", () => {
@@ -553,11 +814,15 @@ describe("svg-diff — scorecard output", () => {
          * The tolerance and the match radius are one decision: a correct 14-18 px label reads 12-26%
          * at a tolerance of 8 *with* a 1 px radius and 1.6% at 30, for the same frame, because the
          * ink boxes agree within a pixel and what differs is stroke coverage (LVGL's hinted bitmap
-         * against the browser's outline). T1 is style-only, so it keeps the strict tolerance.
+         * against the browser's outline). T1 needs the same tolerance for the same reason on its
+         * curved edges — every anti-aliased boundary of a rounded button, a switch or an arc lands in
+         * the 9-30 band, measured at 2-7% of small boxes at tolerance 8 and 0.00-0.19% at 30.
          */
-        expect(toleranceForTier("T1")).toBe(8);
+        expect(toleranceForTier("T1")).toBe(30);
         expect(toleranceForTier("T2")).toBe(30);
-        expect(TIER_TOLERANCE.T2).toBeGreaterThan(TIER_TOLERANCE.T1);
+        // The budget is what separates the tiers, never the tolerance.
+        expect(TIER_THRESHOLDS.T1.pixelDiffPct).toBeLessThan(TIER_THRESHOLDS.T2.pixelDiffPct);
+        expect(TIER_TOLERANCE.T3).toBe(8);
 
         // A row's own tolerance wins when the caller set one (the harness does, per tier).
         const row: ScorecardRow = {

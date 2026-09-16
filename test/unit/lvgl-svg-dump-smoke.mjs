@@ -216,6 +216,91 @@ try {
         }
     }
 
+    /*
+     * A button matrix draws its own content, so nothing about its cells is reachable from the per-part
+     * style values — the dump emits them instead (svgEmitButtonMatrix). A calendar is the case that
+     * mattered: its day grid IS a button matrix, so an entire calendar was missing from the SVG.
+     *
+     * The calendar is created rather than the matrix, because it builds its own map: that is the
+     * generated-at-run-time case, and it comes with the states a real one uses (the day-name row is
+     * DISABLED, the rest DEFAULT).
+     */
+    if (typeof Module._lv_calendar_create === "function") {
+        const calendarPtr = Module._lv_calendar_create(screenPtr);
+        Module._lv_obj_set_size(calendarPtr, 300, 220);
+        if (typeof Module._lv_obj_update_layout === "function") {
+            Module._lv_obj_update_layout(calendarPtr);
+        }
+        if (typeof Module._lv_calendar_set_showed_date === "function") {
+            Module._lv_calendar_set_showed_date(calendarPtr, 2026, 2);
+        }
+        const calendarObjects = dump(calendarPtr).json.objects;
+        const matrix = calendarObjects.find(object => object.btnm);
+        const cells = matrix && matrix.btnm && matrix.btnm.cells;
+        check(
+            "a calendar's day grid is a button matrix that reports its cells",
+            !!matrix && Array.isArray(cells) && cells.length >= 49,
+            matrix ? `ptr=${matrix.ptr} cells=${cells.length}` : `no btnm block in ${calendarObjects.length} object(s)`
+        );
+        check(
+            "the calendar itself draws no cells of its own",
+            calendarObjects.length > 1 && !calendarObjects[0].btnm,
+            `objects=${calendarObjects.length}`
+        );
+        check(
+            "a cell carries its box, its text and the text box LVGL centred it in",
+            !!cells &&
+                cells.every(
+                    cell =>
+                        typeof cell.x === "number" &&
+                        typeof cell.y === "number" &&
+                        cell.w > 0 &&
+                        cell.h > 0 &&
+                        typeof cell.s === "number" &&
+                        (cell.txt === undefined ||
+                            (cell.tx >= cell.x && cell.ty >= cell.y && cell.tw > 0 && cell.th > 0))
+                ),
+            cells ? JSON.stringify(cells[0]) : ""
+        );
+        check(
+            "the first row is the day names",
+            !!cells &&
+                cells.slice(0, 7).map(cell => cell.txt).join(",") === "Su,Mo,Tu,We,Th,Fr,Sa",
+            cells ? cells.slice(0, 7).map(cell => cell.txt).join(",") : ""
+        );
+        check(
+            "the day cells carry the day numbers",
+            !!cells &&
+                cells.length >= 10 &&
+                cells.slice(7).some(cell => cell.txt === "1") &&
+                cells.slice(7).some(cell => cell.txt === "28"),
+            cells ? cells.slice(7, 14).map(cell => cell.txt).join(",") : ""
+        );
+        /*
+         * A cell's appearance is its STATE's style, and the dump emits one style per state in use —
+         * the calendar disables the day-name row, so at least two must be there.
+         */
+        check(
+            "a style is emitted for every state a cell is drawn with",
+            !!matrix.btnm &&
+                Array.isArray(matrix.btnm.styles) &&
+                matrix.btnm.styles.length >= 2 &&
+                matrix.btnm.styles.every(style => typeof style.state === "number"),
+            matrix.btnm ? matrix.btnm.styles.map(style => style.state).join(",") : ""
+        );
+        check(
+            "the states the cells use all have a style",
+            !!matrix.btnm &&
+                [...new Set(cells.map(cell => cell.s))].every(state =>
+                    matrix.btnm.styles.some(style => style.state === state)
+                ),
+            matrix.btnm ? `cell states=${[...new Set(cells.map(cell => cell.s))].join(",")}` : ""
+        );
+        if (typeof Module._lv_obj_delete === "function") {
+            Module._lv_obj_delete(calendarPtr);
+        }
+    }
+
     const { text, json } = dump(screenPtr);
     check(
         "resolution comes from the display",

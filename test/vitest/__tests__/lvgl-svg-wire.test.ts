@@ -5,6 +5,7 @@ import {
     SceneDump,
     WIRE_PART_NAMES,
     borderSideName,
+    hasPrivateUseGlyph,
     imageAlignName,
     parseSceneDump,
     textAlignName,
@@ -364,6 +365,72 @@ describe("scene-dump — wire mapping", () => {
         expect(placeholder.text!.textAlign).toBe("CENTER");
     });
 
+    it("carries a button matrix's cells and per-state styles into the Scene", () => {
+        /*
+         * A button matrix draws its own content from a map it builds at run time (a calendar's day
+         * grid is one), so the cells cannot be parts of the object and are not reachable from a
+         * per-part dump. The wire carries them instead; this is the mapping onto the Scene.
+         */
+        const scene = wireToScene({
+            ...WIRE,
+            objects: [
+                {
+                    ...WIRE.objects[0],
+                    btnm: {
+                        cells: [
+                            { x: 10, y: 20, w: 40, h: 24, s: 512, txt: "Su", tx: 22, ty: 23, tw: 16, th: 17 },
+                            { x: 55, y: 20, w: 40, h: 24, s: 0, txt: "1", tx: 70, ty: 23, tw: 6, th: 17 },
+                            // A cell with no text draws only its box.
+                            { x: 100, y: 20, w: 40, h: 24, s: 0 },
+                        ],
+                        styles: [
+                            { state: 0, bgColor: 0x202020, bgOpa: 255, radius: 4, textColor: 0xfafafa, textOpa: 255, fontSize: 16, textAlign: 2 },
+                            { state: 512, bgColor: 0x303030, bgOpa: 255, textColor: 0x808080, textOpa: 255, fontSize: 16 },
+                        ],
+                    },
+                },
+            ],
+        }).objects[0];
+
+        const matrix = scene.buttonMatrix!;
+        expect(matrix).toBeDefined();
+        expect(matrix.cells).toHaveLength(3);
+        expect(matrix.cells[0]).toEqual({
+            area: { x: 10, y: 20, w: 40, h: 24 },
+            textArea: { x: 22, y: 23, w: 16, h: 17 },
+            text: "Su",
+            state: 512,
+        });
+        // The state is what selects the appearance, so it must survive verbatim.
+        expect(matrix.cells[1].state).toBe(0);
+        expect(matrix.cells[2].text).toBeUndefined();
+        expect(matrix.cells[2].textArea).toBeUndefined();
+
+        const defaultStyle = matrix.styles.find(s => s.state === 0)!.style;
+        expect(defaultStyle.bg!.color).toBe("#202020");
+        expect(defaultStyle.radius).toBe(4);
+        expect(defaultStyle.text!.color).toBe("#fafafa");
+        expect(defaultStyle.text!.textAlign).toBe("CENTER");
+        // A cell style is not a part: no name and no box of its own.
+        expect((defaultStyle as { part?: unknown }).part).toBeUndefined();
+        expect((defaultStyle as { area?: unknown }).area).toBeUndefined();
+
+        const disabledStyle = matrix.styles.find(s => s.state === 512)!.style;
+        expect(disabledStyle.bg!.color).toBe("#303030");
+        expect(disabledStyle.text!.color).toBe("#808080");
+        // `fontSize` on the wire is LVGL's line height; the Scene carries the nominal size.
+        expect(defaultStyle.text!.size).toBe(14);
+    });
+
+    it("leaves an object without cells alone", () => {
+        expect(wireToScene(WIRE).objects[0].buttonMatrix).toBeUndefined();
+        const empty = wireToScene({
+            ...WIRE,
+            objects: [{ ...WIRE.objects[0], btnm: { cells: [], styles: [] } }],
+        }).objects[0];
+        expect(empty.buttonMatrix).toBeUndefined();
+    });
+
     it("turns the border side bitmask into names", () => {
         // TOP|RIGHT = 0x0a
         const child = wireToScene(WIRE).objects[1];
@@ -588,14 +655,20 @@ describe("scene-dump — wire mapping", () => {
         expect(scene.objects[0].parts.find(part => part.part === "MAIN")!.text).toBeUndefined();
     });
 
-    it("falls back to the model for a live string holding a symbol glyph", () => {
-        // LVGL's LV_SYMBOL_* glyphs live in a private-use range the SVG has no font for, so the
-        // model's string (which the editor resolves to an icon) is kept instead.
+    it("keeps a live string that holds a symbol glyph", () => {
+        /*
+         * LVGL's LV_SYMBOL_* glyphs live in a private-use range, and the SVG draws them: the renderer
+         * falls back to the bundled Font Awesome face for those codepoints (`fontFamilyOf`). Keeping
+         * the model's string instead was the old behaviour, and it is why a calendar's month arrows
+         * and every icon button came out empty — the live string IS what LVGL is drawing.
+         */
         const scene = wireToScene(
             { ...WIRE, objects: [{ ...WIRE.objects[0], liveText: "\uF2B5 fan", liveTextPart: 0 }, WIRE.objects[1]] },
             ptr => (ptr === 100 ? { type: "label", text: { str: "Fan" } } : undefined)
         );
-        expect(scene.objects[0].parts[0].text!.str).toBe("Fan");
+        expect(scene.objects[0].parts[0].text!.str).toBe("\uF2B5 fan");
+        expect(hasPrivateUseGlyph("\uF2B5 fan")).toBe(true);
+        expect(hasPrivateUseGlyph("Fan")).toBe(false);
     });
 
     it("carries the content box LVGL draws text in", () => {
@@ -880,6 +953,29 @@ describe("scene-dump — wire mapping", () => {
         expect(marker.bgImage!.symbol).toBe("\uF00C");
         // A symbol is not a bitmap: there is no source id to point <image href> at.
         expect(marker.bgImage!.srcId).toBe("");
+    });
+
+    it("carries the text style a symbol background image is drawn with", () => {
+        /*
+         * A symbol is painted as a GLYPH, in the part's text colour and font — so the dump emits that
+         * styling next to the codepoint and it has to reach the renderer. Measured without it: the
+         * calendar's month arrows (`bg_image_src = LV_SYMBOL_LEFT`) came out black at the button's
+         * box size (28 px) on a white-on-blue button, instead of white at the font size.
+         */
+        const wire: WireScene = JSON.parse(JSON.stringify(CHECKBOX_WIRE));
+        wire.objects[0].parts[1].bgSymbol = "\uF053";
+        wire.objects[0].parts[1].textColor = 0xffffff;
+        wire.objects[0].parts[1].textOpa = 255;
+        // 16 is LVGL's line height for the 14 px face the theme uses here.
+        wire.objects[0].parts[1].fontSize = 16;
+        const marker = wireToScene(wire).objects[0].parts[1];
+        expect(marker.bgImage!.text!.color).toBe("#ffffff");
+        expect(marker.bgImage!.text!.size).toBe(14);
+        expect(marker.bgImage!.text!.baseline).toBe(13);
+        // The styling rides on the image, not on the part's own text: a part with a symbol
+        // background image has no string of its own, and putting it in `part.text` would draw it
+        // twice (once as the symbol, once as a text run).
+        expect(marker.text).toBeUndefined();
     });
 
     it("carries a part-level area when the part is not the object's box", () => {

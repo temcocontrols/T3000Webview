@@ -106,17 +106,57 @@ Within a part: shape → text → image.
 | `IMG_*` | `<image>` sized by natural size × scale and placed by `IMG_ALIGN`; recolor via `<filter><feColorMatrix>` | see §7 — geometry from the dump, source from the model |
 | `BLEND_MODE`, `COLOR_FILTER_*` | CSS `mix-blend-mode` / filter | **approximate** — tracked in the scorecard |
 
+### 5a. Content a widget draws itself (button matrix, calendar)
+
+A button matrix does not style its contents through parts: `lv_buttonmatrix.c` walks its own **map** and
+paints one rect and one text per cell, resolving the `ITEMS` part **per cell state**. None of that is
+reachable from the outside — the map is built at run time (a calendar generates its day grid from the shown
+month) and the cells are not children — so the dump emits them (`btnm`, see
+[wasm bridge §3](./wasm-bridge.md#3-encoding-decisions)) and the renderer draws:
+
+| From the dump | Drawn as |
+|---|---|
+| each cell's box (`x`/`y`/`w`/`h`) | a rect rendered by the SAME part renderer, with the style of that cell's state — gradient, border, radius and shadow all come from one code path |
+| the cell's `s` (`LV_STATE_*` bitmask) | selects the style (`styles[]` holds one per state in use; `DEFAULT` is the fallback) |
+| `txt` + the text box LVGL centred it in (`tx`/`ty`/`tw`/`th`) | one `<text>` in that box, styling from the same state's style. LVGL centres the string itself (it measures it and shifts it into the middle of the button), so the renderer must NOT centre again — it draws in the box it was given |
+
+**Why it mattered:** `lv_calendar` is a container holding a header and `calendar->btnm`, so the entire day
+grid is a button matrix. Until its cells were emitted, `holiday_calender_screen` rendered as an empty card in
+the SVG while the canvas showed the month — and the same class is a widget in its own right in the palette.
+Both are no longer in `PROCEDURAL_WIDGET_TYPES`: they are measured by the gate like any other widget.
+
 ## 6. Text
 
 1. **Font mapping.** LVGL built-ins (`lv_font_montserrat_*`) map to bundled web fonts of the same family;
    `size` comes from the scene. Project fonts (custom TTF) are registered as `@font-face` from the project's
    font data (same source the WASM side loads via `_lvglLoadFont`/`lvglCreateFreeTypeFont`).
+   **Symbols come from a second family.** `LV_SYMBOL_*` are FontAwesome codepoints in the private use area
+   (`LV_SYMBOL_LEFT` is `U+F053`) and Montserrat has no glyph there, so the browser drew nothing at all for
+   one — a calendar's month arrows, and every icon-only button, dropdown or roller, came out blank. The font
+   family list therefore ends with `LVGL Symbols`, the FontAwesome build LVGL generates its own symbol
+   bitmaps from (declared in `eez-studio-ui/_stylesheets/app.less`, next to Montserrat), and the browser
+   resolves it **per character**: ordinary letters never leave Montserrat, and the shapes match the canvas's
+   rather than merely the codepoints.
+   A symbol used as a **background image** (`bg_image_src`) is drawn with the part's TEXT styling — LVGL
+   hands it to the label draw path — so the dump emits that styling next to the codepoint
+   (`SceneBgImage.text`): without it the month arrows came out black at the button's 28 px box size instead
+   of white at the font size, while the tick a checked checkbox draws (`LV_SYMBOL_OK`) came out right only
+   because that one is traced as a path.
 2. **Layout.** `TEXT_ALIGN` → `text-anchor` + `x`; `long_mode` → single line / wrap / scroll (scroll is a
    transform + clip); `LETTER_SPACE`/`LINE_SPACE` → `letter-spacing` / `dy` per line.
 3. **Overflow** → `clipPath` on the text group.
 4. **Decor** (`TEXT_DECOR`) → `text-decoration` where supported, else an explicit `<line>`.
 5. **Baseline.** LVGL positions text by ascent; the renderer computes per-line `y` from `size` + `ascent`
    using the same font metrics table (fallback constant if metrics are unavailable).
+6. **Spaces are geometry.** `<text>` carries `xml:space="preserve"` (and `white-space: pre` in its style),
+   because SVG collapses whitespace runs and strips them at both ends by default while LVGL advances the pen
+   by a real space width. LVGL's own way of aligning a string inside a fixed box is to pad it with spaces, so
+   without this the string silently shrank: measured on `network_config`, `"Gateway              :"` came out
+   **78.3 px** wide in a 130 px box (IoU 0.579) and the IP editor's separator run `"    .    .    "` **17.09 px**
+   in a 209 px box (IoU 0.081, ink disagreement 100%). The remaining delta on those rows is the advance of a
+   space itself: LVGL uses an integer pixel advance from its own font data, the browser the TTF's fractional
+   one, so 15 spaces drift 1-2 px (84 px of 3344 px on the row, recorded in the
+   [fidelity doc §6a](./fidelity-harness.md)).
 
 Text is emitted as real text so it can be selected, styled and measured by the browser. If a specific font
 proves inaccurate in the scorecard, per-glyph `<path>` outlines are an additional emitter and do not change
