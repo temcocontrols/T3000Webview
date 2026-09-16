@@ -43,8 +43,17 @@ no new source of truth.
 ## 2. Feature flag (`svg/feature-flag.ts`)
 
 ```ts
-export function isSvgRendererEnabled(projectStore?): boolean
+export function isSvgRendererEnabled(projectStore?): boolean   // the flag alone
+export function surfaceChoice(lvglVersion): SurfaceChoice      // the flag + the version gate
 ```
+
+**The SVG surface is the DEFAULT — `?svg=1` is not needed.** Verified on the dev server (2026-09-16): with
+no `svg` parameter anywhere and no stored value, `#/t3000/eez?open=project/…` mounts the SVG surface
+(`[data-ptr]` nodes present, **no** `<canvas>` in the DOM), and the same URL with `&svg=0` mounts the
+canvas. A project created by the New Project wizard is on `lvglVersion = "9.5.0"`
+(`WizardModel.lvglVersion: LVGLVersion = "9.5.0"`), so a project made from scratch lands on the SVG surface
+without any URL parameter; the design hub's create/import flows navigate to `?new=…` and then `?open=…`, and
+neither adds an `svg` parameter.
 
 Precedence (first match wins):
 
@@ -57,6 +66,35 @@ Precedence (first match wins):
 The flag is not a project-settings field: that would change the `.eez-project` schema, which is shared with
 the device/firmware tooling. Keeping the choice out of the project file also allows one project to be opened
 with or without the SVG surface.
+
+### 2a. The version gate IS the capability gate
+
+The caller requires `settings.general.lvglVersion === "9.5.0"`, which reads like a version pin and is in fact
+a capability test: the surface needs the scene dump (`_lvglDumpScene`), and **only the 9.5.0 runtime has it**.
+Checked against the deployed runtimes:
+
+| Runtime | `_lvglDumpScene` |
+|---|---|
+| `8.4.0`, `9.2.2`, `9.3.0`, `9.4.0` | no |
+| `9.5.0` | **yes** |
+
+So a project on any other version is on the canvas path whatever the flag says — that is the correct
+behaviour, not a bug. Widening it is a *runtime* change (build the dump into that version's wasm), not a flag
+change.
+
+### 2b. The choice reports itself
+
+`reportSurfaceChoice(version)` (called once per LVGL page render in `page.tsx`) logs one line per distinct
+reason and leaves the answer on `globalThis.__lvglSurface`:
+
+```
+[lvgl] surface: svg — default: on for LVGL 9.5.0
+[lvgl] surface: canvas — turned off by ?svg=0
+[lvgl] surface: canvas — only LVGL 9.5.0 ships the scene dump this surface needs (this project is 9.4.0)
+```
+
+Both surfaces look alike, so without this "why is this project on the canvas?" was only answerable by reading
+this file. Verified live on all three cases (default, `?svg=0`, and back to default).
 
 ## 3. Pre-existing edit sites
 

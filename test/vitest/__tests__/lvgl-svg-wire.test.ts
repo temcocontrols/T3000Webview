@@ -24,6 +24,7 @@ import {
     isSvgRendererEnabled,
     parseSvgOverride,
     setSvgRendererEnabled,
+    surfaceChoice,
 } from "../../../src/lib/t3-eez-studio/project-editor/lvgl/svg/feature-flag";
 import { IMAGE_FIXTURES } from "../fixtures/lvgl-svg/image-fixtures";
 
@@ -1312,5 +1313,65 @@ describe("feature flag — URL forms", () => {
 
     it("only targets 9.5", () => {
         expect(SVG_RENDERER_SUPPORTED_VERSION).toBe("9.5.0");
+    });
+});
+
+describe("surface choice — which surface a page gets, and why", () => {
+    const clear = () => {
+        window.localStorage.removeItem(SVG_RENDERER_STORAGE_KEY);
+        window.location.hash = "";
+    };
+
+    it("is the SVG surface by default on the supported version", () => {
+        /*
+         * This is the answer to "do I have to add ?svg=1?" — no. It is the default for the LVGL version
+         * whose runtime carries the scene dump, which is also the version the New Project wizard creates
+         * (`WizardModel.lvglVersion = "9.5.0"`), so a project made from scratch lands on it.
+         */
+        clear();
+        const choice = surfaceChoice("9.5.0");
+        expect(choice.surface).toBe("svg");
+        expect(choice.reason).toContain("default");
+    });
+
+    it("stays on the canvas for a version whose runtime has no scene dump", () => {
+        clear();
+        for (const version of ["8.4.0", "9.2.2", "9.3.0", "9.4.0"]) {
+            const choice = surfaceChoice(version);
+            expect(choice.surface).toBe("canvas");
+            expect(choice.reason).toContain(version);
+        }
+        // ...and an unknown version is treated the same way rather than assumed.
+        expect(surfaceChoice(undefined).surface).toBe("canvas");
+    });
+
+    it("names the opt-out it is obeying", () => {
+        clear();
+        window.location.hash = "#/t3000/eez?svg=0";
+        expect(surfaceChoice("9.5.0")).toMatchObject({ surface: "canvas" });
+        expect(surfaceChoice("9.5.0").reason).toContain("?svg=0");
+
+        clear();
+        setSvgRendererEnabled(false);
+        try {
+            const choice = surfaceChoice("9.5.0");
+            expect(choice.surface).toBe("canvas");
+            expect(choice.reason).toContain(SVG_RENDERER_STORAGE_KEY);
+        } finally {
+            clear();
+        }
+    });
+
+    it("lets an explicit ?svg=1 win over stored state, and says so", () => {
+        clear();
+        setSvgRendererEnabled(false);
+        try {
+            window.location.hash = "#/t3000/eez?svg=1";
+            const choice = surfaceChoice("9.5.0");
+            expect(choice.surface).toBe("svg");
+            expect(choice.reason).toBe("?svg=1");
+        } finally {
+            clear();
+        }
     });
 });

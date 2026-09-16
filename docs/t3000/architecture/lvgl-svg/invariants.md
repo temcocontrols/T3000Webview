@@ -51,6 +51,11 @@ authoritative:
 The flag is deliberately not a project setting: `.eez-project` is exchanged with the device tooling, and
 keeping the choice out of the file means one project can be opened with or without the surface.
 
+The version gate is a capability gate, not a version pin: the surface needs `_lvglDumpScene`, and only the
+9.5.0 runtime exports it. So **`?svg=1` is never required** — a 9.5.0 project (what the wizard creates) is on
+the SVG surface by default, and the choice names itself once per session in the console and on
+`globalThis.__lvglSurface` (`surfaceChoice()` / `reportSurfaceChoice()`, [editor-integration §2](./editor-integration.md)).
+
 ---
 
 ## 2. Additive contract
