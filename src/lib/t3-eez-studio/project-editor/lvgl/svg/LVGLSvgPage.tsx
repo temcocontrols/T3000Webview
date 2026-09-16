@@ -646,7 +646,8 @@ export const LVGLSvgPage = observer(
                 const { runFidelityHarness, describeHarnessResult } = await import(
                     "./svg-diff-harness"
                 );
-                const { tierForObject, tierNote, isProceduralType } = await import("./svg-diff");
+                const { tierForObject, tierNote, isProceduralType, exclusionBoxes } =
+                    await import("./svg-diff");
                 const { partHasDrawing: hasDrawing } = await import("./scene-dump");
                 const { hiddenSubtree } = await import("./scene");
                 /*
@@ -675,40 +676,14 @@ export const LVGLSvgPage = observer(
                 /*
                  * Every box inside this object that belongs to ANOTHER object, for the row exclusions.
                  *
-                 * Two cases, one rule: a container's box contains everything its children draw, so
-                 * measuring the container over its whole box reports its children's deltas a second
-                 * time (measured: holiday_calender_screen's panel at 79% while the only wrong thing
-                 * inside was the calendar); and an unrelated widget can sit on top — home_screen's
-                 * gauges have their numeric labels as SIBLINGS, not children, so the glyph
-                 * anti-aliasing of "11" was being charged to the arc's row (6-9% of a 230x230 box that
-                 * is otherwise pixel-aligned). Subtracting every contained box attributes each pixel to
-                 * the object that drew it, and each of those objects still has its own row.
-                 *
-                 * Overlapping-but-not-contained siblings are the one case this cannot separate; they
-                 * remain shared between their two rows.
+                 * The rule itself lives in the gate (`exclusionBoxes`), next to the metric that consumes
+                 * it, because it is what "a row is measured on its own pixels" MEANS: a container gives
+                 * up the boxes its children draw in, and two overlapping siblings give up the part they
+                 * share to the smaller one (measured on `network_config`: an IP separator label's box
+                 * holds the four octet textareas, and the label's row was charged with their glyphs).
+                 * Each of those objects has its own row, so the pixels move, they do not disappear.
                  */
-                const excludes = new Map<number, SceneRect[]>();
-                for (const object of measured) {
-                    const list: SceneRect[] = [];
-                    for (const other of measured) {
-                        if (other === object) {
-                            continue;
-                        }
-                        const a = object.area;
-                        const b = other.area;
-                        if (
-                            b.x >= a.x &&
-                            b.y >= a.y &&
-                            b.x + b.w <= a.x + a.w &&
-                            b.y + b.h <= a.y + a.h
-                        ) {
-                            list.push(b);
-                        }
-                    }
-                    if (list.length > 0) {
-                        excludes.set(object.ptr, list);
-                    }
-                }
+                const excludes = exclusionBoxes(measured);
                 const objects = measured.map(object => {
                     const node = svg.querySelector(`[data-ptr="${object.ptr}"]`);
                     const box = (node as SVGGraphicsElement | null)?.getBBox?.();

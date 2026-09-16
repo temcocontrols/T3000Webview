@@ -10,13 +10,20 @@
  * as-is — no transform maths, unlike the canvas path which would have to project through the
  * viewport transform.
  *
- * Two details matter for it to feel like an editor rather than a debug drawing:
+ * ## What it deliberately does *not* draw
  *
- * - **It must not swallow clicks.** The overlay is above the scene in document order, so every node
- *   it draws sets `pointer-events: none` — otherwise the first click would select and every later
- *   click would land on the overlay.
- * - **It must read on any background.** A single stroke disappears over matching colours, so the
- *   outline is a dark line over a light halo (and vice versa in dark theme).
+ * The interactive chrome — the drag hotspot, the resize handles and the marquee band — belongs to the
+ * flow editor, not to this surface. The editor renders one `EezStudio_ComponentEnclosure` per widget
+ * (from the model's own rects) plus an `EezStudio_FlowEditorSelection` overlay, and its mouse handlers
+ * work against those regardless of which substrate paints the pixels: drag-move, resize, marquee,
+ * snap lines and undo all apply to the SVG surface exactly as they do to the canvas one. Measured:
+ * dragging a switch on this surface wrote `left/top` 196,48 → 221,60 into the model and produced one
+ * "Changed (Left, Top)" undo step. Drawing a second, inert set of handles here promised a resize that
+ * could never happen, because the editor's overlay sits above this group and takes the pointer first.
+ *
+ * So this draws the things that are this surface's own: a frame showing what the *scene* says is
+ * selected (the anchor for the fidelity harness's per-object rows, and the visual truth while
+ * debugging the renderer) and a hover preview. Both are pointer-transparent.
  */
 
 import type { DrawNode } from "./svg-sink";
@@ -37,7 +44,9 @@ export interface SelectionOverlayStyle {
     strokeWidth?: number;
 }
 
-const DEFAULTS: Required<SelectionOverlayStyle> = {
+type PaintStyle = Required<SelectionOverlayStyle>;
+
+const DEFAULTS: PaintStyle = {
     outline: "#1e88e5",
     halo: "#ffffff",
     handle: "#ffffff",
@@ -46,26 +55,13 @@ const DEFAULTS: Required<SelectionOverlayStyle> = {
     strokeWidth: 1,
 };
 
-/** Interaction is handled by the scene and the editor, never by the overlay. */
+/**
+ * Interaction is handled by the scene and the editor, never by the overlay.
+ *
+ * The frame sits above the scene in document order, so every node it draws is pointer-transparent:
+ * otherwise the first click would select and every later click would land on the overlay.
+ */
 const OVERLAY_STYLE = { "pointer-events": "none" } as const;
-
-/** Corners and edge midpoints — the standard eight-handle frame. */
-function handlePositions(area: SceneRect): Array<{ x: number; y: number }> {
-    const midX = area.x + area.w / 2;
-    const midY = area.y + area.h / 2;
-    const right = area.x + area.w;
-    const bottom = area.y + area.h;
-    return [
-        { x: area.x, y: area.y },
-        { x: midX, y: area.y },
-        { x: right, y: area.y },
-        { x: right, y: midY },
-        { x: right, y: bottom },
-        { x: midX, y: bottom },
-        { x: area.x, y: bottom },
-        { x: area.x, y: midY },
-    ];
-}
 
 function box(
     key: string,
@@ -126,29 +122,6 @@ export function renderSelectionOverlay(
                 style.strokeWidth
             )
         );
-
-        if (!isSelected) {
-            // Hover is a preview only — no handles, so it never looks interactive.
-            continue;
-        }
-
-        const half = style.handleSize / 2;
-        handlePositions(object.area).forEach((position, index) => {
-            nodes.push({
-                key: `sel-${object.ptr}-handle-${index}`,
-                tag: "rect",
-                attrs: {
-                    x: position.x - half,
-                    y: position.y - half,
-                    width: style.handleSize,
-                    height: style.handleSize,
-                    fill: style.handle,
-                    stroke: style.handleBorder,
-                    "stroke-width": style.strokeWidth,
-                },
-                style: OVERLAY_STYLE,
-            });
-        });
     }
 
     return nodes;
