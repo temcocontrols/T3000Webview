@@ -145,6 +145,34 @@ way these can be verified, because synthetic `PointerEvent`s do not reach React'
 | Pan | a drag on the canvas background translates the surface (measured left edge `471 → 276`) |
 | Marquee | **not startable on this page.** A drag in the free canvas area is handled as a *pan* (the surface moved; no `…_RubberBend` element ever appeared) even though the editor's `RubberBandSelectionMouseHandler` exists and `createMouseHandler()` falls through to it. That choice is made by the editor from the drag target and is identical on the canvas path, so it is not a property of this surface; multi-object selection is reachable with Ctrl+click. The LVGL screen enclosure covering the display is what removes the "empty space" a marquee would start from. |
 
+Re-verified on the SVG surface with `?svg=1` (2026-09-16), on the same project and with the same trusted
+input, together with a sweep of all 13 pages:
+
+| Check | Result |
+|---|---|
+| Every page renders | 13 of 13 pages: `diagnose: "ok"`, no notice, no `<canvas>` in the DOM, one node per *visible* object (`home_screen` 25 of 56, `parameters` 105 of 543, `time` 27 of 48), page `viewBox="0 0 480 320"`, real strings in `<text>` (`"Gateway              :"`, the calendar's 53 day/header runs), images and clip defs present |
+| Click select | a click on the widget under the pointer selected it (`selected: ["259"]`, `selectedPtrs: [4561704]`) and framed it at the model rect (`335,460 51×21`) |
+| Multi-select | Ctrl+click a second object → `selected: ["259","696"]` and the panel switches to **"Multiple objects selected"** |
+| Drag move | the model's `left/top` went `0,0 → 40,20` for a +40,+20 pointer drag (absolute position `20,240 → 60,260`); Ctrl+Z restored `0,0` |
+| Resize | with a px-sized widget selected (an imgbutton) the editor renders **8** `…_ResizeHandle` squares; dragging the south one down 25 px produced exactly one undo step, `Changed (Height): Pages / home_screen / Components / Screen / Children / Imgbutton [fan_button]`, and Ctrl+Z restored `height: 35` |
+| Undo / redo | both directions verified through the toolbar's Undo/Redo entries |
+
+**Two bugs found by that test, both in shared editor code rather than in this surface** (the same selection
+crashes the properties panel on the canvas path — checked with `?svg=0`). A multi-selection's common
+properties are the *first* object's, re-checked against every other object, so a property's predicate is
+asked about objects it was never written for:
+
+- `absolutePosition` (`lvgl/widgets/Base.tsx`) read `widget.absolutePositionPoint.x` — undefined for a flow
+  `ConnectionLine`. Selecting a widget together with one of its wires left `TypeError: Cannot read properties
+  of undefined (reading 'x')` and "Error rendering component" in the panel's place. The predicate now hides
+  the property when there is no point to compare.
+- the flow `Inputs`/`Outputs` properties (`flow/component.tsx`) read `component.customInputs.length`, which is
+  `undefined` on a connection line for the same reason — and unlike `Component.getInputs()`, which already
+  reads `this.customInputs ?? []`. Both predicates do now.
+
+Both were reproduced and fixed live: after the fix, the same widget + wire selection reports **0** predicate
+exceptions and shows "Multiple objects selected" on both surfaces.
+
 Ownership in one line: **the editor owns the gestures, the surface owns the pixels.** The surface's only
 pointer behaviour is click-select, and it delegates the result to
 `viewState.selectObjects` / `deselectAllObjects` so history, the property panel and the widgets tree stay in

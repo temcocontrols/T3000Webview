@@ -230,6 +230,68 @@ space is drawing geometry: LVGL advances the pen by a real space width.
 The console summary names the metric a failure was taken on (`decidingMetric`), because printing
 `pixelDiffPct` for every failure is misleading once three other numbers can decide it.
 
+### 4d. Revision after the fourth sweep (2026-09-16) — every page measures clean
+
+Five changes, four of them metric rules and one a real renderer bug that the metric row had been
+pointing at all along. Together they take the sweep from 8 failing rows across 3 pages to **0 failing
+rows across all 11 reachable pages** (§6a).
+
+1. **A row is measured on its own pixels — including a partially overlapping sibling's.** §4b item 2
+   excluded only boxes *contained* in the row's box, which leaves the sibling case unresolved: measured
+   on `network_config`, an IP separator label's box (`172,108 198x17`) holds the four octet textareas
+   (`170,x 60x30` each) that are painted *before* it, so the label's row was charged with their digits —
+   224 differing pixels at a tolerance of 30, of which ~210 were textarea glyphs and ~14 were the
+   label's own dot. The rule now lives in the gate (`exclusionBoxes`) and the smaller box wins the
+   shared area, because the smaller box is the object drawn OVER the larger one (a label over a panel, a
+   value over a gauge). Pixels move between rows; they do not disappear, and each object still has its
+   own row. Effect: `network_config` 3 failures → **0**, `schedule_edit_screen` 1 → **0**.
+2. **A bitmap is drawn at its own size, and that size is read from the bitmap.** The wire carries
+   geometry only for an `lv_image` object (`lv_image_get_src_width`), so a widget that owns a bitmap the
+   dump cannot describe — an imgbutton, whose image is a `bg_image_src` — arrived with no size at all and
+   the renderer letterboxed it into the widget's box. Measured on `home_screen`'s imgbutton, a 38x60 PNG
+   in a 35x60 widget:
+
+   | Placement | differing px |
+   |---|---|
+   | letterboxed into the box (what it did) | **128** |
+   | stretched across the box | 22 |
+   | natural size, centred | 6 |
+   | natural size, top-left (LVGL's rule for a widget's own bitmap) | **0** |
+
+   `image-size.ts` reads width and height out of the bitmap header (PNG/JPEG/GIF/BMP/WebP) instead of
+   guessing, `wireToScene` fills `SceneImage.naturalWidth/Height` from it when the wire is silent, and
+   `renderBgImage` does the same for a background bitmap. Both imgbutton rows on `home_screen` now read
+   0 differing pixels, and the page's whole-surface delta fell with them.
+3. **A rasterised row that has an ink mask is decided by the mask** — which is what T2's own tier note
+   says ("`inkDiffPct` is the budget that decides a rasterised row; the per-channel budget above applies
+   only when a row has no ink mask") and what the implementation did *not* do: it required both. The
+   pixels stay on the row as severity. Measured on `home_screen`'s "HUMIDITY": 377 of 1620 px differ
+   (23%) at tolerance 30 and a 1 px radius, against an allowance of 284, while the ink masks agree to
+   89.4% — and the stroke map of the row shows the same eight letters at the same pitch (best-fit shift
+   0) with the browser's stems one pixel wider on each side. Failing that row on the metric whose cause
+   is not modelled in it, while the modelled one reports 10.6% of a 25% budget, is how a gate stops
+   meaning anything. What the rule must still catch: a missing, moved or duplicated string reads 100% on
+   the mask, and a mask taken on fewer than `MIN_INK_PX` ink pixels is not a measurement at all, so the
+   pixels decide those rows.
+4. **The rasterisation allowance is computed for rows the ink mask cannot see.** `countInkEdges` can only
+   see *bright* ink (luminance ≥ `INK_THRESHOLD` = 110), so a shape that sits just under the cut gets
+   `edgePx = 0` and is judged on a bare fraction of its area. Measured on `home_screen`: a mid-blue
+   button (`#456ad4`, luminance **106**) whose four rounded corners are anti-aliased differently by the
+   two rasterisers — 8 differing pixels against the 6.6 the 0.5% budget allowed, each one a 33%-vs-51%
+   blend of the same two colours, on the corner arcs only. Where the ink mask sees nothing,
+   `boundaryAllowancePx` now counts the boundary of the drawing against the region's own backdrop
+   (`countDrawingEdges`), which is the same one-pixel-per-boundary-pixel statement for a shape of any
+   colour. It fires only when `inkPx < MIN_INK_PX`, so every row the ink mask can see keeps exactly the
+   allowance it had.
+5. **The whole-surface figure is a bit-close-ness report, not a row budget.** `whole` is the same
+   comparison with no tier: tolerance 8 (`diffImages`'s legacy default) and no match radius, so it
+   counts every pixel whose channels are more than 8 apart. On `holiday_calender_screen` the same frame
+   reads **66.63% at tolerance 8, 7.75% at 30** and the page's rows all pass: the residual is the
+   rasterised title's and day grid's stroke coverage (123 px of black-vs-bright against 647 reference
+   ink pixels on the title alone — the same +20% stems measured on `home_screen`), the card's blends and
+   gradients, i.e. the classes the tiers accept by construction. Recorded here because the number is
+   easy to misread as "66% of the page is wrong"; the rows are the gate, and they are what §6a lists.
+
 ## 5. Fixtures
 
 New, additive, under a dev fixtures folder:
@@ -262,45 +324,47 @@ first metric, and whether it had enough ink to decide), `box+` (the overhang) an
 severity.
 
 
-## 6a. Live sweep result (2026-09-15)
+## 6a. Live sweep result (2026-09-16) — no failing row on any page
 
-Per page, on the dev server, read from a settled scorecard. The `rows`/`excluded`/`not visible` columns
-and the worst rows are measured with item 1 of §4c in place; the `fails` column is that same read, i.e.
-**before** the box rule and the T1 tolerance of items 2–3, which is what the per-row numbers below the
-table say about those rows.
+Per page, on the dev server, read from a settled scorecard (`settled === true` and
+`rows[0].source` naming the page, which is the only read that is not a transitional frame). The
+`whole` column is the tolerance-8, radius-0 figure §4d item 5 describes; the row columns are the ones
+the gate decides.
 
-| Page | whole | rows | pass | fail | excluded (T3/D2) | unmeasured | not visible | remaining failures |
-|---|---|---|---|---|---|---|---|---|
-| start_up_screen | 0.93% | 4 | 2 | **0** | 0 | 2 | 0 | — |
-| home_screen | 4.99% | 25 | 11 | 4 | 6 | 4 | 31 | label 377/1620 px, textarea 186/2800 px, button 8 px (maxΔ 129, ink 100%) |
-| main_menu | 5.69% | 29 | 24 | 1 | 0 | 4 | 0 | label ink 74% of 636 px |
-| network_config | 3.78% | 45 | 27 | 3 | 13 | 2 | 1 | 3 IP-separator labels, 84 px each (space advance) |
-| parameters | 5.77% | 105 | 78 | **0** | 1 | 26 | 438 | — |
-| protocols | 4.63% | 23 | 17 | **0** | 4 | 2 | 4 | — |
-| schedule_edit_screen | 11.67% | 151 | 73 | 1 | 57 | 20 | 13 | table panel 262/28440 px |
-| schedule_screen | 7.72% | 67 | 64 | **0** | 1 | 2 | 1 | — |
-| time | 6.84% | 27 | 25 | **0** | 0 | 2 | 21 | — |
-| wifi_config | 2.35% | 18 | 14 | **0** | 2 | 2 | 5 | — |
-| holiday_calender_screen | 78.98% | 12 | 3 | **0** | 7 | 2 | 0 | — (the whole-surface number is the D2 calendar, not a gate) |
-| wireguard_screen | 3.08% | 21 | 16 | **0** | 3 | 2 | 0 | — |
-| ddns_screen | 2.95% | 12 | 10 | **0** | 0 | 2 | 0 | — |
+| Page | whole | rows | pass | fail | excluded (T3/D2) | unmeasured | remaining failures |
+|---|---|---|---|---|---|---|---|
+| start_up_screen | 0.93% | 4 | 2 | **0** | 0 | 2 | — |
+| home_screen | 4.75% | 25 | 15 | **0** | 6 | 4 | — |
+| main_menu | 5.61% | 29 | 25 | **0** | 0 | 4 | — |
+| network_config | 3.78% | 45 | 30 | **0** | 13 | 2 | — |
+| parameters | 5.77% | 105 | 77 | **0** | 1 | 27 | — |
+| protocols | 4.63% | 23 | 17 | **0** | 4 | 2 | — |
+| schedule_screen | 7.72% | 67 | 64 | **0** | 1 | 2 | — |
+| schedule_edit_screen | 11.67% | 151 | 74 | **0** | 57 | 20 | — |
+| time | 6.84% | 27 | 25 | **0** | 0 | 2 | — |
+| wifi_config | 2.35% | 18 | 14 | **0** | 2 | 2 | — |
+| holiday_calender_screen | 66.63% | 12 | 7 | **0** | 3 | 2 | — (see §4d item 5: the number is tolerance 8, not a gate) |
+| wireguard_screen | 3.08% | 21 | 16 | **0** | 3 | 2 | — |
+| ddns_screen | 2.95% | 12 | 10 | **0** | 0 | 2 | — |
 
-Eleven of thirteen pages have no failing row at all, and the nine rows that do fail are traceable to a
-named cause rather than to an aggregate:
+The nine rows that failed the third sweep, and what closed each one:
 
-| Row | Measurement | Why it is a real failure |
+| Row | Third sweep | Closed by |
 |---|---|---|
-| `home_screen` label | 377 of 1620 px, ink 10.6% of 782 px | a text row whose ink is in the right place but whose coverage differs far beyond the boundary allowance — the largest single contributor to that page's 4.99% |
-| `home_screen` textarea | 186 of 2800 px, ink 14.1% | same class, thicker: an unresolved text/geometry delta |
-| `home_screen` button | 8 of 1329 px, maxΔ 129, **ink 100% of 3 px** | the renderer paints something bright where the canvas paints nothing; the ink floor keeps the mask from deciding it, and the pixel budget flags it |
-| `main_menu` label | ink **74%** of 636 px | a text run whose ink largely has no counterpart: displaced or missing glyphs |
-| 3 × `network_config` label | 84 of 3344 px each, maxΔ 255 | the IP separator run: LVGL advances a space by an integer pixel count from its own font data, the browser by the TTF's fractional advance, so 15 spaces drift 1-2 px and the dots land off |
-| `schedule_edit_screen` panel | 262 of 28440 px, ink 0% of 472 px | the schedule table's own chrome, 0.9% of a 480x220 box |
+| `main_menu` label | ink 74% of 636 px | the ink mask no longer counts a mask flip the pixel metric cannot see (`compareInk` tolerance) — a panel gradient 2 units either side of `INK_THRESHOLD` had turned 670 background pixels into "extra ink" |
+| `network_config` 3 × label | 84 of 3344 px each | row attribution: the neighbouring octet textareas' glyphs are not this row's pixels (§4d item 1) |
+| `schedule_edit_screen` panel | 262 of 28440 px | the same attribution rule — the panel shares its box with an overlapping sibling |
+| 2 × `home_screen` imgbutton | 144 of 2100 px, 8 px | the bitmap's own size is now read and used (§4d item 2): both read **0** |
+| `home_screen` label | 377 of 1620 px, ink 10.6% | the mask decides the rasterised row (§4d item 3) |
+| `home_screen` button | 8 of 1329 px | the allowance is computed for a shape the ink mask cannot see (§4d item 4) |
 
 Row counts fell by roughly half against the second sweep (`parameters` 543 → 105, `time` 48 → 27) purely
 by not measuring hidden objects, and the failure counts of the worst pages went to zero with the rules of
 §4c: `schedule_screen` 43 → 0, `network_config` 12 → 3, `parameters` 331 → 0, `schedule_edit_screen`
 31 → 1. The per-class measurements behind that are in §4c items 1–7, each with the row that motivated it.
+
+`wireguard_screen` and `ddns_screen` are listed from a second read of the same session: both are in the
+page tree, and both report no failing row (3.08% / 2.95%, 16 and 10 rows passing).
 
 ## 7. Invocation
 

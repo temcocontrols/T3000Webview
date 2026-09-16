@@ -176,7 +176,18 @@ the scene contract.
   |---|---|---|
   | `imgW`/`imgH` present, align not STRETCH/TILE | natural size × scale, positioned by align | `none` |
   | `imgW`/`imgH` present, align `STRETCH`/`TILE` | the widget box (scale ignored) | `none` |
-  | no `imgW`/`imgH` (font symbol source, or older build) | the widget box | `xMidYMid meet` (legacy, never distorted) |
+  | no `imgW`/`imgH`, but the source is a readable bitmap | natural size, positioned by align | `none` |
+  | source size unknown (a `LV_SYMBOL_*` glyph, an older build, an SVG data URI) | the widget box | `xMidYMid meet` (legacy, never distorted) |
+
+- **A bitmap the dump cannot describe still has a size: its own.** `imgW`/`imgH` are emitted for an
+  `lv_image` object, but a widget can own a bitmap the dump says nothing about — an imgbutton draws its
+  image as a `bg_image_src` — and the widget model supplies only the data URI. `image-size.ts` reads width
+  and height out of the bitmap header (PNG, JPEG, GIF, BMP, WebP), the same numbers LVGL decodes for its
+  own placement. Measured on `home_screen`'s imgbutton, a 38x60 PNG in a 35x60 widget: **128** differing
+  pixels while the size was unknown (letterboxed into the box), 22 stretched, 6 centred, **0** at natural
+  size in the box's top-left — which is where LVGL puts a widget's own bitmap, and where `renderBgImage`
+  places a background bitmap too. A source whose header cannot be read keeps the legacy path rather than
+  being guessed at.
 
 - **Alignment** maps `LV_IMAGE_ALIGN_*` → name with an explicit table (`imageAlignName()`), because the enum
   order is *not* alphabetical (`BOTTOM_*` precede `LEFT_MID`/`RIGHT_MID`) and `10` is an internal
@@ -191,7 +202,8 @@ the scene contract.
 - Animated images / Lottie: drawn by callbacks rather than by style properties, so they are outside the
   surface like the other procedural widgets (see [invariants §1.2](./invariants.md#12-procedural-widgets-are-outside-the-surface)).
 - *Known gap:* a `LV_SYMBOL_*` source is a font glyph in LVGL, so `lv_image_get_src_width/height` reports 0
-  and the natural path cannot apply. Those images fall back to filling the widget box.
+  and the natural path cannot apply; a symbol carries no bitmap header either. Those images fall back to
+  filling the widget box.
 
 ## 8. Update strategy & performance
 
