@@ -53,6 +53,37 @@ never itself a draw layer. Plus per-cell sub-parts for `ButtonMatrix`/`Table`/`K
 > applied at `:1644` and `:1724`). The renderer must take its part vocabulary from LVGL 9 itself (or from the
 > dump), **never** from the `parts:` declarations.
 
+### 1a. Who draws which slot, and how the dump places it
+
+The table above says which parts a widget *declares*. It does not say who **paints** them, and that
+distinction is where every phantom came from: the theme styles `SCROLLBAR`, `INDICATOR`, `KNOB`,
+`SELECTED`, `ITEMS` and `CURSOR` on objects that never draw them, so a part emitted from its styles alone
+gets painted as the object's **whole box**. This is the audit that keeps them out — for each slot, who
+draws it, how the dump decides the box, and what the renderer emits.
+
+| Slot | Painted by | Box on the wire | Renderer |
+|---|---|---|---|
+| `MAIN` | every object (its own chrome and text) | the object's own `area` (+ `textArea` for text) | `rect`/`path` + `text` |
+| `SCROLLBAR` | any scrollable object **when LVGL decides to show it** (mode `OFF/ON/ACTIVE/AUTO` + content size) | `lv_obj_get_scrollbar_area()` — the same query the draw path uses, and empty when nothing is drawn | `rect` with the strip's own geometry |
+| `INDICATOR` | `arc` (the value sweep), `bar`/`slider` (the filled run), `switch` (the track), `checkbox` (the marker), `spinner`/`meter`/`scale` via their own draw code | ported per widget: `svgArcCenter()` + sweep angles for an arc; `svgBarIndicatorArea()` for a bar/slider; the content box for a switch; `lv_checkbox_draw()`'s marker for a checkbox. Anything else ⇒ **not emitted** | `path` (arc/line) or `rect` |
+| `KNOB` | `arc`, `slider`, `switch` | ported per widget: `svgArcKnobArea()`, `svgSliderKnobArea()`, `svgSwitchKnobArea()`. Anything else ⇒ not emitted | `rect` (a circle when `radius` is `LV_RADIUS_CIRCLE`) |
+| `SELECTED`, `ITEMS`, `CURSOR` | `list`, `roller`, `dropdown`, `table`, `textarea`, `buttonmatrix`, `chart`, `calendar`, `keyboard`, `scale` — always from geometry they keep privately | **never emitted** (`svgPartIsNeverDrawn()`) | not rendered. A preview has no focus to draw a cursor for, and the rest cannot be reconstructed from the outside |
+| `TEXTAREA_PLACEHOLDER` (slot 7) | `textarea`, in the placeholder's own grey | the object's own box (text is placed by `textArea`); the string comes from the widget model or `liveText` | `text`, only when a string exists |
+
+Three rules make the audit hold, and each one replaced a guess:
+
+1. **A part with no box is not emitted.** `svgEmitPart()` returns early unless `svgPartArea()` placed the
+   part (`MAIN` and an arc's `INDICATOR` excepted — they need no box). This is what removed the theme's
+   full-size scrollbar rectangle from every object.
+2. **Value-dependent boxes are ported, not approximated.** A bar's indicator, a slider's knob, a switch's
+   knob, a checkbox's marker and an arc's ring are all computed from the same public getters the widget's
+   own draw code uses, including the parts of the computation that are easy to miss: an arc's rotation, a
+   switch's checked state, a checkbox's `pad_column`, and the pads that decide a circle's radius.
+3. **Slot 7 is inert unless a string is put in it.** The theme resolves a text font for every part, so the
+   dump reports slot 7 for every object; the merge is the only thing that can give it a string, and it
+   does so only for a placeholder owner. A part with no text draws nothing (`partHasDrawing()`), which is
+   asserted in `lvgl-svg-wire.test.ts`.
+
 ---
 
 ## 2. The 115 style properties → SVG strategy

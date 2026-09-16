@@ -47,7 +47,7 @@ src/lib/t3-eez-studio/project-editor/lvgl/svg/
     feature-flag.ts          surface switch + development switches (svg / svgDiff / svgStats)
     runtime-artifacts.ts     artifact URLs, byte-level inspection, cache refresh
     runtime-cache-guard.ts   per-tab cache key for the runtime artifacts
-    svg-diff.ts              pure fidelity metrics (pixel diff, IoU, verdicts, scorecard)
+    svg-diff.ts              pure fidelity metrics (pixel diff, ink mask, box overhang, verdicts, scorecard)
     svg-diff-harness.ts      browser capture of both surfaces + scorecard rows
     LVGLSvgPage.tsx          React host for the surface
     index.ts                 barrel
