@@ -1854,8 +1854,16 @@ export class Component extends EezObject {
                 partOfNavigation: false,
                 enumerable: false,
                 defaultValue: [],
+                /*
+                 * `?? []` because the property grid asks every object of a multi-selection about every
+                 * property of the first one: a flow `ConnectionLine` is a `Component` but its stored
+                 * JSON carries no `customInputs`, so the array is `undefined` there and reading
+                 * `.length` threw — selecting a widget together with one of its wires left "Error
+                 * rendering component" in the properties panel. `Component.getInputs()` already reads
+                 * it the same way.
+                 */
                 disabled: (component: Component) =>
-                    component.customInputs.length == 0 &&
+                    (component.customInputs ?? []).length == 0 &&
                     (isNotProjectWithFlowSupport(component) ||
                         isEezFlowLiteProject(component))
             },
@@ -1869,7 +1877,7 @@ export class Component extends EezObject {
                 enumerable: false,
                 defaultValue: [],
                 disabled: (component: Component) =>
-                    component.customOutputs.length == 0 &&
+                    (component.customOutputs ?? []).length == 0 &&
                     (isNotProjectWithFlowSupport(component) ||
                         isEezFlowLiteProject(component))
             },

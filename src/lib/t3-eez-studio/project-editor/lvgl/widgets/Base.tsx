@@ -741,9 +741,31 @@ export class LVGLWidget extends Widget {
                 type: PropertyType.String,
                 propertyGridGroup: geometryGroup,
                 computed: true,
-                hideInPropertyGrid: (widget: LVGLWidget) => 
-                    widget instanceof LVGLScreenWidget || 
-                    widget.left == widget.absolutePositionPoint.x && widget.top == widget.absolutePositionPoint.y
+                /*
+                 * Hidden when the widget sits at the position its own `left`/`top` already say, so the
+                 * property only appears when an ancestor's offset makes the absolute position differ
+                 * from the local one (`LVGLScreenWidget` has no ancestor at all).
+                 *
+                 * The predicate has to answer for EVERY object the property grid asks about, not only
+                 * for a widget: a multi-selection's common properties are the first object's, each one
+                 * re-checked against all the others, and an object that has no `absolutePositionPoint`
+                 * is a legitimate member of a selection — a flow `ConnectionLine` is the case that was
+                 * measured (multi-select a widget and one of its wires and the whole properties panel
+                 * died with "Cannot read properties of undefined (reading 'x')", leaving "Error
+                 * rendering component" in the panel's place). For such an object there is nothing to
+                 * compare and nothing to show, so the property is hidden.
+                 */
+                hideInPropertyGrid: (widget: LVGLWidget) => {
+                    const point = (widget as { absolutePositionPoint?: { x: number; y: number } })
+                        .absolutePositionPoint;
+                    if (!point) {
+                        return true;
+                    }
+                    return (
+                        widget instanceof LVGLScreenWidget ||
+                        (widget.left == point.x && widget.top == point.y)
+                    );
+                }
             },
             {
                 name: "children",

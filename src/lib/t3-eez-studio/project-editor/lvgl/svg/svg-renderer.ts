@@ -43,6 +43,7 @@ import type {
     SceneText,
 } from "./scene";
 import { alphaOf, degreesOf, hiddenSubtree, zoomOf } from "./scene";
+import { imageNaturalSize } from "./image-size";
 
 // ---------------------------------------------------------------------------------------
 // deterministic def ids
@@ -834,6 +835,14 @@ function renderBgImage(
         );
         return rectShape(key, area, undefined, { fill: patternId });
     }
+    /*
+     * A bitmap background image is a bitmap like any other: LVGL draws it at its source size, in the
+     * top-left of the box, and clips the part that does not fit — it never scales it to the box. The
+     * source size therefore has to be read from the bitmap itself, because the dump describes no
+     * geometry for a `bg_image_src` (only for an `lv_image` object) and the widget model supplies
+     * only the data URI. See `imageNaturalSize`.
+     */
+    const natural = imageNaturalSize(bgImage.srcId);
     return renderImage(
         key,
         {
@@ -841,6 +850,9 @@ function renderBgImage(
             opacity: bgImage.opacity,
             recolor: bgImage.recolor,
             recolorOpacity: bgImage.recolorOpacity,
+            naturalWidth: bgImage.naturalWidth ?? natural?.width,
+            naturalHeight: bgImage.naturalHeight ?? natural?.height,
+            align: bgImage.align ?? "TOP_LEFT",
         },
         area,
         defs
