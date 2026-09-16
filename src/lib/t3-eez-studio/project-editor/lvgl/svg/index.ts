@@ -125,7 +125,9 @@ export {
     isSvgRendererEnabled,
     isSvgStatsEnabled,
     parseSvgOverride,
+    reportSurfaceChoice,
     setSvgRendererEnabled,
+    surfaceChoice,
 } from "./feature-flag";
 
 export {

@@ -113,7 +113,9 @@ export function isSvgStatsEnabled(search?: string): boolean {
     return /[?&]svgStats=1(?![0-9])/.test(text);
 }
 
-/** Persist an explicit choice (dev/testing convenience; the URL override still wins). */
+/**
+ * Persist an explicit choice (dev/testing convenience; the URL override still wins).
+ */
 export function setSvgRendererEnabled(enabled: boolean | undefined): void {
     try {
         if (enabled === undefined) {
@@ -127,4 +129,83 @@ export function setSvgRendererEnabled(enabled: boolean | undefined): void {
     } catch {
         // Storage unavailable — the URL override remains the only control.
     }
+}
+
+/**
+ * Which surface a page will use, and **why**.
+ *
+ * Two things decide it and only one of them is the flag: the project's LVGL version has to be the one
+ * whose runtime carries the scene dump. Measured on the deployed runtimes: `9.5.0` exports
+ * `_lvglDumpScene`, `9.4.0`/`9.3.0`/`9.2.2`/`8.4.0` do not — so a project on any other version is on the
+ * canvas path whatever the flag says.
+ *
+ * The reason travels with the answer because the two surfaces look alike: without it, "why is this
+ * project on the canvas?" is only answerable by reading this file and `page.tsx`.
+ */
+export interface SurfaceChoice {
+    surface: "svg" | "canvas";
+    /** Human-readable reason, for the console and the dev probe. */
+    reason: string;
+    /** The project's LVGL version, as declared. */
+    version: string;
+}
+
+/** The surface choice for a project, without reporting it. */
+export function surfaceChoice(lvglVersion: string | undefined): SurfaceChoice {
+    const version = lvglVersion ?? "unknown";
+    if (lvglVersion !== SVG_RENDERER_SUPPORTED_VERSION) {
+        return {
+            surface: "canvas",
+            version,
+            reason: `only LVGL ${SVG_RENDERER_SUPPORTED_VERSION} ships the scene dump this surface needs (this project is ${version})`,
+        };
+    }
+    const fromUrl =
+        typeof window === "undefined" ? undefined : parseSvgOverride(currentQueryText());
+    if (fromUrl === false) {
+        return { surface: "canvas", version, reason: "turned off by ?svg=0" };
+    }
+    const stored = readStoredOverride();
+    if (fromUrl === undefined && stored === false) {
+        return {
+            surface: "canvas",
+            version,
+            reason: `turned off by localStorage["${SVG_RENDERER_STORAGE_KEY}"] = "0"`,
+        };
+    }
+    return {
+        surface: "svg",
+        version,
+        reason:
+            fromUrl === true
+                ? "?svg=1"
+                : stored === true
+                  ? `localStorage["${SVG_RENDERER_STORAGE_KEY}"] = "1"`
+                  : `default: on for LVGL ${SVG_RENDERER_SUPPORTED_VERSION}`, // nothing to do to get it
+    };
+}
+
+/**
+ * Report the surface choice once per distinct reason in a session, and keep the last one on `globalThis`
+ * (`__lvglSurface`) for tests and support.
+ *
+ * Once per reason, not per page: a page is re-rendered constantly, and a log line per render would be
+ * noise — while one line at the first LVGL page answers the question that matters.
+ */
+export function reportSurfaceChoice(lvglVersion: string | undefined): SurfaceChoice {
+    const choice = surfaceChoice(lvglVersion);
+    try {
+        const host = globalThis as {
+            __lvglSurface?: SurfaceChoice & { reported?: string[] };
+        };
+        const reported = host.__lvglSurface?.reported ?? [];
+        if (!reported.includes(choice.reason)) {
+            console.info(`[lvgl] surface: ${choice.surface} — ${choice.reason}`);
+            reported.push(choice.reason);
+        }
+        host.__lvglSurface = { ...choice, reported };
+    } catch {
+        // Diagnostics only: a missing globalThis or console must never affect the render path.
+    }
+    return choice;
 }
