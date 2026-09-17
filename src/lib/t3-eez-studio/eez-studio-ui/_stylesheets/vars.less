@@ -1,40 +1,45 @@
-@backgroundColor: var(--bs-body-bg);
-@textColor: var(--bs-body-color);
-@sectionBackgroundColor: #f0f0f0;
-@borderColor: #e2e2e2;
-@darkBorderColor: #c5c5c5;
-@panelHeaderColor: var(--bs-tertiary-bg);
-@selectionBackgroundColor: #337bb7;
-@selectionColor: white;
-@lightSelectionBackgroundColor: #93bde0;
+// NOTE (designer P2.7): every colour below now reads a custom property with the original literal as the
+// fallback. Without the Designer's theme bridge the compiled CSS is therefore identical to before, and
+// inside `documents/lvgl` the `--eez-*` properties (defined from Fluent tokens in `lvgl-theme-bridge.css`)
+// take over. See `docs/t3000/architecture/designer/theme-and-css.md` §3.3 for the mapping and the rule
+// that these variables must never be passed through a Less colour function (they are `var()` now).
+@backgroundColor: var(--eez-background, var(--bs-body-bg));
+@textColor: var(--eez-text, var(--bs-body-color));
+@sectionBackgroundColor: var(--eez-section-bg, #f0f0f0);
+@borderColor: var(--eez-border, #e2e2e2);
+@darkBorderColor: var(--eez-border-dark, #c5c5c5);
+@panelHeaderColor: var(--eez-panel-header, var(--bs-tertiary-bg));
+@selectionBackgroundColor: var(--eez-selection-bg, #337bb7);
+@selectionColor: var(--eez-selection-fg, white);
+@lightSelectionBackgroundColor: var(--eez-selection-bg-light, #93bde0);
 @lightSelectionColor: white;
-@tableBorderColor: #e0e0e0;
-@nonFocusedSelectionBackgroundColor: #c5c5c5;
-@nonFocusedSelectionColor: black;
-@hoverBackgroundColor: #c5c5c5;
-@hoverColor: black;
-@scrollTrackColor: #f1f1f1;
-@scrollThumbColor: #c1c1c1;
-@darkTextColor: #555;
-@focusBackgroundColor: #4e94d1;
+@tableBorderColor: var(--eez-table-border, #e0e0e0);
+@nonFocusedSelectionBackgroundColor: var(--eez-selection-bg-inactive, #c5c5c5);
+@nonFocusedSelectionColor: var(--eez-selection-fg-inactive, black);
+@hoverBackgroundColor: var(--eez-hover-bg, #c5c5c5);
+@hoverColor: var(--eez-hover-fg, black);
+@scrollTrackColor: var(--eez-scroll-track, #f1f1f1);
+@scrollThumbColor: var(--eez-scroll-thumb, #c1c1c1);
+@darkTextColor: var(--eez-text-secondary, #555);
+@focusBackgroundColor: var(--eez-focus-bg, #4e94d1);
 @focusColor: #444;
 @dragSourceBackgroundColor: #e040fb;
 @dragSourceColor: white;
 @dropTargetBackgroundColor: #7c4dff;
 @dropTargetColor: #ffffff;
 @dropPlaceColor: #7c4dff;
-@errorColor: #dc3545;
-@warningBackgroundColor: #ffc107;
-@warningColor: #212529;
+@errorColor: var(--eez-error, #dc3545);
+@warningBackgroundColor: var(--eez-warning-bg, #ffc107);
+@warningColor: var(--eez-warning-fg, #212529);
 @actionHoverColor: #0056b3;
-@connectionLineColor: #999;
+@connectionLineColor: var(--eez-connection-line, #999);
 @trixToolbarColor: #eee;
 
 @selectedConnectionLineColor: red;
 @seqConnectionLineColor: #3fadb5;
 @activeConnectionLineColor: blue;
 @connectionLineInTheMakingColor: #337bb7;
-@activeTabBackgroundColor: #ffffff;
+@activeTabBackgroundColor: var(--eez-active-tab-bg, #ffffff);
 @disabledConnectionLineColor: #aaa;
 
 @actionSelectedTextColor: white;
