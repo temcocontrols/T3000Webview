@@ -5,7 +5,6 @@ import { Menu, MenuItem } from "@electron/remote";
 import classNames from "classnames";
 import { action, computed, makeObservable, runInAction } from "mobx";
 
-import { Messages } from "project-editor/ui-components/Output";
 import { Toolbar } from "project-editor/project/ui/Toolbar";
 import { Icon } from "eez-studio-ui/icon";
 import { Loader } from "eez-studio-ui/loader";
@@ -20,37 +19,16 @@ import {
 } from "project-editor/features/page/PageEditor";
 import { ProjectContext } from "project-editor/project/context";
 import { Editor, LayoutModels, Section } from "project-editor/store";
-import { PropertiesPanel } from "./PropertiesPanel";
-import { ComponentsPalette } from "project-editor/flow/editor/ComponentsPalette";
-import { BreakpointsPanel } from "project-editor/flow/debugger/BreakpointsPanel";
-import { ThemesSideView } from "project-editor/features/style/theme";
+import { getPanelComponent } from "./panelRegistry";
+import { ActiveEditorView } from "./ActiveEditorView";
+import { isProjectEditorHosted } from "project-editor/hostMode";
+import { publishActiveProject } from "project-editor/activeProject";
 import { getEditorComponent } from "project-editor/project/ui/EditorComponentFactory";
-import { QueuePanel } from "project-editor/flow/debugger/QueuePanel";
-import { WatchPanel } from "project-editor/flow/debugger/WatchPanel";
-import { ActiveFlowsPanel } from "project-editor/flow/debugger/ActiveFlowsPanel";
-import { LogsPanel } from "project-editor/flow/debugger/LogsPanel";
-import { ListNavigation } from "project-editor/ui-components/ListNavigation";
-import { VariablesTab } from "project-editor/features/variable/VariablesNavigation";
-import { StylesTab } from "project-editor/features/style/StylesNavigation";
-import { FontsTab } from "project-editor/features/font/FontsNavigation";
-import { BitmapsTab } from "project-editor/features/bitmap/BitmapsNavigation";
-import { TextsTab } from "project-editor/features/texts/navigation";
-import { ScpiTab } from "project-editor/features/scpi/ScpiNavigation";
-import { InstrumentCommandsList } from "project-editor/features/instrument-commands/InstrumentCommandsNavigation";
-import { ExtensionDefinitionsTab } from "project-editor/features/extension-definitions/extension-definitions";
-import { ChangesTab } from "project-editor/features/changes/navigation";
-import { SearchPanel } from "project-editor/project/ui/SearchPanel";
-import { ReferencesPanel } from "project-editor/project/ui/ReferencesPanel";
 import {
     downloadAndInstallExtension,
     extensionsManagerStore
 } from "home/extensions-manager/extensions-manager";
-import { LVGLGroupsTab } from "project-editor/lvgl/groups";
-import { DockerSimulatorPreviewPanel } from "project-editor/lvgl/docker-build/DockerSimulatorPreviewPanel";
-import { DockerSimulatorLogsPanel } from "project-editor/lvgl/docker-build/DockerSimulatorLogsPanel";
-import { PreviewLogsPanel } from "project-editor/lvgl/docker-build/PreviewLogsPanel";
 import { settingsController } from "home/settings";
-import { PageStructure } from "project-editor/features/page/PagesNavigation";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -83,7 +61,17 @@ export const ProjectEditorView = observer(
             return (
                 <div className="EezStudio_ProjectEditorWrapper">
                     <div className="EezStudio_ProjectEditor_MainContentWrapper">
-                        {this.props.showToolbar && <Toolbar />}
+                        {/*
+                         * Hosted by the Designer shell: the shell renders the toolbar in its own top
+                         * bar (P2.6), so drawing it here as well would duplicate every button.
+                         */}
+                        {/*
+                         * Hosted by the Designer shell: the shell renders the toolbar in its own top
+                         * bar (P2.6), so drawing it here as well would duplicate every button.
+                         */}
+                        {!isProjectEditorHosted() && this.props.showToolbar && (
+                            <Toolbar />
+                        )}
                         <Content />
                     </div>
                 </div>
@@ -102,197 +90,56 @@ const Content = observer(
         _prevPageTabState: PageTabState | undefined;
 
         componentDidMount(): void {
+            // Published for the Designer shell, which renders this project's panels in its own regions
+            // (it is a different React root and cannot receive the context as a prop).
+            publishActiveProject(this.context);
+
             this.context.editorsStore?.openInitialEditors();
             this.context.editorsStore?.refresh(true);
         }
 
+        componentWillUnmount(): void {
+            publishActiveProject(undefined);
+        }
+
+        /**
+         * The tab layout's panel mapping now lives in `./panelRegistry` so the unified Designer shell
+         * can render the same panels outside FlexLayout (P2.3+). Only the `"editor"` branch stays
+         * here: it needs the tab node (to find its `Editor` and to register the tab's own
+         * `visibility` / `close` listeners), which a shell-projected panel has no equivalent of.
+         */
         factory = (node: FlexLayout.TabNode) => {
-            var component = node.getComponent();
-            if (component === "pages") {
-                return (
-                    <ListNavigation
-                        id="pages"
-                        navigationObject={this.context.project.userPages}
-                        selectedObject={
-                            this.context.navigationStore.selectedUserPageObject
+            const component = node.getComponent();
+
+            return getPanelComponent(
+                component,
+                this.context,
+                (tabId) => {
+                    const editor =
+                        this.context.editorsStore.tabIdToEditorMap.get(tabId);
+
+                    node.setEventListener("visibility", (p: any) => {
+                        this.context.editorsStore.refresh(true);
+                    });
+
+                    node.setEventListener("close", (p: any) => {
+                        this.context.editorsStore.refresh(true);
+                    });
+
+                    if (editor) {
+                        let result = getEditorComponent(
+                            editor.object,
+                            editor.params
+                        );
+                        if (result) {
+                            return <result.EditorComponent editor={editor} />;
                         }
-                        editable={!this.context.runtime}
-                    />
-                );
-            }
-
-            if (component === "widgets") {
-                return (
-                    <ListNavigation
-                        id="widgets"
-                        navigationObject={this.context.project.userWidgets}
-                        selectedObject={
-                            this.context.navigationStore
-                                .selectedUserWidgetObject
-                        }
-                        editable={!this.context.runtime}
-                    />
-                );
-            }
-
-            if (component === "actions") {
-                return (
-                    <ListNavigation
-                        id="actions"
-                        navigationObject={this.context.project.actions}
-                        selectedObject={
-                            this.context.navigationStore.selectedActionObject
-                        }
-                        editable={!this.context.runtime}
-                    />
-                );
-            }
-
-            if (component === "flow-structure") {
-                return <PageStructure />;
-            }
-
-            if (component === "variables") {
-                return <VariablesTab />;
-            }
-
-            if (component === "styles") {
-                return <StylesTab />;
-            }
-
-            if (component === "fonts") {
-                return <FontsTab />;
-            }
-
-            if (component === "bitmaps") {
-                return <BitmapsTab />;
-            }
-
-            if (component === "changes") {
-                return <ChangesTab />;
-            }
-
-            if (component === "texts") {
-                return <TextsTab />;
-            }
-
-            if (component === "scpi") {
-                return <ScpiTab />;
-            }
-
-            if (component === "instrument-commands") {
-                return <InstrumentCommandsList />;
-            }
-
-            if (component === "extension-definitions") {
-                return <ExtensionDefinitionsTab />;
-            }
-
-            if (this.context.runtime) {
-                if (component === "queue") {
-                    return <QueuePanel runtime={this.context.runtime} />;
-                }
-
-                if (component === "watch") {
-                    return <WatchPanel runtime={this.context.runtime} />;
-                }
-
-                if (component === "active-flows") {
-                    return <ActiveFlowsPanel runtime={this.context.runtime} />;
-                }
-
-                if (component === "logs") {
-                    return <LogsPanel runtime={this.context.runtime} />;
-                }
-            }
-
-            if (component === "propertiesPanel") {
-                return <PropertiesPanel />;
-            }
-
-            if (component === "componentsPalette") {
-                return <ComponentsPalette />;
-            }
-
-            if (component === "breakpointsPanel") {
-                return <BreakpointsPanel />;
-            }
-
-            if (component === "themesSideView") {
-                return <ThemesSideView />;
-            }
-
-            if (component === "checksMessages") {
-                return (
-                    <Messages
-                        section={this.context.outputSectionsStore.getSection(
-                            Section.CHECKS
-                        )}
-                    />
-                );
-            }
-
-            if (component === "outputMessages") {
-                return (
-                    <Messages
-                        section={this.context.outputSectionsStore.getSection(
-                            Section.OUTPUT
-                        )}
-                    />
-                );
-            }
-
-            if (component === "search") {
-                return <SearchPanel />;
-            }
-
-            if (component === "references") {
-                return <ReferencesPanel />;
-            }
-
-            if (component === "editor") {
-                const editor = this.context.editorsStore.tabIdToEditorMap.get(
-                    node.getId()
-                );
-
-                node.setEventListener("visibility", (p: any) => {
-                    this.context.editorsStore.refresh(true);
-                });
-
-                node.setEventListener("close", (p: any) => {
-                    this.context.editorsStore.refresh(true);
-                });
-
-                if (editor) {
-                    let result = getEditorComponent(
-                        editor.object,
-                        editor.params
-                    );
-                    if (result) {
-                        return <result.EditorComponent editor={editor} />;
                     }
-                }
 
-                return null;
-            }
-
-            if (component === "lvgl-groups") {
-                return <LVGLGroupsTab />;
-            }
-
-            if (component === "dockerSimulatorPreview") {
-                return <DockerSimulatorPreviewPanel />;
-            }
-
-            if (component === "dockerSimulatorLogs") {
-                return <DockerSimulatorLogsPanel />;
-            }
-
-            if (component === "dockerSimulatorPreviewLogs") {
-                return <PreviewLogsPanel />;
-            }
-
-            return null;
+                    return null;
+                },
+                node.getId()
+            );
         };
 
         onRenderTab = (
@@ -542,18 +389,29 @@ const Content = observer(
                             flexGrow: 1
                         }}
                     >
-                        <FlexLayoutContainer
-                            model={this.context.layoutModels.root}
-                            factory={this.factory}
-                            onRenderTab={this.onRenderTab}
-                            iconFactory={LayoutModels.iconFactory}
-                            onAuxMouseClick={this.onAuxMouseClick}
-                            onContextMenu={this.onContextMenu}
-                            onModelChange={this.onModelChange}
-                            font={{
-                                size: "small"
-                            }}
-                        />
+                        {isProjectEditorHosted() ? (
+                            /*
+                             * Hosted by the Designer shell: the shell's regions render the panels
+                             * (projected from this very model, see `documents/lvgl/projectEezLayout.ts`),
+                             * so drawing the FlexLayout container here would duplicate every panel.
+                             * The canvas keeps the active editor, in EEZ's own root, so the flow editor
+                             * finds the DOM it expects.
+                             */
+                            <ActiveEditorView />
+                        ) : (
+                            <FlexLayoutContainer
+                                model={this.context.layoutModels.root}
+                                factory={this.factory}
+                                onRenderTab={this.onRenderTab}
+                                iconFactory={LayoutModels.iconFactory}
+                                onAuxMouseClick={this.onAuxMouseClick}
+                                onContextMenu={this.onContextMenu}
+                                onModelChange={this.onModelChange}
+                                font={{
+                                    size: "small"
+                                }}
+                            />
+                        )}
                     </div>
                 </div>
             );
