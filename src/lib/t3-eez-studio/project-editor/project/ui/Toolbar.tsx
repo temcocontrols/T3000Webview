@@ -12,6 +12,7 @@ import { ButtonAction, IconAction, ButtonGroup } from "./fluent-toolbar";
 import { makeStyles, tokens } from "@fluentui/react-components";
 import { BuildConfiguration } from "project-editor/project/project";
 import { ProjectContext } from "project-editor/project/context";
+import { isProjectEditorHosted } from "project-editor/hostMode";
 import { PageTabState } from "project-editor/features/page/PageEditor";
 import {
     getChildren,
@@ -528,7 +529,13 @@ const EditorButtons = observer(
                         </ButtonGroup>
                     )}
 
-                    {this.pageTabState && (
+                    {/*
+                      * Hosted by the unified Designer shell (P5), the zoom control lives in the shell's
+                      * command bar and drives the same `pageTabState.transform` through
+                      * `designer/documents/lvgl/eezViewport.ts`. Two controls for one value in the same
+                      * toolbar is what the shell unification exists to remove.
+                      */}
+                    {this.pageTabState && !isProjectEditorHosted() && (
                         <PageZoomButton pageTabState={this.pageTabState} />
                     )}
                 </div>

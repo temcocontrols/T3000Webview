@@ -198,10 +198,16 @@ async function main() {
 
     ipcRenderer.send("open-command-line-project");
 
-    // Browser polyfill: listen for project-open events from the electron-kitchen stub
-    window.addEventListener("eez-open-project", ((e: CustomEvent) => {
-        openProject(e.detail, false);
-    }) as EventListener);
+    // Browser polyfill: listen for project-open events from the electron-kitchen stub.
+    // Bound once per page: `main()` runs on every mount of the embedded shell, and an unguarded
+    // `addEventListener` left one permanent `window` listener behind per navigation (measured on
+    // designer → hub → designer churn).
+    if (!(window as any).__t3EezOpenProjectBound) {
+        (window as any).__t3EezOpenProjectBound = true;
+        window.addEventListener("eez-open-project", ((e: CustomEvent) => {
+            openProject(e.detail, false);
+        }) as EventListener);
+    }
 }
 
 main();

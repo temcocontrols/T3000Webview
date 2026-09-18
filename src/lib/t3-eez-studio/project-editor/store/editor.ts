@@ -21,6 +21,7 @@ import {
 } from "project-editor/store/helper";
 import type { ProjectStore } from "project-editor/store";
 import type { LVGLStyle } from "project-editor/lvgl/style";
+import { isProjectEditorHosted } from "project-editor/hostMode";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -295,7 +296,6 @@ export class EditorsStore {
 
     refresh(showActiveEditor: boolean) {
         const model = this.getLayoutModel();
-        console.log("[editors] refresh showActiveEditor=", showActiveEditor, "tabs=", this.tabs.length, "model=", !!model, "tabsetID=", this.tabsetID);
         const editors: Editor[] = [];
         const tabIdToEditorMap = new Map<string, Editor>();
 
@@ -310,7 +310,6 @@ export class EditorsStore {
             let params: any;
             let permanent: boolean;
             if (typeof tabConfig == "string") {
-                console.log("[editors] refresh tab config string:", tabConfig);
                 object = getObjectFromStringPath(
                     this.projectStore.project,
                     tabConfig
@@ -319,7 +318,6 @@ export class EditorsStore {
                 params = undefined;
                 permanent = false;
             } else {
-                console.log("[editors] refresh tab config objectPath:", tabConfig.objectPath);
                 object = getObjectFromStringPath(
                     this.projectStore.project,
                     tabConfig.objectPath
@@ -335,7 +333,6 @@ export class EditorsStore {
             }
 
             if (!object) {
-                console.log("[editors] refresh DELETING tab — objectPath:", tabConfig.objectPath, "— NOT FOUND");
                 this.tabsModel.doAction(FlexLayout.Actions.deleteTab(tabId));
                 continue;
             }
@@ -366,6 +363,30 @@ export class EditorsStore {
             }
         }
 
+        /*
+         * Hosted (the unified Designer shell) — FlexLayout is never rendered, so nothing maintains
+         * `TabSetNode.isActive()` and the loop above cannot move the active editor once one is set:
+         * `openEditor` selects the tab in the *model*, the loop then skips it (`isActive()` is false and
+         * `activeEditor` is already set), and the shell keeps rendering the first editor — which looked
+         * like "clicking a page does nothing", and left the LVGL page surface unreachable.
+         *
+         * In host mode the model is the only source of truth: the tab selected in the editors tabset is
+         * the one `openEditor` asked for, and the one the shell shows.
+         */
+        if (isProjectEditorHosted()) {
+            const tabset = model?.getNodeById(this.actualTabsetID);
+            const selectedTab =
+                tabset instanceof FlexLayout.TabSetNode
+                    ? tabset.getSelectedNode()
+                    : undefined;
+            const selectedEditor = selectedTab
+                ? tabIdToEditorMap.get(selectedTab.getId())
+                : undefined;
+            if (selectedEditor) {
+                activeEditor = selectedEditor;
+            }
+        }
+
         if (!activeEditor && this.tabs.length) {
             activeEditor = this.activeEditor;
         }
@@ -376,7 +397,6 @@ export class EditorsStore {
 
         if (this._refreshTimer) clearTimeout(this._refreshTimer);
         this._refreshTimer = setTimeout(() => {
-            console.log("[editors] refresh timer fired, editors.length:", editors.length, "activeEditor:", !!activeEditor);
             let changed =
                 this.activeEditor != activeEditor ||
                 this.editors.length != editors.length ||

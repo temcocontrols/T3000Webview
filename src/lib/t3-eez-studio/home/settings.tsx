@@ -366,9 +366,11 @@ class SettingsController {
         // app.relaunch();
         // app.exit();
 
-        // Browser mode: reload the EEZ Studio page
-        console.log("[settings] Restart clicked, redirecting to /#/t3000/eez");
-        window.location.href = "/#/t3000/eez";
+        // Browser mode: reload the EEZ Studio page. This is an EEZ concern (the database belongs to
+        // EEZ), so it lands on the LVGL document — the canonical designer route. The legacy
+        // `/#/t3000/eez` form only reached it through the redirect (`app/router/legacyRedirects.ts`).
+        console.log("[settings] Restart clicked, reloading /#/t3000/designer/lvgl-9-5");
+        window.location.href = "/#/t3000/designer/lvgl-9-5";
     };
 
     setAsActiveDatabase = action(() => {
