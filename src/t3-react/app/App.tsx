@@ -13,6 +13,7 @@ import { NotificationProvider } from '../shared/components/NotificationCenter';
 import { CsvOperationsProvider } from '../shared/context/CsvOperationsContext';
 import { MainLayout } from '../layout/MainLayout';
 import { MinimalLayout } from '../layout/MinimalLayout';
+import { DesignerLayout } from '../layout/DesignerLayout';
 import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
 import styles from './App.module.css';
 
@@ -127,6 +128,13 @@ const Tstat10SimulatorPage = React.lazy(() =>
 const HvacDesignerPage = React.lazy(() =>
   import('../features/hvac-designer/pages/HvacDesignerPage').then((m) => ({ default: m.HvacDesignerPage }))
 );
+// Unified Designer shell — additive. The legacy routes below keep rendering their own pages.
+const DesignerPage = React.lazy(() =>
+  import('../features/designer').then((m) => ({ default: m.DesignerPage }))
+);
+
+/** P4 — legacy route → unified designer path (see `router/legacyRedirects.ts`). */
+import { LegacyDesignerRedirect } from './router/LegacyDesignerRedirect';
 const DocumentationPage = React.lazy(() =>
   import('../features/documentation/pages/DocumentationPage').then((m) => ({ default: m.DocumentationPage }))
 );
@@ -488,27 +496,31 @@ export const App: React.FC = () => {
                           </React.Suspense>
                         }
                       />
-                      <Route
-                        path="hvac-designer/:graphicId?"
-                        element={
-                          <React.Suspense fallback={
-                            <div className={styles.suspenseLoader}>
-                              <Spinner size="extra-tiny" />
-                              <span className={styles.suspenseLoaderText}>Loading...</span>
-                            </div>
-                          }>
-                            <HvacDesignerPage />
-                          </React.Suspense>
-                        }
-                      />
-                      <Route
-                        path="tstat10-simulator"
-                        element={
-                          <React.Suspense fallback={<div>Loading...</div>}>
-                            <Tstat10SimulatorPage />
-                          </React.Suspense>
-                        }
-                      />
+                      {/* P4 — the legacy HVAC route now lands on the unified shell (query preserved).
+                          The redirect keeps `/t3000/hvac-designer/<id>` links working forever. */}
+                      <Route path="hvac-designer/:graphicId?" element={<LegacyDesignerRedirect />} />
+                      {/* Unified Designer: one *main layout* for every document kind, nested inside
+                          MinimalLayout so the 32 px app menu bar above it stays exactly where it is
+                          (it belongs to the app, not to the designer). The layout owns the areas —
+                          top / left / middle / right (+ dock, status) — and the document is rendered
+                          into the middle area through the index route's `<Outlet/>`. */}
+                      <Route path="designer/:kind/:id?" element={<DesignerLayout />}>
+                        <Route
+                          index
+                          element={
+                            <React.Suspense fallback={
+                              <div className={styles.suspenseLoader}>
+                                <Spinner size="extra-tiny" />
+                                <span className={styles.suspenseLoaderText}>Loading...</span>
+                              </div>
+                            }>
+                              <DesignerPage />
+                            </React.Suspense>
+                          }
+                        />
+                      </Route>
+                      {/* P5 — the LCD/simulator page is now the `lcd-ui` document on the shell. */}
+                      <Route path="tstat10-simulator" element={<LegacyDesignerRedirect />} />
                       <Route
                         path="documentation/*"
                         element={
@@ -545,19 +557,12 @@ export const App: React.FC = () => {
                           </React.Suspense>
                         }
                       />
-                      <Route
-                        path="eez"
-                        element={
-                          <React.Suspense fallback={
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px' }}>
-                              <Spinner size="tiny" />
-                              <span style={{ fontSize: 12, color: '#616161' }}>Loading LVGL Studio ...</span>
-                            </div>
-                          }>
-                            <EezStudioPage />
-                          </React.Suspense>
-                        }
-                      />
+                      {/* P4 — `/t3000/eez` lands on the LVGL document. `?open=`, `?new=`, `?examples=`,
+                          `?svg=1` and `?svgDiff=1` are part of the query and are carried over verbatim. */}
+                      <Route path="eez" element={<LegacyDesignerRedirect />} />
+
+                      {/* Real fallback for unknown `/t3000/*` paths (previously a blank screen). */}
+                      <Route path="*" element={<Navigate to="/t3000" replace />} />
                     </Route>
 
                     {/* Develop Routes - Separate from t3000, no device tree */}

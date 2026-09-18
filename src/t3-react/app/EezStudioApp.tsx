@@ -61,6 +61,7 @@ import "eez-studio-ui/_stylesheets/main.less";
 import "eez-studio-ui/_stylesheets/main-dark-runtime.less";
 import "flexlayout-react/style/light.css";
 import { LogUtil } from "@/lib/t3-hvac";
+import { folderNameOf, retryPlan, targetExists } from "./designerCreateGuard";
 
 const useBackendStyles = makeStyles({
     bar: {
@@ -106,6 +107,30 @@ const useBackendStyles = makeStyles({
     iconOffline: { color: "#8a5d00" },
     iconChecking: { color: "#0f6cbd" },
 });
+
+/**
+ * Does the project root already contain a folder with this target's name?
+ *
+ * Drives the create hand-off's guard (see `designerCreateGuard`). **Fail safe**: any doubt — a missing
+ * endpoint, a network error, an unparseable body — answers `true`, because the only thing that answer is
+ * used for is deciding whether we may delete the folder, and "probably empty" is not a good enough reason to
+ * remove a user's project.
+ */
+async function targetFolderExists(target: string): Promise<boolean> {
+    if (!folderNameOf(target)) {
+        return true;
+    }
+    try {
+        const response = await fetch("/api/eez-studio/projects");
+        if (!response.ok) {
+            return true;
+        }
+        const list = await response.json();
+        return Array.isArray(list) ? targetExists(list, target) : true;
+    } catch {
+        return true;
+    }
+}
 
 function BackendStatusBar() {
     const s = useBackendStyles();
@@ -173,6 +198,9 @@ export function EezStudioApp() {
     //    main() is deliberately NOT re-run on later navigations — remounting the
     //    whole app while a create is in flight made the previous project flash
     //    and then leave an empty canvas.
+    const eezHostRef = useRef<HTMLElement | null>(null);
+    // Module namespace of the EEZ tab store, captured so the teardown can release the tab listeners.
+    const eezTabsRef = useRef<{ disposeTabListeners?: () => void } | null>(null);
     useEffect(() => {
         if (!showContent) return;
         let cancelled = false;
@@ -193,11 +221,57 @@ export function EezStudioApp() {
             try { localStorage.removeItem("home-tab-options"); } catch {}
         }
         import("home/main")
-            .then(m => {
-                if (!cancelled && m.initEezMain) m.initEezMain();
+            .then(async m => {
+                if (cancelled || !m.initEezMain) return;
+                // Remember the host while it is still in the document: `#EezStudio_Content` is owned by
+                // this tree and is already detached by the time React runs passive cleanups, so looking
+                // it up in the teardown below would silently skip the unmount.
+                eezHostRef.current = document.getElementById("EezStudio_Content");
+                m.initEezMain();
+                // The tab stores (mobx, not effects) hold `document`/ipc listeners that outlive the React
+                // root; the module namespace is captured here because `tabs` is assigned inside
+                // `loadTabs()`, and the binding stays live.
+                eezTabsRef.current = await import("home/tabs-store");
             })
             .catch(err => console.error("[EEZ] Failed to load home/main:", err));
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+            const host = eezHostRef.current as
+                | (HTMLElement & { _eezRoot?: { unmount?: () => void } })
+                | null;
+            const tabsModule = eezTabsRef.current;
+            eezHostRef.current = null;
+            eezTabsRef.current = null;
+
+            // Deferred by one tick — and this is load-bearing, not tidiness:
+            //  1. The embedded shell mounts its OWN React root into `#EezStudio_Content`
+            //     (`home/main.tsx` → `createRoot(contentEl)` stored as `contentEl._eezRoot`). That element
+            //     belongs to this tree, so without unmounting it the previous root's cleanups never run
+            //     and its listeners pile up (`eez-open-project`, Fluent `fui-toast-*`).
+            //  2. Doing it *here* unmounts a foreign root while React is committing this one, which React
+            //     answers with "Attempted to synchronously unmount a root while React was already
+            //     rendering" and defers the unmount itself — that is what made the listener counts flaky.
+            //      One tick later the commit is finished and the unmount happens exactly once.
+            //  3. The tab stores are mobx objects, not effects: unmounting the root does not reach their
+            //     `document`/ipc listeners, and every remount builds fresh tabs, so each visit used to
+            //     stack another set of handlers (measured: +6 `document` keydown per route change).
+            window.setTimeout(() => {
+                try {
+                    const root = host?._eezRoot;
+                    if (host) {
+                        host._eezRoot = undefined;
+                    }
+                    root?.unmount?.();
+                } catch {
+                    /* teardown is best effort */
+                }
+                try {
+                    tabsModule?.disposeTabListeners?.();
+                } catch {
+                    /* teardown is best effort */
+                }
+            }, 0);
+        };
     }, [showContent]);
 
     // 3) Hand-off from the design hub: /t3000/eez?new=… or ?examples=… creates
@@ -318,12 +392,42 @@ export function EezStudioApp() {
                 ? (loc ? loc + "/" + nm : nm)
                 : loc;
 
+            // Was this folder already there *before* we started? The retry below deletes the target so a
+            // partial create can start over, and that cleanup is only ever legitimate for a folder **this
+            // run** created — a pre-existing one is the user's project. Measured 2026-09-17: clicking
+            // "Create & Open" with the default name ("LVGL 9.5") deleted an existing project by that name,
+            // and a second create overwrote another one. Fail safe direction: if the list cannot be read,
+            // assume it exists, so nothing is deleted on a guess.
+            //
+            // Resolved on the first attempt (this effect body is synchronous) and cached, so the answer
+            // cannot drift between attempts — and it is always taken *before* the first create runs.
+            let existedBeforePromise: Promise<boolean> | undefined;
+            const targetExistedBefore = () =>
+                (existedBeforePromise ??= targetFolderExists(cleanupFolder).then(exists => {
+                    if (exists) {
+                        const message =
+                            `A project named "${folderNameOf(cleanupFolder)}" already exists — nothing was created.`
+                            + " Pick another name and try again.";
+                        LogUtil.Error(`[EEZ-Examples] ${message}`);
+                        // Not console-only: the create refuses, so without a visible message the click looks
+                        // like a no-op (and the wizard is easy to miss in this shell). The EEZ surface is
+                        // mounted by the time a create runs, so its toast can host the message.
+                        import("eez-studio-ui/notification")
+                            .then(notification => notification.error(message))
+                            .catch(() => {
+                                /* notification surface not available — the log line still tells the story */
+                            });
+                    }
+                    return exists;
+                }));
+
             // Run the direct-to-editor create. When the home tab first mounts the
             // app may still be settling (WASM compile / tab restore), so a request
-            // can occasionally be dropped and createProject fails partway. Retry,
-            // cleaning up any partially-created folder so the exists-validation
-            // passes on the next attempt.
+            // can occasionally be dropped and createProject fails partway. Retry, cleaning up any
+            // partially-created folder so the exists-validation passes on the next attempt.
             const createWithRetry = async (create: () => Promise<boolean>) => {
+                const existedBefore = await targetExistedBefore();
+
                 for (let attempt = 1; attempt <= 3; attempt++) {
                     if (cancelled) return;
                     const ok = await create().catch(err => {
@@ -335,14 +439,24 @@ export function EezStudioApp() {
                         LogUtil.Info(`[EEZ-Examples] autoCreate succeeded (attempt ${attempt})`);
                         return;
                     }
-                    if (attempt === 3) {
-                        LogUtil.Error("[EEZ-Examples] autoCreate failed after 3 attempts");
+
+                    const plan = retryPlan(existedBefore, attempt);
+                    if (!plan.retry) {
+                        LogUtil.Error(
+                            existedBefore
+                                ? "[EEZ-Examples] autoCreate failed and the folder was not ours to clean up"
+                                : "[EEZ-Examples] autoCreate failed after 3 attempts"
+                        );
                         return;
                     }
+
                     LogUtil.Warn(`[EEZ-Examples] autoCreate attempt ${attempt} failed, retrying...`);
-                    if (cleanupFolder) {
+                    if (plan.cleanup && cleanupFolder) {
                         try {
-                            await fetch(`/api/eez-studio/delete-recursive?path=${encodeURIComponent(cleanupFolder)}&force=true`, { method: "DELETE" });
+                            // `allowProject=true`: the guard above proved this folder did not exist before we
+                            // started, so it is our own partial create — even if the failed attempt managed to
+                            // write a `.eez-project` into it (which the backend would otherwise protect).
+                            await fetch(`/api/eez-studio/delete-recursive?path=${encodeURIComponent(cleanupFolder)}&force=true&allowProject=true`, { method: "DELETE" });
                         } catch {}
                     }
                     await new Promise(res => setTimeout(res, 1500));

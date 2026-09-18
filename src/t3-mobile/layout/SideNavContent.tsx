@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { designerPath } from '@t3-react/features/designer/kinds';
 import { makeStyles, mergeClasses } from '@fluentui/react-components';
 import {
   HomeRegular,
@@ -152,7 +153,7 @@ const NAV_ENTRIES: NavEntry[] = [
   { type: 'item', label: 'Settings',   path: '/t3000/settings',               icon: <SettingsRegular />,                  activeIcon: <SettingsFilled /> },
 
   { type: 'section', label: 'Simulator' },
-  { type: 'item', label: 'Tstat10',    path: '/t3000/tstat10-simulator',      icon: <BoardRegular />,                     activeIcon: <BoardRegular /> },
+  { type: 'item', label: 'Tstat10',    path: designerPath('lcd-ui'),          icon: <BoardRegular />,                     activeIcon: <BoardRegular /> },
 ];
 
 export interface SideNavContentProps {

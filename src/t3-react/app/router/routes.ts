@@ -98,6 +98,9 @@ const TablesPage = lazy(() => import('../../features/tables/pages/TablesPage').t
 const UsersPage = lazy(() => import('../../features/users/pages/UsersPage').then(m => ({ default: m.UsersPage })));
 const CustomUnitsPage = lazy(() => import('../../features/customUnits/pages/CustomUnitsPage').then(m => ({ default: m.CustomUnitsPage })));
 const HvacDesignerPage = lazy(() => import('../../features/hvac-designer/pages/HvacDesignerPage').then(m => ({ default: m.HvacDesignerPage })));
+
+/** P4 — legacy composer route: redirects into the unified Designer (see `legacyRedirects.ts`). */
+const LegacyDesignerRedirect = lazy(() => import('./LegacyDesignerRedirect').then(m => ({ default: m.LegacyDesignerRedirect })));
 const DocumentationPage = lazy(() => import('../../features/documentation/pages/DocumentationPage').then(m => ({ default: m.DocumentationPage })));
 
 // Develop section pages
@@ -304,7 +307,9 @@ export const t3000Routes: T3000Route[] = [
   },
   {
     path: '/t3000/tstat10-simulator',
-    element: Tstat10SimulatorPageResponsive,
+    // P5: redirects to /t3000/designer/lcd-ui (see `router/legacyRedirects.ts`); metadata kept so menus
+    // and shortcuts still resolve the old path and `windowId` stays stable.
+    element: LegacyDesignerRedirect,
     title: 'Tstat10 Simulator',
     windowId: 17, // WINDOW_TSTAT10_SIMULATOR
     shortcut: 'Alt+M',
@@ -323,9 +328,11 @@ export const t3000Routes: T3000Route[] = [
     title: 'Sync Configuration',
   },
   // HVAC & Documentation (minimal layout in App.tsx)
+  // P4: the legacy HVAC route is a redirect to /t3000/designer/hvac-schematic/:id — see
+  // `router/legacyRedirects.ts`. The metadata stays so menus/shortcuts still resolve the old path.
   {
     path: '/t3000/hvac-designer',
-    element: HvacDesignerPage,
+    element: LegacyDesignerRedirect,
     title: 'HVAC Designer',
   },
   {

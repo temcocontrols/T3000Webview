@@ -34,6 +34,20 @@ body {
   color: var(--t3-color-text, #323130);
 }
 
+/* The embedded EEZ studio (LVGL documents) ships bootstrap plus its own `app.less`, and both style `body`
+ * globally. Those stylesheets are injected once for the whole SPA, so after a visit to an LVGL document the
+ * EEZ values leaked onto every other document — measured on the same HVAC page: font-family
+ * `-apple-system` → `system-ui`, font-size `13px` → `10.4px` (EEZ's 0.8rem) and a white body background.
+ * Re-assert the app's own values while **no** EEZ surface is mounted; EEZ keeps its styling everywhere it
+ * owns. `:has()` degrades gracefully — an engine without support simply keeps today's behaviour. */
+body:not(:has(#EezStudio_Content)) {
+  overflow: hidden;
+  font-family: var(--t3-font-family, 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif);
+  font-size: var(--t3-font-size-body, 14px);
+  background-color: transparent;
+  color: var(--t3-color-text, #323130);
+}
+
 #q-app {
   height: 100%;
   width: 100%;
