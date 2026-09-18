@@ -4,7 +4,7 @@
  * View mode:   Bezel+LCD | Debug panel (2-panel simulator)
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { makeStyles, tokens, ToggleButton, Tooltip } from '@fluentui/react-components';
 import { EditRegular, EyeRegular } from '@fluentui/react-icons';
@@ -17,6 +17,9 @@ import { DesignCanvas } from '../components/DesignCanvas';
 import { WidgetToolbox } from '../components/WidgetToolbox';
 import { PropertiesPanel } from '../components/PropertiesPanel';
 import { PageTabs } from '../components/PageTabs';
+import { isLcdPageHosted } from '../hostMode';
+import { LCD_SLOTS, getLcdSlotsVersion, lcdSlotElement, subscribeLcdSlots } from '../hostedSlots';
+import { publishLcdMode } from '../modePublisher';
 import { useSimulatorState } from '../hooks/useSimulatorState';
 import { useDesignerState } from '../hooks/useDesignerState';
 import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation';
@@ -330,10 +333,93 @@ export const Tstat10SimulatorPage: React.FC = () => {
       )
     : null;
 
+  /* ---------- The shell needs the mode (it draws the regions only in Design mode) ---------- */
+  useEffect(() => {
+    publishLcdMode(designer.mode);
+  }, [designer.mode]);
+
+  /*
+   * Re-render when the shell's slot elements change: a portal targets an element, so after a
+   * View → Design switch the slots are new nodes and these portals would keep pointing at the old ones.
+   */
+  useSyncExternalStore(subscribeLcdSlots, getLcdSlotsVersion, getLcdSlotsVersion);
+
+  /*
+   * The panels and their props, defined once and used by **both** layouts: hosted (portalled into the
+   * shell's regions) and standalone (the page's own three columns). One definition means the two cannot
+   * drift apart while the hosted path is the only one the app reaches.
+   */
+  const toolboxProps = {
+    onDragStart: (type: string) => designer.setDragItem({ source: 'toolbox', widgetType: type })
+  };
+
+  const pagesProps = {
+    pages: designer.pages,
+    selectedPageId: designer.selectedPageId,
+    onSelectPage: designer.setSelectedPageId,
+    onAddPage: designer.addPage,
+    onRemovePage: designer.removePage,
+    onRenamePage: designer.renamePage,
+    vertical: true,
+    showGrid,
+    onShowGridChange: setShowGrid,
+    showCoords,
+    onShowCoordsChange: setShowCoords,
+    widgetCount: designer.currentPage.widgets.length
+  };
+
+  const propertiesProps = {
+    selectedWidget: designer.selectedWidget,
+    pageStyles: designer.currentPage.styles,
+    onUpdateWidget: designer.updateWidget,
+    onRemoveWidget: designer.removeWidget,
+    onUpdatePageStyles: designer.updatePageStyles,
+    onExportJSON: designer.exportJSON,
+    onImportJSON: designer.importJSON
+  };
+
+  const canvasProps = {
+    page: designer.currentPage,
+    data: sampleData,
+    selectedWidgetId: designer.selectedWidgetId,
+    onSelectWidget: designer.setSelectedWidgetId,
+    onMoveWidget: designer.moveWidget,
+    onAddWidget: designer.addWidget,
+    onDragEnd: () => designer.setDragItem(null),
+    showGrid,
+    showCoords
+  };
+
+  /** Renders a panel into its shell slot; null (and inert) when the slot is not there yet. */
+  const hostedPanel = (slot: keyof typeof LCD_SLOTS, node: React.ReactNode) => {
+    const target = lcdSlotElement(slot);
+    return target ? createPortal(node, target) : null;
+  };
+
   /* =================================================================
    *  DESIGN MODE
    * ================================================================= */
   if (designer.mode === 'design') {
+    /*
+     * Hosted by the unified Designer shell: the shell owns the regions, so the page keeps only the canvas
+     * and *portals* the three panels into the shell's slots (`hostedSlots.ts`). Same panels, same props,
+     * same state — only the DOM they appear in changes, which is what makes the shell's regions resizable
+     * without touching this page's model.
+     */
+    if (isLcdPageHosted()) {
+      return (
+        <div className={styles.root}>
+          {headerControls}
+          <div className={`${styles.designCenter} ${simStyles.thinScroll}`}>
+            <DesignCanvas {...canvasProps} />
+          </div>
+          {hostedPanel('toolbox', <WidgetToolbox {...toolboxProps} />)}
+          {hostedPanel('pages', <PageTabs {...pagesProps} />)}
+          {hostedPanel('properties', <PropertiesPanel {...propertiesProps} />)}
+        </div>
+      );
+    }
+
     return (
       <div className={styles.root}>
         {headerControls}
@@ -341,52 +427,19 @@ export const Tstat10SimulatorPage: React.FC = () => {
         {/* Body: Toolbox | PageTabs | Canvas | Properties */}
         <div className={styles.body}>
           {/* Left: Widget Toolbox */}
-          <WidgetToolbox
-            onDragStart={(type) => designer.setDragItem({ source: 'toolbox', widgetType: type })}
-          />
+          <WidgetToolbox {...toolboxProps} />
 
           {/* Page list (vertical) */}
-          <PageTabs
-            pages={designer.pages}
-            selectedPageId={designer.selectedPageId}
-            onSelectPage={designer.setSelectedPageId}
-            onAddPage={designer.addPage}
-            onRemovePage={designer.removePage}
-            onRenamePage={designer.renamePage}
-            vertical
-            showGrid={showGrid}
-            onShowGridChange={setShowGrid}
-            showCoords={showCoords}
-            onShowCoordsChange={setShowCoords}
-            widgetCount={designer.currentPage.widgets.length}
-          />
+          <PageTabs {...pagesProps} />
 
           {/* Center: Canvas + debug bar */}
           <div className={`${styles.designCenter} ${simStyles.thinScroll}`}>
             {/* Canvas with LcdPageRenderer underneath */}
-            <DesignCanvas
-              page={designer.currentPage}
-              data={sampleData}
-              selectedWidgetId={designer.selectedWidgetId}
-              onSelectWidget={designer.setSelectedWidgetId}
-              onMoveWidget={designer.moveWidget}
-              onAddWidget={designer.addWidget}
-              onDragEnd={() => designer.setDragItem(null)}
-              showGrid={showGrid}
-              showCoords={showCoords}
-            />
+            <DesignCanvas {...canvasProps} />
           </div>
 
           {/* Right: Properties Panel */}
-          <PropertiesPanel
-            selectedWidget={designer.selectedWidget}
-            pageStyles={designer.currentPage.styles}
-            onUpdateWidget={designer.updateWidget}
-            onRemoveWidget={designer.removeWidget}
-            onUpdatePageStyles={designer.updatePageStyles}
-            onExportJSON={designer.exportJSON}
-            onImportJSON={designer.importJSON}
-          />
+          <PropertiesPanel {...propertiesProps} />
         </div>
       </div>
     );
