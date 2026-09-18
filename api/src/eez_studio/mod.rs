@@ -78,6 +78,17 @@ struct DeleteRecursiveQuery {
     path: String,
     #[serde(default)]
     force: bool,
+    /// Opt-in for deleting project data (see `guard_project_delete`).
+    #[serde(default, rename = "allowProject", alias = "allow_project")]
+    allow_project: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct DeleteFileQuery {
+    path: String,
+    /// Opt-in for deleting project data (see `guard_project_delete`).
+    #[serde(default, rename = "allowProject", alias = "allow_project")]
+    allow_project: bool,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,6 +133,99 @@ pub(crate) fn data_root() -> PathBuf {
     std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
         .join("T3Web").join("t3-eez")
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Data-loss guard
+////////////////////////////////////////////////////////////////////////////////
+
+/// A project is a folder holding `<name>.eez-project`, so this extension marks project data.
+const PROJECT_FILE_EXTENSION: &str = ".eez-project";
+
+fn is_project_file(path: &std::path::Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name.to_lowercase().ends_with(PROJECT_FILE_EXTENSION))
+        .unwrap_or(false)
+}
+
+/// First `*.eez-project` inside `dir`, if any.
+///
+/// A project sits one level deep (`project/<name>/<name>.eez-project`), but a half-finished create can nest,
+/// so two extra levels are scanned. Bounded in both directions (depth and entries visited) because this runs
+/// inside a request handler and a runaway walk would be worse than a missed guard.
+fn find_project_file(dir: &std::path::Path) -> Option<PathBuf> {
+    const MAX_DEPTH: usize = 4;
+    const MAX_ENTRIES: usize = 5_000;
+
+    let mut queue = vec![(dir.to_path_buf(), 0usize)];
+    let mut visited = 0usize;
+
+    while let Some((current, depth)) = queue.pop() {
+        let entries = match std::fs::read_dir(&current) {
+            Ok(entries) => entries,
+            Err(_) => continue,
+        };
+
+        for entry in entries.flatten() {
+            visited += 1;
+            if visited > MAX_ENTRIES {
+                return None;
+            }
+
+            let path = entry.path();
+            let is_dir = entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false);
+            if is_dir {
+                // `MAX_DEPTH` is how far we *descend*: a project is `project/<name>/<name>.eez-project`
+                // (two levels), and a half-finished create can nest once more. Off-by-one here is a silent
+                // hole — the guard would miss project data and delete it — so the bound is pinned by a test.
+                if depth < MAX_DEPTH {
+                    queue.push((path, depth + 1));
+                }
+            } else if is_project_file(&path) {
+                return Some(path);
+            }
+        }
+    }
+
+    None
+}
+
+/// Refuses a destructive request that would remove project data unless the caller opted in.
+///
+/// `delete-recursive` is a plain `remove_dir_all` with no staging and no backup, and that is how an existing
+/// project folder was destroyed once: the designer's create hand-off cleaned up its target folder on retry,
+/// and the caller's name collided with a project that already existed. The frontend now checks ownership
+/// before cleaning anything up; this is the defence in depth, so a *future* caller mistake is a 409 instead of
+/// lost work. Deleting project data has to be explicit (`allowProject=true`), and the deliberate call sites
+/// (hub → Delete, EEZ → Remove project) do pass it.
+fn guard_project_delete(
+    full_path: &std::path::Path,
+    allow_project: bool,
+) -> Result<(), (StatusCode, String)> {
+    if allow_project {
+        return Ok(());
+    }
+
+    let project_file = if full_path.is_dir() {
+        find_project_file(full_path)
+    } else if is_project_file(full_path) {
+        Some(full_path.to_path_buf())
+    } else {
+        None
+    };
+
+    match project_file {
+        Some(file) => {
+            let message = format!(
+                "refusing to delete project data ({}) — pass allowProject=true to confirm",
+                file.display()
+            );
+            error!("delete guard: {}", message);
+            Err((StatusCode::CONFLICT, message))
+        }
+        None => Ok(()),
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,9 +333,10 @@ async fn file_exists(
 }
 
 async fn delete_file(
-    Query(q): Query<PathQuery>,
-) -> Result<StatusCode, StatusCode> {
+    Query(q): Query<DeleteFileQuery>,
+) -> Result<StatusCode, (StatusCode, String)> {
     let full_path = resolve_path(&data_root().to_string_lossy(), &q.path);
+    guard_project_delete(&full_path, q.allow_project)?;
     // Try file first, then empty directory
     match fs::remove_file(&full_path).await {
         Ok(_) => {
@@ -250,7 +355,10 @@ async fn delete_file(
                     }
                     Err(e2) => {
                         error!("delete_file failed: {} — {:?}", full_path.display(), e2);
-                        Err(StatusCode::INTERNAL_SERVER_ERROR)
+                        Err((
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            format!("delete_file failed: {}", e2),
+                        ))
                     }
                 }
             }
@@ -301,8 +409,10 @@ async fn list_files_detailed(
 
 async fn delete_recursive(
     Query(q): Query<DeleteRecursiveQuery>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, (StatusCode, String)> {
     let full_path = resolve_path(&data_root().to_string_lossy(), &q.path);
+    // Never remove project data by accident: the caller has to say it means to (see `guard_project_delete`).
+    guard_project_delete(&full_path, q.allow_project)?;
     // force=true: don't error if path doesn't exist
     if q.force && fs::metadata(&full_path).await.is_err() {
         return Ok(StatusCode::OK);
@@ -317,7 +427,7 @@ async fn delete_recursive(
                 Ok(StatusCode::OK)
             } else {
                 error!("delete_recursive failed: {} — {:?}", full_path.display(), e);
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
+                Err((StatusCode::INTERNAL_SERVER_ERROR, format!("delete_recursive failed: {}", e)))
             }
         }
     }
@@ -1542,4 +1652,118 @@ pub fn bridge_routes(router: Router<T3AppState>) -> Router<T3AppState> {
         .route("/api/eez-device/screens/:name", patch(bacnet_api_mock::patch_screen))
         .route("/api/eez-device/screens/:name/widgets/:widgetId", patch(bacnet_api_mock::patch_widget))
         .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)) // 50 MB — catalog JSON ~6 MB
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Data-loss guard — tests
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod delete_guard_tests {
+    use super::*;
+
+    /// Scratch tree under the OS temp dir, removed on drop.
+    struct Scratch(PathBuf);
+
+    impl Scratch {
+        fn new(name: &str) -> Self {
+            let dir = std::env::temp_dir().join(format!("t3-guard-test-{}-{}", name, std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            std::fs::create_dir_all(&dir).expect("scratch dir");
+            Scratch(dir)
+        }
+
+        fn dir(&self) -> &std::path::Path {
+            &self.0
+        }
+    }
+
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn allows_deleting_an_ordinary_folder() {
+        let scratch = Scratch::new("plain");
+        let folder = scratch.dir().join("just-files");
+        std::fs::create_dir_all(folder.join("nested")).unwrap();
+        std::fs::write(folder.join("nested/readme.txt"), "hi").unwrap();
+
+        assert!(guard_project_delete(&folder, false).is_ok());
+    }
+
+    #[test]
+    fn refuses_a_folder_that_holds_a_project() {
+        let scratch = Scratch::new("project");
+        let project = scratch.dir().join("project/LVGL 9.5");
+        std::fs::create_dir_all(&project).unwrap();
+        std::fs::write(project.join("LVGL 9.5.eez-project"), "{}").unwrap();
+
+        let refused = guard_project_delete(&scratch.dir().join("project"), false);
+        let err = refused.expect_err("a folder containing a project must not be deleted silently");
+        assert_eq!(err.0, StatusCode::CONFLICT);
+        assert!(err.1.contains("allowProject=true"), "message should say how to opt in: {}", err.1);
+        // ...and the project is still there.
+        assert!(project.join("LVGL 9.5.eez-project").exists());
+    }
+
+    #[test]
+    fn refuses_a_project_file_but_not_other_files() {
+        let scratch = Scratch::new("file");
+        let project_file = scratch.dir().join("Demo.eez-project");
+        let other_file = scratch.dir().join("notes.txt");
+        std::fs::write(&project_file, "{}").unwrap();
+        std::fs::write(&other_file, "hi").unwrap();
+
+        assert_eq!(
+            guard_project_delete(&project_file, false)
+                .expect_err("a project file is project data")
+                .0,
+            StatusCode::CONFLICT
+        );
+        assert!(guard_project_delete(&other_file, false).is_ok());
+    }
+
+    #[test]
+    fn finds_a_project_nested_a_few_levels_down() {
+        let scratch = Scratch::new("nested");
+        let deep = scratch.dir().join("a/b/c");
+        std::fs::create_dir_all(&deep).unwrap();
+        std::fs::write(deep.join("deep.eez-project"), "{}").unwrap();
+
+        assert!(guard_project_delete(scratch.dir(), false).is_err());
+    }
+
+    /// The descent bound itself: one level deeper than the documented layout still has to be seen.
+    #[test]
+    fn finds_a_project_at_the_descent_bound() {
+        let scratch = Scratch::new("bound");
+        let deepest = scratch.dir().join("a/b/c/d");
+        std::fs::create_dir_all(&deepest).unwrap();
+        std::fs::write(deepest.join("bound.eez-project"), "{}").unwrap();
+
+        assert!(
+            guard_project_delete(scratch.dir(), false).is_err(),
+            "a project four levels down must still be found"
+        );
+    }
+
+    #[test]
+    fn the_opt_in_lets_a_deliberate_delete_through() {
+        let scratch = Scratch::new("optin");
+        let project = scratch.dir().join("project/Demo");
+        std::fs::create_dir_all(&project).unwrap();
+        std::fs::write(project.join("Demo.eez-project"), "{}").unwrap();
+
+        // This is what "hub → Delete project" and the create retry send.
+        assert!(guard_project_delete(&scratch.dir().join("project"), true).is_ok());
+    }
+
+    #[test]
+    fn a_missing_path_is_left_to_the_caller() {
+        let scratch = Scratch::new("missing");
+        assert!(guard_project_delete(&scratch.dir().join("does-not-exist"), false).is_ok());
+    }
 }
