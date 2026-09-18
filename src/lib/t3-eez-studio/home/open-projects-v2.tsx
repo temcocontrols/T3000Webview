@@ -551,8 +551,10 @@ class OpenProjectsStore {
         // Delete the project folder from disk via backend
         const projectDir = path.dirname(item.filePath);
         try {
+            // `allowProject=true`: the user confirmed the removal in this dialog's own prompt; the backend
+            // refuses to delete project data without the flag (see `guard_project_delete`).
             const resp = await fetch(
-                `/api/eez-studio/delete-recursive?path=${encodeURIComponent(projectDir)}&force=true`,
+                `/api/eez-studio/delete-recursive?path=${encodeURIComponent(projectDir)}&force=true&allowProject=true`,
                 { method: "DELETE" }
             );
             if (!resp.ok) {

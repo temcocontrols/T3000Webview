@@ -1455,6 +1455,36 @@ export function loadTabs() {
     });
 }
 
+/**
+ * Releases the global listeners the open tabs registered.
+ *
+ * Tabs are mobx stores, not React effects: their `document`/ipc listeners are only released when a tab
+ * becomes inactive (`active = false`) or is closed — and nothing does that when the embedded app is
+ * unmounted as a whole. `loadTabs()` builds a fresh `Tabs` with fresh tabs on every mount, so each mount
+ * used to stack another set of handlers: measured on the designer, every `designer → hub → designer` cycle
+ * left 6 `document` `keydown` handlers behind. The host calls this on teardown — see
+ * `t3-react/app/EezStudioApp.tsx`.
+ */
+export function disposeTabListeners() {
+    if (!tabs) {
+        return;
+    }
+
+    for (const tab of tabs.tabs) {
+        // `active` is the switch the tab classes use to add/remove their listeners (see
+        // `ProjectEditorTab.addListeners`); setting it on an already-inactive tab is a no-op.
+        // Wrapped in `runInAction` because a plain tab (`HomeTab`) declares `active` as an observable
+        // field, and MobX strict mode warns about writes outside an action.
+        try {
+            runInAction(() => {
+                (tab as { active?: boolean }).active = false;
+            });
+        } catch {
+            /* a tab that refuses to deactivate must not break the teardown */
+        }
+    }
+}
+
 export function openProject(filePath: string, runMode: boolean) {
     try {
         let tab = tabs.findProjectEditorTab(filePath, runMode);
