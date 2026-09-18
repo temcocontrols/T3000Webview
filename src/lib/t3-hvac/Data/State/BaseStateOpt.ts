@@ -69,7 +69,7 @@ class BaseStateOpt {
   /**
    * Preserves the current state
    */
-  PreserveState(): void { }
+  PreserveState(keepOpen?: boolean): void { }
 
   /**
    * Synchronizes objects with created states

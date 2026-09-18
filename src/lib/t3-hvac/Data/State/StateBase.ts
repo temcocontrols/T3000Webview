@@ -52,7 +52,19 @@ class StateBase {
     this.ID = stateId != null ? stateId : -1;
     this.CreatedBy = creatorName || null;
     this.StateType = stateTypeId || null;
-    this.IsOpen = false;// isStateOpen != null ? isStateOpen : true;
+    /*
+     * The parameter used to be commented out (`this.IsOpen = false;`), which made every state permanently
+     * *closed*. `Utils1.IsStateOpen()` then always returned false, and `StateOpt.AddToCurrentState` — whose
+     * merge branch requires `IsOpen === true` — never merged a change into the open state: every single
+     * stored-object write (`DataStore.ts:100`, `ObjectStore.ts:97`, and both delete paths) pushed a fresh
+     * state. One user edit that touches N objects therefore cost N undo steps, and because
+     * `ObjectUtil.PreserveUndoState` tests the same flag, `UIUtil.SetDocDirtyState(true)` was unreachable,
+     * so an edit never marked the document dirty either.
+     *
+     * Measured before the fix: a brand-new, *empty* drawing already sat at `{states: 25, currentStateId: 24}`
+     * — the 25-entry ring (`T3Gv.maxUndo`) was saturated by the object writes of the load alone.
+     */
+    this.IsOpen = isStateOpen != null ? isStateOpen : true;
     this.currentObjSeqId = T3Gv.currentObjSeqId;
   }
 }

@@ -74,10 +74,50 @@ class StateOpt extends BaseStateOpt {
 
   /**
    * Finalizes the current state by syncing objects and marking it as closed
+   *
+   * @param keepOpen - Syncing is always done; the *closing* is what the callers control. A caller that is
+   * mid-operation (`ObjectUtil.PreserveUndoState(true)`) must leave the state open, otherwise the next
+   * stored-object write starts a new state — which is how one user edit came to cost N undo steps.
    */
-  PreserveState() {
+  PreserveState(keepOpen?: boolean) {
     this.SyncObjectsWithCreateStates();
-    this.states[this.currentStateId].IsOpen = false;
+    if (!keepOpen) {
+      this.states[this.currentStateId].IsOpen = false;
+    }
+  }
+
+  /**
+   * Settles the undo history once the document has been loaded, so that the user's first edit is one
+   * clean, undoable step.
+   *
+   * Both cases end the same way — with a **closed** state at the current index:
+   *
+   * - **Nothing was restored** (`states` is empty because the whole of init runs with undo recording
+   *   switched off — see `T3Opt.InitializeDocument`): a single closed baseline is installed at index 0
+   *   as the document-as-loaded marker. Its `storedObjects` are deliberately empty: the deltas
+   *   recorded from here on are relative to whatever `T3Gv.stdObj` holds at this moment, and index 0
+   *   is never re-applied (`ToolActUtil.Undo` refuses to go below it).
+   * - **A saved history was restored** (`DataOpt.InitState` loads `localStorage['t3.state']`, so undo
+   *   deliberately survives a reload): it is kept as it is, only its current state is closed.
+   *
+   * Why closing matters: `AddToCurrentState` merges into the current state only while it is *open*.
+   * A load that left index 0 open — which is what it did before this — swallowed the user's first
+   * edit into index 0, and because `ToolActUtil.Undo` requires `currentStateId > 0`, that first edit
+   * could never be undone.
+   */
+  FinalizeLoadedHistory() {
+    const currentState = this.states[this.currentStateId];
+
+    if (currentState == null) {
+      const baseline = new State(0, 'T3');
+      baseline.IsOpen = false;
+      this.states = [baseline];
+      this.currentStateId = 0;
+      this.droppedStates = 0;
+      return;
+    }
+
+    currentState.IsOpen = false;
   }
 
   /**
@@ -218,6 +258,18 @@ class StateOpt extends BaseStateOpt {
    * @param newObject - The object to add to the current state
    */
   AddToCurrentState(newObject) {
+    // Undo recording can be switched off for a while: the engine is building or loading the document
+    // (`T3Opt.InitializeDocument`), or is re-rendering after an undo restore (`ToolActUtil.Undo`).
+    //
+    // This is the one funnel every recorded object write goes through — `PreserveUndoState`, the only
+    // other reader of the flag, is *not* on the load's path (`DataStore.SaveObject` and
+    // `ObjectStore.SaveObject` call this method directly) — so the flag has to be honoured here for it
+    // to mean anything. Nothing of the write is lost: the object is already in the store by now; only
+    // its undo record is skipped.
+    if (T3Gv.opt?.noUndo) {
+      return;
+    }
+
     const StateClass = State;
     const operationTypes = StateConstant.StateOperationType;
     let createNewState = true;

@@ -6,6 +6,8 @@ import OptUtil from "../Opt/Opt/OptUtil";
 import WallOpt from "../Opt/Wall/WallOpt";
 import DataStore from "./State/DataStore";
 import StateOpt from "./State/StateOpt";
+import { AreaIds } from "./Constant/AreaIds";
+import type { HvacAreaKey } from "./Constant/AreaIds";
 
 class T3Gv {
 
@@ -37,6 +39,26 @@ class T3Gv {
   static quasar: any;                      // Quasar framework instance
 
   // static refreshPosition: boolean = true;
+
+  /**
+   * Container-id accessors.
+   *
+   * The engine used to hard-code `'svg-area'` / `'#document-area'` etc. in a dozen places, which
+   * contradicted `InitializeWorkArea`'s own config. These helpers are the supported way to read them
+   * and are the reason no other engine file needs to import the id table.
+   */
+  static areaSelector(area: HvacAreaKey): string {
+    return AreaIds.selector(area);
+  }
+
+  static areaElement(area: HvacAreaKey): HTMLElement | null {
+    return AreaIds.element(area);
+  }
+
+  /** Lets a host (e.g. the unified Designer shell) mount the engine with per-document ids. */
+  static setAreaIds(partial: Partial<Record<HvacAreaKey, string>>): void {
+    AreaIds.set(partial);
+  }
 }
 
 export default T3Gv
