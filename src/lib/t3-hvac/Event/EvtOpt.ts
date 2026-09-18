@@ -1158,7 +1158,7 @@ class EvtOpt {
   }
 
   BindDocumentAreaEvent() {
-    $("#document-area").on("pointerdown", (event) => {
+    $(T3Gv.areaSelector('workArea')).on("pointerdown", (event) => {
       EvtOpt.toolOpt.ClearContextMenu();
     });
   }

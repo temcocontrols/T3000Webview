@@ -10,6 +10,7 @@ import {
 // Placeholder: Replace with React API client when ready
 const liveApi: any = null;
 import panzoom from "panzoom"
+import { AreaIds } from "../../Data/Constant/AreaIds";
 // import { computed, triggerRef, toRaw, ref } from "vue"
 // Placeholder: Vue reactivity - will need React equivalent
 const ref = (val?: any) => ({ value: val });
@@ -308,8 +309,8 @@ class IdxPage {
 
     // wiewPortWH= { width: "calc(100vw - v-bind('documentAreaPosition.wpWOffset'))", height: "calc(100vh - 68px)" };
 
-    document.querySelector('.v-ruler').scroll(0, event.target.scrollTop);
-    document.querySelector('.h-ruler').scroll(event.target.scrollLeft, 0);
+    document.querySelector(AreaIds.selector('vRuler')).scroll(0, event.target.scrollTop);
+    document.querySelector(AreaIds.selector('hRuler')).scroll(event.target.scrollLeft, 0);
   }
 
   initScorller() {

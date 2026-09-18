@@ -391,7 +391,7 @@ class OptUtil {
      * Configure main SVG document references and layers
      * These elements form the structure of the drawing document
      */
-    this.svgDocId = '#svg-area';                // CSS selector for the SVG container
+    this.svgDocId = T3Gv.areaSelector('svgArea');                // CSS selector for the SVG container
     // this.svgDoc = null;                         // SVG document reference (initialized later)
     this.svgObjectLayer = null;                 // Main layer for drawing content
     this.svgOverlayLayer = null;                // Layer for UI elements (not exported)
@@ -716,6 +716,17 @@ class OptUtil {
   }
 
   InitBlockData() {
+    // The five blocks below are the document's own scaffolding — selection list, session data, layers,
+    // text-edit state and links — not user content, so none of them may enter the undo history.
+    //
+    // The flag is set here rather than left to the caller because this method runs at the very end of
+    // `InitializeProperties` (its only caller), i.e. *after* that method has reset `noUndo` to false
+    // among its own defaults — no caller can get in between the two. The previous setting is restored
+    // afterwards instead of being cleared, so the engine's init (`T3Opt.InitializeDocument`) can keep
+    // recording switched off across the whole load.
+    const undoRecording = T3Gv.opt.noUndo;
+    T3Gv.opt.noUndo = true;
+
     // #region Block Creation & Initialization
     /**
      * Create persistent storage blocks and initialize the system
@@ -760,6 +771,8 @@ class OptUtil {
     const linksBlock = T3Gv.stdObj.CreateBlock(StateConstant.StoredObjectType.LinkListObject, []);
     this.linksBlockId = linksBlock.ID;
     // #endregion
+
+    T3Gv.opt.noUndo = undoRecording;
   }
 
   /**

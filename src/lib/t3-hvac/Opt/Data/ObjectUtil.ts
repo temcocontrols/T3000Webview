@@ -163,8 +163,10 @@ class ObjectUtil {
         // Check if state is currently open (being modified)
         const isStateOpen = Utils1.IsStateOpen();
 
-        // Preserve the current application state
-        T3Gv.state.PreserveState();
+        // Preserve the current application state. `shouldKeepStateOpen` is passed through: closing it
+        // here unconditionally would end the operation on every mid-operation call, and the next object
+        // write would then push a new state (see `StateOpt.PreserveState`).
+        T3Gv.state.PreserveState(shouldKeepStateOpen);
 
         // Add state to history if it was open
         if (isStateOpen) {

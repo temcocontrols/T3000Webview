@@ -60,7 +60,7 @@ class EvtUtil {
 
       // Clean up jQuery events with namespace
       $(document).off('.t3000-evt');
-      $('#svg-area').off('.t3000-evt');
+      $(T3Gv.areaSelector('svgArea')).off('.t3000-evt');
 
       // Destroy Hammer instances
       this.hammerInstances.forEach((hammer, key) => {
@@ -101,7 +101,7 @@ class EvtUtil {
    * Set up Hammer.js event handlers
    */
   private static setupHammerHandlers(): void {
-    const workArea = document.getElementById('svg-area');
+    const workArea = T3Gv.areaElement('svgArea');
     if (!workArea) {
       LogUtil.Warn('svg-area element not found, skipping Hammer setup');
       return;
@@ -261,7 +261,7 @@ class EvtUtil {
       const yOffset = clientY - windowCoordinates.y;
 
       // Adjust scroll position
-      const svgArea = $('#svg-area');
+      const svgArea = $(T3Gv.areaSelector('svgArea'));
       const scrollLeft = svgArea.scrollLeft();
       const scrollTop = svgArea.scrollTop();
 
@@ -303,7 +303,7 @@ class EvtUtil {
   static Evt_WorkAreaHammerDragStart(event) {
     LogUtil.Debug("E.Evt WorkAreaHammerDragStart input:", event);
 
-    const svgArea = $('#svg-area');
+    const svgArea = $(T3Gv.areaSelector('svgArea'));
     const svgOffset = svgArea.offset();
     const cursorX = event.gesture.center.clientX - svgOffset.left;
     const cursorY = event.gesture.center.clientY - svgOffset.top;
@@ -1048,7 +1048,7 @@ class EvtUtil {
       const yOffset = clientY - windowCoordinates.y;
 
       // Adjust scroll position
-      const svgArea = $('#svg-area');
+      const svgArea = $(T3Gv.areaSelector('svgArea'));
       const scrollLeft = svgArea.scrollLeft();
       const scrollTop = svgArea.scrollTop();
 
@@ -1185,7 +1185,7 @@ class EvtUtil {
       const yOffset = clientY - windowCoordinates.y;
 
       // Adjust scroll position
-      const svgArea = $('#svg-area');
+      const svgArea = $(T3Gv.areaSelector('svgArea'));
       const scrollLeft = svgArea.scrollLeft();
       const scrollTop = svgArea.scrollTop();
 

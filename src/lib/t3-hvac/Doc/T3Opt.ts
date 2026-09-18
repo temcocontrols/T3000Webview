@@ -86,6 +86,26 @@ class T3Opt {
    * Initializes the document operation system
    */
   Initialize(quasarInstance: any) {
+    try {
+      this.InitializeDocument(quasarInstance);
+    } finally {
+      // The guard must not survive init: a throw here would otherwise leave undo recording switched off
+      // for the rest of the session.
+      if (T3Gv.opt) {
+        T3Gv.opt.noUndo = false;
+      }
+    }
+  }
+
+  /**
+   * Builds and loads the document: state and object store, option manager, work area, the stored
+   * objects and the SVG scene.
+   *
+   * Called only from `Initialize`, which switches undo recording off for the whole of this method and
+   * clears it afterwards. The undo history is settled here, once the stored state and objects have
+   * been loaded.
+   */
+  private InitializeDocument(quasarInstance: any) {
 
     T3Gv.quasar = quasarInstance;
     QuasarUtil.quasar = quasarInstance;
@@ -100,7 +120,13 @@ class T3Opt {
     T3Gv.docUtil = new DocUtil();
     T3Gv.opt = new OptUtil();
 
+    // `InitBlockData` — the five scaffolding blocks — suppresses its own writes, because it runs at the
+    // end of `InitializeProperties`, which resets the flag on its way through.
     T3Gv.opt.InitializeProperties();
+
+    // Undo recording stays off for the rest of init: every object the stored document brings in, the
+    // SVG scene and the settings loaded below are all part of loading, not user edits.
+    T3Gv.opt.noUndo = true;
 
     T3Gv.opt.Initialize();
 
@@ -131,6 +157,12 @@ class T3Opt {
     DataOpt.InitStoredData();
     DataOpt.LoadAppStateV2();
 
+    // The undo ring and the object store are both final now, so the history is settled here — before
+    // anything can persist it (`SetZoomLevel` at the end of this method writes the ring straight back
+    // to localStorage, and GetUndoState/AddToCurrentState depend on what it holds). Nothing after this
+    // point can record a state anyway: undo recording is still switched off.
+    T3Gv.state.FinalizeLoadedHistory();
+
     // Render all SVG objects
     SvgUtil.RenderAllSVGObjects();
 
@@ -153,6 +185,23 @@ class T3Opt {
   }
 
   ReInitialize() {
+    try {
+      this.ReInitializeDocument();
+    } finally {
+      // Same contract as `Initialize`: the guard must not survive the rebuild.
+      if (T3Gv.opt) {
+        T3Gv.opt.noUndo = false;
+      }
+    }
+  }
+
+  /**
+   * Rebuilds the document in place (used when the engine has to be re-mounted with new container ids).
+   *
+   * Called only from `ReInitialize`, which owns the undo-recording guard and settles the history once
+   * this has returned.
+   */
+  private ReInitializeDocument() {
 
     // T3Gv.docUtil.RemoveAllLayers();
 
@@ -160,8 +209,6 @@ class T3Opt {
     // $("#h-ruler").html("");
     // $("#v-ruler").html("");
     // $("#svg-area").html("");
-
-    console.log("T3Gv.state.currentStateId ",T3Gv.state.currentStateId );
 
     // Initialize Instance with modules to avoid circular references
     initializeInstance(Basic, Shape);
@@ -173,7 +220,9 @@ class T3Opt {
     // T3Gv.docUtil = new DocUtil();
     // T3Gv.opt = new OptUtil();
 
+    // Undo recording stays off for the whole rebuild — see `InitializeDocument`.
     T3Gv.opt.InitializeProperties();
+    T3Gv.opt.noUndo = true;
 
     // T3Gv.opt.InitBlockData();
 
@@ -207,6 +256,9 @@ class T3Opt {
     // Load stored data
     DataOpt.InitStoredData();
     DataOpt.LoadAppStateV2();
+
+    // Settle the history once the ring and the store are final — see `InitializeDocument`.
+    T3Gv.state.FinalizeLoadedHistory();
 
     // Render all SVG objects
     // SvgUtil.RenderAllSVGObjects();

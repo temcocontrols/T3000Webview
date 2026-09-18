@@ -23,6 +23,16 @@ import LogUtil from "../../Util/LogUtil";
 class IdxPageReact extends IdxPage {
 
   /**
+   * The pair registered by `initWindowListener`.
+   *
+   * Kept on the instance because the engine is a **singleton** (`Hvac.ts` creates one `IdxPageReact`)
+   * that is re-initialised on every document mount. Holding the references is what makes the pair
+   * removable: measured on route churn (designer → hub → designer × 8) `window` gained exactly
+   * `beforeunload +1` and `resize +1` per navigation before this, i.e. they were never released.
+   */
+  private windowListeners: { beforeUnload?: () => void; resize?: () => void } = {};
+
+  /**
    * React-safe initPage.
    * Calls only the methods that don't depend on Vue/panzoom/scroller.
    */
@@ -53,16 +63,41 @@ class IdxPageReact extends IdxPage {
   }
 
   /**
-   * Window listener — React-safe (no WebSocket cleanup reference to WsClient).
+   * Window listeners — React-safe (no WebSocket cleanup reference to WsClient).
+   *
+   * Idempotent: `initPageReact` runs on every document mount, so the previous pair is released first.
+   * Without that, each navigation to a drawing added two permanent `window` listeners.
    */
   initWindowListener(): void {
-    window.addEventListener("beforeunload", () => {
-      this.clearAutoSaveInterval();
-    });
+    this.destroyWindowListener();
 
-    window.addEventListener("resize", () => {
+    const beforeUnload = () => {
+      this.clearAutoSaveInterval();
+    };
+
+    const resize = () => {
       // In React, we don't use documentAreaPosition Vue bindings
-    });
+    };
+
+    window.addEventListener("beforeunload", beforeUnload);
+    window.addEventListener("resize", resize);
+
+    this.windowListeners = { beforeUnload, resize };
+  }
+
+  /**
+   * Releases the listeners registered by `initWindowListener`.
+   * Called on document teardown (`HvacDocument`) so nothing keeps firing after unmount.
+   */
+  destroyWindowListener(): void {
+    const { beforeUnload, resize } = this.windowListeners;
+    if (beforeUnload) {
+      window.removeEventListener("beforeunload", beforeUnload);
+    }
+    if (resize) {
+      window.removeEventListener("resize", resize);
+    }
+    this.windowListeners = {};
   }
 }
 

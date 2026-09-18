@@ -1078,7 +1078,7 @@ class TextUtil {
       T3Gv.opt.textHammer = new Hammer(textEditorWrapper.editor.parent.textElem.node);
       T3Gv.opt.clickAreaHammer = new Hammer(textEditorWrapper.editor.parent.clickAreaElem.node);
       T3Gv.opt.decAreaHammer = new Hammer(textEditorWrapper.editor.parent.decorationAreaElem.node);
-      T3Gv.opt.TEWorkAreaHammer = new Hammer(document.getElementById('svg-area'));
+      T3Gv.opt.TEWorkAreaHammer = new Hammer(T3Gv.areaElement('svgArea'));
 
       // Register drag event listeners
       T3Gv.opt.textHammer.on("dragstart", this.TEDragStartFactory(textEditorWrapper.editor));
