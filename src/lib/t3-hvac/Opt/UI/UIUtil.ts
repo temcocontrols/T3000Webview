@@ -371,8 +371,18 @@ class UIUtil {
     var width = sdData.dim.x;
     var height = sdData.dim.y;
 
-    // Initialize the document work area
-    const workAreaConfig = { svgAreaId: T3Gv.opt.svgDocId, documentWidth: width, documentHeight: height, documentDPI: 100 };
+    // Initialize the document work area — all five containers come from configuration, so a host can
+    // supply its own element ids (the historical defaults live in `Data/Constant/AreaIds.ts`).
+    const workAreaConfig = {
+      svgAreaId: T3Gv.opt.svgDocId,
+      workAreaId: T3Gv.areaSelector('workArea'),
+      hRulerAreaId: T3Gv.areaSelector('hRuler'),
+      vRulerAreaId: T3Gv.areaSelector('vRuler'),
+      cRulerAreaId: T3Gv.areaSelector('cRuler'),
+      documentWidth: width,
+      documentHeight: height,
+      documentDPI: 100
+    };
     T3Gv.docUtil.InitializeWorkArea(workAreaConfig, isReInitialize);
   }
 
@@ -397,10 +407,10 @@ class UIUtil {
     T3Gv.opt.svgCollabLayer.ExcludeFromExport(true);
     T3Gv.opt.svgCollabLayer.AllowScaling(false);
 
-    // Get DOM elements
-    T3Gv.opt.mainAppElement = document.getElementById('main-app');
-    T3Gv.opt.workAreaElement = document.getElementById('svg-area');
-    T3Gv.opt.documentElement = document.getElementById('document-area');
+    // Get DOM elements (configured ids — see AreaIds)
+    T3Gv.opt.mainAppElement = T3Gv.areaElement('mainApp');
+    T3Gv.opt.workAreaElement = T3Gv.areaElement('svgArea');
+    T3Gv.opt.documentElement = T3Gv.areaElement('workArea');
 
     // Dispose old Hammer instances before creating new ones (Strict Mode remount)
     if (T3Gv.opt.WorkAreaHammer) {

@@ -4,6 +4,8 @@
  * Includes custom scrollbar detection (inWksBar)
  * to prevent drawing gestures when interacting with work area scrollbars.
  */
+import { AreaIds } from '../Data/Constant/AreaIds';
+
 (function (event, undefined) {
 
   /**
@@ -520,7 +522,7 @@
         return false;
       }
 
-      var svgArea = document.getElementById('svg-area');
+      var svgArea = AreaIds.element('svgArea');
       var svgElement = svgArea[0];
 
       if (event.currentTarget == svgElement) {

@@ -124,7 +124,9 @@ class ToolActUtil {
     T3Gv.opt.noUndo = false;
 
     if (tDataAfter.theActiveTextEditObjectID !== -1) {
-      this.ResetActiveTextEditAfterUndo();
+      // `ResetActiveTextEditAfterUndo` is a TextUtil static; calling it on `this` threw
+      // "is not a function" and broke Undo entirely. `undefined` = use the object's own text.
+      TextUtil.ResetActiveTextEditAfterUndo(undefined);
     }
 
     // Update display coordinates based on target selection if available
@@ -252,7 +254,8 @@ class ToolActUtil {
 
     // Reset active text edit after undo if needed
     if (updatedTextEditSession.theActiveTextEditObjectID !== -1) {
-      this.ResetActiveTextEditAfterUndo();
+      // TextUtil static — see the note in Undo() above.
+      TextUtil.ResetActiveTextEditAfterUndo(undefined);
     }
 
     // Update target selection display
