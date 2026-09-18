@@ -19,6 +19,9 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
       "@shared": fileURLToPath(new URL("./src/t3-react/shared", import.meta.url)),
+      // Added for the Designer tests, which import app modules that use the project aliases.
+      "@t3-react": fileURLToPath(new URL("./src/t3-react", import.meta.url)),
+      "@common": fileURLToPath(new URL("./src/lib", import.meta.url)),
     },
   },
   plugins: [

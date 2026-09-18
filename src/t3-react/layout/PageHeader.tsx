@@ -134,10 +134,11 @@ const routeToBreadcrumb: Record<string, { label: string; segments?: string[]; su
   '/t3000/tables': { label: 'Tables', segments: ['Tables'] },
   '/t3000/users': { label: 'Users', segments: ['Users'] },
   '/t3000/custom-units': { label: 'Custom Units', segments: ['Custom Units'] },
-  '/t3000/tstat10-simulator': { label: 'Tstat10 Simulator', segments: ['Simulator'] },
   '/t3000/haystack-tags': { label: 'Standard Tags', segments: ['Haystack'] },
   '/t3000/custom-tags': { label: 'Custom Tags', segments: ['Haystack'] },
-  '/t3000/hvac-designer': { label: 'HVAC Designer', segments: ['HVAC Designer'] },
+  // NOTE: no entries for the designer routes (`/t3000/designer/<kind>`, plus the legacy
+  // `/t3000/hvac-designer` + `/t3000/tstat10-simulator` that redirect there) — they render under
+  // `MinimalLayout`, which shows `ShellTopBar` and never `PageHeader`, so entries here would be dead.
   '/t3000/documentation': { label: 'Documentation', segments: ['Documentation'] },
   '/t3000/database/config': { label: 'Database Configuration', segments: ['Database', 'Configuration'] },
   '/t3000/developer/sync': { label: 'Sync Configuration', segments: ['Developer', 'Sync Configuration'] },

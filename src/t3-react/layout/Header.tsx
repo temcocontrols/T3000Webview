@@ -106,6 +106,7 @@ import { useAuthStore, useStatusBarStore } from '@t3-react/store';
 import { useUIStore } from '@t3-react/store/uiStore';
 import { useChatStore } from '@t3-react/store/chatStore';
 import { t3000Routes } from '@t3-react/app/router/routes';
+import { designerPath } from '@t3-react/features/designer/kinds';
 import { ThemeSelector, useTheme } from '@t3-react/theme';
 import { devVersion } from '@common/vue/T3000/Hvac/Data/T3Data';
 import { useFileMenu } from '@t3-react/shared/hooks/useFileMenu';
@@ -580,7 +581,7 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
         // ── EEZ Studio menu actions ──
         // Navigation
         case MenuAction.EezOpenStudio:
-          navigate('/t3000/eez');
+          navigate(designerPath('lvgl-9-5'));
           break;
         // All other EEZ actions send a postMessage into the EEZ Studio content
         case MenuAction.EezNewProject:
