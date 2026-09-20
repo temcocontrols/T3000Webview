@@ -6,6 +6,7 @@
  * entry here — the dashboard, libraries and history all pick it up automatically.
  */
 
+import { designerPath } from '@t3-react/features/designer/kinds';
 import type { DrawingType } from './types';
 
 export const DRAWING_TYPES: DrawingType[] = [
@@ -14,7 +15,7 @@ export const DRAWING_TYPES: DrawingType[] = [
     name: 'HVAC',
     description: 'HVAC system diagrams — one graphic per device/panel, slots 1-8',
     engine: 'hvac',
-    openPath: '/t3000/hvac-designer',
+    openPath: designerPath('hvac-schematic'),
     importFormats: ['svg', 'json', 'png'],
     deviceAware: true,
     accent: '#038387',
@@ -63,7 +64,7 @@ export const DRAWING_TYPES: DrawingType[] = [
     name: 'LCD UI',
     description: 'Design thermostat LCD screens and simulate them live',
     engine: 'simulator',
-    openPath: '/t3000/tstat10-simulator',
+    openPath: designerPath('lcd-ui'),
     importFormats: ['json', 'svg'],
     deviceAware: true,
     accent: '#0078d4',
@@ -75,7 +76,7 @@ export const DRAWING_TYPES: DrawingType[] = [
     name: 'LVGL 9.5',
     description: 'Embedded UI project (LVGL 9.5) — pages, widgets and bitmaps',
     engine: 'eez',
-    openPath: '/t3000/eez',
+    openPath: designerPath('lvgl-9-5'),
     importFormats: ['project', 'svg', 'json'],
     deviceAware: true,
     accent: '#5c6bc0',
@@ -88,7 +89,10 @@ export const DRAWING_TYPES: DrawingType[] = [
     name: 'LVGL with Flow 9.5',
     description: 'Embedded UI with EEZ Flow logic (LVGL 9.5) — screens + flow',
     engine: 'eez',
-    openPath: '/t3000/eez',
+    // The flow kind is the one whose editor mounts the Flow panel (`LvglDocument mode="flow"`), which is
+    // what `LvglCreateDialog` mirrors via `hasFlowSupport`. The legacy `/t3000/eez` URL was ambiguous (it
+    // served both kinds) so the redirect has to pick plain LVGL — here we know which kind the user picked.
+    openPath: designerPath('lvgl-flow-9-5'),
     importFormats: ['project', 'svg', 'json'],
     deviceAware: true,
     accent: '#3f51b5',
