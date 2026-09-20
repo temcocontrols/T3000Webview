@@ -5,7 +5,7 @@
  * (`project-editor/store/examples-catalog`, filtered to LVGL / LVGL + Flow).
  * Picking an example opens the create dialog (EezExampleCreateDialog), which
  * collects the project settings and then hands off to the EEZ examples wizard:
- *   /t3000/eez?examples=1&folder=<folderId>&type=<exampleId>&name=…&location=…
+ *   /t3000/designer/lvgl-9-5?examples=1&folder=<folderId>&type=<exampleId>&name=…&location=…
  *
  * The trigger button + info chip live right-aligned in the "Create by Type"
  * title bar (see DesignHubPage). The count badge is reported via onCount().

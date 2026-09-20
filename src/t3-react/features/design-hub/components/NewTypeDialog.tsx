@@ -17,6 +17,7 @@ import {
 } from '@fluentui/react-components';
 import type { DrawingEngine, DrawingType } from '../types';
 import { DRAWING_TYPES } from '../drawingTypes';
+import { designerPath } from '@t3-react/features/designer/kinds';
 
 const ENGINES: { value: DrawingEngine; label: string }[] = [
   { value: 'hvac', label: 'HVAC (SVG engine)' },
@@ -36,7 +37,7 @@ export const NewTypeDialog: React.FC<{
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [engine, setEngine] = useState<DrawingEngine>('hvac');
-  const [openPath, setOpenPath] = useState('/t3000/hvac-designer');
+  const [openPath, setOpenPath] = useState(designerPath('hvac-schematic'));
   const [accent, setAccent] = useState(ACCENTS[0]);
   const [deviceAware, setDeviceAware] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +47,7 @@ export const NewTypeDialog: React.FC<{
     setName('');
     setDescription('');
     setEngine('hvac');
-    setOpenPath('/t3000/hvac-designer');
+    setOpenPath(designerPath('hvac-schematic'));
     setAccent(ACCENTS[0]);
     setDeviceAware(false);
     setError(null);
@@ -67,7 +68,7 @@ export const NewTypeDialog: React.FC<{
       name: name.trim(),
       description: description.trim(),
       engine,
-      openPath: openPath.trim() || '/t3000/hvac-designer',
+      openPath: openPath.trim() || designerPath('hvac-schematic'),
       accent,
       icon: engine === 'eez' ? 'DocumentText' : engine === 'simulator' ? 'DeveloperBoard' : 'Flow',
       template: { width: 1600, height: 1000, backgroundColor: '#ffffff' },
@@ -110,7 +111,7 @@ export const NewTypeDialog: React.FC<{
                 </Select>
               </Field>
               <Field label="Open path">
-                <Input value={openPath} onChange={(_, d) => setOpenPath(d.value)} placeholder="/t3000/hvac-designer" />
+                <Input value={openPath} onChange={(_, d) => setOpenPath(d.value)} placeholder={designerPath('hvac-schematic')} />
               </Field>
               <Field label="Accent color">
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

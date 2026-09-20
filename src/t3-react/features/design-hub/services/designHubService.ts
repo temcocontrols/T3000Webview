@@ -22,6 +22,7 @@ import type {
   RevisionSnapshot,
 } from '../types';
 import { getDrawingType } from '../drawingTypes';
+import { designerPath } from '@t3-react/features/designer/kinds';
 
 const HUB_KEY = 't3-design-hub';
 const HVAC_DRAWINGS_KEY = 't3-hvac-drawings';
@@ -94,7 +95,7 @@ function readHvacDrawings(): HubProject[] {
         status: hasSerial ? 'bound' : 'local',
         boundPoints: d.boundPoints ?? undefined,
         source: 'hvac',
-        openPath: `/t3000/hvac-designer/${d.id}`,
+        openPath: designerPath('hvac-schematic', d.id),
       };
     });
   } catch {
@@ -362,7 +363,7 @@ export const designHubService = {
               updatedAt: new Date().toISOString(),
               status: binding.serialNumber ? 'bound' : 'local',
               source: 'hvac',
-              openPath: `/t3000/hvac-designer/${projectId}`,
+              openPath: designerPath('hvac-schematic', projectId),
             };
           }
         }
@@ -484,7 +485,7 @@ export const designHubService = {
       map[drawing.id] = drawing;
       localStorage.setItem(HVAC_DRAWINGS_KEY, JSON.stringify(map));
       this.recordActivity('imported', `Imported "${name}" (SVG)`, { detail: 'Inkscape / SVG', typeId: 'hvac-schematic' });
-      return { drawingId: drawing.id, openPath: `/t3000/hvac-designer/${drawing.id}`, name };
+      return { drawingId: drawing.id, openPath: designerPath('hvac-schematic', drawing.id), name };
     }
 
     // JSON drawing
@@ -513,7 +514,7 @@ export const designHubService = {
       map[drawing.id] = drawing;
       localStorage.setItem(HVAC_DRAWINGS_KEY, JSON.stringify(map));
       this.recordActivity('imported', `Imported "${drawing.name}" (JSON)`, { typeId: drawing.typeId });
-      return { drawingId: drawing.id, openPath: `/t3000/hvac-designer/${drawing.id}`, name: drawing.name };
+      return { drawingId: drawing.id, openPath: designerPath('hvac-schematic', drawing.id), name: drawing.name };
     } catch {
       throw new Error('Unsupported file format — use .json or .svg');
     }
@@ -592,7 +593,7 @@ export const designHubService = {
       updatedAt: now,
       status: 'local',
       source: 'hvac',
-      openPath: `/t3000/hvac-designer/${newId}`,
+        openPath: designerPath('hvac-schematic', newId),
     };
   },
 
@@ -654,7 +655,7 @@ export const designHubService = {
       updatedAt: now,
       status: 'local',
       source: 'hvac',
-      openPath: `/t3000/hvac-designer/${id}`,
+      openPath: designerPath('hvac-schematic', id),
     };
   },
 

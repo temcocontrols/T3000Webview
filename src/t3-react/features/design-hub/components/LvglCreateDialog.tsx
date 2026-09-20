@@ -6,7 +6,8 @@
  *   • "Create New"        → collect Name / Location / Create directory / Project file
  *                           path (mirroring the EEZ New Project wizard), then open the
  *                           EEZ wizard pre-configured with those values by navigating to
- *                           `/t3000/eez?new=<wizardType>&name=…&location=…&createDirectory=…`.
+ *                           `/t3000/designer/lvgl-9-5?new=<wizardType>&name=…&location=…&createDirectory=…`
+ *                           (or the `lvgl-flow-9-5` kind for the LVGL + Flow type).
  *
  *   • "Load from Device"  → import the device's current screens straight into an
  *                           .eez-project using the exact same pipeline as the EEZ home
@@ -38,6 +39,7 @@ import {
   InfoRegular,
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
+import { designerPath, type DocumentKind } from '@t3-react/features/designer/kinds';
 import type { DrawingType } from '../types';
 import { designHubService } from '../services/designHubService';
 import { HubIcon } from '../icons';
@@ -172,6 +174,11 @@ export const LvglCreateDialog: React.FC<{
     return `${projectFolderPath}/${name.trim()}.eez-project`;
   }, [projectFolderPath, name]);
 
+  // LVGL 9.5 and LVGL-with-Flow are two document kinds on the unified shell; the kind decides whether the
+  // editor mounts the Flow panel (`LvglDocument mode="flow"`) — the same distinction `hasFlowSupport`
+  // below mirrors for imported projects.
+  const lvglKind: DocumentKind = type.id === 'lvgl-flow-9-5' ? 'lvgl-flow-9-5' : 'lvgl-9-5';
+
   // ── Create New → open the EEZ New Project wizard pre-configured ────
   const handleCreate = () => {
     if (!name.trim() || !location.trim()) return;
@@ -186,7 +193,7 @@ export const LvglCreateDialog: React.FC<{
       typeId: type.id,
     });
 
-    const target = `/t3000/eez?${params.toString()}`;
+    const target = `${designerPath(lvglKind)}?${params.toString()}`;
     // Close the dialog FIRST, then navigate on the next tick so the popup
     // can't survive the redirect.
     onClose();
@@ -270,7 +277,7 @@ export const LvglCreateDialog: React.FC<{
       onClose();
       window.setTimeout(() => {
         try {
-          navigate(`/t3000/eez?open=${encodeURIComponent(projectPath)}`);
+          navigate(`${designerPath(lvglKind)}?open=${encodeURIComponent(projectPath)}`);
         } catch (err) {
           console.error('[LvglCreateDialog] navigate failed:', err);
         }

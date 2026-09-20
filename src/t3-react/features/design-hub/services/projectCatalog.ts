@@ -18,6 +18,7 @@
 
 import type { HubProject } from '../types';
 import { getDrawingType } from '../drawingTypes';
+import { designerPath } from '@t3-react/features/designer/kinds';
 import { getDeviceBinding } from 'project-editor/build/device-binding';
 
 export interface EezProjectEntry {
@@ -72,7 +73,7 @@ function eezToHubProject(e: EezProjectEntry): HubProject {
     serialNumber: binding?.serialNumber,
     status: binding?.status ?? (binding?.serialNumber ? 'bound' : 'local'),
     source: 'eez',
-    openPath: `/t3000/eez?open=${encodeURIComponent(e.file_path)}`,
+    openPath: `${designerPath('lvgl-9-5')}?open=${encodeURIComponent(e.file_path)}`,
     lvglVersion: e.lvgl_version ?? undefined,
     folder: e.folder,
     fileSize: e.size,
@@ -92,7 +93,7 @@ function hvacDiskToHubProject(d: HvacDrawingEntry): HubProject {
     updatedAt: iso(d.updated_at),
     status: 'local',
     source: 'hvac',
-    openPath: `/t3000/hvac-designer/${encodeURIComponent(d.id)}`,
+    openPath: designerPath('hvac-schematic', d.id),
   };
 }
 
@@ -155,10 +156,13 @@ export async function deleteHvacDrawingOnDisk(id: string): Promise<boolean> {
 /** Delete a real EEZ project folder on disk. */
 export async function deleteEezProjectOnDisk(folder: string): Promise<boolean> {
   try {
+    // `allowProject=true`: this is the user asking for the project to be deleted (hub → Delete project).
+    // The backend refuses to remove project data without it — see `guard_project_delete` in
+    // `api/src/eez_studio/mod.rs`.
     const r = await fetch(
       `/api/eez-studio/delete-recursive?path=${encodeURIComponent(
         'project/' + folder
-      )}&force=true`,
+      )}&force=true&allowProject=true`,
       { method: 'DELETE' }
     );
     return r.ok;
