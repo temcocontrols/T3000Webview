@@ -8,17 +8,20 @@
  *   - ToolLineAct(lineType, event)
  *   - DrawWall(event)
  *   - ClickSymbolAct(event) / DragDropSymbolAct(event)
+ *
+ * ## Grouping (2026-09-20)
+ *
+ * The library holds ~47 tools in seven categories, and this panel is **115 px** wide — as a flat grid that is
+ * roughly nine screens of tiles with no way to find anything. So each category is a section: a **28 px sticky
+ * header** (small-caps name, tool count, rotating caret) over a two-column grid of **42 px tiles**. Tiles are
+ * transparent with a hairline hover; the active tool takes the brand tint and brand icon (was a raw
+ * `rgba(0,120,212,0.2)`), and the section holding it keeps a 2 px brand marker, so a folded panel still says
+ * where the current tool lives. Folding a section is local state, as the Fluent accordion's `openItems` was;
+ * the accordion itself is gone because a sticky header with a count is not something it can express.
  */
 
 import React, { useState, useMemo } from 'react';
-import {
-  Tooltip,
-  Accordion,
-  AccordionItem,
-  AccordionHeader,
-  AccordionPanel,
-  makeStyles,
-} from '@fluentui/react-components';
+import { Tooltip, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import {
   CursorRegular,
   SquareRegular,
@@ -29,10 +32,13 @@ import {
   SplitHorizontalRegular,
   NumberSymbolRegular,
   AppsRegular,
+  ChevronDownRegular,
+  AddRegular,
 } from '@fluentui/react-icons';
 import { useHvacDesignerStore } from '../../store/designerStore';
 import { NewTool, toolsCategories, selectedTool } from '@/lib/t3-hvac';
 import EvtOpt from '@/lib/t3-hvac/Event/EvtOpt';
+import { AreaIds } from '@/lib/t3-hvac/Data/Constant/AreaIds';
 
 const toolOpt = EvtOpt.toolOpt;
 
@@ -42,7 +48,7 @@ const handleToolActivate = (tool: any) => {
   selectedTool.value = { ...tool, type: 'default' };
 
   // Build synthetic event at SVG center (same as before)
-  const svgArea = document.getElementById('svg-area');
+  const svgArea = AreaIds.element('svgArea');
   const rect = svgArea?.getBoundingClientRect();
   const se: any = {
     clientX: rect ? rect.left + rect.width / 2 : 400,
@@ -170,64 +176,140 @@ const getToolIcon = (tool: any) => {
 
 const useStyles = makeStyles({
   container: {
+    display: 'flex',
+    flexDirection: 'column',
     width: '100%',
     height: '100%',
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  scroll: {
+    flex: 1,
+    minHeight: 0,
     overflowY: 'auto',
     overflowX: 'hidden',
-    backgroundColor: '#fafafa',
     scrollbarWidth: 'thin',
-    '&::-webkit-scrollbar': {
-      width: '6px',
-    },
-    '&::-webkit-scrollbar-track': {
-      backgroundColor: 'transparent',
-    },
+    scrollbarColor: `${tokens.colorNeutralStroke1} transparent`,
+    '&::-webkit-scrollbar': { width: '8px' },
     '&::-webkit-scrollbar-thumb': {
-      backgroundColor: '#c1c1c1',
-      borderRadius: '3px',
-      '&:hover': {
-        backgroundColor: '#a8a8a8',
-      },
+      backgroundColor: tokens.colorNeutralStroke1,
+      borderRadius: '6px',
+      border: '2px solid transparent',
+      backgroundClip: 'content-box',
     },
   },
-  accordion: {
+  group: {
+    borderBottom: `1px solid ${tokens.colorNeutralStroke3}`,
+  },
+  groupHead: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
     width: '100%',
-    '& .fui-AccordionHeader': {
-      padding: '0',
-      minHeight: '24px',
-      fontSize: '11px',
-    },
-    '& .fui-AccordionHeader__button': {
-      padding: '2px 4px',
-    },
-    '& .fui-AccordionPanel': {
-      padding: '0 !important',
-      width: '100%',
-      margin: '0 !important',
-      backgroundColor: '#f9f9f9',
+    height: '28px',
+    padding: '0 5px 0 4px',
+    border: 'none',
+    background: tokens.colorNeutralBackground2,
+    color: tokens.colorNeutralForeground2,
+    fontFamily: 'inherit',
+    cursor: 'default',
+    textAlign: 'left',
+    transitionProperty: 'background-color, color',
+    transitionDuration: '0.1s',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+      color: tokens.colorNeutralForeground1,
     },
   },
-  toolGrid: {
+  /** The section that holds the active tool — visible even when it is folded. */
+  groupHeadActive: {
+    boxShadow: `inset 2px 0 0 ${tokens.colorBrandForeground1}`,
+  },
+  caret: {
+    display: 'flex',
+    flexShrink: 0,
+    color: tokens.colorNeutralForeground3,
+    transitionProperty: 'transform',
+    transitionDuration: '0.12s',
+  },
+  caretClosed: {
+    transform: 'rotate(-90deg)',
+  },
+  groupName: {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: '10.5px',
+    fontWeight: tokens.fontWeightSemibold,
+    letterSpacing: '0.3px',
+    textTransform: 'uppercase',
+  },
+  groupNameActive: {
+    color: tokens.colorBrandForeground1,
+  },
+  count: {
+    flexShrink: 0,
+    minWidth: '14px',
+    textAlign: 'center',
+    padding: '0 4px',
+    borderRadius: '999px',
+    backgroundColor: tokens.colorNeutralBackground4,
+    color: tokens.colorNeutralForeground3,
+    fontSize: '9.5px',
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: '14px',
+  },
+  grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '4px',
-    padding: '4px',
+    gap: '5px',
+    padding: '2px 7px 8px',
   },
-  toolButton: {
-    width: '100%',
-    minHeight: '40px',
+  tile: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '24px',
-    minWidth: '0',
-    padding: '6px',
-    borderRadius: '4px',
+    minWidth: 0,
+    height: '42px',
+    border: '1px solid transparent',
+    borderRadius: '6px',
+    background: 'transparent',
+    color: tokens.colorNeutralForeground2,
+    cursor: 'default',
+    transitionProperty: 'background-color, color, border-color, box-shadow',
+    transitionDuration: '0.1s',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground1,
+      border: `1px solid ${tokens.colorNeutralStroke2}`,
+      color: tokens.colorNeutralForeground1,
+      boxShadow: tokens.shadow2,
+    },
+    ':active': {
+      backgroundColor: tokens.colorNeutralBackground1Pressed,
+    },
   },
-  emptyMessage: {
-    padding: '8px 6px',
-    fontSize: '10px',
-    color: '#666',
+  tileActive: {
+    backgroundColor: tokens.colorBrandBackground2,
+    border: `1px solid ${tokens.colorBrandStroke2}`,
+    color: tokens.colorBrandForeground1,
+  },
+  addTile: {
+    border: `1px dashed ${tokens.colorNeutralStroke2}`,
+    color: tokens.colorNeutralForeground3,
+    ':hover': {
+      border: `1px dashed ${tokens.colorBrandForeground1}`,
+      color: tokens.colorBrandForeground1,
+    },
+  },
+  empty: {
+    padding: '0 8px 8px',
+    color: tokens.colorNeutralForeground3,
+    fontSize: '10.5px',
+    fontStyle: 'italic',
     textAlign: 'center',
     lineHeight: '1.3',
   },
@@ -261,71 +343,89 @@ export const ToolsPanel: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <Accordion
-        className={styles.accordion}
-        multiple
-        collapsible
-        openItems={openItems}
-        onToggle={(_event, data) => {
-          setOpenItems(data.openItems as string[]);
-        }}
-      >
-        {toolsCategories.map((category) => (
-          <AccordionItem key={category} value={category}>
-            <AccordionHeader size="small">{category}</AccordionHeader>
-            <AccordionPanel>
-              {toolsByCategory[category] && toolsByCategory[category].length > 0 ? (
-                <div className={styles.toolGrid}>
-                  {toolsByCategory[category].map((tool: any) => (
-                    <Tooltip
-                      key={tool.name}
-                      content={{ children: tool.label, className: styles.tooltipContent }}
-                      relationship="label"
-                      positioning="after"
-                    >
-                      <div
-                        className={styles.toolButton}
-                        draggable
-                        role="button"
-                        tabIndex={0}
-                        style={{
-                          backgroundColor: selectedToolLocal.name === tool.name ? 'rgba(0,120,212,0.2)' : 'transparent',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => handleToolClick(tool)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleToolClick(tool); }}
+      <div className={styles.scroll}>
+        {toolsCategories.map((category) => {
+          const tools = toolsByCategory[category] ?? [];
+          const open = openItems.includes(category);
+          // The section holding the active tool keeps a brand marker, so a folded panel still says where
+          // the current tool lives.
+          const holdsActive = !!selectedToolLocal?.cat?.includes(category);
+
+          return (
+            <section key={category} className={styles.group} data-tool-group={category}>
+              <button
+                type="button"
+                title={`${category} — ${tools.length} tool${tools.length === 1 ? '' : 's'}`}
+                aria-expanded={open}
+                className={mergeClasses(styles.groupHead, holdsActive ? styles.groupHeadActive : '')}
+                onClick={() =>
+                  setOpenItems((prev) =>
+                    prev.includes(category) ? prev.filter((item) => item !== category) : [...prev, category]
+                  )
+                }
+              >
+                <span className={mergeClasses(styles.caret, open ? '' : styles.caretClosed)}>
+                  <ChevronDownRegular fontSize={10} />
+                </span>
+                <span className={mergeClasses(styles.groupName, holdsActive ? styles.groupNameActive : '')}>
+                  {category}
+                </span>
+                <span className={styles.count}>{tools.length}</span>
+              </button>
+
+              {open ? (
+                tools.length > 0 ? (
+                  <div className={styles.grid}>
+                    {tools.map((tool: any) => {
+                      const active = selectedToolLocal.name === tool.name;
+                      return (
+                        <Tooltip
+                          key={tool.name}
+                          content={{ children: tool.label, className: styles.tooltipContent }}
+                          relationship="label"
+                          positioning="after"
+                        >
+                          <div
+                            className={mergeClasses(styles.tile, active ? styles.tileActive : '')}
+                            draggable
+                            role="button"
+                            tabIndex={0}
+                            aria-pressed={active}
+                            aria-label={tool.label}
+                            title={tool.label}
+                            style={{ cursor: 'default' }}
+                            onClick={() => handleToolClick(tool)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleToolClick(tool); }}
+                          >
+                            {getToolIcon(tool)}
+                          </div>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <>
+                    <div className={styles.grid}>
+                      <Tooltip
+                        content={{ children: 'Add to library', className: styles.tooltipContent }}
+                        relationship="label"
+                        positioning="after"
                       >
-                        {getToolIcon(tool)}
-                      </div>
-                    </Tooltip>
-                  ))}
-                </div>
-              ) : (
-                <div className={styles.toolGrid}>
-                  {category === 'User' ? (
-                    <Tooltip
-                      content={{ children: 'Add to library', className: styles.tooltipContent }}
-                      relationship="label"
-                      positioning="after"
-                    >
-                      <div
-                        className={styles.toolButton}
-                        role="button"
-                        tabIndex={0}
-                        style={{ cursor: 'pointer', color: '#666' }}
-                      >
-                        <span style={{ fontSize: '24px' }}>+</span>
-                      </div>
-                    </Tooltip>
-                  ) : (
-                    <div className={styles.emptyMessage}>Coming soon</div>
-                  )}
-                </div>
-              )}
-            </AccordionPanel>
-          </AccordionItem>
-        ))}
-      </Accordion>
+                        <div className={mergeClasses(styles.tile, styles.addTile)} role="button" tabIndex={0}>
+                          <AddRegular fontSize={18} />
+                        </div>
+                      </Tooltip>
+                    </div>
+                    <div className={styles.empty}>
+                      Nothing here yet — add the selected shape to your library
+                    </div>
+                  </>
+                )
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 };

@@ -174,9 +174,18 @@ const useStyles = makeStyles({
 interface TopToolbarProps {
   onToggleLeftPanel: () => void;
   onNavigateBack: () => void;
+  /**
+   * Hides the viewport controls (rulers, grid, zoom).
+   *
+   * The unified Designer draws those from the shell's trailing cluster instead, against the same engine
+   * APIs (`designer/documents/hvac/hvacViewport.ts`), and renders the drawing tools from
+   * `designer/documents/hvac/hvacToolGroups.tsx` — so it does not use this toolbar at all. The prop
+   * remains for a host that wants the legacy strip without the viewport controls.
+   */
+  hideViewportControls?: boolean;
 }
 
-export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNavigateBack }) => {
+export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNavigateBack, hideViewportControls }) => {
   const styles = useStyles();
 
   // Use existing Hvac library for zoom operations.
@@ -560,42 +569,46 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({ onToggleLeftPanel, onNav
             </MenuList>
           </MenuPopover>
         </Menu>
-        <div className={styles.toolItem} title="Toggle rulers visibility" onClick={handleRulersToggle}>
-          {rulersOn ? <RulerFilled className={styles.toolIcon} /> : <RulerRegular className={styles.toolIcon} />}
-          <span>Rulers</span>
-        </div>
-        <div className={styles.toolItem} title="Toggle grid visibility" onClick={handleGridToggle}>
-          {gridOn ? <GridFilled className={styles.toolIcon} /> : <GridRegular className={styles.toolIcon} />}
-          <span>Grid</span>
-        </div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '2px 4px' }}>
-          <div className={styles.toolItem} title="Zoom out" onClick={zoomOut} style={{ padding: '2px 4px' }}>
-            <ZoomOutRegular className={styles.toolIcon} />
-          </div>
-          <input
-            type="number"
-            value={zoomValue}
-            onFocus={() => setZoomValue(getZoomPct())}
-            onChange={handleZoomChange}
-            style={{
-              width: '50px',
-              height: '22px',
-              fontSize: '11px',
-              padding: '2px 4px',
-              border: '1px solid #ccc',
-              borderRadius: '2px',
-              textAlign: 'center',
-            }}
-          />
-          <span style={{ fontSize: '11px', color: '#323130' }}>%</span>
-          <div className={styles.toolItem} title="Zoom in" onClick={zoomIn} style={{ padding: '2px 4px' }}>
-            <ZoomInRegular className={styles.toolIcon} />
-          </div>
-        </div>
-        <div className={styles.toolItem} title="Reset view to default" onClick={handleResetZoom}>
-          <ArrowResetRegular className={styles.toolIcon} />
-          <span>Reset Zoom</span>
-        </div>
+        {hideViewportControls ? null : (
+          <>
+            <div className={styles.toolItem} title="Toggle rulers visibility" onClick={handleRulersToggle}>
+              {rulersOn ? <RulerFilled className={styles.toolIcon} /> : <RulerRegular className={styles.toolIcon} />}
+              <span>Rulers</span>
+            </div>
+            <div className={styles.toolItem} title="Toggle grid visibility" onClick={handleGridToggle}>
+              {gridOn ? <GridFilled className={styles.toolIcon} /> : <GridRegular className={styles.toolIcon} />}
+              <span>Grid</span>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '2px 4px' }}>
+              <div className={styles.toolItem} title="Zoom out" onClick={zoomOut} style={{ padding: '2px 4px' }}>
+                <ZoomOutRegular className={styles.toolIcon} />
+              </div>
+              <input
+                type="number"
+                value={zoomValue}
+                onFocus={() => setZoomValue(getZoomPct())}
+                onChange={handleZoomChange}
+                style={{
+                  width: '50px',
+                  height: '22px',
+                  fontSize: '11px',
+                  padding: '2px 4px',
+                  border: '1px solid #ccc',
+                  borderRadius: '2px',
+                  textAlign: 'center',
+                }}
+              />
+              <span style={{ fontSize: '11px', color: '#323130' }}>%</span>
+              <div className={styles.toolItem} title="Zoom in" onClick={zoomIn} style={{ padding: '2px 4px' }}>
+                <ZoomInRegular className={styles.toolIcon} />
+              </div>
+            </div>
+            <div className={styles.toolItem} title="Reset view to default" onClick={handleResetZoom}>
+              <ArrowResetRegular className={styles.toolIcon} />
+              <span>Reset Zoom</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
