@@ -6,7 +6,7 @@
  * collect the project settings (name / location / create directory — the same
  * fields as the LVGL "Create New" dialog), then hands off to the EEZ examples
  * wizard by navigating to:
- *   /t3000/eez?examples=1&type=…&name=…&location=…&createDirectory=…
+ *   /t3000/designer/lvgl-9-5?examples=1&type=…&name=…&location=…&createDirectory=…
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -23,6 +23,7 @@ import {
 } from '@fluentui/react-components';
 import { InfoRegular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
+import { designerPath } from '@t3-react/features/designer/kinds';
 import { designHubService } from '../services/designHubService';
 import { HubIcon } from '../icons';
 import type { ExampleItem } from './EezExamplesDrawer';
@@ -97,7 +98,7 @@ export const EezExampleCreateDialog: React.FC<{
       detail: `Example · ${example.name} · ${projectFilePath || location.trim()}`,
     });
 
-    const target = `/t3000/eez?${params.toString()}`;
+    const target = `${designerPath(isFlow ? 'lvgl-flow-9-5' : 'lvgl-9-5')}?${params.toString()}`;
     // Close the dialog FIRST, then navigate on the next tick so the popup
     // can't survive the redirect.
     onClose();

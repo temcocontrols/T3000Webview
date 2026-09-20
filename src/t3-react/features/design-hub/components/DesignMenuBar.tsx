@@ -9,6 +9,7 @@
  */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { designerPath } from '@t3-react/features/designer/kinds';
 import {
   Menu,
   MenuTrigger,
@@ -111,7 +112,7 @@ export const DesignMenuBar: React.FC = () => {
     window.dispatchEvent(new CustomEvent('t3-editor-command', { detail: { command } }));
 
   const goDesign = () => navigate('/t3000/design');
-  const goNew = () => navigate('/t3000/hvac-designer');
+  const goNew = () => navigate(designerPath('hvac-schematic'));
 
   const menus: MenuDef[] = [
     {

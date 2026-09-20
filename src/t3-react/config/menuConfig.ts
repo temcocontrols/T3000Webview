@@ -5,6 +5,11 @@
 
 import type { MenuItem } from '@common/react/types/menu';
 import { MenuAction } from '@common/react/types/menu';
+import { withDesignerPanelItems } from '@/t3-react/features/designer/panelMenu';
+// Pure module (types + path parsing + container ids only) — safe here: it pulls in no React component
+// and no engine code.
+import { matchDesignerPath } from '@t3-react/features/designer/kinds';
+import { AreaIds } from '@/lib/t3-hvac/Data/Constant/AreaIds';
 
 /**
  * Home Menu — one-click return to the T3000 inputs page.
@@ -1104,7 +1109,7 @@ export const designHubMenuConfig: MenuItem[] = [
  */
 const hvacNoopEvent = { preventDefault: () => {}, stopPropagation: () => {} } as any;
 const hvacCenterEvent = () => {
-  const svgArea = document.getElementById('svg-area');
+  const svgArea = AreaIds.element('svgArea');
   const rect = svgArea?.getBoundingClientRect();
   return {
     clientX: rect ? rect.left + rect.width / 2 : 400,
@@ -1420,18 +1425,43 @@ export const menuConfig = topMenuConfig;
 /**
  * Mode-based menu resolution.
  * Returns the menu set to show for a given route path:
+ *  - /t3000/designer          → menus for the open *document kind* (see `getMenusForKind`)
  *  - /t3000/design            → Design Hub menus
  *  - /t3000/hvac-designer     → HVAC editor menus
  *  - /t3000/eez               → EEZ Studio File/Edit/View/Help (top level)
  *  - /t3000/tstat10-simulator → Simulator menus
  *  - everything else          → T3000 menus
+ *
+ * IMPORTANT: the designer check MUST come first — `'/t3000/designer'.startsWith('/t3000/design')`
+ * is true, so the Design Hub branch would otherwise swallow every designer route.
  */
 export function getMenusForPath(pathname: string): MenuItem[] {
+  const designer = matchDesignerPath(pathname);
+  if (designer) return getMenusForKind(designer.kind);
   if (pathname.startsWith('/t3000/design')) return designHubMenuConfig;
   if (pathname.startsWith('/t3000/hvac-designer')) return hvacMenuConfig;
   if (pathname.startsWith('/t3000/eez')) return eezMenuConfig;
   if (pathname.startsWith('/t3000/tstat10-simulator')) return simulatorMenuConfig;
   return topMenuConfig;
+}
+
+/** Menus for a document kind opened by the unified Designer shell. */
+export function getMenusForKind(kind: string): MenuItem[] {
+  /*
+   * The shell's panel commands ride in the kind's **View** menu (`panelMenu.ts`), next to the app's own
+   * `Show Toolbar` / `Show Building Pane`. They are appended to *copies*: `hvacMenuConfig` and friends are
+   * shared with the legacy pages, which have no designer panels. COPIES ONLY — never mutate those consts.
+   */
+  switch (kind) {
+    case 'lvgl-9-5':
+    case 'lvgl-flow-9-5':
+      return withDesignerPanelItems(eezMenuConfig);
+    case 'lcd-ui':
+      return withDesignerPanelItems(simulatorMenuConfig);
+    case 'hvac-schematic':
+    default:
+      return withDesignerPanelItems(hvacMenuConfig);
+  }
 }
 
 /**

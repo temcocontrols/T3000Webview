@@ -29,7 +29,7 @@
  *     portal targets that live in those areas (`useDesignerFrameReady`).
  */
 import React, { useLayoutEffect, useMemo } from "react";
-import { Outlet, useNavigate, useParams } from "react-router-dom";
+import { Outlet, useParams } from "react-router-dom";
 
 import { DesignerShell } from "../features/designer/components/DesignerShell";
 import { DESIGNER_DOCUMENTS } from "../features/designer/registry";
@@ -44,7 +44,6 @@ import type { DesignerDocumentEntry } from "../features/designer/documentSlot";
 
 export const DesignerLayout: React.FC = () => {
     const params = useParams<{ kind?: string; id?: string }>();
-    const navigate = useNavigate();
 
     const kindParam = params.kind;
     const id = params.id;
@@ -103,7 +102,6 @@ export const DesignerLayout: React.FC = () => {
         <DesignerShell
             adapter={adapter}
             runtime={runtime}
-            onBack={() => navigate("/t3000/design")}
         >
             <Outlet />
         </DesignerShell>
