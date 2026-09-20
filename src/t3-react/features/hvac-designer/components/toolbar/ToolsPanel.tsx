@@ -206,10 +206,18 @@ const useStyles = makeStyles({
     zIndex: 1,
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
-    width: '100%',
+    // 3 px rhythm, not 4: the panel's default is 104 px and the longest group name (*NewDuct*, 53 px of text)
+    // has to fit beside the caret and the count chip — measured, this leaves ~2 px of slack.
+    gap: '3px',
+    // Inset and rounded like the tiles it heads, so the hover fill reads as a row instead of a bar that runs
+    // into the panel's left edge. `margin 3 + padding 3` puts the caret at x = 6 — the tile grid's own inset
+    // in this panel. `width` stays explicit: a `<button>`'s `auto` width is shrink-to-fit even when it is a
+    // flex container (measured: 76 px for a 28 px header), so the margins have to be subtracted from it.
+    width: 'calc(100% - 6px)',
+    margin: '0 3px',
     height: '28px',
-    padding: '0 5px 0 4px',
+    padding: '0 3px',
+    borderRadius: '4px',
     border: 'none',
     background: tokens.colorNeutralBackground2,
     color: tokens.colorNeutralForeground2,
@@ -225,7 +233,18 @@ const useStyles = makeStyles({
   },
   /** The section that holds the active tool — visible even when it is folded. */
   groupHeadActive: {
-    boxShadow: `inset 2px 0 0 ${tokens.colorBrandForeground1}`,
+    // A rounded pill rather than flexlayout's square `inset 2px 0 0` bar: at the panel's edge the bar ran the
+    // full 28 px height and was the only square corner in a panel of rounded tiles.
+    '::before': {
+      content: '\"\"',
+      position: 'absolute',
+      left: '1px',
+      top: '6px',
+      bottom: '6px',
+      width: '2px',
+      borderRadius: '1px',
+      backgroundColor: tokens.colorBrandForeground1,
+    },
   },
   caret: {
     display: 'flex',
@@ -243,7 +262,7 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-    fontSize: '10.5px',
+    fontSize: '10px',
     fontWeight: tokens.fontWeightSemibold,
     letterSpacing: '0.3px',
     textTransform: 'uppercase',
@@ -253,13 +272,13 @@ const useStyles = makeStyles({
   },
   count: {
     flexShrink: 0,
-    minWidth: '14px',
+    minWidth: '12px',
     textAlign: 'center',
-    padding: '0 4px',
+    padding: '0 3px',
     borderRadius: '999px',
     backgroundColor: tokens.colorNeutralBackground4,
     color: tokens.colorNeutralForeground3,
-    fontSize: '9.5px',
+    fontSize: '9px',
     fontWeight: tokens.fontWeightSemibold,
     lineHeight: '14px',
   },
@@ -267,7 +286,8 @@ const useStyles = makeStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
     gap: '5px',
-    padding: '2px 7px 8px',
+    // 6 px, matching the head's own inset (`margin 3 + padding 3`) so the caret sits over the tiles' edge.
+    padding: '2px 6px 8px',
   },
   tile: {
     display: 'flex',

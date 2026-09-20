@@ -187,7 +187,7 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
                 viewportWidth - (showRight ? rightWidth : 0) - CANVAS_MIN_WIDTH_PX - SPLITTER_TOTAL_PX
             );
             const next = Math.min(spec.max, available, Math.max(spec.min, requested));
-            layoutStore.setRegionSize(kind, "left", next);
+            layoutStore.setRegionSize(kind, "left", next, spec.default);
         },
         [kind, leftSpec?.width, viewportWidth, showRight, rightWidth]
     );
@@ -206,7 +206,7 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
                 viewportWidth - (showLeft ? leftWidth : 0) - CANVAS_MIN_WIDTH_PX - SPLITTER_TOTAL_PX
             );
             const next = Math.min(spec.max, available, Math.max(spec.min, requested));
-            layoutStore.setRegionSize(kind, "right", next);
+            layoutStore.setRegionSize(kind, "right", next, spec.default);
         },
         [kind, rightSpec?.width, viewportWidth, showLeft, leftWidth]
     );
