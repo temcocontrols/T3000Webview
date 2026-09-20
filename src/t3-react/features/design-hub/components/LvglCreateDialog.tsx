@@ -37,9 +37,11 @@ import {
   CheckmarkCircleRegular,
   DismissCircleRegular,
   InfoRegular,
+  WarningRegular,
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
 import { designerPath, type DocumentKind } from '@t3-react/features/designer/kinds';
+import { projectFoldersOf } from '@t3-react/app/designerCreateGuard';
 import type { DrawingType } from '../types';
 import { designHubService } from '../services/designHubService';
 import { HubIcon } from '../icons';
@@ -160,6 +162,32 @@ export const LvglCreateDialog: React.FC<{
     logEndRef.current?.scrollIntoView({ block: 'nearest' });
   }, [log]);
 
+  /*
+   * The project folders the backend already has, so a name collision is caught **here**.
+   *
+   * The create hand-off refuses to write over an existing project folder (`EezStudioApp` → the retry may
+   * only ever delete a folder it created itself, after an auto-create by the default name wiped a real
+   * project on 2026-09-17). Without this check the click looked like a no-op: the wizard never opened, and
+   * the only feedback was a toast naming a folder the user had not typed. Read once, best effort — an
+   * unreadable list simply means no pre-check, and the guard still protects the folder.
+   */
+  const [existingFolders, setExistingFolders] = useState<string[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/eez-studio/projects')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (cancelled) return;
+        setExistingFolders(projectFoldersOf(json) ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setExistingFolders(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // ── Computed create-new path (mirrors EEZ wizard projectFilePath) ──
   const projectFolderPath = useMemo(() => {
     const loc = location.trim();
@@ -174,6 +202,26 @@ export const LvglCreateDialog: React.FC<{
     return `${projectFolderPath}/${name.trim()}.eez-project`;
   }, [projectFolderPath, name]);
 
+  /*
+   * Name collision, by the create guard's own rule: the **folder** name under the location, compared
+   * case-insensitively (with "Create directory" off the target is the location itself, which is never a
+   * project folder). Both LVGL tiles default to the same name — "LVGL 9.5" — so a second LVGL project
+   * always collides; a free name is therefore offered, not just a refusal.
+   */
+  const takenFolders = useMemo(
+    () => new Set((existingFolders ?? []).map((folder) => folder.trim().toLowerCase())),
+    [existingFolders]
+  );
+  const nameTaken = createDirectory && !!name.trim() && takenFolders.has(name.trim().toLowerCase());
+  const suggestedName = useMemo(() => {
+    const base = name.trim() || type.name;
+    for (let n = 2; n <= 50; n++) {
+      const candidate = `${base} ${n}`;
+      if (!takenFolders.has(candidate.toLowerCase())) return candidate;
+    }
+    return undefined;
+  }, [name, type.name, takenFolders]);
+
   // LVGL 9.5 and LVGL-with-Flow are two document kinds on the unified shell; the kind decides whether the
   // editor mounts the Flow panel (`LvglDocument mode="flow"`) — the same distinction `hasFlowSupport`
   // below mirrors for imported projects.
@@ -181,7 +229,7 @@ export const LvglCreateDialog: React.FC<{
 
   // ── Create New → open the EEZ New Project wizard pre-configured ────
   const handleCreate = () => {
-    if (!name.trim() || !location.trim()) return;
+    if (!name.trim() || !location.trim() || nameTaken) return;
     const params = new URLSearchParams();
     if (type.wizardType) params.set('new', type.wizardType);
     params.set('name', name.trim());
@@ -306,7 +354,7 @@ export const LvglCreateDialog: React.FC<{
   const onlineBuildings = [...onlineByBuilding.keys()].sort((a, b) => a.localeCompare(b));
   const offlineDevices = devices.filter((d) => !d.online);
 
-  const canCreate = !!name.trim() && !!location.trim();
+  const canCreate = !!name.trim() && !!location.trim() && !nameTaken;
   const canImport = deviceSerial !== '' && !importing;
 
   return (
@@ -370,6 +418,39 @@ export const LvglCreateDialog: React.FC<{
                     style={{ fontSize: 13 }}
                   />
                 </Field>
+
+                {nameTaken && (
+                  <div
+                    className={styles.importInfo}
+                    style={{ borderColor: '#e7c26a', background: '#fff8e6', color: '#6b4e00' }}
+                  >
+                    <WarningRegular style={{ fontSize: 14, flexShrink: 0 }} />
+                    <span>
+                      A project named <b>{name.trim()}</b> already exists in{' '}
+                      <b>{location.trim()}</b> — creating it would refuse and change nothing.
+                      {suggestedName ? (
+                        <>
+                          {' '}
+                          <button
+                            type="button"
+                            onClick={() => setName(suggestedName)}
+                            style={{
+                              font: 'inherit',
+                              color: '#0b5cad',
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              cursor: 'pointer',
+                              textDecoration: 'underline'
+                            }}
+                          >
+                            Use “{suggestedName}”
+                          </button>
+                        </>
+                      ) : null}
+                    </span>
+                  </div>
+                )}
 
                 <Field
                   label={<span style={{ fontSize: 12, fontWeight: 600 }}>Location</span>}

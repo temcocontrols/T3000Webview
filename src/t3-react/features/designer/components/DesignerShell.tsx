@@ -19,6 +19,7 @@ import {
     layoutStore,
     resolveRegionHeight,
     resolveRegionWidth,
+    resolveSecondaryWidth,
     useKindLayout
 } from "../hooks/useDesignerLayoutStore";
 import {
@@ -103,6 +104,12 @@ const CANVAS_MIN_HEIGHT_PX = 160;
 /** Two 4 px splitters. */
 const SPLITTER_TOTAL_PX = 8;
 
+/**
+ * What a collapsed region costs: the rail with its one chevron. A region is always rendered — at worst as this
+ * — so the control that reopens it is never gone (see the responsive block below).
+ */
+const RAIL_WIDTH_PX = 28;
+
 export interface DesignerShellProps {
     adapter: DocumentAdapter;
     runtime: DocumentRuntime;
@@ -151,17 +158,53 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
     const rightWidth = resolveRegionWidth(layoutState, "right", rightSpec?.width);
     const bottomHeight = resolveRegionHeight(layoutState, bottomSpec?.height);
 
-    // Responsive: on a narrow viewport the panels would starve the canvas (they are fixed-width by
-    // design), so they are *effectively* collapsed. The user's stored state is left untouched — widen
-    // the window and the panels return exactly as they were.
+    // Responsive: on a narrow viewport the panels would starve the canvas (they are fixed-width by design), so
+    // they are *effectively collapsed* — but they are **never omitted**. A region that disappears takes its
+    // chevron with it, and then a panel the user collapsed can never be reopened: measured at a 520 px pane,
+    // both panels were simply absent, which is exactly the report "when they have been collapsed, they cannot be
+    // expanded". The rail is 28 px, so leaving it there costs almost nothing and always keeps the way back.
     const needs = CANVAS_MIN_WIDTH_PX + SPLITTER_TOTAL_PX;
     const hideRight = viewportWidth < COMPACT_WIDTH_PX || viewportWidth - leftWidth - rightWidth < needs;
     const hideLeft =
         viewportWidth < NARROW_WIDTH_PX ||
         viewportWidth - (hideRight ? 0 : rightWidth) - leftWidth < needs;
 
-    const showLeft = !!leftSpec && !hideLeft;
-    const showRight = !!rightSpec && !hideRight;
+    /*
+     * An **explicit** expand beats the rule: a click is a better judge than a width threshold, and without this
+     * the chevron would look dead at a narrow width (the region would snap straight back to its rail).
+     */
+    const leftByUser = layoutState.left?.expandedByUser === true;
+    const rightByUser = layoutState.right?.expandedByUser === true;
+    const forceCollapseLeft = hideLeft && !leftByUser;
+    const forceCollapseRight = hideRight && !rightByUser;
+
+    // A region the rule would hide but the user expanded opens at a width that still leaves the canvas its
+    // minimum — never at its remembered size, which is what the rule is about in the first place.
+    const rightTaken = forceCollapseRight ? RAIL_WIDTH_PX : rightWidth;
+    const leftTaken = forceCollapseLeft ? RAIL_WIDTH_PX : leftWidth;
+    const fitLeft = Math.max(leftSpec?.width?.min ?? 0, viewportWidth - rightTaken - needs);
+    const fitRight = Math.max(rightSpec?.width?.min ?? 0, viewportWidth - leftTaken - needs);
+
+    const showLeft = !!leftSpec;
+    const showRight = !!rightSpec;
+
+    /*
+     * Collapsed **for any reason** — the user's own chevron or the width rule — is a 28 px rail. The two terms
+     * must stay together: sizing a region from the rule alone left a hand-collapsed panel at its full width
+     * while drawing only its rail's head, i.e. 518 x 705 px of empty panel (measured on the live page).
+     */
+    const leftRail = leftCollapsed || forceCollapseLeft;
+    const rightRail = rightCollapsed || forceCollapseRight;
+    const leftSize = leftRail
+        ? RAIL_WIDTH_PX
+        : leftByUser && hideLeft
+          ? Math.min(leftWidth, fitLeft)
+          : leftWidth;
+    const rightSize = rightRail
+        ? RAIL_WIDTH_PX
+        : rightByUser && hideRight
+          ? Math.min(rightWidth, fitRight)
+          : rightWidth;
 
     // Width at the moment a drag starts — the splitter reports total delta from that point.
     const dragOriginRef = useRef<{ side: "left" | "right" | "bottom"; size: number } | null>(null);
@@ -184,12 +227,12 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
             const requested = origin.size + delta;
             const available = Math.max(
                 spec.min,
-                viewportWidth - (showRight ? rightWidth : 0) - CANVAS_MIN_WIDTH_PX - SPLITTER_TOTAL_PX
+                viewportWidth - rightTaken - CANVAS_MIN_WIDTH_PX - SPLITTER_TOTAL_PX
             );
             const next = Math.min(spec.max, available, Math.max(spec.min, requested));
             layoutStore.setRegionSize(kind, "left", next, spec.default);
         },
-        [kind, leftSpec?.width, viewportWidth, showRight, rightWidth]
+        [kind, leftSpec?.width, viewportWidth, rightTaken]
     );
 
     const handleRightDrag = useCallback(
@@ -203,12 +246,12 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
             const requested = origin.size - delta;
             const available = Math.max(
                 spec.min,
-                viewportWidth - (showLeft ? leftWidth : 0) - CANVAS_MIN_WIDTH_PX - SPLITTER_TOTAL_PX
+                viewportWidth - leftTaken - CANVAS_MIN_WIDTH_PX - SPLITTER_TOTAL_PX
             );
             const next = Math.min(spec.max, available, Math.max(spec.min, requested));
             layoutStore.setRegionSize(kind, "right", next, spec.default);
         },
-        [kind, rightSpec?.width, viewportWidth, showLeft, leftWidth]
+        [kind, rightSpec?.width, viewportWidth, leftTaken]
     );
 
     const handleBottomDragStart = useCallback(() => {
@@ -239,27 +282,49 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
     const canvasNode =
         layout.canvas && "node" in layout.canvas ? layout.canvas.node : children ?? null;
 
+    /**
+     * The dock's region, with its tab selection wrapped.
+     *
+     * Choosing a tab is a request to **see** it, and the dock is collapsed by default (its strip stays visible
+     * so it can be reopened) — without this, a click on *Checks* / *Output* / *Search References* switched the
+     * panel behind a collapsed bar and the panel appeared not to open at all. EEZ selecting a tab itself takes
+     * the other route: the model's border opens, the document says so (`collapsed`), and the dock expands.
+     */
+    const bottomRegion = useMemo(
+        () =>
+            bottomSpec
+                ? {
+                      ...bottomSpec,
+                      onSelectTab: (tabId: string) => {
+                          bottomSpec.onSelectTab(tabId);
+                          layoutStore.setCollapsed(kind, "bottom", false);
+                      }
+                  }
+                : undefined,
+        [bottomSpec, kind]
+    );
+
     const leftToggle = useMemo(
         () =>
             leftSpec
                 ? {
                       present: true,
-                      collapsed: leftCollapsed || hideLeft,
+                      collapsed: leftRail,
                       toggle: () => layoutStore.toggleCollapsed(kind, "left")
                   }
                 : undefined,
-        [leftSpec, leftCollapsed, hideLeft, kind]
+        [leftSpec, leftRail, kind]
     );
     const rightToggle = useMemo(
         () =>
             rightSpec
                 ? {
                       present: true,
-                      collapsed: rightCollapsed || hideRight,
+                      collapsed: rightRail,
                       toggle: () => layoutStore.toggleCollapsed(kind, "right")
                   }
                 : undefined,
-        [rightSpec, rightCollapsed, hideRight, kind]
+        [rightSpec, rightRail, kind]
     );
 
     /*
@@ -289,6 +354,22 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
         };
     };
 
+    /**
+     * The region's **second column** (EEZ's Widgets Structure beside the Components Palette), which the user
+     * drags like any other divider. Remembered per region, in the same per-kind store as the region sizes.
+     */
+    const secondaryState = (regionId: "left" | "right", spec: RegionSpec | undefined) => {
+        const secondary = spec?.secondary;
+        if (!secondary) {
+            return {};
+        }
+
+        return {
+            secondaryWidth: resolveSecondaryWidth(layoutState, regionId, secondary),
+            onSecondaryWidthChange: (width: number) => layoutStore.setSecondaryWidth(kind, regionId, width)
+        };
+    };
+
     return (
         <div
             /*
@@ -313,10 +394,11 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
                         <RegionPanel
                             region={leftSpec}
                             side="left"
-                            size={leftCollapsed ? 28 : leftWidth}
-                            collapsed={leftCollapsed}
+                            size={leftSize}
+                            collapsed={leftRail}
                             onToggleCollapsed={leftToggle?.toggle}
                             {...sectionState("left", leftSpec)}
+                            {...secondaryState("left", leftSpec)}
                         />
                         <ShellSplitter orientation="vertical" onDragStart={handleLeftDragStart} onDrag={handleLeftDrag} />
                     </>
@@ -341,16 +423,17 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
                         <RegionPanel
                             region={rightSpec}
                             side="right"
-                            size={rightCollapsed ? 28 : rightWidth}
-                            collapsed={rightCollapsed}
+                            size={rightSize}
+                            collapsed={rightRail}
                             onToggleCollapsed={rightToggle?.toggle}
                             {...sectionState("right", rightSpec)}
+                            {...secondaryState("right", rightSpec)}
                         />
                     </>
                 ) : null}
             </div>
 
-            {bottomSpec ? (
+            {bottomRegion ? (
                 <>
                     {/* The dock's resize handle — the one area that had none before the redesign. */}
                     {!bottomCollapsed ? (
@@ -362,7 +445,7 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
                         />
                     ) : null}
                     <ShellBottomDock
-                        region={bottomSpec}
+                        region={bottomRegion}
                         collapsed={bottomCollapsed}
                         onToggleCollapsed={() => layoutStore.toggleCollapsed(kind, "bottom")}
                         height={bottomHeight}
