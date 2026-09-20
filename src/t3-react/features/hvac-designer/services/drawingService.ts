@@ -13,6 +13,7 @@ import { Drawing, DrawingMetadata, ExportOptions, ImportOptions } from '../types
 import { Shape } from '../types/shape.types';
 import { Layer } from '../types/drawing.types';
 import Hvac from '@/lib/t3-hvac';
+import { AreaIds } from '@/lib/t3-hvac/Data/Constant/AreaIds';
 
 const LOCAL_STORAGE_KEY = 't3-hvac-drawings';
 
@@ -150,7 +151,7 @@ export async function exportDrawing(
     case 'json':
       return JSON.stringify(drawing, null, 2);
     case 'svg': {
-      const svgEl = document.querySelector('#svg-area svg');
+      const svgEl = document.querySelector(`${AreaIds.selector('svgArea')} svg`);
       return svgEl?.outerHTML || `<svg xmlns="http://www.w3.org/2000/svg"></svg>`;
     }
     default:

@@ -23,6 +23,7 @@ import { useStatusMessage } from '../hooks/useStatusMessage';
 import SelectUtil from '@/lib/t3-hvac/Opt/Opt/SelectUtil';
 import ObjectUtil from '@/lib/t3-hvac/Opt/Data/ObjectUtil';
 import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
+import { AreaIds } from '@/lib/t3-hvac/Data/Constant/AreaIds';
 
 const useStyles = makeStyles({
   mainApp: {
@@ -98,6 +99,10 @@ export const HvacDesignerPage: React.FC = () => {
   // Initialize HVAC UI system once when page mounts
   useEffect(() => {
     try {
+      // This page owns the id table while it is mounted: the engine's runtime lookups elsewhere
+      // (tools panel, thumbnail capture, menu actions) must resolve to THIS page's containers.
+      AreaIds.reset();
+
       document.getElementById('svg-area')?.replaceChildren();
       document.getElementById('h-ruler')?.replaceChildren();
       document.getElementById('v-ruler')?.replaceChildren();

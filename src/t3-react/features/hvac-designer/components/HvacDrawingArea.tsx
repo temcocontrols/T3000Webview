@@ -13,7 +13,24 @@ import { useHvacDesignerStore } from '../store/designerStore';
 import Hvac from '@/lib/t3-hvac';
 import { isDrawing, selectedTool, continuesObjectTypes, startTransform, appState } from '@/lib/t3-hvac';
 
-export const HvacDrawingArea: React.FC = () => {
+/** Container ids. Defaults are the historical ids the engine used before it became configurable. */
+export interface HvacDrawingAreaIds {
+  documentArea: string;
+  svgArea: string;
+  hRuler: string;
+  vRuler: string;
+  cRuler: string;
+}
+
+const DEFAULT_IDS: HvacDrawingAreaIds = {
+  documentArea: 'document-area',
+  svgArea: 'svg-area',
+  hRuler: 'h-ruler',
+  vRuler: 'v-ruler',
+  cRuler: 'c-ruler',
+};
+
+export const HvacDrawingArea: React.FC<{ ids?: HvacDrawingAreaIds }> = ({ ids = DEFAULT_IDS }) => {
   const svgAreaRef = useRef<HTMLDivElement>(null);
   const { activeTool } = useHvacDesignerStore();
 
@@ -67,19 +84,19 @@ export const HvacDrawingArea: React.FC = () => {
   // in Evt_WorkAreaHammerClick. No need for React event handler.
 
   return (
-    <div id="document-area" className={styles.documentArea}>
+    <div id={ids.documentArea} className={styles.documentArea}>
       {/* Corner ruler (top-left 20x20 square) */}
-      <div id="c-ruler" className={styles.rulerCorner} />
+      <div id={ids.cRuler} className={styles.rulerCorner} />
 
       {/* Horizontal ruler (top) */}
-      <div id="h-ruler" className={styles.rulerHorizontal} />
+      <div id={ids.hRuler} className={styles.rulerHorizontal} />
 
       {/* Vertical ruler (left) */}
-      <div id="v-ruler" className={styles.rulerVertical} />
+      <div id={ids.vRuler} className={styles.rulerVertical} />
 
       {/* Main SVG drawing area - Events handled by Hammer.js (library manages all interactions) */}
       <div
-        id="svg-area"
+        id={ids.svgArea}
         className={styles.svgArea}
         ref={svgAreaRef}
         onMouseMove={handleViewportMouseMove}
