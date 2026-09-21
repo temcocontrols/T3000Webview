@@ -111,7 +111,12 @@ const useStyles = makeStyles({
         borderRadius: "999px",
         padding: "0 6px",
         backgroundColor: tokens.colorNeutralBackground4,
-        color: tokens.colorNeutralForeground2
+        color: tokens.colorNeutralForeground2,
+        /*
+         * A `badgeElement` decides for itself whether there is anything to show, and the shell cannot know
+         * that before rendering it (a component that returns `null` draws nothing). An empty chip would be a
+         * grey blob, so it hides itself: React leaves no whitespace behind, which is what `:empty` needs.*/
+        ":empty": { display: "none" }
     },
     close: {
         display: "flex",
@@ -253,7 +258,9 @@ export const RegionPanelHead: React.FC<RegionPanelHeadProps> = ({
                             >
                                 {tab.icon}
                                 <span>{tab.label}</span>
-                                {badge ? <span className={styles.badge}>{badge}</span> : null}
+                                {tab.badgeElement !== undefined || badge !== undefined ? (
+                                    <span className={styles.badge}>{tab.badgeElement ?? badge}</span>
+                                ) : null}
                                 {tab.closable ? (
                                     <span
                                         role="button"
@@ -274,7 +281,11 @@ export const RegionPanelHead: React.FC<RegionPanelHeadProps> = ({
             ) : (
                 <>
                     <span className={styles.label}>{activeTab?.label}</span>
-                    {activeTab?.badge?.() ? <span className={styles.badge}>{activeTab.badge()}</span> : null}
+                    {activeTab?.badgeElement !== undefined || activeTab?.badge?.() !== undefined ? (
+                        <span className={styles.badge}>
+                            {activeTab.badgeElement ?? activeTab.badge?.()}
+                        </span>
+                    ) : null}
                     <span className={styles.spacer} />
                 </>
             )}

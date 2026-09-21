@@ -40,11 +40,13 @@ let activeProject: ProjectStore | undefined = undefined;
 let activeLayoutModel: FlexLayout.Model | undefined = undefined;
 let activeEditorMode: EezEditorMode = "none";
 let activePageEditor = false;
+let layoutSelection: LayoutSelection = { revision: 0 };
 let modelWatch: IReactionDisposer | undefined;
 const listeners = new Set<() => void>();
 const modelListeners = new Set<() => void>();
 const modeListeners = new Set<() => void>();
 const pageEditorListeners = new Set<() => void>();
+const selectionListeners = new Set<() => void>();
 
 /** Notifies every subscriber of one of the snapshots. */
 function notify(targets: Set<() => void>): void {
@@ -223,4 +225,46 @@ function publishActivePageEditor(isPageEditor: boolean): void {
 
     activePageEditor = isPageEditor;
     notify(pageEditorListeners);
+}
+
+/**
+ * The last panel selection, published for the hosted Designer shell.
+ *
+ * The shell projects its regions from the flexlayout model, and it can only recompute when the model's
+ * *identity* changes — but a selection (`doAction(selectTab)`) mutates the same object. So `revision` changes
+ * on **every** selection, whoever made it, to force that recompute.
+ *
+ * `tabId` says *which* panel was asked for, and that is what lets the shell keep the two kinds of selection
+ * apart: EEZ opening a panel for the user (*Check* → Checks, a failed Build → Output, a search → Search
+ * References) versus the shell's own side strips, which select through the very same
+ * `LayoutModels.selectTab`. Only the former may pop the bottom dock open — the user's report was "I click User
+ * Widgets / User Actions and the bottom panel shows up too". The shell's own dock strip does not go through
+ * `selectTab` at all (it uses the raw model action, because a border toggles), so it can never reveal either.
+ *
+ * Like the other snapshots it is a value for `useSyncExternalStore`; the object is replaced per selection so
+ * the snapshot identity changes exactly once.
+ */
+export interface LayoutSelection {
+    /** Bumped on every selection (EEZ's or the shell's) — the projection's recompute trigger. */
+    revision: number;
+    /** The tab that was asked for, or `undefined` for the initial state. */
+    tabId?: string;
+}
+
+export function getLayoutSelection(): LayoutSelection {
+    return layoutSelection;
+}
+
+/** Subscribe to selections; returns the unsubscribe function. */
+export function subscribeLayoutSelection(listener: () => void): () => void {
+    selectionListeners.add(listener);
+    return () => {
+        selectionListeners.delete(listener);
+    };
+}
+
+/** Called by `LayoutModels.selectTab` — see `LayoutSelection`. */
+export function notifyLayoutSelectionChange(tabId?: string): void {
+    layoutSelection = { revision: layoutSelection.revision + 1, tabId };
+    notify(selectionListeners);
 }

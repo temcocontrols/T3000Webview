@@ -12,6 +12,7 @@ import {
 
 import type { ProjectStore } from "project-editor/store";
 import { settingsController } from "home/settings";
+import { notifyLayoutSelectionChange } from "project-editor/activeProject";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1173,6 +1174,20 @@ export class LayoutModels extends AbstractLayoutModels {
             if (!isSelected) {
                 model.doAction(FlexLayout.Actions.selectTab(tabId));
             }
+
+            /*
+             * Published **even when the tab was already selected**: this is not "the selection changed" but
+             * "someone asked for this panel" — Check opens *Checks*, a failed Build opens *Output*, a search
+             * opens *Search*, navigation opens an editor's panel. The hosted Designer shell cannot see a
+             * flexlayout selection at all (the model is a plain object and mutating it changes no identity it
+             * could compare), so without this the click did nothing visible: the model selected the tab while
+             * the shell kept drawing a collapsed bottom dock. Skipping the notify when the tab is already
+             * selected would lose the case that matters most — the user hid the dock and pressed Check again.
+             *
+             * The id goes with it because the shell's own side strips select through this same helper: only
+             * a panel that lives in the dock may reveal it (see `LayoutSelection`).
+             */
+            notifyLayoutSelectionChange(tabId);
         }
     }
 

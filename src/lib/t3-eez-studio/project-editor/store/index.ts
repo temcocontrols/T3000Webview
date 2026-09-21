@@ -806,12 +806,32 @@ export class ProjectStore {
         return this.saveToFile(true);
     }
 
-    check() {
+    async check() {
+        /*
+         * A manual **Check** must show its activity in the *Checks* panel — the one this command opens.
+         *
+         * The run itself is the build pipeline in "check only" mode, and everything it writes goes to
+         * *Output* (`build.ts` touches `Section.OUTPUT` and nothing else: `clear` at :444, `setLoading(true)`
+         * at :455, the log and the `N errors and M warnings detected` summary at :213). So the spinner a
+         * Check produced appeared on *Output* while the dock opened on *Checks* — reported by the user. The
+         * messages the *Checks* panel shows come from `backgroundCheck`, which otherwise only runs on edits
+         * (`startBackgroundCheck`, an autorun with a 100 ms delay, :536-551).
+         *
+         * So: flag *Checks* while the run is in flight, and refresh its analysis when the run finishes
+         * (`backgroundCheck` owns that section and clears the flag itself, 100 ms later).
+         */
+        this.outputSectionsStore.setLoading(Section.CHECKS, true);
+
         this.layoutModels.selectTab(
             this.layoutModels.root,
             LayoutModels.CHECKS_TAB_ID
         );
-        ProjectEditor.build.buildProject(this, "check");
+
+        try {
+            return await ProjectEditor.build.buildProject(this, "check");
+        } finally {
+            ProjectEditor.build.backgroundCheck(this);
+        }
     }
 
     async build() {
@@ -819,6 +839,17 @@ export class ProjectStore {
             this.buildExtensions();
             return;
         }
+
+        /*
+         * Show the log **while** it runs, the way `check()` shows *Checks*. The origin selected *Output* only
+         * when the build had failed, so on the hosted Designer shell "clicking Build did nothing visible" —
+         * the panel that carries the compiler output stayed collapsed. Safe in every mode:
+         * `LayoutModels.selectTab` is a no-op for a model that has no such tab (Full Sim's layout).
+         */
+        this.layoutModels.selectTab(
+            this.layoutModels.root,
+            LayoutModels.OUTPUT_TAB_ID
+        );
 
         const result = await ProjectEditor.build.buildProject(
             this,

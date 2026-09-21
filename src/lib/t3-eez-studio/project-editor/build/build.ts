@@ -452,10 +452,20 @@ export async function build(
         return undefined;
     }
 
-    OutputSections.setLoading(Section.OUTPUT, true);
+    /*
+     * A **Check** is this pipeline in "check only" mode (`if (option == "check") return undefined` below), so it
+     * writes its log to *Output* either way — but the spinner belongs to the panel the command opens, and Check
+     * opens **Checks** (`store/index.ts` `check()`, which flags that section itself). Flagging both put two
+     * spinners on screen for one action (user-reported: *"when i click check, why output also showing a
+     * loading?"*). The log still lands in Output, and that tab still reports the outcome through its own
+     * check / warning / error icon once the messages are in.
+     */
+    if (option !== "check") {
+        OutputSections.setLoading(Section.OUTPUT, true);
 
-    // give some time for loader to start
-    await new Promise(resolve => setTimeout(resolve, 50));
+        // give some time for loader to start
+        await new Promise(resolve => setTimeout(resolve, 50));
+    }
 
     let parts: any = undefined;
 

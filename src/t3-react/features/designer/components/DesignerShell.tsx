@@ -318,6 +318,27 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
         [bottomSpec, bottomCollapsed, kind]
     );
 
+    /*
+     * A request from the **engine** to show one of its panels has to win over a remembered "the user collapsed
+     * this dock". Check opens *Checks*, a failed Build opens *Output*, a search opens *Search References* —
+     * measured live before this: the model selected the tab, the shell drew a 32 px strip, and the click
+     * looked dead (the canvas did not move at all). The dock is collapsed by default *and* the store remembers
+     * a collapse, so a store value written earlier must not veto a later request.
+     *
+     * Keyed on `revealRevision`, not on `activeTabId`: the spec is stale whenever the dock's own toggle
+     * cleared the model's selection, so a value comparison would miss the second Check (and the model skips a
+     * re-selection of the tab it still holds — the request is the event, the value is not). Deliberately not
+     * "the spec always wins", which would break *Hide all panels* and the strip's own close.
+     */
+    const revealRef = useRef<number | undefined>(bottomSpec?.revealRevision);
+    React.useEffect(() => {
+        const reveal = bottomSpec?.revealRevision;
+        if (reveal !== undefined && reveal !== revealRef.current) {
+            layoutStore.setCollapsed(kind, "bottom", false);
+        }
+        revealRef.current = reveal;
+    }, [bottomSpec?.revealRevision, kind]);
+
     const leftToggle = useMemo(
         () =>
             leftSpec
@@ -329,6 +350,7 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
                 : undefined,
         [leftSpec, leftRail, kind]
     );
+
     const rightToggle = useMemo(
         () =>
             rightSpec
