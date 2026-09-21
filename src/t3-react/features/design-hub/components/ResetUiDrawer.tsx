@@ -392,7 +392,16 @@ export const ResetUiDrawer: React.FC<Props> = ({ open, onClose, project, filePat
                             <Button
                                 appearance="primary"
                                 icon={<ArrowResetRegular style={{ fontSize: 13 }} />}
-                                disabled={!selected || !selected.ip || running || !!inventory.error}
+                                /*
+                                 * Enabled as long as a device with an address is picked —
+                                 * deliberately NOT gated on the inventory probe. That probe
+                                 * can fail for reasons that do not stop the reset (a
+                                 * momentarily unavailable proxy, a device that is reachable
+                                 * for the reset call but slow for `device/info`), and a
+                                 * disabled button with no way forward is worse than an error
+                                 * the run reports honestly.
+                                 */
+                                disabled={!selected || !selected.ip || running}
                                 onClick={() => setConfirming(true)}
                                 style={{ fontSize: 12 }}
                             >
