@@ -8,7 +8,8 @@ import {
     runInAction
 } from "mobx";
 import { observer } from "mobx-react";
-import { ButtonAction, IconAction, ButtonGroup, SegmentedAction } from "./fluent-toolbar";
+import { ZoomFitRegular } from "@fluentui/react-icons";
+import { ButtonAction, IconAction, ButtonGroup, SegmentedAction, ToolbarDensityContext } from "./fluent-toolbar";
 import { makeStyles, tokens } from "@fluentui/react-components";
 import { BuildConfiguration } from "project-editor/project/project";
 import { ProjectContext } from "project-editor/project/context";
@@ -134,7 +135,9 @@ export const Toolbar = observer(
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    padding: `2px ${tokens.spacingHorizontalS}`,
+                    padding: isProjectEditorHosted()
+                        ? "2px 4px"
+                        : `2px ${tokens.spacingHorizontalS}`,
                     /*
                      * No rule under the tools when the shell hosts this toolbar: the band **is** the toolbar
                      * there, and the shell's own edges already separate it from the canvas. The nav's line
@@ -226,6 +229,73 @@ const EditorButtons = observer(
             return false;
         }
 
+        /**
+         * The `−  100%  +  ↺` zoom cluster (user's choice 2026-09-21: the shape they had before, at the new
+         * position — right after Paste — plus the **reset** they asked for next).
+         *
+         * Drawn by `EditorButtons` itself, not by a child component, because the value it shows is
+         * `pageTabState.transform.scale` — an observable this observer class already tracks, so the readout
+         * and the buttons' enabled state stay live without a second subscription.
+         */
+        renderZoomControls() {
+            const pageTabState = this.pageTabState!;
+            const zoom = getPageZoom(this.context, pageTabState);
+            const out = nextZoomStop(zoom, -1);
+            const into = nextZoomStop(zoom, 1);
+
+            return (
+                <ButtonGroup>
+                    <IconAction
+                        label=""
+                        title="Zoom out"
+                        icon="material:zoom_out"
+                        onClick={() => setPageZoom(this.context, pageTabState, out)}
+                        enabled={out !== zoom}
+                    />
+                    <span
+                        style={{
+                            minWidth: "38px",
+                            textAlign: "center",
+                            fontSize: "12px",
+                            fontVariantNumeric: "tabular-nums",
+                            alignSelf: "center"
+                        }}
+                    >
+                        {Math.round(zoom * 100)}%
+                    </span>
+                    <IconAction
+                        label=""
+                        title="Zoom in"
+                        icon="material:zoom_in"
+                        onClick={() => setPageZoom(this.context, pageTabState, into)}
+                        enabled={into !== zoom}
+                    />
+                    {/*
+                     * **Reset** — back to 100%, scale only (the pan is left alone, exactly like the shell's
+                     * old `zoomReset`; *Fit to window*, which also re-centres, is not here — say the word and
+                     * it becomes a fourth button or an item in the page zoom dropdown).
+                     *
+                     * Its glyph is Fluent's `ZoomFitRegular` — a magnifier with arrows, i.e. the third member
+                     * of the `−` / `+` zoom family. The first attempt was `ArrowResetRegular`, a generic
+                     * circular arrow that said nothing about *zoom* (user: *"change a icon for reset zoom"*).
+                     * Fluent ships no "100 %" / "1:1" glyph; if this one is not right either, the alternatives
+                     * are `ArrowClockwiseRegular`, `FullScreenMaximizeRegular`, or dropping the icon for a small
+                     * `1:1` text button.
+                     *
+                     * Disabled at 100%: the old `View ▾` entry was too (`|zoom − 1| > 0.001`), and a button
+                     * that looks live but does nothing is worse than a greyed one.
+                     */}
+                    <IconAction
+                        label=""
+                        title="Reset zoom to 100%"
+                        icon={<ZoomFitRegular />}
+                        onClick={() => setPageZoom(this.context, pageTabState, 1)}
+                        enabled={Math.abs(zoom - 1) > 0.001}
+                    />
+                </ButtonGroup>
+            );
+        }
+
         get featureItems() {
             if (this.context.runtime) {
                 return undefined;
@@ -278,7 +348,15 @@ const EditorButtons = observer(
                 );
 
             return (
-                <div className="EezStudio_ProjectEditor_ToolbarNav_EditorButtons">
+                <div
+                    className="EezStudio_ProjectEditor_ToolbarNav_EditorButtons"
+                    /* The band's row is 4 px apart, not 8: the nine gaps are 36 px of the 64 px the tool row
+                       has to yield for the document's mode cluster to fit (see `ToolbarDensityContext`). */
+                    style={isProjectEditorHosted() ? { gap: "4px" } : undefined}
+                >
+                    <ToolbarDensityContext.Provider
+                        value={isProjectEditorHosted()}
+                    >
                     {!this.context.runtime && (
                         <ButtonGroup>
                             <IconAction
@@ -344,6 +422,21 @@ const EditorButtons = observer(
                                     enabled={this.context.canPaste}
                                 />
                             </ButtonGroup>
+
+                            {/*
+                              * The zoom control — `−  100%  +`, right after Paste.
+                              *
+                              * The place is the user's (2026-09-21: *"for zoom, i think u need place it after
+                              * paste"*); the shape is the cluster they had before, in the shell's trailing
+                              * area: one click per step and the value always readable. The origin drew this
+                              * row's zoom at its **end**, after the feature items.
+                              *
+                              * The steps are the same stops the dropdown lists and the keyboard walks
+                              * (`Ctrl+−` / `Ctrl+=` / `Ctrl+0`), so the two can never disagree — and the
+                              * dropdown itself is still there for the legacy page (see the end of this row).
+                              */}
+                            {this.pageTabState ? this.renderZoomControls() : null}
+
                             <ButtonGroup>
                                 {/*
                                   * Hidden in the unified Designer shell (2026-09-21).
@@ -559,14 +652,15 @@ const EditorButtons = observer(
                     )}
 
                     {/*
-                      * Hosted by the unified Designer shell (P5), the zoom control lives in the shell's
-                      * command bar and drives the same `pageTabState.transform` through
-                      * `designer/documents/lvgl/eezViewport.ts`. Two controls for one value in the same
-                      * toolbar is what the shell unification exists to remove.
+                      * The **dropdown** zoom — the origin's widget, kept for the legacy page (it offers a
+                      * typed value, the presets and *Global zoom*). The hosted Designer shell draws the
+                      * `− 100% +` cluster above, after Paste, and switches its own off
+                      * (`shellControls.viewport: false` in `LvglDocument`), so no page ever shows both.
                       */}
                     {this.pageTabState && !isProjectEditorHosted() && (
                         <PageZoomButton pageTabState={this.pageTabState} />
                     )}
+                    </ToolbarDensityContext.Provider>
                 </div>
             );
         }
@@ -606,8 +700,66 @@ const SelectLanguage = observer(
     }
 );
 
-const PageZoomButton = observer(
-    class PageZoomButton extends React.Component<{
+/**
+ * The zoom stops — the list EEZ's dropdown offers (`Zoom to 10 % … 1600 %`).
+ *
+ * One source for every way in: the `−` / `+` buttons step it, the dropdown lists it, and the keyboard walks
+ * the shell's own ladder (`Ctrl+−` / `Ctrl+=` / `Ctrl+0`). Sharing the list is what keeps a step from landing
+ * between two stops no menu can show.
+ */
+const ZOOM_STOPS = [10, 25, 50, 75, 100, 150, 200, 400, 800, 1600];
+
+/** The next stop from `zoom` in `direction`, clamped at both ends. */
+function nextZoomStop(zoom: number, direction: 1 | -1): number {
+    const percent = zoom * 100;
+
+    if (direction > 0) {
+        const next = ZOOM_STOPS.find(stop => stop > percent + 0.5);
+        return (next ?? ZOOM_STOPS[ZOOM_STOPS.length - 1]) / 100;
+    }
+
+    const lower = ZOOM_STOPS.filter(stop => stop < percent - 0.5);
+    return (lower.length ? lower[lower.length - 1] : ZOOM_STOPS[0]) / 100;
+}
+
+/**
+ * The zoom EEZ keeps, in two places: a **global** value (`uiStateStore.globalFlowZoom` + `flowZoom`) that
+ * applies to every page, and the active page tab's own `transform.scale`.
+ *
+ * One implementation for both entry points — the `− 100% +` cluster and `PageZoomButton`'s dropdown.
+ */
+function getPageZoom(
+    projectStore: React.ContextType<typeof ProjectContext>,
+    pageTabState: PageTabState
+): number {
+    return projectStore.uiStateStore.globalFlowZoom
+        ? projectStore.uiStateStore.flowZoom
+        : pageTabState.transform.scale;
+}
+
+function setPageZoom(
+    projectStore: React.ContextType<typeof ProjectContext>,
+    pageTabState: PageTabState,
+    zoom: number
+): void {
+    runInAction(() => {
+        projectStore.uiStateStore.flowZoom = zoom;
+    });
+
+    if (!projectStore.uiStateStore.globalFlowZoom) {
+        /*
+         * A **clone**, replacing the observable: the page editor reads `transform`, so mutating `scale` in
+         * place would leave the canvas at the old zoom.
+         */
+        const newTransform = pageTabState.transform.clone();
+        newTransform.scale = zoom;
+        runInAction(() => {
+            pageTabState.transform = newTransform;
+        });
+    }
+}
+
+const PageZoomButton = observer(    class PageZoomButton extends React.Component<{
         pageTabState: PageTabState;
     }> {
         static contextType = ProjectContext;
@@ -637,23 +789,11 @@ const PageZoomButton = observer(
         }
 
         get zoom() {
-            return this.globalZoom
-                ? this.context.uiStateStore.flowZoom
-                : this.props.pageTabState.transform.scale;
+            return getPageZoom(this.context, this.props.pageTabState);
         }
 
         set zoom(value: number) {
-            runInAction(() => {
-                this.context.uiStateStore.flowZoom = value;
-            });
-
-            if (!this.globalZoom) {
-                const newTransform = this.props.pageTabState.transform.clone();
-                newTransform.scale = value;
-                runInAction(() => {
-                    this.props.pageTabState.transform = newTransform;
-                });
-            }
+            setPageZoom(this.context, this.props.pageTabState, value);
         }
 
         get globalZoom() {
@@ -823,17 +963,17 @@ const PageZoomButton = observer(
                             />
                         </div>
                         <hr className="dropdown-divider" />
-                        {[10, 25, 50, 75, 100, 150, 200, 400, 800, 1600].map(
-                            zoom => (
+                        {ZOOM_STOPS.map(
+                            stop => (
                                 <li
-                                    key={zoom}
+                                    key={stop}
                                     className="EezStudio_PageZoomButton_DropdownContent_MenuItem"
                                     onClick={() => {
-                                        this.zoom = zoom / 100;
+                                        this.zoom = stop / 100;
                                         this.setDropDownOpen(false);
                                     }}
                                 >
-                                    Zoom to {zoom}%
+                                    Zoom to {stop}%
                                 </li>
                             )
                         )}
@@ -974,11 +1114,49 @@ export const RunEditSwitchControls = observer(
                 return null;
             }
 
-            const iconSize = 30;
+            /*
+             * **One row** (user request 2026-09-21: *"for the edit run debug, full sim, deploy, no need to use
+             * 2 rows, just one row, but need align right"*).
+             *
+             * Standalone — in the Designer shell's band — the cluster is a *row*, so the two JSX groups below
+             * simply end up side by side: Edit · Run · Debug · Full Sim · Deploy on one line, and the shell
+             * pins the whole thing to the band's right end (`ShellTopBar.styles.mode` sits outside the tools
+             * zone, after the trailing controls and their 1 px rule). Inside EEZ's own nav (the legacy page)
+             * the two lines stay: there the cluster shares a 40 px row with the rest of the toolbar, which is
+             * the constraint they were invented for.
+             *
+             * The glyphs shrink to 16 px in the single row rather than the two-line 30 px, and the labels drop to
+             * 12 px with 5 px of side padding (`minWidth: 0` releases Fluent's 64 px floor). Five labelled
+             * buttons at the default metrics need 395 px (measured); the compact form is 369 px, and the tool
+             * row beside it gives back another 66 px of its own (`ToolbarDensityContext`) — together that is
+             * what keeps the band's total inside a 1400 px pane: 968 px of tools + 371 px of modes + 31 px of
+             * gap = 1370 px, against the 1392 px the band has, measured with every button of both rows whole.
+             */
+            const iconSize = this.props.standalone ? 16 : 30;
+            /** The single row has to fit beside the document's toolbar — see the comment above. */
+            const modeButtonStyle = this.props.standalone
+                ? {
+                      padding: "2px 5px",
+                      fontSize: "12px",
+                      minHeight: "26px",
+                      minWidth: 0,
+                      columnGap: "4px"
+                  }
+                : undefined;
             return (
                 <div
                     className="EezStudio_ProjectEditor_ToolbarNav_RunEditSwitchControls"
-                    style={{ display: "flex", flexDirection: "column", gap: "2px" }}
+                    style={
+                        this.props.standalone
+                            ? {
+                                  display: "flex",
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  justifyContent: "flex-end",
+                                  gap: "4px"
+                              }
+                            : { display: "flex", flexDirection: "column", gap: "2px" }
+                    }
                 >
                     <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                     <ButtonAction
@@ -986,6 +1164,7 @@ export const RunEditSwitchControls = observer(
                         title="Enter edit mode (Shift+F5)"
                         icon="material:mode_edit"
                         iconSize={iconSize}
+                        style={modeButtonStyle}
                         onClick={this.context.onSetEditorMode}
                         selected={
                             !this.context.runtime && !this.isFullSimulatorMode
@@ -997,6 +1176,7 @@ export const RunEditSwitchControls = observer(
                         title="Enter run mode (F5)"
                         icon={RUN_ICON}
                         iconSize={iconSize}
+                        style={modeButtonStyle}
                         onClick={this.context.onSetRuntimeMode}
                         selected={
                             this.context.runtime &&
@@ -1029,6 +1209,7 @@ export const RunEditSwitchControls = observer(
                             </svg>
                         }
                         iconSize={iconSize}
+                        style={modeButtonStyle}
                         onClick={this.context.onSetDebuggerMode}
                         selected={
                             this.context.runtime &&
@@ -1051,6 +1232,7 @@ export const RunEditSwitchControls = observer(
                                 title="Run in Full Simulator (F7)"
                                 icon="material:computer"
                                 iconSize={iconSize}
+                                style={modeButtonStyle}
                                 onClick={this.context.onSetFullSimulatorMode}
                                 selected={this.isFullSimulatorMode}
                                 loader={this.isFullSimulatorBuilding}
@@ -1062,6 +1244,7 @@ export const RunEditSwitchControls = observer(
                             title="Deploy to Device — export device JSON files to device-export\\ folder"
                             icon="material:file_download"
                             iconSize={iconSize}
+                            style={modeButtonStyle}
                             onClick={this.handleDeploy}
                         />
                     </div>

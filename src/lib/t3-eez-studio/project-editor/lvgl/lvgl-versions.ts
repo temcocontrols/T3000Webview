@@ -714,6 +714,15 @@ export function getLvglWasmFlowRuntimeConstructor(
             this.HEAPU8 = new Uint8Array(0);
             this.HEAP32 = new Int32Array(0);
             this.HEAP8 = new Int8Array(0);
+            /*
+             * `HEAPF32` is the one view the LVGL widget code writes through: `Line.toLVGLCode` puts the
+             * `points` array into wasm memory with `HEAPF32.set(valuesArray, ptr >> 2)`. Without it, the
+             * proxy below answers the missing property with an **empty function** (`() => {}`), so the call
+             * fails as `runtime.wasm.HEAPF32.set is not a function` — a Line widget with `points` then never
+             * gets its geometry (mobx logs an uncaught exception in the reaction that creates the widget).
+             * Declared here and swapped for a getter on boot, like the other views.
+             */
+            this.HEAPF32 = new Float32Array(0);
             this.FS = {};
             self.postWorkerToRendererMessage = (data: any) => {
                 // C++ EM_ASM_INT bridge calls (getObjectVariableMemberValue,
@@ -773,6 +782,10 @@ export function getLvglWasmFlowRuntimeConstructor(
                     Object.defineProperty(self, "HEAP8", {
                         get() { return Module.HEAP8; }, configurable: true
                     });
+                    // `HEAPF32` too — `Line.toLVGLCode` writes its `points` through it (see the constructor).
+                    Object.defineProperty(self, "HEAPF32", {
+                        get() { return Module.HEAPF32; }, configurable: true
+                    });
                     if (Module.FS) self.FS = Module.FS;
                     for (const key of Object.keys(Module)) {
                         if (typeof Module[key] === "function") {
@@ -799,6 +812,7 @@ export function getLvglWasmFlowRuntimeConstructor(
             this.HEAPU8 = new Uint8Array(0);
             this.HEAP32 = new Int32Array(0);
             this.HEAP8 = new Int8Array(0);
+            this.HEAPF32 = new Float32Array(0);
             this.FS = {};
             const self = this;
             const p = new Proxy(this, {

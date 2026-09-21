@@ -29,6 +29,8 @@ import {
     ColorFillRegular,
     AppGenericRegular,
     DocumentBulletListRegular,
+    ZoomInRegular,
+    ZoomOutRegular,
 } from "@fluentui/react-icons";
 
 // ── material icon name → Fluent icon component ───────────────────────
@@ -71,6 +73,8 @@ const MATERIAL_TO_FLUENT: Record<string, React.ReactElement> = {
     "material:format_color_fill": <ColorFillRegular />,
     "material:extension": <AppGenericRegular />,
     "material:playlist_play": <DocumentBulletListRegular />,
+    "material:zoom_in": <ZoomInRegular />,
+    "material:zoom_out": <ZoomOutRegular />,
 };
 
 function resolveIcon(icon: string | React.ReactNode, size?: number): React.ReactElement | undefined {
@@ -145,6 +149,31 @@ export function shortLabelOf(title: string | undefined): string | undefined {
     return word.length > 12 ? `${word.slice(0, 11)}…` : word;
 }
 
+// ── density (the designer band) ──────────────────────────────────────
+
+/**
+ * Whether the buttons below are drawn inside the designer shell's **60 px band**.
+ *
+ * The band shares its width with the document's own mode cluster (Edit · Run · Debug · Full Sim · Deploy),
+ * and the zone the tool row lives in is `overflow: hidden` — so every pixel the row does not need is a
+ * pixel the row's last button (*Settings*) stops being clipped by. The band already draws one line of
+ * 26 px controls, so the tight form keeps the label and the height and takes the *horizontal* slack only:
+ * 4 px of side padding instead of 6, 4 px between a glyph and its label instead of 8, and a 24 px floor
+ * instead of 28 for the glyph-only buttons (undo/redo/zoom).
+ *
+ * Measured on the leading row (Save · undo/redo · Copy · Paste · zoom · Check · Build · Front/Back face ·
+ * Timeline · Descriptions · Settings) at a 1400 px pane: 1046 px → 980 px, against the 982 px the tools
+ * zone can give — which is what makes the single-row mode cluster fit without clipping *Settings*.
+ */
+export const ToolbarDensityContext = React.createContext(false);
+
+/** The band's button metrics — see `ToolbarDensityContext`. */
+const DENSE_ACTION_STYLE: React.CSSProperties = {
+    padding: "2px 4px",
+    columnGap: "4px",
+    minWidth: "24px"
+};
+
 // ── Styles ───────────────────────────────────────────────────────────
 
 const useStyles = makeStyles({
@@ -196,6 +225,7 @@ export const IconAction: React.FC<IconActionProps> = ({
 }) => {
     const resolved = resolveIcon(icon);
     const label = labelProp ?? shortLabelOf(title);
+    const dense = React.useContext(ToolbarDensityContext);
 
     return (
         <Button
@@ -212,6 +242,7 @@ export const IconAction: React.FC<IconActionProps> = ({
                 fontWeight: 400,
                 fontSize: "12px",
                 whiteSpace: "nowrap",
+                ...(dense ? DENSE_ACTION_STYLE : null),
                 ...style
             }}
         >
@@ -233,6 +264,14 @@ interface ButtonActionProps {
     attention?: boolean;
     loader?: boolean;
     className?: string;
+    /**
+     * Extra styling for this one button.
+     *
+     * The band's **single-row** mode cluster needs it: five labelled buttons at the default `2px 8px` /
+     * 13 px / 20 px icon measure ~395 px together, which leaves the document's toolbar clipped
+     * (`ShellTopBar.styles.tools` is `overflow: hidden`) — the compact form drops that to ~285 px.
+     */
+    style?: React.CSSProperties;
 }
 
 export const ButtonAction: React.FC<ButtonActionProps> = ({
@@ -245,6 +284,7 @@ export const ButtonAction: React.FC<ButtonActionProps> = ({
     selected = false,
     attention = false,
     loader = false,
+    style
 }) => {
     const resolvedIcon = icon
         ? typeof icon === "string"
@@ -274,7 +314,7 @@ export const ButtonAction: React.FC<ButtonActionProps> = ({
             disabled={!enabled}
             disabledFocusable={loader}
             size="small"
-            style={{ padding: "2px 8px", minHeight: "26px", fontWeight: 400, fontSize: "13px" }}
+            style={{ padding: "2px 8px", minHeight: "26px", fontWeight: 400, fontSize: "13px", ...style }}
         >
             {loader ? (
                 <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
@@ -372,11 +412,17 @@ const useSegmentStyles = makeStyles({
             backgroundColor: tokens.colorNeutralBackground1Hover,
             color: tokens.colorBrandForeground2
         }
+    },
+    /** The band's tighter segment — `ToolbarDensityContext`. */
+    segmentDense: {
+        padding: "0 7px",
+        gap: "4px"
     }
 });
 
 export const SegmentedAction: React.FC<{ segments: SegmentSpec[] }> = ({ segments }) => {
     const styles = useSegmentStyles();
+    const dense = React.useContext(ToolbarDensityContext);
 
     return (
         <div className={styles.box} role="radiogroup">
@@ -387,7 +433,11 @@ export const SegmentedAction: React.FC<{ segments: SegmentSpec[] }> = ({ segment
                     role="radio"
                     aria-checked={segment.selected}
                     title={segment.title}
-                    className={mergeClasses(styles.segment, segment.selected && styles.segmentSelected)}
+                    className={mergeClasses(
+                        styles.segment,
+                        dense && styles.segmentDense,
+                        segment.selected && styles.segmentSelected
+                    )}
                     onClick={segment.onClick}
                 >
                     {segment.icon ? <Icon icon={segment.icon} size={16} /> : null}

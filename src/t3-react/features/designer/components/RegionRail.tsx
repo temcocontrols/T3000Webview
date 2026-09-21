@@ -79,6 +79,18 @@ const useStyles = makeStyles({
         transitionDuration: "0.1s",
         ":hover": { backgroundColor: tokens.colorNeutralBackground1Hover }
     },
+    /**
+     * The tab's **outer** corners are square (user request 2026-09-21: *"the style when clicked, no need the
+     * right radius, just vertical line should be ok?"*).
+     *
+     * The bar sits on the window edge, so a radius there rounded the tint *away* from the edge the tab belongs
+     * to and made the open tab read as a floating pill; squared, the tint reaches the edge and the 2 px brand
+     * line (`markerRight` / `markerLeft`) is what marks the open tab — the same rule the region heads use
+     * (a full-height active tab, no pill). Applied to every tab, not just the open one, so a hover tint cannot
+     * show a different silhouette from the state below it.
+     */
+    tabRight: { borderRadius: "4px 0 0 4px" },
+    tabLeft: { borderRadius: "0 4px 4px 0" },
     /** The open panel's rail tab: brand tint + brand label, so the bar names what is open. */
     active: {
         color: tokens.colorBrandForeground1,
@@ -173,6 +185,7 @@ export const RegionRail: React.FC<RegionRailProps> = ({ rail, children }) => {
                             style={railLabelStyle(rail.side)}
                             className={mergeClasses(
                                 styles.tab,
+                                left ? styles.tabLeft : styles.tabRight,
                                 active ? styles.active : "",
                                 active ? (left ? styles.markerLeft : styles.markerRight) : "",
                                 tab.disabled ? styles.disabled : ""
