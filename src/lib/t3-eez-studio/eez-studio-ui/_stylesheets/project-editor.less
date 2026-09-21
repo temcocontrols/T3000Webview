@@ -2182,7 +2182,7 @@
 }
 
 @timelineHeight: 40px;
-@timelineScrollBarSize: 20px;
+@timelineScrollBarSize: 12px;
 @timelineRowHeight: 20px;
 
 .EezStudio_PageTimeline_Outline {
@@ -2243,8 +2243,10 @@
     }
 
     .EezStudio_PageTimeline_TickText {
-        stroke: @textColor;
+        fill: @textColor;
+        stroke: none;
         font-weight: lighter;
+        font-size: 11px;
     }
 
     .EezStudio_PageTimeline_Row {
@@ -2272,6 +2274,40 @@
 .EezStudio_PageTimeline_ScrollBar {
     position: absolute;
     overflow: hidden;
+
+    /* NOTE: `scrollbar-color` is inherited from the EEZ shell (`.EezStudio_Body` sets
+       `#c1c1c1 transparent`). Any non-`auto` value makes Chromium take the *standard*
+       scrollbar path, which ignores `::-webkit-scrollbar*` entirely and paints the native
+       Windows bar — complete with ◀ ▶ arrow buttons — clamped to this 12 px strip.
+       Resetting to `auto` here hands control back to the webkit rules below. */
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+
+    &::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: #a9a9a9;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    /* Windows Chromium draws arrow buttons, which are pointless in a 12 px strip */
+    &::-webkit-scrollbar-button {
+        display: none;
+        width: 0;
+        height: 0;
+    }
+
     & > div {
         overflow: hidden;
     }

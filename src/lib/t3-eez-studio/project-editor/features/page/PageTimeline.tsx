@@ -48,6 +48,11 @@ const ROW_GAP = 3;
 const NEEDLE_WIDTH = 4;
 const VISIBILITY_TOLERANCE = 10;
 
+// Chromium ignores `alignment-baseline`, so `y={0} alignmentBaseline="hanging"` put the
+// second labels above the SVG viewport and clipped them away. Use an explicit alphabetic
+// baseline instead, which renders identically in every engine.
+const TIMELINE_TICK_TEXT_BASELINE = TIMELINE_HEIGHT / 2 - 6;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 export class PageTimelineEditorState {
@@ -1195,9 +1200,8 @@ const Timeline = observer(
                                 <text
                                     className="EezStudio_PageTimeline_TickText"
                                     x={timelineState.positionToPx(x)}
-                                    y={0}
+                                    y={TIMELINE_TICK_TEXT_BASELINE}
                                     textAnchor="middle"
-                                    alignmentBaseline="hanging"
                                 >
                                     {x}
                                 </text>
@@ -1232,12 +1236,15 @@ const Timeline = observer(
                     }
                 />
 
+                {/* `SvgLabel` centers its text with `alignment-baseline`, which Chromium
+                    ignores, so the glyphs sit a few pixels above the box — start the box
+                    low enough that the full number stays inside the SVG viewport. */}
                 <SvgLabel
                     text={timelineState.position + " s"}
                     textClassName="EezStudio_PageTimeline_Needle"
                     rectClassName="EezStudio_PageTimeline_Needle_TextBackground"
                     x={timelineState.positionPx + 4}
-                    y={-3}
+                    y={4}
                     horizontalAlignment="left"
                     verticalAlignment="top"
                     border={{

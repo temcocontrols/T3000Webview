@@ -32,15 +32,19 @@
 import { autorun, type IReactionDisposer } from "mobx";
 import type * as FlexLayout from "flexlayout-react";
 
+import { ProjectEditor } from "project-editor/project-editor-interface";
+
 import type { ProjectStore } from "project-editor/store";
 
 let activeProject: ProjectStore | undefined = undefined;
 let activeLayoutModel: FlexLayout.Model | undefined = undefined;
 let activeEditorMode: EezEditorMode = "none";
+let activePageEditor = false;
 let modelWatch: IReactionDisposer | undefined;
 const listeners = new Set<() => void>();
 const modelListeners = new Set<() => void>();
 const modeListeners = new Set<() => void>();
+const pageEditorListeners = new Set<() => void>();
 
 /** Notifies every subscriber of one of the snapshots. */
 function notify(targets: Set<() => void>): void {
@@ -98,10 +102,12 @@ export function publishActiveProject(projectStore: ProjectStore | undefined): vo
         modelWatch = autorun(() => {
             publishActiveEditorMode(modeOf(projectStore));
             publishActiveLayoutModel(projectStore.layoutModels?.root);
+            publishActivePageEditor(isPageEditorActive(projectStore));
         });
     } else {
         publishActiveEditorMode("none");
         publishActiveLayoutModel(undefined);
+        publishActivePageEditor(false);
     }
 
     notify(listeners);
@@ -168,4 +174,53 @@ function publishActiveEditorMode(mode: EezEditorMode): void {
 
     activeEditorMode = mode;
     notify(modeListeners);
+}
+
+/**
+ * Is the **active editor a page** — i.e. is there a *Widgets Structure* to show?
+ *
+ * EEZ's left area has a second column holding the *Widgets Structure* panel (`flow-structure` →
+ * `PageStructure`), and that panel is bound to the **active editor**: it reads `editorsStore.activeEditor`
+ * and only answers for a `PageClass` (`PagesNavigation.tsx:78-92`). For every other editor — the Settings
+ * editor, a flow editor — it falls back to `EezStudio_PageStructure_NoPageSelected`, which is a *flat,
+ * empty* block (`project-editor.less:4208`: `height: 100%; background-color: @panelHeaderColor`).
+ *
+ * Measured live with the Settings editor open: that column drew 186 × 673 px of dead grey beside the
+ * Components Palette (and pushed the canvas 186 px to the right). The shell drops the column whenever this
+ * is false — the same rule it already applies to a region with no panels at all. (The origin keeps it,
+ * blank: nothing in EEZ hides it, because the flexlayout model is static.)
+ */
+function isPageEditorActive(projectStore: ProjectStore | undefined): boolean {
+    const activeEditor = projectStore?.editorsStore?.activeEditor;
+
+    // `ProjectEditor` is an empty object until `initProjectEditor` fills it in, so `PageClass` can be
+    // missing while a project is still booting.
+    const PageClass = (ProjectEditor as { PageClass?: new (...args: any[]) => any }).PageClass;
+    if (!activeEditor || !PageClass) {
+        return false;
+    }
+
+    return activeEditor.object instanceof PageClass;
+}
+
+/** Is a page editor the active one? (`false` while no project is open.) */
+export function getActivePageEditor(): boolean {
+    return activePageEditor;
+}
+
+/** Subscribe to page-editor changes; returns the unsubscribe function. */
+export function subscribeActivePageEditor(listener: () => void): () => void {
+    pageEditorListeners.add(listener);
+    return () => {
+        pageEditorListeners.delete(listener);
+    };
+}
+
+function publishActivePageEditor(isPageEditor: boolean): void {
+    if (activePageEditor === isPageEditor) {
+        return;
+    }
+
+    activePageEditor = isPageEditor;
+    notify(pageEditorListeners);
 }

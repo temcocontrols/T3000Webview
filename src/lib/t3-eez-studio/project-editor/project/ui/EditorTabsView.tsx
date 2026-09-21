@@ -8,8 +8,21 @@
  *
  * The data is the store's (`editorsStore.editors` / `activeEditor`), which is what `refresh()` maintains and
  * what `openEditor` selects in the model — the selection the shell follows in host mode
- * (`store/editor.ts:376`). Activating a chip is therefore `Editor.makeActive()`, and closing one is
- * `closeEditor()`, the same two calls EEZ's own strip used.
+ * (`store/editor.ts:376`). Activating a chip is therefore `Editor.makeActive()` **plus a `refresh`**: see
+ * `activateEditor` below. Closing a chip is `closeEditor()`.
+ *
+ * ## Why the click has to refresh
+ *
+ * `Editor.makeActive()` → `EditorsStore.activateEditor()` only does the flexlayout model action
+ * (`Actions.selectTab`) — it never writes `activeEditor`. In the origin that was enough, because the model
+ * action re-rendered flexlayout, the tab became *visible*, and the tab node's own `visibility` listener ran
+ * `refresh(true)` (`ProjectEditor.tsx:119-127`). Hosted there is no FlexLayout, so no listener ever fires: the
+ * model selection moved while `activeEditor` stayed put — the canvas kept showing the *previous* editor.
+ * (`refresh`'s own host block, `store/editor.ts:361-376`, is the other half of this: it reads the selection
+ * the shell has no other way to observe.)
+ *
+ * `refresh(true)` is the visibility listener's own argument, so a chip click behaves exactly like clicking a
+ * flexlayout tab did — including `navigationStore.showObjects`, which highlights the object in the left tree.
  *
  * Permanent editors (`Editor.permanent`, e.g. the project's flow) have no close button, exactly as they had
  * none in flexlayout (`tabEnableClose` aside, EEZ marks them permanent).
@@ -121,7 +134,14 @@ export const EditorTabsView: React.FC = observer(() => {
                             type="button"
                             className={styles.open}
                             title={editor.title}
-                            onClick={() => editor.makeActive()}
+                            onClick={() => {
+                                editor.makeActive();
+                                /*
+                                 * Host mode has no flexlayout `visibility` listener to do this for us
+                                 * (see the header comment), so the canvas would keep the old editor.
+                                 */
+                                editorsStore!.refresh(true);
+                            }}
                         >
                             {icon ? <Icon icon={icon} size={16} /> : null}
                             <span className={styles.label}>{editor.title}</span>

@@ -466,7 +466,8 @@ const EditorButtons = observer(
                                     {!this.flowTabState?.flowState && (
                                         <ButtonGroup>
                                             <IconAction
-                                                title="Show timeline"
+                                                title="Show the page animation timeline — keyframes per widget over time; a flow can read the position (Flow.pageTimelinePosition) and, while the timeline is open, the runtime scrubs the page to the needle"
+                                                label="Timeline"
                                                 icon={
                                                     <svg viewBox="0 0 551 372">
                                                         <path d="M42.4631 336.4972H204.996v-42.4224h-65.4195v-60.132h65.4195v-42.4495H0l.0008 145.005zm-.0045-102.5747H99.046v60.132H42.4586zm233.9184-42.4632v42.4405h61.8929v60.132h-61.893v42.4405h61.352l42.4247.009h171.5298v-145.013zM442.0555 294.007h-61.893v-60.132h61.893zm67.1986 0h-24.74v-60.132h24.74z" />
