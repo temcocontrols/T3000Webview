@@ -102,6 +102,14 @@ export interface DeviceInfoResponse {
     fonts?: string[];
 }
 
+/** Response from POST /api/eez-device/reset-defaults (factory reset). */
+export interface ResetDefaultsResponse {
+    status: "ok" | "error";
+    /** Screens the device re-seeded from its own embedded defaults. */
+    screens_restored?: number;
+    message?: string;
+}
+
 /** Connection mode determined at connect time. */
 export type ConnectionMode = "rest" | "bacnet";
 
@@ -682,6 +690,50 @@ export class DeviceRestClient {
             throw new Error(`Device returned ${response.status}`);
         }
         return response.json();
+    }
+
+    // ── Factory reset ────────────────────────────────────────────
+
+    /**
+     * Restore the device's UI to the firmware's **factory defaults**.
+     *
+     * REST: `POST http://<ip>/api/eez-device/reset-defaults`
+     *
+     * No body and nothing to select: the device formats its `screen_data` SPIFFS
+     * partition and re-seeds the screens/images embedded in its own build
+     * (`temco_dynamic_display/DefaultScreens` + `DefaultImages`). The request
+     * therefore destroys every user-deployed screen and image on that device —
+     * the studio side is untouched, and the way back is a normal deploy.
+     *
+     * Formatting flash plus 35 file writes takes seconds, so this uses the
+     * deploy budget, not the general request timeout. Sibling URIs
+     * (`set-default-screens`, `load-default-screens`) do the same thing.
+     */
+    async resetToDefaults(): Promise<ResetDefaultsResponse> {
+        if (this.mode !== "rest") {
+            throw new Error("Device not connected via REST API");
+        }
+
+        const response = await fetch(restUrl("reset-defaults", this.deviceIp), {
+            method: "POST",
+            signal: AbortSignal.timeout(DEPLOY_TIMEOUT_MS),
+        });
+        // The device answers JSON on success/failure, but the local proxy answers
+        // a 502 with its own JSON — read the body first so neither message is lost.
+        const text = await response.text();
+        let parsed: any = null;
+        try {
+            parsed = text ? JSON.parse(text) : null;
+        } catch {
+            parsed = null;
+        }
+        if (!response.ok || parsed?.status === "error") {
+            throw new Error(
+                parsed?.message ||
+                    (response.ok ? "Device reported a reset failure" : `Device returned ${response.status}`)
+            );
+        }
+        return (parsed ?? { status: "ok" }) as ResetDefaultsResponse;
     }
 
     // ── Utility ───────────────────────────────────────────────────

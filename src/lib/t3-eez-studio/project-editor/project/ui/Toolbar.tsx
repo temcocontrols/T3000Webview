@@ -8,7 +8,7 @@ import {
     runInAction
 } from "mobx";
 import { observer } from "mobx-react";
-import { ZoomFitRegular } from "@fluentui/react-icons";
+import { ArrowResetRegular, ZoomFitRegular } from "@fluentui/react-icons";
 import { ButtonAction, IconAction, ButtonGroup, SegmentedAction, ToolbarDensityContext } from "./fluent-toolbar";
 import { makeStyles, tokens } from "@fluentui/react-components";
 import { BuildConfiguration } from "project-editor/project/project";
@@ -42,6 +42,7 @@ import { dockerBuildState } from "project-editor/lvgl/docker-build/docker-build-
 import { getDeviceBinding } from "project-editor/build/device-binding";
 import * as notification from "eez-studio-ui/notification";
 import { DeployDeviceDrawer } from "../../../../../t3-react/features/design-hub/components/DeployDeviceDrawer";
+import { ResetUiDrawer } from "../../../../../t3-react/features/design-hub/components/ResetUiDrawer";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1041,7 +1042,10 @@ export const RunEditSwitchControls = observer(
         static contextType = ProjectContext;
         declare context: React.ContextType<typeof ProjectContext>;
 
-        state: { deployOpen: boolean } = { deployOpen: false };
+        state: { deployOpen: boolean; resetOpen: boolean } = {
+            deployOpen: false,
+            resetOpen: false
+        };
 
         get deployProjectInfo() {
             const projectStore = this.context;
@@ -1099,6 +1103,28 @@ export const RunEditSwitchControls = observer(
             // Open the shared Deploy-to-Device drawer: pick a device, deploy
             // (real push), and view deploy logs — same logic as Design Hub.
             this.setState({ deployOpen: true });
+        };
+
+        /**
+         * Reset Device UI — restore the firmware's factory UI on the device.
+         *
+         * Saving first is not about the reset itself (the device re-seeds from its
+         * own firmware and nothing is sent) but about the studio side: the drawer
+         * re-imports the device UI into this project afterwards, which REWRITES the
+         * project file — so unsaved edits are written out before that can happen.
+         */
+        handleResetUi = async () => {
+            const projectStore = this.context;
+            if (!projectStore.filePath) {
+                notification.error("Save the project first before resetting the device UI.");
+                return;
+            }
+            try {
+                await projectStore.doSave();
+            } catch (e) {
+                console.error("Save before device UI reset failed", e);
+            }
+            this.setState({ resetOpen: true });
         };
 
         render() {
@@ -1247,6 +1273,20 @@ export const RunEditSwitchControls = observer(
                             style={modeButtonStyle}
                             onClick={this.handleDeploy}
                         />
+
+                        {/*
+                         * Factory reset — labelled like its siblings (Edit · Run · Debug · Full Sim ·
+                         * Deploy): *Reset UI*, with the full name in the tooltip. The destructive step
+                         * itself is behind the drawer's own warning panel + inline confirm.
+                         */}
+                        <ButtonAction
+                            text="Reset UI"
+                            title="Reset Device UI — restore the firmware's factory UI on the device"
+                            icon={<ArrowResetRegular />}
+                            iconSize={iconSize}
+                            style={modeButtonStyle}
+                            onClick={this.handleResetUi}
+                        />
                     </div>
 
                     {this.state.deployOpen && (
@@ -1258,6 +1298,18 @@ export const RunEditSwitchControls = observer(
                             // Defensive auto-save: persist the live project again
                             // right before the push (shown as the first log step).
                             onSaveProject={() => (this.context as any).doSave()}
+                            onOpenReset={() =>
+                                this.setState({ deployOpen: false, resetOpen: true })
+                            }
+                        />
+                    )}
+
+                    {this.state.resetOpen && (
+                        <ResetUiDrawer
+                            open={this.state.resetOpen}
+                            onClose={() => this.setState({ resetOpen: false })}
+                            project={this.deployProjectInfo}
+                            filePath={this.context.filePath}
                         />
                     )}
                 </div>

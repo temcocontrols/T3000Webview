@@ -17,6 +17,8 @@
  * helpers (never a private copy).
  */
 
+import { writeTextFile } from "./build";
+
 /** Deterministic content signature (length + FNV-1a) used to diff deploys.
  *  Only used to decide whether a screen/image actually changed since the last
  *  successful deploy — not a cryptographic hash. */
@@ -118,4 +120,36 @@ export function buildDeployManifest(opts: {
         screenHashes,
         imageHashes,
     };
+}
+
+/**
+ * Hash version written when an existing baseline must be **discarded**.
+ *
+ * `deployService` only trusts a manifest carrying its own `hashVersion` (2) —
+ * anything else is read as "there is no baseline" and the next deploy becomes a
+ * full push. That is exactly what a device factory reset needs: the device no
+ * longer holds what the manifest claims, so a diff-based deploy would push only
+ * the screens that changed on the PC and silently leave the device's factory
+ * screens in place for everything else.
+ */
+export const INVALIDATED_MANIFEST_HASH_VERSION = 0;
+
+/** Overwrite a deploy manifest with the "no baseline" marker (see above). */
+export async function invalidateDeployManifest(
+    manifestPath: string,
+    reason: string
+): Promise<void> {
+    await writeTextFile(
+        manifestPath,
+        JSON.stringify(
+            {
+                hashVersion: INVALIDATED_MANIFEST_HASH_VERSION,
+                invalidated: true,
+                invalidatedAt: new Date().toISOString(),
+                reason,
+            },
+            null,
+            2
+        )
+    );
 }

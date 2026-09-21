@@ -36,6 +36,7 @@ import { useDesignHubStore } from '../store/designHubStore';
 import { useStatusBarStore } from '@t3-react/store/statusBarStore';
 import { CompareDrawings } from '../components/CompareDrawings';
 import { DeployDeviceDrawer } from '../components/DeployDeviceDrawer';
+import { ResetUiDrawer } from '../components/ResetUiDrawer';
 import { DeleteProjectPopover } from '../components/DeleteProjectPopover';
 import { ConfirmPopover } from '../components/ConfirmPopover';
 import { RenameProjectDialog } from '../components/RenameProjectDialog';
@@ -179,6 +180,7 @@ export const ProjectDetailPage: React.FC = () => {
   );
 
   const [deployOpen, setDeployOpen] = useState(false);
+  const [resetUiOpen, setResetUiOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deployLogOpen, setDeployLogOpen] = useState(false);
   const [deployLogs, setDeployLogs] = useState<DeployLogEntry[]>([]);
@@ -308,9 +310,11 @@ export const ProjectDetailPage: React.FC = () => {
     ...aboutRows,
     ['Folder', folders.find((f) => f.id === folderId)?.name || '—'],
   ];
+  // The log holds factory resets too (`kind: 'reset'`); "Last deployed" only means deploys.
+  const lastDeployEntry = deployLogs.find((log) => log.kind !== 'reset');
   const lastDeployError =
-    deployLogs.length > 0 &&
-    (deployLogs[0].status === 'error' || deployLogs[0].status === 'warning');
+    lastDeployEntry != null &&
+    (lastDeployEntry.status === 'error' || lastDeployEntry.status === 'warning');
 
   const handleRenameSave = (name: string) => {
     setRenameOpen(false);
@@ -525,7 +529,7 @@ export const ProjectDetailPage: React.FC = () => {
                 {locationBits.length ? locationBits.join(' · ') : 'Location not set'}
               </div>
               <div style={{ color: lastDeployError ? '#c50f1f' : '#7a8699' }}>
-                Last deployed: {deployLogs.length > 0 ? `${timeAgo(deployLogs[0].timestamp)} · ${deployLogs[0].screenCount != null ? `${deployLogs[0].screenCount} items` : deployLogs[0].message}` : '—'}
+                Last deployed: {lastDeployEntry ? `${timeAgo(lastDeployEntry.timestamp)} · ${lastDeployEntry.screenCount != null ? `${lastDeployEntry.screenCount} items` : lastDeployEntry.message}` : '—'}
               </div>
             </div>
           ) : (
@@ -534,9 +538,21 @@ export const ProjectDetailPage: React.FC = () => {
             </div>
           )}
 
-          <Button size="medium" appearance="primary" icon={<RocketRegular style={{ fontSize: 10 }} />} onClick={() => setDeployOpen(true)} style={{ fontWeight: 500, fontSize: 12 }}>
-            Deploy to device
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Button size="medium" appearance="primary" icon={<RocketRegular style={{ fontSize: 10 }} />} onClick={() => setDeployOpen(true)} style={{ fontWeight: 500, fontSize: 12 }}>
+              Deploy to device
+            </Button>
+            {/* Factory reset — beside Deploy: it is the device operation a deploy cannot undo. */}
+            <Button
+              size="medium"
+              appearance="secondary"
+              icon={<ArrowResetRegular style={{ fontSize: 13 }} />}
+              onClick={() => setResetUiOpen(true)}
+              style={{ fontSize: 12 }}
+            >
+              Reset device UI
+            </Button>
+          </div>
 
           {/* Deploy log — first 5, first row expanded, rest collapsed */}
           <div style={{ marginTop: 16, borderTop: '1px solid #eef1f6', paddingTop: 12 }}>
@@ -694,6 +710,17 @@ export const ProjectDetailPage: React.FC = () => {
         onClose={() => setDeployOpen(false)}
         onDeploy={handleDeploy}
         onDeployed={() => reloadDeployLogs()}
+        onOpenReset={() => {
+          setDeployOpen(false);
+          setResetUiOpen(true);
+        }}
+      />
+
+      <ResetUiDrawer
+        open={resetUiOpen}
+        project={project}
+        onClose={() => setResetUiOpen(false)}
+        onResetDone={() => reloadDeployLogs()}
       />
 
       <RenameProjectDialog

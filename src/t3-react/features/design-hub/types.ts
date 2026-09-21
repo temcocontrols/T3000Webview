@@ -94,6 +94,14 @@ export interface DeployStepInfo {
 export interface DeployLogEntry {
   id: string;
   timestamp: string;
+  /**
+   * What this entry records. Absent = a normal deploy (older entries).
+   *
+   * "reset" entries come from the *Reset Device UI* drawer: the device was
+   * formatted back to its firmware's factory UI (and the studio side re-imported),
+   * which is why hosts must not read them as "last deployed".
+   */
+  kind?: 'deploy' | 'reset';
   serialNumber?: number;
   deviceName?: string;
   status: 'success' | 'error' | 'warning';

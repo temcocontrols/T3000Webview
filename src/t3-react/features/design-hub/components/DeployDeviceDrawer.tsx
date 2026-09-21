@@ -10,6 +10,10 @@
  *
  * Deploy execution is delegated to deployService.deployEezProject() for EEZ/LVGL
  * projects; hosts can pass an `onDeploy` fallback for non-EEZ types (e.g. HVAC).
+ *
+ * The log below is this drawer's own — a factory reset written by the sibling
+ * *Reset Device UI* drawer also lands here (tagged `RESET`), because it is device
+ * history the deploy drawer is the place to read.
  */
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -32,6 +36,7 @@ import {
     ChevronDownRegular,
     ChevronRightRegular,
     WarningRegular,
+    ArrowResetRegular,
 } from "@fluentui/react-icons";
 import type { DeployLogEntry, DeployStepInfo } from "../types";
 import { designHubService } from "../services/designHubService";
@@ -75,6 +80,8 @@ interface Props {
     /** Persist the in-memory EEZ project to disk before pushing (editor path).
      *  Runs as the first, logged deploy step. */
     onSaveProject?: () => Promise<void>;
+    /** Host hook for the "Reset Device UI" link (opens the sibling drawer). */
+    onOpenReset?: () => void;
 }
 
 const statusBadge = (status?: string) => {
@@ -134,6 +141,23 @@ const DeployLogRow: React.FC<{
                     <WarningRegular style={{ fontSize: 13, color: "#b8860b", flexShrink: 0 }} />
                 )}
                 <span style={{ fontSize: 12, color: "#1c2b3a", fontWeight: 600, flexShrink: 0 }}>{timeAgo(log.timestamp)}</span>
+                {/* A factory reset shares the log with deploys — mark it, or the
+                    row reads as a deploy that returned no screens. */}
+                {log.kind === "reset" && (
+                    <span
+                        style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                            color: "#8a5a00",
+                            background: "#fff4d6",
+                            borderRadius: 3,
+                            padding: "1px 4px",
+                        }}
+                    >
+                        RESET
+                    </span>
+                )}
                 <span style={{ fontSize: 12, color: "#4a5a6c", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {log.deviceName ? `${log.deviceName} (SN ${log.serialNumber})` : log.serialNumber ? `SN ${log.serialNumber}` : ""}
                     {" — "}
@@ -189,6 +213,7 @@ export const DeployDeviceDrawer: React.FC<Props> = ({
     onDeploy,
     onDeployed,
     onSaveProject,
+    onOpenReset,
 }) => {
     const [devices, setDevices] = useState<DeployDeviceType[]>([]);
     const [loadingDevices, setLoadingDevices] = useState(false);
@@ -517,6 +542,27 @@ export const DeployDeviceDrawer: React.FC<Props> = ({
                             ))
                         )}
                     </div>
+
+                    {/*
+                     * Cross-link to the sibling *Reset Device UI* drawer: a factory reset
+                     * is the one thing a deploy cannot undo, so it lives next to it.
+                     */}
+                    {onOpenReset && (
+                        <div style={{ borderTop: "1px solid #eef1f6", paddingTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 12, color: "#7a8699", flex: 1 }}>
+                                Need to start over with the device's factory UI?
+                            </span>
+                            <Button
+                                size="small"
+                                appearance="subtle"
+                                icon={<ArrowResetRegular style={{ fontSize: 13 }} />}
+                                onClick={onOpenReset}
+                                style={{ fontSize: 12 }}
+                            >
+                                Reset Device UI
+                            </Button>
+                        </div>
+                    )}
                 </DrawerBody>
             </Drawer>
         </FluentProvider>
