@@ -1,7 +1,7 @@
 
 import "src/t3-eez-studio/bridge/browser-polyfill";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { initEezBridge, checkBackendHealth } from "src/t3-eez-studio/bridge/eez-studio-api";
 import "src/t3-eez-studio/bridge/eez-registry";
@@ -52,8 +52,16 @@ const EEZ_ACTION_TO_IPC: Record<string, string | { channel: string; args?: any[]
 };
 // No-op in browser: new-window, close-window, exit, toggle-fullscreen,
 // toggle-devtools, zoom-in, zoom-out, reset-zoom, import-instrument-def
+
+/**
+ * EEZ's own settings surface, loaded on demand.
+ *
+ * It is self-contained (no props, no project context) — a 2 x 2 card grid of *Databases*, *External Tools*,
+ * *Project Editor* and the rest — which is what makes it showable outside EEZ's own tab chrome.
+ */
+const EezSettings = lazy(async () => ({ default: (await import("home/settings")).Settings }));
 import "bootstrap/dist/css/bootstrap.min.css";
-import { makeStyles, mergeClasses, Spinner, Button, FluentProvider, webLightTheme } from "@fluentui/react-components";
+import { makeStyles, mergeClasses, Spinner, Button, Dialog, DialogBody, DialogContent, DialogSurface, DialogTitle, FluentProvider, webLightTheme } from "@fluentui/react-components";
 import { ErrorCircleRegular, ArrowClockwiseRegular } from "@fluentui/react-icons";
 
 // EEZ Studio stylesheets
@@ -61,7 +69,7 @@ import "eez-studio-ui/_stylesheets/main.less";
 import "eez-studio-ui/_stylesheets/main-dark-runtime.less";
 import "flexlayout-react/style/light.css";
 import { LogUtil } from "@/lib/t3-hvac";
-import { folderNameOf, retryPlan, targetExists } from "./designerCreateGuard";
+import { folderNameOf, projectFoldersOf, retryPlan, targetExists, targetNameOf } from "./designerCreateGuard";
 
 const useBackendStyles = makeStyles({
     bar: {
@@ -111,24 +119,29 @@ const useBackendStyles = makeStyles({
 /**
  * Does the project root already contain a folder with this target's name?
  *
- * Drives the create hand-off's guard (see `designerCreateGuard`). **Fail safe**: any doubt — a missing
- * endpoint, a network error, an unparseable body — answers `true`, because the only thing that answer is
- * used for is deciding whether we may delete the folder, and "probably empty" is not a good enough reason to
- * remove a user's project.
+ * Drives the create hand-off's guard (see `designerCreateGuard`). Three answers, not two: `true` (the list
+ * was read and holds that folder), `false` (the list was read and does not) and **`undefined` for doubt** — a
+ * missing endpoint, a network error, an unreadable body. The delete decision treats doubt as "not ours" so
+ * nothing is ever removed on a guess, but doubt must **not** be reported as a collision: that is what told
+ * every create its name was taken (the body is `{ projects: [...] }`, and an array-only check made this
+ * function answer `true` for it).
  */
-async function targetFolderExists(target: string): Promise<boolean> {
+async function targetFolderExists(target: string): Promise<boolean | undefined> {
     if (!folderNameOf(target)) {
-        return true;
+        return undefined;
     }
     try {
         const response = await fetch("/api/eez-studio/projects");
         if (!response.ok) {
-            return true;
+            return undefined;
         }
-        const list = await response.json();
-        return Array.isArray(list) ? targetExists(list, target) : true;
+        const folders = projectFoldersOf(await response.json());
+        if (!folders) {
+            return undefined;
+        }
+        return targetExists(folders.map(folder => ({ folder })), target);
     } catch {
-        return true;
+        return undefined;
     }
 }
 
@@ -177,10 +190,31 @@ function BackendStatusBar() {
 export function EezStudioApp() {
     const [showContent, setShowContent] = useState(false);
     const [backendUp, setBackendUp] = useState<boolean | undefined>(undefined);
+    /**
+     * EEZ's **Settings** surface, shown as a modal.
+     *
+     * The View → Settings menu item used to dispatch `openTab-settings` into EEZ, which only switched to the
+     * home tab's *settings* section — and that tab's body was emptied when the Design Hub took the launcher
+     * over (`home/home-tab.tsx`: "OPEN/CREATE/EXAMPLES/EXTENSIONS/SETTINGS hidden for now"). The click
+     * therefore covered the editor with a blank pane and had no way back, because the top tab strip is
+     * hidden too. The component itself never went away, so it is shown here instead — see `onEezAction` —
+     * which leaves the document (and its panels) exactly as they were.
+     */
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const location = useLocation();
     // Prevent React StrictMode (dev) from double-running the ?new= effect, which
     // would open the New Project wizard twice (two stacked panels).
     const wizardOpenedRef = useRef(false);
+    /**
+     * The create request already handled, as `kind|type|<target folder>`.
+     *
+     * The hand-off effect re-runs on every route re-render (`location.key`/`location.search`) and StrictMode
+     * runs it twice, while the URL keeps saying `?new=…&name=…&location=…` — so a second pass used to create
+     * **again**, land on the folder the first pass had just written, and report it as "already exists —
+     * nothing was created" while the editor showed the new project. Reset per request, never per effect run:
+     * a *different* request (another navigation, another name) is still processed.
+     */
+    const handledCreateRef = useRef<string | null>(null);
 
     // 1) Backend health → reveal the content area (runs once on mount).
     useEffect(() => {
@@ -392,6 +426,33 @@ export function EezStudioApp() {
                 ? (loc ? loc + "/" + nm : nm)
                 : loc;
 
+            /**
+             * The project an existing folder **is**: EEZ's wizard computes `projectFilePath` as
+             * `projectFolderPath + "/" + name + ".eez-project"`, and `projectFolderPath` is exactly
+             * `cleanupFolder` (location/name with "Create directory", else the location).
+             */
+            const existingProjectPath = nm ? `${cleanupFolder}/${nm}.eez-project` : undefined;
+
+            /**
+             * Open that project instead of writing over it.
+             *
+             * Never destructive, and it is what the user meant by the name they typed — the guard exists to
+             * stop the retry's cleanup from deleting a real project, not to refuse the click.
+             */
+            const openExistingProject = () => {
+                if (!existingProjectPath) return;
+                import("home/tabs-store")
+                    .then(({ openProject, tabs: tabsRef }) => {
+                        if (cancelled || !tabsRef?.tabs) return;
+                        if (tabsRef.tabs.some((t: any) => t.filePath === existingProjectPath)) return;
+                        LogUtil.Info(`[EEZ-Examples] target exists — opening ${existingProjectPath}`);
+                        openProject(existingProjectPath, false);
+                    })
+                    .catch(() => {
+                        /* the project can still be opened from the Design Hub */
+                    });
+            };
+
             // Was this folder already there *before* we started? The retry below deletes the target so a
             // partial create can start over, and that cleanup is only ever legitimate for a folder **this
             // run** created — a pre-existing one is the user's project. Measured 2026-09-17: clicking
@@ -401,19 +462,22 @@ export function EezStudioApp() {
             //
             // Resolved on the first attempt (this effect body is synchronous) and cached, so the answer
             // cannot drift between attempts — and it is always taken *before* the first create runs.
-            let existedBeforePromise: Promise<boolean> | undefined;
+            let existedBeforePromise: Promise<boolean | undefined> | undefined;
             const targetExistedBefore = () =>
                 (existedBeforePromise ??= targetFolderExists(cleanupFolder).then(exists => {
-                    if (exists) {
+                    // Only a **confirmed** collision is reported. A cancelled run is no longer the user's create
+                    // either: reporting from it is how the message appeared *after* the project had already
+                    // been created and opened.
+                    if (exists === true && !cancelled) {
                         const message =
-                            `A project named "${folderNameOf(cleanupFolder)}" already exists — nothing was created.`
-                            + " Pick another name and try again.";
-                        LogUtil.Error(`[EEZ-Examples] ${message}`);
-                        // Not console-only: the create refuses, so without a visible message the click looks
-                        // like a no-op (and the wizard is easy to miss in this shell). The EEZ surface is
-                        // mounted by the time a create runs, so its toast can host the message.
+                            `A project named "${targetNameOf(cleanupFolder)}" already exists`
+                            + " — opening that project instead.";
+                        LogUtil.Warn(`[EEZ-Examples] ${message}`);
+                        // Not console-only: without a visible message the click looks like a no-op (and the
+                        // wizard is easy to miss in this shell). The EEZ surface is mounted by the time a
+                        // create runs, so its toast can host the message.
                         import("eez-studio-ui/notification")
-                            .then(notification => notification.error(message))
+                            .then(notification => notification.info(message))
                             .catch(() => {
                                 /* notification surface not available — the log line still tells the story */
                             });
@@ -427,6 +491,16 @@ export function EezStudioApp() {
             // partially-created folder so the exists-validation passes on the next attempt.
             const createWithRetry = async (create: () => Promise<boolean>) => {
                 const existedBefore = await targetExistedBefore();
+                if (cancelled) return;
+
+                /*
+                 * The folder is the user's project: never write over it, and never delete it — opening it is
+                 * the only non-destructive answer, and it is what the typed name asked for.
+                 */
+                if (existedBefore === true) {
+                    openExistingProject();
+                    return;
+                }
 
                 for (let attempt = 1; attempt <= 3; attempt++) {
                     if (cancelled) return;
@@ -440,10 +514,12 @@ export function EezStudioApp() {
                         return;
                     }
 
-                    const plan = retryPlan(existedBefore, attempt);
+                    // Doubt (`undefined`) keeps the folder, like a confirmed collision — but it is not
+                    // reported as one; the create simply proceeds.
+                    const plan = retryPlan(existedBefore !== false, attempt);
                     if (!plan.retry) {
                         LogUtil.Error(
-                            existedBefore
+                            existedBefore !== false
                                 ? "[EEZ-Examples] autoCreate failed and the folder was not ours to clean up"
                                 : "[EEZ-Examples] autoCreate failed after 3 attempts"
                         );
@@ -480,8 +556,12 @@ export function EezStudioApp() {
                             if (params?.get("name") && params?.get("location")) {
                                 // Direct-to-editor: create the example project now
                                 // (downloads + saves, then opens the editor).
-                                LogUtil.Info("[EEZ-Examples] EezStudioApp create-from-example — type=", params.get("type"), "name=", params.get("name"), "location=", params.get("location"));
-                                setTimeout(() => createWithRetry(() => w.createProjectFromExample()), 1000);
+                                const request = `examples|${params.get("type") ?? ""}|${cleanupFolder}`;
+                                if (handledCreateRef.current !== request) {
+                                    handledCreateRef.current = request;
+                                    LogUtil.Info("[EEZ-Examples] EezStudioApp create-from-example — type=", params.get("type"), "name=", params.get("name"), "location=", params.get("location"));
+                                    setTimeout(() => createWithRetry(() => w.createProjectFromExample()), 1000);
+                                }
                             } else {
                                 w.showNewExampleProjectWizard();
                             }
@@ -490,8 +570,12 @@ export function EezStudioApp() {
                                 // Direct-to-editor: create a NEW LVGL template
                                 // project (from the design hub create dialog) and
                                 // open the editor — never show the wizard form.
-                                LogUtil.Info("[EEZ-Examples] EezStudioApp create-from-template — new=", wizardType, "name=", params.get("name"), "location=", params.get("location"));
-                                setTimeout(() => createWithRetry(() => w.createProjectFromTemplate()), 1000);
+                                const request = `new|${wizardType ?? ""}|${cleanupFolder}`;
+                                if (handledCreateRef.current !== request) {
+                                    handledCreateRef.current = request;
+                                    LogUtil.Info("[EEZ-Examples] EezStudioApp create-from-template — new=", wizardType, "name=", params.get("name"), "location=", params.get("location"));
+                                    setTimeout(() => createWithRetry(() => w.createProjectFromTemplate()), 1000);
+                                }
                             } else {
                                 w.showNewProjectWizard();
                             }
@@ -524,6 +608,16 @@ export function EezStudioApp() {
         const onEezAction = (e: Event) => {
             const action = (e as CustomEvent<string>).detail;
             if (!action) return;
+
+            /*
+             * Settings is the one EEZ surface the new design left without a home (see `settingsOpen`): its
+             * host tab is empty now, so dispatching the IPC would blank the canvas instead of showing it.
+             */
+            if (action === "openTab-settings") {
+                setSettingsOpen(true);
+                return;
+            }
+
             const mapped = EEZ_ACTION_TO_IPC[action];
             if (!mapped) return;
             const channel = typeof mapped === "string" ? mapped : mapped.channel;
@@ -536,6 +630,34 @@ export function EezStudioApp() {
 
     return (
         <FluentProvider theme={webLightTheme}>
+            {settingsOpen ? (
+                <Dialog
+                    open
+                    onOpenChange={(_, data) => {
+                        if (!data.open) {
+                            setSettingsOpen(false);
+                        }
+                    }}
+                >
+                    <DialogSurface style={{ width: "min(1120px, 94vw)", maxWidth: "min(1120px, 94vw)" }}>
+                        <DialogBody>
+                            <DialogTitle>Settings</DialogTitle>
+                            <DialogContent
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    height: "min(72vh, 640px)",
+                                    padding: 0
+                                }}
+                            >
+                                <Suspense fallback={<Spinner size="tiny" label="Loading settings…" />}>
+                                    <EezSettings />
+                                </Suspense>
+                            </DialogContent>
+                        </DialogBody>
+                    </DialogSurface>
+                </Dialog>
+            ) : null}
             <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
                 <BackendStatusBar />
                 {showContent && (

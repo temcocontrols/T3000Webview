@@ -594,11 +594,33 @@ export class EditorsStore {
     closeEditor(editor: Editor) {
         let index = this.editors.indexOf(editor);
         if (index != -1) {
+            const wasActive = this.activeEditor === editor;
+
             this.editors.splice(index, 1);
 
             this.tabsModel.doAction(FlexLayout.Actions.deleteTab(editor.tabId));
 
             this.tabIdToEditorMap.delete(editor.tabId);
+
+            /*
+             * Re-derive the active editor.
+             *
+             * flexlayout adjusts the tabset's selection when a tab is deleted (`TabSetNode.removeChild` →
+             * `adjustSelectedIndex`), but **nothing recomputed `activeEditor` here**: hosted mode keeps it on
+             * the model's selected tab (`refresh`, below), and the un-hosted path only re-picked one when it
+             * had none. So closing a chip removed the tab and left the canvas rendering the editor that had
+             * just been closed — "it just removed the tab, but the editor page is still the settings page".
+             *
+             * Cleared first, then `refresh(false)` takes the neighbour the model selected (or nothing at all
+             * when the last editor is gone, which is what an empty canvas should be).
+             */
+            if (wasActive) {
+                runInAction(() => {
+                    this.activeEditor = undefined;
+                });
+            }
+
+            this.refresh(false);
         }
     }
 

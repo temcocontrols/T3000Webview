@@ -13,14 +13,36 @@
  * list cannot be read, assume the folder exists, so nothing is deleted on a guess.
  */
 
-/** Normalises a `location/name` target to the folder name EEZ's project list reports. */
-export function folderNameOf(target: string | null | undefined): string {
+/**
+ * The `folder` names in a `/api/eez-studio/projects` body, or `undefined` when it cannot be read.
+ *
+ * The endpoint answers **`{ projects: [...] }`**, not a bare array — and a shape check that only accepted an
+ * array made the *fail-safe* answer below fire on every create: measured 2026-09-20, "Create & Open" with a
+ * name that did not exist was told it already existed, and the create was skipped. `undefined` therefore has
+ * to mean **doubt**, which callers must not report as a collision; only `[]`-or-more means "the list is known".
+ */
+export function projectFoldersOf(body: unknown): string[] | undefined {
+    const list = Array.isArray(body)
+        ? body
+        : Array.isArray((body as { projects?: unknown } | null | undefined)?.projects)
+          ? (body as { projects: unknown[] }).projects
+          : undefined;
+
+    return list?.map((project) => String((project as { folder?: unknown } | null)?.folder ?? ""));
+}
+
+/** The target's **display** name: the last path segment, trailing separators removed, case preserved. */
+export function targetNameOf(target: string | null | undefined): string {
     return (target ?? "")
         .replace(/[\/\\]+$/, "")
         .split(/[\/\\]/)
         .pop()!
-        .trim()
-        .toLowerCase();
+        .trim();
+}
+
+/** Normalises a `location/name` target to the folder name EEZ's project list reports. */
+export function folderNameOf(target: string | null | undefined): string {
+    return targetNameOf(target).toLowerCase();
 }
 
 /** True when the project list already contains the target folder — i.e. the user's project. */

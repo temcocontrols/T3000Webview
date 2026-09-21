@@ -75,6 +75,15 @@ const useStyles = makeStyles({
         overflow: "hidden",
         backgroundColor: tokens.colorNeutralBackground3
     },
+    /**
+     * A document's canvas strip (editor tabs) — a sibling of the canvas host, so the host is never re-keyed.
+     * Its height is the document's business; this only pins it and lets it stretch across the middle column.
+     */
+    canvasStrip: {
+        flexShrink: 0,
+        minWidth: 0,
+        minHeight: 0
+    },
     overlay: {
         position: "absolute",
         inset: 0,
@@ -285,10 +294,14 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
     /**
      * The dock's region, with its tab selection wrapped.
      *
-     * Choosing a tab is a request to **see** it, and the dock is collapsed by default (its strip stays visible
-     * so it can be reopened) — without this, a click on *Checks* / *Output* / *Search References* switched the
-     * panel behind a collapsed bar and the panel appeared not to open at all. EEZ selecting a tab itself takes
-     * the other route: the model's border opens, the document says so (`collapsed`), and the dock expands.
+     * Choosing a tab is a request to **see** it, and the dock is collapsed by default (its strip stays
+     * visible so it can be reopened) — without this, a click on *Checks* / *Output* / *Search References*
+     * switched the panel behind a collapsed bar and the panel appeared not to open at all.
+     *
+     * Clicking the tab that is **already** selected does the opposite, and that is the origin's rule, not a
+     * convenience: for a FlexLayout *border* a `SELECT_TAB` on the selected tab sets `selected = -1`
+     * (`flexlayout-react/lib/model/Model.js:283-291`), i.e. the border closes. Forcing the dock open on every
+     * click is what removed the only way to hide it once a tab had been chosen.
      */
     const bottomRegion = useMemo(
         () =>
@@ -296,12 +309,13 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
                 ? {
                       ...bottomSpec,
                       onSelectTab: (tabId: string) => {
+                          const closing = !bottomCollapsed && tabId === bottomSpec.activeTabId;
                           bottomSpec.onSelectTab(tabId);
-                          layoutStore.setCollapsed(kind, "bottom", false);
+                          layoutStore.setCollapsed(kind, "bottom", closing);
                       }
                   }
                 : undefined,
-        [bottomSpec, kind]
+        [bottomSpec, bottomCollapsed, kind]
     );
 
     const leftToggle = useMemo(
@@ -405,6 +419,11 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
                 ) : null}
 
                 <div className={styles.middleWrap}>
+                    {layout.canvasTabs ? (
+                        <div className={styles.canvasStrip} data-shell-canvas-tabs="true">
+                            {layout.canvasTabs}
+                        </div>
+                    ) : null}
                     <div className={styles.middleHost} ref={middleHostRef}>
                         {canvasNode}
                     </div>
