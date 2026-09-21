@@ -114,8 +114,13 @@ const SHORT_LABELS: Record<string, string> = {
     "Check": "Check",
     "Build": "Build",
     "Run MicroPython Script": "Script",
-    "Show front face": "Front",
-    "Show back face": "Back",
+    /*
+     * The face pair keeps the **noun**: "Front"/"Back" alone reads as navigation ("back"), and the two
+     * buttons are a view state — which side of the page is shown (mirrored, with the wiring/anchors overlay
+     * on the back) — not two commands. See `PageTabState.frontFace` / `uiStateStore.pageEditorFrontFace`.
+     */
+    "Show front face": "Front face",
+    "Show back face": "Back face",
     "Show timeline": "Timeline",
     "Show component descriptions": "Descriptions"
 };
@@ -163,6 +168,14 @@ const useStyles = makeStyles({
 
 interface IconActionProps {
     title?: string;
+    /**
+     * The visible label, when the tooltip is not a good *name* for the button.
+     *
+     * Defaults to `shortLabelOf(title)` — the map plus its first-word fallback. Set it when the tooltip is a
+     * full explanation (`"Show the comment text written on flow components…"`), so the label stays short and
+     * the hover text can actually explain what the tool does.
+     */
+    label?: string;
     icon: string | React.ReactNode;
     iconSize?: number;
     onClick: (event: React.MouseEvent) => void;
@@ -174,6 +187,7 @@ interface IconActionProps {
 
 export const IconAction: React.FC<IconActionProps> = ({
     title,
+    label: labelProp,
     icon,
     onClick,
     enabled = true,
@@ -181,7 +195,7 @@ export const IconAction: React.FC<IconActionProps> = ({
     style,
 }) => {
     const resolved = resolveIcon(icon);
-    const label = shortLabelOf(title);
+    const label = labelProp ?? shortLabelOf(title);
 
     return (
         <Button
@@ -294,4 +308,92 @@ export const Icon: React.FC<IconProps> = ({ icon, size, style }) => {
 export const ButtonGroup: React.FC<{ children: React.ReactNode; role?: string }> = ({ children }) => {
     const styles = useStyles();
     return <div className={styles.btnGroup}>{children}</div>;
+};
+
+// ── Segmented action ─────────────────────────────────────────────────
+
+/**
+ * One control for a **state with mutually exclusive choices** — the page's *front face* / *back face*.
+ *
+ * Drawn as the two buttons it replaces, with two differences: the box is one control, so it reads as a
+ * choice rather than two commands ("Back" beside "Front" otherwise reads as navigation), and the **active**
+ * segment carries the brand colour, so the current side is visible without hovering.
+ *
+ * The chrome is a **bottom line on the chosen segment only** (user decision 2026-09-21): no box, no track,
+ * no fill — the unselected choice is plain text, and the current one carries a 2 px brand line under it, the
+ * region heads' active-tab treatment. The line is a *transparent* 2 px border on every segment rather than
+ * only on the selected one, which keeps the two content boxes identical and stops the row shifting when the
+ * choice changes.
+ */
+export interface SegmentSpec {
+    id: string;
+    label: string;
+    icon?: string | React.ReactNode;
+    selected: boolean;
+    title?: string;
+    onClick: () => void;
+}
+
+const useSegmentStyles = makeStyles({
+    box: {
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: "2px",
+        flexShrink: 0
+    },
+    segment: {
+        display: "flex",
+        alignItems: "center",
+        gap: "5px",
+        height: "26px",
+        padding: "0 10px",
+        border: "none",
+        borderRadius: 0,
+        background: "transparent",
+        color: tokens.colorNeutralForeground2,
+        font: "inherit",
+        fontSize: "12px",
+        whiteSpace: "nowrap",
+        cursor: "pointer",
+        /** Painted only by `segmentSelected`; transparent here so both choices keep the same content box. */
+        borderBottom: "2px solid transparent",
+        ":hover": {
+            backgroundColor: tokens.colorNeutralBackground1Hover,
+            color: tokens.colorNeutralForeground1
+        }
+    },
+    /** The chosen one: brand text on a 2 px brand line. Nothing at all for the other. */
+    segmentSelected: {
+        color: tokens.colorBrandForeground2,
+        fontWeight: tokens.fontWeightSemibold,
+        borderBottom: `2px solid ${tokens.colorBrandForeground1}`,
+        ":hover": {
+            backgroundColor: tokens.colorNeutralBackground1Hover,
+            color: tokens.colorBrandForeground2
+        }
+    }
+});
+
+export const SegmentedAction: React.FC<{ segments: SegmentSpec[] }> = ({ segments }) => {
+    const styles = useSegmentStyles();
+
+    return (
+        <div className={styles.box} role="radiogroup">
+            {segments.map(segment => (
+                <button
+                    key={segment.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={segment.selected}
+                    title={segment.title}
+                    className={mergeClasses(styles.segment, segment.selected && styles.segmentSelected)}
+                    onClick={segment.onClick}
+                >
+                    {segment.icon ? <Icon icon={segment.icon} size={16} /> : null}
+                    {segment.label}
+                </button>
+            ))}
+        </div>
+    );
 };

@@ -8,7 +8,7 @@ import {
     runInAction
 } from "mobx";
 import { observer } from "mobx-react";
-import { ButtonAction, IconAction, ButtonGroup } from "./fluent-toolbar";
+import { ButtonAction, IconAction, ButtonGroup, SegmentedAction } from "./fluent-toolbar";
 import { makeStyles, tokens } from "@fluentui/react-components";
 import { BuildConfiguration } from "project-editor/project/project";
 import { ProjectContext } from "project-editor/project/context";
@@ -135,7 +135,15 @@ export const Toolbar = observer(
                     justifyContent: "space-between",
                     alignItems: "center",
                     padding: `2px ${tokens.spacingHorizontalS}`,
-                    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                    /*
+                     * No rule under the tools when the shell hosts this toolbar: the band **is** the toolbar
+                     * there, and the shell's own edges already separate it from the canvas. The nav's line
+                     * drew a second, shorter border under just the EEZ cluster (under Settings ·
+                     * Descriptions · Timeline).
+                     */
+                    borderBottom: isProjectEditorHosted()
+                        ? "none"
+                        : `1px solid ${tokens.colorNeutralStroke1}`,
                     backgroundColor: tokens.colorNeutralBackground1,
                     minHeight: "40px",
                     gap: tokens.spacingHorizontalXS,
@@ -337,13 +345,28 @@ const EditorButtons = observer(
                                 />
                             </ButtonGroup>
                             <ButtonGroup>
-                                <IconAction
-                                    title="Scrapbook"
-                                    icon={PROJECT_EDITOR_SCRAPBOOK}
-                                    iconSize={24}
-                                    onClick={() => showScrapbookManager()}
-                                    selected={scrapbookModel.isVisible}
-                                />
+                                {/*
+                                  * Hidden in the unified Designer shell (2026-09-21).
+                                  *
+                                  * The Scrapbook is a **reuse library across projects**: a snippet store at
+                                  * `userData/scrapbooks/Default.eez-scrapbook` (SQLite via the backend), where
+                                  * objects are dropped in from the navigator and pasted out — with their
+                                  * dependencies — into another project. Useful when juggling several projects,
+                                  * niche otherwise, and it cost ~90 px of the band's already crowded left row.
+                                  *
+                                  * Kept rather than removed: View → Scrapbook still calls
+                                  * `showScrapbookManager()`, so the manager (floating by default) stays
+                                  * reachable and this one condition brings the button back.
+                                  */}
+                                {!isProjectEditorHosted() && (
+                                    <IconAction
+                                        title="Scrapbook"
+                                        icon={PROJECT_EDITOR_SCRAPBOOK}
+                                        iconSize={24}
+                                        onClick={() => showScrapbookManager()}
+                                        selected={scrapbookModel.isVisible}
+                                    />
+                                )}
                             </ButtonGroup>
                         </>
                     )}
@@ -411,30 +434,34 @@ const EditorButtons = observer(
                         <>
                             {this.pageTabState && (
                                 <>
-                                    <ButtonGroup>
-                                        <IconAction
-                                            title="Show front face"
-                                            icon="material:flip_to_front"
-                                            iconSize={20}
-                                            onClick={() =>
-                                                this.setFrontFace(true)
+                                    {/*
+                                      * The page's face is ONE state with two choices, so it is one control:
+                                     * stacked segments, the active one brand-tinted, the full wording kept
+                                     * ("Front face" / "Back face" — "Front"/"Back" alone read as navigation).
+                                      * Stacking uses the group's second row instead of widening it.
+                                      */}
+                                    <SegmentedAction
+                                        segments={[
+                                            {
+                                                id: "front",
+                                                label: "Front face",
+                                                icon: "material:flip_to_front",
+                                                selected: this.pageTabState.frontFace,
+                                                title:
+                                                    "Front face — plain view; the navigator lists widgets only",
+                                                onClick: () => this.setFrontFace(true)
+                                            },
+                                            {
+                                                id: "back",
+                                                label: "Back face",
+                                                icon: "material:flip_to_back",
+                                                selected: !this.pageTabState.frontFace,
+                                                title:
+                                                    "Back face — mirrored view; the navigator also lists connections and groups",
+                                                onClick: () => this.setFrontFace(false)
                                             }
-                                            selected={
-                                                this.pageTabState.frontFace
-                                            }
-                                        />
-                                        <IconAction
-                                            title="Show back face"
-                                            icon="material:flip_to_back"
-                                            iconSize={20}
-                                            onClick={() =>
-                                                this.setFrontFace(false)
-                                            }
-                                            selected={
-                                                !this.pageTabState.frontFace
-                                            }
-                                        />
-                                    </ButtonGroup>
+                                        ]}
+                                    />
 
                                     {!this.flowTabState?.flowState && (
                                         <ButtonGroup>
@@ -462,7 +489,8 @@ const EditorButtons = observer(
                                     !this.pageTabState.frontFace)) && (
                                 <ButtonGroup>
                                     <IconAction
-                                        title="Show component descriptions"
+                                        title="Show the comment text written on flow components and on their connection lines — the wiring view, i.e. the flow editor and the page's back face"
+                                        label="Descriptions"
                                         icon="material:comment"
                                         iconSize={20}
                                         onClick={action(
