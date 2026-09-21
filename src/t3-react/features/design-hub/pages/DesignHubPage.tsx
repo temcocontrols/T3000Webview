@@ -23,6 +23,7 @@ import { ProjectsGrid } from '../components/ProjectsGrid';
 // import { ActivityPanel } from '../components/ActivityPanel'; // hidden for now (user, 2026-08-22)
 import { BindDeviceDialog } from '../components/BindDeviceDialog';
 import { DeployDeviceDrawer } from '../components/DeployDeviceDrawer';
+import { ResetUiDrawer } from '../components/ResetUiDrawer';
 import { NewDrawingDialog } from '../components/NewDrawingDialog';
 import { EezExamplesDrawer } from '../components/EezExamplesDrawer';
 // 'New Type' hidden for now — only the 4 core types (user, 2026-08-22)
@@ -55,6 +56,7 @@ export const DesignHubPage: React.FC = () => {
   // Dialog state
   const [bindingProject, setBindingProject] = useState<HubProject | null>(null);
   const [deployTarget, setDeployTarget] = useState<HubProject | null>(null);
+  const [resetTarget, setResetTarget] = useState<HubProject | null>(null);
   const [newDrawingType, setNewDrawingType] = useState<DrawingType | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -226,6 +228,9 @@ export const DesignHubPage: React.FC = () => {
 
   // Bound/deployed card action → open the Deploy drawer (re-deploy / change device).
   const handleDeployOpen = (project: HubProject) => setDeployTarget(project);
+
+  // Card reset icon → Reset Device UI drawer (factory UI; the project is re-imported afterwards).
+  const handleResetOpen = (project: HubProject) => setResetTarget(project);
 
   // Deploy drawer execution: the drawer itself pushes EEZ/LVGL projects via
   // deployEezProject(); this fallback runs for non-EEZ engines (e.g. HVAC).
@@ -444,7 +449,7 @@ export const DesignHubPage: React.FC = () => {
         */}
 
         <div id="hub-projects">
-          <ProjectsGrid onBind={handleBind} onDeploy={handleDeployOpen} />
+          <ProjectsGrid onBind={handleBind} onDeploy={handleDeployOpen} onResetDevice={handleResetOpen} />
         </div>
 
         {/* Hub Tools row hidden for now (user, 2026-08-22) — Backup/Restore stay in File menu.
@@ -509,6 +514,15 @@ export const DesignHubPage: React.FC = () => {
           onClose={() => setDeployTarget(null)}
           onDeploy={handleDeployAction}
           onDeployed={handleDeployed}
+        />
+      )}
+      {/* Reset Device UI drawer — opened from the card reset icon (same host refresh as a deploy). */}
+      {resetTarget && (
+        <ResetUiDrawer
+          open
+          project={resetTarget}
+          onClose={() => setResetTarget(null)}
+          onResetDone={handleDeployed}
         />
       )}
       {/* New Type dialog hidden for now (user, 2026-08-22)

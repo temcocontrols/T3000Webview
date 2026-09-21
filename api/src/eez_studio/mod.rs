@@ -551,6 +551,15 @@ pub async fn proxy_device_rest(
     let url = format!("http://{}:{}/{}", host, port, path);
 
     let client = reqwest::Client::builder()
+        // `no_proxy()` is REQUIRED here: reqwest uses the host's system proxy by
+        // default (Windows: the WinINET/registry setting), so on a PC running a
+        // local proxy client (e.g. 127.0.0.1:7892) every device call was sent to
+        // that proxy instead of the ESP32. The proxy cannot reach the LAN device
+        // and answers `502 Bad Gateway` with an EMPTY body, which this handler
+        // faithfully relayed to the browser — looking like "the device is gone"
+        // while `curl` to the device worked fine. The device is always on the
+        // LAN/loopback, never the internet, so it must never go through a proxy.
+        .no_proxy()
         // 120s budget for the device round trip — a FULL deploy writes every
         // screen to the device flash over WiFi and can exceed the old 35s cap
         // (which, combined with the 10s dev-proxy timeout, surfaced as a
@@ -572,6 +581,12 @@ pub async fn proxy_device_rest(
     match resp {
         Ok(r) => {
             let status = r.status();
+            if !status.is_success() {
+                // Relay the device's own status, but say so in the log — a
+                // failure coming from in front of the device (proxy) is
+                // otherwise indistinguishable from the device itself failing.
+                warn!("[device-proxy] {} {} -> {}", method, url, status);
+            }
             let ct = r
                 .headers()
                 .get(header::CONTENT_TYPE)

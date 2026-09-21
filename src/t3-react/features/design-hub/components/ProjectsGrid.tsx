@@ -49,7 +49,9 @@ export const ProjectsGrid: React.FC<{
   onBind: (project: HubProject) => void;
   /** Bound projects open the Deploy drawer from their card action button. */
   onDeploy: (project: HubProject) => void;
-}> = ({ onBind, onDeploy }) => {
+  /** Bound projects can be factory-reset from the card (Reset Device UI drawer). */
+  onResetDevice?: (project: HubProject) => void;
+}> = ({ onBind, onDeploy, onResetDevice }) => {
   const projects = useDesignHubStore((s) => s.projects);
   const activeTab = useDesignHubStore((s) => s.activeTab);
   const search = useDesignHubStore((s) => s.search);
@@ -280,6 +282,7 @@ export const ProjectsGrid: React.FC<{
               project={p}
               onBind={onBind}
               onDeploy={onDeploy}
+              onResetDevice={onResetDevice}
               selectMode={selectMode}
               selected={selectedIds.includes(p.id)}
               onToggleSelect={toggleSelect}

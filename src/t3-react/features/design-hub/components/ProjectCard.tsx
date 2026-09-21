@@ -7,10 +7,11 @@ import { Button, Tooltip } from '@fluentui/react-components';
 import {
   OpenRegular,
   ArrowUploadRegular,
+  ArrowResetRegular,
   MoreHorizontalRegular,
   CheckmarkRegular,
 } from '@fluentui/react-icons';
-import type { HubProject } from '../types';
+import type { DeployLogEntry, HubProject } from '../types';
 import { getDrawingType } from '../drawingTypes';
 import { HubIcon } from '../icons';
 import { DrawingPreview } from './DrawingPreview';
@@ -36,6 +37,8 @@ export const ProjectCard: React.FC<{
   onBind: (project: HubProject) => void;
   /** Bound projects open the Deploy drawer from the card action button. */
   onDeploy?: (project: HubProject) => void;
+  /** Bound projects can also be factory-reset from the card (Reset Device UI drawer). */
+  onResetDevice?: (project: HubProject) => void;
   selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: (projectId: string) => void;
@@ -46,6 +49,7 @@ export const ProjectCard: React.FC<{
   project,
   onBind,
   onDeploy,
+  onResetDevice,
   selectMode = false,
   selected = false,
   onToggleSelect,
@@ -63,12 +67,15 @@ export const ProjectCard: React.FC<{
     if (!project.serialNumber) return undefined;
     return devices.find((d) => d.serialNumber === project.serialNumber)?.nameShowOnTree;
   }, [devices, project.serialNumber]);
-  const lastDeploy = useMemo(() => {
-    if (!project.serialNumber) return undefined;
-    const logs = designHubService.listDeployLogs(project.id);
-    return logs && logs.length > 0 ? logs[0] : undefined;
+  const deployLogs = useMemo(() => {
+    if (!project.serialNumber) return [] as DeployLogEntry[];
+    return designHubService.listDeployLogs(project.id) ?? [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id, project.serialNumber, project.updatedAt]);
+  // A factory reset is NOT a deploy — it wipes the device UI — so it must never
+  // be reported as the card's "last deploy"; it gets its own tooltip line.
+  const lastDeploy = deployLogs.find((l) => l.kind !== 'reset');
+  const lastReset = deployLogs.find((l) => l.kind === 'reset');
 
   const hasPreview = project.source === 'hvac';
 
@@ -126,6 +133,12 @@ export const ProjectCard: React.FC<{
       </span>
       <span style={{ opacity: 0.85 }}>SN {project.serialNumber}</span>
       {locationBits.length > 0 && <span style={{ opacity: 0.85 }}>{locationBits.join(' · ')}</span>}
+      {lastReset && (
+        <span style={{ opacity: 0.9, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <ArrowResetRegular style={{ fontSize: 11, flexShrink: 0 }} />
+          <span>Device UI reset: {timeAgo(lastReset.timestamp)} · factory UI restored</span>
+        </span>
+      )}
       <span style={{ opacity: lastDeploy && lastDeploy.status === 'error' ? 0.95 : 0.75 }}>
         {lastDeploy
           ? `Last ${lastDeploy.status === 'error' ? 'deploy failed' : 'deploy'}: ${timeAgo(lastDeploy.timestamp)} · ${
@@ -242,6 +255,22 @@ export const ProjectCard: React.FC<{
                 appearance="subtle"
                 icon={<ArrowUploadRegular />}
                 onClick={handleDeviceAction}
+              />
+            </Tooltip>
+          )}
+          {/* Factory reset — only for a bound device: it formats the device UI
+              back to the firmware's defaults (this project is re-imported after),
+              so it can never live behind the Bind action. */}
+          {type.deviceAware && project.serialNumber && (
+            <Tooltip
+              content="Reset device UI — restore the firmware's factory UI (this project is re-imported after)"
+              relationship="label"
+            >
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<ArrowResetRegular />}
+                onClick={() => onResetDevice?.(project)}
               />
             </Tooltip>
           )}
