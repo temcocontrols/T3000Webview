@@ -86,6 +86,60 @@ function resolveIcon(icon: string | React.ReactNode, size?: number): React.React
     return undefined;
 }
 
+// ── short labels ─────────────────────────────────────────────────────
+
+/**
+ * A tool's **visible** label, from the tooltip it already has.
+ *
+ * The designer's top band draws `icon + label` for every item (`ShellToolItems.tsx`), the way the legacy
+ * HVAC strip does — a row of bare icons is not readable. EEZ's toolbar was built icon-only (the `title`
+ * is the tooltip), so the label is derived from it here rather than at ~20 call sites: the map below holds
+ * the short forms, and anything unmapped falls back to its first meaningful word.
+ *
+ * The tooltip is untouched: the label is a *short* name, the title stays the full sentence.
+ */
+const SHORT_LABELS: Record<string, string> = {
+    "Save": "Save",
+    "Save As": "Save as",
+    "Save as": "Save as",
+    "Undo": "Undo",
+    "Redo": "Redo",
+    "Cut": "Cut",
+    "Copy": "Copy",
+    "Paste": "Paste",
+    "Delete": "Delete",
+    "Duplicate": "Duplicate",
+    "Scrapbook": "Scrapbook",
+    "Configuration": "Settings",
+    "Check": "Check",
+    "Build": "Build",
+    "Run MicroPython Script": "Script",
+    "Show front face": "Front",
+    "Show back face": "Back",
+    "Show timeline": "Timeline",
+    "Show component descriptions": "Descriptions"
+};
+
+export function shortLabelOf(title: string | undefined): string | undefined {
+    if (!title) {
+        return undefined;
+    }
+
+    const mapped = SHORT_LABELS[title];
+    if (mapped) {
+        return mapped;
+    }
+
+    // Fallback: drop the verb the icon already implies and the parenthetical shortcut, then keep one word.
+    const stripped = title.replace(/\s*\([^)]*\)\s*$/, "").replace(/^(Show|Toggle|Run|Enter|Open|New|Add)\s+/i, "");
+    const word = stripped.split(/[\s/:]+/)[0];
+    if (word.length < 2) {
+        return undefined;
+    }
+
+    return word.length > 12 ? `${word.slice(0, 11)}…` : word;
+}
+
 // ── Styles ───────────────────────────────────────────────────────────
 
 const useStyles = makeStyles({
@@ -93,10 +147,14 @@ const useStyles = makeStyles({
         display: "flex",
         gap: "4px",
         "& .fluent-toolbar-btn": {
+            // Labels are the point (`shortLabelOf`), so the button grows with its text — only the height is
+            // pinned, to the band's 28 px item row.
             minWidth: "28px",
             height: "28px",
-            padding: "2px",
+            padding: "2px 6px",
             borderRadius: tokens.borderRadiusSmall,
+            whiteSpace: "nowrap",
+            fontSize: "12px"
         },
     },
 });
@@ -123,6 +181,7 @@ export const IconAction: React.FC<IconActionProps> = ({
     style,
 }) => {
     const resolved = resolveIcon(icon);
+    const label = shortLabelOf(title);
 
     return (
         <Button
@@ -133,8 +192,17 @@ export const IconAction: React.FC<IconActionProps> = ({
             onClick={onClick}
             disabled={!enabled}
             size="small"
-            style={style}
-        />
+            style={{
+                padding: "2px 6px",
+                minHeight: "26px",
+                fontWeight: 400,
+                fontSize: "12px",
+                whiteSpace: "nowrap",
+                ...style
+            }}
+        >
+            {label}
+        </Button>
     );
 };
 

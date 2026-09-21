@@ -142,7 +142,7 @@ export const Toolbar = observer(
                 }}>
                     {showEditorButtons ? <EditorButtons /> : <div />}
 
-                    {showRunEditSwitchControls ? (
+                    {showRunEditSwitchControls && !isProjectEditorHosted() ? (
                         <RunEditSwitchControls />
                     ) : (
                         <div />
@@ -857,8 +857,18 @@ const PageZoomButton = observer(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-const RunEditSwitchControls = observer(
-    class RunEditSwitchControls extends React.Component {
+export const RunEditSwitchControls = observer(
+    class RunEditSwitchControls extends React.Component<{
+        /**
+         * Drawn on its own, in the Designer shell's band (`TopSpec.modeBar`) rather than inside this
+         * toolbar's nav.
+         *
+         * Two consequences: the cluster decides its own visibility (the nav used to), and it is drawn as a
+         * **two-line group** — modes on the first line, the two long-running ones on the second — so the
+         * five buttons fit the band's right end without eating the tool groups.
+         */
+        standalone?: boolean;
+    }> {
         static contextType = ProjectContext;
         declare context: React.ContextType<typeof ProjectContext>;
 
@@ -923,9 +933,25 @@ const RunEditSwitchControls = observer(
         };
 
         render() {
+            /*
+             * Standalone, the cluster owns its visibility. Deliberately looser than the nav's rule: the
+             * shell's band is the **only** way out of Run / Debug / Full Sim, so it has to survive a
+             * run-tab context — a project with no runtime at all is the one case with no modes to switch.
+             */
+            if (
+                this.props.standalone &&
+                this.context.projectTypeTraits.runtimeType == RuntimeType.NONE
+            ) {
+                return null;
+            }
+
             const iconSize = 30;
             return (
-                <div className="EezStudio_ProjectEditor_ToolbarNav_RunEditSwitchControls">
+                <div
+                    className="EezStudio_ProjectEditor_ToolbarNav_RunEditSwitchControls"
+                    style={{ display: "flex", flexDirection: "column", gap: "2px" }}
+                >
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                     <ButtonAction
                         text="Edit"
                         title="Enter edit mode (Shift+F5)"
@@ -987,26 +1013,29 @@ const RunEditSwitchControls = observer(
                             )
                         }
                     />
+                    </div>
 
-                    {this.showFullSimulatorButton && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        {this.showFullSimulatorButton && (
+                            <ButtonAction
+                                text="Full Sim"
+                                title="Run in Full Simulator (F7)"
+                                icon="material:computer"
+                                iconSize={iconSize}
+                                onClick={this.context.onSetFullSimulatorMode}
+                                selected={this.isFullSimulatorMode}
+                                loader={this.isFullSimulatorBuilding}
+                            />
+                        )}
+
                         <ButtonAction
-                            text="Full Sim"
-                            title="Run in Full Simulator (F7)"
-                            icon="material:computer"
+                            text="Deploy"
+                            title="Deploy to Device — export device JSON files to device-export\\ folder"
+                            icon="material:file_download"
                             iconSize={iconSize}
-                            onClick={this.context.onSetFullSimulatorMode}
-                            selected={this.isFullSimulatorMode}
-                            loader={this.isFullSimulatorBuilding}
+                            onClick={this.handleDeploy}
                         />
-                    )}
-
-                    <ButtonAction
-                        text="Deploy to Device"
-                        title="Export device JSON files to device-export\\ folder"
-                        icon="material:file_download"
-                        iconSize={iconSize}
-                        onClick={this.handleDeploy}
-                    />
+                    </div>
 
                     {this.state.deployOpen && (
                         <DeployDeviceDrawer
