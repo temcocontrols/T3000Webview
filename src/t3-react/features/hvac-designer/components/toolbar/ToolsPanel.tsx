@@ -13,28 +13,32 @@
  *
  * The library holds ~47 tools in seven categories, and this panel is **115 px** wide — as a flat grid that is
  * roughly nine screens of tiles with no way to find anything. So each category is a section: a **28 px sticky
- * header** (small-caps name, tool count, rotating caret) over a two-column grid of **42 px tiles**. Tiles are
- * transparent with a hairline hover; the active tool takes the brand tint and brand icon (was a raw
- * `rgba(0,120,212,0.2)`), and the section holding it keeps a 2 px brand marker, so a folded panel still says
- * where the current tool lives. Folding a section is local state, as the Fluent accordion's `openItems` was;
- * the accordion itself is gone because a sticky header with a count is not something it can express.
+ * header** (small-caps name, tool count, rotating caret) over a two-column grid of **42 px tiles**. The section
+ * holding the active tool keeps a 2 px brand marker, so a folded panel still says where the current tool lives.
+ * Folding a section is local state, as the Fluent accordion's `openItems` was; the accordion itself is gone
+ * because a sticky header with a count is not something it can express.
+ *
+ * ## Items — parity with the origin's left panel (2026-09-22)
+ *
+ * The reference is `ToolsSidebar2.vue` (`/#/hvac/t2`, 105 px wide, same 49 tools): its items are flat
+ * (`45 x 38`, no radius) and every icon is the **tool's own 24 px glyph tinted with the primary colour**;
+ * selection is a surface change (`#353C44` there), never a glyph change. Matched here in the two places that
+ * read as "not the same tool item":
+ *   - `getToolIcon` draws `tool.icon` itself (Material ligature or the `icons.svg` sprite) at 24 px — the
+ *     eight Fluent substitutes that rendered at 14 px are gone (see the note above `ICON_SIZE`);
+ *   - an idle tile's icon is brand blue (`colorBrandForeground1`) and hover is a flat tint
+ *     (`colorBrandBackground2`, no border, no shadow) — the white chip + hairline + `shadow2` hover it had
+ *     looked like a different kind of control from the origin's flat items;
+ *   - `WHITE_SPRITE_ICONS` re-draws the two sprite glyphs that are hard-coded white in `icons.svg`
+ *     (`line`, `segLine`) from their own geometry in the section's black, because white-on-dark artwork
+ *     disappears on a light panel and no CSS rule can recolour a `<use>` clone.
+ * Not changed (deliberately, pending a decision): tile metrics (`39 x 42`, radius 6 px) and the group heads
+ * (28 px sticky, small-caps + count chip) still follow the designer shell's own rhythm.
  */
 
 import React, { useState, useMemo } from 'react';
 import { Tooltip, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
-import {
-  CursorRegular,
-  SquareRegular,
-  TextFontRegular,
-  EmojiRegular,
-  ToggleLeftRegular,
-  TopSpeedRegular,
-  SplitHorizontalRegular,
-  NumberSymbolRegular,
-  AppsRegular,
-  ChevronDownRegular,
-  AddRegular,
-} from '@fluentui/react-icons';
+import { CursorRegular, ChevronDownRegular, AddRegular } from '@fluentui/react-icons';
 import { useHvacDesignerStore } from '../../store/designerStore';
 import { NewTool, toolsCategories, selectedTool } from '@/lib/t3-hvac';
 import EvtOpt from '@/lib/t3-hvac/Event/EvtOpt';
@@ -131,7 +135,7 @@ const handleToolActivate = (tool: any) => {
  */
 const ToolIcon: React.FC<{ iconDef: string }> = ({ iconDef }) => {
   if (!iconDef || !iconDef.startsWith('svguse:')) {
-    return <CursorRegular fontSize={14} />;
+    return <CursorRegular fontSize={ICON_SIZE} />;
   }
 
   // Parse: "svguse:icons.svg#cursor|0 0 280 200"
@@ -154,24 +158,83 @@ const ToolIcon: React.FC<{ iconDef: string }> = ({ iconDef }) => {
   );
 };
 
-// Fluent UI icons for Basic category tools (no sprite equivalents)
-const basicIcons: Record<string, React.ReactNode> = {
-  Box: <SquareRegular />,
-  Text: <TextFontRegular />,
-  IconBasic: <EmojiRegular />,
-  Switch: <ToggleLeftRegular />,
-  Gauge: <TopSpeedRegular />,
-  Dial: <SplitHorizontalRegular />,
-  Value: <NumberSymbolRegular />,
-  Icon: <AppsRegular />,
+/**
+ * Every tool icon is drawn at **24 px**, whichever form `tool.icon` takes.
+ *
+ * `ToolsSidebar2.vue` (the origin's left panel) renders `<q-icon :name="tool.icon" size="sm" />` for
+ * every model entry — one glyph at 24 px whatever form `tool.icon` takes: a Material ligature for a bare
+ * name (`square`, `title`, `emoji_emotions`, `toggle_off`, `speed`, …), the sprite for `svguse:…`, and a
+ * CSS class list when the name has spaces (`Icon with title` carries `fa-solid fa-icons`, and FontAwesome
+ * is in the page too — `extras: ['material-icons', 'fontawesome-v6']`). An earlier pass here substituted
+ * Fluent icons for the eight tools whose `icon` is a bare name; Fluent's `*Regular` family is the 20 px cut
+ * and renders at `1em`, so those tiles drew **14 px outline** glyphs beside 24 px sprite ones — two sizes
+ * and two glyph styles in one grid (measured live 2026-09-22).
+ */
+const ICON_SIZE = 24;
+
+/**
+ * Sprite symbols whose artwork is authored for the **dark** drawer and is therefore invisible here.
+ *
+ * `public/icons.svg` paints `line` (:1043) and `segLine` (:1062) with `fill="#ffffff" stroke="#ffffff"` —
+ * a *white* glyph, which is right on `ToolsSidebar2.vue`'s `#2a2a2a` panel and white-on-white on the
+ * designer's light one. The tile's colour cannot reach them: `<use>` clones the symbol into a shadow tree
+ * and the clone's `<g>` carries its own `stroke="#ffffff"` presentation attribute, so no CSS rule can win
+ * (shadow content matches no selector, and an attribute on the element beats an inherited value). Measured
+ * with the glyph forced to `#0F6CBD`, `#424242` and `#ffffff`: identical, blank, in all three.
+ *
+ * So the two are re-drawn from the sprite's own geometry — same paths, same viewBox, same clipping — in the
+ * **section's own black** (`#000000`, the colour `rectangle` / `circle` / `oval` and the arrows already use).
+ * On a light surface the artwork's counterpart of the origin's white-on-dark line is black, not the panel's
+ * blue: the General group then reads as one set, and the *tile* carries hover/selection exactly as it does for
+ * those glyphs. `icons.svg` is left alone because the origin still needs its white-on-dark artwork.
+ * Any future symbol added to the sprite with hard-coded white belongs in this map.
+ */
+const WHITE_SPRITE_ICONS: Record<string, React.ReactNode> = {
+  // <path d="M0,0 L66.667,0" stroke-width="2"/> in a group translated by y=12.
+  line: (
+    <svg viewBox="0 0 24 24" width={ICON_SIZE} height={ICON_SIZE} style={{ display: 'block' }}>
+      <path d="M0,12 L66.667,12" fill="none" stroke="#000000" strokeWidth={2} />
+    </svg>
+  ),
+  // <path d="M0,41.667 L25,41.667 L25,0 L50,0" stroke-width="3"/> in the symbol's own 60x60 box.
+  segLine: (
+    <svg viewBox="0 0 60 60" width={ICON_SIZE} height={ICON_SIZE} style={{ display: 'block' }}>
+      <path d="M0,41.667 L25,41.667 L25,0 L50,0" fill="none" stroke="#000000" strokeWidth={3} />
+    </svg>
+  ),
 };
 
 const getToolIcon = (tool: any) => {
-  if (basicIcons[tool.name]) return basicIcons[tool.name];
-  if (tool.icon && tool.icon.startsWith('svguse:')) {
-    return <ToolIcon iconDef={tool.icon} />;
+  const icon: unknown = tool.icon;
+
+  if (typeof icon !== 'string' || !icon) {
+    return <CursorRegular fontSize={ICON_SIZE} />;
   }
-  return <CursorRegular fontSize={14} />;
+
+  // Quasar's `q-icon` name resolution, which is what the origin feeds it. Order matters: an svguse name
+  // carries spaces too (`svguse:icons.svg#cursor|0 0 280 200`), so the prefix has to be tested before the
+  // class-list rule.
+  if (icon.startsWith('svguse:')) {
+    const fragmentId = icon.slice('svguse:'.length).split('|')[0].split('#')[1];
+    return WHITE_SPRITE_ICONS[fragmentId] ?? <ToolIcon iconDef={icon} />;
+  }
+
+  // A multi-token name is a CSS class list (the library has one: `fa-solid fa-icons`).
+  if (icon.includes(' ')) {
+    return <i className={icon} aria-hidden="true" style={{ fontSize: ICON_SIZE, lineHeight: 1 }} />;
+  }
+
+  return (
+    <i
+      className="material-icons"
+      aria-hidden="true"
+      // Explicit size: this app's own `.material-icons` rule is overridden to 13 px somewhere in the
+      // bundle, so the ligature would otherwise inherit the panel's base font size.
+      style={{ fontSize: ICON_SIZE, lineHeight: 1 }}
+    >
+      {icon}
+    </i>
+  );
 };
 
 const useStyles = makeStyles({
@@ -298,24 +361,26 @@ const useStyles = makeStyles({
     border: '1px solid transparent',
     borderRadius: '6px',
     background: 'transparent',
-    color: tokens.colorNeutralForeground2,
+    // The origin tints EVERY tool icon with the primary colour (`text-primary` sits on the tile grid in
+    // `ToolsSidebar2.vue`) and lets the tile — not the glyph — carry the state, so an idle item is blue
+    // here too and only its surface changes on hover/select.
+    color: tokens.colorBrandForeground1,
     cursor: 'default',
-    transitionProperty: 'background-color, color, border-color, box-shadow',
+    transitionProperty: 'background-color, color, border-color',
     transitionDuration: '0.1s',
     ':hover': {
-      backgroundColor: tokens.colorNeutralBackground1,
-      border: `1px solid ${tokens.colorNeutralStroke2}`,
-      color: tokens.colorNeutralForeground1,
-      boxShadow: tokens.shadow2,
+      // A tint, not a chip: the reference item is flat (no border, no shadow) and only the colour under
+      // the pointer changes.
+      backgroundColor: tokens.colorBrandBackground2,
     },
     ':active': {
-      backgroundColor: tokens.colorNeutralBackground1Pressed,
+      backgroundColor: tokens.colorBrandBackground2Pressed,
     },
   },
   tileActive: {
-    backgroundColor: tokens.colorBrandBackground2,
+    // One ramp step deeper than the hover tint, so "hovered" and "selected" can never read the same.
+    backgroundColor: tokens.colorBrandBackground2Pressed,
     border: `1px solid ${tokens.colorBrandStroke2}`,
-    color: tokens.colorBrandForeground1,
   },
   addTile: {
     border: `1px dashed ${tokens.colorNeutralStroke2}`,
@@ -412,7 +477,6 @@ export const ToolsPanel: React.FC = () => {
                             tabIndex={0}
                             aria-pressed={active}
                             aria-label={tool.label}
-                            title={tool.label}
                             style={{ cursor: 'default' }}
                             onClick={() => handleToolClick(tool)}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleToolClick(tool); }}
