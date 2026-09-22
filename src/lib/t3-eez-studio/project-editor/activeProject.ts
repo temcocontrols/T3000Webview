@@ -105,11 +105,13 @@ export function publishActiveProject(projectStore: ProjectStore | undefined): vo
             publishActiveEditorMode(modeOf(projectStore));
             publishActiveLayoutModel(projectStore.layoutModels?.root);
             publishActivePageEditor(isPageEditorActive(projectStore));
+            publishPageStatus(pageStatusOf(projectStore));
         });
     } else {
         publishActiveEditorMode("none");
         publishActiveLayoutModel(undefined);
         publishActivePageEditor(false);
+        publishPageStatus(NO_PAGE_STATUS);
     }
 
     notify(listeners);
@@ -225,6 +227,79 @@ function publishActivePageEditor(isPageEditor: boolean): void {
 
     activePageEditor = isPageEditor;
     notify(pageEditorListeners);
+}
+
+/**
+ * What the open project has to say in the status bar: the **active page**, its size, and whether the project
+ * has unsaved changes.
+ *
+ * `name` stays empty unless the workbench is showing a page editor — Settings and the flow editors have no
+ * page, and Run/Debug/Full Sim draw the runtime *instead of* the workbench (see `modeOf`), so there is no page
+ * on screen to name.
+ *
+ * `modified` is `projectStore.isModified`, the real flag. Without it the shared bar's Saved/Unsaved chip says
+ * "Saved" for this document forever, because the only producer of the app-wide status publisher is HVAC's.
+ *
+ * Value-compared before notifying: the watch below also reads `isModified`, so it re-runs on **every edit**,
+ * and only an actual change (the flag flipping, a page switch, a page resize) may reach the subscribers.
+ */
+export interface EezPageStatus {
+    name: string;
+    width: number;
+    height: number;
+    modified: boolean;
+}
+
+const NO_PAGE_STATUS: EezPageStatus = { name: "", width: 0, height: 0, modified: false };
+
+let pageStatus: EezPageStatus = NO_PAGE_STATUS;
+const pageStatusListeners = new Set<() => void>();
+
+/** The active page and the dirty flag of the open project (`name` is empty when no page is on screen). */
+export function getPageStatus(): EezPageStatus {
+    return pageStatus;
+}
+
+/** Subscribe to page-status changes; returns the unsubscribe function. */
+export function subscribePageStatus(listener: () => void): () => void {
+    pageStatusListeners.add(listener);
+    return () => {
+        pageStatusListeners.delete(listener);
+    };
+}
+
+function publishPageStatus(next: EezPageStatus): void {
+    if (
+        pageStatus.name === next.name &&
+        pageStatus.width === next.width &&
+        pageStatus.height === next.height &&
+        pageStatus.modified === next.modified
+    ) {
+        return;
+    }
+
+    pageStatus = next;
+    notify(pageStatusListeners);
+}
+
+/** Observable reads only, so the watch notices a page switch, a page resize and the first edit. */
+function pageStatusOf(projectStore: ProjectStore | undefined): EezPageStatus {
+    if (!projectStore || modeOf(projectStore) !== "edit") {
+        return NO_PAGE_STATUS;
+    }
+
+    const object = projectStore.editorsStore?.activeEditor?.object as
+        | { name?: unknown; width?: unknown; height?: unknown }
+        | undefined;
+    const PageClass = (ProjectEditor as { PageClass?: new (...args: any[]) => any }).PageClass;
+    const isPage = !!object && !!PageClass && object instanceof PageClass;
+
+    return {
+        name: isPage && typeof object?.name === "string" ? object.name : "",
+        width: isPage && typeof object?.width === "number" ? object.width : 0,
+        height: isPage && typeof object?.height === "number" ? object.height : 0,
+        modified: !!projectStore.isModified
+    };
 }
 
 /**
