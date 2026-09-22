@@ -15,6 +15,8 @@ import {
 } from "project-editor/core/objectAdapter";
 import { ProjectContext } from "project-editor/project/context";
 
+import LogUtil from "@common/t3-hvac/Util/LogUtil";
+
 ////////////////////////////////////////////////////////////////////////////////
 
 const DropMark = observer(
@@ -709,7 +711,7 @@ export const Tree = observer(
         };
 
         onRowClick = (event: React.MouseEvent<HTMLDivElement>) => {
-            console.log("[tree] onRowClick target:", (event.target as any).tagName, (event.target as any).className);
+            LogUtil.Debug("[tree] onRowClick target:", (event.target as any).tagName, (event.target as any).className);
             if (!(event.nativeEvent.target instanceof HTMLInputElement)) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -719,7 +721,7 @@ export const Tree = observer(
                 ".tree-row[data-object-id]"
             );
             const itemId = $rowDiv.attr("data-object-id");
-            console.log("[tree] onRowClick rowDiv:", !!$rowDiv.length, "itemId:", itemId);
+            LogUtil.Debug("[tree] onRowClick rowDiv:", !!$rowDiv.length, "itemId:", itemId);
             let item = this.props.treeAdapter.getItemFromId(itemId)!;
             if (event.shiftKey) {
                 const $treeDiv = $rowDiv.parent();
