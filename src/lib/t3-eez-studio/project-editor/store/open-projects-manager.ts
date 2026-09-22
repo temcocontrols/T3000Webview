@@ -11,6 +11,7 @@ import fs from "fs";
 import path from "path";
 
 import * as notification from "eez-studio-ui/notification";
+import LogUtil from "@common/t3-hvac/Util/LogUtil";
 
 import type { ProjectStore } from "project-editor/store";
 import { ImportDirective, Project } from "project-editor/project/project";
@@ -287,7 +288,7 @@ export class OpenProjectsManager {
     }
 
     async _loadProject(filePath: string) {
-        console.log("loadProject", filePath);
+        LogUtil.Debug("loadProject", filePath);
 
         let fileData: Buffer;
 

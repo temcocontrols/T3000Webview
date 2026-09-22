@@ -18,6 +18,8 @@ import { firstWord } from "eez-studio-shared/string";
 
 import { registerSource, sendMessage, watch } from "eez-studio-shared/notify";
 
+import LogUtil from "@common/t3-hvac/Util/LogUtil";
+
 import {
     IExtension,
     IExtensionProperties,
@@ -44,7 +46,7 @@ export const CONF_NODE_MODULE_PROPERTY_NAME = "node-module";
 async function loadExtension(
     extensionFolderPath: string
 ): Promise<IExtension | undefined> {
-    console.log("[ext-install] loadExtension:", extensionFolderPath);
+    LogUtil.Debug("[ext-install] loadExtension:", extensionFolderPath);
     let packageJsonFilePath = extensionFolderPath + "/" + "package.json";
     if (await fileExists(packageJsonFilePath)) {
         console.log("[ext-install] package.json exists, reading...");
@@ -206,16 +208,16 @@ export async function reloadExtension(folder: string) {
 ///////////////////////////////////////////////////////////////////////////////
 
 export async function loadExtensions(nodeModuleFolders: string[]) {
-    console.log("[ext-load] loadExtensions start, extensionsFolderPath:", extensionsFolderPath);
+    LogUtil.Debug("[ext-load] loadExtensions start, extensionsFolderPath:", extensionsFolderPath);
     let preinstalledExtensionFolders = await readFolder(
         preInstalledExtensionsFolderPath
     );
-    console.log("[ext-load] preinstalled folders:", preinstalledExtensionFolders.length);
+    LogUtil.Debug("[ext-load] preinstalled folders:", preinstalledExtensionFolders.length);
 
     let installedExtensionFolders: string[];
     try {
         installedExtensionFolders = await readFolder(extensionsFolderPath);
-        console.log("[ext-load] installed folders raw:", installedExtensionFolders.length, installedExtensionFolders);
+        LogUtil.Debug("[ext-load] installed folders raw:", installedExtensionFolders.length, installedExtensionFolders);
 
         installedExtensionFolders = installedExtensionFolders.filter(
             extensionFolderPath => {

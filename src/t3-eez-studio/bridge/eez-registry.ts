@@ -27,6 +27,8 @@ import * as _lvImgConvV9 from "project-editor/lvgl/lv_img_conv_v9/index.js";
 // xliff — used by features/texts/navigation.tsx for XLIFF translation files
 import * as xliff from "xliff";
 
+import LogUtil from "@common/t3-hvac/Util/LogUtil";
+
 const reg: Record<string, any> = (globalThis as any).__eezModules || {};
 (globalThis as any).__eezModules = reg;
 
@@ -42,4 +44,4 @@ reg["moment-duration-format"] = function install(m: any) { /* already applied vi
 reg["eez-studio-shared/i10n"] = _i10n;
 reg["./lv_img_conv_v9/index.js"] = (_lvImgConvV9 as any).default || _lvImgConvV9;
 reg["xliff"] = xliff;
-console.log("[eez-registry] lv_img_conv_v9 registered, LVGLImage:", typeof (reg["./lv_img_conv_v9/index.js"] as any)?.LVGLImage);
+LogUtil.Debug("[eez-registry] lv_img_conv_v9 registered, LVGLImage:", typeof (reg["./lv_img_conv_v9/index.js"] as any)?.LVGLImage);

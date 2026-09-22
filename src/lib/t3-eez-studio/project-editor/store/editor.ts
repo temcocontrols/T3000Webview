@@ -22,6 +22,7 @@ import {
 import type { ProjectStore } from "project-editor/store";
 import type { LVGLStyle } from "project-editor/lvgl/style";
 import { isProjectEditorHosted } from "project-editor/hostMode";
+import LogUtil from "@common/t3-hvac/Util/LogUtil";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -171,7 +172,7 @@ export class EditorsStore {
         // Try the JSON id directly first (works in original Electron + 0.7.15)
         const direct = model.getNodeById(this.tabsetID);
         if (direct instanceof FlexLayout.TabSetNode) {
-            console.log("[editors] tabset found by JSON id:", this.tabsetID);
+            LogUtil.Debug("[editors] tabset found by JSON id:", this.tabsetID);
             return direct.getId();
         }
         // Fallback: find by _attributes (0.7.15 stores JSON id in attributes)
@@ -447,7 +448,7 @@ export class EditorsStore {
         params?: any,
         permanent?: boolean
     ) {
-        console.log("[editors] openEditor object=", objectToString(object), "editors:", this.editors.length);
+        LogUtil.Debug("[editors] openEditor object=", objectToString(object), "editors:", this.editors.length);
 
         const editors = this.editors;
 
@@ -487,7 +488,7 @@ export class EditorsStore {
         }
 
         let editor = new Editor(this.projectStore);
-        console.log("[editors] new Editor created");
+        LogUtil.Debug("[editors] new Editor created");
         runInAction(() => {
             this.editors.push(editor);
         });
@@ -495,16 +496,16 @@ export class EditorsStore {
         editor.object = object;
         editor.subObject = subObject;
         editor.params = params;
-        console.log("[editors] calling createEditorState...");
+        LogUtil.Debug("[editors] calling createEditorState...");
         editor.state = ProjectEditor.createEditorState(object);
-        console.log("[editors] createEditorState done, state:", !!editor.state);
+        LogUtil.Debug("[editors] createEditorState done, state:", !!editor.state);
         if (permanent != undefined) {
             editor.permanent = permanent;
         }
 
-        console.log("[editors] entering try block...");
+        LogUtil.Debug("[editors] entering try block...");
         try {
-            console.log("[editors] getting icon...");
+            LogUtil.Debug("[editors] getting icon...");
             let icon = getObjectIcon(object);
             if (typeof icon == "string") {
                 if (!icon.startsWith("material:") && !icon.startsWith("svg:")) {
@@ -545,7 +546,7 @@ export class EditorsStore {
                     editorFound.tabId
                 ) as FlexLayout.TabNode;
             } else {
-                console.log("[editors] addNode to actualTabsetID:", this.actualTabsetID);
+                LogUtil.Debug("[editors] addNode to actualTabsetID:", this.actualTabsetID);
                 tabNode = this.tabsModel.doAction(
                     FlexLayout.Actions.addNode(
                         {
@@ -561,11 +562,11 @@ export class EditorsStore {
                         true
                     )
                 ) as FlexLayout.TabNode;
-                console.log("[editors] addNode result:", !!tabNode, tabNode ? "tabId=" + tabNode.getId() : "NULL");
+                LogUtil.Debug("[editors] addNode result:", !!tabNode, tabNode ? "tabId=" + tabNode.getId() : "NULL");
             }
 
             editor.tabId = tabNode.getId();
-            console.log("[editors] new tabId:", editor.tabId);
+            LogUtil.Debug("[editors] new tabId:", editor.tabId);
 
             this.tabIdToEditorMap.set(editor.tabId, editor);
 

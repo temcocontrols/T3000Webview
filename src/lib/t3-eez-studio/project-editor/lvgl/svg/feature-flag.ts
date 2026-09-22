@@ -19,6 +19,8 @@
  * Only LVGL 9.5 is supported by the SVG surface; other versions always stay on canvas.
  */
 
+import LogUtil from "@common/t3-hvac/Util/LogUtil";
+
 export const SVG_RENDERER_STORAGE_KEY = "t3.lvgl.svgRenderer";
 
 /** The only LVGL version the SVG surface currently targets. */
@@ -200,7 +202,7 @@ export function reportSurfaceChoice(lvglVersion: string | undefined): SurfaceCho
         };
         const reported = host.__lvglSurface?.reported ?? [];
         if (!reported.includes(choice.reason)) {
-            console.info(`[lvgl] surface: ${choice.surface} — ${choice.reason}`);
+            LogUtil.Info(`[lvgl] surface: ${choice.surface} — ${choice.reason}`);
             reported.push(choice.reason);
         }
         host.__lvglSurface = { ...choice, reported };

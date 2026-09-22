@@ -17,6 +17,8 @@ import * as path from "path";
 
 import { dockerBuildState } from "project-editor/lvgl/docker-build/docker-build-state";
 
+import LogUtil from "@common/t3-hvac/Util/LogUtil";
+
 import { onSimpleMessage } from "eez-studio-shared/util-renderer";
 
 import {
@@ -542,7 +544,7 @@ export class ProjectEditorTab implements IHomeTab {
                     if (!inLayout && firstPageRetries < 12) {
                         setTimeout(ensureFirstPageVisible, 500);
                     } else {
-                        console.log(
+                        LogUtil.Debug(
                             `[EEZ-Examples] first page in canvas after ${firstPageRetries} attempt(s): ${inLayout}`
                         );
                     }

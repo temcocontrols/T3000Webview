@@ -27,6 +27,8 @@ import { extensionsCatalog } from "./extensions-manager/catalog";
 import { buildProject } from "home/build-project";
 import { layoutModels } from "eez-studio-ui/side-dock";
 
+import LogUtil from "@common/t3-hvac/Util/LogUtil";
+
 configure({ enforceActions: "observed", useProxies: "always" });
 
 // make sure we store all the values waiting to be stored inside blur event handler
@@ -108,7 +110,7 @@ ipcRenderer.on("load-debug-info", async (sender: any, filePath: any) => {
             tab.loadDebugInfo(filePath);
         }
     } catch (err) {
-        console.error(err);
+        LogUtil.Error(err);
     }
 });
 
@@ -119,7 +121,7 @@ ipcRenderer.on("save-debug-info", () => {
             tab.saveDebugInfo();
         }
     } catch (err) {
-        console.error(err);
+        LogUtil.Error(err);
     }
 });
 
@@ -158,22 +160,22 @@ const Main = observer(
 );
 
 async function main() {
-    console.log("[main] STARTING main()");
+    LogUtil.Debug("[main] STARTING main()");
     const params = new URLSearchParams(location.search);
     const buildProject = params.get("build-project") === "1";
 
     let nodeModuleFolders: string[];
     try {
         nodeModuleFolders = await getNodeModuleFolders();
-        console.log("[main] nodeModuleFolders:", nodeModuleFolders);
+        LogUtil.Debug("[main] nodeModuleFolders:", nodeModuleFolders);
     } catch (err) {
-        console.info(`Failed to get node module folders.`);
+        LogUtil.Info(`Failed to get node module folders.`);
         nodeModuleFolders = [];
     }
 
-    console.log("[main] calling loadExtensions...");
+    LogUtil.Debug("[main] calling loadExtensions...");
     await loadExtensions(nodeModuleFolders);
-    console.log("[main] loadExtensions done");
+    LogUtil.Debug("[main] loadExtensions done");
 
     extensionsCatalog.load();
 

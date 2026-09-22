@@ -12,6 +12,7 @@ import {
 import type { Page } from "project-editor/features/page/page";
 import type { IWasmFlowRuntime } from "eez-studio-types";
 import { getColorRGB } from "eez-studio-shared/color";
+import LogUtil from "@common/t3-hvac/Util/LogUtil";
 import { ProjectEditor } from "project-editor/project-editor-interface";
 import type { Bitmap } from "project-editor/features/bitmap/bitmap";
 import type { Font } from "project-editor/features/font/font";
@@ -778,12 +779,12 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
             return;
         }
 
-        console.log("[wasm] mount starting, lvglVersion:", this.lvglVersion);
+        LogUtil.Debug("[wasm] mount starting, lvglVersion:", this.lvglVersion);
         const ctor = getLvglWasmFlowRuntimeConstructor(this.lvglVersion);
-        console.log("[wasm] got constructor, type:", typeof ctor);
+        LogUtil.Debug("[wasm] got constructor, type:", typeof ctor);
         const wasm = ctor(
             async () => {
-                console.log("[wasm] initCallback fired, wasm:", !!this.wasm, "display:", this.displayWidth, this.displayHeight);
+                LogUtil.Debug("[wasm] initCallback fired, wasm:", !!this.wasm, "display:", this.displayWidth, this.displayHeight);
                 await this.preloadImages();
 
                 if (this.wasm != wasm) {
@@ -807,7 +808,7 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                     -(new Date().getTimezoneOffset() / 60) * 100,
                     false
                 );
-                console.log("[wasm] _init done");
+                LogUtil.Debug("[wasm] _init done");
 
                 // lv_bin_decoder_init() is only called in flowInit (worker),
                 // not in the main thread (where is_editor=true, flowInit skipped).
@@ -825,7 +826,7 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                 // to register tick callbacks for expression properties like
                 // {zones[selected_zone].temperature}.
                 (this.wasm as any).assetsMap = assetsMap;
-                console.log("[LVGL-EDITOR] assetsMap attached to wasm | hasFlowIndexes:", !!assetsMap?.flowIndexes);
+                LogUtil.Debug("[LVGL-EDITOR] assetsMap attached to wasm | hasFlowIndexes:", !!assetsMap?.flowIndexes);
                 if (typeof this.wasm._eez_flow_add_images === "function") {
                     const bitmapNames: string[] = assetsMap?.bitmaps || [];
                     if (bitmapNames.length > 0) {
@@ -868,7 +869,7 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                         this.wasm._eez_flow_add_images(imagesPtr, numImages);
                         console.log("[wasm] registered", numImages, "images (by assets map index)");
                     } else {
-                        console.log("[wasm] no bitmaps in assets map — skipping registration");
+                        LogUtil.Debug("[wasm] no bitmaps in assets map — skipping registration");
                     }
                 } else {
                     console.log("[wasm] _eez_flow_add_images NOT FOUND — old WASM");
@@ -877,7 +878,7 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
                 this.requestAnimationFrameId = window.requestAnimationFrame(
                     this.tick
                 );
-                console.log("[wasm] tick started");
+                LogUtil.Debug("[wasm] tick started");
 
                 this.autorRunDispose = autorun(() => {
                     if (!this.isMounted) {
@@ -992,7 +993,7 @@ export class LVGLPageEditorRuntime extends LVGLPageRuntime {
 
         this.wasm = wasm;
         this.isMounted = true;
-        console.log("[wasm] mount complete, wasm set, isMounted=true");
+        LogUtil.Debug("[wasm] mount complete, wasm set, isMounted=true");
     }
 
     tick = () => {

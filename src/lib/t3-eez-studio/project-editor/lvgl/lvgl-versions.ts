@@ -4,6 +4,7 @@ import type { IEezObject } from "project-editor/core/object";
 import { ProjectEditor } from "project-editor/project-editor-interface";
 import type { Bitmap, BitmapData } from "project-editor/features/bitmap/bitmap";
 import type { IWasmFlowRuntime } from "eez-studio-types";
+import LogUtil from "@common/t3-hvac/Util/LogUtil";
 
 // ── LVGL Image Converter (lv_img_conv_v9) ──────────────────────────────
 // Electron:  const { LVGLImage } = require("./lv_img_conv_v9/index.js")
@@ -59,7 +60,7 @@ async function getLVGLImageClass(): Promise<any> {
             document.head.appendChild(s);
         });
     }
-    console.log("[DIAG-LVGL-PNGJS] loaded via script, PNG:", typeof _pngjs?.PNG);
+    LogUtil.Debug("[DIAG-LVGL-PNGJS] loaded via script, PNG:", typeof _pngjs?.PNG);
 
     // Polyfill Node.js builtins for the browser.
     var EE = (await import("events")).EventEmitter;
@@ -111,7 +112,7 @@ async function getLVGLImageClass(): Promise<any> {
     try {
         var fn = new Function("module", "exports", "require", "__filename", "__dirname", src);
         fn(moduleObj, moduleObj.exports, fakeRequire, url, url.replace(/\/[^/]+$/, ""));
-        console.log("[DIAG-LVGL-SANDBOX] require log:", _requireLog.join(" → "));
+        LogUtil.Debug("[DIAG-LVGL-SANDBOX] require log:", _requireLog.join(" → "));
     } catch (e: any) {
         console.error("[DIAG-LVGL-SANDBOX] init error:", e.message || e);
         console.error("[DIAG-LVGL-SANDBOX] require log before crash:", _requireLog.join(" → "));
@@ -425,16 +426,16 @@ const version_9 = {
         // Load LVGLImage synchronously (Electron) or via await import (browser/Vite).
         // Same path as Electron: const { LVGLImage } = require("./lv_img_conv_v9/index.js")
         const LVGLImage = await getLVGLImageClass();
-        console.log("[DIAG-LVGL-BUILD] LVGLImage loaded, type=", typeof LVGLImage, "name=", LVGLImage?.name);
+        LogUtil.Debug("[DIAG-LVGL-BUILD] LVGLImage loaded, type=", typeof LVGLImage, "name=", LVGLImage?.name);
 
         // getEmbeddedImage returns a data-URI string in the browser (e.g.
         // "data:image/png;base64,iVBOR..."). Convert to Buffer for lv_img_conv_v9.
         let embedded: any = await bitmap.getEmbeddedImage();
-        console.log("[DIAG-LVGL-BUILD] embeddedImage raw: type=", typeof embedded, "len=", embedded?.length);
+        LogUtil.Debug("[DIAG-LVGL-BUILD] embeddedImage raw: type=", typeof embedded, "len=", embedded?.length);
         if (typeof embedded === "string" && embedded.startsWith("data:")) {
             const b64 = embedded.includes(",") ? embedded.split(",")[1] : embedded;
             embedded = Buffer.from(b64, "base64");
-            console.log("[DIAG-LVGL-BUILD] converted data URI to Buffer, len=", embedded.length);
+            LogUtil.Debug("[DIAG-LVGL-BUILD] converted data URI to Buffer, len=", embedded.length);
         }
 
         try {
@@ -691,7 +692,7 @@ export function getLvglWasmFlowRuntimeConstructor(
                             throw new Error("glue evaluated but LVGLWasmRuntime global not set: " + jsUrl);
                         }
                         (globalThis as any)[globalKey] = factory;
-                        console.log("[LVGL-WASM] v" + version + " glue ready" + (attempt > 1 ? " (retry " + attempt + ")" : ""));
+                        LogUtil.Debug("[LVGL-WASM] v" + version + " glue ready" + (attempt > 1 ? " (retry " + attempt + ")" : ""));
                         return;
                     } catch (err) {
                         console.warn("[LVGL-WASM] glue load attempt " + attempt + " failed for " + jsUrl + ": " + (err as Error).message);
