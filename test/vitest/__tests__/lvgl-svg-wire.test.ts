@@ -1245,6 +1245,10 @@ describe("svg-context — the frame hook", () => {
 // (`#/t3000/eez?svg=1`) while `window.location.search` is empty. Reading only `search` silently
 // ignored the flag for every URL written the way the app writes its own links — which is exactly
 // what happened in the browser before this was fixed.
+//
+// P4 note: the app's own links now point at `#/t3000/designer/lvgl-9-5?svg=1` (the legacy
+// `#/t3000/eez…` form redirects there with the query copied verbatim), so both forms are pinned
+// here — the legacy one because old bookmarks still arrive that way.
 // ---------------------------------------------------------------------------------------
 
 describe("feature flag — URL forms", () => {
@@ -1254,6 +1258,7 @@ describe("feature flag — URL forms", () => {
         expect(parseSvgOverride("?svg=0")).toBe(false);
         // HashRouter form: what the app's own links look like.
         expect(parseSvgOverride("#/t3000/eez?svg=1")).toBe(true);
+        expect(parseSvgOverride("#/t3000/designer/lvgl-9-5?svg=1")).toBe(true);
         // A hand-typed "&svg=1" glued to the path is not a real query, but accepting it costs
         // nothing and saves a confusing no-op.
         expect(parseSvgOverride("#/t3000/eez&svg=1")).toBe(true);
@@ -1281,6 +1286,7 @@ describe("feature flag — URL forms", () => {
         window.localStorage.removeItem(SVG_RENDERER_STORAGE_KEY);
         expect(isSvgRendererEnabled("")).toBe(true);
         expect(isSvgRendererEnabled("#/t3000/eez")).toBe(true);
+        expect(isSvgRendererEnabled("#/t3000/designer/lvgl-9-5")).toBe(true);
     });
 
     it("still lets an explicit opt-out win over the default", () => {
