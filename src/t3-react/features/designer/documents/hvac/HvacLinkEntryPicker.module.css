@@ -1,0 +1,272 @@
+/**
+ * Link-Entry picker — two panes.
+ *
+ * Transcribed from `FddPage.module.css`, deliberately: the FDD page is the reference for how a list surface
+ * looks in this app — 28/32 px bordered controls, 12 px type, a grey `#e8e8e8` header band, hairline row
+ * separators, thin `#c1c1c1` scrollbars — and Fluent's internals are overridden the same way it does it,
+ * through `:global(.fui-*)` in a CSS module. (A Griffel `makeStyles` class cannot reach Fluent's own classes
+ * reliably; stylesheet order decides, which is why the earlier attempt came out unstyled.)
+ *
+ * The device column takes its cues from the home tree (`ProjectPointTree.module.css`): 32 px rows, 13 px text,
+ * `#f3f2f1` hover, and `#e1dfdd` + a 2 px `#0078d4` rule when selected — always at weight 400.
+ */
+
+/* Composition copied from the app shell (`MainLayout.tsx`):
+ *   middleArea   → .body          (flex row, overflow hidden, white)
+ *   leftPanel    → .devicesPane   (#fafafa, 1px #e1e1e1 right border, thin #c1c1c1/#f5f5f5 scrollbar)
+ *   mainContent  → .pointsPane    (flex column, min-width 0, white)
+ *   mainContentBody → padding 10px, thin scrollbar
+ * The dialog itself carries the frame, so this layout has no border of its own. */
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: min(60vh, 480px);
+  overflow: hidden;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  /* A gap, not a divider: the two panes are separated by space instead of a border. */
+  gap: 12px;
+}
+
+/* ── Left pane: devices ── */
+.devicesPane {
+  flex: 0 0 220px;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: #fafafa;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f5f5f5;
+}
+.devicesPane::-webkit-scrollbar,
+.gridWrap::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.devicesPane::-webkit-scrollbar-thumb,
+.gridWrap::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 6px;
+}
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 2px;
+  color: #605e5c;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deviceRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 10px;
+  /* Breathing room between rows. */
+  margin: 1px 0;
+  border: 0;
+  /* Square edges: the selected row's rule is a straight 2 px line, never rounded. */
+  border-radius: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: #201f1e;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+.deviceRow:hover {
+  background: #f3f2f1;
+  border-left-color: #8a8886;
+}
+.deviceRowActive,
+.deviceRowActive:hover {
+  background: #e1dfdd;
+  border-left-color: #0078d4;
+  color: #0078d4;
+}
+/* "All devices" sits above the groups, spaced off rather than boxed off. */
+.deviceRowAll {
+  margin-bottom: 6px;
+}
+.allLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #201f1e;
+}
+.deviceName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.deviceMeta {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #605e5c;
+}
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8a8886;
+}
+.dotOnline { background: #107c10; }
+.dotOffline { background: #a19f9d; }
+
+/* ── Right pane: points (FDD's .rulesLayout → .rulesTop → .rulesBottom) ── */
+.pointsPane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  /* No top padding: the toolbar must start on the same line as the device column's first row. */
+  padding: 0 0 10px;
+  background: #ffffff;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+}
+.toolbar :global(.fui-Input) { height: 28px; min-height: 28px; }
+.toolbar :global(.fui-Input__input) { height: 28px; font-size: 12px; }
+.toolbar button { height: 28px; min-height: 28px; }
+/* Wide by default: the point names are long and the box is the main control here. */
+.searchBox {
+  flex: 1 1 auto;
+  min-width: 240px;
+  max-width: 460px;
+}
+/* Reload as a link, using FDD's own `.taggedMore` idiom instead of a button. */
+.linkButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0078d4;
+  font-family: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.linkButton:hover {
+  text-decoration: underline;
+}
+.linkButton:focus-visible {
+  outline: 1px solid #0078d4;
+  outline-offset: 2px;
+}
+.count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+}
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-bottom: 6px;
+  font-size: 12px;
+  color: #605e5c;
+}
+/* FDD's .dataGrid + .rulesBottom, with its nth-child column idiom (Point 52% | Type 16% | Value 32%). */
+.gridWrap {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+/*
+ * The points table is FDD's own grid idiom (`.findingGrid` / `.gridHeader` / `.gridRow`): a CSS grid of plain
+ * rows. Fluent's `DataGrid` was dropped here on purpose — it always owns the first cell for selection, which
+ * is what produced the unwanted radio column and shifted the Point column's width onto it.
+ */
+.gridHeader,
+.gridRow {
+  display: grid;
+  grid-template-columns: 1fr 90px 110px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  min-height: 32px;
+  font-size: 12px;
+}
+.gridHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  min-height: 28px;
+  background: #e8e8e8;
+  color: var(--colorNeutralForeground2, #424242);
+  font-size: 11px;
+}
+.gridRow {
+  border-top: 0.8px solid #e0e0e0;
+  cursor: pointer;
+}
+.gridRow:hover { background: #f3f2f1; }
+.gridRowSelected,
+.gridRowSelected:hover {
+  background: #e1dfdd;
+  box-shadow: inset 2px 0 0 #0078d4;
+}
+.cellName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Cell pieces, after FDD's .ruleCell / .ruleNameLine / .ruleName. */
+.pointName {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.monoCell {
+  font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 11px;
+  color: var(--colorNeutralForeground2, #424242);
+}
+.valueCell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--colorNeutralForeground2, #424242);
+}
+.emptyState {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--colorNeutralForeground3, #616161);
+}
+.hint {
+  padding: 10px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #605e5c;
+}

@@ -507,29 +507,29 @@ class WebSocketClient {
       columnNumber: 'Unknown'
     };
 
-    console.log('= WS: GET PANEL DATA REQUEST - Sending WebSocket request to T3000 backend:', {
-      action: 'GET_PANEL_DATA',
-      messageType: MessageType.GET_PANEL_DATA,
-      targetPanelId: panelId,
-      callerInformation: {
-        immediateCallerFunction: callerDetails.functionName,
-        callerFile: callerDetails.fileName,
-        callerLine: callerDetails.lineNumber,
-        callerColumn: callerDetails.columnNumber,
-        fullCallerContext: immediateCallerLine.trim()
-      },
-      callStackTrace: {
-        topCallers: callerInfo.map(line => line.trim()),
-        requestOrigin: this.identifyRequestOrigin(callerInfo),
-        triggerSource: this.categorizeCallSource(callerInfo)
-      },
-      currentT3000State: {
-        panelsDataLength: T3000_Data.value.panelsData?.length || 0,
-        panelsListLength: T3000_Data.value.panelsList?.length || 0,
-        loadingPanel: T3000_Data.value.loadingPanel
-      },
-      timestamp: new Date().toISOString()
-    });
+    // console.log('= WS: GET PANEL DATA REQUEST - Sending WebSocket request to T3000 backend:', {
+    //   action: 'GET_PANEL_DATA',
+    //   messageType: MessageType.GET_PANEL_DATA,
+    //   targetPanelId: panelId,
+    //   callerInformation: {
+    //     immediateCallerFunction: callerDetails.functionName,
+    //     callerFile: callerDetails.fileName,
+    //     callerLine: callerDetails.lineNumber,
+    //     callerColumn: callerDetails.columnNumber,
+    //     fullCallerContext: immediateCallerLine.trim()
+    //   },
+    //   callStackTrace: {
+    //     topCallers: callerInfo.map(line => line.trim()),
+    //     requestOrigin: this.identifyRequestOrigin(callerInfo),
+    //     triggerSource: this.categorizeCallSource(callerInfo)
+    //   },
+    //   currentT3000State: {
+    //     panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+    //     panelsListLength: T3000_Data.value.panelsList?.length || 0,
+    //     loadingPanel: T3000_Data.value.loadingPanel
+    //   },
+    //   timestamp: new Date().toISOString()
+    // });
 
     this.FormatMessageData(MessageType.GET_PANEL_DATA, panelId, null, null);
     this.sendMessage(this.messageData);
@@ -596,28 +596,28 @@ class WebSocketClient {
       columnNumber: 'Unknown'
     };
 
-    console.log('= WS: GET PANELS LIST REQUEST - Sending WebSocket request to T3000 backend:', {
-      action: 'GET_PANELS_LIST',
-      messageType: MessageType.GET_PANELS_LIST,
-      callerInformation: {
-        immediateCallerFunction: callerDetails.functionName,
-        callerFile: callerDetails.fileName,
-        callerLine: callerDetails.lineNumber,
-        callerColumn: callerDetails.columnNumber,
-        fullCallerContext: immediateCallerLine.trim()
-      },
-      callStackTrace: {
-        topCallers: callerInfo.map(line => line.trim()),
-        requestOrigin: this.identifyRequestOrigin(callerInfo),
-        triggerSource: this.categorizeCallSource(callerInfo)
-      },
-      currentT3000State: {
-        panelsDataLength: T3000_Data.value.panelsData?.length || 0,
-        panelsListLength: T3000_Data.value.panelsList?.length || 0,
-        loadingPanel: T3000_Data.value.loadingPanel
-      },
-      timestamp: new Date().toISOString()
-    });
+    // console.log('= WS: GET PANELS LIST REQUEST - Sending WebSocket request to T3000 backend:', {
+    //   action: 'GET_PANELS_LIST',
+    //   messageType: MessageType.GET_PANELS_LIST,
+    //   callerInformation: {
+    //     immediateCallerFunction: callerDetails.functionName,
+    //     callerFile: callerDetails.fileName,
+    //     callerLine: callerDetails.lineNumber,
+    //     callerColumn: callerDetails.columnNumber,
+    //     fullCallerContext: immediateCallerLine.trim()
+    //   },
+    //   callStackTrace: {
+    //     topCallers: callerInfo.map(line => line.trim()),
+    //     requestOrigin: this.identifyRequestOrigin(callerInfo),
+    //     triggerSource: this.categorizeCallSource(callerInfo)
+    //   },
+    //   currentT3000State: {
+    //     panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+    //     panelsListLength: T3000_Data.value.panelsList?.length || 0,
+    //     loadingPanel: T3000_Data.value.loadingPanel
+    //   },
+    //   timestamp: new Date().toISOString()
+    // });
 
     this.FormatMessageData(MessageType.GET_PANELS_LIST, null, null, null);
     this.sendMessage(this.messageData);
@@ -628,7 +628,7 @@ class WebSocketClient {
   public GetEntries(data: any[]) {
     // action: 6, // GET_ENTRIES
 
-    console.log('= ws: GetEntries / data:', data);
+    // console.log('= ws: GetEntries / data:', data);
 
     const currentDevice = this.deviceOpt?.getCurrentDevice();
     if (currentDevice === null || currentDevice === undefined) return;
@@ -645,7 +645,7 @@ class WebSocketClient {
 
   public GetLoggingData(serialNumber?: number) {
     // action: 15, // LOGGING_DATA
-    console.log('= ws: GetLoggingData / serialNumber:', serialNumber);
+    // console.log('= ws: GetLoggingData / serialNumber:', serialNumber);
 
     const currentDevice = this.deviceOpt?.getCurrentDevice();
     if (currentDevice === null || currentDevice === undefined) return;
@@ -859,70 +859,70 @@ class WebSocketClient {
         T3000_Data.value.loadingPanel = null;
       }
 
-      console.log('= WS: PANEL DATA RESPONSE START - Processing panel data from WebSocket:', {
-        incomingPanelId: msgData.panel_id,
-        incomingDataLength: msgData.data?.length || 0,
-        incomingRangesLength: msgData.ranges?.length || 0,
-        beforeUpdate: {
-          panelsDataLength: T3000_Data.value.panelsData?.length || 0,
-          panelsRangesLength: T3000_Data.value.panelsRanges?.length || 0,
-          loadingPanel: T3000_Data.value.loadingPanel
-        },
-        timestamp: new Date().toISOString()
-      });
+      // console.log('= WS: PANEL DATA RESPONSE START - Processing panel data from WebSocket:', {
+      //   incomingPanelId: msgData.panel_id,
+      //   incomingDataLength: msgData.data?.length || 0,
+      //   incomingRangesLength: msgData.ranges?.length || 0,
+      //   beforeUpdate: {
+      //     panelsDataLength: T3000_Data.value.panelsData?.length || 0,
+      //     panelsRangesLength: T3000_Data.value.panelsRanges?.length || 0,
+      //     loadingPanel: T3000_Data.value.loadingPanel
+      //   },
+      //   timestamp: new Date().toISOString()
+      // });
 
       // Log filtering operation
       const beforeFilterLength = T3000_Data.value.panelsData.length;
       const itemsToRemove = T3000_Data.value.panelsData.filter(item => item.pid === msgData.panel_id);
-      console.log('= WS: PANEL DATA FILTER - Removing existing data for panel:', {
-        panelId: msgData.panel_id,
-        beforeFilterLength,
-        itemsToRemoveCount: itemsToRemove.length,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('= WS: PANEL DATA FILTER - Removing existing data for panel:', {
+      //   panelId: msgData.panel_id,
+      //   beforeFilterLength,
+      //   itemsToRemoveCount: itemsToRemove.length,
+      //   timestamp: new Date().toISOString()
+      // });
 
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.filter(
         (item) => item.pid !== msgData.panel_id
       );
 
       const afterFilterLength = T3000_Data.value.panelsData.length;
-      console.log('= WS: PANEL DATA FILTERED - Completed filtering:', {
-        afterFilterLength,
-        removedItems: beforeFilterLength - afterFilterLength,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('= WS: PANEL DATA FILTERED - Completed filtering:', {
+      //   afterFilterLength,
+      //   removedItems: beforeFilterLength - afterFilterLength,
+      //   timestamp: new Date().toISOString()
+      // });
 
       // Log concatenation operation
       const newDataLength = msgData.data ? msgData.data.length : 0;
-      console.log('= WS: PANEL DATA CONCAT - Adding new data:', {
-        newDataLength,
-        addedItemsSample: msgData.data?.slice(0, 3),
-        timestamp: new Date().toISOString()
-      });
+      // console.log('= WS: PANEL DATA CONCAT - Adding new data:', {
+      //   newDataLength,
+      //   addedItemsSample: msgData.data?.slice(0, 3),
+      //   timestamp: new Date().toISOString()
+      // });
 
       T3000_Data.value.panelsData = T3000_Data.value.panelsData.concat(
         msgData.data
       );
 
       const finalLength = T3000_Data.value.panelsData.length;
-      console.log('= WS: PANEL DATA ADDED - Completed adding new data:', {
-        finalLength,
-        expectedLength: afterFilterLength + newDataLength,
-        actuallyAdded: finalLength - afterFilterLength,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('= WS: PANEL DATA ADDED - Completed adding new data:', {
+      //   finalLength,
+      //   expectedLength: afterFilterLength + newDataLength,
+      //   actuallyAdded: finalLength - afterFilterLength,
+      //   timestamp: new Date().toISOString()
+      // });
 
       // Log unique pid counts to see if we have duplicates
       const pidCounts = {};
       T3000_Data.value.panelsData.forEach(item => {
         pidCounts[item.pid] = (pidCounts[item.pid] || 0) + 1;
       });
-      console.log('= WS: PANEL DATA PID ANALYSIS - PID distribution after update:', {
-        pidCounts,
-        uniquePanels: Object.keys(pidCounts).length,
-        totalItems: finalLength,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('= WS: PANEL DATA PID ANALYSIS - PID distribution after update:', {
+      //   pidCounts,
+      //   uniquePanels: Object.keys(pidCounts).length,
+      //   totalItems: finalLength,
+      //   timestamp: new Date().toISOString()
+      // });
 
       // Check for any unexpected duplicates
       const duplicatePids = Object.keys(pidCounts).filter(pid => pidCounts[pid] > 1);
