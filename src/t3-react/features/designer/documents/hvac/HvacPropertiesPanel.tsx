@@ -1,0 +1,2546 @@
+/**
+ * Designer — the HVAC document's right panel.
+ *
+ * P1 shipped this read-only; P1b makes it editable through the single mutation funnel
+ * (`engineMutation.ts`), which is what guarantees one undo entry per edit (it ends with
+ * `DrawUtil.CompleteOperation`, the engine's own "operation finished" call).
+ *
+ * Field names come from the engine's **verified** property surface:
+ *   geometry   → `Frame.{x,y,width,height}`, `RotationAngle`  (there is no Left/Top/Width/Height/Rotation)
+ *   appearance → `StyleRecord?.Fill.Paint.Color/.Opacity`, `StyleRecord?.Line.Paint.Color/.Thickness`
+ *   text       → `DataID` → `TextObject.runtimeText`
+ *   state      → `flags` bits (16 = locked, 268435456 = hidden)
+ *
+ * Every read is guarded: a `ConnectionLine` simply does not have the same fields as a `Rect`.
+ */
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+    Badge,
+    Button,
+    Checkbox,
+    Dialog,
+    DialogActions,
+    DialogBody,
+    DialogContent,
+    DialogSurface,
+    DialogTitle,
+    DialogTrigger,
+    Dropdown,
+    Input,
+    Option,
+    Select,
+    Slider,
+    Spinner,
+    makeStyles,
+    mergeClasses,
+    tokens
+} from "@fluentui/react-components";
+import { useDeviceTreeStore } from "@/t3-react/features/devices/store/deviceTreeStore";
+import { deviceListName, groupDevicesForDropdown } from "@/t3-react/shared/utils/deviceTreeList";
+import type { DeviceInfo } from "@/t3-react/shared/types/device";
+import { AddRegular, ArrowClockwiseRegular, BuildingRegular, ChevronDownRegular, ChevronUpRegular, CursorRegular, DeleteRegular, DismissRegular, LinkRegular, SearchRegular, TextAlignCenterRegular, TextAlignLeftRegular, TextAlignRightRegular } from "@fluentui/react-icons";
+/* The icon catalogues the legacy panel picked from (`ObjectConfigNew.vue`), shared with the Vue tree. */
+import { icons as iconCatalog, switchIcons as switchIconCatalog } from "@common/shared/utils/common";
+import pickerStyles from "./HvacLinkEntryPicker.module.css";
+import Hvac, { NewTool } from "@/lib/t3-hvac";
+import EvtOpt from "@/lib/t3-hvac/Event/EvtOpt";
+import IdxUtils from "@/lib/t3-hvac/Opt/Common/IdxUtils";
+// Mind the doubled `Opt/`: the engine's SVG helpers live in `Opt/Opt/` (which is why `QuasarUtil`
+// imports `../Opt/SvgUtil`). `@/lib/t3-hvac/Opt/SvgUtil` does not exist — importing it kills the
+// designer's lazily loaded document chunk with "error loading dynamically imported module".
+import SvgUtil from "@/lib/t3-hvac/Opt/Opt/SvgUtil";
+import DataOpt from "@/lib/t3-hvac/Opt/Data/DataOpt";
+import QuasarUtil from "@/lib/t3-hvac/Opt/Quasar/QuasarUtil";
+import { linkT3EntryDialogV2, T3Data, T3000_Data } from "@/lib/t3-hvac/Data/T3Data";
+import { useEnginePoll } from "../../hooks/useEnginePoll";
+import { useHvacSelection } from "./useHvacSelection";
+import type { HvacSelectionItem } from "./useHvacSelection";
+import { useHvacAppStateItem } from "./useHvacAppStateItem";
+import {
+    setFillColor,
+    setFillOpacity,
+    setFramePart,
+    setObjectText,
+    setRotation,
+    setStrokeColor,
+    setStrokeWidth
+} from "./engineMutation";
+import type { HvacMutationResult } from "./engineMutation";
+
+/**
+ * ## The look (2026-09-20)
+ *
+ * An **inspector**, not nested boxes: the sections are flat rows separated by a hairline, each with a 28 px
+ * **sticky** header (caret · small-caps name · optional tag) that folds — the previous version drew bordered
+ * cards inside a bordered panel, which made three levels of chrome for two levels of content. One **84 px
+ * label column** lines every field up; read-only values are plain text (so editable fields stand out) and
+ * editable ones are Fluent inputs with a **unit suffix**. `Fill opacity` is a slider that commits once per
+ * drag (the engine funnels every commit into one undo entry, so dragging must not commit per pixel), and the
+ * engine dump is folded into a quiet collapsed section.
+ */
+const useStyles = makeStyles({
+    root: {
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minHeight: 0,
+        overflow: "auto",
+        fontSize: tokens.fontSizeBase200,
+        color: tokens.colorNeutralForeground1,
+        backgroundColor: tokens.colorNeutralBackground1,
+        // The same scroller as the tools panel opposite (`ToolsPanel.scroll`), so the two panels of this
+        // document cannot drift apart.
+        scrollbarWidth: "thin",
+        scrollbarColor: `${tokens.colorNeutralStroke1} transparent`,
+        "&::-webkit-scrollbar": { width: "8px" },
+        "&::-webkit-scrollbar-thumb": {
+            backgroundColor: tokens.colorNeutralStroke1,
+            borderRadius: "6px",
+            border: "2px solid transparent",
+            backgroundClip: "content-box"
+        }
+    },
+    section: {
+        borderBottom: `1px solid ${tokens.colorNeutralStroke3}`
+    },
+    sectionHead: {
+        position: "sticky",
+        top: 0,
+        zIndex: 1,
+        display: "flex",
+        alignItems: "center",
+        gap: "5px",
+        width: "100%",
+        height: "28px",
+        padding: "0 8px 0 7px",
+        border: "none",
+        background: tokens.colorNeutralBackground2,
+        color: tokens.colorNeutralForeground2,
+        fontFamily: "inherit",
+        cursor: "default",
+        textAlign: "left",
+        transitionProperty: "background-color, color",
+        transitionDuration: "0.1s",
+        ":hover": { backgroundColor: tokens.colorNeutralBackground1Hover, color: tokens.colorNeutralForeground1 }
+    },
+    caret: {
+        display: "flex",
+        flexShrink: 0,
+        color: tokens.colorNeutralForeground3,
+        transitionProperty: "transform",
+        transitionDuration: "0.12s"
+    },
+    caretClosed: { transform: "rotate(-90deg)" },
+    sectionTitle: {
+        flex: 1,
+        minWidth: 0,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        fontSize: "11px",
+        fontWeight: tokens.fontWeightSemibold,
+        letterSpacing: "0.4px",
+        textTransform: "uppercase"
+    },
+    tag: {
+        flexShrink: 0,
+        padding: "0 5px",
+        borderRadius: "999px",
+        backgroundColor: tokens.colorNeutralBackground4,
+        color: tokens.colorNeutralForeground3,
+        fontSize: "9.5px",
+        fontWeight: tokens.fontWeightSemibold,
+        lineHeight: "15px",
+        letterSpacing: "0.3px"
+    },
+    sectionBody: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "1px",
+        padding: "6px 8px 10px"
+    },
+    row: {
+        display: "grid",
+        gridTemplateColumns: "84px 1fr",
+        gap: "8px",
+        alignItems: "center",
+        minHeight: "28px"
+    },
+    label: {
+        color: tokens.colorNeutralForeground3,
+        fontSize: tokens.fontSizeBase200,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+    },
+    value: {
+        color: tokens.colorNeutralForeground1,
+        fontSize: tokens.fontSizeBase200,
+        fontVariantNumeric: "tabular-nums",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+    },
+    mono: {
+        fontFamily: "Consolas, monospace",
+        fontSize: "11px",
+        color: tokens.colorNeutralForeground2,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+    },
+    unit: { color: tokens.colorNeutralForeground3, fontSize: "11px", lineHeight: "1" },
+    input: {
+        minWidth: 0,
+        width: "100%",
+        /*
+         * The Data section's dropdowns (Auto/Manual, Value, Display field) sat at Fluent's default 14 px and
+         * towered over the 12 px labels. 12 px / 28 px matches the rest of the inspector.
+         *
+         * A **descendant** selector is safe here — `.input .fui-Dropdown__button` outranks Fluent's own
+         * single-class rule regardless of stylesheet order, unlike styling the same element from a class.
+         * FDD sizes its dropdowns the same way (`FddPage.module.css`, `.runDropdown`).
+         */
+        "& .fui-Dropdown__button": {
+            minHeight: "28px",
+            height: "28px",
+            fontSize: "12px"
+        }
+    },
+    colorRow: { display: "flex", alignItems: "center", gap: "8px", minWidth: 0 },
+    swatch: {
+        width: "22px",
+        height: "22px",
+        padding: 0,
+        flexShrink: 0,
+        border: `1px solid ${tokens.colorNeutralStroke1}`,
+        borderRadius: "3px",
+        background: "transparent"
+    },
+    slider: { display: "flex", alignItems: "center", gap: "8px", minWidth: 0 },
+    sliderTrack: {
+        flex: 1,
+        minWidth: 0,
+        /* Fluent's Slider root has a min-width of its own. Without resetting it the row's min-content exceeds the
+         * panel width, the row overflows, and the right-hand percentage is what gets cut off at the panel edge. */
+        "& .fui-Slider": { minWidth: 0 }
+    },
+    pct: {
+        /* Sized for the widest string (`100%`), not the shortest: a fixed 38 px box clipped the fourth glyph. */
+        minWidth: "44px",
+        flexShrink: 0,
+        textAlign: "right",
+        whiteSpace: "nowrap",
+        overflow: "visible",
+        fontSize: tokens.fontSizeBase200,
+        color: tokens.colorNeutralForeground2,
+        fontVariantNumeric: "tabular-nums"
+    },
+    badges: { display: "flex", gap: "4px", flexWrap: "wrap" },
+    /** Multi-selection summary: what is in it, and what the selection disagrees on. */
+    picks: { display: "flex", flexWrap: "wrap", gap: "6px", minWidth: 0 },
+    pick: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "5px",
+        height: "24px",
+        padding: "0 8px",
+        border: `1px solid ${tokens.colorNeutralStroke2}`,
+        borderRadius: "999px",
+        backgroundColor: tokens.colorNeutralBackground1,
+        fontSize: "11.5px",
+        color: tokens.colorNeutralForeground2
+    },
+    pickMixed: {
+        backgroundColor: tokens.colorNeutralBackground2,
+        color: tokens.colorNeutralForeground3,
+        border: `1px dashed ${tokens.colorNeutralStroke2}`
+    },
+    empty: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "9px",
+        flex: 1,
+        padding: "24px 20px",
+        textAlign: "center",
+        color: tokens.colorNeutralForeground3
+    },
+    emptyIcon: {
+        width: "42px",
+        height: "42px",
+        borderRadius: "10px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: tokens.colorNeutralBackground3,
+        color: tokens.colorNeutralForeground3
+    },
+    emptyTitle: {
+        color: tokens.colorNeutralForeground2,
+        fontWeight: tokens.fontWeightSemibold,
+        fontSize: tokens.fontSizeBase200
+    },
+    emptyHint: { fontSize: "11.5px", maxWidth: "200px" },
+    loading: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "10px",
+        flex: 1,
+        padding: "40px 20px",
+        color: tokens.colorNeutralForeground3
+    },
+    note: {
+        color: tokens.colorNeutralForeground3,
+        fontSize: tokens.fontSizeBase100,
+        fontStyle: "italic"
+    },
+    error: {
+        color: tokens.colorPaletteRedForeground1,
+        fontSize: tokens.fontSizeBase100,
+        minHeight: "14px",
+        padding: "0 8px"
+    },
+    raw: {
+        fontFamily: "Consolas, monospace",
+        fontSize: "10.5px",
+        /*
+         * Deliberately **no** scroller of its own: the dump wraps and the box grows, so the panel's single
+         * scrollbar handles the overflow. An inner bar was the whole problem — it inherited the panel's
+         * `scrollbar-width: thin` (a 10 px native bar), and every attempt to make it 6 px with
+         * `::-webkit-scrollbar` ran into Chromium's rule that any non-`auto` standard scrollbar value wins and
+         * the webkit rules are ignored. `pre-wrap` keeps the JSON's shape while letting long values wrap.
+         */
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+        margin: 0,
+        padding: "8px",
+        borderRadius: "4px",
+        backgroundColor: tokens.colorNeutralBackground3,
+        color: tokens.colorNeutralForeground2
+    },
+
+    /* --- Data section (P1): the linked entry card, and the entry picker dialog --- */
+    entryCard: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+        padding: "6px 8px",
+        borderRadius: "4px",
+        backgroundColor: tokens.colorNeutralBackground3
+    },
+    entryTitle: {
+        fontSize: tokens.fontSizeBase100,
+        color: tokens.colorNeutralForeground3
+    },
+    entryDesc: {
+        fontSize: tokens.fontSizeBase200,
+        color: tokens.colorNeutralForeground1,
+        wordBreak: "break-word"
+    },
+    entryActions: {
+        display: "flex",
+        gap: "14px",
+        marginTop: "2px"
+    },
+    /**
+     * Hyperlink-style action, FDD's `.taggedMore` idiom: brand text, no box, underline on hover. Change and
+     * Unlink use this so the Data section reads as one list instead of three different button styles.
+     */
+    entryLink: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "4px",
+        padding: 0,
+        border: "none",
+        backgroundColor: "transparent",
+        color: tokens.colorBrandForegroundLink,
+        fontFamily: "inherit",
+        fontSize: "12px",
+        whiteSpace: "nowrap",
+        cursor: "pointer",
+        ":hover": { textDecoration: "underline", color: tokens.colorBrandForegroundLinkHover },
+        ":focus-visible": { outline: `1px solid ${tokens.colorStrokeFocus2}`, outlineOffset: "2px" }
+    },
+    /**
+     * The unlinked state is a **primary button** (Fluent `appearance="primary"`), stretched to the full body
+     * width.
+     *
+     * Full width because this panel is narrow: the first version put a button in the value column of the
+     * 84 px row grid and the label wrapped onto two lines. Fluent owns the rest of the styling, so only the
+     * layout is declared here — no colour, border or underline of our own to drift from the Fluent theme.
+     */
+    linkAction: {
+        width: "100%",
+        whiteSpace: "nowrap"
+    },
+
+    /* --- Widget section (P2): alignment buttons and icon pickers --- */
+    alignRow: {
+        display: "flex",
+        gap: "2px"
+    },
+    iconOption: {
+        display: "flex",
+        alignItems: "center",
+        gap: "6px"
+    },
+    iconGlyph: {
+        fontSize: "14px",
+        lineHeight: 1
+    },
+
+    /* --- Gauge/Dial settings dialog (P3) --- */
+    gaugeGrid: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "8px 16px"
+    },
+    gaugeWide: { gridColumn: "1 / -1" },
+    gaugeLabel: {
+        display: "block",
+        marginBottom: "4px",
+        fontSize: "12px",
+        color: tokens.colorNeutralForeground2
+    },
+    gaugeColorsHead: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        margin: "4px 0 2px"
+    },
+    gaugeColorRow: {
+        display: "flex",
+        alignItems: "center",
+        gap: "8px"
+    },
+    gaugeColorOffset: { width: "84px" },
+    gaugeColorSwatch: { flexShrink: 0 },
+
+    /* --- Number steppers: a stacked pair on the right edge of every numeric field --- */
+    /** Everything after the digits: the unit text and the chevron pair, centred as one row. */
+    afterField: {
+        display: "flex",
+        alignItems: "center",
+        gap: "0px"
+    },
+    steppers: {
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: "0px",
+        flexShrink: 0,
+        /* Breathing room from whatever precedes it — the `px` / `°` unit, or the digits themselves. */
+        marginLeft: "6px"
+    },
+    stepper: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "18px",
+        height: "15px",
+        padding: "0px",
+        border: "none",
+        backgroundColor: "transparent",
+        color: tokens.colorNeutralForeground2,
+        cursor: "pointer",
+        ":hover": {
+            backgroundColor: tokens.colorNeutralBackground1Hover,
+            color: tokens.colorNeutralForeground1
+        },
+        ":disabled": {
+            color: tokens.colorNeutralForegroundDisabled,
+            backgroundColor: "transparent",
+            cursor: "default"
+        }
+    }
+});
+
+const formatNumber = (value: number | undefined, digits = 2): string =>
+    typeof value === "number" ? String(Number(value.toFixed(digits))) : "";
+
+const ReadRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => {
+    const styles = useStyles();
+    if (value === undefined || value === null || value === "") {
+        return null;
+    }
+    return (
+        <div className={styles.row}>
+            <span className={styles.label}>{label}</span>
+            <span className={styles.value} title={String(value)}>
+                {value}
+            </span>
+        </div>
+    );
+};
+
+const Section: React.FC<{
+    title: string;
+    /** A short right-hand chip: `Read only`, `Endpoints`, `3 objects`… */
+    tag?: string;
+    defaultOpen?: boolean;
+    /** Inline overrides for the body box — the Data section uses it to widen the vertical gap. */
+    bodyStyle?: React.CSSProperties;
+    children: React.ReactNode;
+}> = ({ title, tag, defaultOpen = true, bodyStyle, children }) => {
+    const styles = useStyles();
+    const [open, setOpen] = React.useState(defaultOpen);
+
+    return (
+        <section className={styles.section}>
+            <button
+                type="button"
+                className={styles.sectionHead}
+                aria-expanded={open}
+                title={title}
+                onClick={() => setOpen((previous) => !previous)}
+            >
+                <span className={mergeClasses(styles.caret, open ? "" : styles.caretClosed)}>
+                    <ChevronDownRegular fontSize={12} />
+                </span>
+                <span className={styles.sectionTitle}>{title}</span>
+                {tag ? <span className={styles.tag}>{tag}</span> : null}
+            </button>
+            {open ? (
+                <div className={styles.sectionBody} style={bodyStyle}>
+                    {children}
+                </div>
+            ) : null}
+        </section>
+    );
+};
+
+/**
+ * A numeric field that keeps a local draft while typing and commits on Enter or blur.
+ * The displayed value otherwise follows the polled engine state, so a successful edit is reflected
+ * immediately and a rejected one snaps back.
+ */
+const NumberField: React.FC<{
+    label: string;
+    value: number | undefined;
+    digits?: number;
+    /** Drawn inside the field, muted — `px`, `°`. */
+    unit?: string;
+    disabled?: boolean;
+    onCommit: (value: number) => HvacMutationResult;
+    onError: (message: string | undefined) => void;
+}> = ({ label, value, digits = 2, unit, disabled, onCommit, onError }) => {
+    const styles = useStyles();
+    const formatted = formatNumber(value, digits);
+    const [draft, setDraft] = useState(formatted);
+    const [editing, setEditing] = useState(false);
+
+    useEffect(() => {
+        if (!editing) {
+            setDraft(formatted);
+        }
+    }, [formatted, editing]);
+
+    const commit = () => {
+        setEditing(false);
+        const parsed = Number(draft);
+        if (draft.trim() === "" || !Number.isFinite(parsed)) {
+            setDraft(formatted);
+            return;
+        }
+        if (parsed === value) {
+            return;
+        }
+        const result = onCommit(parsed);
+        onError(result.ok ? undefined : `Could not apply ${label.toLowerCase()} (${result.reason})`);
+    };
+
+    /**
+     * One click of a stepper = one commit = one undo entry (the engine funnels every commit into
+     * `CompleteOperation`). Deliberately **no** click-and-hold repeat: it would write on every tick and bury the
+     * undo history. Shift multiplies the step by ten.
+     *
+     * The base is the draft while the user is typing, so clicking a chevron with `250` on screen steps from 250
+     * and not from the last polled value.
+     */
+    const stepBy = (direction: 1 | -1, multiplier = 1) => {
+        const base = editing ? Number(draft) : value;
+        if (base === undefined || !Number.isFinite(base)) {
+            return;
+        }
+        const next = Number((base + direction * multiplier).toFixed(digits));
+        if (next === value) {
+            return;
+        }
+        setEditing(false);
+        const result = onCommit(next);
+        onError(result.ok ? undefined : `Could not apply ${label.toLowerCase()} (${result.reason})`);
+    };
+
+    return (
+        <div className={styles.row}>
+            <span className={styles.label}>{label}</span>
+            <Input
+                className={styles.input}
+                size="small"
+                appearance="outline"
+                value={draft}
+                disabled={disabled}
+                contentAfter={
+                    /*
+                     * One explicit flex row for everything after the digits.
+                     *
+                     * Fluent wraps `contentAfter` in a span of its own, so the unit and the steppers would
+                     * otherwise be **inline siblings in a block wrapper** — the `px` then sits on a text
+                     * baseline (aligned with the bottom of the steppers' 30 px box) instead of centred in the
+                     * field. Making the wrapper's content a flex row with `alignItems: center` centres it
+                     * against the chevrons, whatever Fluent does around it.
+                     */
+                    <span className={styles.afterField}>
+                        {unit ? <span className={styles.unit}>{unit}</span> : null}
+                        <span className={styles.steppers}>
+                            <button
+                                type="button"
+                                className={styles.stepper}
+                                aria-label={`Increase ${label}`}
+                                title={`Increase ${label} (Shift: +10)`}
+                                disabled={disabled || value === undefined}
+                                /* Keeps focus in the input, so no blur-commit races the click. */
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={(event) => stepBy(1, event.shiftKey ? 10 : 1)}
+                            >
+                                <ChevronUpRegular fontSize={12} />
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.stepper}
+                                aria-label={`Decrease ${label}`}
+                                title={`Decrease ${label} (Shift: -10)`}
+                                disabled={disabled || value === undefined}
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={(event) => stepBy(-1, event.shiftKey ? 10 : 1)}
+                            >
+                                <ChevronDownRegular fontSize={12} />
+                            </button>
+                        </span>
+                    </span>
+                }
+                aria-label={label}
+                onFocus={() => setEditing(true)}
+                onChange={(_, data) => {
+                    setEditing(true);
+                    setDraft(data.value);
+                }}
+                onBlur={commit}
+                onKeyDown={(event) => {
+                    /* Keyboard equivalent of the chevrons, same code path and same one-commit-per-press rule. */
+                    if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+                        event.preventDefault();
+                        stepBy(event.key === "ArrowUp" ? 1 : -1, event.shiftKey ? 10 : 1);
+                        return;
+                    }
+                    if (event.key === "Enter") {
+                        commit();
+                        (event.target as HTMLInputElement).blur();
+                    }
+                    if (event.key === "Escape") {
+                        setEditing(false);
+                        setDraft(formatted);
+                    }
+                }}
+            />
+        </div>
+    );
+};
+
+/**
+ * The engine's 0–1 opacity as a slider.
+ *
+ * The commit is the point of this component: `onChange` fires on every pixel of a drag, and each commit goes
+ * through the engine's single mutation funnel — one undo entry per call. So the drag updates **local** state
+ * only, and the pointer release (or a key release, or a blur) commits once.
+ */
+const SliderField: React.FC<{
+    label: string;
+    value: number | undefined;
+    disabled?: boolean;
+    onCommit: (value: number) => HvacMutationResult;
+    onError: (message: string | undefined) => void;
+}> = ({ label, value, disabled, onCommit, onError }) => {
+    const styles = useStyles();
+    const [draft, setDraft] = useState<number | undefined>(undefined);
+    const shown = draft ?? value ?? 0;
+
+    const commit = () => {
+        if (draft === undefined) {
+            return;
+        }
+        const next = draft;
+        setDraft(undefined);
+        if (next === value) {
+            return;
+        }
+        const result = onCommit(next);
+        onError(result.ok ? undefined : `Could not apply ${label.toLowerCase()} (${result.reason})`);
+    };
+
+    return (
+        <div className={styles.row}>
+            <span className={styles.label}>{label}</span>
+            <span className={styles.slider} onPointerUp={commit} onKeyUp={commit} onBlur={commit}>
+                <span className={styles.sliderTrack}>
+                    <Slider
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={shown}
+                        disabled={disabled}
+                        aria-label={label}
+                        onChange={(_, data) => setDraft(data.value)}
+                    />
+                </span>
+                <span className={styles.pct}>{Math.round(shown * 100)}%</span>
+            </span>
+        </div>
+    );
+};
+
+const ColorField: React.FC<{
+    label: string;
+    value: string | undefined;
+    onCommit: (value: string) => HvacMutationResult;
+    onError: (message: string | undefined) => void;
+}> = ({ label, value, onCommit, onError }) => {
+    const styles = useStyles();
+    if (!value) {
+        return <ReadRow label={label} value={undefined} />;
+    }
+    return (
+        <div className={styles.row}>
+            <span className={styles.label}>{label}</span>
+            <span className={styles.colorRow}>
+                <input
+                    className={styles.swatch}
+                    type="color"
+                    value={value}
+                    title={value}
+                    aria-label={label}
+                    onChange={(event) => {
+                        const result = onCommit(event.target.value);
+                        onError(result.ok ? undefined : `Could not apply ${label.toLowerCase()} (${result.reason})`);
+                    }}
+                />
+                <span className={styles.mono}>{value}</span>
+            </span>
+        </div>
+    );
+};
+
+const TextField: React.FC<{
+    value: string | undefined;
+    onCommit: (value: string) => HvacMutationResult;
+    onError: (message: string | undefined) => void;
+}> = ({ value, onCommit, onError }) => {
+    const styles = useStyles();
+    const [draft, setDraft] = useState(value ?? "");
+
+    useEffect(() => {
+        setDraft(value ?? "");
+    }, [value]);
+
+    const commit = () => {
+        if (draft === value) {
+            return;
+        }
+        const result = onCommit(draft);
+        onError(result.ok ? undefined : `Could not apply text (${result.reason})`);
+    };
+
+    return (
+        <div className={styles.row}>
+            <span className={styles.label}>Content</span>
+            <Input
+                className={styles.input}
+                size="small"
+                appearance="outline"
+                value={draft}
+                aria-label="Content"
+                onChange={(_, data) => setDraft(data.value)}
+                onBlur={commit}
+                onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                        commit();
+                        (event.target as HTMLInputElement).blur();
+                    }
+                    if (event.key === "Escape") {
+                        setDraft(value ?? "");
+                    }
+                }}
+            />
+        </div>
+    );
+};
+
+const ON_OFF_OPTIONS = [
+    { label: "OFF", value: 0 },
+    { label: "ON", value: 1 }
+];
+
+/**
+ * Entry label in the picker.
+ *
+ * Delegates to the engine's own formatter (`AppRuntime.entryLabel` — *create a label for an entry with
+ * optional prefix*), which is the same text the legacy Vue dialog showed, so an entry reads identically in
+ * both apps. The fallback only exists for the unlikely case of the engine being unavailable.
+ */
+const entryLabel = (entry: Record<string, any> | null | undefined): string => {
+    if (!entry) {
+        return "";
+    }
+    try {
+        const label = (Hvac as any)?.AppRuntime?.entryLabel?.(entry);
+        return typeof label === "string" && label ? label : "";
+    } catch {
+        return String(entry.description ?? entry.label ?? entry.id ?? "");
+    }
+};
+
+/** What the picker's Value column shows: OFF/ON words for a digital point, number + unit for an analog one. */
+const entryValueText = (entry: Record<string, any> | null | undefined): string => {
+    if (!entry) {
+        return "";
+    }
+    try {
+        if (entry.digital_analog === 0) {
+            const range = IdxUtils.getEntryRange(entry) as any;
+            const on = Number(entry.control ?? entry.value) === 1;
+            return String((on ? range?.on : range?.off) ?? (on ? "ON" : "OFF"));
+        }
+        const unit = IdxUtils.getUnitText(entry) ?? "";
+        return entry.value === undefined || entry.value === null ? "" : `${entry.value}${unit ? ` ${unit}` : ""}`;
+    } catch {
+        return "";
+    }
+};
+
+/** A device as the engine's panel list holds it: panel number, owning serial, panel name. */
+interface EngineDevice {
+    pid: number;
+    serial: number;
+    name: string;
+}
+
+/** Pseudo-device that lists the points of every device at once. */
+const ALL_DEVICES_KEY = "__all_devices__";
+
+/**
+ * Plain text weight for controls.
+ *
+ * Fluent draws every button label **semibold** (`fontWeightSemibold`) and the dialog title as a 20 px
+ * semibold heading, which reads as shouting inside a dense tool panel. Both are toned down here — the title
+ * to 16 px at normal weight, the buttons to Fluent's `fontWeightRegular` (400).
+ *
+ * Declared **inline on the element**, not as a Griffel class: Fluent styles those same root elements from its
+ * own classes, so which one wins would depend on stylesheet insertion order. Inline always wins.
+ */
+const PLAIN_WEIGHT: React.CSSProperties = { fontWeight: "400" };
+
+/**
+ * Sections whose rows need air (Data, Geometry) get a wider vertical gap than `sectionBody`'s 1 px, which makes
+ * a stack of fields read as a single blob.
+ *
+ * Inline, not a Griffel class: a class here would race `sectionBody`'s `gap` (equal specificity, so stylesheet
+ * insertion order would decide). Inline always wins.
+ */
+const LOOSE_BODY_GAP: React.CSSProperties = { gap: "8px" };
+/* FDD's dialog does exactly this: `DialogTitle style={{ fontSize: 14 }}`. 14 px is the app's own dialog-title
+ * size, so the picker matches every other dialog in the app instead of shouting at 20 px. */
+const DIALOG_TITLE_STYLE: React.CSSProperties = { fontSize: "14px", fontWeight: "400" };
+
+/** A labelled Fluent dropdown, laid out like every other inspector row (84 px label column). */
+const SelectRow: React.FC<{
+    label: string;
+    value?: string | number | null;
+    options: { label: string; value: string | number }[];
+    disabled?: boolean;
+    onSelect: (value: string) => void;
+}> = ({ label, value, options, disabled, onSelect }) => {
+    const styles = useStyles();
+    const text = value === undefined || value === null ? undefined : String(value);
+    const selected = options.find((option) => String(option.value) === text);
+
+    return (
+        <div className={styles.row}>
+            <span className={styles.label}>{label}</span>
+            <Dropdown
+                className={styles.input}
+                disabled={disabled}
+                /*
+                 * A value the option list cannot contain is shown as an em dash instead of the raw code, and no
+                 * option is reported as chosen — so picking one still writes the real value. The usual culprits
+                 * are `255` (`0xFF`, the device's "not set") in Auto/Manual and `-1` in `control`/`value` on an
+                 * entry the device has never initialised.
+                 */
+                selectedOptions={selected ? [String(selected.value)] : []}
+                value={selected?.label ?? "—"}
+                onOptionSelect={(_, data) => onSelect(String(data.optionValue))}
+            >
+                {options.map((option) => (
+                    <Option key={String(option.value)} value={String(option.value)}>
+                        {option.label}
+                    </Option>
+                ))}
+            </Dropdown>
+        </div>
+    );
+};
+
+/**
+ * The entry picker — a Fluent `Dialog` (portalled to `document.body`).
+ *
+ * The legacy picker was a Quasar dialog declared by the Vue page (`IndexPage2.vue`), which is not mounted in
+ * this React designer: flipping `linkT3EntryDialogV2.value.active` would change state nothing draws. This is
+ * that same flow rebuilt on Fluent, with three things the legacy dialog got wrong or lacked:
+ *
+ * - it reads **`T3000_Data.value.panelsData`** live. The legacy `selectPanelOptions` ref was built from the
+ *   *initial* (empty) array while the socket loader **reassigns** `panelsData`, so that ref goes stale and the
+ *   old list could stay empty even after the panels had arrived;
+ * - **Reload** (`Hvac.AppRuntime.reloadPanelsData()`, the engine's own GET_PANELS_LIST) plus a live
+ *   "loading panel n of m" line, instead of a list that is silently empty until the device answers;
+ * - selection is explicit — click a row, then **Save** — so a stray click cannot bind the widget to the
+ *   wrong entry (the legacy dialog did the same; click-to-commit was my regression). Double-click still
+ *   commits immediately for speed.
+ */
+const EntryPickerDialog: React.FC<{
+    open: boolean;
+    onPick: (entry: Record<string, any>) => void;
+    onClose: () => void;
+}> = ({ open, onPick, onClose }) => {
+    const [query, setQuery] = useState("");
+    const [selected, setSelected] = useState<Record<string, any> | null>(null);
+    const [panels, setPanels] = useState<Record<string, any>[]>([]);
+    const [engineDevices, setEngineDevices] = useState<EngineDevice[]>([]);
+    const [deviceKey, setDeviceKey] = useState<string | null>(null);
+    const [loading, setLoading] = useState<string | null>(null);
+    /* Signature of the last list handed to React — the poll rebuilds the array every tick, so identity cannot
+     * be compared and this is what keeps the 300 ms timer from re-rendering the dialog into a stall. */
+    const panelsKeyRef = useRef("");
+    /* Reload has to report back: `AppRuntime.reloadPanelsData()` fires a websocket request and returns nothing,
+     * so without this the button looks dead when the link is down. */
+    const [reloadState, setReloadState] = useState<"idle" | "pending" | "noResponse">("idle");
+    const autoLoadedRef = useRef(false);
+    const { devices: appDevices, deviceStatuses, fetchDevices } = useDeviceTreeStore();
+
+    /* The engine store is not React state (plain `{value}` boxes filled by the socket), so it is sampled while
+     * the dialog is open — through the shell's shared poller, never a `document.hidden`-guarded rAF loop. */
+    useEnginePoll(
+        () => {
+            const store: any = (T3000_Data as any)?.value ?? {};
+            const raw: Record<string, any>[] = (store.panelsData ?? []).filter(Boolean);
+
+            /* `panelsData` can hold the same entry more than once. The socket rebuilds it by filtering out the
+             * requested panel and concatenating the response (`WebSocketClient.ts`, GET_PANEL_DATA_RES), so any
+             * entry in the payload whose `pid` is not the panel being loaded is never filtered away and every
+             * repeat appends another copy. Those repeats are what produced duplicate rows here *and* the
+             * duplicate React keys (`1-SCH1-0`, `1-SCH2-1`, …). Keep the last copy — it is the freshest. */
+            const byEntry = new Map<string, Record<string, any>>();
+            raw.forEach((entry) => {
+                byEntry.set(`${entry.pid ?? ""}|${entry.id ?? entry.index ?? ""}|${entry.index ?? ""}`, entry);
+            });
+            const next = [...byEntry.values()];
+
+            const signature = next
+                .map((entry) => `${entry.pid ?? ""}-${entry.id ?? entry.index ?? ""}-${entry.value ?? ""}-${entry.control ?? ""}`)
+                .join("|");
+            if (signature !== panelsKeyRef.current) {
+                panelsKeyRef.current = signature;
+                setPanels(next);
+            }
+
+            /* The engine's panel list — the same devices the app knows, with the panel number the entries
+             * carry in `pid` and the serial that joins them to the app's device list (see
+             * `DeviceOpt.initDeviceList`). */
+            const deviceItems: any[] = (T3Data as any)?.deviceList?.value?.[0]?.children ?? [];
+            const nextDevices: EngineDevice[] = deviceItems.map((device) => ({
+                pid: Number(device?.id ?? 0),
+                serial: Number(device?.data?.serial_number ?? 0),
+                name: String(device?.label ?? "")
+            }));
+            setEngineDevices((previous) =>
+                JSON.stringify(previous) === JSON.stringify(nextDevices) ? previous : nextDevices
+            );
+
+            const index = store.loadingPanel;
+            const total = store.panelsList?.length ?? 0;
+            setLoading(
+                index === null || index === undefined
+                    ? null
+                    : `Loading panel #${store.panelsList?.[index]?.panel_number ?? index + 1} · ${index + 1} of ${total}`
+            );
+            if (index !== null && index !== undefined) {
+                /* The device answered, so a pending reload is over. */
+                setReloadState((previous) => (previous === "pending" ? "idle" : previous));
+            }
+        },
+        300,
+        open
+    );
+
+    /**
+     * The two device sources the home page's left tree uses, joined: the app's device list supplies the real
+     * names, online state and building grouping, the engine's panel list supplies the panel number that makes a
+     * device's points linkable. `points` is how many entries of the loaded panel data belong to that device, so
+     * a device whose points are not loaded reads `–` instead of pretending to be empty.
+     */
+    const deviceGroups = useMemo(() => {
+        const pointsByPid = new Map<number, number>();
+        panels.forEach((entry) => {
+            const pid = Number(entry.pid ?? 0);
+            pointsByPid.set(pid, (pointsByPid.get(pid) ?? 0) + 1);
+        });
+
+        const panelBySerial = new Map<number, EngineDevice>();
+        const panelByName = new Map<string, EngineDevice>();
+        engineDevices.forEach((device) => {
+            if (device.serial) {
+                panelBySerial.set(device.serial, device);
+            }
+            const name = device.name.trim().toLowerCase();
+            if (name && !panelByName.has(name)) {
+                panelByName.set(name, device);
+            }
+        });
+
+        const addressable = appDevices.filter(
+            (device: DeviceInfo) => Number(device.parentSerialNumber ?? device.noteParentSerialNumber ?? 0) === 0
+        );
+
+        /* Serial first (the real key), then the panel name, then the degenerate case of one device and one
+         * panel — the panels list carries `serial_number`, but it is not always filled in. */
+        const panelFor = (serial: number, name: string): EngineDevice | undefined =>
+            panelBySerial.get(serial) ??
+            panelByName.get(name.trim().toLowerCase()) ??
+            (engineDevices.length === 1 && addressable.length === 1 ? engineDevices[0] : undefined);
+
+        const appSerials = new Set(addressable.map((device: DeviceInfo) => Number(device.serialNumber)));
+
+        const groups = groupDevicesForDropdown(addressable, deviceStatuses).map((group) => ({
+            label: group.label,
+            rows: group.devices.map((device: DeviceInfo) => {
+                const serial = Number(device.serialNumber);
+                const name = deviceListName(device);
+                const panel = panelFor(serial, name);
+                return {
+                    key: String(serial),
+                    pid: panel ? panel.pid : null,
+                    name,
+                    online: deviceStatuses.get(serial) === "online" || !!device.isOnline,
+                    points: panel ? pointsByPid.get(panel.pid) ?? 0 : 0
+                };
+            })
+        }));
+
+        /* Panels the engine knows but the device store does not — without them the list would look like it only
+         * holds one device. Online state is unknown (`null`) rather than guessed. */
+        const engineOnly = engineDevices
+            .filter((device) => device.serial && !appSerials.has(device.serial))
+            .map((device) => ({
+                key: String(device.serial),
+                pid: device.pid,
+                name: device.name || `Panel ${device.pid}`,
+                online: null,
+                points: pointsByPid.get(device.pid) ?? 0
+            }));
+        if (engineOnly.length > 0) {
+            groups.push({ label: "Other panels", rows: engineOnly });
+        }
+
+        if (groups.length > 0) {
+            return groups;
+        }
+
+        /* The app's device store is populated by the home page and may still be empty on this route, so fall
+         * back to the engine's own panel list. Online state is then unknown (`null`) rather than guessed. */
+        return engineDevices.length > 0
+            ? [
+                {
+                    label: "Devices",
+                    rows: engineDevices.map((device) => ({
+                        key: String(device.serial || device.pid),
+                        pid: device.pid,
+                        name: device.name || `Panel ${device.pid}`,
+                        online: null,
+                        points: pointsByPid.get(device.pid) ?? 0
+                    }))
+                }
+            ]
+            : [];
+    }, [appDevices, deviceStatuses, engineDevices, panels]);
+
+    const rows = useMemo(() => deviceGroups.flatMap((group) => group.rows), [deviceGroups]);
+
+    /* Default to a device whose points are actually loaded — that is the one this drawing can link — and fall
+     * back to the first row when none are. */
+    const activeKey = rows.some((row) => row.key === deviceKey)
+        ? deviceKey
+        : rows.find((row) => row.points > 0)?.key ?? ALL_DEVICES_KEY;
+    const activeRow = rows.find((row) => row.key === activeKey) ?? null;
+
+    /* "All devices" spans every loaded panel; a device row narrows to its own panel. */
+    const points = useMemo(() => {
+        const mine =
+            activeKey === ALL_DEVICES_KEY
+                ? panels
+                : activeRow?.pid === null || activeRow?.pid === undefined
+                    ? []
+                    : panels.filter((entry) => Number(entry.pid ?? 0) === activeRow.pid);
+        const needle = query.trim().toLowerCase();
+        const matched = needle
+            ? mine.filter((entry) => entryLabel(entry).toLowerCase().includes(needle))
+            : mine;
+        return matched.slice(0, 500);
+    }, [panels, activeRow, activeKey, query]);
+
+    const close = () => {
+        setSelected(null);
+        setQuery("");
+        onClose();
+    };
+
+    const commit = (entry: Record<string, any>) => {
+        setSelected(null);
+        setQuery("");
+        onPick(entry);
+    };
+
+    const reload = () => {
+        setReloadState("pending");
+        try {
+            (Hvac as any)?.AppRuntime?.reloadPanelsData?.();
+        } catch {
+            setReloadState("noResponse");
+            return;
+        }
+        /* `GET_PANELS_LIST` is fire-and-forget, so success is judged by the engine's own state: a panel- list
+         * response sets `loadingPanel` to a number and fills `panelsList`. If neither happened, say so. */
+        window.setTimeout(() => {
+            const store: any = (T3000_Data as any)?.value ?? {};
+            setReloadState((previous) =>
+                previous === "pending" && store.loadingPanel === null && !(store.panelsList ?? []).length
+                    ? "noResponse"
+                    : "idle"
+            );
+        }, 2500);
+    };
+
+    /* The full device list. The store is filled by the home page, so on this route it can still be empty — and
+     * the engine's panel list only knows the panels of the drawing's own device. Both are requested here. */
+    useEffect(() => {
+        if (!open || appDevices.length > 0) {
+            return;
+        }
+        void fetchDevices().catch(() => undefined);
+    }, [open, appDevices.length, fetchDevices]);
+
+    /* Ask for the panel list once per open. This is not only about points: `HandleGetPanelsListRes` is what
+     * fills the engine's **device list** (`initDeviceList`) and starts streaming every panel, so skipping it
+     * when the drawing already had cached panel data left the device column knowing only the drawing's own
+     * device — every other row then read "not in this drawing's panel list". */
+    useEffect(() => {
+        if (!open) {
+            autoLoadedRef.current = false;
+            return;
+        }
+        if (autoLoadedRef.current) {
+            return;
+        }
+        const store: any = (T3000_Data as any)?.value ?? {};
+        if (store.loadingPanel !== null) {
+            /* Already streaming; the poll will pick it up. */
+            autoLoadedRef.current = true;
+            return;
+        }
+        const enginePanels: any[] = (T3Data as any)?.deviceList?.value?.[0]?.children ?? [];
+        if ((store.panelsData ?? []).length > 0 && enginePanels.length > 0) {
+            /* Both caches are warm — nothing to fetch. */
+            autoLoadedRef.current = true;
+            return;
+        }
+        autoLoadedRef.current = true;
+        reload();
+    }, [open]);
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(_, data) => {
+                if (!data.open) {
+                    close();
+                }
+            }}
+        >
+            {/* Wider than FDD's 640 px form dialog — this one holds a device column plus the table. */}
+            <DialogSurface style={{ maxWidth: "780px", width: "min(780px, 96vw)" }}>
+                <DialogBody>
+                    {/* Fluent's own close affordance lives in the title's `action` slot, not in a hand-rolled
+                     * button — `DialogTrigger action="close"` routes through `onOpenChange` above, so the reset
+                     * in `close()` runs here exactly as it does for Cancel / Save. */}
+                    <DialogTitle
+                        style={DIALOG_TITLE_STYLE}
+                        action={
+                            <DialogTrigger action="close">
+                                <Button
+                                    appearance="subtle"
+                                    aria-label="Close"
+                                    title="Close"
+                                    icon={<DismissRegular />}
+                                />
+                            </DialogTrigger>
+                        }
+                    >
+                        Link Entry
+                    </DialogTitle>
+                    <DialogContent>
+                        <div className={pickerStyles.layout}>
+                            <div className={pickerStyles.body}>
+                                {/* Left pane: devices only — no toolbar, so the whole column is the list. */}
+                                <aside className={pickerStyles.devicesPane}>
+                                    {/* All of them at once — the list's default row. */}
+                                    <button
+                                        type="button"
+                                        aria-pressed={activeKey === ALL_DEVICES_KEY}
+                                        className={mergeClasses(
+                                            pickerStyles.deviceRow,
+                                            pickerStyles.deviceRowAll,
+                                            activeKey === ALL_DEVICES_KEY
+                                                ? pickerStyles.deviceRowActive
+                                                : undefined
+                                        )}
+                                        onClick={() => setDeviceKey(ALL_DEVICES_KEY)}
+                                    >
+                                        <span className={pickerStyles.allLabel}>All devices</span>
+                                        <span className={pickerStyles.deviceMeta}>{panels.length}</span>
+                                    </button>
+
+                                    {deviceGroups.map((group) => (
+                                        <React.Fragment key={group.label}>
+                                            {/* Only worth a header when there is more than one group — otherwise
+                                             * it just repeats the pane title. */}
+                                            {deviceGroups.length > 1 ? (
+                                                <span className={pickerStyles.groupHead}>
+                                                    <BuildingRegular fontSize={13} />
+                                                    {group.label}
+                                                </span>
+                                            ) : null}
+                                            {group.rows.map((row) => (
+                                                <button
+                                                    key={row.key}
+                                                    type="button"
+                                                    aria-pressed={row.key === activeKey}
+                                                    className={mergeClasses(
+                                                        pickerStyles.deviceRow,
+                                                        row.key === activeKey
+                                                            ? pickerStyles.deviceRowActive
+                                                            : undefined
+                                                    )}
+                                                    onClick={() => setDeviceKey(row.key)}
+                                                >
+                                                    {row.online === null ? null : (
+                                                        <span
+                                                            className={mergeClasses(
+                                                                pickerStyles.dot,
+                                                                row.online
+                                                                    ? pickerStyles.dotOnline
+                                                                    : pickerStyles.dotOffline
+                                                            )}
+                                                            title={row.online ? "Online" : "Offline"}
+                                                        />
+                                                    )}
+                                                    <span className={pickerStyles.deviceName}>{row.name}</span>
+                                                    <span className={pickerStyles.deviceMeta}>
+                                                        {row.points > 0 ? row.points : "–"}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </React.Fragment>
+                                    ))}
+                                    {rows.length === 0 ? (
+                                        <span className={pickerStyles.hint}>No devices reported yet.</span>
+                                    ) : null}
+                                </aside>
+
+                                <section className={pickerStyles.pointsPane}>
+                                    {/* Search and Reload belong to the list they act on. */}
+                                    <div className={pickerStyles.toolbar}>
+                                        <Input
+                                            className={pickerStyles.searchBox}
+                                            contentBefore={<SearchRegular />}
+                                            placeholder="Search points…"
+                                            value={query}
+                                            onChange={(_, data) => setQuery(data.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            className={pickerStyles.linkButton}
+                                            title="Reload the panels data from the device"
+                                            onClick={reload}
+                                        >
+                                            <ArrowClockwiseRegular fontSize={14} />
+                                            Reload
+                                        </button>
+                                        <span className={pickerStyles.count}>
+                                            {points.length} point{points.length === 1 ? "" : "s"}
+                                        </span>
+                                    </div>
+
+                                    {reloadState === "noResponse" || reloadState === "pending" || loading ? (
+                                        <div className={pickerStyles.progress}>
+                                            {reloadState === "noResponse" ? null : (
+                                                <Spinner size="extra-tiny" />
+                                            )}
+                                            <span>
+                                                {reloadState === "noResponse"
+                                                    ? "No response from the device — the panel list did not arrive (is the websocket connected?)."
+                                                    : loading ?? "Requesting the panel list…"}
+                                            </span>
+                                        </div>
+                                    ) : null}
+
+                                    <div className={pickerStyles.gridWrap}>
+                                        {points.length === 0 ? (
+                                            <div className={pickerStyles.emptyState}>
+                                                {loading
+                                                    ? "Fetching the device's panels…"
+                                                    : panels.length === 0
+                                                        ? "No entries available. Check the device connection, then press Reload."
+                                                        : query.trim()
+                                                            ? "No point matches this search."
+                                                            : "This device is not in this drawing's panel list, so its points cannot be linked here."}
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className={pickerStyles.gridHeader}>
+                                                    <span>Point</span>
+                                                    <span>Type</span>
+                                                    <span>Value</span>
+                                                </div>
+                                                {points.map((entry, index) => {
+                                                    const isSelected = selected === entry;
+                                                    return (
+                                                        <div
+                                                            key={`${entry.pid}-${entry.id}-${entry.index ?? index}`}
+                                                            role="row"
+                                                            aria-selected={isSelected}
+                                                            className={mergeClasses(
+                                                                pickerStyles.gridRow,
+                                                                isSelected
+                                                                    ? pickerStyles.gridRowSelected
+                                                                    : undefined
+                                                            )}
+                                                            onClick={() => setSelected(entry)}
+                                                            onDoubleClick={() => commit(entry)}
+                                                        >
+                                                            <span className={pickerStyles.cellName}>
+                                                                {entryLabel(entry)}
+                                                            </span>
+                                                            <span className={pickerStyles.monoCell}>
+                                                                {entry.type ?? ""}
+                                                            </span>
+                                                            <span className={pickerStyles.valueCell}>
+                                                                {entryValueText(entry)}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </>
+                                        )}
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button appearance="secondary" style={PLAIN_WEIGHT} onClick={close}>
+                            Cancel
+                        </Button>
+                        <Button
+                            appearance="primary"
+                            style={PLAIN_WEIGHT}
+                            disabled={!selected}
+                            onClick={() => {
+                                if (selected) {
+                                    commit(selected);
+                                }
+                            }}
+                        >
+                            Save
+                        </Button>
+                    </DialogActions>
+                </DialogBody>
+            </DialogSurface>
+        </Dialog>
+    );
+};
+
+/**
+ * ## Data (P1) — the T3000 side of a widget
+ *
+ * Mirrors the legacy `ObjectConfigNew.vue` entry block field for field, condition for condition, and —
+ * critically — call for call, so a widget stamped here is bound exactly like one stamped by the old panel:
+ *
+ * | action | engine path |
+ * | --- | --- |
+ * | link | `QuasarUtil.LinkT3EntrySaveV2()` — default display field, icon per entry type, `refreshObjectStatus`, `SaveAppStateV2`, `RenderAllSVGObjects` |
+ * | entry field | write the value on the app item, then `Hvac.IdxPageReact.T3UpdateEntryField(field, item)` (reads `item.t3Entry[field]` and pushes UPDATE_ENTRY) + `SaveAct()` |
+ * | display field | `Hvac.IdxPageReact.save(false, true)` + `SaveAct()` |
+ * | unlink | clear `t3Entry`, `refreshObjectStatus` + `SaveAppStateV2` + `RenderAllSVGObjects` (the tail of the link path; the legacy panel could only re-link) |
+ *
+ * The controls appear only once an entry is linked and, as in the legacy panel, anything that writes the entry
+ * to the device is disabled while the entry is in Auto (`auto_manual === 0`) — Auto is the device's own logic.
+ */
+const DataSection: React.FC<{ onError: (message: string | undefined) => void }> = ({ onError }) => {
+    const styles = useStyles();
+    const appItem = useHvacAppStateItem();
+    const [pickerOpen, setPickerOpen] = useState(false);
+
+    if (!appItem) {
+        return null;
+    }
+
+    const entry = appItem.t3Entry;
+    const page: any = (Hvac as any)?.IdxPageReact ?? (Hvac as any)?.IdxPage;
+
+    const run = (what: string, action: () => void) => {
+        try {
+            onError(undefined);
+            action();
+        } catch (error) {
+            onError(`${what} failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    };
+
+    /**
+     * Legacy order, verbatim: mutate the app item → push to the device → re-render the drawing.
+     *
+     * The write targets **`appItem.raw`**, never the `entry` in scope: that one is the poll's snapshot (which is
+     * what makes the panel notice changes), and `T3UpdateEntryField` reads the value back off the live object.
+     */
+    const commitEntryField = (field: string, value: number) =>
+        run(`Updating ${field}`, () => {
+            const live = appItem.raw?.t3Entry;
+            if (!live) {
+                return;
+            }
+            live[field] = value;
+            page?.T3UpdateEntryField?.(field, appItem.raw);
+            IdxUtils.refreshObjectStatus(appItem.raw);
+            SvgUtil.RenderAllSVGObjects();
+            EvtOpt.toolOpt.SaveAct();
+        });
+
+    const commitDisplayField = (value: string) =>
+        run("Updating the display field", () => {
+            appItem.raw.settings = appItem.raw.settings ?? {};
+            appItem.raw.settings.t3EntryDisplayField = value;
+            page?.save?.(false, true);
+            SvgUtil.RenderAllSVGObjects();
+            EvtOpt.toolOpt.SaveAct();
+        });
+
+    const linkEntry = (chosen: Record<string, any>) =>
+        run("Linking the entry", () => {
+            setPickerOpen(false);
+            /* A shallow copy, because the engine's save path may rewrite `data.value` (`/1000`); copying keeps
+             * the shared `selectPanelOptions` list pristine while storing exactly what the close dialog held. */
+            linkT3EntryDialogV2.value.data = { ...chosen };
+            QuasarUtil.LinkT3EntrySaveV2();
+        });
+
+    const unlinkEntry = () =>
+        run("Unlinking the entry", () => {
+            appItem.raw.t3Entry = null;
+            IdxUtils.refreshObjectStatus(appItem.raw);
+            DataOpt.SaveAppStateV2();
+            SvgUtil.RenderAllSVGObjects();
+            EvtOpt.toolOpt.SaveAct();
+        });
+
+    if (!entry) {
+        return (
+            <Section title="Data" tag="Unlinked" bodyStyle={LOOSE_BODY_GAP}>
+                <Button
+                    appearance="primary"
+                    size="small"
+                    style={PLAIN_WEIGHT}
+                    className={styles.linkAction}
+                    onClick={() => setPickerOpen(true)}
+                >
+                    Link with an entry
+                </Button>
+                <span className={styles.note}>
+                    A linked entry supplies the widget's live value and its display text.
+                </span>
+                <EntryPickerDialog open={pickerOpen} onPick={linkEntry} onClose={() => setPickerOpen(false)} />
+            </Section>
+        );
+    }
+
+    const range = Number(entry.range ?? 0);
+    const autoDisabled = entry.auto_manual === 0;
+    const digitalRange = IdxUtils.getEntryRange(entry) as any;
+    const isDigitalValue = range < 101 && entry.digital_analog === 0 && !!entry.range;
+    const isMsv = range > 100;
+    const isAnalog = range < 101 && entry.digital_analog === 1;
+
+    const displayFieldOptions: { label: string; value: string }[] = [
+        { label: "None", value: "none" },
+        { label: "ID", value: "id" }
+    ];
+    if (entry.label !== undefined) {
+        displayFieldOptions.push({ label: "Label", value: "label" });
+    }
+    if (entry.description !== undefined) {
+        displayFieldOptions.push({ label: "Description", value: "description" });
+    }
+    if (entry.value !== undefined) {
+        displayFieldOptions.push({
+            label: "Value",
+            value: entry.digital_analog === 1 ? "value" : "control"
+        });
+    }
+
+    return (
+        <Section title="Data" tag="Linked" bodyStyle={LOOSE_BODY_GAP}>
+            <div className={styles.entryCard}>
+                <span className={styles.entryTitle}>
+                    {entry.type} · {entry.pid}-{entry.id}
+                </span>
+                <span className={styles.entryDesc}>{entry.description ?? entry.label ?? "(no description)"}</span>
+            </div>
+            <div className={styles.entryActions}>
+                <button
+                    type="button"
+                    className={styles.entryLink}
+                    title="Change the linked entry"
+                    onClick={() => setPickerOpen(true)}
+                >
+                    <LinkRegular fontSize={14} />
+                    Change
+                </button>
+                <button
+                    type="button"
+                    className={styles.entryLink}
+                    title="Remove the link to this entry"
+                    onClick={unlinkEntry}
+                >
+                    <DismissRegular fontSize={14} />
+                    Unlink
+                </button>
+            </div>
+
+            {entry.auto_manual !== undefined ? (
+                <SelectRow
+                    label="Auto/Manual"
+                    value={entry.auto_manual}
+                    options={[
+                        { label: "Auto", value: 0 },
+                        { label: "Manual", value: 1 }
+                    ]}
+                    onSelect={(value) => commitEntryField("auto_manual", Number(value))}
+                />
+            ) : null}
+
+            {isDigitalValue ? (
+                <SelectRow
+                    label="Value"
+                    value={entry.control}
+                    disabled={autoDisabled}
+                    options={[
+                        { label: String(digitalRange?.off ?? "Off"), value: 0 },
+                        { label: String(digitalRange?.on ?? "On"), value: 1 }
+                    ]}
+                    onSelect={(value) => commitEntryField("control", Number(value))}
+                />
+            ) : null}
+
+            {isMsv ? (
+                <SelectRow
+                    label="Value"
+                    value={entry.value}
+                    disabled={autoDisabled}
+                    options={((digitalRange?.options ?? []) as any[])
+                        .filter((option) => option.status === 1)
+                        .map((option) => ({ label: String(option.name), value: option.value }))}
+                    onSelect={(value) => commitEntryField("value", Number(value))}
+                />
+            ) : null}
+
+            {!isMsv && entry.type === "PROGRAM" ? (
+                <SelectRow
+                    label="Status"
+                    value={entry.status}
+                    disabled={autoDisabled}
+                    options={ON_OFF_OPTIONS}
+                    onSelect={(value) => commitEntryField("status", Number(value))}
+                />
+            ) : null}
+
+            {!isMsv && entry.type === "SCHEDULE" ? (
+                <SelectRow
+                    label="Output"
+                    value={entry.output}
+                    disabled={autoDisabled}
+                    options={ON_OFF_OPTIONS}
+                    onSelect={(value) => commitEntryField("output", Number(value))}
+                />
+            ) : null}
+
+            {!isMsv && entry.type === "HOLIDAY" ? (
+                <SelectRow
+                    label="Value"
+                    value={entry.value}
+                    disabled={autoDisabled}
+                    options={ON_OFF_OPTIONS}
+                    onSelect={(value) => commitEntryField("value", Number(value))}
+                />
+            ) : null}
+
+            {isAnalog ? (
+                <NumberField
+                    label="Value"
+                    value={typeof entry.value === "number" ? entry.value : undefined}
+                    unit={IdxUtils.getUnitText(entry)}
+                    disabled={autoDisabled}
+                    onCommit={(value) => {
+                        commitEntryField("value", value);
+                        return { ok: true };
+                    }}
+                    onError={onError}
+                />
+            ) : null}
+
+            <SelectRow
+                label="Display field"
+                value={appItem.settings?.t3EntryDisplayField ?? "none"}
+                options={displayFieldOptions}
+                onSelect={commitDisplayField}
+            />
+
+            <EntryPickerDialog open={pickerOpen} onPick={linkEntry} onClose={() => setPickerOpen(false)} />
+        </Section>
+    );
+};
+
+/* ── P2: the widget's own settings, described by the tool definition ── */
+
+/**
+ * One entry of `NewTool[type].settings` — e.g. `{ label: "Justify", type: "justifyContent" }`.
+ *
+ * The panel does not hard-code per-widget fields: the tool definitions already describe them, and this is the
+ * React equivalent of the legacy `v-for="(setting, key) in settings"` loop in `ObjectConfigNew.vue`.
+ */
+interface ToolSetting {
+    label?: string;
+    type?: string;
+    value?: unknown;
+}
+
+/** Settings the legacy panel pulls out of the schema loop and shows as plain "General" fields. */
+const MAIN_SETTING_KEYS = ["title", "titleColor", "bgColor", "fontSize"];
+
+/** A colour setting is a `#rrggbb` string or, in some tool definitions, `{ label, value }`. */
+const colorText = (value: unknown): string => {
+    if (typeof value === "string") {
+        return value;
+    }
+    if (value && typeof value === "object" && typeof (value as any).value === "string") {
+        return (value as any).value;
+    }
+    return "";
+};
+
+const JUSTIFY_OPTIONS = [
+    { value: "flex-start", icon: <TextAlignLeftRegular fontSize={14} /> },
+    { value: "center", icon: <TextAlignCenterRegular fontSize={14} /> },
+    { value: "flex-end", icon: <TextAlignRightRegular fontSize={14} /> }
+];
+
+const TEXT_ALIGN_OPTIONS = [
+    { value: "left", icon: <TextAlignLeftRegular fontSize={14} /> },
+    { value: "center", icon: <TextAlignCenterRegular fontSize={14} /> },
+    { value: "right", icon: <TextAlignRightRegular fontSize={14} /> }
+];
+
+/** Icon-picker options. Values are either a Font Awesome class (`fa-solid fa-…`) or a Material ligature. */
+const toIconOptions = (catalogue: any[], glyphOf: (item: any) => string) =>
+    (catalogue ?? []).map((item) => {
+        const glyph = glyphOf(item);
+        const isFontAwesome = glyph.includes("fa");
+        return {
+            label: String(item?.label ?? item?.value ?? glyph),
+            value: String(item?.value ?? ""),
+            glyphClass: isFontAwesome ? glyph : "material-icons",
+            glyphText: isFontAwesome ? "" : glyph
+        };
+    });
+
+const ICON_OPTIONS = toIconOptions(iconCatalog as any[], (item) => String(item?.value ?? ""));
+const SWITCH_ICON_OPTIONS = toIconOptions(switchIconCatalog as any[], (item) => String(item?.icon?.off ?? ""));
+
+/** A three-way choice drawn as icon buttons — the legacy `q-btn-group` of align buttons. */
+const AlignRow: React.FC<{
+    label: string;
+    value: string | undefined;
+    options: { value: string; icon: React.ReactNode }[];
+    onSelect: (value: string) => void;
+}> = ({ label, value, options, onSelect }) => {
+    const styles = useStyles();
+    return (
+        <div className={styles.row}>
+            <span className={styles.label}>{label}</span>
+            <span className={styles.alignRow}>
+                {options.map((option) => (
+                    <Button
+                        key={option.value}
+                        size="small"
+                        style={PLAIN_WEIGHT}
+                        appearance={option.value === value ? "secondary" : "subtle"}
+                        aria-pressed={option.value === value}
+                        title={option.value}
+                        icon={option.icon}
+                        onClick={() => onSelect(option.value)}
+                    />
+                ))}
+            </span>
+        </div>
+    );
+};
+
+/** Single-line text setting that commits on blur / Enter (the panel's usual draft-then-commit rule). */
+const SettingTextBox: React.FC<{
+    label: string;
+    value: string;
+    onCommit: (value: string) => void;
+}> = ({ label, value, onCommit }) => {
+    const styles = useStyles();
+    const [draft, setDraft] = useState(value);
+
+    useEffect(() => {
+        setDraft(value);
+    }, [value]);
+
+    return (
+        <div className={styles.row}>
+            <span className={styles.label}>{label}</span>
+            <Input
+                className={styles.input}
+                size="small"
+                appearance="outline"
+                value={draft}
+                aria-label={label}
+                onChange={(_, data) => setDraft(data.value)}
+                onBlur={() => {
+                    if (draft !== value) {
+                        onCommit(draft);
+                    }
+                }}
+                onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                        (event.target as HTMLInputElement).blur();
+                    }
+                    if (event.key === "Escape") {
+                        setDraft(value);
+                    }
+                }}
+            />
+        </div>
+    );
+};
+
+/** Dropdown of icon choices, with the glyph drawn beside the label. */
+const IconSelectRow: React.FC<{
+    label: string;
+    value: string | undefined;
+    options: { label: string; value: string; glyphClass: string; glyphText: string }[];
+    onSelect: (value: string) => void;
+}> = ({ label, value, options, onSelect }) => {
+    const styles = useStyles();
+    const selected = options.find((option) => option.value === value);
+
+    return (
+        <div className={styles.row}>
+            <span className={styles.label}>{label}</span>
+            <Dropdown
+                className={styles.input}
+                selectedOptions={selected ? [selected.value] : []}
+                value={selected?.label ?? "—"}
+                onOptionSelect={(_, data) => onSelect(String(data.optionValue))}
+            >
+                {options.map((option) => (
+                    <Option key={option.value} value={option.value}>
+                        <span className={styles.iconOption}>
+                            {option.glyphText || option.glyphClass ? (
+                                <i className={option.glyphClass} style={{ fontSize: "14px", lineHeight: 1 }}>
+                                    {option.glyphText}
+                                </i>
+                            ) : null}
+                            {option.label}
+                        </span>
+                    </Option>
+                ))}
+            </Dropdown>
+        </div>
+    );
+};
+
+/**
+ * ## Gauge / Dial settings (P3)
+ *
+ * The legacy `GaugeSettingsDialog.vue`, rebuilt on Fluent: chart type, min/max, thickness (Gauge only), ticks,
+ * minor ticks and the colour gradient (`offset`/`color` pairs, add & remove).
+ *
+ * Two behaviours are copied deliberately: **opening** clones the item so Cancel is a pure discard, and **saving**
+ * replaces the item's type and settings. The legacy engine call `AppRuntime.gaugeSettingsSave` did the replace
+ * through Vue reactivity; in React the panel writes the live item and then asks the engine to redraw.
+ */
+interface GaugeColor {
+    offset: number;
+    color: string;
+}
+
+interface GaugeDraft {
+    type: string;
+    settings: {
+        min: number;
+        max: number;
+        thickness?: number;
+        ticks?: number;
+        minorTicks?: number;
+        colors: GaugeColor[];
+    };
+}
+
+const asNumber = (value: unknown, fallback = 0): number =>
+    typeof value === "number" && Number.isFinite(value) ? value : Number(value ?? fallback) || fallback;
+
+const gaugeDraft = (item: Record<string, any> | null | undefined): GaugeDraft => {
+    const settings = item?.settings ?? {};
+    const colors = Array.isArray(settings.colors) ? settings.colors : [];
+    return {
+        type: String(item?.type ?? "Gauge"),
+        settings: {
+            min: asNumber(settings.min, 0),
+            max: asNumber(settings.max, 100),
+            thickness: settings.thickness === undefined ? undefined : asNumber(settings.thickness, 0),
+            ticks: settings.ticks === undefined ? undefined : asNumber(settings.ticks, 0),
+            minorTicks: settings.minorTicks === undefined ? undefined : asNumber(settings.minorTicks, 0),
+            colors: colors.map((color: any) => ({
+                offset: asNumber(color?.offset, 0),
+                color: String(color?.color ?? "#000000")
+            }))
+        }
+    };
+};
+
+const GaugeSettingsDialog: React.FC<{
+    open: boolean;
+    item: Record<string, any>;
+    onClose: () => void;
+    onSave: (draft: GaugeDraft) => void;
+}> = ({ open, item, onClose, onSave }) => {
+    const styles = useStyles();
+    const [draft, setDraft] = useState<GaugeDraft>(() => gaugeDraft(item));
+
+    useEffect(() => {
+        if (open) {
+            setDraft(gaugeDraft(item));
+        }
+    }, [open, item]);
+
+    const patchSettings = (patch: Partial<GaugeDraft["settings"]>) =>
+        setDraft((previous) => ({ ...previous, settings: { ...previous.settings, ...patch } }));
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(_, data) => {
+                if (!data.open) {
+                    onClose();
+                }
+            }}
+        >
+            <DialogSurface style={{ maxWidth: "600px", width: "min(600px, 94vw)" }}>
+                <DialogBody>
+                    <DialogTitle
+                        style={DIALOG_TITLE_STYLE}
+                        action={
+                            <DialogTrigger action="close">
+                                <Button
+                                    appearance="subtle"
+                                    aria-label="Close"
+                                    title="Close"
+                                    icon={<DismissRegular />}
+                                />
+                            </DialogTrigger>
+                        }
+                    >
+                        {draft.type} settings
+                    </DialogTitle>
+                    <DialogContent>
+                        <div className={styles.gaugeGrid}>
+                            <div className={styles.gaugeWide}>
+                                <span className={styles.gaugeLabel}>Chart type</span>
+                                <Select
+                                    value={draft.type}
+                                    onChange={(_, data) => setDraft((p) => ({ ...p, type: data.value }))}
+                                >
+                                    <option value="Gauge">Gauge</option>
+                                    <option value="Dial">Dial</option>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <span className={styles.gaugeLabel}>Min</span>
+                                <Input
+                                    type="number"
+                                    value={String(draft.settings.min)}
+                                    onChange={(_, data) => patchSettings({ min: asNumber(data.value, 0) })}
+                                />
+                            </div>
+                            <div>
+                                <span className={styles.gaugeLabel}>Max</span>
+                                <Input
+                                    type="number"
+                                    value={String(draft.settings.max)}
+                                    onChange={(_, data) => patchSettings({ max: asNumber(data.value, 0) })}
+                                />
+                            </div>
+
+                            {/* Thickness is a Gauge-only field, exactly as in the legacy dialog. */}
+                            {draft.type === "Gauge" ? (
+                                <div>
+                                    <span className={styles.gaugeLabel}>Thickness ( px )</span>
+                                    <Input
+                                        type="number"
+                                        value={String(draft.settings.thickness ?? 0)}
+                                        onChange={(_, data) =>
+                                            patchSettings({ thickness: asNumber(data.value, 0) })
+                                        }
+                                    />
+                                </div>
+                            ) : null}
+                            <div>
+                                <span className={styles.gaugeLabel}>Ticks</span>
+                                <Input
+                                    type="number"
+                                    value={String(draft.settings.ticks ?? 0)}
+                                    onChange={(_, data) => patchSettings({ ticks: asNumber(data.value, 0) })}
+                                />
+                            </div>
+                            <div>
+                                <span className={styles.gaugeLabel}>Minor ticks</span>
+                                <Input
+                                    type="number"
+                                    value={String(draft.settings.minorTicks ?? 0)}
+                                    onChange={(_, data) => patchSettings({ minorTicks: asNumber(data.value, 0) })}
+                                />
+                            </div>
+
+                            <div className={styles.gaugeWide}>
+                                <div className={styles.gaugeColorsHead}>
+                                    <span className={styles.gaugeLabel}>{draft.type} colours</span>
+                                    <Button
+                                        size="small"
+                                        style={PLAIN_WEIGHT}
+                                        icon={<AddRegular />}
+                                        title="Add a colour stop"
+                                        onClick={() =>
+                                            setDraft((previous) => ({
+                                                ...previous,
+                                                settings: {
+                                                    ...previous.settings,
+                                                    colors: [
+                                                        ...previous.settings.colors,
+                                                        { offset: 100, color: "#000000" }
+                                                    ]
+                                                }
+                                            }))
+                                        }
+                                    />
+                                </div>
+                                {draft.settings.colors.map((stop, index) => (
+                                    <div key={index} className={styles.gaugeColorRow}>
+                                        <Input
+                                            className={styles.gaugeColorOffset}
+                                            type="number"
+                                            aria-label="Offset"
+                                            value={String(stop.offset)}
+                                            onChange={(_, data) =>
+                                                setDraft((previous) => ({
+                                                    ...previous,
+                                                    settings: {
+                                                        ...previous.settings,
+                                                        colors: previous.settings.colors.map((item, at) =>
+                                                            at === index
+                                                                ? { ...item, offset: asNumber(data.value, 0) }
+                                                                : item
+                                                        )
+                                                    }
+                                                }))
+                                            }
+                                        />
+                                        <input
+                                            className={mergeClasses(styles.swatch, styles.gaugeColorSwatch)}
+                                            type="color"
+                                            aria-label="Colour"
+                                            value={stop.color}
+                                            onChange={(event) => {
+                                                const color = event.target.value;
+                                                setDraft((previous) => ({
+                                                    ...previous,
+                                                    settings: {
+                                                        ...previous.settings,
+                                                        colors: previous.settings.colors.map((item, at) =>
+                                                            at === index ? { ...item, color } : item
+                                                        )
+                                                    }
+                                                }));
+                                            }}
+                                        />
+                                        <Button
+                                            appearance="subtle"
+                                            size="small"
+                                            icon={<DeleteRegular />}
+                                            title="Remove this colour stop"
+                                            onClick={() =>
+                                                setDraft((previous) => ({
+                                                    ...previous,
+                                                    settings: {
+                                                        ...previous.settings,
+                                                        colors: previous.settings.colors.filter(
+                                                            (_, at) => at !== index
+                                                        )
+                                                    }
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button appearance="secondary" style={PLAIN_WEIGHT} onClick={onClose}>
+                            Cancel
+                        </Button>
+                        <Button appearance="primary" style={PLAIN_WEIGHT} onClick={() => onSave(draft)}>
+                            Save
+                        </Button>
+                    </DialogActions>
+                </DialogBody>
+            </DialogSurface>
+        </Dialog>
+    );
+};
+
+/**
+ * ## Widget (P2)
+ *
+ * Everything the *tool* says a widget of this kind can be configured with: the title, its colour, the
+ * background colour, the font size and then every entry of the tool's own `settings` schema, dispatched on
+ * `setting.type` — the same eight kinds the legacy panel handled (`justifyContent`, `textAlign`, `color`,
+ * `text`, `number`, `icon`, `iconSwitch`, `boolean`).
+ *
+ * Writes are legacy `TraceSettingChange`, call for call: the value goes onto the app item **and** into
+ * `QuasarUtil.UpdateSvgElementSettings`, which is what pushes it into the selected object's draw settings so
+ * the canvas redraws, then `SaveAct()` commits.
+ */
+const WidgetSection: React.FC<{ onError: (message: string | undefined) => void }> = ({ onError }) => {
+    const styles = useStyles();
+    const appItem = useHvacAppStateItem();
+    /* Hooks stay above the early return: the gauge dialog is only mounted for Gauge/Dial, but its state hook
+     * must be called on every render of this component. */
+    const [gaugeOpen, setGaugeOpen] = useState(false);
+
+    if (!appItem) {
+        return null;
+    }
+
+    const settings: Record<string, any> = appItem.settings ?? {};
+    const entry = appItem.t3Entry;
+
+    const schema: Record<string, ToolSetting> = (() => {
+        try {
+            const tool = (NewTool as any[])?.find((item) => item?.name === appItem.type);
+            return (tool?.settings ?? {}) as Record<string, ToolSetting>;
+        } catch {
+            return {};
+        }
+    })();
+
+    const run = (what: string, action: () => void) => {
+        try {
+            onError(undefined);
+            action();
+        } catch (error) {
+            onError(`${what} failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    };
+
+    const writeSetting = (key: string, value: unknown) =>
+        run(`Updating ${key}`, () => {
+            appItem.raw.settings = appItem.raw.settings ?? {};
+            appItem.raw.settings[key] = value;
+            QuasarUtil.UpdateSvgElementSettings(key, value);
+            EvtOpt.toolOpt.SaveAct();
+        });
+
+    /* An `active` toggle is the device's business once the entry drives it in auto, or when it exposes a
+     * `decom` field — the legacy disable rule, including its tooltip. */
+    const lockedByEntry = (key: string) =>
+        key === "active" && !!entry && (entry.auto_manual === 0 || entry.digital_analog === 1);
+    const lockedByDecom = !!entry && entry.decom !== undefined;
+
+    /** Gauge and Dial carry a whole sub-dialog of their own (legacy: the `Settings` button). */
+    const isGauge = appItem.type === "Gauge" || appItem.type === "Dial";
+
+    /**
+     * Legacy `gaugeSettingsSave`: the item's `type` and settings are replaced wholesale, then the engine is told
+     * to redraw. The legacy path (`appStateV2.items[index] = item`) relied on Vue reactivity to re-render.
+     */
+    const saveGauge = (draft: GaugeDraft) =>
+        run("Saving the gauge settings", () => {
+            const live = appItem.raw;
+            const patch = Object.fromEntries(
+                Object.entries(draft.settings).filter(([, value]) => value !== undefined)
+            );
+            live.type = draft.type;
+            live.settings = { ...(live.settings ?? {}), ...patch };
+            if (live.id !== undefined) {
+                (Hvac as any)?.AppRuntime?.gaugeSettingsSave?.(live);
+            }
+            SvgUtil.RenderAllSVGObjects();
+            EvtOpt.toolOpt.SaveAct();
+        });
+
+    const schemaRows = Object.entries(schema).filter(([key]) => !MAIN_SETTING_KEYS.includes(key));
+
+    return (
+        <Section title="Widget" tag={appItem.type || undefined}>
+            {isGauge ? (
+                <div className={styles.row}>
+                    <span className={styles.label} />
+                    <Button
+                        appearance="primary"
+                        size="small"
+                        style={PLAIN_WEIGHT}
+                        title="Gauge and dial range, ticks and colours"
+                        onClick={() => setGaugeOpen(true)}
+                    >
+                        Settings…
+                    </Button>
+                </div>
+            ) : null}
+            {settings.fontSize !== undefined ? (
+                <NumberField
+                    label="Font size"
+                    value={Number(settings.fontSize)}
+                    digits={0}
+                    onCommit={(value) => {
+                        writeSetting("fontSize", value);
+                        return { ok: true };
+                    }}
+                    onError={onError}
+                />
+            ) : null}
+
+            {settings.title !== undefined ? (
+                <SettingTextBox
+                    label="Title"
+                    value={String(settings.title ?? "")}
+                    onCommit={(value) => writeSetting("title", value)}
+                />
+            ) : null}
+
+            {settings.titleColor !== undefined ? (
+                <ColorField
+                    label="Title colour"
+                    value={colorText(settings.titleColor)}
+                    onCommit={(value) => {
+                        writeSetting("titleColor", value);
+                        return { ok: true };
+                    }}
+                    onError={onError}
+                />
+            ) : null}
+
+            {settings.bgColor !== undefined ? (
+                <ColorField
+                    label="Background"
+                    value={colorText(settings.bgColor)}
+                    onCommit={(value) => {
+                        writeSetting("bgColor", value);
+                        return { ok: true };
+                    }}
+                    onError={onError}
+                />
+            ) : null}
+
+            {schemaRows.map(([key, setting]) => {
+                const type = setting.type;
+                const value = settings[key];
+                const label = setting.label ?? key;
+
+                if (type === "justifyContent") {
+                    return (
+                        <AlignRow
+                            key={key}
+                            label={label}
+                            value={value}
+                            options={JUSTIFY_OPTIONS}
+                            onSelect={(next) => writeSetting(key, next)}
+                        />
+                    );
+                }
+
+                if (type === "textAlign") {
+                    return (
+                        <AlignRow
+                            key={key}
+                            label={label}
+                            value={value}
+                            options={TEXT_ALIGN_OPTIONS}
+                            onSelect={(next) => writeSetting(key, next)}
+                        />
+                    );
+                }
+
+                if (type === "color") {
+                    return (
+                        <ColorField
+                            key={key}
+                            label={label}
+                            value={colorText(value)}
+                            onCommit={(next) => {
+                                writeSetting(key, next);
+                                return { ok: true };
+                            }}
+                            onError={onError}
+                        />
+                    );
+                }
+
+                if (type === "text") {
+                    return (
+                        <SettingTextBox
+                            key={key}
+                            label={label}
+                            value={value === undefined || value === null ? "" : String(value)}
+                            onCommit={(next) => writeSetting(key, next)}
+                        />
+                    );
+                }
+
+                if (type === "number") {
+                    return (
+                        <NumberField
+                            key={key}
+                            label={label}
+                            value={typeof value === "number" ? value : Number(value)}
+                            onCommit={(next) => {
+                                writeSetting(key, next);
+                                return { ok: true };
+                            }}
+                            onError={onError}
+                        />
+                    );
+                }
+
+                if (type === "icon") {
+                    return (
+                        <IconSelectRow
+                            key={key}
+                            label={label}
+                            value={value}
+                            options={ICON_OPTIONS}
+                            onSelect={(next) => writeSetting(key, next)}
+                        />
+                    );
+                }
+
+                if (type === "iconSwitch") {
+                    return (
+                        <IconSelectRow
+                            key={key}
+                            label={label}
+                            value={value}
+                            options={SWITCH_ICON_OPTIONS}
+                            onSelect={(next) => writeSetting(key, next)}
+                        />
+                    );
+                }
+
+                if (type === "boolean") {
+                    const disabled = lockedByEntry(key) || lockedByDecom;
+                    return (
+                        <div
+                            key={key}
+                            className={styles.row}
+                            title={
+                                lockedByEntry(key)
+                                    ? "Manual changes are not possible as the linked entry is set to auto mode."
+                                    : undefined
+                            }
+                        >
+                            <span className={styles.label}>{label}</span>
+                            <Checkbox
+                                checked={!!value}
+                                disabled={disabled}
+                                label={value ? "On" : "Off"}
+                                onChange={(_, data) => writeSetting(key, data.checked)}
+                            />
+                        </div>
+                    );
+                }
+
+                return null;
+            })}
+
+            {schemaRows.length === 0 ? (
+                <span className={styles.note}>This widget type has no extra settings.</span>
+            ) : null}
+
+            {isGauge ? (
+                <GaugeSettingsDialog
+                    open={gaugeOpen}
+                    item={appItem.raw}
+                    onClose={() => setGaugeOpen(false)}
+                    onSave={(draft) => {
+                        saveGauge(draft);
+                        setGaugeOpen(false);
+                    }}
+                />
+            ) : null}
+        </Section>
+    );
+};
+
+const ItemEditor: React.FC<{ item: HvacSelectionItem; onError: (message: string | undefined) => void }> = ({
+    item,
+    onError
+}) => {
+    const styles = useStyles();
+    const isLine = !!item.start;
+    const id = item.id;
+
+    return (
+        <>
+            <DataSection onError={onError} />
+
+            <Section title="Geometry" tag={isLine ? "Endpoints" : undefined} bodyStyle={LOOSE_BODY_GAP}>
+                {isLine ? (
+                    <>
+                        <ReadRow
+                            label="Start"
+                            value={item.start && `${formatNumber(item.start.x)}, ${formatNumber(item.start.y)}`}
+                        />
+                        <ReadRow
+                            label="End"
+                            value={item.end && `${formatNumber(item.end.x)}, ${formatNumber(item.end.y)}`}
+                        />
+                        <NumberField
+                            label="Rotation"
+                            value={item.rotation}
+                            unit="°"
+                            onCommit={(v) => setRotation(id, v)}
+                            onError={onError}
+                        />
+                        <span className={styles.note}>Line endpoints are edited by dragging.</span>
+                    </>
+                ) : (
+                    <>
+                        <NumberField label="X" value={item.frame?.x} unit="px" onCommit={(v) => setFramePart(id, "x", v)} onError={onError} />
+                        <NumberField label="Y" value={item.frame?.y} unit="px" onCommit={(v) => setFramePart(id, "y", v)} onError={onError} />
+                        <NumberField
+                            label="Width"
+                            value={item.frame?.width}
+                            unit="px"
+                            onCommit={(v) => setFramePart(id, "width", v)}
+                            onError={onError}
+                        />
+                        <NumberField
+                            label="Height"
+                            value={item.frame?.height}
+                            unit="px"
+                            onCommit={(v) => setFramePart(id, "height", v)}
+                            onError={onError}
+                        />
+                        <NumberField
+                            label="Rotation"
+                            value={item.rotation}
+                            unit="°"
+                            onCommit={(v) => setRotation(id, v)}
+                            onError={onError}
+                        />
+                    </>
+                )}
+            </Section>
+
+            <WidgetSection onError={onError} />
+
+            <Section title="Appearance">
+                <ColorField label="Fill" value={item.fillColor} onCommit={(v) => setFillColor(id, v)} onError={onError} />
+                <SliderField
+                    label="Fill opacity"
+                    value={item.fillOpacity}
+                    disabled={item.fillColor === undefined}
+                    onCommit={(v) => setFillOpacity(id, v)}
+                    onError={onError}
+                />
+                <ColorField label="Stroke" value={item.strokeColor} onCommit={(v) => setStrokeColor(id, v)} onError={onError} />
+                <NumberField
+                    label="Stroke width"
+                    value={item.strokeWidth}
+                    disabled={item.strokeColor === undefined}
+                    digits={1}
+                    unit="px"
+                    onCommit={(v) => setStrokeWidth(id, v)}
+                    onError={onError}
+                />
+                <ReadRow label="Line pattern" value={item.linePattern} />
+                <ReadRow label="Text colour" value={item.textColor} />
+                <ReadRow label="Font" value={item.fontName} />
+                <ReadRow label="Font size" value={formatNumber(item.fontSize, 1)} />
+            </Section>
+
+            {item.text !== undefined ? (
+                <Section title="Text">
+                    <TextField value={item.text} onCommit={(v) => setObjectText(id, v)} onError={onError} />
+                    <span className={styles.note}>Enter to apply · Esc to revert</span>
+                </Section>
+            ) : null}
+
+            {/*
+             * Read-only facts about the object, deliberately kept next to the engine dump: both are diagnostics,
+             * while everything above is what you actually edit.
+             */}
+            <Section title="Identity" tag="Read only">
+                <ReadRow label="Type" value={item.label} />
+                <ReadRow label="Class" value={item.className} />
+                <ReadRow label="Object id" value={id} />
+                <ReadRow label="Unique id" value={item.uniqueId} />
+                <ReadRow label="Layer" value={item.layer} />
+                {(item.locked || item.hidden) && (
+                    <div className={styles.badges}>
+                        {item.locked ? (
+                            <Badge appearance="tint" color="warning">
+                                Locked
+                            </Badge>
+                        ) : null}
+                        {item.hidden ? (
+                            <Badge appearance="tint" color="informative">
+                                Hidden
+                            </Badge>
+                        ) : null}
+                    </div>
+                )}
+            </Section>
+
+            <Section title="Raw (engine fields)" defaultOpen={false}>
+                <pre className={styles.raw}>{JSON.stringify(item, null, 2)}</pre>
+            </Section>
+        </>
+    );
+};
+
+/** An unexpected object class must never take the shell down. */
+class PanelErrorBoundary extends React.Component<{ children: React.ReactNode }, { message?: string }> {
+    state: { message?: string } = {};
+
+    static getDerivedStateFromError(error: unknown) {
+        return { message: error instanceof Error ? error.message : String(error) };
+    }
+
+    render() {
+        if (this.state.message) {
+            return (
+                <div style={{ padding: 12, fontSize: 11, color: tokens.colorPaletteRedForeground1 }}>
+                    Properties unavailable for this selection ({this.state.message})
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+export const HvacPropertiesPanel: React.FC<{ enabled?: boolean }> = ({ enabled = true }) => {
+    const styles = useStyles();
+    const selection = useHvacSelection(enabled);
+    const [error, setError] = useState<string | undefined>(undefined);
+
+    if (!enabled) {
+        return (
+            <div className={styles.loading}>
+                <Spinner size="tiny" />
+                <span>Waiting for the editor…</span>
+            </div>
+        );
+    }
+
+    if (selection.kind === "none") {
+        return (
+            <div className={styles.empty}>
+                <span className={styles.emptyIcon}>
+                    <CursorRegular fontSize={20} />
+                </span>
+                <span className={styles.emptyTitle}>No selection</span>
+                <span className={styles.emptyHint}>
+                    Select a shape on the canvas to inspect and edit its properties.
+                </span>
+            </div>
+        );
+    }
+
+    const primary = selection.items[0];
+
+    /* What the selection is made of, and where it disagrees with itself — a mixed value cannot be shown as
+     * one number, so it is named instead of silently taken from the first object. */
+    const byType = new Map<string, number>();
+    selection.items.forEach((entry) => byType.set(entry.label ?? entry.className, (byType.get(entry.label ?? entry.className) ?? 0) + 1));
+    const fillDiffers = new Set(selection.items.map((entry) => entry.fillColor ?? "")).size > 1;
+
+    return (
+        <PanelErrorBoundary>
+            <div className={styles.root}>
+                {selection.kind === "multi" ? (
+                    <Section title="Selection" tag={`${selection.items.length} objects`}>
+                        <div className={mergeClasses(styles.row)} style={{ alignItems: "start" }}>
+                            <span className={styles.label} style={{ paddingTop: 4 }}>
+                                Contains
+                            </span>
+                            <span className={styles.picks}>
+                                {[...byType.entries()].map(([label, count]) => (
+                                    <span key={label} className={styles.pick}>
+                                        {count} × {label}
+                                    </span>
+                                ))}
+                            </span>
+                        </div>
+                        {fillDiffers ? (
+                            <div className={styles.row}>
+                                <span className={styles.label}>Fill</span>
+                                <span className={mergeClasses(styles.pick, styles.pickMixed)}>differs</span>
+                            </div>
+                        ) : null}
+                        <span className={styles.note}>Only the first selected object is edited.</span>
+                    </Section>
+                ) : null}
+
+                <ItemEditor item={primary} onError={setError} />
+
+                <span className={styles.error}>{error ?? ""}</span>
+                <span className={styles.note} style={{ padding: "0 8px 10px" }}>
+                    Every edit is a single undo step (Ctrl+Z).
+                </span>
+            </div>
+        </PanelErrorBoundary>
+    );
+};
