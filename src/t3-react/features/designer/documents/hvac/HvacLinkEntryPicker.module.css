@@ -247,6 +247,77 @@
   color: var(--colorNeutralForeground2, #424242);
   font-size: 11px;
 }
+/*
+ * The "Current link" section — the entry the widget is bound to right now, as **one line** above the search box.
+ *
+ * Hierarchy comes from size and weight instead of stacked rows: a bold 13 px label, the point's name at 13 px
+ * regular, then an 11 px grey meta tail that may ellipsize — all on the same baseline. It is not a `.gridRow`
+ * either: this is a status about the widget, not another row of the point table.
+ */
+.currentCard {
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  background: #f0f7ff;
+  border: 1px solid #dce9f5;
+  border-radius: 3px;
+  text-align: left;
+  cursor: pointer;
+}
+.currentCard:hover {
+  background: #e6f1fd;
+}
+.currentCardSelected,
+.currentCardSelected:hover {
+  border-color: #0078d4;
+}
+.currentUnlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* Pushed to the end of the row, so the card reads: status, the entry, then the way out of the link. */
+  margin-left: auto;
+  align-self: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0078d4;
+  font-family: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.currentUnlink:hover {
+  text-decoration: underline;
+}
+.currentUnlink:focus-visible {
+  outline: 1px solid #0078d4;
+  outline-offset: 2px;
+}
+.currentHead {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #201f1e;
+  white-space: nowrap;
+}
+.currentTitle {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #201f1e;
+  white-space: nowrap;
+}
+.currentMeta {
+  min-width: 0;
+  font-size: 11px;
+  color: #605e5c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .gridRow {
   border-top: 0.8px solid #e0e0e0;
   cursor: pointer;

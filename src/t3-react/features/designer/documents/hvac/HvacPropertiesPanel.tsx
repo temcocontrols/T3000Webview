@@ -38,7 +38,7 @@ import {
 import { useDeviceTreeStore } from "@/t3-react/features/devices/store/deviceTreeStore";
 import { deviceListName, groupDevicesForDropdown } from "@/t3-react/shared/utils/deviceTreeList";
 import type { DeviceInfo } from "@/t3-react/shared/types/device";
-import { AddRegular, ArrowClockwiseRegular, BuildingRegular, ChevronDownRegular, ChevronUpRegular, CursorRegular, DeleteRegular, DismissRegular, LinkRegular, SearchRegular, TextAlignCenterRegular, TextAlignLeftRegular, TextAlignRightRegular } from "@fluentui/react-icons";
+import { AddRegular, ArrowClockwiseRegular, BuildingRegular, ChevronDownRegular, ChevronUpRegular, CursorRegular, DeleteRegular, DismissRegular, LinkDismissRegular, LinkRegular, SearchRegular, TextAlignCenterRegular, TextAlignLeftRegular, TextAlignRightRegular } from "@fluentui/react-icons";
 /* The icon catalogues the legacy panel picked from (`ObjectConfigNew.vue`), shared with the Vue tree. */
 import { icons as iconCatalog, switchIcons as switchIconCatalog } from "@common/shared/utils/common";
 import pickerStyles from "./HvacLinkEntryPicker.module.css";
@@ -1018,7 +1018,9 @@ const EntryPickerDialog: React.FC<{
     onClose: () => void;
     /** The entry this widget is linked to right now — reopening through *Change* has to show it again. */
     current?: Record<string, any> | null;
-}> = ({ open, onPick, onClose, current = null }) => {
+    /** Offered at the end of the current-link card: clears the link (`DataSection.unlinkEntry`). */
+    onUnlink?: () => void;
+}> = ({ open, onPick, onClose, current = null, onUnlink }) => {
     const [query, setQuery] = useState("");
     const [selected, setSelected] = useState<Record<string, any> | null>(null);
     const [panels, setPanels] = useState<Record<string, any>[]>([]);
@@ -1235,34 +1237,25 @@ const EntryPickerDialog: React.FC<{
     }, [linkablePanels, activeRow, activeKey, query]);
 
     /*
-     * Reopening the picker — *Change* on an already linked widget — has to show what is linked, so the current
-     * entry is preselected and its row is brought into view once the list actually holds it (the panel data can
-     * still be streaming in when the dialog opens).
+     * Reopening the picker — *Change* on an already linked widget — has to show what is linked: the current entry
+     * is preselected, and it is rendered as a pinned section at the top of the grid (see below) so it is visible
+     * without scrolling, whatever the scope or the search is.
      */
     const currentKey = current ? entryKey(current) : null;
     const selectedKey = selected ? entryKey(selected) : null;
-    const selectedRowRef = useRef<HTMLDivElement | null>(null);
-    const scrolledRef = useRef(false);
 
     useEffect(() => {
         setSelected(open ? current : null);
-        if (!open) {
-            scrolledRef.current = false;
-        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
-    useEffect(() => {
-        if (!open || scrolledRef.current || !currentKey) {
-            return;
-        }
-        const row = selectedRowRef.current;
-        if (!row) {
-            return;
-        }
-        scrolledRef.current = true;
-        row.scrollIntoView({ block: "center" });
-    }, [open, currentKey, points]);
+    /*
+     * The list under the pinned section keeps the linked entry out of it, so the same point never shows twice.
+     */
+    const listPoints = useMemo(
+        () => (currentKey ? points.filter((entry) => entryKey(entry) !== currentKey) : points),
+        [points, currentKey]
+    );
 
     const close = () => {
         setSelected(null);
@@ -1436,6 +1429,67 @@ const EntryPickerDialog: React.FC<{
                                 </aside>
 
                                 <section className={pickerStyles.pointsPane}>
+                                    {current ? (
+                                        /*
+                                         * The widget's current link, first thing in the pane: **above the search box**, as
+                                         * its own card rather than a row of the table below. This is a status about the
+                                         * widget ("bound to that point"), and the linked point can sit anywhere in a table of
+                                         * hundreds, so it is read here instead of hunted for. Clicking it selects that
+                                         * entry, so Save re-commits it.
+                                         */
+                                        <div
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-pressed={selectedKey === currentKey}
+                                            className={mergeClasses(
+                                                pickerStyles.currentCard,
+                                                selectedKey === currentKey
+                                                    ? pickerStyles.currentCardSelected
+                                                    : undefined
+                                            )}
+                                            onClick={() => setSelected(current)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    setSelected(current);
+                                                }
+                                            }}
+                                            onDoubleClick={() => commit(current)}
+                                        >
+                                            <span className={pickerStyles.currentHead}>Current link</span>
+                                            <span className={pickerStyles.currentTitle}>{entryLabel(current)}</span>
+                                            <span className={pickerStyles.currentMeta}>
+                                                {[
+                                                    current.type,
+                                                    current.id,
+                                                    entryValueText(current) ? `value ${entryValueText(current)}` : null,
+                                                    deviceNameByPid.get(Number(current.pid ?? 0)) ??
+                                                        (current.pid === undefined || current.pid === null
+                                                            ? null
+                                                            : `Panel ${current.pid}`)
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(" \u00b7 ")}
+                                            </span>
+                                            {onUnlink ? (
+                                                /* The card's own click selects the entry; unlinking must not. */
+                                                <button
+                                                    type="button"
+                                                    className={pickerStyles.currentUnlink}
+                                                    title="Remove the link to this entry"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        onUnlink();
+                                                        close();
+                                                    }}
+                                                >
+                                                    <LinkDismissRegular fontSize={14} />
+                                                    Unlink
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    ) : null}
+
                                     {/* Search and Reload belong to the list they act on. */}
                                     <div className={pickerStyles.toolbar}>
                                         <Input
@@ -1473,6 +1527,12 @@ const EntryPickerDialog: React.FC<{
                                         </div>
                                     ) : null}
 
+                                    {/*
+                                     * The widget's current link, as its own section **above** the grid — not a row inside
+                                     * it. The linked point can sit anywhere in a table of hundreds (VAR100 …), so it is
+                                     * kept in view instead of left to be scrolled to, and it is the one row that still
+                                     * shows when the entry's own panel has not streamed in yet.
+                                     */}
                                     <div className={pickerStyles.gridWrap}>
                                         {points.length === 0 ? (
                                             <div className={pickerStyles.emptyState}>
@@ -1492,12 +1552,11 @@ const EntryPickerDialog: React.FC<{
                                                     <span>Value</span>
                                                     <span>Device</span>
                                                 </div>
-                                                {points.map((entry, index) => {
+                                                {listPoints.map((entry, index) => {
                                                     const isSelected = selectedKey === entryKey(entry);
                                                     return (
                                                         <div
                                                             key={`${entry.pid}-${entry.id}-${entry.index ?? index}`}
-                                                            ref={isSelected ? selectedRowRef : undefined}
                                                             role="row"
                                                             aria-selected={isSelected}
                                                             className={mergeClasses(
@@ -1823,6 +1882,7 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
                 onClose={() => setPickerOpen(false)}
                 /* *Change* on a linked widget: hand the picker the entry it is bound to now. */
                 current={entry}
+                onUnlink={unlinkEntry}
             />
         </Section>
     );
