@@ -128,3 +128,61 @@ More details=> Proposal: Fixes for specific enthalpy units
 ## 2026-09-07
 
 For the RS485 scan device list, see more details in the email: Fwd: [Temco Controls Forum] [T3000 Software] Webview: adding links to other graphics screens.
+
+
+## 2026-09-23 
+
+Fix unexpected UTF-8 character when loading data from a device via message action == 17. This was also fixed on the Rust side in commit e63dea80143ccec22e95b4ccdb2f4a48bd2b34d3. Below is the fix on the C++ side.
+
+/* ---------------------------------------------------------------------------
+   Device fixed-width field -> UTF-8 string for the JSON replies.
+
+   This is the same conversion the T3000 grids use for the same field
+   (BacnetInput.cpp:964/1338, BacnetOutput.cpp:687, BacnetVariable.cpp:274/454):
+        device bytes -- MultiByteToWideChar(CP_ACP) --> wide text
+   The grids then hand that wide text straight to SetItemText, so nothing else is
+   needed there. A JSON string is UTF-8 instead, and jsoncpp validates it - any
+   invalid byte is substituted with U+FFFD, which is where the "?" characters in
+   the WebView replies came from. So the one extra step here is wide -> UTF-8.
+
+   "src" is a fixed-width device field: it has no terminator (the packed struct
+   must keep its 45-byte stride) and an unset field is 0xFF-filled (erased flash
+   on the ESP32 T3 series) or 0x00-filled on older firmware.
+   --------------------------------------------------------------------------- */
+static std::string DeviceStrForJson(const void* rawField, size_t fieldSize)
+{
+    const char* src = (const char*)rawField;
+    if (!src || fieldSize == 0)
+        return std::string();
+
+    /* stop at the NUL terminator or at the 0xFF "unset" fill */
+    size_t n = 0;
+    while (n < fieldSize && src[n] != '\0' && (unsigned char)src[n] != 0xFF)
+        n++;
+    if (n == 0)
+        return std::string();                      /* unset -> empty string */
+
+    /* same call the grids make */
+    int wlen = MultiByteToWideChar(CP_ACP, 0, src, (int)n, nullptr, 0);
+    if (wlen <= 0)
+        return std::string();
+    std::wstring wide(wlen, L'\0');
+    MultiByteToWideChar(CP_ACP, 0, src, (int)n, &wide[0], wlen);
+
+    /* JSON needs UTF-8, not UTF-16 */
+    int u8len = WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), wlen, nullptr, 0, nullptr, nullptr);
+    if (u8len <= 0)
+        return std::string();
+    std::string utf8(u8len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), wlen, &utf8[0], u8len, nullptr, nullptr);
+    return utf8;
+}
+
+
+// BEFORE
+tempjson[...]["description"] = (char*)EXPR.description;
+tempjson[...]["label"]       = (char*)EXPR.label;
+
+// AFTER
+tempjson[...]["description"] = DeviceStrForJson(EXPR.description, sizeof(EXPR.description));
+tempjson[...]["label"]       = DeviceStrForJson(EXPR.label,       sizeof(EXPR.label));
