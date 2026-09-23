@@ -217,7 +217,9 @@ const useStyles = makeStyles({
         borderRadius: "3px",
         background: "transparent"
     },
-    slider: { display: "flex", alignItems: "center", gap: "8px", minWidth: 0 },
+    /* Pulled left so the track lines up with the other rows' controls: Fluent's Slider root reserves space for
+     * the thumb's hit area, which pushes the visible track inwards by a few pixels. */
+    slider: { display: "flex", alignItems: "center", gap: "4px", minWidth: 0, marginLeft: "-5px" },
     sliderTrack: {
         flex: 1,
         minWidth: 0,
@@ -226,12 +228,20 @@ const useStyles = makeStyles({
         "& .fui-Slider": { minWidth: 0 }
     },
     pct: {
-        /* Sized for the widest string (`100%`), not the shortest: a fixed 38 px box clipped the fourth glyph. */
-        minWidth: "44px",
+        /*
+         * Width is deliberately *content-driven*, and the text is right-aligned, so its right edge ends flush with
+         * the panel's right edge exactly like every other control in the panel.
+         *
+         * A fixed width reserve was wrong both ways: right-aligned inside a reserve, the slack landed between the
+         * slider and the text (`50%` sat much further from the track than `100%`); left-aligned it removed the slack
+         * but pulled the text off the panel's right edge. Hugging the content gives a constant gap (the flex gap on
+         * `.slider`) *and* keeps the right edge on the same vertical line. `tabular-nums` means the digits keep a
+         * fixed advance width, so the track only ever shifts by one digit width, and only when the value crosses
+         * 10%/100%.
+         */
         flexShrink: 0,
         textAlign: "right",
         whiteSpace: "nowrap",
-        overflow: "visible",
         fontSize: tokens.fontSizeBase200,
         color: tokens.colorNeutralForeground2,
         fontVariantNumeric: "tabular-nums"
