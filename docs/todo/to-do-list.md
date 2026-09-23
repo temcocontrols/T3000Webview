@@ -132,7 +132,7 @@ For the RS485 scan device list, see more details in the email: Fwd: [Temco Contr
 
 ## 2026-09-23 
 
-Fix unexpected UTF-8 character when loading data from a device via message action == 17. This was also fixed on the Rust side in commit e63dea80143ccec22e95b4ccdb2f4a48bd2b34d3. Below is the fix on the C++ side.
+Fix unexpected UTF-8 character when loading data from a device via message action 17. This issue was already fixed on the Rust side in commit e63dea80143ccec22e95b4ccdb2f4a48bd2b34d3. Below is the corresponding fix on the C++ side
 
 /* ---------------------------------------------------------------------------
    Device fixed-width field -> UTF-8 string for the JSON replies.

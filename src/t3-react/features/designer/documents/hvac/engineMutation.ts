@@ -29,14 +29,28 @@
  */
 import ObjectUtil from "@/lib/t3-hvac/Opt/Data/ObjectUtil";
 import DrawUtil from "@/lib/t3-hvac/Opt/Opt/DrawUtil";
+import OptCMUtil from "@/lib/t3-hvac/Opt/Opt/OptCMUtil";
+import DSConstant from "@/lib/t3-hvac/Opt/DS/DSConstant";
 
 export interface HvacMutationResult {
     ok: boolean;
     reason?: string;
 }
 
-/** Mutates one engine object and commits it as a single, undoable operation. */
-export function applyHvacMutation(targetId: number, mutate: (object: any) => void): HvacMutationResult {
+/**
+ * Mutates one engine object and commits it as a single, undoable operation.
+ *
+ * `options.moved` marks the object as moved, exactly as the engine's own geometry
+ * operations do - `ToolActUtil.RotateShapes` / `MakeSameSize` / `FlipShapes` all call
+ * `OptCMUtil.SetLinkFlag(id, DSConstant.LinkFlags.Move)` before dirtying the object.
+ * That flag is what makes hooked objects (ducts, connectors, lines attached to the
+ * shape) follow the change; style-only edits do not need it, so it stays opt-in.
+ */
+export function applyHvacMutation(
+    targetId: number,
+    mutate: (object: any) => void,
+    options?: { moved?: boolean }
+): HvacMutationResult {
     if (!Number.isFinite(targetId) || targetId < 0) {
         return { ok: false, reason: "no-selection" };
     }
@@ -48,6 +62,24 @@ export function applyHvacMutation(targetId: number, mutate: (object: any) => voi
         }
 
         mutate(object);
+
+        if (options?.moved) {
+            OptCMUtil.SetLinkFlag(targetId, DSConstant.LinkFlags.Move);
+        }
+
+        // Mark the object dirty before completing the operation.
+        //
+        // `CompleteOperation` repaints through `SvgUtil.RenderDirtySVGObjects()`, and that
+        // call is wrapped in `if (T3Gv.opt.dirtyList.length !== 0)` - with an empty dirty
+        // list it does nothing at all. So without this line the edit reaches the model but
+        // never the canvas: the shape keeps its old geometry, while the selection handles
+        // are rebuilt unconditionally from `RotationAngle` (`SvgUtil.ts:89`), which is what
+        // made a rotation look like it "only rotated the select layer".
+        //
+        // The engine's own `ToolActUtil.RotateShapes()` marks every object dirty for the
+        // same reason, and for a repaint `SvgUtil.AddSVGObject` then applies the rotation
+        // about the frame centre (`SvgUtil.ts:266`).
+        ObjectUtil.AddToDirtyList(targetId);
 
         // Repaint + record the operation.
         DrawUtil.CompleteOperation([targetId], false);
@@ -69,22 +101,38 @@ export function setFramePart(
     if (!Number.isFinite(value)) {
         return { ok: false, reason: "not-a-number" };
     }
-    return applyHvacMutation(targetId, (object) => {
-        if (!object.Frame) {
-            object.Frame = { x: 0, y: 0, width: 0, height: 0 };
-        }
-        // Guard against degenerate geometry the renderer cannot draw.
-        object.Frame[part] = part === "width" || part === "height" ? Math.max(1, value) : value;
-    });
+    return applyHvacMutation(
+        targetId,
+        (object) => {
+            if (!object.Frame) {
+                object.Frame = { x: 0, y: 0, width: 0, height: 0 };
+            }
+            // Guard against degenerate geometry the renderer cannot draw.
+            object.Frame[part] = part === "width" || part === "height" ? Math.max(1, value) : value;
+        },
+        { moved: true }
+    );
 }
 
 export function setRotation(targetId: number, degrees: number): HvacMutationResult {
     if (!Number.isFinite(degrees)) {
         return { ok: false, reason: "not-a-number" };
     }
-    return applyHvacMutation(targetId, (object) => {
-        object.RotationAngle = ((degrees % 360) + 360) % 360;
-    });
+    return applyHvacMutation(
+        targetId,
+        (object) => {
+            object.RotationAngle = ((degrees % 360) + 360) % 360;
+
+            // After a rotation the engine recomputes the shape's derived geometry -
+            // `ToolActUtil.RotateShapes` calls `shape.UpdateFrame(shape.Frame)` for exactly
+            // this reason, so the stored Frame stays consistent with the drawn angle.
+            // Line-like classes have no UpdateFrame (they rotate via their points instead).
+            if (typeof object.UpdateFrame === "function") {
+                object.UpdateFrame(object.Frame);
+            }
+        },
+        { moved: true }
+    );
 }
 
 /** `StyleRecord.Fill.Paint.Color` — not `StyleRecord.fillColor` (which does not exist). */

@@ -469,8 +469,13 @@ const useStyles = makeStyles({
     }
 });
 
+/**
+ * Field text for a number. `NaN` never reaches the field: a value the engine cannot supply (a missing frame part,
+ * a widget setting the document never wrote) reads as an empty field, which is the honest answer, and not the
+ * literal string `NaN` that a `Number(undefined)` coercion used to print.
+ */
 const formatNumber = (value: number | undefined, digits = 2): string =>
-    typeof value === "number" ? String(Number(value.toFixed(digits))) : "";
+    typeof value === "number" && Number.isFinite(value) ? String(Number(value.toFixed(digits))) : "";
 
 const ReadRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => {
     const styles = useStyles();
@@ -2250,11 +2255,25 @@ const WidgetSection: React.FC<{ onError: (message: string | undefined) => void }
                 }
 
                 if (type === "number") {
+                    /*
+                     * A setting the document never wrote falls back to the **schema default**, and never to
+                     * `Number(undefined)`. That coercion put the literal `NaN` in the field for a Gauge/Dial whose
+                     * range was never saved; the widget template says min 0 / max 100 / ticks 10 / minorTicks 5 /
+                     * thickness 30, and the engine's renderer draws the widget with exactly those numbers, so the
+                     * panel has to show the same ones. The P3 dialog keeps its own `undefined`-means-unsaved rule
+                     * for what it *writes back*, which this read-only fallback does not change.
+                     */
+                    const numberValue =
+                        typeof value === "number" && Number.isFinite(value)
+                            ? value
+                            : typeof setting.value === "number"
+                              ? setting.value
+                              : undefined;
                     return (
                         <NumberField
                             key={key}
                             label={label}
-                            value={typeof value === "number" ? value : Number(value)}
+                            value={numberValue}
                             onCommit={(next) => {
                                 writeSetting(key, next);
                                 return { ok: true };
