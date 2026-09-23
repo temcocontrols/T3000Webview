@@ -24,6 +24,115 @@ use crate::app_state::T3AppState;
 use crate::logging::service::emit_app_log;
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 
+/* ------------------------------------------------------------------
+   FFI reply decoding.
+
+   The C++ side returns the reply through CT2A(), i.e. system-ANSI bytes
+   (CP_ACP), while this buffer is read as UTF-8. Decoding it with
+   from_utf8_lossy() collapsed every byte >= 0x80 to U+FFFD - that is where
+   the U+FFFD characters in point descriptions/labels came from. The bytes are
+   now converted explicitly, so device text survives (0xFF -> U+00FF).
+   ------------------------------------------------------------------ */
+
+/// CP1252 byte -> char (0x80..=0x9F has five undefined slots).
+fn cp1252_char(b: u8) -> char {
+    const HIGH: [char; 32] = [
+        '\u{20AC}', '\u{FFFD}', '\u{201A}', '\u{0192}', '\u{201E}', '\u{2026}', '\u{2020}', '\u{2021}',
+        '\u{02C6}', '\u{2030}', '\u{0160}', '\u{2039}', '\u{0152}', '\u{FFFD}', '\u{017D}', '\u{FFFD}',
+        '\u{FFFD}', '\u{2018}', '\u{2019}', '\u{201C}', '\u{201D}', '\u{2022}', '\u{2013}', '\u{2014}',
+        '\u{02DC}', '\u{2122}', '\u{0161}', '\u{203A}', '\u{0153}', '\u{FFFD}', '\u{017E}', '\u{0178}',
+    ];
+
+    match b {
+        0x00..=0x7F => b as char,
+        0x80..=0x9F => HIGH[(b - 0x80) as usize],
+        _ => b as char, // 0xA0..=0xFF are U+00A0..=U+00FF
+    }
+}
+
+/// Decode the C++ FFI reply buffer into a String.
+///
+/// UTF-8 is expected once T3000 emits UTF-8 across the FFI boundary. Older
+/// builds return ANSI, which must not be silently destroyed by a lossy UTF-8
+/// decode - it is decoded as CP1252 instead (byte-lossless for this path).
+fn decode_ffi_reply(bytes: &[u8]) -> String {
+    match std::str::from_utf8(bytes) {
+        Ok(text) => text.to_string(),
+        Err(error) => {
+            if let Ok(mut logger) = ServiceLogger::api() {
+                logger.info(&format!(
+                    "FFI reply is not valid UTF-8 (first bad byte at {}); decoded as CP1252. \
+                     Old T3000 build - see the UTF-8 FFI boundary fix in BacnetWebView_Exports.cpp",
+                    error.valid_up_to()
+                ));
+            }
+            bytes.iter().map(|&b| cp1252_char(b)).collect()
+        }
+    }
+}
+
+/* ------------------------------------------------------------------
+   Device point strings.
+
+   description/label are fixed-width device fields with no room for a
+   terminator, and an unset field is 0xFF-filled (erased flash on the newer
+   ESP32 products such as T3-LB-ESP) or 0x00-filled on older ones. After the
+   CP1252 decode above a 0xFF byte shows up as U+00FF, so it can be treated
+   as end-of-text: "yyyyy..." -> "" and "AHU-1yyyy..." -> "AHU-1".
+   ------------------------------------------------------------------ */
+
+/// True for characters that mean "the rest of this field is not text":
+///
+/// * `U+FFFD` - what a UTF-8 decoder (and the C++ JSON writer) substitutes for an
+///   invalid byte, i.e. the device's `0xFF` "unset" fill;
+/// * `U+00FF` - the same byte after the CP1252 fallback decode above;
+/// * `U+E000..=U+F8FF` - Private Use Area, what the Chinese ANSI code page (936)
+///   substitutes for `0xFF`. The native T3000 grids show those code points, but no
+///   font has a glyph for them, which is why they look empty there.
+fn is_text_terminator(c: char) -> bool {
+    c == '\u{FF}' || c == '\u{FFFD}' || ('\u{E000}'..='\u{F8FF}').contains(&c)
+}
+
+/// Device fixed-width string -> displayable text (empty when unset).
+fn normalize_device_text(raw: &str) -> String {
+    // Cut at the first "not text" marker, then drop control characters: the result is
+    // what the native T3000 grid shows for the same record.
+    let end = raw.find(is_text_terminator).unwrap_or(raw.len());
+
+    raw[..end]
+        .chars()
+        .filter(|c| !c.is_control())
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+/// Apply `normalize_device_text` to the description/label of every point
+/// record contained in a reply, whatever shape the reply has.
+fn normalize_device_strings(value: &mut JsonValue) {
+    match value {
+        JsonValue::Object(map) => {
+            if map.contains_key("description") || map.contains_key("label") {
+                for field in ["description", "label"] {
+                    if let Some(JsonValue::String(text)) = map.get_mut(field) {
+                        *text = normalize_device_text(text.as_str());
+                    }
+                }
+            }
+
+            for child in map.values_mut() {
+                normalize_device_strings(child);
+            }
+        }
+        JsonValue::Array(items) => {
+            for item in items.iter_mut() {
+                normalize_device_strings(item);
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Pending realtime trendlog flows awaiting their batch_save step.
 /// action=15 (LOGGING_DATA) stores a TRENDLOG_POLL flow here when called via HTTP.
 /// Keyed by (panel_id, serial_number). Entries older than 60 s are reaped on
@@ -257,14 +366,14 @@ impl T3000FfiApiService {
                             // Non-negative codes (0, 1, 2, etc.) are success or "no data" states
                             // Extract response from buffer
                             let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
-                            let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                            let response = decode_ffi_reply(&buffer[..null_pos]);
                             Ok((code, null_pos, response))
                         }
                         -2 => Err(Error::ServerError("MFC application not initialized".to_string())),
                         -1 => {
                             // C++ returned -1, but buffer may contain error JSON (e.g., device offline)
                             let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
-                            let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
+                            let response = decode_ffi_reply(&buffer[..null_pos]);
                             if !response.is_empty() && (response.starts_with('{') || response.starts_with('[')) {
                                 Ok((-1, null_pos, response))
                             } else {
@@ -489,7 +598,9 @@ async fn handle_ffi_call(
 
             // Try to parse response as JSON, otherwise return as string
             match serde_json::from_str::<JsonValue>(&response) {
-                Ok(json_response) => {
+                Ok(mut json_response) => {
+                    // Device field strings may still be 0xFF-filled (unset) - present them as empty
+                    normalize_device_strings(&mut json_response);
                     Ok(Json(json_response))
                 },
                 Err(_) => Ok(Json(serde_json::json!({
