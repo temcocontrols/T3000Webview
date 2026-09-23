@@ -1,0 +1,81 @@
+/**
+ * Designer — the LVGL/EEZ theme bridge (P2.7).
+ *
+ * EEZ's stylesheets are driven by the Less variables in `eez-studio-ui/_stylesheets/vars.less`. Those now
+ * read `var(--eez-*, <original literal>)` (theme-and-css.md §3.3), so this file is the only place that has
+ * to know about the T3000 theme: it maps each `--eez-*` property onto a **Fluent token**.
+ *
+ * Two properties make this safe:
+ *
+ *  1. **Scoped, never `:root`.** The properties are set on the Designer's document host, so nothing outside
+ *     a designer document can be affected — and an un-bridged surface (the old page, a portal target)
+ *     still resolves the literal fallback written in `vars.less`.
+ *  2. **Fluent tokens are custom properties themselves** (`--colorNeutralStroke2`, …) emitted by
+ *     `FluentProvider`, so this is one layer of indirection and follows the provider's theme automatically.
+ *
+ * The host attributes come from `DesignerShell` (`className="t3-designer"`, `data-doc-kind={adapter.kind}`).
+ */
+.t3-designer[data-doc-kind^="lvgl"] {
+    --eez-background: var(--colorNeutralBackground1);
+    --eez-text: var(--colorNeutralForeground1);
+    --eez-text-secondary: var(--colorNeutralForeground2);
+    --eez-section-bg: var(--colorNeutralBackground2);
+    --eez-border: var(--colorNeutralStroke2);
+    --eez-border-dark: var(--colorNeutralStroke1);
+    --eez-table-border: var(--colorNeutralStroke2);
+    --eez-panel-header: var(--colorNeutralBackground3);
+    --eez-selection-bg: var(--colorBrandBackground);
+    --eez-selection-fg: var(--colorNeutralForegroundOnBrand);
+    --eez-selection-bg-light: var(--colorBrandBackground2);
+    --eez-selection-bg-inactive: var(--colorNeutralBackground3);
+    --eez-selection-fg-inactive: var(--colorNeutralForeground1);
+    --eez-hover-bg: var(--colorNeutralBackground1Hover);
+    --eez-hover-fg: var(--colorNeutralForeground1);
+    --eez-scroll-track: var(--colorNeutralBackground3);
+    --eez-scroll-thumb: var(--colorNeutralStroke1);
+    --eez-focus-bg: var(--colorBrandBackground2);
+    --eez-error: var(--colorPaletteRedForeground1);
+    --eez-warning-bg: var(--colorPaletteYellowBackground1);
+    --eez-warning-fg: var(--colorNeutralForeground1);
+    --eez-connection-line: var(--colorNeutralStroke1);
+    --eez-active-tab-bg: var(--colorNeutralBackground1);
+}
+
+/**
+ * P2.8 — investigated, and the global rules were deliberately left alone. Findings, so the next attempt
+ * does not have to rediscover them:
+ *
+ * `#EezStudio_Content` (`app.less:129-138`) is `position: absolute; inset: 0`, and that is **load-bearing**,
+ * not an accident of the old full-page route. Overriding it with `position: relative; width/height: 100%`
+ * collapses the element to **2 px** (measured) because its box then comes from its contents instead of the
+ * ancestor — and the editor lives *inside* it, so the canvas area collapses with it. It only resolves
+ * correctly because `DesignerShell`'s canvas host is `position: relative` (which it must stay); that makes
+ * the canvas slot the containing block, which is exactly the intended behaviour.
+ *
+ * `*`, `body`, `input…`, `.flexlayout__*` (`app.less:52,64,74-98,545,1421-1490`) are still global. Scoping
+ * them is not a mechanical change: EEZ renders dropdowns, dialogs and toasts through portals that leave this
+ * subtree, so scoping would strip those popups of their styling. It needs visual QA of every popup.
+ *
+ * **Leak measured (A/B, 2026-09-17)** — the same HVAC document, measured twice in one session: loaded
+ * straight after a reload (no EEZ stylesheet yet) and then again after visiting an LVGL document.
+ *
+ * | probe | fresh | after an EEZ document was visited |
+ * |---|---|---|
+ * | stylesheets containing `#EezStudio_Content` / `--eez-` | 0 | **3** |
+ * | `body` font-family / font-size | `-apple-system` / `13px` | **`system-ui` / `10.4px`** |
+ * | `body` background-color | `rgba(0,0,0,0)` | **`rgb(255,255,255)`** |
+ * | `body` margin | `0px` | `0px` |
+ * | a probe `input` (font, size, padding, border colour/radius) | — | **identical** |
+ * | a probe `div` (`box-sizing`, `position`) | — | **identical** |
+ *
+ * So the leak is real but narrow: the global `*`/`input` rules do **not** change a probe element's computed
+ * style, while EEZ's `body` rule does win over the app's own once its stylesheets are injected (they are
+ * injected once for the whole SPA, so the order depends on what the user visited first). That is a cosmetic
+ * risk — every shell/document container sets its own background and type — not a layout one, which is why
+ * this stays a documented verdict rather than a CSS change.
+ *
+ * The bridge itself is verified token-driven (same session): overriding `--colorNeutralStroke2` to
+ * `rgb(255,0,0)` on the `.t3-designer[data-doc-kind^="lvgl"]` host moved `--eez-border` from `#e0e0e0` to
+ * `rgb(255,0,0)`, a real `DIV.EezStudio_HeaderWithBody` border followed (`rgb(224,224,224)` →
+ * `rgb(255,0,0)`), and removing the override restored `#e0e0e0`.
+ */
