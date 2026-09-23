@@ -13,7 +13,7 @@
  *
  * Every read is guarded: a `ConnectionLine` simply does not have the same fields as a `Rect`.
  */
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     Badge,
     Button,
@@ -51,11 +51,12 @@ import IdxUtils from "@/lib/t3-hvac/Opt/Common/IdxUtils";
 import SvgUtil from "@/lib/t3-hvac/Opt/Opt/SvgUtil";
 import DataOpt from "@/lib/t3-hvac/Opt/Data/DataOpt";
 import QuasarUtil from "@/lib/t3-hvac/Opt/Quasar/QuasarUtil";
-import { linkT3EntryDialogV2, T3Data, T3000_Data } from "@/lib/t3-hvac/Data/T3Data";
+import { linkT3EntryDialogV2, T3Data } from "@/lib/t3-hvac/Data/T3Data";
 import { useEnginePoll } from "../../hooks/useEnginePoll";
 import { useHvacSelection } from "./useHvacSelection";
 import type { HvacSelectionItem } from "./useHvacSelection";
 import { useHvacAppStateItem } from "./useHvacAppStateItem";
+import { useLinkEntrySource } from "./useLinkEntrySource";
 import {
     setFillColor,
     setFillOpacity,
@@ -346,11 +347,6 @@ const useStyles = makeStyles({
         fontSize: tokens.fontSizeBase100,
         color: tokens.colorNeutralForeground3
     },
-    entryDesc: {
-        fontSize: tokens.fontSizeBase200,
-        color: tokens.colorNeutralForeground1,
-        wordBreak: "break-word"
-    },
     entryActions: {
         display: "flex",
         gap: "14px",
@@ -477,10 +473,28 @@ const useStyles = makeStyles({
 const formatNumber = (value: number | undefined, digits = 2): string =>
     typeof value === "number" && Number.isFinite(value) ? String(Number(value.toFixed(digits))) : "";
 
-const ReadRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => {
+/**
+ * A read-only field row.
+ *
+ * `showEmpty` keeps the row — label plus a blank value — instead of dropping it. The row is part of the panel's
+ * shape and its content is not, so a linked entry that carries nothing for a field must still read as that field.
+ */
+const ReadRow: React.FC<{ label: string; value?: string | number | null; showEmpty?: boolean }> = ({
+    label,
+    value,
+    showEmpty
+}) => {
     const styles = useStyles();
     if (value === undefined || value === null || value === "") {
-        return null;
+        if (!showEmpty) {
+            return null;
+        }
+        return (
+            <div className={styles.row}>
+                <span className={styles.label}>{label}</span>
+                <span className={styles.value} />
+            </div>
+        );
     }
     return (
         <div className={styles.row}>
@@ -845,27 +859,42 @@ const sanitizeDeviceText = (value: unknown): string => {
 };
 
 /**
- * The kinds a widget can display, i.e. what this picker may offer.
+ * `sanitizeDeviceText` over a whole entry, for the copy that gets linked.
  *
- * `panelsData` carries the device's whole answer — inputs, outputs and variables *and* its schedules, holidays,
- * programs and trend logs — which is why a small controller could read 320 "points". Only these kinds can be
- * bound to a widget; the rest are not entries a graphic displays.
+ * The widget's own renderer draws `description`/`label`/range names straight from the linked entry, so the fill has
+ * to be gone *there* as well — otherwise the panel shows clean text while the shape on the canvas still reads
+ * `\uFFFD\uFFFD\uFFFD`. Numbers and ids pass through untouched (only strings are rewritten), and any string is safe
+ * to cut: everything from the first fill character on is fill, never text.
  */
-const LINKABLE_ENTRY_TYPES = ["INPUT", "OUTPUT", "VARIABLE", "PID"];
-
-const isLinkableEntry = (entry: Record<string, any> | null | undefined): boolean =>
-    LINKABLE_ENTRY_TYPES.includes(String(entry?.type ?? "").toUpperCase());
+const sanitizeEntryText = <T,>(value: T): T => {
+    if (typeof value === "string") {
+        return sanitizeDeviceText(value) as unknown as T;
+    }
+    if (Array.isArray(value)) {
+        return value.map((item) => sanitizeEntryText(item)) as unknown as T;
+    }
+    if (value && typeof value === "object") {
+        const copy: Record<string, unknown> = {};
+        Object.entries(value as Record<string, unknown>).forEach(([key, item]) => {
+            copy[key] = sanitizeEntryText(item);
+        });
+        return copy as unknown as T;
+    }
+    return value;
+};
 
 /**
  * Identity of an entry across the two objects that describe it.
  *
- * The entry a widget is linked to is the engine's snapshot (`t3Entry`), the rows in the picker's grid are the
- * entries of `panelsData` — different objects for the same point, so `===` never matches and the linked row could
- * not be shown again. `pid` + kind + index/id is what actually identifies a point.
+ * The entry a widget is linked to is the engine's snapshot (`t3Entry`), a row in the picker's grid is one of the
+ * API's entries — different objects for the same point, so `===` never matches and the linked row could not be
+ * shown again. The **serial** is what makes it a point rather than a number: without the engine's panel list
+ * every device's panel number is `1` and every device's points start at `IN1`, so `pid` + kind + index alone
+ * collides across devices (and produced duplicate React keys).
  */
 const entryKey = (entry: Record<string, any> | null | undefined): string =>
     entry
-        ? `${entry.pid ?? ""}|${entry.type ?? ""}|${entry.index ?? ""}|${entry.id ?? ""}`
+        ? `${entry.serial ?? ""}|${entry.pid ?? ""}|${entry.type ?? ""}|${entry.index ?? ""}|${entry.id ?? ""}`
         : "";
 
 /**
@@ -881,13 +910,14 @@ const entryLabel = (entry: Record<string, any> | null | undefined): string => {
     if (!entry) {
         return "";
     }
+    /* The engine's prefix (`<id> - `) is only added when there is text after it, so a description that was nothing
+     * but fill leaves a dangling `id -` — trimmed off here. */
+    const tidy = (text: string): string => sanitizeDeviceText(text).replace(/[\s\-·|]+$/, "");
     try {
         const label = (Hvac as any)?.AppRuntime?.entryLabel?.(entry);
-        return sanitizeDeviceText(
-            typeof label === "string" && label ? label : entry.description ?? entry.label ?? entry.id ?? ""
-        );
+        return tidy(typeof label === "string" && label ? label : entry.description ?? entry.label ?? entry.id ?? "");
     } catch {
-        return sanitizeDeviceText(entry.description ?? entry.label ?? entry.id ?? "");
+        return tidy(entry.description ?? entry.label ?? entry.id ?? "");
     }
 };
 
@@ -1023,48 +1053,25 @@ const EntryPickerDialog: React.FC<{
 }> = ({ open, onPick, onClose, current = null, onUnlink }) => {
     const [query, setQuery] = useState("");
     const [selected, setSelected] = useState<Record<string, any> | null>(null);
-    const [panels, setPanels] = useState<Record<string, any>[]>([]);
     const [engineDevices, setEngineDevices] = useState<EngineDevice[]>([]);
     const [deviceKey, setDeviceKey] = useState<string | null>(null);
-    const [loading, setLoading] = useState<string | null>(null);
-    /* Signature of the last list handed to React — the poll rebuilds the array every tick, so identity cannot
-     * be compared and this is what keeps the 300 ms timer from re-rendering the dialog into a stall. */
-    const panelsKeyRef = useRef("");
-    /* Reload has to report back: `AppRuntime.reloadPanelsData()` fires a websocket request and returns nothing,
-     * so without this the button looks dead when the link is down. */
-    const [reloadState, setReloadState] = useState<"idle" | "pending" | "noResponse">("idle");
-    const autoLoadedRef = useRef(false);
     const { devices: appDevices, deviceStatuses, fetchDevices } = useDeviceTreeStore();
 
-    /* The engine store is not React state (plain `{value}` boxes filled by the socket), so it is sampled while
-     * the dialog is open — through the shell's shared poller, never a `document.hidden`-guarded rAF loop. */
+    /*
+     * The points come from the app's **REST API** (`LinkEntryApi` / `useLinkEntrySource`), not from the
+     * websocket's `T3000_Data.panelsData` — the socket carries one panel's everything (schedules, holidays and
+     * programs included, which is why a small controller read "320 points") and its strings are jsoncpp's U+FFFD
+     * for the device's 0xFF-filled fields. The websocket is untouched and keeps feeding every other page; it is
+     * simply no longer this dialog's source, which is also why the picker now works with the socket down.
+     */
+    const source = useLinkEntrySource(open);
+    const panels = source.entries;
+    const loading = source.loading;
+
+    /* Only the engine's panel list is still sampled — it supplies the panel number (`pid`) that joins a device to
+     * its entries. The app's device store supplies the names, online state and building grouping. */
     useEnginePoll(
         () => {
-            const store: any = (T3000_Data as any)?.value ?? {};
-            const raw: Record<string, any>[] = (store.panelsData ?? []).filter(Boolean);
-
-            /* `panelsData` can hold the same entry more than once. The socket rebuilds it by filtering out the
-             * requested panel and concatenating the response (`WebSocketClient.ts`, GET_PANEL_DATA_RES), so any
-             * entry in the payload whose `pid` is not the panel being loaded is never filtered away and every
-             * repeat appends another copy. Those repeats are what produced duplicate rows here *and* the
-             * duplicate React keys (`1-SCH1-0`, `1-SCH2-1`, …). Keep the last copy — it is the freshest. */
-            const byEntry = new Map<string, Record<string, any>>();
-            raw.forEach((entry) => {
-                byEntry.set(`${entry.pid ?? ""}|${entry.id ?? entry.index ?? ""}|${entry.index ?? ""}`, entry);
-            });
-            const next = [...byEntry.values()];
-
-            const signature = next
-                .map((entry) => `${entry.pid ?? ""}-${entry.id ?? entry.index ?? ""}-${entry.value ?? ""}-${entry.control ?? ""}`)
-                .join("|");
-            if (signature !== panelsKeyRef.current) {
-                panelsKeyRef.current = signature;
-                setPanels(next);
-            }
-
-            /* The engine's panel list — the same devices the app knows, with the panel number the entries
-             * carry in `pid` and the serial that joins them to the app's device list (see
-             * `DeviceOpt.initDeviceList`). */
             const deviceItems: any[] = (T3Data as any)?.deviceList?.value?.[0]?.children ?? [];
             const nextDevices: EngineDevice[] = deviceItems.map((device) => ({
                 pid: Number(device?.id ?? 0),
@@ -1074,44 +1081,25 @@ const EntryPickerDialog: React.FC<{
             setEngineDevices((previous) =>
                 JSON.stringify(previous) === JSON.stringify(nextDevices) ? previous : nextDevices
             );
-
-            const index = store.loadingPanel;
-            const total = store.panelsList?.length ?? 0;
-            setLoading(
-                index === null || index === undefined
-                    ? null
-                    : `Loading panel #${store.panelsList?.[index]?.panel_number ?? index + 1} · ${index + 1} of ${total}`
-            );
-            if (index !== null && index !== undefined) {
-                /* The device answered, so a pending reload is over. */
-                setReloadState((previous) => (previous === "pending" ? "idle" : previous));
-            }
         },
         300,
         open
     );
 
-    /**
-     * The picker's own list: only the kinds a widget can bind (see `LINKABLE_ENTRY_TYPES`). The fallback keeps a
-     * device that names its entries differently from showing an empty table — the picker then behaves exactly as
-     * it did before the filter existed.
-     */
-    const linkablePanels = useMemo(() => {
-        const filtered = panels.filter(isLinkableEntry);
-        return filtered.length > 0 ? filtered : panels;
-    }, [panels]);
+    /* The API answers with the linkable kinds only, so the list needs no filtering any more. */
+    const linkablePanels = panels;
 
     /**
      * The two device sources the home page's left tree uses, joined: the app's device list supplies the real
-     * names, online state and building grouping, the engine's panel list supplies the panel number that makes a
-     * device's points linkable. `points` is how many entries of the loaded panel data belong to that device, so
-     * a device whose points are not loaded reads `–` instead of pretending to be empty.
+     * names, online state and building grouping, the engine's panel list supplies the panel number the engine's
+     * link path writes to. `points` is how many loaded entries belong to that device — keyed by **serial**, the
+     * only identity that exists without a websocket connection, so a device with nothing loaded reads `–`.
      */
     const deviceGroups = useMemo(() => {
-        const pointsByPid = new Map<number, number>();
+        const pointsBySerial = new Map<number, number>();
         linkablePanels.forEach((entry) => {
-            const pid = Number(entry.pid ?? 0);
-            pointsByPid.set(pid, (pointsByPid.get(pid) ?? 0) + 1);
+            const serial = Number(entry.serial ?? 0);
+            pointsBySerial.set(serial, (pointsBySerial.get(serial) ?? 0) + 1);
         });
 
         const panelBySerial = new Map<number, EngineDevice>();
@@ -1150,7 +1138,7 @@ const EntryPickerDialog: React.FC<{
                     pid: panel ? panel.pid : null,
                     name,
                     online: deviceStatuses.get(serial) === "online" || !!device.isOnline,
-                    points: panel ? pointsByPid.get(panel.pid) ?? 0 : 0
+                    points: pointsBySerial.get(serial) ?? 0
                 };
             })
         }));
@@ -1164,7 +1152,7 @@ const EntryPickerDialog: React.FC<{
                 pid: device.pid,
                 name: device.name || `Panel ${device.pid}`,
                 online: null,
-                points: pointsByPid.get(device.pid) ?? 0
+                points: pointsBySerial.get(device.serial) ?? 0
             }));
         if (engineOnly.length > 0) {
             groups.push({ label: "Other panels", rows: engineOnly });
@@ -1185,7 +1173,7 @@ const EntryPickerDialog: React.FC<{
                         pid: device.pid,
                         name: device.name || `Panel ${device.pid}`,
                         online: null,
-                        points: pointsByPid.get(device.pid) ?? 0
+                        points: pointsBySerial.get(device.serial) ?? 0
                     }))
                 }
             ]
@@ -1208,27 +1196,51 @@ const EntryPickerDialog: React.FC<{
             : ALL_DEVICES_KEY;
     const activeRow = rows.find((row) => row.key === activeKey) ?? null;
 
-    /** Panel number → device name, for the grid's Device column. */
-    const deviceNameByPid = useMemo(() => {
-        const byPid = new Map<number, string>();
+    /** Device serial → device name, for the grid's Device column. */
+    const deviceNameBySerial = useMemo(() => {
+        const bySerial = new Map<number, string>();
         deviceGroups.forEach((group) =>
             group.rows.forEach((row) => {
-                if (row.pid !== null && row.pid !== undefined) {
-                    byPid.set(Number(row.pid), row.name);
+                const serial = Number(row.key);
+                if (Number.isFinite(serial) && serial > 0) {
+                    bySerial.set(serial, row.name);
                 }
             })
         );
-        return byPid;
+        return bySerial;
     }, [deviceGroups]);
 
-    /* "All devices" spans every loaded panel; a device row narrows to its own panel. */
+    /*
+     * What the picker wants loaded: *All devices* ⇒ every device in the list, one device selected ⇒ just that one.
+     * `ensure` skips what is already in state or in flight, so this is safe on every scope change — it is also
+     * what makes the dialog work on open, without the user having to click a device first.
+     */
+    const devicePairs = useMemo(
+        () => rows.map((row) => ({ serial: Number(row.key), pid: row.pid })),
+        [rows]
+    );
+    const deviceSignature = devicePairs.map((pair) => `${pair.serial}:${pair.pid ?? ""}`).join(",");
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+        const wanted =
+            activeKey === ALL_DEVICES_KEY
+                ? devicePairs
+                : devicePairs.filter((pair) => String(pair.serial) === activeKey);
+        if (wanted.length > 0) {
+            source.ensure(wanted);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, activeKey, deviceSignature]);
+
+    /* "All devices" spans every loaded device; a device row narrows to its own serial. */
     const points = useMemo(() => {
         const mine =
             activeKey === ALL_DEVICES_KEY
                 ? linkablePanels
-                : activeRow?.pid === null || activeRow?.pid === undefined
-                    ? []
-                    : linkablePanels.filter((entry) => Number(entry.pid ?? 0) === activeRow.pid);
+                : linkablePanels.filter((entry) => String(entry.serial ?? "") === activeKey);
         const needle = query.trim().toLowerCase();
         const matched = needle
             ? mine.filter((entry) => entryLabel(entry).toLowerCase().includes(needle))
@@ -1271,24 +1283,18 @@ const EntryPickerDialog: React.FC<{
         onPick(entry);
     };
 
+    /**
+     * One device selected: read that device into the local DB (`POST /{inputs|outputs|variables}/:serial/refresh`
+     * then `save-refreshed` — what the device pages' own Refresh does) and show it again. *All devices*: re-read
+     * what the API already holds for every device in the list, with no device round-trip for the whole bank.
+     */
     const reload = () => {
-        setReloadState("pending");
-        try {
-            (Hvac as any)?.AppRuntime?.reloadPanelsData?.();
-        } catch {
-            setReloadState("noResponse");
+        const pair = devicePairs.find((candidate) => String(candidate.serial) === activeKey);
+        if (activeKey !== ALL_DEVICES_KEY && pair) {
+            void source.refresh(pair);
             return;
         }
-        /* `GET_PANELS_LIST` is fire-and-forget, so success is judged by the engine's own state: a panel- list
-         * response sets `loadingPanel` to a number and fills `panelsList`. If neither happened, say so. */
-        window.setTimeout(() => {
-            const store: any = (T3000_Data as any)?.value ?? {};
-            setReloadState((previous) =>
-                previous === "pending" && store.loadingPanel === null && !(store.panelsList ?? []).length
-                    ? "noResponse"
-                    : "idle"
-            );
-        }, 2500);
+        source.reload(devicePairs);
     };
 
     /* The full device list. The store is filled by the home page, so on this route it can still be empty — and
@@ -1299,34 +1305,6 @@ const EntryPickerDialog: React.FC<{
         }
         void fetchDevices().catch(() => undefined);
     }, [open, appDevices.length, fetchDevices]);
-
-    /* Ask for the panel list once per open. This is not only about points: `HandleGetPanelsListRes` is what
-     * fills the engine's **device list** (`initDeviceList`) and starts streaming every panel, so skipping it
-     * when the drawing already had cached panel data left the device column knowing only the drawing's own
-     * device — every other row then read "not in this drawing's panel list". */
-    useEffect(() => {
-        if (!open) {
-            autoLoadedRef.current = false;
-            return;
-        }
-        if (autoLoadedRef.current) {
-            return;
-        }
-        const store: any = (T3000_Data as any)?.value ?? {};
-        if (store.loadingPanel !== null) {
-            /* Already streaming; the poll will pick it up. */
-            autoLoadedRef.current = true;
-            return;
-        }
-        const enginePanels: any[] = (T3Data as any)?.deviceList?.value?.[0]?.children ?? [];
-        if ((store.panelsData ?? []).length > 0 && enginePanels.length > 0) {
-            /* Both caches are warm — nothing to fetch. */
-            autoLoadedRef.current = true;
-            return;
-        }
-        autoLoadedRef.current = true;
-        reload();
-    }, [open]);
 
     return (
         <Dialog
@@ -1463,7 +1441,7 @@ const EntryPickerDialog: React.FC<{
                                                     current.type,
                                                     current.id,
                                                     entryValueText(current) ? `value ${entryValueText(current)}` : null,
-                                                    deviceNameByPid.get(Number(current.pid ?? 0)) ??
+                                                    deviceNameBySerial.get(Number(current.serial ?? 0)) ??
                                                         (current.pid === undefined || current.pid === null
                                                             ? null
                                                             : `Panel ${current.pid}`)
@@ -1514,16 +1492,10 @@ const EntryPickerDialog: React.FC<{
                                         </span>
                                     </div>
 
-                                    {reloadState === "noResponse" || reloadState === "pending" || loading ? (
+                                    {loading || source.error ? (
                                         <div className={pickerStyles.progress}>
-                                            {reloadState === "noResponse" ? null : (
-                                                <Spinner size="extra-tiny" />
-                                            )}
-                                            <span>
-                                                {reloadState === "noResponse"
-                                                    ? "No response from the device — the panel list did not arrive (is the websocket connected?)."
-                                                    : loading ?? "Requesting the panel list…"}
-                                            </span>
+                                            {source.error ? null : <Spinner size="extra-tiny" />}
+                                            <span>{source.error ?? "Reading the device's points…"}</span>
                                         </div>
                                     ) : null}
 
@@ -1537,17 +1509,19 @@ const EntryPickerDialog: React.FC<{
                                         {points.length === 0 ? (
                                             <div className={pickerStyles.emptyState}>
                                                 {loading
-                                                    ? "Fetching the device's panels…"
+                                                    ? "Reading the points…"
                                                     : panels.length === 0
-                                                        ? "No entries available. Check the device connection, then press Reload."
+                                                        ? "No points stored for this device yet — press Reload to read it from the device."
                                                         : query.trim()
                                                             ? "No point matches this search."
-                                                            : "This device is not in this drawing's panel list, so its points cannot be linked here."}
+                                                            : "This device has no point of the kinds this picker lists."}
                                             </div>
                                         ) : (
                                             <>
                                                 <div className={pickerStyles.gridHeader}>
                                                     <span>Point</span>
+                                                    <span>Full Label</span>
+                                                    <span>Label</span>
                                                     <span>Type</span>
                                                     <span>Value</span>
                                                     <span>Device</span>
@@ -1556,7 +1530,10 @@ const EntryPickerDialog: React.FC<{
                                                     const isSelected = selectedKey === entryKey(entry);
                                                     return (
                                                         <div
-                                                            key={`${entry.pid}-${entry.id}-${entry.index ?? index}`}
+                                                            /* The serial belongs in the key: two devices both have an
+                                                             * `IN1` on panel 1, and without the engine's panel list they
+                                                             * are otherwise indistinguishable (`1-IN1-0` twice). */
+                                                            key={`${entry.serial ?? ""}-${entry.pid}-${entry.id}-${entry.index ?? index}`}
                                                             role="row"
                                                             aria-selected={isSelected}
                                                             className={mergeClasses(
@@ -1571,6 +1548,15 @@ const EntryPickerDialog: React.FC<{
                                                             <span className={pickerStyles.cellName}>
                                                                 {entryLabel(entry)}
                                                             </span>
+                                                            {/* The device's own two name fields: `description` is the full
+                                                             * label, `label` the short one (the same pairing the device pages
+                                                             * show). A field nobody wrote is left blank — no placeholder. */}
+                                                            <span className={pickerStyles.cellName}>
+                                                                {sanitizeDeviceText(entry.description)}
+                                                            </span>
+                                                            <span className={pickerStyles.cellName}>
+                                                                {sanitizeDeviceText(entry.label)}
+                                                            </span>
                                                             <span className={pickerStyles.monoCell}>
                                                                 {entry.type ?? ""}
                                                             </span>
@@ -1578,7 +1564,7 @@ const EntryPickerDialog: React.FC<{
                                                                 {entryValueText(entry)}
                                                             </span>
                                                             <span className={pickerStyles.deviceCell}>
-                                                                {deviceNameByPid.get(Number(entry.pid ?? 0)) ??
+                                                                {deviceNameBySerial.get(Number(entry.serial ?? 0)) ??
                                                                     (entry.pid === undefined || entry.pid === null
                                                                         ? "—"
                                                                         : `Panel ${entry.pid}`)}
@@ -1695,9 +1681,13 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
     const linkEntry = (chosen: Record<string, any>) =>
         run("Linking the entry", () => {
             setPickerOpen(false);
-            /* A shallow copy, because the engine's save path may rewrite `data.value` (`/1000`); copying keeps
-             * the shared `selectPanelOptions` list pristine while storing exactly what the close dialog held. */
-            linkT3EntryDialogV2.value.data = { ...chosen };
+            /*
+             * A shallow copy, because the engine's save path may rewrite `data.value` (`/1000`); copying keeps
+             * the shared `selectPanelOptions` list pristine while storing exactly what the close dialog held — with
+             * the device's 0xFF fill stripped from every string, so the widget's own renderer and every reader of
+             * this entry work with real text instead of jsoncpp's U+FFFD run.
+             */
+            linkT3EntryDialogV2.value.data = sanitizeEntryText({ ...chosen });
             QuasarUtil.LinkT3EntrySaveV2();
         });
 
@@ -1736,11 +1726,40 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
     }
 
     const range = Number(entry.range ?? 0);
-    const autoDisabled = entry.auto_manual === 0;
+    /* Never disables the fields — the Value row exists to be written, and greying it out while the point is in AUTO
+     * (what the legacy panel did) left no way to change it at all. A write the device refuses reports as the panel's
+     * own error message instead. Kept as a named flag so the rows below read uniformly. */
+    const autoDisabled = false;
     const digitalRange = IdxUtils.getEntryRange(entry) as any;
-    const isDigitalValue = range < 101 && entry.digital_analog === 0 && !!entry.range;
-    const isMsv = range > 100;
-    const isAnalog = range < 101 && entry.digital_analog === 1;
+    /* A program/schedule/holiday reports its own rows (`Status`, `Output`) instead of a point's `Value`. */
+    const isPointEntry = entry.type === "INPUT" || entry.type === "OUTPUT" || entry.type === "VARIABLE";
+    /*
+     * Which control the Value row gets is decided by what the entry actually reports — never by a field being
+     * empty:
+     *
+     * - `range > 100` → a multi-state range, listed as its own dropdown;
+     * - a real switch state (`control`/`value` is 0 or 1) → OFF/ON;
+     * - anything else numeric — a temperature, a setpoint, or the `255` the device's 0xFF fill leaves behind in a
+     *   row the DB never filled — → the **number input**. A dropdown there would write 0/1 into an analog point.
+     */
+    const isMsv = isPointEntry && range > 100;
+    const controlValue = Number(entry.control ?? entry.value);
+    /* The entry's own type field comes first, read exactly as `entryValueText` reads it — only `digital_analog === 0`
+     * is digital, anything else is analog, **whatever** its control happens to be (an analog point can easily report
+     * control 0 or 1, and that was the bug: the switch test ignored this field). A row that is all fill (`range 0`,
+     * `control 255`) is neither, and falls through to the number input. */
+    const isAnalogPoint = Number(entry.digital_analog ?? 0) !== 0;
+    const isSwitch = isPointEntry && !isMsv && !isAnalogPoint && (controlValue === 0 || controlValue === 1);
+    const isAnalog = isPointEntry && !isMsv && !isSwitch;
+    /* A row the DB never filled carries `range 0`, `digital_analog 0` and a `fValue` that is the device's unset
+     * marker (`-6499500`, `-6522700`), not a reading: the field opens empty for those, so an unset point never
+     * prints that marker as if it were a temperature. An analog point's value is real and is shown. */
+    const valueUnknown = !isAnalogPoint && range === 0 && !isSwitch;
+    const valueForInput = valueUnknown || typeof entry.value !== "number" ? undefined : entry.value;
+
+    /* The device's two name fields, cleaned once: `description` is the full label, `label` the short one. */
+    const fullLabelText = sanitizeDeviceText(entry.description);
+    const labelText = sanitizeDeviceText(entry.label);
 
     const displayFieldOptions: { label: string; value: string }[] = [
         { label: "None", value: "none" },
@@ -1765,7 +1784,6 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
                 <span className={styles.entryTitle}>
                     {entry.type} · {entry.pid}-{entry.id}
                 </span>
-                <span className={styles.entryDesc}>{entry.description ?? entry.label ?? "(no description)"}</span>
             </div>
             <div className={styles.entryActions}>
                 <button
@@ -1788,6 +1806,11 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
                 </button>
             </div>
 
+            {/* The device's own two name fields, in the same rows as every other field. The rows always exist and
+             * stay blank when the device never wrote the field — a row that disappears moves everything under it. */}
+            <ReadRow label="Full Label" value={fullLabelText} showEmpty />
+            <ReadRow label="Label" value={labelText} showEmpty />
+
             {entry.auto_manual !== undefined ? (
                 <SelectRow
                     label="Auto/Manual"
@@ -1798,38 +1821,66 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
                     ]}
                     onSelect={(value) => commitEntryField("auto_manual", Number(value))}
                 />
-            ) : null}
+            ) : (
+                <ReadRow label="Auto/Manual" showEmpty />
+            )}
 
-            {isDigitalValue ? (
+            {/* Exactly one Value row, always, with the control its type calls for: the number input for anything
+             * numeric, OFF/ON only for a point that really reports a switch state, a list for a multi-state range,
+             * and a blank row for a kind that has no value to edit. The row keeps its place either way.
+             *
+             * Nothing in this section is disabled — the fields exist to be written. The legacy panel greyed the
+             * value out while the point was in AUTO, which left no way to change it at all; a write the device
+             * refuses now shows up as the panel's own error message instead. */}
+            {isSwitch ? (
                 <SelectRow
                     label="Value"
-                    value={entry.control}
-                    disabled={autoDisabled}
+                    value={controlValue === 1 ? 1 : 0}
                     options={[
-                        { label: String(digitalRange?.off ?? "Off"), value: 0 },
-                        { label: String(digitalRange?.on ?? "On"), value: 1 }
+                        { label: sanitizeDeviceText(digitalRange?.off) || "Off", value: 0 },
+                        { label: sanitizeDeviceText(digitalRange?.on) || "On", value: 1 }
                     ]}
                     onSelect={(value) => commitEntryField("control", Number(value))}
                 />
-            ) : null}
-
-            {isMsv ? (
+            ) : isMsv ? (
                 <SelectRow
                     label="Value"
                     value={entry.value}
                     disabled={autoDisabled}
                     options={((digitalRange?.options ?? []) as any[])
                         .filter((option) => option.status === 1)
-                        .map((option) => ({ label: String(option.name), value: option.value }))}
+                        .map((option) => ({
+                            label: sanitizeDeviceText(option.name) || String(option.value),
+                            value: option.value
+                        }))}
                     onSelect={(value) => commitEntryField("value", Number(value))}
                 />
-            ) : null}
+            ) : entry.type === "HOLIDAY" ? (
+                <SelectRow
+                    label="Value"
+                    value={entry.value}
+                    options={ON_OFF_OPTIONS}
+                    onSelect={(value) => commitEntryField("value", Number(value))}
+                />
+            ) : isAnalog ? (
+                <NumberField
+                    label="Value"
+                    value={valueForInput}
+                    unit={sanitizeDeviceText(IdxUtils.getUnitText(entry)) || undefined}
+                    onCommit={(value) => {
+                        commitEntryField("value", value);
+                        return { ok: true };
+                    }}
+                    onError={onError}
+                />
+            ) : (
+                <ReadRow label="Value" showEmpty />
+            )}
 
             {!isMsv && entry.type === "PROGRAM" ? (
                 <SelectRow
                     label="Status"
                     value={entry.status}
-                    disabled={autoDisabled}
                     options={ON_OFF_OPTIONS}
                     onSelect={(value) => commitEntryField("status", Number(value))}
                 />
@@ -1839,33 +1890,8 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
                 <SelectRow
                     label="Output"
                     value={entry.output}
-                    disabled={autoDisabled}
                     options={ON_OFF_OPTIONS}
                     onSelect={(value) => commitEntryField("output", Number(value))}
-                />
-            ) : null}
-
-            {!isMsv && entry.type === "HOLIDAY" ? (
-                <SelectRow
-                    label="Value"
-                    value={entry.value}
-                    disabled={autoDisabled}
-                    options={ON_OFF_OPTIONS}
-                    onSelect={(value) => commitEntryField("value", Number(value))}
-                />
-            ) : null}
-
-            {isAnalog ? (
-                <NumberField
-                    label="Value"
-                    value={typeof entry.value === "number" ? entry.value : undefined}
-                    unit={IdxUtils.getUnitText(entry)}
-                    disabled={autoDisabled}
-                    onCommit={(value) => {
-                        commitEntryField("value", value);
-                        return { ok: true };
-                    }}
-                    onError={onError}
                 />
             ) : null}
 

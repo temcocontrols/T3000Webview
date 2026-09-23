@@ -230,8 +230,9 @@
 .gridHeader,
 .gridRow {
   display: grid;
-  /* Point | Type | Value | Device — the device column comes last, after the value it qualifies. */
-  grid-template-columns: 1fr 84px 104px 150px;
+  /* Point | Full Label | Label | Type | Value | Device — the two label columns sit next to the point they
+   * describe, and the device column stays last, after the value it qualifies. */
+  grid-template-columns: 1fr 140px 110px 76px 96px 130px;
   align-items: center;
   gap: 8px;
   padding: 0 10px;
