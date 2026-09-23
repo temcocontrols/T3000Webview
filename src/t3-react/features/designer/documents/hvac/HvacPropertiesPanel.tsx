@@ -1416,6 +1416,15 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
     const appItem = useHvacAppStateItem();
     const [pickerOpen, setPickerOpen] = useState(false);
 
+    /*
+     * No app-layer record *yet*.
+     *
+     * The record holds the T3000 link and the widget settings, so this section has nothing to read without it.
+     * The document finishes the engine's own registration for shapes that land without one (`useHvacAutoRecord`,
+     * the step `DrawUtil.MouseStampObjectDone` / `DragDropObjectDone` would have run), so this is a transient
+     * state that resolves a poll later - the section comes back on its own, which is why it stays out here
+     * instead of offering a repair button.
+     */
     if (!appItem) {
         return null;
     }

@@ -43,6 +43,7 @@ import { useEnginePoll } from "../../hooks/useEnginePoll";
 import { statusPublisher } from "../../statusPublisher";
 import { HvacPropertiesPanel } from "./HvacPropertiesPanel";
 import { hvacToolGroups } from "./hvacToolGroups";
+import { useHvacAutoRecord } from "./useHvacAutoRecord";
 import { hvacViewport } from "./hvacViewport";
 import { hvacHistoryCommands } from "./hvacCommands";
 import { viewportCommands } from "../../commands/viewportCommands";
@@ -197,6 +198,13 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
     // The engine needs the frame to be committed before it can resolve #main-app.
     const ready = useDesignerFrameReady(designerDocumentKey(HVAC_DOCUMENT_KIND, ctx.id));
     const { refreshLayout } = useHvacEngine(ids, ready);
+
+    /*
+     * Finish the engine's app-layer registration for a shape that landed without it (the library tools placed by
+     * a palette click skip `DrawUtil`'s completion). Without this the properties panel has no record to read its
+     * Data and Widget sections from — the legacy flow never needed a manual step because that completion did it.
+     */
+    useHvacAutoRecord(ready);
 
     // Load or create the drawing — identical semantics to the legacy page (including the
     // "discard unsaved changes?" confirmation inside `createNew`).
