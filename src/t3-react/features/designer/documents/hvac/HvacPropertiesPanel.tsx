@@ -533,6 +533,25 @@ const Section: React.FC<{
  * The displayed value otherwise follows the polled engine state, so a successful edit is reflected
  * immediately and a rejected one snaps back.
  */
+/**
+ * Keep a keystroke inside the field the user is typing in.
+ *
+ * The engine's global keyboard handler ends in `event.preventDefault()` for every key it has a command for
+ * (`KeyboardOpt.HandleKeyDown`, `KeyboardOpt.ts:195`) - Backspace deletes the selection, the arrows move it -
+ * and it does not check whether the keystroke came from a text field. With the caret in one of these boxes the
+ * browser's own edit is therefore cancelled and the key looks dead. Measured on this panel: typing `Fan` into the
+ * picker's search box works, Backspace and ArrowLeft leave both the value and the caret untouched, and the
+ * `preventDefault` stack points at that line.
+ *
+ * `stopPropagation`, **not** `preventDefault`: React dispatches this handler at the root container (or at the
+ * dialog's portal root), which sits deeper in the bubble path than the engine's document/window listener - so the
+ * event never reaches it - while the browser's default edit still runs and React still receives the separate
+ * `input` event that `onChange` is wired to.
+ */
+const keepKeysInField = (event: React.KeyboardEvent<HTMLElement>): void => {
+    event.stopPropagation();
+};
+
 const NumberField: React.FC<{
     label: string;
     value: number | undefined;
@@ -646,6 +665,7 @@ const NumberField: React.FC<{
                 }}
                 onBlur={commit}
                 onKeyDown={(event) => {
+                    keepKeysInField(event);
                     /* Keyboard equivalent of the chevrons, same code path and same one-commit-per-press rule. */
                     if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
                         event.preventDefault();
@@ -781,6 +801,7 @@ const TextField: React.FC<{
                 onChange={(_, data) => setDraft(data.value)}
                 onBlur={commit}
                 onKeyDown={(event) => {
+                    keepKeysInField(event);
                     if (event.key === "Enter") {
                         commit();
                         (event.target as HTMLInputElement).blur();
@@ -800,11 +821,61 @@ const ON_OFF_OPTIONS = [
 ];
 
 /**
+ * A device string as this panel can safely show it.
+ *
+ * The device's fixed-width fields are 0xFF-filled for anything it never wrote, and jsoncpp substitutes U+FFFD for
+ * those bytes **inside T3000.exe**, before the JSON leaves C++ (`Json-cpp/dist/jsoncpp.cpp:4249`). By the time a
+ * description reaches the browser it can read `Room Temp\uFFFD\uFFFD`, and no consumer can recover the original
+ * bytes: the fill is indistinguishable from text. Cut at the first such character instead — everything from it on
+ * is fill, not text. CP936 turns 0xFF into the U+F8F5 private-use area on its way through the C++ grids, so those
+ * are cut too, as is a literal 0xFF, whichever form arrives.
+ */
+const sanitizeDeviceText = (value: unknown): string => {
+    if (value === undefined || value === null) {
+        return "";
+    }
+    const text = String(value);
+    for (let index = 0; index < text.length; index += 1) {
+        const code = text.charCodeAt(index);
+        if (code === 0xfffd || code === 0x00ff || (code >= 0xe000 && code <= 0xf8ff)) {
+            return text.slice(0, index).trim();
+        }
+    }
+    return text.trim();
+};
+
+/**
+ * The kinds a widget can display, i.e. what this picker may offer.
+ *
+ * `panelsData` carries the device's whole answer — inputs, outputs and variables *and* its schedules, holidays,
+ * programs and trend logs — which is why a small controller could read 320 "points". Only these kinds can be
+ * bound to a widget; the rest are not entries a graphic displays.
+ */
+const LINKABLE_ENTRY_TYPES = ["INPUT", "OUTPUT", "VARIABLE", "PID"];
+
+const isLinkableEntry = (entry: Record<string, any> | null | undefined): boolean =>
+    LINKABLE_ENTRY_TYPES.includes(String(entry?.type ?? "").toUpperCase());
+
+/**
+ * Identity of an entry across the two objects that describe it.
+ *
+ * The entry a widget is linked to is the engine's snapshot (`t3Entry`), the rows in the picker's grid are the
+ * entries of `panelsData` — different objects for the same point, so `===` never matches and the linked row could
+ * not be shown again. `pid` + kind + index/id is what actually identifies a point.
+ */
+const entryKey = (entry: Record<string, any> | null | undefined): string =>
+    entry
+        ? `${entry.pid ?? ""}|${entry.type ?? ""}|${entry.index ?? ""}|${entry.id ?? ""}`
+        : "";
+
+/**
  * Entry label in the picker.
  *
  * Delegates to the engine's own formatter (`AppRuntime.entryLabel` — *create a label for an entry with
  * optional prefix*), which is the same text the legacy Vue dialog showed, so an entry reads identically in
- * both apps. The fallback only exists for the unlikely case of the engine being unavailable.
+ * both apps. The fallback only exists for the unlikely case of the engine being unavailable. Either way the
+ * text goes through `sanitizeDeviceText`, so a description the device never wrote does not arrive here with the
+ * `?` characters jsoncpp left behind.
  */
 const entryLabel = (entry: Record<string, any> | null | undefined): string => {
     if (!entry) {
@@ -812,9 +883,11 @@ const entryLabel = (entry: Record<string, any> | null | undefined): string => {
     }
     try {
         const label = (Hvac as any)?.AppRuntime?.entryLabel?.(entry);
-        return typeof label === "string" && label ? label : "";
+        return sanitizeDeviceText(
+            typeof label === "string" && label ? label : entry.description ?? entry.label ?? entry.id ?? ""
+        );
     } catch {
-        return String(entry.description ?? entry.label ?? entry.id ?? "");
+        return sanitizeDeviceText(entry.description ?? entry.label ?? entry.id ?? "");
     }
 };
 
@@ -829,7 +902,7 @@ const entryValueText = (entry: Record<string, any> | null | undefined): string =
             const on = Number(entry.control ?? entry.value) === 1;
             return String((on ? range?.on : range?.off) ?? (on ? "ON" : "OFF"));
         }
-        const unit = IdxUtils.getUnitText(entry) ?? "";
+        const unit = sanitizeDeviceText(IdxUtils.getUnitText(entry) ?? "");
         return entry.value === undefined || entry.value === null ? "" : `${entry.value}${unit ? ` ${unit}` : ""}`;
     } catch {
         return "";
@@ -859,6 +932,12 @@ const ALL_DEVICES_KEY = "__all_devices__";
 const PLAIN_WEIGHT: React.CSSProperties = { fontWeight: "400" };
 
 /**
+ * The Link Entry dialog's Cancel / Save: the normal button box (`size="medium"`, 32 px) with a **12 px** label
+ * instead of Fluent's 14 px, at plain weight rather than the platform's semibold button default.
+ */
+const DIALOG_ACTION_STYLE: React.CSSProperties = { fontWeight: "400", fontSize: "12px" };
+
+/**
  * Sections whose rows need air (Data, Geometry) get a wider vertical gap than `sectionBody`'s 1 px, which makes
  * a stack of fields read as a single blob.
  *
@@ -869,6 +948,15 @@ const LOOSE_BODY_GAP: React.CSSProperties = { gap: "8px" };
 /* FDD's dialog does exactly this: `DialogTitle style={{ fontSize: 14 }}`. 14 px is the app's own dialog-title
  * size, so the picker matches every other dialog in the app instead of shouting at 20 px. */
 const DIALOG_TITLE_STYLE: React.CSSProperties = { fontSize: "14px", fontWeight: "400" };
+
+/**
+ * The picker's own title, at weight 600.
+ *
+ * `DIALOG_TITLE_STYLE` is the app's plain (400) dialog heading, shared with the Gauge-settings dialog — hence a
+ * separate style rather than a change to that one: only *Link Entry*, the dialog that binds a widget to a device
+ * point, is asked to stand out.
+ */
+const LINK_ENTRY_TITLE_STYLE: React.CSSProperties = { fontSize: "14px", fontWeight: "600" };
 
 /** A labelled Fluent dropdown, laid out like every other inspector row (84 px label column). */
 const SelectRow: React.FC<{
@@ -928,7 +1016,9 @@ const EntryPickerDialog: React.FC<{
     open: boolean;
     onPick: (entry: Record<string, any>) => void;
     onClose: () => void;
-}> = ({ open, onPick, onClose }) => {
+    /** The entry this widget is linked to right now — reopening through *Change* has to show it again. */
+    current?: Record<string, any> | null;
+}> = ({ open, onPick, onClose, current = null }) => {
     const [query, setQuery] = useState("");
     const [selected, setSelected] = useState<Record<string, any> | null>(null);
     const [panels, setPanels] = useState<Record<string, any>[]>([]);
@@ -1000,6 +1090,16 @@ const EntryPickerDialog: React.FC<{
     );
 
     /**
+     * The picker's own list: only the kinds a widget can bind (see `LINKABLE_ENTRY_TYPES`). The fallback keeps a
+     * device that names its entries differently from showing an empty table — the picker then behaves exactly as
+     * it did before the filter existed.
+     */
+    const linkablePanels = useMemo(() => {
+        const filtered = panels.filter(isLinkableEntry);
+        return filtered.length > 0 ? filtered : panels;
+    }, [panels]);
+
+    /**
      * The two device sources the home page's left tree uses, joined: the app's device list supplies the real
      * names, online state and building grouping, the engine's panel list supplies the panel number that makes a
      * device's points linkable. `points` is how many entries of the loaded panel data belong to that device, so
@@ -1007,7 +1107,7 @@ const EntryPickerDialog: React.FC<{
      */
     const deviceGroups = useMemo(() => {
         const pointsByPid = new Map<number, number>();
-        panels.forEach((entry) => {
+        linkablePanels.forEach((entry) => {
             const pid = Number(entry.pid ?? 0);
             pointsByPid.set(pid, (pointsByPid.get(pid) ?? 0) + 1);
         });
@@ -1088,35 +1188,87 @@ const EntryPickerDialog: React.FC<{
                 }
             ]
             : [];
-    }, [appDevices, deviceStatuses, engineDevices, panels]);
+    }, [appDevices, deviceStatuses, engineDevices, linkablePanels]);
 
     const rows = useMemo(() => deviceGroups.flatMap((group) => group.rows), [deviceGroups]);
 
-    /* Default to a device whose points are actually loaded — that is the one this drawing can link — and fall
-     * back to the first row when none are. */
-    const activeKey = rows.some((row) => row.key === deviceKey)
-        ? deviceKey
-        : rows.find((row) => row.points > 0)?.key ?? ALL_DEVICES_KEY;
+    /*
+     * The picked key wins — **including** "All devices", which is not one of `rows`. The earlier test
+     * (`rows.some(row => row.key === deviceKey)`) rejected that key and the ternary fell through to the first
+     * device with points, so clicking *All devices* snapped straight back to a device and looked dead.
+     *
+     * **All devices is the default too**: the dialog opens listing everything the drawing can link and only
+     * narrows to a device when one is picked (the old default was the first device that happened to have points).
+     */
+    const activeKey =
+        deviceKey === ALL_DEVICES_KEY || rows.some((row) => row.key === deviceKey)
+            ? deviceKey
+            : ALL_DEVICES_KEY;
     const activeRow = rows.find((row) => row.key === activeKey) ?? null;
+
+    /** Panel number → device name, for the grid's Device column. */
+    const deviceNameByPid = useMemo(() => {
+        const byPid = new Map<number, string>();
+        deviceGroups.forEach((group) =>
+            group.rows.forEach((row) => {
+                if (row.pid !== null && row.pid !== undefined) {
+                    byPid.set(Number(row.pid), row.name);
+                }
+            })
+        );
+        return byPid;
+    }, [deviceGroups]);
 
     /* "All devices" spans every loaded panel; a device row narrows to its own panel. */
     const points = useMemo(() => {
         const mine =
             activeKey === ALL_DEVICES_KEY
-                ? panels
+                ? linkablePanels
                 : activeRow?.pid === null || activeRow?.pid === undefined
                     ? []
-                    : panels.filter((entry) => Number(entry.pid ?? 0) === activeRow.pid);
+                    : linkablePanels.filter((entry) => Number(entry.pid ?? 0) === activeRow.pid);
         const needle = query.trim().toLowerCase();
         const matched = needle
             ? mine.filter((entry) => entryLabel(entry).toLowerCase().includes(needle))
             : mine;
         return matched.slice(0, 500);
-    }, [panels, activeRow, activeKey, query]);
+    }, [linkablePanels, activeRow, activeKey, query]);
+
+    /*
+     * Reopening the picker — *Change* on an already linked widget — has to show what is linked, so the current
+     * entry is preselected and its row is brought into view once the list actually holds it (the panel data can
+     * still be streaming in when the dialog opens).
+     */
+    const currentKey = current ? entryKey(current) : null;
+    const selectedKey = selected ? entryKey(selected) : null;
+    const selectedRowRef = useRef<HTMLDivElement | null>(null);
+    const scrolledRef = useRef(false);
+
+    useEffect(() => {
+        setSelected(open ? current : null);
+        if (!open) {
+            scrolledRef.current = false;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open]);
+
+    useEffect(() => {
+        if (!open || scrolledRef.current || !currentKey) {
+            return;
+        }
+        const row = selectedRowRef.current;
+        if (!row) {
+            return;
+        }
+        scrolledRef.current = true;
+        row.scrollIntoView({ block: "center" });
+    }, [open, currentKey, points]);
 
     const close = () => {
         setSelected(null);
         setQuery("");
+        /* `deviceKey` resets too: a fresh dialog opens on *All devices* rather than the device picked last time. */
+        setDeviceKey(null);
         onClose();
     };
 
@@ -1192,14 +1344,15 @@ const EntryPickerDialog: React.FC<{
                 }
             }}
         >
-            {/* Wider than FDD's 640 px form dialog — this one holds a device column plus the table. */}
-            <DialogSurface style={{ maxWidth: "780px", width: "min(780px, 96vw)" }}>
+            {/* Wider than FDD's 640 px form dialog — it holds a device column plus the point table, and the names
+             * are long. 1080 px also keeps Point | Type | Value | Device on one comfortable line. */}
+            <DialogSurface style={{ maxWidth: "1080px", width: "min(1080px, 96vw)" }}>
                 <DialogBody>
                     {/* Fluent's own close affordance lives in the title's `action` slot, not in a hand-rolled
                      * button — `DialogTrigger action="close"` routes through `onOpenChange` above, so the reset
                      * in `close()` runs here exactly as it does for Cancel / Save. */}
                     <DialogTitle
-                        style={DIALOG_TITLE_STYLE}
+                        style={LINK_ENTRY_TITLE_STYLE}
                         action={
                             <DialogTrigger action="close">
                                 <Button
@@ -1232,7 +1385,7 @@ const EntryPickerDialog: React.FC<{
                                         onClick={() => setDeviceKey(ALL_DEVICES_KEY)}
                                     >
                                         <span className={pickerStyles.allLabel}>All devices</span>
-                                        <span className={pickerStyles.deviceMeta}>{panels.length}</span>
+                                        <span className={pickerStyles.deviceMeta}>{linkablePanels.length}</span>
                                     </button>
 
                                     {deviceGroups.map((group) => (
@@ -1290,6 +1443,7 @@ const EntryPickerDialog: React.FC<{
                                             contentBefore={<SearchRegular />}
                                             placeholder="Search points…"
                                             value={query}
+                                            onKeyDown={keepKeysInField}
                                             onChange={(_, data) => setQuery(data.value)}
                                         />
                                         <button
@@ -1336,12 +1490,14 @@ const EntryPickerDialog: React.FC<{
                                                     <span>Point</span>
                                                     <span>Type</span>
                                                     <span>Value</span>
+                                                    <span>Device</span>
                                                 </div>
                                                 {points.map((entry, index) => {
-                                                    const isSelected = selected === entry;
+                                                    const isSelected = selectedKey === entryKey(entry);
                                                     return (
                                                         <div
                                                             key={`${entry.pid}-${entry.id}-${entry.index ?? index}`}
+                                                            ref={isSelected ? selectedRowRef : undefined}
                                                             role="row"
                                                             aria-selected={isSelected}
                                                             className={mergeClasses(
@@ -1362,6 +1518,12 @@ const EntryPickerDialog: React.FC<{
                                                             <span className={pickerStyles.valueCell}>
                                                                 {entryValueText(entry)}
                                                             </span>
+                                                            <span className={pickerStyles.deviceCell}>
+                                                                {deviceNameByPid.get(Number(entry.pid ?? 0)) ??
+                                                                    (entry.pid === undefined || entry.pid === null
+                                                                        ? "—"
+                                                                        : `Panel ${entry.pid}`)}
+                                                            </span>
                                                         </div>
                                                     );
                                                 })}
@@ -1373,12 +1535,14 @@ const EntryPickerDialog: React.FC<{
                         </div>
                     </DialogContent>
                     <DialogActions>
-                        <Button appearance="secondary" style={PLAIN_WEIGHT} onClick={close}>
+                        {/* Normal button box, plain weight, 12 px label (`DIALOG_ACTION_STYLE`). */}
+                        <Button appearance="secondary" size="medium" style={DIALOG_ACTION_STYLE} onClick={close}>
                             Cancel
                         </Button>
                         <Button
                             appearance="primary"
-                            style={PLAIN_WEIGHT}
+                            size="medium"
+                            style={DIALOG_ACTION_STYLE}
                             disabled={!selected}
                             onClick={() => {
                                 if (selected) {
@@ -1502,7 +1666,12 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
                 <span className={styles.note}>
                     A linked entry supplies the widget's live value and its display text.
                 </span>
-                <EntryPickerDialog open={pickerOpen} onPick={linkEntry} onClose={() => setPickerOpen(false)} />
+                <EntryPickerDialog
+                    open={pickerOpen}
+                    onPick={linkEntry}
+                    onClose={() => setPickerOpen(false)}
+                    current={null}
+                />
             </Section>
         );
     }
@@ -1648,7 +1817,13 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
                 onSelect={commitDisplayField}
             />
 
-            <EntryPickerDialog open={pickerOpen} onPick={linkEntry} onClose={() => setPickerOpen(false)} />
+            <EntryPickerDialog
+                open={pickerOpen}
+                onPick={linkEntry}
+                onClose={() => setPickerOpen(false)}
+                /* *Change* on a linked widget: hand the picker the entry it is bound to now. */
+                current={entry}
+            />
         </Section>
     );
 };
@@ -1767,6 +1942,7 @@ const SettingTextBox: React.FC<{
                     }
                 }}
                 onKeyDown={(event) => {
+                    keepKeysInField(event);
                     if (event.key === "Enter") {
                         (event.target as HTMLInputElement).blur();
                     }
@@ -1925,6 +2101,7 @@ const GaugeSettingsDialog: React.FC<{
                                 <span className={styles.gaugeLabel}>Min</span>
                                 <Input
                                     type="number"
+                                    onKeyDown={keepKeysInField}
                                     value={String(draft.settings.min)}
                                     onChange={(_, data) => patchSettings({ min: asNumber(data.value, 0) })}
                                 />
@@ -1933,6 +2110,7 @@ const GaugeSettingsDialog: React.FC<{
                                 <span className={styles.gaugeLabel}>Max</span>
                                 <Input
                                     type="number"
+                                    onKeyDown={keepKeysInField}
                                     value={String(draft.settings.max)}
                                     onChange={(_, data) => patchSettings({ max: asNumber(data.value, 0) })}
                                 />
@@ -1944,6 +2122,7 @@ const GaugeSettingsDialog: React.FC<{
                                     <span className={styles.gaugeLabel}>Thickness ( px )</span>
                                     <Input
                                         type="number"
+                                        onKeyDown={keepKeysInField}
                                         value={String(draft.settings.thickness ?? 0)}
                                         onChange={(_, data) =>
                                             patchSettings({ thickness: asNumber(data.value, 0) })
@@ -1955,6 +2134,7 @@ const GaugeSettingsDialog: React.FC<{
                                 <span className={styles.gaugeLabel}>Ticks</span>
                                 <Input
                                     type="number"
+                                    onKeyDown={keepKeysInField}
                                     value={String(draft.settings.ticks ?? 0)}
                                     onChange={(_, data) => patchSettings({ ticks: asNumber(data.value, 0) })}
                                 />
@@ -1963,6 +2143,7 @@ const GaugeSettingsDialog: React.FC<{
                                 <span className={styles.gaugeLabel}>Minor ticks</span>
                                 <Input
                                     type="number"
+                                    onKeyDown={keepKeysInField}
                                     value={String(draft.settings.minorTicks ?? 0)}
                                     onChange={(_, data) => patchSettings({ minorTicks: asNumber(data.value, 0) })}
                                 />
@@ -1996,6 +2177,7 @@ const GaugeSettingsDialog: React.FC<{
                                             className={styles.gaugeColorOffset}
                                             type="number"
                                             aria-label="Offset"
+                                            onKeyDown={keepKeysInField}
                                             value={String(stop.offset)}
                                             onChange={(_, data) =>
                                                 setDraft((previous) => ({

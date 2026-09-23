@@ -20,7 +20,11 @@
 .layout {
   display: flex;
   flex-direction: column;
-  height: min(60vh, 480px);
+  /*
+   * Shorter than the 700 px first cut: a whole point table fits without taking the screen, and the list scrolls
+   * inside the dialog. One number to tune if it feels tight.
+   */
+  height: min(60vh, 520px);
   overflow: hidden;
 }
 
@@ -63,6 +67,16 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /*
+   * `flex-shrink: 0` on every child of this scrolling flex column, and that is the whole "Default Building / Offline
+   * overlap" bug: a flex item shrinks by default, so with more rows than fit, the group heads were squeezed to a
+   * couple of pixels while the rows held their `min-height: 32px` — the label then drew on top of the rows around
+   * it. Scrolling must come from `overflow-y` alone, never from shrinking the rows.
+   */
+  flex-shrink: 0;
+}
+.groupHint {
+  flex-shrink: 0;
 }
 .deviceRow {
   display: flex;
@@ -71,6 +85,8 @@
   width: 100%;
   min-height: 32px;
   padding: 0 10px;
+  /* Never squeezed by the pane's flex column — see `.groupHead`. */
+  flex-shrink: 0;
   /* Breathing room between rows. */
   margin: 1px 0;
   border: 0;
@@ -186,9 +202,15 @@
 .progress {
   display: flex;
   align-items: center;
+  /*
+   * Same left edge as the empty state and the point rows — `10px`, the grid's own inset — so these two message
+   * lines line up vertically instead of being 10 px apart, and a top gap so the line is not glued to the toolbar.
+   */
+  justify-content: flex-start;
+  text-align: left;
+  padding: 10px 0 6px 10px;
   gap: 6px;
   flex-shrink: 0;
-  padding-bottom: 6px;
   font-size: 12px;
   color: #605e5c;
 }
@@ -208,7 +230,8 @@
 .gridHeader,
 .gridRow {
   display: grid;
-  grid-template-columns: 1fr 90px 110px;
+  /* Point | Type | Value | Device — the device column comes last, after the value it qualifies. */
+  grid-template-columns: 1fr 84px 104px 150px;
   align-items: center;
   gap: 8px;
   padding: 0 10px;
@@ -258,13 +281,26 @@
   white-space: nowrap;
   color: var(--colorNeutralForeground2, #424242);
 }
+.deviceCell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--colorNeutralForeground3, #616161);
+}
 .emptyState {
-  padding: 32px 16px;
-  text-align: center;
+  /*
+   * Left, not centred: the message sits in the same column as the toolbar's search box and the point rows, and a
+   * centred line there read as a different surface (the `10px` matches the grid rows' own inset, so both start on
+   * the same edge).
+   */
+  padding: 16px 10px;
+  text-align: left;
   font-size: 12px;
   color: var(--colorNeutralForeground3, #616161);
 }
 .hint {
+  flex-shrink: 0;
   padding: 10px 0;
   font-size: 12px;
   line-height: 1.5;
