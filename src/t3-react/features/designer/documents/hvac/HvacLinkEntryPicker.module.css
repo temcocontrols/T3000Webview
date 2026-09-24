@@ -230,9 +230,10 @@
 .gridHeader,
 .gridRow {
   display: grid;
-  /* Point | Full Label | Label | Type | Value | Device — the two label columns sit next to the point they
-   * describe, and the device column stays last, after the value it qualifies. */
-  grid-template-columns: 1fr 140px 110px 76px 96px 130px;
+  /* Point | Full Label | Label | Type | Units | Range | Value | Device — the two label columns sit next to the
+   * point they describe, then **Units and Range**, the pair the point grids (Inputs / Outputs / Variables) show
+   * beside a value, and the device column stays last, after the value it qualifies. */
+  grid-template-columns: 1fr 130px 100px 72px 56px 118px 92px 120px;
   align-items: center;
   gap: 8px;
   padding: 0 10px;
@@ -351,6 +352,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--colorNeutralForeground2, #424242);
+}
+/*
+ * The range's own name (`Normal/Alarm`, `MSV 1`) — the grids' Range column. Smaller than a label and quieter
+ * than the value beside it: it qualifies the point, it is not the point.
+ */
+.rangeCell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
   color: var(--colorNeutralForeground2, #424242);
 }
 .deviceCell {

@@ -9,7 +9,7 @@
  */
 import React, { useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Button, Spinner, Text, makeStyles, tokens } from "@fluentui/react-components";
+import { Button, Text, makeStyles, tokens } from "@fluentui/react-components";
 import { DOCUMENT_KIND_SPECS, DOCUMENT_KINDS, isDocumentKind } from "../kinds";
 import { DESIGNER_DOCUMENTS } from "../registry";
 
@@ -37,13 +37,6 @@ const useStyles = makeStyles({
         flexDirection: "column",
         gap: "6px",
         marginTop: "8px"
-    },
-    suspense: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "8px",
-        height: "100%"
     }
 });
 
@@ -106,16 +99,12 @@ export const DesignerPage: React.FC = () => {
 
     const Host = entry.Host;
 
-    return (
-        <React.Suspense
-            fallback={
-                    <div className={styles.suspense}>
-                        <Spinner size="tiny" />
-                        <Text size={200}>Loading document…</Text>
-                    </div>
-                }
-        >
-            <Host kind={kindParam} id={id} query={query} navigate={navigate} />
-        </React.Suspense>
-    );
+    /*
+     * No boundary here on purpose. The route element already sits inside the designer route's
+     * `<Suspense>` (`App.tsx`), and that one draws the shell's single loading state — so suspension from
+     * the host chunk (the HVAC/LCD engine) bubbles up to the route instead of painting a second,
+     * differently worded fallback inside the middle area. Two boundaries meant two visible waits for the
+     * same chunk sequence; one means one.
+     */
+    return <Host kind={kindParam} id={id} query={query} navigate={navigate} />;
 };

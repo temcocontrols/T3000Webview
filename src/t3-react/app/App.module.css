@@ -6,22 +6,13 @@
 }
 
 /* Suspense loading fallbacks */
-.suspenseLoader {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 20px;
-}
-
+/* The designer route no longer uses a stylesheet fallback: `features/designer/components/DesignerLoading`
+   draws the shell's single loading state (centered, one word) for every designer wait. */
 .suspenseLoaderDocs {
   display: flex;
   align-items: center;
   padding: 16px 24px;
   gap: 8px;
-}
-
-.suspenseLoaderText {
-  font-size: 13px;
 }
 
 .suspenseLoaderTextDocs {

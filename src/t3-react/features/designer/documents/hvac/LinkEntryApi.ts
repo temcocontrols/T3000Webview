@@ -175,9 +175,15 @@ export class LinkEntryApi {
     }
 
     /**
-     * Read the device into the local DB — the device pages' own Refresh (action 17 → local SQLite) — then drop
-     * the cache so the next `loadDevice` sees it. Only the three point kinds have a device endpoint; the rest are
-     * whatever the periodic sync has stored.
+     * Read the device into the local DB — the device pages' own two-step Refresh:
+     *
+     * 1. `POST /{kind}/:serial/refresh` body `{}` → `{ success, message, items, count, timestamp }`, the rows the
+     *    device answered with (`GET_WEBVIEW_LIST`, action 17). **Nothing is stored by this call.**
+     * 2. `POST /{kind}/:serial/save-refreshed` body `{ items }` → writes those rows into the local DB.
+     *
+     * The second body is not optional: `SaveRefreshedDataRequest { items: Vec<Value> }` rejects `{}` with
+     * *"missing field `items`"*, and an empty `items` means the device gave nothing — the server's own message
+     * ("Protocol settings not found for serial …") is what the panel then reports.
      */
     async refreshDevice(serial: number): Promise<void> {
         const jobs = REFRESHABLE.map(async (spec) => {
@@ -187,7 +193,16 @@ export class LinkEntryApi {
             if (!refreshed.ok) {
                 throw new Error(`${spec.id}: refresh HTTP ${refreshed.status}`);
             }
-            const saved = await fetch(`${base}/save-refreshed`, { method: "POST", headers, body: "{}" });
+            const payload = (await refreshed.json()) as { success?: boolean; message?: string; items?: unknown[] };
+            const items = Array.isArray(payload.items) ? payload.items : [];
+            if (payload.success === false || items.length === 0) {
+                throw new Error(`${spec.id}: ${payload.message || "the device returned no rows"}`);
+            }
+            const saved = await fetch(`${base}/save-refreshed`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ items })
+            });
             if (!saved.ok) {
                 throw new Error(`${spec.id}: save-refreshed HTTP ${saved.status}`);
             }

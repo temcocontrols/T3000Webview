@@ -296,19 +296,63 @@ under it):
 | `Display field` | `item.settings.t3EntryDisplayField` | what the shape itself shows on the canvas |
 | `Status` / `Output` | `t3Entry.status` / `.output` | program and schedule entries only |
 
-The `Value` control follows what the entry reports:
+The `Value` control follows the **grid's** reading of a point (`InputsPage` / `OutputsPage` / `VariablesPage`: the
+`signalType` column types a row `digitalAnalog === '0'` ⇒ *Digital*, anything else ⇒ *Analog*, and the range is
+consulted only for names and units, through `PointRange` — the class of §6.3.1, which reads the same tables the
+grids do):
 
-| Entry | Control | Component |
+| Entry | Control | Writes | Component |
+|---|---|---|---|
+| a **multi-state** range (101+) on a digital point | the range's options (`option.status === 1`, names sanitised) | `value` | `SelectRow` |
+| a **digital** point whose range names a pair (1-100) | the range's own two words (`Close`/`Open`) | `control` | `SelectRow` |
+| every other point — analog, or a digital one whose range was never written (`0`/`255`) | number input: the grids' reading (`fValue / 1000`, `-6500.80`), unit from `PointRange.unit` (`Deg.C`, `Amps`) | `value` | `NumberField` |
+
+A state list needs a range that **names** the states. Device 1028 is the case that proves it: every one of its 64
+inputs reports `digitalAnalog "0"` with `rangeField "0"` — its own page draws such a point with `Type Digital`,
+`Range Unused` and a **numeric** `Value`, and an Off/On list there would offer two words the device never wrote.
+The three traps, all measured on that device through `:9103/api/t3_device/devices/1028/{input,output,variable}-points`
+(64 rows each):
+
+- a **live reading** cannot stand in for the type. Those inputs report `control "255"` (the 0xFF fill); a rule
+  keyed on `control` being 0/1 turned all 64 into number inputs while the grid calls them *Digital*.
+- `range > 100` **alone** is not an MSV test. All 64 outputs and variables report `digitalAnalog "255"`,
+  `rangeField "255"` — not a range id, the fill of a field the DB never wrote — and reading it as a multi-state id
+  drew an empty dropdown where the grid says *Analog*.
+- a **digital** point with no range is still not a switch. Offering Off/On for it was the last version's mistake:
+  with no range there is nothing to choose between, so it reads and writes as a number like its page shows.
+
+Both numbers are **engineering units**: the device stores `fValue` ×1000, and the engine's write path divides by
+1000 again (`IdxPage.T3UpdateEntryField`, `|v| >= 1000`), so the field shows `value / 1000` — the same number the
+picker grid and the point page print, fill markers included — and commits it **×1000**, which makes the device
+receive exactly what was typed.
+
+#### 6.3.1 `PointRange` — one vocabulary, the pages'
+
+`documents/hvac/PointRange.ts` is the only thing the designer asks about a linked point's range. It reads the
+**point pages'** tables (`features/<kind>/data/rangeData.ts`) and answers:
+
+| method | for | answers |
 |---|---|---|
-| `range > 100` | the range's options (`option.status === 1`, names sanitised) | `SelectRow` |
-| digital point whose `control`/`value` is `0` or `1` | OFF/ON, labels from the range (`off` / `on`) | `SelectRow` |
-| anything else (analog, or a row whose type columns are unset) | number input, unit from `IdxUtils.getUnitText` | `NumberField` |
+| `isDigital` | the control | `digital_analog === 0` — the grids' own rule |
+| `rangeId` / `option` | the control | the range id, or nothing when the field is `0`/`255` (the device's "never written" fills) |
+| `signalType` | the picker's *Type* cell | `Digital` / `Analog`, the entry's kind for anything else |
+| `unitSymbol` | the picker's *Units* cell | `0/1` for digital, the unit symbol otherwise, blank when the range names none |
+| `label` | the picker's *Range* cell | `"Normal/Alarm"`, `"MSV 1"`, `"Unused"` for `0`, `"Unknown"` for an unknown id |
+| `states` | the `Value` dropdown | the two words a digital point's states are called, split out of that label |
+| `isMsv` | the `Value` dropdown | a multi-state range (101 and up) |
+| `unit` | the `Value` number field | the analog unit, and **no** placeholder — the inspector's variant of `unitSymbol` |
 
-`digital_analog` is the discriminator, read exactly as the picker's `Value` column reads it (`!== 0` ⇒ analog).
-A `control` of 0/1 alone does **not** make a point a switch: an analog point commonly reports `control: 1`
-(measured on `IN1 VAV-01-01 Space Temp`), which is what the first version of this rule got wrong. A row the DB
-never filled carries `fValue` as the device's unset marker (`-6499500`) — the input opens empty instead of
-printing that marker as a reading.
+The engine has its own reader — `IdxUtils.getEntryRange` / `getUnitText` over the legacy `T3Data.ranges` table —
+and the canvas still uses it, so **nothing there changed**. It is simply a different vocabulary, which is why the
+panel and the grid used to disagree: range 11 is `Low/High` on the page, while the engine holds
+`on: "Low", off: "High", direct: true` — the pair comes out swapped — and its units are symbols (`°C`) against
+the tables' (`Deg.C`).
+
+Checked row by row against the pages' own `getRangeLabel` / `getUnitSymbol` over the 192 real points of device
+1028 (`:9103`): *Type* and *Range* agree on all 192, *Units* agrees on all 128 input/variable rows. The
+**Outputs** page is the one place that does not agree with itself — its *Units* cell calls `getRangeLabel`
+(`OutputsPage.tsx:1097`), so it prints the range name twice, where *Range* also has it; the picker keeps a
+proper unit column instead of copying that.
 
 Device text is cut at the first fill character — `U+FFFD` (what jsoncpp substitutes for an invalid byte),
 `0x00FF`, or the CP936 private-use range `U+E000–U+F8FF` — by `sanitizeDeviceText`; the copy handed to the engine
@@ -365,15 +409,20 @@ Measured data facts (2026-09-23/24):
 
 | Device | Fact |
 |---|---|
-| 1028 (T3-LB-ESP) | 64 / 64 / 64 point rows → **192 entries**, **0** fill characters; **0 of 64** input rows carry `rangeField` / `control` / `digitalAnalog` (all `0` / `255`) — only `fValue` is present, so its points resolve to the number input / blank rows rather than to switches |
+| 1028 (T3-LB-ESP) | 64 / 64 / 64 point rows → **192 entries**, **0** fill characters; no point row carries a real `rangeField` (`0` on the inputs, `255` on the outputs and variables), so all 192 resolve to the **number input** — the state list needs a range that names states |
 | 212375 (VAV controller) | real type data: `IN1 VAV-01-01 Space Temp` → `digitalAnalog: 1`, `control: 1`, `rangeField: 8`, `units: 8`, `fValue: -40000` |
 
 Picker behaviour (one dialog; `Change` reopens it with `current`):
 
 * device rail = the app's device store ∪ the engine's panel list, grouped, each row showing how many entries are
   loaded for it (`–` when none); `All devices` is the default scope and stays selectable;
-* grid columns `Point \| Full Label \| Label \| Type \| Value \| Device`, capped at 500 rows, filtered by the
-  search box against the entry's own label (`AppRuntime.entryLabel`);
+| grid columns `Point \| Full Label \| Label \| Type \| Units \| Range \| Value \| Device`, capped at 500 rows, filtered by the
+  search box against the entry's own label (`AppRuntime.entryLabel`). *Type*, *Units* and *Range* are the point
+  grids' own cells through `PointRange` (§6.3.1), and *Value* is their reading: `fValue / 1000` at two decimals
+  (`-6500.80`, `-0.00`, `0.00`), blank only when the field is missing — checked against `InputsPage`'s cell on all
+  192 rows of device 1028, 192/192 identical. The state **words** (`Off`/`Open`) stay in the `Data` section's
+  Value *dropdown*, which is the control that writes `control` — printing them in the grid too is what made
+  `-6500.80` read as a switch;
 * a pinned *Current link* card above the search box shows the entry the shape is bound to, with `Unlink`;
 * click selects, double-click commits, `Save` commits, `Cancel` / close resets scope and search;
 * the engine owns a document-level keydown handler that cancels editing keys (`KeyboardOpt.ts:195` calls

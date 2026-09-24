@@ -24,7 +24,6 @@
  * (`ready` below) — the shell's middle-area host itself is stable, only the page's first render is deferred.
  */
 import React, { useEffect, useMemo, useState, useSyncExternalStore, useLayoutEffect } from "react";
-import { Spinner } from "@fluentui/react-components";
 
 import { Tstat10SimulatorPage } from "@/t3-react/features/tstat10-simulator/pages/Tstat10SimulatorPage";
 import { setLcdPageHosted } from "@/t3-react/features/tstat10-simulator/hostMode";
@@ -43,7 +42,8 @@ import {
     useDesignerFrameReady
 } from "../../documentSlot";
 import type { DesignerDocumentEntry } from "../../documentSlot";
-import { DOCUMENT_KIND_SPECS } from "../../kinds";
+import { DOCUMENT_KIND_SPECS, designerLoadingLabel } from "../../kinds";
+import { DesignerLoading } from "../../components/DesignerLoading";
 
 const LCD_ADAPTER: DocumentAdapter = { kind: "lcd-ui", engine: "simulator" };
 
@@ -172,5 +172,5 @@ export const LcdDocumentHost: React.FC<DocumentHostProps> = ({ navigate }) => {
     // Teardown only — clearing the slot on every entry change would remount the whole frame.
     useLayoutEffect(() => () => releaseDesignerDocument(LCD_DOCUMENT_KEY), []);
 
-    return ready ? <Tstat10SimulatorPage /> : <Spinner label="Loading LCD designer..." />;
+    return ready ? <Tstat10SimulatorPage /> : <DesignerLoading label={designerLoadingLabel("lcd-ui")} />;
 };

@@ -15,7 +15,7 @@
  *    are now complemented by a ResizeObserver-driven notification from the shell.
  */
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Spinner, Text } from "@fluentui/react-components";
+import { Text } from "@fluentui/react-components";
 import Hvac from "@/lib/t3-hvac";
 import T3Gv from "@/lib/t3-hvac/Data/T3Gv";
 import SelectUtil from "@/lib/t3-hvac/Opt/Opt/SelectUtil";
@@ -41,6 +41,8 @@ import {
 import type { DesignerDocumentEntry } from "../../documentSlot";
 import { useEnginePoll } from "../../hooks/useEnginePoll";
 import { statusPublisher } from "../../statusPublisher";
+import { DesignerLoading } from "../../components/DesignerLoading";
+import { designerLoadingLabel } from "../../kinds";
 import { HvacPropertiesPanel } from "./HvacPropertiesPanel";
 import { hvacToolGroups } from "./hvacToolGroups";
 import { useHvacAutoRecord } from "./useHvacAutoRecord";
@@ -344,7 +346,9 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
             subtitle: documentId ? undefined : "Unsaved new drawing",
             modified: false,
             status: { name, coords, message: msg },
-            loading: isLoading ? <Spinner label="Loading drawing..." /> : undefined,
+            // The shell draws this in its overlay — the same node and the same wording the route fallback
+            // uses, so the wait for the drawing looks like a continuation of the wait for the chunk.
+            loading: isLoading ? <DesignerLoading label={designerLoadingLabel(HVAC_DOCUMENT_KIND)} /> : undefined,
             error: error ? (
                 <>
                     <Text size={400} weight="semibold">

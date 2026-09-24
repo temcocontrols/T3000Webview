@@ -57,6 +57,7 @@ import { useHvacSelection } from "./useHvacSelection";
 import type { HvacSelectionItem } from "./useHvacSelection";
 import { useHvacAppStateItem } from "./useHvacAppStateItem";
 import { useLinkEntrySource } from "./useLinkEntrySource";
+import { PointRange } from "./PointRange";
 import {
     setFillColor,
     setFillOpacity,
@@ -921,22 +922,30 @@ const entryLabel = (entry: Record<string, any> | null | undefined): string => {
     }
 };
 
-/** What the picker's Value column shows: OFF/ON words for a digital point, number + unit for an analog one. */
+/**
+ * What the picker's Value column shows — the **same reading the point grids show**, formatted the same way: the
+ * device's `fValue` (it stores the value ×1000) as a fixed 2-decimal number, blank when the row carries none.
+ * Measured against `InputsPage`: `fValue -6500800` renders `-6500.80` on both sides, `-1` renders `-0.00`.
+ *
+ * The state **words** are deliberately not here. `Off` / `Open` are what the `Data` section's Value *dropdown*
+ * offers (it writes `control`); a grid cell is a reading, and this grid sits next to that dropdown — printing
+ * the words in both places is what made a temperature-shaped `-6500.80` look like a switch.
+ */
 const entryValueText = (entry: Record<string, any> | null | undefined): string => {
     if (!entry) {
         return "";
     }
-    try {
-        if (entry.digital_analog === 0) {
-            const range = IdxUtils.getEntryRange(entry) as any;
-            const on = Number(entry.control ?? entry.value) === 1;
-            return String((on ? range?.on : range?.off) ?? (on ? "ON" : "OFF"));
-        }
-        const unit = sanitizeDeviceText(IdxUtils.getUnitText(entry) ?? "");
-        return entry.value === undefined || entry.value === null ? "" : `${entry.value}${unit ? ` ${unit}` : ""}`;
-    } catch {
+    const raw = entry.value;
+    /*
+     * Blank only when the field is missing — **not** when it is `0`: the grids print `0.00` for a row whose
+     * `fValue` is `"0"` (their cell tests the string, and `"0"` is truthy), and `-0.00` for `-1`. Matching that
+     * means treating every present number as a reading, which is also the honest reading: `0` *is* a value.
+     */
+    if (raw === undefined || raw === null || raw === "") {
         return "";
     }
+    const value = Number(raw);
+    return Number.isFinite(value) ? (value / 1000).toFixed(2) : "";
 };
 
 /** A device as the engine's panel list holds it: panel number, owning serial, panel name. */
@@ -1523,6 +1532,8 @@ const EntryPickerDialog: React.FC<{
                                                     <span>Full Label</span>
                                                     <span>Label</span>
                                                     <span>Type</span>
+                                                    <span>Units</span>
+                                                    <span>Range</span>
                                                     <span>Value</span>
                                                     <span>Device</span>
                                                 </div>
@@ -1557,8 +1568,18 @@ const EntryPickerDialog: React.FC<{
                                                             <span className={pickerStyles.cellName}>
                                                                 {sanitizeDeviceText(entry.label)}
                                                             </span>
+                                                            {/* Type, Units and Range are the three cells the point
+                                                             * grids show beside a value, and all three come from
+                                                             * `PointRange`, i.e. from the same tables and with the same
+                                                             * wording (`Digital`, `0/1`, `Unused`, `Normal/Alarm`). */}
                                                             <span className={pickerStyles.monoCell}>
-                                                                {entry.type ?? ""}
+                                                                {PointRange.signalType(entry)}
+                                                            </span>
+                                                            <span className={pickerStyles.monoCell}>
+                                                                {PointRange.unitSymbol(entry)}
+                                                            </span>
+                                                            <span className={pickerStyles.rangeCell}>
+                                                                {PointRange.label(entry)}
                                                             </span>
                                                             <span className={pickerStyles.valueCell}>
                                                                 {entryValueText(entry)}
@@ -1725,37 +1746,64 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
         );
     }
 
-    const range = Number(entry.range ?? 0);
     /* Never disables the fields — the Value row exists to be written, and greying it out while the point is in AUTO
      * (what the legacy panel did) left no way to change it at all. A write the device refuses reports as the panel's
      * own error message instead. Kept as a named flag so the rows below read uniformly. */
     const autoDisabled = false;
-    const digitalRange = IdxUtils.getEntryRange(entry) as any;
+    /*
+     * The engine's own range reader — kept **only** for a multi-state point's state names. They come from the
+     * device's MSV rows over the socket, so no table in this app can name them; everything else about a range
+     * (its name, a digital pair's two words, an analog unit) is answered by `PointRange`, which reads the same
+     * tables the point grids do. The engine's `T3Data.ranges` spells several of those ranges the other way
+     * round (`direct`) and uses symbol units, which is why the panel and the grid used to disagree.
+     */
+    const deviceRange = IdxUtils.getEntryRange(entry) as any;
     /* A program/schedule/holiday reports its own rows (`Status`, `Output`) instead of a point's `Value`. */
     const isPointEntry = entry.type === "INPUT" || entry.type === "OUTPUT" || entry.type === "VARIABLE";
     /*
-     * Which control the Value row gets is decided by what the entry actually reports — never by a field being
-     * empty:
-     *
-     * - `range > 100` → a multi-state range, listed as its own dropdown;
-     * - a real switch state (`control`/`value` is 0 or 1) → OFF/ON;
-     * - anything else numeric — a temperature, a setpoint, or the `255` the device's 0xFF fill leaves behind in a
-     *   row the DB never filled — → the **number input**. A dropdown there would write 0/1 into an analog point.
+     * Which control the Value row gets, and what its states are called, is asked of `PointRange` — the class that
+     * reads the **point pages'** own tables (`features/<kind>/data/rangeData.ts`). See the class for why the
+     * engine's `T3Data.ranges` must not answer this (`direct` pairs come out swapped, units are symbols).
      */
-    const isMsv = isPointEntry && range > 100;
-    const controlValue = Number(entry.control ?? entry.value);
-    /* The entry's own type field comes first, read exactly as `entryValueText` reads it — only `digital_analog === 0`
-     * is digital, anything else is analog, **whatever** its control happens to be (an analog point can easily report
-     * control 0 or 1, and that was the bug: the switch test ignored this field). A row that is all fill (`range 0`,
-     * `control 255`) is neither, and falls through to the number input. */
-    const isAnalogPoint = Number(entry.digital_analog ?? 0) !== 0;
-    const isSwitch = isPointEntry && !isMsv && !isAnalogPoint && (controlValue === 0 || controlValue === 1);
-    const isAnalog = isPointEntry && !isMsv && !isSwitch;
-    /* A row the DB never filled carries `range 0`, `digital_analog 0` and a `fValue` that is the device's unset
-     * marker (`-6499500`, `-6522700`), not a reading: the field opens empty for those, so an unset point never
-     * prints that marker as if it were a temperature. An analog point's value is real and is shown. */
-    const valueUnknown = !isAnalogPoint && range === 0 && !isSwitch;
-    const valueForInput = valueUnknown || typeof entry.value !== "number" ? undefined : entry.value;
+    const isDigitalEntry = PointRange.isDigital(entry);
+    /* `0` and `255` (0xFF) are the device's "field never written" fills, not range ids. */
+    const rangeUnset = PointRange.rangeId(entry) === undefined;
+    const isMsv = isPointEntry && PointRange.isMsv(entry);
+    /*
+     * A list of states needs a range that **names** them. Without one there is nothing to choose from: every input
+     * of device 1028 is `digitalAnalog "0"` with `rangeField "0"`, and its own page shows such a point with
+     * `Type Digital`, `Range Unused` and a numeric `Value` — an Off/On list there was a choice of two words the
+     * device never wrote.
+     */
+    const isSwitch = isPointEntry && isDigitalEntry && !isMsv && !rangeUnset;
+    /*
+     * Everything else that is a point reads and writes as a **number**: the analog point, and the digital one whose
+     * range was never written. Both write `value` (a digital point's `control` is a 0/1 command, which is the state
+     * list's job).
+     */
+    const isNumberValue = isPointEntry && !isSwitch && !isMsv;
+    /* The two words a digital point's states are called, from its range's own name (`Close/Open`). */
+    const states = PointRange.states(entry);
+    /*
+     * The state a digital point is showing, read straight off the entry (`control` is the command field;
+     * `value` is the fallback for a record that reports only one of them) and **not** coerced to 0/1: a value
+     * the OFF/ON list cannot contain is drawn as an em dash by `SelectRow` instead of being shown as OFF.
+     */
+    const controlValue = entry.control ?? entry.value;
+    /*
+     * The reading, in the units the point grids print: the device stores `fValue` ×1000 (`fValue -6500800` is
+     * `-6500.80` on its page) and `InputsPage`'s Value cell divides by 1000 for **every** row — including the
+     * `-6523.10` marker a point carries before anything was configured, which is what that page prints for it too.
+     * So the field shows a number whenever the entry has one: an empty box is the one thing that page never shows.
+     */
+    const valueReading = (() => {
+        const raw = entry.value;
+        if (raw === undefined || raw === null || raw === "") {
+            return undefined;
+        }
+        const value = Number(raw);
+        return Number.isFinite(value) ? value / 1000 : undefined;
+    })();
 
     /* The device's two name fields, cleaned once: `description` is the full label, `label` the short one. */
     const fullLabelText = sanitizeDeviceText(entry.description);
@@ -1825,9 +1873,10 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
                 <ReadRow label="Auto/Manual" showEmpty />
             )}
 
-            {/* Exactly one Value row, always, with the control its type calls for: the number input for anything
-             * numeric, OFF/ON only for a point that really reports a switch state, a list for a multi-state range,
-             * and a blank row for a kind that has no value to edit. The row keeps its place either way.
+            {/* Exactly one Value row, always, with the control the entry's own type and range call for: the
+             * number input for an analog point, OFF/ON for a point that declares a digital range, a list for a
+             * multi-state range, and a blank row for a kind that has no value to edit. The row keeps its place
+             * either way.
              *
              * Nothing in this section is disabled — the fields exist to be written. The legacy panel greyed the
              * value out while the point was in AUTO, which left no way to change it at all; a write the device
@@ -1835,10 +1884,10 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
             {isSwitch ? (
                 <SelectRow
                     label="Value"
-                    value={controlValue === 1 ? 1 : 0}
+                    value={controlValue}
                     options={[
-                        { label: sanitizeDeviceText(digitalRange?.off) || "Off", value: 0 },
-                        { label: sanitizeDeviceText(digitalRange?.on) || "On", value: 1 }
+                        { label: states.zero, value: 0 },
+                        { label: states.one, value: 1 }
                     ]}
                     onSelect={(value) => commitEntryField("control", Number(value))}
                 />
@@ -1847,7 +1896,7 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
                     label="Value"
                     value={entry.value}
                     disabled={autoDisabled}
-                    options={((digitalRange?.options ?? []) as any[])
+                    options={((deviceRange?.options ?? []) as any[])
                         .filter((option) => option.status === 1)
                         .map((option) => ({
                             label: sanitizeDeviceText(option.name) || String(option.value),
@@ -1862,13 +1911,20 @@ const DataSection: React.FC<{ onError: (message: string | undefined) => void }> 
                     options={ON_OFF_OPTIONS}
                     onSelect={(value) => commitEntryField("value", Number(value))}
                 />
-            ) : isAnalog ? (
+            ) : isNumberValue ? (
                 <NumberField
                     label="Value"
-                    value={valueForInput}
-                    unit={sanitizeDeviceText(IdxUtils.getUnitText(entry)) || undefined}
+                    value={valueReading}
+                    unit={PointRange.unit(entry) || undefined}
                     onCommit={(value) => {
-                        commitEntryField("value", value);
+                        /*
+                         * The engine's write path divides by 1000 when the magnitude reaches 1000
+                         * (`IdxPage.T3UpdateEntryField`), so the field's number is stored **×1000** and the device
+                         * receives exactly what was typed (`72.5` ⇒ `72500` ⇒ sent `72.5`; `0` stays `0`). The
+                         * reading above is unscaled the same way, so what the user sees and what the point keeps
+                         * are the same number.
+                         */
+                        commitEntryField("value", Math.round(value * 1000));
                         return { ok: true };
                     }}
                     onError={onError}

@@ -28,11 +28,11 @@
  *     the browser paints, which is exactly when a document may start resolving engine containers and
  *     portal targets that live in those areas (`useDesignerFrameReady`).
  */
-import React, { useLayoutEffect, useMemo } from "react";
+import React, { useEffect, useLayoutEffect, useMemo } from "react";
 import { Outlet, useParams } from "react-router-dom";
 
 import { DesignerShell } from "../features/designer/components/DesignerShell";
-import { DESIGNER_DOCUMENTS } from "../features/designer/registry";
+import { DESIGNER_DOCUMENTS, preloadDocument } from "../features/designer/registry";
 import { DOCUMENT_KIND_SPECS, isDocumentKind } from "../features/designer/kinds";
 import type { DocumentAdapter, DocumentRuntime } from "../features/designer/DocumentAdapter";
 import {
@@ -55,6 +55,18 @@ export const DesignerLayout: React.FC = () => {
 
     const published = useDesignerDocument();
     const active: DesignerDocumentEntry | null = published && published.key === key ? published : null;
+
+    /*
+     * Fetch the document's module as soon as the route matches, instead of waiting for the route
+     * element's own chunk to arrive and render the host. The layout is statically imported, so this runs
+     * during the very first second of the navigation — while `DesignerPage` is still downloading — and the
+     * two imports then finish together under the shell's single loading state.
+     */
+    useEffect(() => {
+        if (kind) {
+            preloadDocument(kind);
+        }
+    }, [kind]);
 
     // The handshake back to the document: "the areas for your key are committed, you may touch DOM".
     useLayoutEffect(() => {

@@ -14,6 +14,7 @@ import { CsvOperationsProvider } from '../shared/context/CsvOperationsContext';
 import { MainLayout } from '../layout/MainLayout';
 import { MinimalLayout } from '../layout/MinimalLayout';
 import { DesignerLayout } from '../layout/DesignerLayout';
+import { DesignerRouteFallback } from '../features/designer/pages/DesignerRouteFallback';
 import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
 import styles from './App.module.css';
 
@@ -505,15 +506,15 @@ export const App: React.FC = () => {
                           top / left / middle / right (+ dock, status) — and the document is rendered
                           into the middle area through the index route's `<Outlet/>`. */}
                       <Route path="designer/:kind/:id?" element={<DesignerLayout />}>
+                        {/* The designer's **one** loading state: this boundary wraps the route element
+                            (the lazy `DesignerPage`) *and* the host chunk inside it, since `DesignerPage`
+                            has no boundary of its own any more. The fallback names the document from the
+                            URL (`Loading HVAC Drawing…`), the same wording the document uses later for its
+                            own data wait, so the sentence never changes while the page loads. */}
                         <Route
                           index
                           element={
-                            <React.Suspense fallback={
-                              <div className={styles.suspenseLoader}>
-                                <Spinner size="extra-tiny" />
-                                <span className={styles.suspenseLoaderText}>Loading...</span>
-                              </div>
-                            }>
+                            <React.Suspense fallback={<DesignerRouteFallback />}>
                               <DesignerPage />
                             </React.Suspense>
                           }
