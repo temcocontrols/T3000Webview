@@ -216,6 +216,19 @@ class T3Clipboard {
           T3Clipboard.PasteFromSystemEvent(clipboardData);
         }
 
+        /*
+         * The engine performs the clipboard action itself while the text-entry field owns the keyboard, so the
+         * browser's default is cancelled — the origin's behaviour (`r && t.preventDefault()` in
+         * `SDJS.Clipboard.Init`).
+         *
+         * NOT YET SAFE TO HAND BACK TO THE BROWSER: the engine's copy write goes through
+         * `navigator.clipboard.write` (`CanUseAsyncClipboard()`), which Chromium refuses when the document is not
+         * focused — the embedded designer pane reports `hidden`, so the copy silently leaves the clipboard alone.
+         * Letting the native `cut` through instead was measured to diverge: the field loses the characters but
+         * `B.Text.Edit.HandleTextEntryFieldUpdate` cannot reconcile a *shrink* (`diffResult = false` — its diff
+         * fallback is still a stub), so the engine keeps the old text. Fixing that diff is the prerequisite for
+         * handing cut/copy back to the browser.
+         */
         if (isTouchProxyFocused) {
           event.preventDefault();
         }
@@ -479,6 +492,29 @@ class T3Clipboard {
    */
   static PasteFromSystemEvent(clipboardEvent) {
     LogUtil.Debug("= T3Clipboard: PasteFromSystemEvent/ Pasting from system event: ", clipboardEvent);
+
+    /*
+     * An engine-internal copy — a canvas selection — is not a system clipboard payload: `DoCutCopy` writes
+     * `Text`/`text/plain` while `Paste()` rebuilds from `text/html`, so `header.ClipboardBuffer` stays the only
+     * complete copy of a shape. Until Ctrl+V stopped being claimed by the engine (see
+     * `KeyboardOpt.HandleKeyDown`) that buffer was reached through the engine's own `Paste` command; this
+     * listener is the only entry point now, so paste from it whenever the browser is not pasting into a field.
+     */
+    /*
+     * "Real field" excludes only the engine's own clipboard helpers: `FocusOnClipboardInput()` parks focus on
+     * `#_clipboardInput` after every canvas mouse-up, so that must not be mistaken for a text field. The
+     * text-entry proxy (`#T3TouchProxy`) deliberately IS a field here — during a text edit the browser's own
+     * paste into it is exactly what must happen.
+     */
+    const pastingIntoField = $("input:focus, textarea:focus, [contenteditable='true']:focus")
+      .not("#_clipboardInput, #_IEclipboardDiv").length > 0;
+    const hasEngineClipboard = !!T3Gv.opt.header.ClipboardBuffer || !!T3Gv.opt.textClipboard;
+
+    if (!pastingIntoField && hasEngineClipboard) {
+      LogUtil.Debug("= T3Clipboard: PasteFromSystemEvent/ Pasting from the engine's own clipboard");
+      ToolActUtil.PasteObjects();
+      return;
+    }
 
     // Define browser-specific handlers
     const browserHandlers = [

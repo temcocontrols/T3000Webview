@@ -54,6 +54,7 @@ import Hvac from '../../Hvac';
 import LogUtil from '../../Util/LogUtil';
 import ShapeUtil from '../Shape/ShapeUtil';
 import DataOpt from '../Data/DataOpt';
+import KeyboardConstant from '../Keyboard/KeyboardConstant';
 import { TEXT_ENTRY_PROXY_ID } from '../../Data/Constant/AreaIds';
 import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 
@@ -6903,11 +6904,28 @@ class OptUtil {
           break;
 
         case "keyend":
-          // Handle keyboard navigation events
-          switch (eventData.keyCode) {
+          /*
+           * The editor is asking whether the key was consumed.
+           *
+           * ENTER. A single-line text object swallows it, but a multi-line one must let it through: the
+           * browser then inserts the break into the text-entry field, and the field's `input` event carries
+           * it into the editor via `B.Text.Edit.HandleTextEntryFieldUpdate`. Swallowing it unconditionally is
+           * why a label could not be broken over two lines even once the field could hold a newline.
+           *
+           * The origin gates the same branch on `TextFlags.FormCR` (`keyend` → `case Keys.Enter`), a flag its
+           * Text Entry dialog writes (`CRTab` / `CREnter`). Its other cases dispatch into data-panel helpers
+           * (`D.Tab`, `D.NavUpDown`, `D.NavRightLeft`) with no counterpart in this port — its panels are React
+           * inputs — so Tab and the arrows stay with the engine, exactly as they behave today.
+           */
+          if (eventData.keyCode === KeyboardConstant.Keys.Enter) {
+            const textObject = ObjectUtil.GetObjectPtr(objectId, false) as any;
+            const isMultiLine = !!textObject && (textObject.TextFlags & NvConstant.TextFlags.FormCR) !== 0;
+
+            if (isMultiLine && !eventData.ctrlKey) {
+              return false;
+            }
           }
           return true;
-          break;
 
         case "edit":
           // Handle text editing

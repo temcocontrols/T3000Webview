@@ -199,7 +199,20 @@ class KeyboardOpt {
       T3Gv.userSetting.DisableCtrlArrowShapeInsert
     );
 
-    // Handle clipboard operations in Firefox (needs explicit focus on hidden div)
+    /*
+     * Ctrl+C / Ctrl+X / Ctrl+V belong to the BROWSER, not to the engine.
+     *
+     * The origin spells this as an if/else (`SDUI.MainController.HandleKeyDown`): for those three keys the
+     * command loop below is never entered — only the Firefox clipboard-div focus runs. This port had turned
+     * the `else` into a fall-through, which is what made the shortcuts dead on a text edit: the matched
+     * `Copy`/`Cut`/`Paste` command ran the engine's own path and returned falsy, so this handler called
+     * `preventDefault()`. Measured with the proxy field focused — `copy`/`cut` fired on the *document*
+     * (empty) selection rather than the field's, and `paste` never fired at all, so the field never pasted.
+     *
+     * Leaving the keys alone lets the browser act on the focused element. The engine still learns about it:
+     * `T3Clipboard`'s document `copy`/`cut`/`paste` listeners fill `T3Gv.opt.textClipboard` (and the shape
+     * clipboard), and typing reaches the editor through the field's own `input` event.
+     */
     if (modifierKey == 1 && (
       keyCode == 67 || keyCode == 99 ||  // 'C' or 'c'
       keyCode == 88 || keyCode == 120 || // 'X' or 'x'
@@ -209,9 +222,9 @@ class KeyboardOpt {
         T3Clipboard.FocusOnIEclipboardDiv();
         LogUtil.Debug('U.KeyboardUtil: Focusing on IE clipboard div for Firefox');
       }
-      // Don't return — fall through to command execution below.
-      // Previously the else{} block was skipped entirely for Ctrl+C/V/X,
-      // which meant these shortcuts silently did nothing in non-Firefox browsers.
+
+      // Never claim these keys (origin: the whole command loop lives in the `else` of this test).
+      return;
     }
 
     // Get the current selection context

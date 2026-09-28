@@ -54,6 +54,17 @@ const TEXT_ENTRY_PROXY_STYLE: React.CSSProperties = {
   textAlign: 'center',
 };
 
+/** Origin styling (`app/SmartDraw.htm`, `#_crossTabClipboardDiv`) — present in the DOM, 0×0, clipped. */
+const CLIPBOARD_HELPER_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  zIndex: 10000,
+  left: 0,
+  top: 0,
+  width: 0,
+  height: 0,
+  overflow: 'hidden',
+};
+
 export const HvacDrawingArea: React.FC<{ ids?: HvacDrawingAreaIds }> = ({ ids = DEFAULT_IDS }) => {
   const svgAreaRef = useRef<HTMLDivElement>(null);
   const { activeTool } = useHvacDesignerStore();
@@ -139,15 +150,21 @@ export const HvacDrawingArea: React.FC<{ ids?: HvacDrawingAreaIds }> = ({ ids = 
        * order does not matter) and hands it to the active editor, which then keeps it invisible,
        * off-screen and focused.
        *
+       * A `<textarea>`, not an `<input>`: a single-line input cannot hold a `\n`, so a multi-line text label
+       * could never break its line — the break is inserted *by the browser* into this field and reaches the
+       * editor through its `input` event. The origin page carries the same element (`textarea#SDTS_TouchProxy`
+       * beside the input). The engine overwrites position/size/opacity itself. `rows={1}` only avoids a tall
+       * default box before the first edit.
+       *
        * WHY IT SITS BESIDE THE CANVAS AND NOT INSIDE IT: `HvacDocument` empties `svg-area`, `h-ruler` and
        * `v-ruler` with `replaceChildren()` when it initialises, to drop the DOM a previous mount left
        * behind. Anything React renders in there is detached while React still believes it is mounted, and
        * the engine then cannot find it (measured: the input existed in the module but not in the DOM).
        * This document-area div is React's, and the engine only ever touches its four children.
        */}
-      <input
+      <textarea
         id={TEXT_ENTRY_PROXY_ID}
-        type="text"
+        rows={1}
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
@@ -156,6 +173,23 @@ export const HvacDrawingArea: React.FC<{ ids?: HvacDrawingAreaIds }> = ({ ids = 
         tabIndex={-1}
         style={TEXT_ENTRY_PROXY_STYLE}
       />
+
+      {/*
+       * The hidden clipboard fields the engine's clipboard module looks up **by id** at init
+       * (`T3Clipboard.Init` → `#_IEclipboardDiv`, `#_clipboardInput`). The origin declares them in the page
+       * (`app/SmartDraw.htm`); here the canvas owns them, and that is load-bearing: the port's `Init` returns
+       * early — *"Required DOM elements not found, skipping clipboard initialization"* — when
+       * `#_clipboardInput` is missing, so **no** `copy`/`cut`/`paste` document listener is installed and
+       * nothing the browser copies (text or shapes) ever reaches the engine.
+       *
+       * `T3Clipboard.FocusOnClipboardInput()` parks focus here after every canvas mouse-up, which is how the
+       * module recognises an engine copy; `useHtmlFocusGuard` therefore ignores these ids — otherwise a
+       * click on the canvas would look like typing in a panel and close the engine's typing gate.
+       */}
+      <div id="_crossTabClipboardDiv" style={CLIPBOARD_HELPER_STYLE}>
+        <div id="_IEclipboardDiv" contentEditable />
+        <input id="_clipboardInput" type="text" defaultValue=" " tabIndex={-1} aria-hidden="true" />
+      </div>
     </div>
   );
 };

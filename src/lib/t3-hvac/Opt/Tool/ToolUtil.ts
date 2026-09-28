@@ -761,6 +761,22 @@ class ToolUtil {
   StampCallback(objectId, options) {
     if (options.bActivateText) {
       const svgElement = T3Gv.opt.svgObjectLayer.GetElementById(objectId);
+
+      /*
+       * Text labels start multi-line — the origin's `CRFlag`, which its Text Entry dialog writes
+       * (`CRTab`/`CREnter` → `TextFlags.FormCR`). `OptUtil.TextCallback`'s `keyend` consumes Enter unless
+       * that flag is set, so without this an Enter typed into a label would do nothing instead of breaking
+       * the line.
+       *
+       * Set here and not in `DrawUtil.AddNewObject`: that path copies the flag down from the document
+       * default (`sessionData.def.textflags`, measured `0`), and the tool is the one place that knows the
+       * object came from the Text tool and should therefore begin multi-line.
+       */
+      const textObject = ObjectUtil.GetObjectPtr(objectId, true) as any;
+      if (textObject && typeof textObject.SetShapeProperties === 'function') {
+        textObject.SetShapeProperties({ CRFlag: true });
+      }
+
       TextUtil.ActivateTextEdit(svgElement);
     }
   }

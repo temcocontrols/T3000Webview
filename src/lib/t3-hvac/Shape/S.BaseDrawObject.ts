@@ -1598,8 +1598,8 @@ class BaseDrawObject {
   }
 
   SetShapeProperties(options: {
-    ClickFlag: number;
-    PositionFlag: number;
+    ClickFlag?: number;
+    PositionFlag?: number;
     CRFlag?: boolean;
     AllowSpell?: boolean;
   }): boolean {
