@@ -1378,6 +1378,17 @@ class OptUtil {
       T3Gv.opt.mainAppHammer = null;
     }
 
+    /*
+     * The drop completion is also bound to the window (`DrawUtil.DragDropNewShape`), because a click — not a
+     * pan — is what ends a drop. The gesture teardown above does not touch that binding, so it is released
+     * here, with the rest of the session.
+     */
+    if (T3Gv.Evt_StampObjectDropDone) {
+      $(window).unbind('mouseup', T3Gv.Evt_StampObjectDropDone);
+      $(window).unbind('click', T3Gv.Evt_StampObjectDropDone);
+      T3Gv.Evt_StampObjectDropDone = null;
+    }
+
     LogUtil.Debug('= O.OptUtil  UnbindDragDropOrStamp - Output: DragDrop or Stamp unbound');
   }
 

@@ -30,6 +30,7 @@ class T3Gv {
   static Evt_LMShapeHold: any;             // Event for when shape is held
   static Evt_LMShapeDoubleTap: any;        // Event for when shape is double tapped
   static Evt_StampObjectDragEnd: any;      // Event for when stamp object dragging ends
+  static Evt_StampObjectDropDone: any;     // Guarded drop completion, bound to the gesture *and* the release
   static Evt_LMMouseStpObjectDone: any;    // Event for when mouse stamp object operation completes
 
   static arrowHlkTable: any = [];          // Arrowhead lookup table

@@ -1392,8 +1392,21 @@ class AppRuntime {
     setTimeout(() => {
       if (locked.value) return;
       const target = document.querySelector(`#moveable-item-${item.id}`);
-      appStateV2.value.selectedTargets = [target];
-      selecto.value?.setSelectedTargets([target]);
+
+      if (target) {
+        appStateV2.value.selectedTargets = [target];
+        selecto.value?.setSelectedTargets([target]);
+        return;
+      }
+
+      // The designer draws objects into the SVG document, so there is no #moveable-item-* overlay
+      // element to select. Keep the selection in the app state (and re-assert the active item late)
+      // instead of storing a null DOM node, which left the placed object unselected.
+      appStateV2.value.selectedTargets = [];
+      selecto.value?.setSelectedTargets([]);
+      appStateV2.value.activeItemIndex = appStateV2.value.items.findIndex(
+        (i) => i.id === item.id
+      );
     }, 100);
     return item;
   }

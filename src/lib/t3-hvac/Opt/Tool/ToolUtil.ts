@@ -1443,7 +1443,30 @@ class ToolUtil {
   }
 
   ToolDragDropNewSymbol(symbolObject, useDragDrop) {
-    DrawUtil.DragDropNewShape(symbolObject, true, true, false, null, null);
+    /*
+     * Library symbols are placed with the **stamp** flow — the same one Box, G_Rectangle, Oval, Text and the
+     * arrows use — instead of `DragDropNewShape`.
+     *
+     * `DragDropNewShape` finishes only on the gesture recognizer's `dragend`, and it re-enables the work area's
+     * hammer before it completes, so the release can reach `Evt_WorkAreaHammerClick`, which clears the
+     * selection on any left tap. A shape placed that way was drawn at the cursor by the last mousemove but
+     * never selected.
+     *
+     * The arming is **deferred 200 ms, exactly like the stamped tools do it** (`StampOrDragDropNewShape`): the
+     * stamp flow binds its completion to the window's `mousedown`/`click`, and the click that activated this
+     * tool is still being dispatched — arriving at a binding made in the same tick, it lands outside the work
+     * area, `MouseStampObjectDone` cancels the session, `CancelObjectStamp` unbinds the handlers and the tool
+     * can no longer draw anything at all.
+     */
+    if (T3Gv.opt.stampTimeout) {
+      window.clearTimeout(T3Gv.opt.stampTimeout);
+    }
+
+    T3Gv.opt.stampTimeout = window.setTimeout(() => {
+      T3Gv.opt.stampTimeout = null;
+      DrawUtil.MouseDrawNewShape(symbolObject, true, true, false, null, null);
+    }, 200);
+
     LogUtil.Debug("= U.ToolUtil ToolDragDropNewSymbol input/output:", symbolObject, useDragDrop);
   }
 

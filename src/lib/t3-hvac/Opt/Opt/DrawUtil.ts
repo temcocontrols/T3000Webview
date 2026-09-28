@@ -266,6 +266,29 @@ class DrawUtil {
       // Set up drag end handler
       T3Gv.Evt_StampObjectDragEnd = EvtUtil.Evt_StampObjectDragEndFactory(useDefaultStyle);
 
+      /*
+       * One guarded completion, used by the gesture **and** by the plain release.
+       *
+       * A drop is a click, and `dragend` is not something this flow can count on for one: the gesture has to
+       * be started and released on the hammer's own element, and the recognizer's `isDragging` flag is shared
+       * by every hammer instance in the module (`T3Hammer`), so a release another instance consumes first
+       * leaves the drop unfinished. An unfinished drop is exactly what "the shape is not selected after I
+       * place it" looks like: the last `mousemove` has already created the object at the cursor, but nothing
+       * ever reaches `DragDropObjectDone` — the call that adds it, registers it and selects it.
+       *
+       * So the window's own release and click finish it too, the way the stamp flow already does it
+       * (`MouseDrawNewShape` binds `$(window)`'s `mousedown` and `click`). `actionStoredObjectId` is the guard
+       * that keeps the two paths from completing twice: it is `-1` whenever nothing is in flight, and every
+       * completion and cancel resets it.
+       */
+      const finishDrop = (dropEvent) => {
+        if (T3Gv.opt.actionStoredObjectId < 0) {
+          return;
+        }
+        T3Gv.Evt_StampObjectDragEnd(dropEvent);
+      };
+      T3Gv.Evt_StampObjectDropDone = finishDrop;
+
       // Initialize hammer.js for gesture handling
       if (!T3Gv.opt.mainAppHammer) {
         this.PreDragDropOrStamp();
@@ -276,9 +299,9 @@ class DrawUtil {
 
       // Register event handlers for shape dragging
       T3Gv.opt.mainAppHammer.on('mousemove', EvtUtil.Evt_StampObjectDrag);
-      T3Gv.opt.mainAppHammer.on('dragend', T3Gv.Evt_StampObjectDragEnd);
-      // T3Gv.opt.mainAppHammer.on('mouseup', T3Gv.Evt_StampObjectDragEnd);  // T3Hammer doesn't emit 'mouseup' — use 'dragend' instead
-      // T3Gv.opt.mainAppHammer.on('click', T3Gv.Evt_StampObjectDragEnd);
+      T3Gv.opt.mainAppHammer.on('dragend', finishDrop);
+      $(window).bind('mouseup', finishDrop);
+      $(window).bind('click', finishDrop);
 
       // Initialize tracking and prepare for movement
       LMEvtUtil.LMStampPreTrack();
