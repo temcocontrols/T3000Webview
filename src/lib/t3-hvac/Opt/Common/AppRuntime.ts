@@ -769,7 +769,9 @@ class AppRuntime {
         elements.push(el);
       });
       appStateV2.value.selectedTargets = elements;
-      selecto.value.setSelectedTargets(elements);
+      // `selecto.value` is null whenever the host does not mount a Selecto instance (the designer canvas
+      // renders its own), so the call has to be optional. Origin guards nothing here.
+      selecto.value?.setSelectedTargets(elements);
       appStateV2.value.activeItemIndex = null;
     }, 10);
   }
@@ -1206,7 +1208,7 @@ class AppRuntime {
     });
     setTimeout(() => {
       appStateV2.value.selectedTargets = elements;
-      selecto.value.setSelectedTargets(elements);
+      selecto.value?.setSelectedTargets(elements);
       appStateV2.value.activeItemIndex = null;
     }, 20);
   }
@@ -1391,7 +1393,7 @@ class AppRuntime {
       if (locked.value) return;
       const target = document.querySelector(`#moveable-item-${item.id}`);
       appStateV2.value.selectedTargets = [target];
-      selecto.value.setSelectedTargets([target]);
+      selecto.value?.setSelectedTargets([target]);
     }, 100);
     return item;
   }
@@ -2077,7 +2079,7 @@ class AppRuntime {
         elements.push(el);
       });
       appStateV2.value.selectedTargets = elements;
-      selecto.value.setSelectedTargets(elements);
+      selecto.value?.setSelectedTargets(elements);
       appStateV2.value.activeItemIndex = null;
       const scalPercentage = 1 / appStateV2.value.viewportTransform.scale;
       setTimeout(() => {
@@ -2327,7 +2329,7 @@ class AppRuntime {
 
     appStateV2.value.selectedTargets =
       appStateV2.value.selectedTargets.concat(targets);
-    selecto.value.setSelectedTargets(appStateV2.value.selectedTargets);
+    selecto.value?.setSelectedTargets(appStateV2.value.selectedTargets);
   }
 
   // Starts resizing an element

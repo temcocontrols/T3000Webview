@@ -22,8 +22,7 @@
  * the old value, so undo needs several presses before anything moves.
  *
  * This is **pre-existing engine behaviour** (the same stack is shared by the legacy HVAC page), not
- * something this funnel introduces — see `docs/t3000/architecture/designer/verification.md`
- * § "Known engine issues: undo fidelity" for the repro and the root cause. Deliberately NOT worked
+ * something this funnel introduces. Deliberately NOT worked
  * around here: post-operation surgery on `T3Gv.state.states` was tried and reverted, because the
  * engine pushes further states from deferred work right after `CompleteOperation`.
  */

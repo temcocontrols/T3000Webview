@@ -288,9 +288,22 @@ class T3Clipboard {
         return;
       }
 
-      // Request permission to write to clipboard (for security)
+      // Probe write permission where the browser exposes it. The probe's result is not used — the write
+      // below is the real request — and `clipboard-write` is not a valid `PermissionName` in every
+      // engine (Gecko and WebKit reject the descriptor, either as a throw or as a rejection), so the
+      // probe must never surface. Origin parity: `SDJS.Clipboard.DoCutCopy` performs the same unguarded
+      // call and leaks an uncaught rejection there.
       if (navigator && navigator.permissions && navigator.permissions.query) {
-        navigator.permissions.query({ name: "clipboard-write" }).then(() => { });
+        try {
+          const permissionProbe = navigator.permissions.query(
+            { name: "clipboard-write" } as unknown as PermissionDescriptor
+          );
+          if (permissionProbe && typeof permissionProbe.catch === "function") {
+            permissionProbe.catch(() => { /* unsupported permission name */ });
+          }
+        } catch {
+          /* the browser rejects the descriptor itself */
+        }
       }
 
       // Get the text content for clipboard
@@ -304,7 +317,10 @@ class T3Clipboard {
         };
 
         const clipboardItem = new ClipboardItem(clipboardItems);
-        navigator.clipboard.write([clipboardItem]);
+        navigator.clipboard.write([clipboardItem]).catch((error) => {
+          // Chromium refuses the write while the document is unfocused (the embedded designer pane).
+          LogUtil.Debug("= T3Clipboard: DoCutCopy/ async clipboard write rejected: ", error);
+        });
         this.FocusOnClipboardInput();
       } else if (imageInfo) {
         // Handle image content in clipboard
@@ -315,7 +331,9 @@ class T3Clipboard {
         };
 
         const clipboardItem = new ClipboardItem(clipboardItems);
-        navigator.clipboard.write([clipboardItem]);
+        navigator.clipboard.write([clipboardItem]).catch((error) => {
+          LogUtil.Debug("= T3Clipboard: DoCutCopy/ async clipboard image write rejected: ", error);
+        });
       }
 
       clipboardEvent.preventDefault();
