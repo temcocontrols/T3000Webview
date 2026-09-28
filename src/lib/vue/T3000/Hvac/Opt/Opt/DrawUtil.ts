@@ -579,6 +579,10 @@ class DrawUtil {
 
       QuasarUtil.AddCurrentObjectToAppState();
 
+      // The stamp is placed: end the click-to-place session so the shape stops following the mouse
+      // and the tool returns to the pointer.
+      EvtUtil.EndStampSession(event);
+
       LogUtil.Debug("O.Opt MouseStampObjectDone - Output: Stamp operation completed successfully");
     } catch (error) {
       LogUtil.Debug("O.Opt MouseStampObjectDone - Error:", error);

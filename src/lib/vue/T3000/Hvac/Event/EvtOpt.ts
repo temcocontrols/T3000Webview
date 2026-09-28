@@ -1030,33 +1030,34 @@ class EvtOpt {
       EvtOpt.toolOpt.SelectAct(event);
     }
 
-    // New ducts
+    // New ducts - stamp mode: a click places the duct (drag-drop mode never completes here,
+    // because it finishes on a mainAppHammer dragend which this page does not receive).
     if (selectedTool.value.name == "Duct1") {
-      EvtOpt.toolOpt.LibToolShape("Duct1", true);
+      EvtOpt.toolOpt.LibToolShape("Duct1", false);
     }
     if (selectedTool.value.name == "Duct2") {
-      EvtOpt.toolOpt.LibToolShape("Duct2", true);
+      EvtOpt.toolOpt.LibToolShape("Duct2", false);
     }
     if (selectedTool.value.name == "Duct3") {
-      EvtOpt.toolOpt.LibToolShape("Duct3", true);
+      EvtOpt.toolOpt.LibToolShape("Duct3", false);
     }
     if (selectedTool.value.name == "Duct4") {
-      EvtOpt.toolOpt.LibToolShape("Duct4", true);
+      EvtOpt.toolOpt.LibToolShape("Duct4", false);
     }
     if (selectedTool.value.name == "Duct5") {
-      EvtOpt.toolOpt.LibToolShape("Duct5", true);
+      EvtOpt.toolOpt.LibToolShape("Duct5", false);
     }
     if (selectedTool.value.name == "Duct6") {
-      EvtOpt.toolOpt.LibToolShape("Duct6", true);
+      EvtOpt.toolOpt.LibToolShape("Duct6", false);
     }
     if (selectedTool.value.name == "Duct7") {
-      EvtOpt.toolOpt.LibToolShape("Duct7", true);
+      EvtOpt.toolOpt.LibToolShape("Duct7", false);
     }
     if (selectedTool.value.name == "Duct8") {
-      EvtOpt.toolOpt.LibToolShape("Duct8", true);
+      EvtOpt.toolOpt.LibToolShape("Duct8", false);
     }
     if (selectedTool.value.name == "Duct9") {
-      EvtOpt.toolOpt.LibToolShape("Duct9", true);
+      EvtOpt.toolOpt.LibToolShape("Duct9", false);
     }
   }
 

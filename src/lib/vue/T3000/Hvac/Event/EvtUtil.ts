@@ -19,6 +19,8 @@ import LMEvtUtil from '../Opt/Opt/LMEvtUtil';
 import DrawUtil from '../Opt/Opt/DrawUtil';
 import QuasarUtil from '../Opt/Quasar/QuasarUtil';
 import LogUtil from '../Util/LogUtil';
+import { selectedTool } from '../Data/Constant/RefConstant';
+import { tools } from '../../../common';
 
 /**
  * Utility class for handling various user interaction events on an SVG document.
@@ -925,6 +927,23 @@ class EvtUtil {
    * @param stampObject - The object being stamped/placed in the document
    * @returns A function that handles stamp completion events
    */
+  /**
+   * Ends a click-to-place session: clears the stamp flag, drops the stamp tool and returns the UI to
+   * the pointer. Needed because the host page's own click/mouseup handlers never receive real
+   * work-area mouse events, so the completion has to release the tool from the engine side.
+   */
+  static EndStampSession(mouseEvent?) {
+    try {
+      T3Gv.opt.mouseStampMode = false;
+      T3Gv.opt.evtOpt?.toolOpt?.SelectAct?.(mouseEvent);
+      if (selectedTool) {
+        selectedTool.value = tools[0];
+      }
+    } catch (error) {
+      LogUtil.Debug("E.Evt EndStampSession failed:", error);
+    }
+  }
+
   static Evt_MouseStampObjectDoneFactory(stampObject) {
     LogUtil.Debug("E.Evt MouseStampObjectDoneFactory input:", stampObject);
 
@@ -933,6 +952,22 @@ class EvtUtil {
 
       // Process the stamp completion and place the object
       DrawUtil.MouseStampObjectDone(mouseEvent, stampObject);
+
+      // End the click-to-place session. Without this the placed shape keeps following the mouse and
+      // the tool stays armed, because the page's own click/mouseup handlers never receive real
+      // mouse events for the work area. Only do it for events on the work area itself, otherwise the
+      // next sidebar tool click would release the tool that was just armed.
+      try {
+        const target = mouseEvent ? mouseEvent.target : null;
+        const workArea = T3Gv.opt.workAreaElement;
+        const onWorkArea = !workArea || !target || workArea === target || workArea.contains(target);
+
+        if (onWorkArea) {
+          EvtUtil.EndStampSession(mouseEvent);
+        }
+      } catch (error) {
+        LogUtil.Debug("E.Evt MouseStampObjectDone release failed:", error);
+      }
 
       LogUtil.Debug("E.Evt MouseStampObjectDone output: object placement completed");
       return true;

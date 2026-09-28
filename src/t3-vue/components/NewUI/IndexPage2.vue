@@ -1213,6 +1213,7 @@ function viewportRightClick(ev: MouseEvent): void {
 const CANVAS_DRAG_MIN_PX = 6;
 let canvasPress: { x: number; y: number } | null = null;
 let canvasDragged = false;
+let lastPlaceTime = 0;
 
 function onCanvasMouseDown(ev: MouseEvent): void {
   if (ev.button !== 0 || locked.value) return;
@@ -1232,19 +1233,20 @@ function onCanvasMouseMove(ev: MouseEvent): void {
 }
 
 function onCanvasMouseUp(ev: MouseEvent): void {
-  const start = canvasPress;
+  const dragged = canvasDragged;
   canvasPress = null;
-  if (!start) return;
-  // A press-release without movement places the pending stamp (the engine writes it into the SVG)
-  // and releases the tool; a real press-drag is left to the engine's own drag/drop flow.
-  if (canvasDragged) {
-    canvasDragged = false;
-    return;
+  canvasDragged = false;
+  // A press-release without movement completes the pending stamp and releases the tool; a real
+  // press-drag is left to the engine's own drag/drop flow.
+  if (dragged) return;
+  if (Hvac.IdxPage2.completeStamp(ev)) {
+    lastPlaceTime = Date.now();
   }
-  Hvac.IdxPage2.completeStamp(ev);
 }
 
 function onCanvasClickLeft(ev: MouseEvent): void {
+  // The mouse-up right before this click already placed the shape; do not restart a session.
+  if (Date.now() - lastPlaceTime < 400) return;
   if (canvasDragged) {
     canvasDragged = false;
     return;
