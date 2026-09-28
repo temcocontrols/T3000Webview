@@ -46,6 +46,7 @@ import { designerLoadingLabel } from "../../kinds";
 import { HvacPropertiesPanel } from "./HvacPropertiesPanel";
 import { hvacToolGroups } from "./hvacToolGroups";
 import { useHvacAutoRecord } from "./useHvacAutoRecord";
+import { useHtmlFocusGuard } from "./useHtmlFocusGuard";
 import { hvacViewport } from "./hvacViewport";
 import { hvacHistoryCommands } from "./hvacCommands";
 import { viewportCommands } from "../../commands/viewportCommands";
@@ -385,6 +386,13 @@ export const HvacDocumentHost: React.FC<DocumentHostProps> = ({ id, query, navig
 
     const ids = useDocumentAreaIds();
     const runtime = useHvacDocumentRuntime(ctx, ids);
+
+    /*
+     * Close the engine's typing gate while any shell input owns the keyboard (origin parity —
+     * `SDUI.MainController.AcceptHTMLText`). Without it, a text object left in edit mode also consumed
+     * whatever was typed into the Properties panel, and that text landed in the drawing.
+     */
+    useHtmlFocusGuard();
 
     /*
      * Publish this document to `DesignerLayout`, which owns the areas. The layout re-renders the

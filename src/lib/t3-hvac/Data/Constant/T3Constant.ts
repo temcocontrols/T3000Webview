@@ -52,11 +52,21 @@ class T3Constant {
    * @property CurrentTextAlignment - Text alignment setting (center, left, right)
    * @property SpacebarDown - Tracks if spacebar is currently pressed
    * @property CanTypeInWorkArea - Controls if typing is permitted in the work area
+   * @property HTMLFocusControl - The HTML control that currently owns the keyboard, if any
    */
   static DocContext = {
     CurrentTextAlignment: 'center',
     SpacebarDown: false,
     CanTypeInWorkArea: true,
+    /*
+     * Origin parity (`SDUI.Resources.DocumentContext.HTMLFocusControl`).
+     *
+     * Two engine call sites already read it — `LMEvtUtil.LMMoveClick` and `S.BaseShape` — to blur the
+     * control before letting the drawing take the keyboard, and `CanTypeInWorkArea` above is what
+     * `KeyboardOpt` checks before touching a keystroke. Nothing in the port ever *wrote* either value,
+     * so the pairing was inert; `useHtmlFocusGuard` is the writer now.
+     */
+    HTMLFocusControl: null as HTMLElement | null,
     CurrentWidth: "0",
     CurrentHeight: "0"
   }

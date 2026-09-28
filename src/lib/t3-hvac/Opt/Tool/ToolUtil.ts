@@ -143,6 +143,17 @@ class ToolUtil {
   StampOrDragDropNewShape(event, shapeType, uniShapeType) {
     LogUtil.Debug('U.ToolUtil.StampOrDragDropNewShape - Input:', event, shapeType);
 
+    /*
+     * Origin parity (`SDUI.ShapeController.StampOrDragDropNewShape` blurs `HTMLFocusControl`): arming a
+     * tool drops the keyboard from whatever HTML control was being edited, so the drawing — not the
+     * panel field — owns it. The resulting `focusout` also restores `CanTypeInWorkArea`, which is what
+     * keeps the panel's typing out of the drawing.
+     */
+    const focusedControl = T3Constant.DocContext.HTMLFocusControl;
+    if (focusedControl && typeof focusedControl.blur === 'function') {
+      focusedControl.blur();
+    }
+
     // Initialize cancel flag
     let cancelOperation = false;
 

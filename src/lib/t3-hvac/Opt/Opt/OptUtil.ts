@@ -1,4 +1,6 @@
 
+import $ from 'jquery';
+
 import Document from '../../Basic/B.Document';
 import NvConstant from '../../Data/Constant/NvConstant';
 import OptConstant from "../../Data/Constant/OptConstant";
@@ -52,6 +54,7 @@ import Hvac from '../../Hvac';
 import LogUtil from '../../Util/LogUtil';
 import ShapeUtil from '../Shape/ShapeUtil';
 import DataOpt from '../Data/DataOpt';
+import { TEXT_ENTRY_PROXY_ID } from '../../Data/Constant/AreaIds';
 import { setStatusPos, setStatusName } from '@/lib/t3-hvac/Data/Constant/RefConstant';
 
 /**
@@ -208,6 +211,7 @@ class OptUtil {
   public documentElement: any;           // Document area DOM element
   public documentElementHammer: any;     // Hammer manager for document element
   public workAreaTextInputProxy: any;    // Proxy for text input in work area
+  public theVirtualKeyboardLifterElementFrame: any;  // Last frame the text proxy was positioned for
   public TEHammer: any;                  // Hammer manager for text editing
   public TEWorkAreaHammer: any;          // Hammer manager for text edit work area
   public clickAreaHammer: any;           // Hammer manager for click areas
@@ -528,6 +532,7 @@ class OptUtil {
     this.workAreaElement = null;                // Work area DOM element
     this.WorkAreaHammer = null;                 // Hammer manager for work area
     this.workAreaTextInputProxy = null;         // Proxy for text input in work area
+    this.theVirtualKeyboardLifterElementFrame = null;  // Last frame the text proxy was positioned for
 
     // Text editing and interaction handlers
     this.TEHammer = null;                       // Hammer manager for text editing
@@ -4920,21 +4925,95 @@ class OptUtil {
     return -1;
   }
 
+  /**
+   * Wires the active text editor to the off-screen `<input>` this engine types through.
+   *
+   * Port parity with the origin `LM.prototype.SetVirtualKeyboardLifter`. It is load-bearing, not
+   * cosmetic: `B.Text.Edit.HandleKeyPress` only *filters* keystrokes — insertion happens in
+   * `HandleTextEntryFieldUpdate`, driven by the native `input` event of this element
+   * (`B.Text.Edit.InitTextEntry`). Without it the caret, selection and arrow keys all work while every
+   * typed character is silently dropped.
+   *
+   * The lookup is lazy for the origin's reason: the host may render the element after the engine has
+   * initialised, and a document that never renders one simply keeps inline text entry off.
+   */
   SetVirtualKeyboardLifter(editor: any) {
+    LogUtil.Debug("= O.OptUtil SetVirtualKeyboardLifter - Input:", { editor });
 
+    const proxy = T3Gv.opt.GetWorkAreaTextInputProxy();
+
+    if (!proxy) {
+      LogUtil.Debug("= O.OptUtil SetVirtualKeyboardLifter - Output: no text-entry proxy in the document");
+      return;
+    }
+
+    // A fresh edit always starts from an empty field — the editor fills it from its own text.
+    proxy.val("");
+
+    editor.SetVirtualKeyboardHook((element: any, isActive: boolean) => {
+      T3Gv.opt.VirtualKeyboardLifter(element, isActive);
+    }, proxy);
+
+    LogUtil.Debug("= O.OptUtil SetVirtualKeyboardLifter - Output: hook registered");
+  }
+
+  /**
+   * The off-screen text-entry input (`#T3TouchProxy`), resolved on first use.
+   *
+   * Returns null when the host has not rendered it, which every caller treats as "inline text entry is
+   * unavailable" rather than an error.
+   */
+  GetWorkAreaTextInputProxy() {
+    if (this.workAreaTextInputProxy && this.workAreaTextInputProxy.length) {
+      return this.workAreaTextInputProxy;
+    }
+
+    this.workAreaTextInputProxy = $(`#${TEXT_ENTRY_PROXY_ID}`);
+
+    if (!this.workAreaTextInputProxy || !this.workAreaTextInputProxy.length) {
+      this.workAreaTextInputProxy = null;
+      LogUtil.Debug("= O.OptUtil GetWorkAreaTextInputProxy - Output: not rendered", TEXT_ENTRY_PROXY_ID);
+      return null;
+    }
+
+    LogUtil.Debug("= O.OptUtil GetWorkAreaTextInputProxy - Output: resolved", TEXT_ENTRY_PROXY_ID);
+    return this.workAreaTextInputProxy;
   }
 
   VirtualKeyboardLifter(element: any, isActive: boolean) {
     LogUtil.Debug("= O.OptUtil  VirtualKeyboardLifter - Input:", { element, isActive });
 
+    /*
+     * Resolved per call: the proxy is a DOM element the host owns, so it is re-looked-up rather than
+     * assumed. Dimension text asks for this too (`EvtUtil.Evt_DimensionTextKeyboardLifter`), and without
+     * a proxy that call is a no-op instead of a null dereference.
+     */
+    const proxy = T3Gv.opt.GetWorkAreaTextInputProxy();
+    if (!proxy) {
+      LogUtil.Debug("= O.OptUtil VirtualKeyboardLifter - Output: no text-entry proxy in the document");
+      return;
+    }
+
     if (isActive) {
       // Calculate the element's frame in document coordinates.
       const elementFrame = element.CalcElementFrame();
-      let frameChanged = false;
-      let forceUpdate = true;
+      const previousFrame = T3Gv.opt.theVirtualKeyboardLifterElementFrame;
+      /*
+       * Only reposition on a real change. This is called on activation *and* on every keyboard event, and
+       * refocusing the field each time would reset the caret the user is typing with.
+       */
+      const frameChanged = previousFrame
+        ? elementFrame.x !== previousFrame.x ||
+        elementFrame.y !== previousFrame.y ||
+        elementFrame.width !== previousFrame.width ||
+        elementFrame.height !== previousFrame.height
+        : false;
+      const forceUpdate = !previousFrame;
 
       // If the frame has changed or there's no previous frame.
       if (frameChanged || forceUpdate) {
+        T3Gv.opt.theVirtualKeyboardLifterElementFrame = Utils1.DeepCopy(elementFrame);
+
         // Convert element frame's top-left coordinates from document to window coordinates.
         let windowCoords = T3Gv.docUtil.DocObject().ConvertDocToWindowCoords(elementFrame.x, elementFrame.y);
 
@@ -4989,6 +5068,8 @@ class OptUtil {
         T3Gv.opt.workAreaTextInputProxy.focus();
       }
     } else {
+      // Leaving the edit drops the cached frame, so the next activation always repositions.
+      T3Gv.opt.theVirtualKeyboardLifterElementFrame = null;
       T3Gv.opt.workAreaTextInputProxy.css('visibility', 'visible');
       T3Gv.opt.workAreaTextInputProxy.blur();
       T3Gv.opt.workAreaTextInputProxy.val('');

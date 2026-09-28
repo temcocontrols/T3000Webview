@@ -41,6 +41,20 @@ export const DEFAULT_AREA_IDS: Record<HvacAreaKey, string> = {
     cRuler: "c-ruler"
 };
 
+/**
+ * The off-screen `<input>` the engine types through.
+ *
+ * Not a container id, so it is deliberately outside `HvacAreaKey` and not per-document: the engine holds
+ * one text-entry proxy (`OptUtil.workAreaTextInputProxy`) and the host renders one element. It is what
+ * makes inline text editing work — `OptUtil.SetVirtualKeyboardLifter` hands it to the active editor, and
+ * `B.Text.Edit.InitTextEntry` binds its native `input` event, which is what actually inserts characters.
+ * No element with this id → inline text entry stays off (the engine resolves it lazily and gives up).
+ *
+ * `T3Clipboard` looks the same element up by this literal id for its cut/copy/paste focus checks, which
+ * is why the name is the port's `T3TouchProxy` and not the origin's `SDTS_TouchProxy`.
+ */
+export const TEXT_ENTRY_PROXY_ID = "T3TouchProxy";
+
 let current: Record<HvacAreaKey, string> = { ...DEFAULT_AREA_IDS };
 
 export const AreaIds = {

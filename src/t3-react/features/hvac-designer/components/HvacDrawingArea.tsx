@@ -12,6 +12,7 @@ import styles from './HvacDrawingArea.module.css';
 import { useHvacDesignerStore } from '../store/designerStore';
 import Hvac from '@/lib/t3-hvac';
 import { isDrawing, selectedTool, continuesObjectTypes, startTransform, appState } from '@/lib/t3-hvac';
+import { TEXT_ENTRY_PROXY_ID } from '@/lib/t3-hvac/Data/Constant/AreaIds';
 
 /** Container ids. Defaults are the historical ids the engine used before it became configurable. */
 export interface HvacDrawingAreaIds {
@@ -28,6 +29,29 @@ const DEFAULT_IDS: HvacDrawingAreaIds = {
   hRuler: 'h-ruler',
   vRuler: 'v-ruler',
   cRuler: 'c-ruler',
+};
+
+/**
+ * Off-screen text-entry proxy styling.
+ *
+ * Copied from the origin page (`app/SmartDraw.htm`, `#SDTS_TouchProxy`). The engine overwrites position,
+ * size, opacity, colour and visibility itself the moment an edit starts (`OptUtil.VirtualKeyboardLifter`),
+ * so these values only matter for the window between mount and the first edit.
+ */
+const TEXT_ENTRY_PROXY_STYLE: React.CSSProperties = {
+  color: 'transparent',
+  position: 'fixed',
+  zIndex: -1,
+  left: -1000,
+  top: -1000,
+  width: 0,
+  height: 0,
+  padding: 0,
+  margin: 0,
+  border: 0,
+  borderRadius: 0,
+  touchAction: 'none',
+  textAlign: 'center',
 };
 
 export const HvacDrawingArea: React.FC<{ ids?: HvacDrawingAreaIds }> = ({ ids = DEFAULT_IDS }) => {
@@ -105,6 +129,33 @@ export const HvacDrawingArea: React.FC<{ ids?: HvacDrawingAreaIds }> = ({ ids = 
         {/* SVG content is created and managed by the t3-hvac library via DOM manipulation */}
         {/* Drawing interactions are handled via Hammer.js events bound in UIUtil.InitT3GvOpt() */}
       </div>
+
+      {/*
+       * The engine's text-entry proxy — without it inline text editing silently drops every character.
+       *
+       * Typing goes through *this* element, not through the engine's keyboard handler:
+       * `B.Text.Edit.InitTextEntry` binds its native `input` event and `HandleTextEntryFieldUpdate`
+       * inserts into the editor. `OptUtil.SetVirtualKeyboardLifter` resolves it by id (lazily, so render
+       * order does not matter) and hands it to the active editor, which then keeps it invisible,
+       * off-screen and focused.
+       *
+       * WHY IT SITS BESIDE THE CANVAS AND NOT INSIDE IT: `HvacDocument` empties `svg-area`, `h-ruler` and
+       * `v-ruler` with `replaceChildren()` when it initialises, to drop the DOM a previous mount left
+       * behind. Anything React renders in there is detached while React still believes it is mounted, and
+       * the engine then cannot find it (measured: the input existed in the module but not in the DOM).
+       * This document-area div is React's, and the engine only ever touches its four children.
+       */}
+      <input
+        id={TEXT_ENTRY_PROXY_ID}
+        type="text"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        aria-hidden="true"
+        tabIndex={-1}
+        style={TEXT_ENTRY_PROXY_STYLE}
+      />
     </div>
   );
 };
