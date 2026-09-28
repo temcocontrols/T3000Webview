@@ -11,7 +11,7 @@ LM = project-editor/store/layout-models.tsx        (tab JSON :62-186, borders :2
 
 ---
 
-## 1. Where the panels live today (the map that must be projected)
+## 1. Where the panels live (the map that is projected)
 
 `rootEditor` (`LM:403-500`, **version 129**) is a 3-column row:
 
@@ -21,7 +21,7 @@ LM = project-editor/store/layout-models.tsx        (tab JSON :62-186, borders :2
 | middle | 47.6 | tabset `id="EDITORS"` (`LM:471-478`), `enableDeleteWhenEmpty:false`, children `[]` — editors are added at runtime by `EditorsStore.openEditor` |
 | right | 20 | tabset `id="PROPERTIES"` → `propertiesPanel` (`LM:479-490`) |
 
-**`borders`** (`LM:264-337`) — this is what my earlier docs got wrong:
+**`borders`** (`LM:264-337`) — the part that breaks the "left = navigation, right = properties" assumption:
 
 | Border | Size | Tabs, in order |
 |---|---|---|
@@ -38,13 +38,13 @@ Two runtime additions that change the picture:
 * `BREAKPOINTS_PALETTE` is added next to `COMPONENTS_PALETTE` when `flowSupport` (`:2208-2213`).
 
 `enableTabs()` (`project.tsx:2034-2222`) gates what exists for an LVGL project:
-`styles` ✅ (mandatory), `lvgl-groups` ✅ (mandatory), `themes` ✅ (always), `changes` ✅ (not optional),
-`fonts`/`bitmaps`/`texts`/`scpi`/`instrument-commands`/`iext` **only if the project file has them**,
-`BREAKPOINTS_PALETTE` iff `settings.general.flowSupport`,
+`styles`, `lvgl-groups`, `themes` and `changes` are mandatory;
+`fonts`/`bitmaps`/`texts`/`scpi`/`instrument-commands`/`iext` **only if the project file has them**;
+`BREAKPOINTS_PALETTE` iff `settings.general.flowSupport`;
 `COMPONENTS_PALETTE` per user setting. `enableTab` only adds-if-absent and needs its anchor tab to exist
 (`:2050-2062`), otherwise the add is silently skipped.
 
-## 2. The shell projection (what P2 must implement)
+## 2. The shell projection
 
 | Shell region | Projected from | Tabs (LVGL, typical file) |
 |---|---|---|
@@ -54,12 +54,12 @@ Two runtime additions that change the picture:
 | **bottom** | `borders.bottom` | Checks · Output · Search · References (collapsed) |
 | **top** | `ProjectEditorView`'s `<Toolbar/>` (`PE:86`) + the backend status bar | |
 
-**A side is two things, and they are drawn as two** (2026-09-19). The **column** is the region body, with its
+**A side is two things, and they are drawn as two.** The **column** is the region body, with its
 normal top tab strip; the **border** is a *rail* — a bar of rotated tabs pinned to the window edge, whose
 selected tab opens a 240 px column beside it (`size: 240`, `LM:276,326`; the bar itself is flexlayout's
-measured `borderBarSize`, 26 px in the shell). Projected as `ProjectedRegion.body` and `ProjectedRegion.border`
+`borderBarSize`, 26 px in the shell). Projected as `ProjectedRegion.body` and `ProjectedRegion.border`
 (`panels` stays the union, `stripPanels()` is what the strip may show). Merging the two into one strip is a
-measured defect, not a style choice: the right side needed 471 px of tabs and had 228 px, so five of its eight
+a real defect, not a style choice: the right side needs 471 px of tabs and has 228 px, so five of its eight
 tabs were unreachable, and the left border's five were not drawn at all. Clicking a rail tab uses
 `Actions.selectTab` directly, because flexlayout **toggles** a border there (`Model.js`, `BorderNode` branch)
 while EEZ's own `layoutModels.selectTab` deliberately skips an already-selected tab. A border with no tabs
@@ -75,7 +75,7 @@ Projection rules:
 4. Widths: left 240 / right 240 to match `LM:276, 326`; user drags persist per kind.
 5. `reset panels` → `LayoutModels.reset()` (`LM:1185-1190`).
 
-### The root model is not one model (2026-09-20)
+### The root model is not one model
 
 `layoutModels.root` is a **computed**, swapped per mode (`LM:226-234`) — but the model alone does **not** say what
 the shell must draw, because `ProjectEditor.Content` returns the runtime page *instead of* the workbench
@@ -120,18 +120,18 @@ Legend: **aE** = needs `editorsStore.activeEditor`; **FL** = renders its own `Fl
 | 1 | `pages` (`"PAGES"`) | `ui-components/ListNavigation.tsx` | title row (sort, search, add/delete) + `Tree` | – | – | `Tree` measures rows + `scrollIntoView` (`Tree.tsx:382-600, 83, 316`) → needs a real box; `onFocus` sets `navigationStore.selectedPanel` (`:330-336`) | `MOVED` to the left region; keep |
 | 2 | `widgets` (`"WIDGETS"`) | same | same | – | – | as #1 | same |
 | 3 | `actions` (`"ACTIONS"`) | same | same | – | – | clicking opens `ActionEditor` (only if `flowSupport`) | same |
-| 4 | `flow-structure` (no id) | `features/page/PagesNavigation.tsx` (`PageStructure:56`) | toolbar (38 px) + widget `Tree` | **YES** (`:82-104`) | – | renders `<div className="EezStudio_PageStructure_NoPageSelected">` (`:438`) unless `activeEditor.object instanceof PageClass` | `MOVED`; **the hard `activeEditor` dependency is the #1 argument for the P2.0 spike** |
+| 4 | `flow-structure` (no id) | `features/page/PagesNavigation.tsx` (`PageStructure:56`) | toolbar (38 px) + widget `Tree` | **YES** (`:82-104`) | – | renders `<div className="EezStudio_PageStructure_NoPageSelected">` (`:438`) unless `activeEditor.object instanceof PageClass` | `MOVED`; **the hard `activeEditor` dependency is why the panel projection needs the active editor resolved without a rendered tabset** |
 | 5 | `variables` (`"VARIABLES"`) | `features/variable/VariablesNavigation.tsx` | `SubNavigation` pills (Global/Local/Structs/Enums) + list | partial (`:31`, Local only) | – | "Local" pill disappears when no page/action editor is active (`:65-82`) | `MOVED` |
 | 6 | `styles` (`"styles"`) | `features/style/StylesNavigation.tsx` | switch → `LVGLStylesNavigation` (`lvgl/style.tsx:749`) for LVGL | – | **YES** (`layoutModels.lvglStyles`, `lvgl/style.tsx:781`; 75/25, preview draws to a **canvas**) | nested FlexLayout inside a panel | `MOVED`; both models keep rendering |
 | 7 | `fonts` (`"fonts"`) | `features/font/FontsNavigation.tsx` | single `ListNavigation` | – | – | For LVGL, clicking a font opens **nothing** unless `params.forceOpenEditor` (`EditorComponentFactory.tsx:52-54`) | `MOVED`; document the dead click |
 | 8 | `bitmaps` (`"bitmaps"`) | `features/bitmap/BitmapsNavigation.tsx` | nested 75/25: list + `BitmapEditor` | – | **YES** (`layoutModels.bitmaps`, `:87`) | file drag-and-drop onto the list (`:63-79`) | `MOVED` |
-| 9 | `changes` (`"changes"`) | `features/changes/navigation.tsx` | toolbar (Refresh, Compare) + revisions `List` | – | – | **uses `@electron/remote` `dialog`/`getCurrentWindow`** (`:1`) | `MOVED`; Web build must degrade (check what it does today) |
+| 9 | `changes` (`"changes"`) | `features/changes/navigation.tsx` | toolbar (Refresh, Compare) + revisions `List` | – | – | **uses `@electron/remote` `dialog`/`getCurrentWindow`** (`:1`) | `MOVED`; `@electron/remote` `dialog`/`getCurrentWindow` are unavailable in the web build |
 | 10 | `texts` (`"texts"`) | `features/texts/navigation.tsx` | nested 3 tabsets: statistics / resources / languages | – | **YES** (`layoutModels.texts`, `:331`) | XLIFF import/export via Electron file APIs | `MOVED` |
 | 11 | `scpi` (`"scpi"`) | `features/scpi/ScpiNavigation.tsx` | nested: subsystems/enums + commands | – | **YES** (`layoutModels.scpi`, `:52`) | `NavigationComponentFactory.tsx:378-409` selects **inner** tabs — those calls stay inner | `MOVED` |
 | 12 | `instrument-commands` (`"instrument-commands"`) | `features/instrument-commands/InstrumentCommandsNavigation.tsx` | single `ListNavigation` + refresh | – | – | opens an **absolutely-positioned `<iframe>`** editor (`:88-95`) | `MOVED`; the iframe needs a positioned ancestor in the canvas slot |
 | 13 | `extension-definitions` (`"iext"`) | `features/extension-definitions/extension-definitions.tsx` | single `ListNavigation` | – | – | **not wrapped in `observer()`** (`:33`) → most likely panel to go stale in a new shell | `MOVED`; **`MOD`: add `observer`** or ensure the shell re-renders it on project change |
 | 14 | `propertiesPanel` (`"PROPERTIES"`) | `project/ui/PropertiesPanel.tsx` | header (icon + title) + `PropertyGrid`(s) | indirect (`navigationStore.propertyGridObjects` falls back to `activeEditor`, `store/navigation.ts:505-520`) | – | imperative scroll restore via `bodyRef.scrollTop` (`:63-84`); `PropertyGrid` popovers use `getBoundingClientRect` + `window.inner*` | `MOVED` to the right region, first tab |
-| 15 | `componentsPalette` (`"COMPONENTS_PALETTE"`) | `flow/editor/ComponentsPalette.tsx` | sub-tabs Widgets/Actions + draggable items | **YES** (`:245-252` forces "actions" when an Action is active) | – | HTML5 drag + a **global** `DragAndDropManager`; the drop target is the flow editor canvas | `MOVED`; drag-and-drop must be re-verified across regions |
+| 15 | `componentsPalette` (`"COMPONENTS_PALETTE"`) | `flow/editor/ComponentsPalette.tsx` | sub-tabs Widgets/Actions + draggable items | **YES** (`:245-252` forces "actions" when an Action is active) | – | HTML5 drag + a **global** `DragAndDropManager`; the drop target is the flow editor canvas | `MOVED`; the drop target of a drag from this palette is the canvas, not the region |
 | 16 | `breakpointsPanel` (`"BREAKPOINTS_PALETTE"`) | `flow/debugger/BreakpointsPanel.tsx` | `Panel` with 3 buttons + list | – | – | present in **both** the editor root and the runtime model → the same component can mount twice | `MOVED` |
 | 17 | `themesSideView` (`"themes"`) | `features/style/theme.tsx` | nested: themes list + colour list | – | **YES** (`layoutModels.themes`, `:304`) | can display a **different** project's themes (master project) → `readOnly` | `MOVED` |
 | 18 | `checksMessages` (`"CHECKS"`) | `ui-components/Output.tsx` (`Messages:94`) | `Tree` of messages | – | – | **`scrollIntoView` on every update** (`:118-136`) can scroll ancestors; tab label/icon/badge come from `onRenderTab` (`PE:302-348`) | `MOVED` to the bottom dock |
@@ -182,9 +182,9 @@ is the corresponding panel (#6, #7, #8, #10, #17, #23).
 | Global `window` listener | `DockerSimulatorPreviewPanel.tsx:20-33` | double-ingest if two instances mount | one instance only |
 | Duplicate DOM ids | `ActiveFlowsPanel.tsx:64,74`; **all FlowEditor containers keyed by `viewState.containerId` guid** (`flow/flow-tab-state.tsx:17`; queried in `bounding-rects.ts:38,208,96` and `mouse-handler.tsx:601…1654`) | **duplicating the same `FlowTabState` in two places breaks all drag math** — the strongest argument for D3 (one document, one editor instance at a time) | never render the same editor twice |
 | Tab chrome owned by FlexLayout | `onRenderTab` (`PE:298-455`): labels, icons, `(n)` badges, loader, attention dot, italic non-permanent titles, middle-click close, `@electron/remote` context menu | losing it loses badges/close behaviour | the shell's `PanelTab` must re-provide: `label`, `icon`, `badge()`, `closable`, `onClose` (§`../interfaces.md` §3.2) |
-| `selectTab` assumptions | 27 call sites (see §6) | silent no-op today, but a *missing* tab means the UI cannot reveal itself | map `selectTab(root, CHECKS/OUTPUT/REFERENCES/PROPERTIES/…)` onto the shell's "open this region/tab" command |
+| `selectTab` assumptions | 27 call sites (see §6) | a silent no-op, but a *missing* tab means the UI cannot reveal itself | map `selectTab(root, CHECKS/OUTPUT/REFERENCES/PROPERTIES/…)` onto the shell's "open this region/tab" command |
 | Not an observer | `extension-definitions.tsx:33` | stale panel | `MOD`: wrap in `observer()` |
-| Electron APIs | `changes/navigation.tsx`, `changes/editor.tsx`, `Output.tsx`, `PE:436-455`, dialogs | web-build behaviour for those panels | verify what they do in the web build today; do not regress |
+| Electron APIs | `changes/navigation.tsx`, `changes/editor.tsx`, `Output.tsx`, `PE:436-455`, dialogs | `@electron/remote` `dialog`/`getCurrentWindow` — the web build does not provide them | those panels must keep working in the web build |
 
 ## 6. `selectTab` call sites the shell must honour
 
@@ -203,7 +203,7 @@ All from `store/navigation.ts:104-150`, `super(…)`, and `project/ui/Navigation
 | `DEBUGGER_TAB_ID` | `store/index.ts:1352-1355` (no matching node → already a no-op), `flow/runtime/runtime.ts:248`, `wasm-runtime.tsx:211` |
 | editor tab activation | `store/editor.ts:599-602`, `flow/editor/editor.tsx:658`, `viewer.tsx:301`, `Toolbar.tsx:504` |
 
-## 7. Panels that depend on `activeEditor` (the P2.0 spike list)
+## 7. Panels that depend on `activeEditor`
 
 Hard: `flow-structure` (`PagesNavigation.tsx:82`), `componentsPalette` (`:245`), `watch` (`:687`),
 `lvgl-groups` partially (`groups.tsx:382, 396, 425`).
@@ -214,15 +214,14 @@ Non-panel consumers: `Toolbar.tsx:181,189,513-516`, `timeline.tsx:2551`, `runtim
 
 `EditorsStore.refresh()` derives `activeEditor` from tab nodes and requires `parentNode.isActive()` **or**
 `!this.activeEditor` (`store/editor.ts:358-367`), while `openEditor` sets `activeEditor` directly (`:555`).
-That is exactly what the spike must confirm with the root model **unrendered**
-(`../phases/p2-lvgl-document.md` §2).
+The active editor therefore has to resolve with the root model **unrendered**.
 
 ## 8. What must change in EEZ, in one list
 
 | Mark | File | Change |
 |---|---|---|
 | `MOVED` | `ProjectEditor.tsx:109-295` | extract `factory` → `panelRegistry.ts`; `ProjectEditor` imports it |
-| `MOD` | `store/editor.ts` | **only if the spike fails**: additive `selectActiveEditor(editor)` / override path; nothing removed |
+| `MOD` | `store/editor.ts` | `refresh()` derives `activeEditor` from the tab set's active tab, since no tabset is rendered under the shell; `openEditor` is unchanged |
 | `MOD` | `ProjectEditor.tsx:253-277, 298-455` | re-provide the tab-chrome behaviours (`onRenderTab` badges/labels/close) on the shell's `PanelTab` |
 | `MOD` | `store/index.ts:509, 810, 828, 850, 1352` + `NavigationComponentFactory.tsx` | `selectTab(root, …)` → also notify the shell to open the matching region/tab |
 | `MOD` | `features/extension-definitions/extension-definitions.tsx:33` | add `observer()` |

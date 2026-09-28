@@ -1,6 +1,6 @@
 # The Designer shell — area-by-area design
 
-Six areas + nine states. This is the `NEW` work of P1 ([`../phases/p1-shell-hvac.md`](../phases/p1-shell-hvac.md));
+Six areas + nine states. This is the `NEW` work of P1;
 every later phase plugs into it.
 
 ```
@@ -45,15 +45,15 @@ Behaviour matrix:
 | Case | Renders |
 |---|---|
 | **0 tabs** | the region is not rendered at all (and its splitter disappears) |
-| **1 tab** | a plain **header** (label + collapse chevron + optional footer) — this is what keeps the HVAC document looking exactly like today |
+| **1 tab** | a plain **header** (label + collapse chevron + optional footer) — this is what keeps the HVAC document looking like the existing page |
 | **≥2 tabs** | header row **plus** a tab strip; the active tab's content below |
 | `secondary` present | a second column (drag-resizable) next to the tab body — used by the LCD document (`PageTabs`) and available to the LVGL palette/structure if option B is chosen |
 | `collapsible:false` | no chevron, no toggle from the top bar |
 | `badge()` returns a number | a count chip on the tab (Checks/Output/Search/References) |
 
-Content is memoised per `tab.id` so switching tabs does not unmount the others' trees more than necessary
-(R17). Widths/collapse/active-tab persist per **document kind** in `localStorage["t3.designer.layout"]`
-(Q5). Splitters reuse the repo recipe (`MainLayout.tsx:56-63` style, `:142-172` drag math, including the
+Content is memoised per `tab.id` so switching tabs does not unmount the others' trees more than necessary.
+Widths/collapse/active-tab persist per **document kind** in `localStorage["t3.designer.layout"]`.
+Splitters reuse the repo recipe (`MainLayout.tsx:56-63` style, `:142-172` drag math, including the
 `document.body.style.cursor/userSelect` guards at `:246-275`).
 
 **Region assignment per kind** — the authority for what each document puts where:
@@ -69,10 +69,10 @@ Content is memoised per `tab.id` so switching tabs does not unmount the others' 
 
 ## 3. `CanvasHost` — the one area an engine owns
 
-* Element is created once per document and **never re-keyed** (R1: the HVAC engine cannot be re-initialised;
-  R7: the EEZ root is its own React root).
+* Element is created once per document and **never re-keyed** (the HVAC engine cannot be re-initialised;
+  the EEZ root is its own React root).
 * Resize → `ResizeObserver` → debounced (100 ms) `adapter.onCanvasResize?.()`; HVAC maps it to
-  `T3Gv.docUtil.HandleResizeEvent()` (`DocUtil.ts:659`), replacing today's two fixed `setTimeout` refreshes
+  `T3Gv.docUtil.HandleResizeEvent()` (`DocUtil.ts:659`), replacing the two fixed `setTimeout` refreshes
   (`HvacDesignerPage.tsx:109-121`) and the collapse-triggered one (`:149-160`).
 * `position: relative`, `overflow: hidden`, `flex:1`, `minWidth:0`, `minHeight:0`;
   background `tokens.colorNeutralBackground3`.
@@ -87,9 +87,9 @@ Content is memoised per `tab.id` so switching tabs does not unmount the others' 
 
 | Change | Detail |
 |---|---|
-| `MOD` `useEditorCommands.emitEditorStatus` (`:24-32`) | **nothing dispatches `t3-editor-status` anywhere today** — only its definition, the barrel, and a doc mention. The shell's adapters become the first producers |
+| `MOD` `useEditorCommands.emitEditorStatus` (`:24-32`) | **nothing dispatches `t3-editor-status`** — only its definition, the barrel, and a doc mention. The shell's adapters publish it |
 | `FIX-OPPORTUNITY` in `EditorStatusBar.tsx` | `zoom` can never be cleared back to `null` by an event (`detail.zoom ?? s.zoom`, `:44`) — once set, the `%` chip is permanent. Fix to `detail.zoom === undefined ? s.zoom : detail.zoom` |
-| HVAC publisher | a small adapter poller converts the engine's module-level scalars into events (see [`hvac-document.md`](./hvac-document.md) §4). Today the page passes props from `useStatusMessage()` instead |
+| HVAC publisher | a small adapter poller converts the engine's module-level scalars into events (see [`hvac-document.md`](./hvac-document.md) §4). The page passes props from `useStatusMessage()` instead |
 | LVGL publisher | page size, zoom, `isModified`, Checks/Output counts |
 | Shell items | document kind, and (LVGL) the backend health chip moved from `EezStudioApp.tsx:110-150` |
 
@@ -109,12 +109,12 @@ be its own scroll container.
 | **Loading (route)** | `DesignerPage` Suspense fallback | keep the existing pattern (`Spinner` + "Loading …", `App.tsx:492-503` style) |
 | **Loading (document)** | inside the canvas slot | adapter-supplied; HVAC `useDrawing().isLoading` spinner (`HvacDesignerPage.tsx:173-179`), LVGL: backend + project open |
 | **Error (document)** | canvas slot, full-area | adapter-supplied error + Retry + "Back to Design Hub"; HVAC error page (`:181-187`), LVGL backend-unreachable panel (`EezStudioApp.tsx:425-483`) |
-| **Unknown kind** | whole page | **`NEW` and required**: the app has no catch-all route (`App.tsx:620` is a comment), so the shell renders the valid kinds as links + a Hub link (R6) |
+| **Unknown kind** | whole page | **`NEW` and required**: the app has no catch-all route (`App.tsx:620` is a comment), so the shell renders the valid kinds as links + a Hub link |
 | **Unknown document id** | canvas slot | "This drawing/project no longer exists" + back link |
 | **Panel empty** | region body | adapter supplies (`No selection`, `Multiple objects selected`, `No page selected`, empty tree) |
 | **No selection** | right region + status | HVAC: name falls back to `'Shape'` and coords go blank (`EditorStatusBar.tsx:65`, `useStatusMessage.ts:7-10`); LVGL: "Nothing selected" (`PropertiesPanel.tsx:102-120`) |
-| **Multi-selection** | right region | HVAC: today the engine reports only the *target* object (`SelectUtil.ts:194-212` — no count anywhere). The new inspector adds a count + shared-fields-only view. LVGL: already "Multiple objects selected" |
-| **Unsaved changes** | status bar | chip only; no navigation guard (Q6) |
+| **Multi-selection** | right region | HVAC: the engine reports only the *target* object (`SelectUtil.ts:194-212` — no count anywhere). The new inspector adds a count + shared-fields-only view. LVGL: already "Multiple objects selected" |
+| **Unsaved changes** | status bar | chip only; no navigation guard |
 | **Engine loading/failed (LVGL WASM)** | canvas slot | `SvgPaintFailure` reasons are already surfaced by the SVG surface (`page-runtime-svg.ts`); the shell just gives it a box |
 
 ## 7. Dialogs the shell owns
@@ -125,18 +125,18 @@ be its own scroll container.
 | About / shortcut help | top-bar overflow | optional |
 
 Everything else (New drawing, Import, Templates, Create LVGL, Examples) stays in the Design Hub —
-see [`design-hub.md`](./design-hub.md). Q3 default: the Designer does not own creation dialogs.
+see [`design-hub.md`](./design-hub.md). The Designer does not own creation dialogs.
 
-## 8. What changes in P1 vs today, in one list
+## 8. What P1 changes, in one list
 
 | # | Change | Risk |
 |---|---|---|
 | 1 | `NEW` six shell components + layout store + 2 hooks | low |
 | 2 | `MOVED` the layout styles out of `HvacDesignerPage.tsx` (`mainApp/mainPanel/mainArea/leftPanel/drawingArea`, `:27-83`) into the shell, literals → tokens | low |
 | 3 | `MOD` canvas layout: `ResizeObserver` replaces the two `setTimeout` refreshes and the collapse-triggered one | medium — verify the first-frame centring; keep one `rAF` retry, and a +150 ms retry only if needed |
-| 4 | `MOD` mount-once guard + stable canvas element | high if wrong (R1) — covered by a dedicated unit test |
-| 5 | `NEW` right region for HVAC (the fourth area does not exist today) | medium — the engine has no event bus (R9), so it polls; see [`hvac-document.md`](./hvac-document.md) §6 |
+| 4 | `MOD` mount-once guard + stable canvas element | high if wrong — covered by a dedicated unit test |
+| 5 | `NEW` right region for HVAC (the fourth area does not exist) | medium — the engine has no event bus, so it polls; see [`hvac-document.md`](./hvac-document.md) §6 |
 | 6 | `MOD` status bar becomes event-driven | low; fix the `zoom` sticky bug at the same time |
-| 7 | `MOD` menu set resolved by document kind, branch ordered before `/t3000/design` | low but 100 % visible if missed (R4) |
+| 7 | `MOD` menu set resolved by document kind, branch ordered before `/t3000/design` | low but 100 % visible if missed |
 | 8 | `NEW` unknown-kind / unknown-id states | low |
 | 9 | `NEW` `designer-shell.test.ts` (incl. the no-engine-import guard) | — |

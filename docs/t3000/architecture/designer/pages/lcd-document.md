@@ -1,12 +1,11 @@
 # The LCD/simulator document, area by area (P5)
 
-> **Status: delivered in its simplest useful form.** `documents/lcd/LcdDocument.tsx` hosts the existing
-> `Tstat10SimulatorPage` in the shell's canvas slot and gives it the `#page-header-actions` target inside the
-> shell's top bar — so the page's **Design ⇄ View toggle renders for the first time** (under `MinimalLayout`
-> the portal target did not exist, `:41` below). `/t3000/tstat10-simulator` redirects to
+> `documents/lcd/LcdDocument.tsx` hosts the existing `Tstat10SimulatorPage` in the shell's canvas slot and gives
+> it the `#page-header-actions` target inside the shell's top bar, so the page's **Design ⇄ View toggle renders**
+> (under `MinimalLayout` the portal target does not exist, `:41` below). `/t3000/tstat10-simulator` redirects to
 > `/t3000/designer/lcd-ui`.
 >
-> Measured: `#/t3000/tstat10-simulator` → `#/t3000/designer/lcd-ui`, the designer top bar renders, the toggle is
+> `#/t3000/tstat10-simulator` → `#/t3000/designer/lcd-ui`, the designer top bar renders, the toggle is
 > present and both modes work (Design: “Widget Toolbox … Label … Header …”; View: “22.4 °C SET 22.00 FAN AUTO /
 > Tstat10 Debug …”), no console errors.
 >
@@ -20,7 +19,7 @@ Source: `pages/Tstat10SimulatorPage.tsx` (`export const Tstat10SimulatorPage: Re
 
 ---
 
-## 1. Today's structure — two layouts in one component, switched by mode
+## 1. Current structure — two layouts in one component, switched by mode
 
 `useDesignerState()` (`hooks/useDesignerState.ts:14, 68`) → `mode: 'design' | 'view'`, `setMode`.
 The page early-returns one of two trees (`:336` design, `:390` view).
@@ -48,11 +47,11 @@ The page early-returns one of two trees (`:336` design, `:390` view).
 
 ## 2. What the Designer changes
 
-| Today | In the Designer | Mark |
+| Current | In the Designer | Mark |
 |---|---|---|
 | Fixed 170 + 140 + 240 px inside the page | left region `170px` + `RegionSpec.secondary` `140px` (`PageTabs`), right region `240px` | `MOVED` |
 | Two hard-coded layouts switched in `render()` | one shell + `useLayout()` returning region content per mode | `MOD` |
-| Design/View `ToggleButton` pair portalled into `#page-header-actions` (`:298-302`), rendered at `:330`, `:339`, `:400` | rendered in `top.content` — **this also fixes a live defect**: under `MinimalLayout` the portal target is `null` (`PageHeader` exists only in `MainLayout`), so the toggle does not render at all today (`pages/app-routes.md` §7) | `MOD` + `FIX-OPPORTUNITY` |
+| Design/View `ToggleButton` pair portalled into `#page-header-actions` (`:298-302`), rendered at `:330`, `:339`, `:400` | rendered in `top.content` — under `MinimalLayout` the portal target is `null` (`PageHeader` exists only in `MainLayout`), so the toggle would not render at all (`pages/app-routes.md` §7) | `MOD` + `FIX-OPPORTUNITY` |
 | Page-local `useDesignerState` mode | same hook; the shell adds commands `view.toggleMode` so the menu bar / shortcut can flip it | `MOD` (small) |
 | `DesignCanvas` fills `flex:1` inside the page | canvas slot; keep `alignItems:center` + `overflowY:auto` in the adapter's canvas wrapper so the auto-scale maths (`:190-201`) still sees a real box | `MOD` |
 | `DebugPanel` (`components/DebugPanel.tsx:14`, with a `mobileRoot` variant `:97`) | stays as the document's bottom dock (or `secondary`), collapsed by default | `MOVED` |
@@ -83,7 +82,7 @@ The page early-returns one of two trees (`:336` design, `:390` view).
 
 ## 5. Verification
 
-Behavioural parity with today's `/t3000/tstat10-simulator`: create/edit a page in both, compare the rendered
+Behavioural parity with `/t3000/tstat10-simulator`: create/edit a page in both, compare the rendered
 LCD (pixel-compare the bezel area), verify drag from the toolbox, property edits, page add/delete, the
-auto-scale at several window sizes (including below the `0.3` clamp), and that the mode toggle is now
-**visible** (it is not today).
+auto-scale at several window sizes (including below the `0.3` clamp), and that the mode toggle is
+**visible** (under `MinimalLayout` it is not).

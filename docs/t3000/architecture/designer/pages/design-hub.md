@@ -4,9 +4,9 @@
 **every** designer URL is minted, which is why P4 touches it more than any other feature — and why the
 *consumers* are all still `UNCHANGED`: they navigate with a `openPath` they are handed.
 
-Since the closing pass the two **sources** mint canonical URLs — `drawingTypes.ts` and the services call
+The two **sources** mint canonical URLs — `drawingTypes.ts` and the services call
 `designerPath(kind, id?)` (`features/designer/kinds.ts`), the same function `legacyRedirects.ts` uses — so no
-hub link depends on the redirect hop any more (verified by `designer-route-links.test.ts`, which pins the two
+hub link depends on the redirect hop any more (pinned by `designer-route-links.test.ts`, which pins the two
 directions against each other).
 
 ---
@@ -35,30 +35,30 @@ Delete). Its **Open** is the only designer navigation: `window.location.hash = \
 
 ## 2. Dialogs / panels that navigate into a designer route
 
-| Component | User action | Target | Line | Phase change |
+| Component | User action | Target | Line | Change |
 |---|---|---|---|---|
 | `NewDrawingDialog` | tile → device (+ graphic slot, + name) → **Create & Open** | `${type.openPath}?device=…&graphic=…&name=…` | `:137-141`, navigate `:147-156` | `UNCHANGED` (registry-driven) |
-| `LvglCreateDialog` | create LVGL / LVGL+Flow project | `` `${designerPath(lvglKind)}?new=<wizardType>&name=&location=&createDirectory=` `` | `:189` | **DONE** — `lvglKind` follows the type (`lvgl-flow-9-5` for the Flow type, matching its own `hasFlowSupport`) |
-| `LvglCreateDialog` (load from device) | import over REST, then open | `` `${designerPath(lvglKind)}?open=<path>` `` | `:273` | **DONE** |
-| `EezExampleCreateDialog` | pick an example, create | `` `${designerPath(isFlow ? 'lvgl-flow-9-5' : 'lvgl-9-5')}?examples=1&type=…` `` | `:100` | **DONE** — the example's own `type` decides the kind |
+| `LvglCreateDialog` | create LVGL / LVGL+Flow project | `` `${designerPath(lvglKind)}?new=<wizardType>&name=&location=&createDirectory=` `` | `:189` | `CHANGED` — `lvglKind` follows the type (`lvgl-flow-9-5` for the Flow type, matching its own `hasFlowSupport`) |
+| `LvglCreateDialog` (load from device) | import over REST, then open | `` `${designerPath(lvglKind)}?open=<path>` `` | `:273` | `CHANGED` |
+| `EezExampleCreateDialog` | pick an example, create | `` `${designerPath(isFlow ? 'lvgl-flow-9-5' : 'lvgl-9-5')}?examples=1&type=…` `` | `:100` | `CHANGED` — the example's own `type` decides the kind |
 | `EezExamplesDrawer` | browses the catalog; opens the dialog (`:238-241`) | — | | `UNCHANGED` |
 | `ImportDialog` | import SVG/JSON → jump into the editor | `navigate(result.openPath)` | `:44` | `UNCHANGED` (`openPath`) |
 | `TemplatesSection` | create from template | `navigate(project.openPath)` | `:24-26` | `UNCHANGED` — **currently unmounted** (`DesignHubPage:20-27`) |
 | `CommandPalette` | Ctrl+K commands | as above | `:44, 52-58, 60-68, 124` | `UNCHANGED` |
 | `ProjectCard` | green **Open** | `#${project.openPath}` | `:100` | `UNCHANGED` |
 | `ActivityPanel` | recent-activity row | `#${p.openPath}` | `:74` | `UNCHANGED` — **currently unmounted** |
-| `DesignMenuBar` | File ▸ New Drawing / Back to Hub / … | `designerPath('hvac-schematic')` (`:114`), `/t3000/design` (`:113`) | | **DONE** — still **exported (`index.tsx:6`) but rendered nowhere**; if it is revived it must use the registry |
-| `NewTypeDialog` | user registers a custom type (hidden by `getAllDrawingTypes`) | `designerPath('hvac-schematic')` as default **and** placeholder | `:39, 49, 70, 113` | **DONE** (the field stays free text — a custom type may point anywhere) |
+| `DesignMenuBar` | File ▸ New Drawing / Back to Hub / … | `designerPath('hvac-schematic')` (`:114`), `/t3000/design` (`:113`) | | `CHANGED` — still **exported (`index.tsx:6`) but rendered nowhere**; if it is revived it must use the registry |
+| `NewTypeDialog` | user registers a custom type (hidden by `getAllDrawingTypes`) | `designerPath('hvac-schematic')` as default **and** placeholder | `:39, 49, 70, 113` | `CHANGED` (the field stays free text — a custom type may point anywhere) |
 | `EditorStatusBar` | — | consumes `t3-editor-status` | `:37-49` | `MOVED` into the shell's status slot (see `designer-shell-areas.md` §4) |
-| `useEditorCommands` | publishes status/commands | `:24-32` | | `MOD`: becomes the shell adapters' publisher; today **nothing calls `emitEditorStatus`** |
+| `useEditorCommands` | publishes status/commands | `:24-32` | | `MOD`: the shell adapters' publisher; **nothing calls `emitEditorStatus`** |
 
 ## 3. Services and the registry (where the URLs actually come from)
 
 | File | Role | Change |
 |---|---|---|
-| `drawingTypes.ts` | `DRAWING_TYPES` registry: `id`, `engine`, `openPath`, `wizardType` → the **single source** for "open this kind" (`:17` hvac, `:66` lcd, `:78` lvgl, `:91` lvgl-flow; commented `:32, 44, 55`) | **DONE**: `openPath` values are `designerPath(kind)` calls, so **every consumer follows automatically**. The commented (hidden) types keep their historical literals — they are comments |
-| `services/designHubService.ts` | localStorage + `/api/design-hub/hvac-drawings/{id}`; mints the HVAC path in 6 places (`:97, 365, 487, 516, 595, 657`) | **DONE**: all 6 are `designerPath('hvac-schematic', id)` |
-| `services/projectCatalog.ts` | on-disk catalog → `HubProject`; `?open=` for EEZ/LVGL (`:75`), HVAC drawing (`:95`) | **DONE**: `designerPath('lvgl-9-5')` + `?open=`, and `designerPath('hvac-schematic', d.id)` — the helper encodes the id, so the hand-written `encodeURIComponent` is gone |
+| `drawingTypes.ts` | `DRAWING_TYPES` registry: `id`, `engine`, `openPath`, `wizardType` → the **single source** for "open this kind" (`:17` hvac, `:66` lcd, `:78` lvgl, `:91` lvgl-flow; commented `:32, 44, 55`) | `openPath` values are `designerPath(kind)` calls, so **every consumer follows automatically**. The commented (hidden) types keep their historical literals — they are comments |
+| `services/designHubService.ts` | localStorage + `/api/design-hub/hvac-drawings/{id}`; mints the HVAC path in 6 places (`:97, 365, 487, 516, 595, 657`) | all 6 are `designerPath('hvac-schematic', id)` |
+| `services/projectCatalog.ts` | on-disk catalog → `HubProject`; `?open=` for EEZ/LVGL (`:75`), HVAC drawing (`:95`) | `designerPath('lvgl-9-5')` + `?open=`, and `designerPath('hvac-schematic', d.id)` — the helper encodes the id, so the hand-written `encodeURIComponent` is gone |
 | `store/designHubStore.ts` | tab state, projects, dialogs; `importFile` return type includes `openPath` (`:104`) | `UNCHANGED` |
 | `templates.tsx` | template catalogue (`tpl-hvac-schematic`, `tpl-lcd`) | `UNCHANGED` |
 
@@ -67,7 +67,7 @@ Delete). Its **Open** is the only designer navigation: `window.location.hash = \
 1. **`?tab=` is written by four menu items and read by nobody.** `menuConfig.ts:947, 956, 965, 975` emit
    `#/t3000/design?tab=templates|libraries|recent|import`; the only `params.get(` in the whole feature is
    `DesignHubPage.tsx:82` (`create`). So the menu items land on the hub and do nothing.
-   `FIX-OPPORTUNITY`: implement the tab focus, or point the items at the sections that exist
+   `FIX-OPPORTUNITY`: the `tab` parameter is dead — nothing focuses those sections
    (`SharedLibraries`, `TemplatesSection`, `ActivityPanel` are commented out at `:20-27, 437-441, 463-471`).
 2. **Five hub components are dead code**: `HubStats`, `FoldersBar`, `TemplatesSection`, `SharedLibraries`,
    `ActivityPanel` are not rendered. Decide: revive during P4 (they are the natural home for `?tab=`), or
@@ -80,16 +80,16 @@ Delete). Its **Open** is the only designer navigation: `window.location.hash = \
 | Hub → Designer | the URL: `openPath` (+ `?device=&graphic=&name=` for HVAC, `?new=/&examples=/&open=` for LVGL) |
 | Designer → Hub | the shell's back button → `/t3000/design`; the "unknown document" state links to the hub |
 | Shared | **no shared state**: the hub owns the project list; the designer owns the open document |
-| Not shared | creation dialogs. Q3 default: the Designer does **not** get its own "New drawing" dialog; `File ▸ New…` (P4) routes to the hub with `?create=<kind>` |
+| Not shared | creation dialogs. Decision: the Designer does **not** get its own "New drawing" dialog; `File ▸ New…` (P4) routes to the hub with `?create=<kind>` |
 
 ## 6. Verification for this family
 
-Per the P4 gate ([`../verification.md`](../verification.md) §4/P4) and the closing pass (§4 *closing pass* in the
-same file): type tiles, create (HVAC + LVGL + example), import (SVG/JSON + drop), template, duplicate,
-recent/recently-created, project-card Open, project-detail Open — each must land on the same document, under
-`/t3000/designer/...`, with `?create=` still stripping correctly and the `svg*` flags surviving any redirect.
+The P4 gate for this family: type tiles, create (HVAC + LVGL + example), import (SVG/JSON + drop), template,
+duplicate, recent/recently-created, project-card Open, project-detail Open — each must land on the same
+document, under `/t3000/designer/...`, with `?create=` still stripping correctly and the `svg*` flags
+surviving any redirect.
 
-**Run end-to-end in the browser (closing pass)** — hub history card →
+**Run end-to-end in the browser** — hub history card →
 `#/t3000/designer/lvgl-9-5?open=…`; palette → `#/t3000/designer/lvgl-flow-9-5?type=…`; both LVGL create
 dialogs → the wizard with `?new=`/`name`/`location`/`createDirectory` intact; HVAC create →
 `#/t3000/designer/hvac-schematic?device=1028&graphic=1&name=HVAC` with the editor rendering 222-224 SVG nodes.

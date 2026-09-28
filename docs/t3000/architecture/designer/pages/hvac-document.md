@@ -177,7 +177,7 @@ explicitly **not** in scope (out of the change budget).
 
 **Design-time starting point.** The fourth area did not exist: `components/panels/PropertiesPanel.tsx` is dead code
 (imported nowhere) and it edits `designerStore.updateShape` (`:72, 86, 102, 124, 138, 154, 172`) — a Zustand
-model the engine never reads (`R10`). Its view-model (`types/shape.types.ts:21-146`) is entirely detached
+model the engine never reads. Its view-model (`types/shape.types.ts:21-146`) is entirely detached
 from engine objects (`transform.x`, `style.fillColor`, `deviceLink`, …).
 
 **Shipped.** `documents/hvac/HvacPropertiesPanel.tsx` is the fourth area, rendered in `layout.right`, reading and
@@ -241,14 +241,14 @@ Raw         a collapsible JSON view of the safe subset (debug aid)
 ```
 
 * **P1: read-only.** Values formatted exactly like the status bar so the two agree.
-* **P1b: editing** through a single funnel (`engineMutation.ts`) after the undo API is proven (`R11`).
+* **P1b: editing** through a single funnel (`engineMutation.ts`) after the undo API is proven.
   The candidate surface to verify is `T3Gv.opt`'s action/undo manager plus `ToolActUtil` /
   `OptCMUtil` and a repaint via `RenderDirtySVGObjects` — **not** assumed in this design.
 * **Multi-selection:** count + shared fields only; per-object differences shown as "—".
 * Every read goes through `optional chaining` + defaults; a React error boundary wraps the panel (a mixed
-  widget+line selection already crashed a panel once — see `verification.md` §4/P2).
+  widget+line selection already crashed a panel once).
 * The polling hook is shared (`useEnginePoll`, 250 ms, paused when the tab is hidden) because the engine has
-  **no event bus** (`R9`).
+  **no event bus**.
 
 ### 6.2.1 The shipped layout
 
@@ -468,6 +468,80 @@ best-effort to `PUT /api/design-hub/hvac-drawings/{id}` (`:39-55`), record shape
 
 | Mark | Change |
 |---|---|
-| `UNCHANGED` | `designerStore` (out of scope — see `../risks.md` §4). Do **not** wire it to the engine in this project |
+| `UNCHANGED` | `designerStore` (out of scope). Do **not** wire it to the engine in this project |
 | `MOD` | `createThumbnail` (`:179-198`) draws **no shapes** (`// TODO: Render svg.js shapes…` at `:193`) — a `FIX-OPPORTUNITY`: capture the real `#svg-area svg` (the shell has a stable reference) instead of an empty canvas |
 | `MOD` | The shell's `describe().title` should read `drawingName` from `useDrawing`, keeping the two in sync as today (`HvacDesignerPage.tsx:93`) |
+
+---
+
+## Text entry
+
+Inline text editing depends on three engine mechanisms. Each one alone is inert; each has a placement or state
+rule that the surrounding code depends on.
+
+### 1. The text-entry proxy (`#T3TouchProxy`)
+
+`B.Text.Edit.HandleKeyPress` does not insert characters — it filters them (`charfilter` callback, plus a one-shot
+`Paste` while `activateInit` is set). Insertion happens in `HandleTextEntryFieldUpdate`, driven by the native
+`input` event of an off-screen field bound by `B.Text.Edit.InitTextEntry`. `OptUtil.SetVirtualKeyboardLifter`
+resolves that field and hands it to the active editor through `editor.SetVirtualKeyboardHook(...)`.
+
+| Piece | Implementation |
+|---|---|
+| The field | `HvacDrawingArea.tsx`, id `TEXT_ENTRY_PROXY_ID` (`Data/Constant/AreaIds.ts`), `<textarea rows=1>` |
+| Binding | `OptUtil.SetVirtualKeyboardLifter`; the element is resolved lazily by `OptUtil.GetWorkAreaTextInputProxy()`, which returns `null` when the host renders none — inline text entry is then unavailable instead of throwing |
+| Positioning | `OptUtil.VirtualKeyboardLifter` — off-screen (`left -9999px`, `width 800px`, `opacity 0`), repositioned only when the element frame changes (`theVirtualKeyboardLifterElementFrame`), because it runs on activation and on every key event |
+| Release | `B.Text.Edit.Deactivate` → hook `(parent, false)` → blur + `visibility: hidden` |
+
+**Placement rule.** `HvacDocument.tsx:149` calls `replaceChildren()` on `svg-area`, `h-ruler` and `v-ruler` at
+init, to discard the DOM left by a previous mount. A React-rendered child of those containers is detached from the
+document while React still holds its node and the engine cannot resolve it, so the proxy lives in the
+`document-area` div, whose children only React writes.
+
+**Element type.** `<textarea>`, not `<input type="text">`: a single-line input cannot carry `\n`, so a multi-line
+label could never receive a line break. The origin page declares the same element (`textarea#SDTS_TouchProxy`).
+
+### 2. The typing gate (`CanTypeInWorkArea` / `HTMLFocusControl`)
+
+`KeyboardOpt.OnKeyDown` / `OnKeyPress` return without acting while
+`T3Constant.DocContext.CanTypeInWorkArea` is `false`; `LMEvtUtil.LMMoveClick` and `S.BaseShape` blur
+`T3Constant.DocContext.HTMLFocusControl` before the drawing takes the keyboard. `useHtmlFocusGuard` (mounted by
+`HvacDocumentHost`) is the writer for both: `focusin` on an editable control records it and closes the gate,
+`focusout` on the recorded control reopens it. `ToolUtil.StampOrDragDropNewShape` blurs the recorded control when
+a tool is armed (`SDUI.ShapeController.StampOrDragDropNewShape` parity).
+
+Ids that do **not** close the gate — the engine owns them and their focus is programmatic:
+
+| Id | Reason |
+|---|---|
+| `#T3TouchProxy` | keystrokes there are the drawing's text |
+| `#_clipboardInput`, `#_IEclipboardDiv` | `T3Clipboard.FocusOnClipboardInput()` parks focus there after every canvas mouse-up |
+
+### 3. Line breaks
+
+Enter reaches the model through the field, so three conditions hold:
+
+| Condition | Implementation |
+|---|---|
+| The field carries `\n` | the proxy is a `<textarea>` (§1) |
+| The engine does not consume Enter | `OptUtil.TextCallback` → `case "keyend"`: returns `false` for `Keys.Enter` when `TextFlags.FormCR` is set; every other key returns `true` |
+| The object has `FormCR` | `ToolUtil.StampCallback` → `object.SetShapeProperties({ CRFlag: true })` — the origin's `CRFlag`, written by its Text Entry dialog's `CRTab` / `CREnter` options |
+
+The browser inserts the break into the field; the field's `input` event carries it into the editor
+(`B.Text.Edit.HandleTextEntryFieldUpdate` → `Paste("\n")`); `B.Text.Formatter` normalises CR/CRLF to `\n`. The
+model then holds two `paraInfo` entries and the SVG two `<tspan>`s.
+
+### 4. Copy / cut / paste
+
+| Rule | Implementation |
+|---|---|
+| The engine's key handler does not claim Ctrl+C/X/V | `KeyboardOpt.HandleKeyDown`: for those keys only the Firefox clipboard-div focus runs and the handler returns. The origin expresses the same rule as the `else` of that test (`SDUI.MainController.HandleKeyDown`), so its command loop is skipped for them |
+| The clipboard module must initialise | `T3Clipboard.Init` returns early when `#_clipboardInput` is absent, installing no `copy` / `cut` / `paste` listener. The host declares `#_crossTabClipboardDiv` / `#_IEclipboardDiv` / `#_clipboardInput` (`HvacDrawingArea`, origin markup from `app/SmartDraw.htm`) |
+| Shape paste works without a system payload | `T3Clipboard.PasteFromSystemEvent` falls back to `ToolActUtil.PasteObjects()` when the browser is not pasting into a field: a shape copy exists only in `header.ClipboardBuffer` — `DoCutCopy` writes `Text` / `text/plain`, while `Paste()` rebuilds from `text/html` |
+| While the field has focus the engine performs the action | `T3Clipboard`'s listener calls `event.preventDefault()` when `#T3TouchProxy` is focused |
+
+**Constraint on the browser path.** Handing cut/copy to the browser is not available: the engine's copy writes
+through `navigator.clipboard.write` (`CanUseAsyncClipboard()`), which Chromium refuses while the document is
+unfocused, and an unprevented native `cut` diverges — the field loses the characters while `runtimeText` keeps the
+full text, because `B.Text.Edit.HandleTextEntryFieldUpdate`'s diff fallback is a stub (`diffResult = false`, whose
+`pos` is then read). Restoring that diff is the prerequisite.

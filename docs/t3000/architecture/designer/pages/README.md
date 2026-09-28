@@ -1,7 +1,7 @@
 # Designer — page-by-page design
 
 The main design set says **how** the unified editor is built ([`../design.md`](../design.md),
-[`../interfaces.md`](../interfaces.md), [`../phases/`](../phases/)). This folder says **what changes on each
+[`../interfaces.md`](../interfaces.md)). This folder says **what changes on each
 page/screen** — every route in the app, every area of the new shell, and every panel the HVAC, LVGL and LCD
 documents put inside it.
 
@@ -20,13 +20,13 @@ Every page/panel block carries a **status** and a **change list**:
 
 | Mark | Meaning |
 |---|---|
-| `UNCHANGED` | no code change; the page keeps working exactly as today |
+| `UNCHANGED` | no code change; the page keeps working as before |
 | `LINK-ONLY` | no code change inside the page; its links/data resolve to the new route through the shared registry |
 | `MOD` | this file changes |
 | `NEW` | new file |
 | `MOVED` | the code moves (extracted) rather than being rewritten |
 | `RETIRED` | the code stops being reachable from that route (after P4) |
-| `FIX-OPPORTUNITY` | a pre-existing defect found while designing, worth fixing in the same pass |
+| `FIX-OPPORTUNITY` | a pre-existing defect that this work also fixes |
 
 ## Three cross-cutting findings that shape every page
 
@@ -36,11 +36,10 @@ Every page/panel block carries a **status** and a **change list**:
    `MainLayout.tsx:203`).
 2. **`#page-header-actions` exists only under `MainLayout`** (`PageHeader.tsx:198`). Any page that portals
    into it silently loses that UI under `MinimalLayout`. `Tstat10SimulatorPage.tsx:298-330` **does** portal
-   the Design/View toggle there and has no fallback → *that toggle does not render today*. This is a
+   the Design/View toggle there and has no fallback → *that toggle does not render*. This is a
    `FIX-OPPORTUNITY` the Designer shell resolves by design (the shell owns its top bar).
 3. **The EEZ panel set is bigger and differently arranged than "left = navigation, right = properties"**:
    the *left border* holds Texts/Scpi/Instrument-commands/IEXT/Changes, the *root left column* holds
    Pages/Widgets/Actions + Palette + Widgets Structure, the *root right tabset* holds Properties (and the
    Palette when the user setting moves it there), and the *right border* holds
    Styles/Fonts/Bitmaps/Themes/LVGL-groups/Breakpoints/Variables. See [`lvgl-document.md`](./lvgl-document.md) §2.
-   (The earlier per-phase docs are corrected by that document.)
