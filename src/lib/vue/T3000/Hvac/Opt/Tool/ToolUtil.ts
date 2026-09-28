@@ -1412,7 +1412,15 @@ class ToolUtil {
   }
 
   ToolDragDropNewSymbol(symbolObject, useDragDrop) {
-    DrawUtil.DragDropNewShape(symbolObject, true, true, false, null, null);
+    if (useDragDrop) {
+      // Drag-drop mode: the symbol follows the cursor and is stamped on dragend.
+      T3Gv.opt.mouseStampMode = false;
+      DrawUtil.DragDropNewShape(symbolObject, true, true, false, null, null);
+    } else {
+      // Stamp mode: the symbol follows the cursor and is stamped on the next click.
+      T3Gv.opt.mouseStampMode = true;
+      DrawUtil.MouseDrawNewShape(symbolObject, true, true, false, null, null);
+    }
     LogUtil.Debug("= U.ToolUtil ToolDragDropNewSymbol input/output:", symbolObject, useDragDrop);
   }
 

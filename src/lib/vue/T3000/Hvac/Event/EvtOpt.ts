@@ -822,32 +822,39 @@ class EvtOpt {
     });
   }
 
-  HandleSidebarToolEvent(selectedTool: any) {
+  HandleSidebarToolEvent(selectedTool: any, event?: any) {
     LogUtil.Debug("Selected tool: ", selectedTool);
+
+    // Event-driven tools (Wall / Line / shape stamps) need the event that starts them. Callers
+    // that have the canvas event pass it in; otherwise keep the previous behaviour and fall back
+    // to the ambient event, so nothing changes for callers that do not pass one.
+    if (event === undefined) {
+      event = typeof window !== "undefined" ? (window as any).event : undefined;
+    }
 
 
     if (selectedTool.value.name == "Temperature") {
-      EvtOpt.toolOpt.LibToolShape("Temperature", true);
+      EvtOpt.toolOpt.LibToolShape("Temperature", false);
     }
 
     if (selectedTool.value.name == "Boiler") {
-      EvtOpt.toolOpt.LibToolShape("Boiler", true);
+      EvtOpt.toolOpt.LibToolShape("Boiler", false);
     }
 
     if (selectedTool.value.name == "Heatpump") {
-      EvtOpt.toolOpt.LibToolShape("Heatpump", true);
+      EvtOpt.toolOpt.LibToolShape("Heatpump", false);
     }
 
     if (selectedTool.value.name == "Pump") {
-      EvtOpt.toolOpt.LibToolShape("Pump", true);
+      EvtOpt.toolOpt.LibToolShape("Pump", false);
     }
 
     if (selectedTool.value.name == "ValveThreeWay") {
-      EvtOpt.toolOpt.LibToolShape("ValveThreeWay", true);
+      EvtOpt.toolOpt.LibToolShape("ValveThreeWay", false);
     }
 
     if (selectedTool.value.name == "ValveTwoWay") {
-      EvtOpt.toolOpt.LibToolShape("ValveTwoWay", true);
+      EvtOpt.toolOpt.LibToolShape("ValveTwoWay", false);
     }
 
     if (selectedTool.value.name == "Duct") {
@@ -855,55 +862,55 @@ class EvtOpt {
     }
 
     if (selectedTool.value.name == "Fan") {
-      EvtOpt.toolOpt.LibToolShape("Fan", true);
+      EvtOpt.toolOpt.LibToolShape("Fan", false);
     }
 
     if (selectedTool.value.name == "CoolingCoil") {
-      EvtOpt.toolOpt.LibToolShape("CoolingCoil", true);
+      EvtOpt.toolOpt.LibToolShape("CoolingCoil", false);
     }
 
     if (selectedTool.value.name == "HeatingCoil") {
-      EvtOpt.toolOpt.LibToolShape("HeatingCoil", true);
+      EvtOpt.toolOpt.LibToolShape("HeatingCoil", false);
     }
 
     if (selectedTool.value.name == "Filter") {
-      EvtOpt.toolOpt.LibToolShape("Filter", true);
+      EvtOpt.toolOpt.LibToolShape("Filter", false);
     }
 
     if (selectedTool.value.name == "Humidifier") {
-      EvtOpt.toolOpt.LibToolShape("Humidifier", true);
+      EvtOpt.toolOpt.LibToolShape("Humidifier", false);
     }
 
     if (selectedTool.value.name == "Humidity") {
-      EvtOpt.toolOpt.LibToolShape("Humidity", true);
+      EvtOpt.toolOpt.LibToolShape("Humidity", false);
     }
 
     if (selectedTool.value.name == "Pressure") {
-      EvtOpt.toolOpt.LibToolShape("Pressure", true);
+      EvtOpt.toolOpt.LibToolShape("Pressure", false);
     }
 
     if (selectedTool.value.name == "Damper") {
-      EvtOpt.toolOpt.LibToolShape("Damper", true);
+      EvtOpt.toolOpt.LibToolShape("Damper", false);
     }
 
     if (selectedTool.value.name == "ThermalWheel") {
-      EvtOpt.toolOpt.LibToolShape("ThermalWheel", true);
+      EvtOpt.toolOpt.LibToolShape("ThermalWheel", false);
     }
 
     if (selectedTool.value.name == "Enthalpy") {
-      EvtOpt.toolOpt.LibToolShape("Enthalpy", true);
+      EvtOpt.toolOpt.LibToolShape("Enthalpy", false);
     }
 
     if (selectedTool.value.name == "Flow") {
-      EvtOpt.toolOpt.LibToolShape("Flow", true);
+      EvtOpt.toolOpt.LibToolShape("Flow", false);
     }
 
     if (selectedTool.value.name == "RoomHumidity") {
-      EvtOpt.toolOpt.LibToolShape("RoomHumidity", true);
+      EvtOpt.toolOpt.LibToolShape("RoomHumidity", false);
     }
 
     if (selectedTool.value.name == "RoomTemperature") {
-      EvtOpt.toolOpt.LibToolShape("RoomTemperature", true);
+      EvtOpt.toolOpt.LibToolShape("RoomTemperature", false);
     }
 
     if (selectedTool.value.name == "Gauge") {
@@ -984,19 +991,39 @@ class EvtOpt {
     }
 
     if (selectedTool.value.name == "Switch") {
-      EvtOpt.toolOpt.LibToolShape("SwitchIcon", true);
+      EvtOpt.toolOpt.LibToolShape("SwitchIcon", false);
     }
 
     if (selectedTool.value.name == "LED") {
-      EvtOpt.toolOpt.LibToolShape("Led", true);
+      EvtOpt.toolOpt.LibToolShape("Led", false);
+    }
+
+    if (selectedTool.value.name == "IconBasic") {
+      EvtOpt.toolOpt.LibToolShape("Icon", false);
     }
 
     if (selectedTool.value.name == "Text") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 'textLabel', "Text");
+      EvtOpt.toolOpt.LibToolShape("Text", false);
     }
 
     if (selectedTool.value.name == "Box") {
-      EvtOpt.toolOpt.StampShapeFromToolAct(event, 2, "Box");
+      EvtOpt.toolOpt.LibToolShape("Box", false);
+    }
+
+    if (selectedTool.value.name == "Gauge") {
+      EvtOpt.toolOpt.LibToolShape("Guage", false);
+    }
+
+    if (selectedTool.value.name == "Dial") {
+      EvtOpt.toolOpt.LibToolShape("Dial", false);
+    }
+
+    if (selectedTool.value.name == "Value") {
+      EvtOpt.toolOpt.LibToolShape("Value", false);
+    }
+
+    if (selectedTool.value.name == "Icon") {
+      EvtOpt.toolOpt.LibToolShape("IconWithTitle", false);
     }
 
     if (selectedTool.value.name == "Pointer") {

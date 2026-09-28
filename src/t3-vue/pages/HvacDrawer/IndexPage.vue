@@ -892,7 +892,7 @@ function showMoreDevices() {
 onBeforeUnmount(() => {
   // Safely cleanup selecto component using universal destroy method
   // This handles all known selecto errors: "$_selecto is undefined", "gesto is null", etc.
-  SelectoErrorHandler.universalDestroy(selecto);
+  SelectoErrorHandler.universalDestroy(selecto.value);
 })
 
 // Lifecycle hook for component unmount
@@ -981,7 +981,7 @@ function addActionToHistory(title) {
 
 // Handles click events on group elements
 function onClickGroup(e) {
-  SelectoErrorHandler.safeCall(selecto, 'clickTarget', e.inputEvent, e.inputTarget);
+  SelectoErrorHandler.safeCall(selecto.value, 'clickTarget', e.inputEvent, e.inputTarget);
 }
 
 // Starts dragging an element
@@ -1155,7 +1155,7 @@ function selectGroup(id) {
 
   appState.value.selectedTargets =
     appState.value.selectedTargets.concat(targets);
-  SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', appState.value.selectedTargets);
+  SelectoErrorHandler.safeCall(selecto.value, 'setSelectedTargets', appState.value.selectedTargets);
 }
 
 // Starts resizing an element
@@ -1348,7 +1348,7 @@ function addLibItem(items, size, pos) {
       elements.push(el);
     });
     appState.value.selectedTargets = elements;
-    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', elements);
+    SelectoErrorHandler.safeCall(selecto.value, 'setSelectedTargets', elements);
     appState.value.activeItemIndex = null;
     const scalPercentage = 1 / appState.value.viewportTransform.scale;
     setTimeout(() => {
@@ -1490,7 +1490,7 @@ function drawObject(size, pos, tool) {
     if (locked.value) return;
     const target = document.querySelector(`#moveable-item-${item.id}`);
     appState.value.selectedTargets = [target];
-    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', [target]);
+    SelectoErrorHandler.safeCall(selecto.value, 'setSelectedTargets', [target]);
   }, 100);
   return item;
 }
@@ -2441,7 +2441,7 @@ function duplicateSelected() {
   });
   setTimeout(() => {
     appState.value.selectedTargets = elements;
-    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', elements);
+    SelectoErrorHandler.safeCall(selecto.value, 'setSelectedTargets', elements);
     appState.value.activeItemIndex = null;
   }, 20);
 }
@@ -3109,7 +3109,7 @@ function pasteFromClipboard() {
       elements.push(el);
     });
     appState.value.selectedTargets = elements;
-    SelectoErrorHandler.safeCall(selecto, 'setSelectedTargets', elements);
+    SelectoErrorHandler.safeCall(selecto.value, 'setSelectedTargets', elements);
     appState.value.activeItemIndex = null;
   }, 10);
 }

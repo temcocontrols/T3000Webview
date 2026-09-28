@@ -35,7 +35,9 @@
               <div id="v-ruler" class="document-ruler-left">
               </div>
               <a-dropdown :trigger="['contextmenu']">
-                <div id="svg-area" class="svg-area" @dragover="onSvgAreaDragOver" @drop.prevent="onSvgAreaDrop">
+                <div id="svg-area" class="svg-area" @dragover="onSvgAreaDragOver" @drop.prevent="onSvgAreaDrop"
+                  @mousedown="onCanvasMouseDown" @mousemove="onCanvasMouseMove" @mouseup="onCanvasMouseUp"
+                  @mouseleave="onCanvasMouseLeave" @click.left="onCanvasClickLeft" @click.right="viewportRightClick">
                 </div>
                 <template #overlay>
                   <T3ContextMenu v-if="ctxMenuConfig.isShow" :ctxMenuConfig="ctxMenuConfig"></T3ContextMenu>
@@ -365,6 +367,7 @@ import {
   gaugeSettingsDialog, insertCount, selectedTool, isDrawing, snappable, keepRatio, selecto, importJsonDialog, clipboardFull
 } from '@/lib/vue/T3000/Hvac/Data/Constant/RefConstant';
 import LogUtil from '@/lib/vue/T3000/Hvac/Util/LogUtil';
+import SelectoErrorHandler from '@/lib/vue/T3000/Hvac/Util/SelectoErrorHandler';
 import T3ContextMenu from "@t3-vue/components/NewUI/T3ContextMenu.vue";
 
 // Meta information for the application
@@ -528,7 +531,7 @@ function addActionToHistory(title: string): void {
 
 // Handles click events on group elements
 function onClickGroup(e: any): void {
-  selecto.value.clickTarget(e.inputEvent, e.inputTarget);
+  SelectoErrorHandler.safeCall(selecto.value, 'clickTarget', e.inputEvent, e.inputTarget);
 }
 
 // Starts dragging an element
@@ -1201,6 +1204,61 @@ function viewportLeftClick(ev: MouseEvent): void {
 // Handles a right-click event on the viewport
 function viewportRightClick(ev: MouseEvent): void {
   Hvac.IdxPage2.viewportRightClick(ev);
+}
+
+// --- Canvas pointer gestures -----------------------------------------------------------------
+// This UI mounts no Selecto host, so the page supplies the two gestures the older page got from
+// Selecto: a plain click places a default-size shape, a press-drag-release draws one sized by the
+// drag. A click that follows a real drag is swallowed so the shape is not placed twice.
+const CANVAS_DRAG_MIN_PX = 6;
+let canvasPress: { x: number; y: number } | null = null;
+let canvasDragged = false;
+
+function onCanvasMouseDown(ev: MouseEvent): void {
+  if (ev.button !== 0 || locked.value) return;
+  canvasPress = { x: ev.clientX, y: ev.clientY };
+  canvasDragged = false;
+}
+
+function onCanvasMouseMove(ev: MouseEvent): void {
+  viewportMouseMoved(ev);
+  if (!canvasPress) return;
+  if (
+    Math.abs(ev.clientX - canvasPress.x) > CANVAS_DRAG_MIN_PX ||
+    Math.abs(ev.clientY - canvasPress.y) > CANVAS_DRAG_MIN_PX
+  ) {
+    canvasDragged = true;
+  }
+}
+
+function onCanvasMouseUp(ev: MouseEvent): void {
+  const start = canvasPress;
+  canvasPress = null;
+  if (!start) return;
+  // A press-release without movement places the pending stamp (the engine writes it into the SVG)
+  // and releases the tool; a real press-drag is left to the engine's own drag/drop flow.
+  if (canvasDragged) {
+    canvasDragged = false;
+    return;
+  }
+  Hvac.IdxPage2.completeStamp(ev);
+}
+
+function onCanvasClickLeft(ev: MouseEvent): void {
+  if (canvasDragged) {
+    canvasDragged = false;
+    return;
+  }
+  viewportLeftClick(ev);
+}
+
+function onCanvasMouseLeave(): void {
+  canvasPress = null;
+  canvasDragged = false;
+  document.body.style.cursor = "auto";
+  document.querySelectorAll(".moveable-item").forEach((el) => {
+    (el as HTMLElement).style.cursor = "";
+  });
 }
 
 // Adds the online images to the library

@@ -22,6 +22,9 @@ import { tools, /*T3_Types,*/ /*getObjectActiveValue,*/ /*T3000_Data,*/ /*user, 
 
 import { insertT3EntryDialog } from "src/lib/vue/T3000/Hvac/Data/Data";
 import LogUtil from "../../Util/LogUtil";
+import SelectoErrorHandler from "../../Util/SelectoErrorHandler";
+import T3Gv from "../../Data/T3Gv";
+import DrawUtil from "../Opt/DrawUtil";
 
 //  let lastAction = null; // Store the last action performed
 
@@ -468,27 +471,109 @@ class IdxPage2 {
   }
 
   // Refactor below functions to Idx page2 util for backup (new ui will not use this function anymore)
+  /**
+   * Completes a pending click-to-place stamp session and releases the tool.
+   * Called from the canvas mouse-up, because the canvas click event does not reliably reach the
+   * page handler, and without this the shape keeps following the mouse and the tool stays armed.
+   */
+  completeStamp(ev) {
+    if (!T3Gv.opt.mouseStampMode) return false;
+
+    if (T3Gv.opt.drawShape
+      && typeof T3Gv.Evt_LMMouseStpObjectDone === "function"
+      && T3Gv.opt.actionStoredObjectId >= 0) {
+      T3Gv.Evt_LMMouseStpObjectDone(ev);
+    }
+    T3Gv.opt.mouseStampMode = false;
+    this.selectTool(tools[0]);
+    return true;
+  }
+
   viewportLeftClick(ev) {
     // LogUtil.Debug('IndexPage.vue->viewportLeftClick->ev', ev);
     ev.preventDefault();
 
-    const check = !locked.value && selectedTool.value.name !== 'Pointer' && selectedTool.value.name != "Wall" && !isDrawing.value
+    if (locked.value) return;
+
+    // An armed click-to-place session is placed by this click.
+    if (this.completeStamp(ev)) return;
+
+    // No session pending: the event-driven drawing tools (Wall / lines / shape stamps) start
+    // their session from this canvas click, with the real canvas event.
+    const eventDrivenTools = [
+      "Wall", "Line", "ArcLine", "SegLine", "PolyLine",
+      "G_Circle", "G_Rectangle", "Oval",
+      "ArrowRight", "ArrowLeft", "ArrowTop", "ArrowBottom",
+    ];
+    if (eventDrivenTools.includes(selectedTool.value.name)) {
+      Hvac.UI.evtOpt.HandleSidebarToolEvent(selectedTool, ev);
+      return;
+    }
+
+    const check = selectedTool.value.name !== 'Pointer' && selectedTool.value.name != "Wall" && !isDrawing.value
       && selectedTool.value.name != "Int_Ext_Wall" && selectedTool.value.name != "Duct";
 
     if (check) {
-      // Manually create a shape at the mouse current position
-
-      var ePosition = {
-        rect: { width: 60, height: 60, top: ev.clientY, left: ev.clientX },
-        clientX: ev.clientX,
-        clientY: ev.clientY
-      };
-
-      onSelectoDragEnd(ePosition);
-
       // Release the tool
       this.selectTool(tools[0]);
     }
+  }
+
+  /**
+   * Places a shape from a rectangle, applying the rules the old page expressed in its
+   * `onSelectoDragEnd` — which cannot be reused here, because this UI mounts no Selecto host.
+   * Returns the created item, or null when the rectangle was too small for a fixed-size tool.
+   */
+  placeFromRect(width, height, left, top, clientX, clientY) {
+    const name = selectedTool.value.name;
+    const isContinuous = continuesObjectTypes.includes(name);
+    const size = { width, height };
+
+    if ((name === "Pointer" || size.width < 20 || size.height < 20) && !isContinuous) {
+      isDrawing.value = false;
+      return null;
+    }
+    if (isContinuous && size.height < 20) {
+      size.height = selectedTool.value.height;
+    }
+
+    const item = this.drawObject(size, { clientX, clientY, top, left });
+    if (item && continuesObjectTypes.includes(item?.type ?? '')) {
+      setTimeout(() => {
+        isDrawing.value = true;
+        appStateV2.value.selectedTargets = [];
+        appStateV2.value.items[appStateV2.value.activeItemIndex].rotate = 0;
+        startTransform.value = cloneDeep(item.translate);
+      }, 100);
+    }
+
+    return item;
+  }
+
+  /**
+   * Press-drag-release on the canvas: builds the rectangle Selecto would have reported, then
+   * places it. This is the gesture that sizes ducts, walls and other line tools.
+   */
+  drawFromDragRect(startX, startY, endX, endY) {
+    return this.placeFromRect(
+      Math.abs(endX - startX),
+      Math.abs(endY - startY),
+      Math.min(startX, endX),
+      Math.min(startY, endY),
+      endX,
+      endY
+    );
+  }
+
+  /** The canvas box, for callers that have no pointer coordinates to work from. */
+  private getCanvasRect() {
+    const el = (viewport.value?.getBoundingClientRect ? viewport.value : null)
+      || document.querySelector('.viewport')
+      || document.querySelector('#svg-area');
+    const rect = el?.getBoundingClientRect?.();
+    return rect && rect.width > 0
+      ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+      : null;
   }
 
   // Select a tool and set its type
@@ -763,7 +848,9 @@ class IdxPage2 {
         elements.push(el);
       });
       appStateV2.value.selectedTargets = elements;
-      selecto.value.setSelectedTargets(elements);
+      // `selecto.value` is null while no Selecto host is mounted (the component mounts later than the
+      // first tool drop), so the call must be null-safe. `SelectoErrorHandler` needs the instance.
+      SelectoErrorHandler.safeCall(selecto.value, 'setSelectedTargets', elements);
       appStateV2.value.activeItemIndex = null;
     }, 10);
   }
@@ -1198,7 +1285,7 @@ class IdxPage2 {
     });
     setTimeout(() => {
       appStateV2.value.selectedTargets = elements;
-      selecto.value.setSelectedTargets(elements);
+      SelectoErrorHandler.safeCall(selecto.value, 'setSelectedTargets', elements);
       appStateV2.value.activeItemIndex = null;
     }, 20);
   }
@@ -1383,7 +1470,7 @@ class IdxPage2 {
       if (locked.value) return;
       const target = document.querySelector(`#moveable-item-${item.id}`);
       appStateV2.value.selectedTargets = [target];
-      selecto.value.setSelectedTargets([target]);
+      SelectoErrorHandler.safeCall(selecto.value, 'setSelectedTargets', [target]);
     }, 100);
     return item;
   }
@@ -1426,6 +1513,17 @@ class IdxPage2 {
       x = this.lastDragClientX;
       y = this.lastDragClientY;
     }
+
+    // With no usable coordinates the shape would land at a negative translate — created, but
+    // outside the visible canvas. Fall back to the canvas centre so a drop is always visible.
+    if (x === 0 && y === 0) {
+      const rect = this.getCanvasRect();
+      if (rect) {
+        x = rect.left + rect.width / 2;
+        y = rect.top + rect.height / 2;
+      }
+    }
+
     this.drawObject(
       size,
       { clientX: x, clientY: y, top: y, left: x },
@@ -2069,7 +2167,7 @@ class IdxPage2 {
         elements.push(el);
       });
       appStateV2.value.selectedTargets = elements;
-      selecto.value.setSelectedTargets(elements);
+      SelectoErrorHandler.safeCall(selecto.value, 'setSelectedTargets', elements);
       appStateV2.value.activeItemIndex = null;
       const scalPercentage = 1 / appStateV2.value.viewportTransform.scale;
       setTimeout(() => {
@@ -2319,7 +2417,7 @@ class IdxPage2 {
 
     appStateV2.value.selectedTargets =
       appStateV2.value.selectedTargets.concat(targets);
-    selecto.value.setSelectedTargets(appStateV2.value.selectedTargets);
+    SelectoErrorHandler.safeCall(selecto.value, 'setSelectedTargets', appStateV2.value.selectedTargets);
   }
 
   // Starts resizing an element
@@ -2394,6 +2492,13 @@ class IdxPage2 {
       appStateV2.value.items[appStateV2.value.activeItemIndex].rotate = angle;
       appStateV2.value.items[appStateV2.value.activeItemIndex].width = distance;
       this.refreshObjects();
+    }
+
+    // Stamp session (LibToolShape -> DrawUtil.MouseDrawNewShape): the engine binds its own
+    // window mousemove listener, but in this page those window events never reach it, so the
+    // symbol never appears under the cursor. Drive the same engine call with this event.
+    if (T3Gv.opt.mouseStampMode && T3Gv.opt.drawShape) {
+      DrawUtil.MouseStampObjectMove(e);
     }
   }
 

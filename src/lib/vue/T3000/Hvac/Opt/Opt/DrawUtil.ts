@@ -368,6 +368,10 @@ class DrawUtil {
     }
 
     // Bind mouse event handlers for stamping operation
+    // Mark this as a click-to-place (stamp) session so the host page can drive it: the page's
+    // mousemove/click handlers call MouseStampObjectMove / Evt_LMMouseStpObjectDone, because the
+    // window bindings below are not always delivered.
+    T3Gv.opt.mouseStampMode = true;
     $(window).bind('mousemove', EvtUtil.Evt_MouseStampObjectMove);
     T3Gv.Evt_LMMouseStpObjectDone = EvtUtil.Evt_MouseStampObjectDoneFactory(useDefaultStyle);
     $(window).bind('mousedown', T3Gv.Evt_LMMouseStpObjectDone);
