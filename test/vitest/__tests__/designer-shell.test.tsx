@@ -5,14 +5,14 @@
  *  1. the designer route must not be swallowed by the Design Hub menu branch (a one-character bug
  *     with a 100 % visible symptom);
  *  2. a document's loading state must NEVER unmount the canvas 鈥?the HVAC engine cannot be
- *     re-initialised and the EEZ app owns a second React root (risks.md R1/R7);
+ *     re-initialised and the EEZ app owns a second React root;
  *  3. a one-tab region with `header: "never"` renders no chrome, which is what keeps the HVAC
  *     document looking like the existing page;
  *  4. the shell must not import an engine.
  *
  * Rendering uses `react-dom/server` on purpose: the repo has no @testing-library dependency, and
  * every assertion here is structural. Effects (engine init) are covered by the manual verification
- * steps in docs/t3000/architecture/designer/verification.md.
+ * steps in docs/t3000/architecture/designer/design.md §11.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";

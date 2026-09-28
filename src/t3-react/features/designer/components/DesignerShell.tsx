@@ -5,7 +5,7 @@
  * optional bottom dock. It never imports an engine; everything comes from the `DocumentRuntime` the
  * document host computes.
  *
- * Two rules in here are load-bearing (see docs/t3000/architecture/designer/risks.md R1/R7):
+ * Two rules in here are load-bearing (see docs/t3000/architecture/designer/design.md §10):
  *  1. the canvas host element is mounted once per document and never re-keyed — the HVAC engine cannot
  *     be re-initialised and the EEZ app owns a second React root;
  *  2. a document's loading/error state is drawn as an OVERLAY over the canvas, never by replacing the

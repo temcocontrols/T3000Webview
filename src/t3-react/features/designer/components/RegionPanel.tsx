@@ -120,7 +120,7 @@ const MIN_BODY_WIDTH_PX = 160;
  * One tab group: a strip plus the active tab's content.
  *
  * Its own component so the memo is per group — switching a tab in one section must not re-render the
- * other sections' trees (R17).
+ * other sections' trees.
  */
 const SectionView: React.FC<{
     id: string;
@@ -189,7 +189,7 @@ export interface RegionPanelProps {
     onSecondaryWidthChange?: (width: number) => void;
 }
 
-/** The single-strip body, memoised per tab id so a tab switch does not rebuild the other trees (R17). */
+/** The single-strip body, memoised per tab id so a tab switch does not rebuild the other trees. */
 const SingleBody: React.FC<{ region: RegionSpec }> = ({ region }) => {
     const styles = useStyles();
     const activeTab = region.tabs.find((tab) => tab.id === region.activeTabId) ?? region.tabs[0];

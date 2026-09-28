@@ -13,8 +13,7 @@
  * listeners that branch used to register (`visibility` / `close`) stay with the caller, because only a
  * rendered FlexLayout tab can emit them.
  *
- * Behaviour is byte-for-byte the same mapping as before the extraction; see the `designer` phase docs
- * (`docs/t3000/architecture/designer/phases/p2-lvgl-document.md` §P2.0).
+ * Behaviour is byte-for-byte the same mapping as before the extraction.
  */
 import React from "react";
 
