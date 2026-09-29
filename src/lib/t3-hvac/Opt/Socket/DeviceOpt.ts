@@ -8,6 +8,7 @@ import DeviceItem from "./DeviceItem"
 import { T3Data } from '../../Data/T3Data'
 import { appState, emptyProject, deviceAppState, deviceModel, rulersGridVisible } from '../../Data/T3Data'
 import LsOpt from "../Common/LsOpt"
+import StorageKeys from "../../Data/Constant/StorageKeys"
 import LogUtil from "../../Util/LogUtil"
 
 class DeviceOpt {
@@ -159,7 +160,7 @@ class DeviceOpt {
 
   // sync the t3 appstate data to ls [deviceAppState]
   syncTempAppStateToDeviceAppState() {
-    const tempAppState = localStorage.getItem('tempAppState');
+    const tempAppState = localStorage.getItem(StorageKeys.TEMP_APP_STATE);
     const currentDevice = this.getCurrentDevice();
 
     if (!tempAppState || !currentDevice) return;
@@ -179,18 +180,18 @@ class DeviceOpt {
       deviceAppStateLS.push({ device: currentDevice, appState: parsedTempAppState });
     }
 
-    localStorage.setItem('deviceAppState', JSON.stringify(deviceAppStateLS));
+    localStorage.setItem(StorageKeys.DEVICE_APP_STATE, JSON.stringify(deviceAppStateLS));
   }
 
   saveCurrentDevice(selectDevice) {
-    localStorage.setItem('currentDevice', JSON.stringify(selectDevice))
+    localStorage.setItem(StorageKeys.CURRENT_DEVICE, JSON.stringify(selectDevice))
   }
 
   getCurrentDevice() {
-    const currentDevice = localStorage.getItem('currentDevice');
+    const currentDevice = localStorage.getItem(StorageKeys.CURRENT_DEVICE);
 
     if (currentDevice) {
-      return JSON.parse(localStorage.getItem('currentDevice'))
+      return JSON.parse(localStorage.getItem(StorageKeys.CURRENT_DEVICE))
     }
     else {
       return null;
@@ -198,7 +199,7 @@ class DeviceOpt {
   }
 
   saveAppState(appstate) {
-    localStorage.setItem('appState', JSON.stringify(appstate))
+    localStorage.setItem(StorageKeys.APP_STATE, JSON.stringify(appstate))
   }
 
   findAllNodes(nodes, target) {
@@ -323,7 +324,7 @@ class DeviceOpt {
         }
       });
 
-      localStorage.setItem('currentDevice', JSON.stringify(currentDevice));
+      localStorage.setItem(StorageKeys.CURRENT_DEVICE, JSON.stringify(currentDevice));
     }
   }
 
@@ -484,7 +485,7 @@ class DeviceOpt {
 
     // set the tempAppState to empty project
     const emptyAppState = cloneDeep(emptyProject);
-    localStorage.setItem('tempAppState', JSON.stringify(emptyAppState));
+    localStorage.setItem(StorageKeys.TEMP_APP_STATE, JSON.stringify(emptyAppState));
 
     LogUtil.Debug('= Dvopt: addPresetsData / set the tempAppState to empty project', emptyAppState);
 
@@ -528,7 +529,7 @@ class DeviceOpt {
       deviceAppStateLS[deviceIndex].appState = cloneDeep(emptyProject);
     }
 
-    localStorage.setItem('deviceAppState', JSON.stringify(deviceAppStateLS));
+    localStorage.setItem(StorageKeys.DEVICE_APP_STATE, JSON.stringify(deviceAppStateLS));
 
     LogUtil.Debug('= Dvopt: addPresetsData / save the deviceAppState to local storage', deviceAppStateLS);
   }

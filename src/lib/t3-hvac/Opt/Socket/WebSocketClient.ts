@@ -7,6 +7,7 @@ import Utils1 from "../../Util/Utils1"
 import LogUtil from "../../Util/LogUtil"
 import { grpNav, library, T3000_Data, linkT3EntryDialog, selectPanelOptions, appState, globalMsg, locked, rulersGridVisible } from '../../Data/T3Data'
 import T3UIUtil from "../UI/T3UIUtil"
+import StorageKeys from "../../Data/Constant/StorageKeys"
 
 class WebSocketClient {
 
@@ -918,7 +919,7 @@ class WebSocketClient {
 
     // save the T3 data to localstorage with key 'tempAppState'
     if (appStateData !== null && appStateData !== undefined) {
-      localStorage.setItem('tempAppState', appStateData);
+      localStorage.setItem(StorageKeys.TEMP_APP_STATE, appStateData);
     }
 
     const parsedAppStateData = JSON.parse(appStateData);
@@ -983,14 +984,14 @@ class WebSocketClient {
       this.GetPanelData(firstPanelId);
     }
 
-    const currentDevice = JSON.parse(localStorage.getItem('currentDevice') || '{}');
+    const currentDevice = JSON.parse(localStorage.getItem(StorageKeys.CURRENT_DEVICE) || '{}');
     if (currentDevice && !currentDevice.deviceId) {
       const panelName = currentDevice.device;
       const panel = data.find((panel) => panel.panel_name === panelName);
       if (panel) {
         currentDevice.deviceId = panel.panel_number;
         currentDevice.serialNumber = panel.serial_number;
-        localStorage.setItem('currentDevice', JSON.stringify(currentDevice));
+        localStorage.setItem(StorageKeys.CURRENT_DEVICE, JSON.stringify(currentDevice));
       }
     }
 

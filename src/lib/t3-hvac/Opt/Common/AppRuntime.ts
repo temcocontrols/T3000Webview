@@ -14,6 +14,7 @@ const toRaw = (val: any) => val;
 // Placeholder: Replace with React API client when ready
 const liveApi: any = null;
 import DataOpt from "../Data/DataOpt";
+import StorageKeys from "../../Data/Constant/StorageKeys";
 import LogUtil from "../../Util/LogUtil";
 import AntdUtil from "../UI/AntdUtil";
 
@@ -752,7 +753,7 @@ class AppRuntime {
   pasteFromClipboard() {
     if (locked.value) return;
     let items = [];
-    const clipboard = localStorage.getItem("clipboard");
+    const clipboard = localStorage.getItem(StorageKeys.CLIPBOARD_ITEMS);
     if (clipboard) {
       items = JSON.parse(clipboard);
     }
@@ -785,7 +786,7 @@ class AppRuntime {
       )
     );
 
-    localStorage.setItem("clipboard", JSON.stringify(selectedItems));
+    localStorage.setItem(StorageKeys.CLIPBOARD_ITEMS, JSON.stringify(selectedItems));
     clipboardFull.value = true;
   }
 

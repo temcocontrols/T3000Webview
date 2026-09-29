@@ -13,7 +13,7 @@ import LayersManager from '../../Model/LayersManager'
 import TEData from '../../Model/TEData'
 import Instance from '../../Data/Instance/Instance'
 import LayerUtil from '../Opt/LayerUtil'
-import { appStateV2, globalMsg, isBuiltInEdge, rulersGridVisible } from '../../Data/T3Data'
+import { appState, appStateV2, globalMsg, isBuiltInEdge, rulersGridVisible } from '../../Data/T3Data'
 import { cloneDeep } from 'lodash'
 // import { toRaw } from 'vue'
 // Placeholder: Vue toRaw - returns raw object
@@ -22,6 +22,7 @@ import Hvac from '../../Hvac'
 import Utils1 from '../../Util/Utils1'
 import LogUtil from '../../Util/LogUtil'
 import OptConstant from '../../Data/Constant/OptConstant'
+import StorageKeys from '../../Data/Constant/StorageKeys'
 
 /**
  * Class for managing data operations in T3000 HVAC system.
@@ -58,15 +59,20 @@ class DataOpt {
   //DRAW_KEY: key for storing drawing data
   //LIBRARY_KEY: key for storing library data
 
-  static readonly CLIPBOARD_KEY: string = "t3.clipboard";
-  static readonly STATE_KEY: string = "t3.state";
-  static readonly OBJECT_STORE_KEY: string = "t3.dataStore";
-  static readonly CURRENT_OBJECT_SEQ_ID_KEY: string = "t3.currentObjSeqId";
-  static readonly APP_STATE_V2: string = "t3.stateV2";
-  static readonly DRAW_KEY: string = "t3.draw";
-  static readonly DOC_INFO_KEY: string = "t3.doc";
+  // Every key is namespaced to this engine tree — see `Data/Constant/StorageKeys.ts`.
+  // The legacy Vue drawer (`src/lib/vue/T3000/Hvac/**`) uses the same *property names* but keeps
+  // the historical `t3.*` strings, so the two engines can no longer adopt each other's document.
+  static readonly CLIPBOARD_KEY: string = StorageKeys.CLIPBOARD;
+  static readonly STATE_KEY: string = StorageKeys.STATE;
+  static readonly OBJECT_STORE_KEY: string = StorageKeys.DATA_STORE;
+  static readonly CURRENT_OBJECT_SEQ_ID_KEY: string = StorageKeys.CURRENT_OBJECT_SEQ_ID;
+  static readonly APP_STATE_V2: string = StorageKeys.APP_STATE_V2;
+  static readonly DRAW_KEY: string = StorageKeys.DRAW;
+  static readonly DOC_INFO_KEY: string = StorageKeys.DOC_INFO;
+  // App-wide log settings — intentionally NOT namespaced: the React app's Log Settings page reads
+  // the same slot, and it holds no drawing data.
   static readonly GLOBAL_CONFIG_KEY: string = "t3.config";
-  static readonly LIBRARY_KEY: string = "t3.library";
+  static readonly LIBRARY_KEY: string = StorageKeys.LIBRARY;
 
   /**
    * Initializes all stored data from localStorage after global data has been initialized
@@ -408,6 +414,125 @@ class DataOpt {
     return data;
   }
 
+  /* ------------------------------------------------------------------ document payload
+   *
+   * The designer keeps a drawing as a *record* (design hub: localStorage index + disk mirror), while the
+   * engine keeps a document in localStorage. Before this, the two never met: the record held the React
+   * store's shape list (empty — the canvas is the engine's) and the engine's keys were the only real
+   * content, so a drawing could not be reopened.
+   *
+   * `CaptureDocument` / `SeedDocument` / `ClearDocument` bridge exactly that, without inventing a second
+   * document format: the payload is the *same* five stores the engine already writes and reads, so
+   * `T3Opt.Initialize` restores a seeded document through its normal path (`InitStoredData`,
+   * `LoadAppStateV2`, `LoadDocSettingData`) — including `plainToInstance`'s class revival.
+   *
+   * The payload must stay JSON-safe (it is stringified into the record). DOM-referencing fields
+   * (`selectedTargets`, `elementGuidelines`) are dropped for that reason — as `PrepareSaveData` does.
+   */
+
+  static readonly DOCUMENT_PAYLOAD_VERSION: number = 1;
+
+  /**
+   * Captures the live document as a JSON-safe payload.
+   *
+   * Never throws into a caller that is only trying to save: a failure returns `null` and the caller keeps
+   * whatever it had.
+   */
+  static CaptureDocument(): any {
+    try {
+      const appStateV1 = cloneDeep(toRaw(appState.value));
+      appStateV1.selectedTargets = [];
+      appStateV1.elementGuidelines = [];
+      appStateV1.rulersGridVisible = rulersGridVisible.value;
+
+      return {
+        version: this.DOCUMENT_PAYLOAD_VERSION,
+        currentObjSeqId: T3Gv.currentObjSeqId,
+        state: cloneDeep(toRaw(T3Gv.state)),
+        dataStore: cloneDeep(toRaw(T3Gv.stdObj)),
+        docSetting: {
+          docConfig: T3Gv.docUtil?.docConfig,
+          rulerConfig: T3Gv.docUtil?.rulerConfig,
+          docInfo: T3Gv.docUtil?.svgDoc?.docInfo
+        },
+        appStateV2: this.PrepareSaveData(),
+        appState: appStateV1
+      };
+    } catch (error) {
+      LogUtil.Error('= DataOpt: CaptureDocument / failed to capture the document:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Writes a captured document into this engine's own storage, so the **next** `T3Opt.Initialize` restores
+   * it. Must run *before* the engine initialises — seeding afterwards would be overwritten by the running
+   * document on its next save.
+   */
+  static SeedDocument(payload: any): boolean {
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+
+    try {
+      if (payload.state) {
+        this.SaveData(this.STATE_KEY, payload.state);
+      }
+      if (payload.dataStore) {
+        this.SaveData(this.OBJECT_STORE_KEY, payload.dataStore);
+      }
+      if (payload.currentObjSeqId !== undefined) {
+        this.SaveData(this.CURRENT_OBJECT_SEQ_ID_KEY, payload.currentObjSeqId);
+      }
+      if (payload.docSetting) {
+        this.SaveData(this.DOC_INFO_KEY, payload.docSetting);
+      }
+      if (payload.appStateV2) {
+        this.SaveData(this.APP_STATE_V2, payload.appStateV2);
+      }
+      if (payload.appState) {
+        this.SaveData(StorageKeys.APP_STATE, payload.appState);
+      }
+      return true;
+    } catch (error) {
+      LogUtil.Error('= DataOpt: SeedDocument / failed to seed the document:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Drops this engine's stored document — the "new drawing" case, so an empty canvas does not inherit the
+   * previous drawing's objects when the engine initialises.
+   */
+  static ClearDocument(): void {
+    localStorage.removeItem(this.STATE_KEY);
+    localStorage.removeItem(this.OBJECT_STORE_KEY);
+    localStorage.removeItem(this.CURRENT_OBJECT_SEQ_ID_KEY);
+    localStorage.removeItem(this.DOC_INFO_KEY);
+    localStorage.removeItem(this.APP_STATE_V2);
+    localStorage.removeItem(StorageKeys.APP_STATE);
+  }
+
+  /**
+   * Called by the engine after it persists the app layer. The host application sets it when the running
+   * document is backed by a stored record (the designer) so the record follows the engine's saves.
+   *
+   * The engine never depends on it: unset is the normal state for every other embedding.
+   */
+  static documentPersistHook: (() => void) | null = null;
+
+  private static notifyDocumentPersisted(): void {
+    if (!this.documentPersistHook) {
+      return;
+    }
+
+    try {
+      this.documentPersistHook();
+    } catch (error) {
+      LogUtil.Error('= DataOpt: documentPersistHook / failed:', error);
+    }
+  }
+
   /**
    * Saves data to T3000 system
    * Currently empty implementation placeholder
@@ -479,6 +604,10 @@ class DataOpt {
   static SaveAppStateV2(): void {
     const stateV2 = appStateV2.value;
     this.SaveData(this.APP_STATE_V2, stateV2);
+
+    // `SaveToLocalStorage` funnels through here too, so this is the single "the document was persisted"
+    // signal for a host that mirrors the engine into a drawing record.
+    this.notifyDocumentPersisted();
   }
 
   /**
@@ -600,7 +729,7 @@ class DataOpt {
     return maxDimensions;
   }
 
-  static readonly GRP_SWITCH_KEY: string = "t3.grpSwitch";
+  static readonly GRP_SWITCH_KEY: string = StorageKeys.GRP_SWITCH;
 
   /**
    * Saves grpSwitch data to localStorage

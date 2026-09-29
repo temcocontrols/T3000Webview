@@ -97,7 +97,7 @@ class StateOpt extends BaseStateOpt {
    *   as the document-as-loaded marker. Its `storedObjects` are deliberately empty: the deltas
    *   recorded from here on are relative to whatever `T3Gv.stdObj` holds at this moment, and index 0
    *   is never re-applied (`ToolActUtil.Undo` refuses to go below it).
-   * - **A saved history was restored** (`DataOpt.InitState` loads `localStorage['t3.state']`, so undo
+   * - **A saved history was restored** (`DataOpt.InitState` loads `localStorage['t3d.state']`, so undo
    *   deliberately survives a reload): it is kept as it is, only its current state is closed.
    *
    * Why closing matters: `AddToCurrentState` merges into the current state only while it is *open*.

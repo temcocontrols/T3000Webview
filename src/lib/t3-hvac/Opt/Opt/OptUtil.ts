@@ -7397,12 +7397,12 @@ class OptUtil {
       return value;
     });
 
-    // Save to local storage with the key "t3.library"
+    // Save to local storage under the library key (see Data/Constant/StorageKeys.ts)
     DataOpt.SaveT3Library(serializedItems);
 
     LogUtil.Debug("= u.OptUtil: AddToLibrary - Successfully saved to local storage", {
       itemCount: libraryItems.length,
-      storageKey: 't3.library',
+      storageKey: DataOpt.LIBRARY_KEY,
       sizeInBytes: serializedItems.length
     });
 

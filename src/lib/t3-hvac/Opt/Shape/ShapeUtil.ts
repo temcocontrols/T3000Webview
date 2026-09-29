@@ -27,6 +27,7 @@ import DataOpt from '../Data/DataOpt'
 import TextUtil from '../Opt/TextUtil'
 import LogUtil from '../../Util/LogUtil'
 import T3Constant from '../../Data/Constant/T3Constant'
+import StorageKeys from '../../Data/Constant/StorageKeys'
 
 class ShapeUtil {
 
@@ -569,7 +570,7 @@ class ShapeUtil {
     try {
       if (typeof storageKeyOrData === 'string') {
         // Check if it's a storage key
-        if (storageKeyOrData.startsWith('t3.draw')) {
+        if (storageKeyOrData.startsWith(StorageKeys.DRAW)) {
           // Retrieve data from localStorage
           const storedData = localStorage.getItem(storageKeyOrData);
           if (storedData) {
@@ -1287,7 +1288,7 @@ class ShapeUtil {
       const jsonString = JSON.stringify(jsonData);
 
       // Generate a unique storage key
-      const storageKey = "t3.draw";
+      const storageKey = StorageKeys.DRAW;
 
       // Store in localStorage
       localStorage.setItem(storageKey, jsonString);

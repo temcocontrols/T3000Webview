@@ -22,6 +22,7 @@ import HookUtil from "./HookUtil";
 import LayerUtil from "./LayerUtil";
 import OptAhUtil from './OptAhUtil';
 import OptCMUtil from "./OptCMUtil";
+import QuasarUtil from '../Quasar/QuasarUtil';
 import SelectUtil from "./SelectUtil";
 import SvgUtil from "./SvgUtil";
 import TextUtil from "./TextUtil";
@@ -681,6 +682,10 @@ class ToolActUtil {
       let deleteResult, nextSelect = OptAhUtil.GetNextSelect(), deleteList = [];
       const selectedObjects = T3Gv.stdObj.PreserveBlock(T3Gv.opt.selectObjsBlockId).Data;
       const objectsToDelete = objectIds || selectedObjects;
+
+      // The app layer keeps one record per shape; read the uniqueIds *before* the objects go, so a deleted
+      // (or cut) shape cannot leave a widget record behind. See `QuasarUtil.RemoveObjectsFromAppState`.
+      QuasarUtil.RemoveObjectsFromAppState(objectsToDelete);
 
       deleteResult = T3Gv.opt.AddtoDelete(objectsToDelete, false, null);
       if (deleteResult >= 0) {

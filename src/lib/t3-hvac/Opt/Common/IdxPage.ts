@@ -11,6 +11,7 @@ import {
 const liveApi: any = null;
 import panzoom from "panzoom"
 import { AreaIds } from "../../Data/Constant/AreaIds";
+import StorageKeys from "../../Data/Constant/StorageKeys";
 // import { computed, triggerRef, toRaw, ref } from "vue"
 // Placeholder: Vue reactivity - will need React equivalent
 const ref = (val?: any) => ({ value: val });
@@ -544,7 +545,7 @@ class IdxPage {
       */
 
       if (!this.webview?.postMessage) {
-        localStorage.removeItem("appState");
+        localStorage.removeItem(StorageKeys.APP_STATE);
       }
     }
     else {
@@ -554,7 +555,7 @@ class IdxPage {
       this.refreshMoveable();
 
       // set ls appState to empty
-      localStorage.setItem("appState", JSON.stringify(appState.value));
+      localStorage.setItem(StorageKeys.APP_STATE, JSON.stringify(appState.value));
 
       // set ls deviceAppState's current appState to empty
       const currentDevice = Hvac.DeviceOpt.getCurrentDevice();
@@ -569,16 +570,16 @@ class IdxPage {
 
         if (deviceState) {
           deviceState.appState = cloneDeep(emptyProject);
-          localStorage.setItem("deviceAppState", JSON.stringify(deviceAppState));
+          localStorage.setItem(StorageKeys.DEVICE_APP_STATE, JSON.stringify(deviceAppState));
         }
       }
 
       // set ls tempAppState to empty
-      localStorage.setItem("tempAppState", JSON.stringify(appState.value));
+      localStorage.setItem(StorageKeys.TEMP_APP_STATE, JSON.stringify(appState.value));
 
       // clear current device's element count
       currentDevice.graphicFull.elementCount = 0;
-      localStorage.setItem("currentDevice", JSON.stringify(currentDevice));
+      localStorage.setItem(StorageKeys.CURRENT_DEVICE, JSON.stringify(currentDevice));
     }
   }
 

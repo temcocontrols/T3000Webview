@@ -16,6 +16,7 @@ import DataOpt from "../Data/DataOpt";
 import DrawUtil from "../Opt/DrawUtil";
 import SvgUtil from "../Opt/SvgUtil";
 import OptConstant from "../../Data/Constant/OptConstant";
+import StorageKeys from "../../Data/Constant/StorageKeys";
 
 class QuasarUtil {
 
@@ -124,11 +125,11 @@ class QuasarUtil {
 
   setLocalSettings(key: string, value: any) {
     localSettings.value[key] = value;
-    localStorage.setItem("localSettings", JSON.stringify(localSettings.value));
+    localStorage.setItem(StorageKeys.LOCAL_SETTINGS, JSON.stringify(localSettings.value));
   }
 
   getLocalSettings(key: string) {
-    const localSettings = localStorage.getItem("localSettings");
+    const localSettings = localStorage.getItem(StorageKeys.LOCAL_SETTINGS);
 
     if (localSettings) {
       return JSON.parse(localSettings)[key];
@@ -348,6 +349,50 @@ class QuasarUtil {
     } else {
       LogUtil.Debug(`= U.QuasarUtil Item with id ${shapeUniqueId} not found in appStateV2`);
       return null;
+    }
+  }
+
+  /**
+   * Drops the app-layer records of the given engine objects.
+   *
+   * The mirror of `AddCurrentObjectToAppState`: the app layer keeps **one record per shape**, and a shape
+   * that is deleted (or cut) must not leave its record behind — otherwise the properties panel and the
+   * saved drawing keep a widget nothing on the canvas answers to.
+   *
+   * Call **before** the objects are removed from the store (`ObjectUtil.GetObjectPtr` is what maps an
+   * object id to the shape's `uniqueId`, the key the records are filed under).
+   */
+  static RemoveObjectsFromAppState(objectIds: number[]): void {
+    if (!Array.isArray(objectIds) || objectIds.length === 0) {
+      return;
+    }
+
+    try {
+      const uniqueIds = objectIds
+        .map((objectId) => ObjectUtil.GetObjectPtr(objectId, false))
+        .map((object) => (object as any)?.uniqueId)
+        .filter((uniqueId): uniqueId is string => typeof uniqueId === 'string' && uniqueId.length > 0);
+
+      if (uniqueIds.length === 0) {
+        return;
+      }
+
+      const items = appStateV2.value.items;
+      const kept = items.filter((item) => !uniqueIds.includes(item.uniqueId));
+      if (kept.length === items.length) {
+        return;
+      }
+
+      appStateV2.value.items = kept;
+
+      // The index may point at (or past) a record that just disappeared; re-point it at whatever is
+      // selected now, exactly as a selection change would.
+      this.SetAppStateV2SelectIndex(null);
+      DataOpt.SaveAppStateV2();
+
+      LogUtil.Debug('= U.QuasarUtil RemoveObjectsFromAppState - removed records:', uniqueIds, appStateV2.value);
+    } catch (error) {
+      LogUtil.Error('= U.QuasarUtil RemoveObjectsFromAppState / failed:', error);
     }
   }
 
