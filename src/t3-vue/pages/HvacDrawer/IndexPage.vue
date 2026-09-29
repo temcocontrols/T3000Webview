@@ -99,7 +99,7 @@
  * New View notice — the classic app is what T3000 opens (`#/`), so this bar is the only way a customer can
  * discover the new interface (nobody guesses `#/t3000/`). It opens the switcher page, which owns the
  * "how to switch back and forth" explanation; the dismissed flag is remembered in `t3.ui.noticeDismissed`.
- * Deliberately one bar and one link: nothing else in the classic app knows about the new one.
+ * Deliberately one bar: nothing else in the classic app knows about the new one.
  */
 .view-notice {
   display: flex;
@@ -115,6 +115,44 @@
 .view-notice-text {
   flex: 1;
   min-width: 0;
+  /*
+   * Never wraps. At a narrow window the sentence truncates instead of growing the bar over several lines and
+   * pushing the links out of reach — which is what it did before this was added (measured at 379 px: four
+   * lines of text, both links pushed outside the bar).
+   */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * The two actions are **links**, not buttons — normal size, nothing that reads as a toolbar control, and a
+ * real `href` so the destination shows on hover and middle-click / open-in-new-tab works. The click handler
+ * still does the `replaceState` + reload that switching views requires (see `switchView` in the script).
+ */
+.view-notice-link {
+  color: #0f6cbd;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 2px;
+  border-radius: 3px;
+}
+
+.view-notice-link:hover,
+.view-notice-link:focus-visible {
+  text-decoration: underline;
+}
+
+.view-notice-link:focus-visible {
+  outline: 2px solid #0f6cbd;
+  outline-offset: 1px;
+}
+
+/* "Compare views" is the quieter of the two — it explains rather than acts. */
+.view-notice-link--secondary {
+  color: #2f5f8a;
+  font-weight: 400;
 }
 </style>
 
@@ -133,8 +171,9 @@
             A modernized T3000 interface is available. You can switch between Classic View and New View at any
             time — nothing is lost.
           </span>
-          <q-btn flat dense no-caps color="primary" label="Try New View" @click="openNewView" />
-          <q-btn flat dense no-caps size="sm" label="Compare views" @click="openViewSwitcher" />
+          <a class="view-notice-link" href="#/t3000/" @click.prevent="openNewView">Try New View</a>
+          <a class="view-notice-link view-notice-link--secondary" href="#/t3000/ui-switch"
+            @click.prevent="openViewSwitcher">Compare views</a>
           <q-btn flat dense round size="sm" icon="close" aria-label="Dismiss" @click="dismissViewNotice" />
         </div>
 

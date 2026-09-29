@@ -28,7 +28,8 @@ The T3000 help/update flow is untouched — updating T3000 changes nothing about
 | File | Role |
 |---|---|
 | `index.html` | The startup decision (inline script, runs before any bundle): a remembered `new` goes straight to `#/t3000/`; otherwise the classic app is left alone, except that a first run is sent to the switcher page **once per session**. |
-| `src/shared/uiFlavor.ts` | The storage contract and navigation — `localStorage['t3.ui.flavor']` (`classic` / `new`), `sessionStorage['t3.ui.choiceDone']`, the three hashes, and `gotoFlavor()` (hash change **plus** reload: which app is mounted is decided once, at boot). |
+| `src/shared/uiFlavor.ts` | The storage contract and navigation — `localStorage['t3.ui.flavor']` (`classic` / `new`), `sessionStorage['t3.ui.choiceDone']`, the three hashes, `gotoFlavor()` (hash change **plus** reload: which app is mounted is decided once, at boot) and `installUiFlavorHashGuard()`. |
+| `src/boot/react.tsx` | Installs the hash guard — a boot file runs on every document, in both apps. |
 | `src/t3-react/features/ui-switch/pages/UiSwitchPage.tsx` | The switcher page itself (React + Fluent UI), registered as a **bare** route — no menu bar, no device tree. |
 | `src/t3-react/app/App.tsx` | The `/t3000/ui-switch` route. |
 | `src/t3-react/config/menuConfig.ts` | *Help ▸ Switch View* (shared by the main app, Design Hub, the HVAC designer and the simulator menus, plus the EEZ menu set). |
@@ -36,6 +37,27 @@ The T3000 help/update flow is untouched — updating T3000 changes nothing about
 
 Keys are duplicated in `index.html` and in `IndexPage.vue` (neither can import the TS module) — **change them
 in all three places.**
+
+### Two enforcement points, one rule
+
+The rule ("no remembered flavor **and** no choice this session → ask") is enforced twice, because the startup
+script can only ever see a **document load**:
+
+1. `index.html` — at load, before any bundle runs.
+2. `installUiFlavorHashGuard()` — on `hashchange`, for **in-page** navigation to the classic root (typing `#/`,
+   following a link, or the classic app's own *Home*). Without it, that navigation showed the classic app to a
+   user who had never chosen anything, because nothing reloads the document to re-run the startup script.
+
+The guard only ever intercepts the classic **root** — deep links such as `#/hvac/t2` or `#/t3000/…` are left
+alone — and what it does there is the *same decision* the startup script makes (`resolveClassicRootRedirect()`),
+so a reload and an in-page navigation can never disagree:
+
+| Stored state | Where `#/` goes |
+|---|---|
+| remembered **New** | `#/t3000/` — identical to what a reload does |
+| remembered **Classic** | the classic app, left alone |
+| nothing remembered, already asked this session | the classic app, left alone (this is what stops *Open Classic View* bouncing back to the switcher) |
+| nothing remembered, never asked | the switcher |
 
 ## Draft forum post
 

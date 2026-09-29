@@ -7,6 +7,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { isReactRoute } from '../shared/routes';
+import { installUiFlavorHashGuard } from '../shared/uiFlavor';
 
 // Track if React has already been initialized
 let reactRoot: ReactDOM.Root | null = null;
@@ -48,7 +49,11 @@ export function initializeReactApp() {
  * Quasar boot function export
  * NOTE: React is now initialized by ReactContainer.vue's onMounted hook
  * This ensures the DOM element exists before React tries to mount
+ *
+ * The view-choice guard is installed here because a boot file runs on **every** document, before either app
+ * renders — the listener has to already be in place when the hash changes inside the classic app, which the
+ * `index.html` startup redirect never sees. See `installUiFlavorHashGuard`.
  */
 export default () => {
-  //console.log('⚛️ React boot file loaded (initialization handled by ReactContainer)');
+  installUiFlavorHashGuard();
 };

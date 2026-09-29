@@ -19,6 +19,12 @@
  *                                        asks again on the next launch instead of looping within one
  *                                        session (choose → `/` → asked again → …).
  *
+ * ## Two places enforce the same rule
+ *
+ *  · `index.html` — the inline redirect, at **document load** (it cannot import TS, hence the mirrored keys);
+ *  · `installUiFlavorHashGuard()` below — at runtime, for in-page hash changes, which the startup script
+ *    never sees. Installed from `src/boot/react.tsx`, because a boot file runs on every load in both apps.
+ *
  * Nothing here imports Vue or React: the classic app's future *Help ▸ Switch View* entry can use it as-is.
  */
 
@@ -120,4 +126,70 @@ export function switchView(hash: string): void {
     const { pathname, search } = window.location;
     window.history.replaceState(null, "", `${pathname}${search}${hash}`);
     window.location.reload();
+}
+
+/** The classic app's root — the only location the switcher is allowed to intercept. */
+function isClassicRootHash(hash: string): boolean {
+    const value = (hash || "").replace(/^#/, "");
+    return value === "" || value === "/";
+}
+
+/**
+ * The rule, in one place: what the classic root should do, given the stored choice.
+ *
+ * Returns the hash to go to, or `null` to leave the classic app alone.
+ *
+ *   remembered `new`           → the new view — the same thing a reload at `/` does
+ *   remembered `classic`       → stay (those users asked not to be asked again)
+ *   nothing, but already asked → stay (this is what stops the switcher looping: picking *Classic* would
+ *                                otherwise bounce straight back to it)
+ *   nothing, never asked       → the switcher
+ *
+ * `index.html` implements this same rule in plain JS because it runs before the bundle and cannot import this
+ * module — the two must stay in step. They did **not** at first: the guard treated a remembered `new` as
+ * "stay", so typing `#/` landed on the classic app while a reload landed on the new one.
+ */
+export function resolveClassicRootRedirect(): string | null {
+    const flavor = readUiFlavor();
+    if (flavor === "new") {
+        return NEW_VIEW_HASH;
+    }
+    if (flavor === "classic") {
+        return null;
+    }
+    return hasChosenThisSession() ? null : SWITCH_VIEW_HASH;
+}
+
+/**
+ * The runtime twin of the startup redirect in `index.html`.
+ *
+ * That script can only act on a **document load**, so an in-page navigation to the classic root — typing `#/`,
+ * following a link to it, or the classic app's own *Home* — went straight past it: the browser fires
+ * `hashchange`, nothing intercepts, and the classic Vue app simply renders. This listener closes that gap by
+ * applying `resolveClassicRootRedirect()` — the same rule the startup script uses.
+ *
+ * The redirect is `switchView()`, i.e. `replaceState` + reload, for the reasons in that function's comment:
+ * the React mount point is a boot-time singleton, so an in-page hash change cannot mount the switcher at all.
+ */
+export function installUiFlavorHashGuard(): void {
+    if (typeof window === "undefined") {
+        return;
+    }
+
+    /** On `window`, not in a module variable, so a dev-server hot reload cannot install a second listener. */
+    const guardFlag = window as Window & { __t3UiFlavorHashGuard?: boolean };
+    if (guardFlag.__t3UiFlavorHashGuard) {
+        return;
+    }
+    guardFlag.__t3UiFlavorHashGuard = true;
+
+    window.addEventListener("hashchange", () => {
+        if (!isClassicRootHash(window.location.hash)) {
+            return;
+        }
+        const redirect = resolveClassicRootRedirect();
+        if (redirect !== null) {
+            switchView(redirect);
+        }
+    });
 }

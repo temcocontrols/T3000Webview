@@ -54,6 +54,9 @@
         nothing remembered   → the switcher page, once per session
 
       Keys mirror `src/shared/uiFlavor.ts` — change them in BOTH places.
+
+      This can only see a document load. In-page navigation to the classic root (typing `#/`) is caught at
+      runtime by `installUiFlavorHashGuard()`, installed from `src/boot/react.tsx`.
     -->
     <script>
       (function () {
