@@ -54,6 +54,9 @@ import { useRegisterCommands } from "../../commands/CommandBus";
 import { canvasIdsOf, makeAreaIds } from "./hvacAreaIds";
 import type { HvacAreaIdMap } from "./hvacAreaIds";
 import { AreaIds } from "@/lib/t3-hvac/Data/Constant/AreaIds";
+import DataOpt from "@/lib/t3-hvac/Opt/Data/DataOpt";
+import { captureCurrentDocument, hasLocalDrawing, prepareEngineDocument, updateDrawing } from "@t3-react/features/hvac-designer/services/drawingService";
+import type { EngineDocumentSource } from "@t3-react/features/hvac-designer/services/drawingService";
 
 export const HVAC_DOCUMENT_KIND = "hvac-schematic" as const;
 
@@ -66,6 +69,68 @@ const fillHeight: React.CSSProperties = {
 };
 
 let areaIdSequence = 0;
+
+/**
+ * How long the designer waits for a record that only exists on disk before starting the engine anyway.
+ *
+ * The engine must start: with `T3Gv.opt` undefined the whole band is dead (and used to throw). A local
+ * service that is down does not fail fast — it stalls — so the wait needs a deadline, not just a `catch`.
+ */
+const RECORD_LOAD_GRACE_MS = 3000;
+
+/* ------------------------------------------------------------------ record mirror */
+
+/**
+ * The open drawing's **record** follows the engine's saves.
+ *
+ * The engine owns the canvas and persists it to its own storage; a drawing record (design hub: localStorage
+ * index + disk mirror) has to carry that document or the drawing cannot be reopened. Rather than chasing
+ * every save entry point (band Save, `Ctrl+S`, the properties panel's four `SaveAct` calls, delete), the
+ * engine announces persistence once — `DataOpt.SaveAppStateV2()` is the funnel for all of them — and this
+ * mirrors the live document into the record of whichever drawing is open.
+ *
+ * Debounced, because a single user action can persist more than once, and a no-op when the document is not
+ * backed by a record (an unsaved new drawing, which the hub has not created yet).
+ */
+let documentPersistTimer: number | undefined;
+
+/**
+ * How the running document was prepared (see `prepareEngineDocument`).
+ *
+ * `unknown` means the canvas does **not** stand for the stored drawing: mirroring then would replace a real
+ * drawing with an empty canvas, so the mirror stays off for that session.
+ */
+let openDocumentSource: EngineDocumentSource = 'unknown';
+
+function prepareOpenDocument(id: string | undefined): void {
+    openDocumentSource = prepareEngineDocument(id);
+}
+
+function persistOpenDocument(): void {
+    if (documentPersistTimer) {
+        window.clearTimeout(documentPersistTimer);
+    }
+
+    documentPersistTimer = window.setTimeout(() => {
+        documentPersistTimer = undefined;
+        try {
+            if (openDocumentSource === 'unknown') {
+                return;
+            }
+            const drawingId = useHvacDesignerStore.getState().drawingId;
+            if (!drawingId) {
+                return;
+            }
+            const document = captureCurrentDocument();
+            if (!document) {
+                return;
+            }
+            void updateDrawing(drawingId, { document }).catch(() => undefined);
+        } catch {
+            /* mirroring must never break the editor */
+        }
+    }, 400);
+}
 
 /**
  * This document OWNS the engine's container-id table while it is mounted.
@@ -95,7 +160,11 @@ function useDocumentAreaIds(): HvacAreaIdMap {
  * `T3Gv.opt.mainAppElement` during init (`UIUtil.InitT3GvOpt`) — initialising before the id exists
  * would leave the Hammer gesture surface null for the whole session.
  */
-function useHvacEngine(ids: HvacAreaIdMap, ready: boolean): { refreshLayout: () => void } {
+function useHvacEngine(
+    ids: HvacAreaIdMap,
+    ready: boolean,
+    prepareDocument?: () => void
+): { refreshLayout: () => void } {
     const initializedRef = useRef(false);
     const aliveRef = useRef(true);
 
@@ -127,6 +196,9 @@ function useHvacEngine(ids: HvacAreaIdMap, ready: boolean): { refreshLayout: () 
                     return;
                 }
                 try {
+                    // This document is going away: the next one arms its own mirror.
+                    DataOpt.documentPersistHook = null;
+
                     Hvac.IdxPageReact.clearAutoSaveInterval();
                     Hvac.IdxPageReact.clearIdx();
                     // The engine registered its window listeners for this document (see
@@ -150,9 +222,25 @@ function useHvacEngine(ids: HvacAreaIdMap, ready: boolean): { refreshLayout: () 
             document.getElementById(ids.hRuler)?.replaceChildren();
             document.getElementById(ids.vRuler)?.replaceChildren();
 
+            /*
+             * Seed the engine's storage **before** it initialises: `Initialize` restores the document from
+             * those keys, so a document prepared afterwards would only show on the next load. This is
+             * synchronous on purpose — the record lives in localStorage, and the engine must never wait on
+             * the network to start (a stalled request used to leave `T3Gv.opt` undefined and every tool
+             * click threw).
+             */
+            prepareDocument?.();
+
             Hvac.UI.Initialize(null);
             Hvac.IdxPageReact.initQuasar(null);
             Hvac.IdxPageReact.initPageReact();
+
+            /*
+             * From here on every save the engine makes belongs to the drawing that was prepared above —
+             * mirror it back into that drawing's record (`persistOpenDocument` skips the mirror when the
+             * record could not be read, so an empty canvas can never overwrite a stored drawing).
+             */
+            DataOpt.documentPersistHook = persistOpenDocument;
 
             // Same first-frame nudges the legacy page uses, now that the canvas is guaranteed to
             // be mounted (the overlay approach never unmounts it).
@@ -186,7 +274,7 @@ function useHvacEngine(ids: HvacAreaIdMap, ready: boolean): { refreshLayout: () 
         } catch (error) {
             console.error("[Designer] HVAC engine init failed:", error);
         }
-    }, [ready, refreshLayout, ids]);
+    }, [ready, refreshLayout, ids, prepareDocument]);
 
     return { refreshLayout };
 }
@@ -199,15 +287,29 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
     const drawingName = useHvacDesignerStore((state) => state.drawingName);
 
     // The engine needs the frame to be committed before it can resolve #main-app.
-    const ready = useDesignerFrameReady(designerDocumentKey(HVAC_DOCUMENT_KIND, ctx.id));
-    const { refreshLayout } = useHvacEngine(ids, ready);
+    const frameReady = useDesignerFrameReady(designerDocumentKey(HVAC_DOCUMENT_KIND, ctx.id));
+
+    /*
+     * …and it must not start before the drawing's document is known. That is decided from localStorage
+     * (`prepareEngineDocument`, run synchronously just before the engine initialises):
+     *   · the record is in this browser       → no wait at all;
+     *   · the record only exists on disk      → wait for `loadDrawing`, which fetches and caches it …
+     *   · … but never longer than the grace   → a stalled request must not leave the engine unstarted.
+     */
+    const hasLocalRecord = useMemo(() => (ctx.id ? hasLocalDrawing(ctx.id) : false), [ctx.id]);
+    const [recordRequestSettled, setRecordRequestSettled] = useState(false);
+    const waitingForRecord = Boolean(ctx.id) && !hasLocalRecord && !recordRequestSettled;
+    const engineReady = frameReady && !waitingForRecord;
+
+    const prepareDocument = useCallback(() => prepareOpenDocument(ctx.id), [ctx.id]);
+    const { refreshLayout } = useHvacEngine(ids, engineReady, prepareDocument);
 
     /*
      * Finish the engine's app-layer registration for a shape that landed without it (the library tools placed by
      * a palette click skip `DrawUtil`'s completion). Without this the properties panel has no record to read its
      * Data and Widget sections from — the legacy flow never needed a manual step because that completion did it.
      */
-    useHvacAutoRecord(ready);
+    useHvacAutoRecord(engineReady);
 
     // Load or create the drawing — identical semantics to the legacy page (including the
     // "discard unsaved changes?" confirmation inside `createNew`).
@@ -224,13 +326,32 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
         }
         loadOrCreateOnceRef.current = documentId;
 
-        if (documentId) {
-            loadDrawing(documentId).catch((loadError) => {
+        /*
+         * This fills the React store (name, shape list, dirty flag) and caches a record that only existed on
+         * disk — which is what makes the engine's *synchronous* prepare above find it, here or on the next
+         * open. The engine is started by the effect above, not by this promise, except while
+         * `waitingForRecord` is true — and that wait has the grace timer below as its ceiling.
+         */
+        const prepare = async () => {
+            if (documentId) {
+                await loadDrawing(documentId);
+            } else {
+                createNew();
+            }
+        };
+
+        const recordGraceTimer = window.setTimeout(() => {
+            setRecordRequestSettled(true);
+        }, RECORD_LOAD_GRACE_MS);
+
+        prepare()
+            .catch((loadError) => {
                 console.error("[Designer] Failed to load drawing:", loadError);
+            })
+            .finally(() => {
+                window.clearTimeout(recordGraceTimer);
+                setRecordRequestSettled(true);
             });
-        } else {
-            createNew();
-        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [documentId]);
 
