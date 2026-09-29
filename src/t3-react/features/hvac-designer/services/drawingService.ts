@@ -13,9 +13,132 @@ import { Drawing, DrawingMetadata, ExportOptions, ImportOptions } from '../types
 import { Shape } from '../types/shape.types';
 import { Layer } from '../types/drawing.types';
 import Hvac from '@/lib/t3-hvac';
+import DataOpt from '@/lib/t3-hvac/Opt/Data/DataOpt';
 import { AreaIds } from '@/lib/t3-hvac/Data/Constant/AreaIds';
 
 const LOCAL_STORAGE_KEY = 't3-hvac-drawings';
+
+/* ── the engine's document ──
+ *
+ * The canvas belongs to the engine, so a drawing's content is the engine's document, not the React
+ * store's shape list. These three calls are the whole bridge:
+ *   capture → the record follows every engine save
+ *   seed    → the engine restores the record's document on its next initialise
+ *   clear   → "new drawing" starts from an empty canvas instead of the previous document
+ * All three are best-effort: a drawing must still open when the engine is not loaded yet.
+ */
+
+export function captureCurrentDocument(): unknown | undefined {
+  try {
+    return (DataOpt as any)?.CaptureDocument?.() ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function seedDrawingDocument(payload: unknown): boolean {
+  try {
+    return payload ? (DataOpt as any)?.SeedDocument?.(payload) === true : false;
+  } catch {
+    return false;
+  }
+}
+
+export function clearDrawingDocument(): void {
+  try {
+    (DataOpt as any)?.ClearDocument?.();
+  } catch {
+    /* best effort */
+  }
+}
+
+/** Attaches the engine's current document to a record about to be written. */
+function withCurrentDocument(drawing: Drawing): Drawing {
+  const document = captureCurrentDocument();
+  return document ? { ...drawing, document } : drawing;
+}
+
+/* ── synchronous preparation ──
+ *
+ * The engine restores its document while it initialises, so the record's document has to be in the engine's
+ * own storage *before* that — and the engine must never wait on the network to start (a hanging request used
+ * to leave `T3Gv.opt` undefined for as long as it hung, and the tool palette threw on every click). Hence:
+ * a **synchronous** read of the local index is what prepares the engine, and the async `loadDrawing` only
+ * feeds the React store / caches a disk-only record for the next time.
+ */
+
+/** The record as this browser has it right now, or `null` when it is not stored locally. */
+export function peekLocalDrawing(id: string): Drawing | null {
+  try {
+    return getLocalDrawings()[id] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether this browser already holds the record (i.e. no fetch is needed to know its document). */
+export function hasLocalDrawing(id: string): boolean {
+  return peekLocalDrawing(id) !== null;
+}
+
+/**
+ * What `prepareEngineDocument` found — i.e. how far the engine's document can be trusted.
+ *
+ * `unknown` is the case that matters: the record is not in this browser and this browser has not been able
+ * to read it (yet), so the canvas no longer reflects the stored drawing and mirroring must not run.
+ */
+export type EngineDocumentSource = 'record' | 'empty' | 'unknown';
+
+/**
+ * Puts the right document in the engine's storage for `id`, synchronously. Called immediately before the
+ * engine initialises.
+ *
+ * A record that has no `document` (written before this existed, or an empty new drawing) **clears** the
+ * engine's storage: "no document" means an empty canvas, never the previous drawing that happens to still
+ * be in this browser.
+ */
+export function prepareEngineDocument(id: string | undefined): EngineDocumentSource {
+  if (!id) {
+    clearDrawingDocument();
+    return 'empty';
+  }
+
+  const record = peekLocalDrawing(id);
+  if (!record) {
+    // Not readable here: start clean rather than show whatever the engine still holds, and report it so the
+    // caller does not mirror this (empty) canvas back over the stored drawing.
+    clearDrawingDocument();
+    return 'unknown';
+  }
+
+  const document = (record as { document?: unknown }).document;
+  if (document) {
+    seedDrawingDocument(document);
+    return 'record';
+  }
+
+  clearDrawingDocument();
+  return 'empty';
+}
+
+/**
+ * How long a record request may take before the caller stops waiting for it.
+ *
+ * A local service that is down (or answered through the system proxy) does not fail fast — it hangs. The
+ * 502 the proxy returns is a valid response, but a *stalled* connection is not, so the request needs a
+ * deadline of its own rather than leaving `isSaving`/`isLoading` true forever.
+ */
+const RECORD_FETCH_TIMEOUT_MS = 4000;
+
+async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), RECORD_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
 
 // ── localStorage helpers ──
 
@@ -39,7 +162,7 @@ function saveLocalDrawings(drawings: Record<string, Drawing>): void {
 
 async function saveDrawingToDisk(id: string, drawing: unknown): Promise<void> {
   try {
-    await fetch(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`, {
+    await fetchWithTimeout(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: typeof drawing === 'string' ? drawing : JSON.stringify(drawing),
@@ -49,7 +172,7 @@ async function saveDrawingToDisk(id: string, drawing: unknown): Promise<void> {
 
 async function deleteDrawingFromDisk(id: string): Promise<void> {
   try {
-    await fetch(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`, {
+    await fetchWithTimeout(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
   } catch { /* backend unavailable — localStorage remains primary */ }
@@ -65,7 +188,7 @@ export async function saveDrawing(drawing: Drawing): Promise<{ success: boolean;
 
   const drawings = getLocalDrawings();
   const id = drawing.id || `drawing-${Date.now()}`;
-  drawings[id] = { ...drawing, id, updatedAt: new Date().toISOString() };
+  drawings[id] = withCurrentDocument({ ...drawing, id, updatedAt: new Date().toISOString() });
   saveLocalDrawings(drawings);
 
   // Best-effort disk mirror under <T3Web>/t3-hvac/<id>/<id>.json.
@@ -81,7 +204,7 @@ export async function saveDrawing(drawing: Drawing): Promise<{ success: boolean;
 export async function updateDrawing(id: string, drawing: Partial<Drawing>): Promise<{ success: boolean }> {
   const drawings = getLocalDrawings();
   if (drawings[id]) {
-    drawings[id] = { ...drawings[id], ...drawing, id, updatedAt: new Date().toISOString() };
+    drawings[id] = withCurrentDocument({ ...drawings[id], ...drawing, id, updatedAt: new Date().toISOString() });
     saveLocalDrawings(drawings);
     // Best-effort disk mirror.
     await saveDrawingToDisk(id, drawings[id]);
@@ -98,8 +221,17 @@ export async function loadDrawing(id: string): Promise<Drawing> {
 
   // Try disk (backend) — the drawing may exist on disk but not in this browser.
   try {
-    const r = await fetch(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`);
-    if (r.ok) return (await r.json()) as Drawing;
+    const r = await fetchWithTimeout(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`);
+    if (r.ok) {
+      const drawing = (await r.json()) as Drawing;
+      /*
+       * Cache it in the local index: that index is what `updateDrawing` writes back to, so a record that
+       * existed only on disk could otherwise never be saved from this browser.
+       */
+      drawings[id] = drawing;
+      saveLocalDrawings(drawings);
+      return drawing;
+    }
   } catch { /* API unavailable */ }
 
   throw new Error(`Drawing not found: ${id}`);

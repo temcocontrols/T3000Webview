@@ -25,6 +25,16 @@ export interface Drawing {
   layers: Layer[];
   symbols: Symbol[];
 
+  /**
+   * The engine's document — the authoritative content of an HVAC drawing.
+   *
+   * The engine (not the React store) owns the canvas, so `shapes` above is not where a drawing's content
+   * lives: this payload is the same set of stores the engine writes to localStorage
+   * (`DataOpt.CaptureDocument`), seeded back into the engine before it initialises (`SeedDocument`).
+   * Absent on records written before this existed, and on non-HVAC drawing kinds.
+   */
+  document?: unknown;
+
   // Metadata
   createdAt: string;
   updatedAt: string;

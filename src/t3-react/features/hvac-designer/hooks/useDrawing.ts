@@ -89,6 +89,12 @@ export function useDrawing(): UseDrawingResult {
 
       try {
         const drawing = await loadFromDB(id);
+        /*
+         * The engine's storage is prepared by `drawingService.prepareEngineDocument` (synchronously, from
+         * the local index) — that is what the designer sequences before initialising the engine. Nothing to
+         * seed here: this call feeds the React store, and `loadFromDB` has cached a disk-only record for the
+         * next open.
+         */
         store.loadDrawing(drawing.id, drawing.shapes, drawing.layers);
         store.setDrawingName(drawing.name);
       } catch (err) {

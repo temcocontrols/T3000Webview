@@ -42,12 +42,24 @@ import { CursorRegular, ChevronDownRegular, AddRegular } from '@fluentui/react-i
 import { useHvacDesignerStore } from '../../store/designerStore';
 import { NewTool, toolsCategories, selectedTool } from '@/lib/t3-hvac';
 import EvtOpt from '@/lib/t3-hvac/Event/EvtOpt';
+import T3Gv from '@/lib/t3-hvac/Data/T3Gv';
 import { AreaIds } from '@/lib/t3-hvac/Data/Constant/AreaIds';
 
 const toolOpt = EvtOpt.toolOpt;
 
 // Map tool names to the library's ToolOpt methods — matches Vue HandleSidebarToolEvent exactly
 const handleToolActivate = (tool: any) => {
+  /*
+   * The engine initialises when the designer frame is committed (and, for a drawing that has to be fetched,
+   * once its record has been prepared). A click that arrives before that would run into `T3Gv.opt` while it
+   * is still undefined — `DrawUtil.PreDragDropOrStamp` dereferences `T3Gv.opt.mainAppHammer` — and throw.
+   * Arming a tool against a document that is not there yet has no meaning, so the click is simply ignored
+   * (the canvas is covered by the loading overlay in that window).
+   */
+  if (!T3Gv?.opt) {
+    return;
+  }
+
   const name = tool.name;
   selectedTool.value = { ...tool, type: 'default' };
 
