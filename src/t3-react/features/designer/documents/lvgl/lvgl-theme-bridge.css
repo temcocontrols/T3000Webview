@@ -48,9 +48,9 @@
  * `#EezStudio_Content` (`app.less:129-138`) is `position: absolute; inset: 0`, and that is **load-bearing**,
  * not an accident of the old full-page route. Overriding it with `position: relative; width/height: 100%`
  * collapses the element to **2 px** (measured) because its box then comes from its contents instead of the
- * ancestor — and the editor lives *inside* it, so the canvas area collapses with it. It only resolves
- * correctly because `DesignerShell`'s canvas host is `position: relative` (which it must stay); that makes
- * the canvas slot the containing block, which is exactly the intended behaviour.
+ * ancestor — and the editor lives *inside* it, so the editor area collapses with it. It only resolves
+ * correctly because `DesignerShell`'s content host is `position: relative` (which it must stay); that makes
+ * the content slot the containing block, which is exactly the intended behaviour.
  *
  * `*`, `body`, `input…`, `.flexlayout__*` (`app.less:52,64,74-98,545,1421-1490`) are still global. Scoping
  * them is not a mechanical change: EEZ renders dropdowns, dialogs and toasts through portals that leave this

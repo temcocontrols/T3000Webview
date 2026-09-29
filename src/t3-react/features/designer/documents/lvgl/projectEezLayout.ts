@@ -15,20 +15,20 @@
  * ## How the areas are classified
  *
  * Borders are explicit (`left`/`right`/`bottom` by location). The root row's children are `[ <left columns>,
- * <canvas tabset>, <right columns> ]` — in **every** root model EEZ ships, which is the one shape the layout
+ * <editor tabset>, <right columns> ]` — in **every** root model EEZ ships, which is the one shape the layout
  * keeps constant while everything else about it changes (measured: the left border is empty, the left area is a
- * row of two stacked tabsets, and *Widgets Structure* is a top-level sibling). So the canvas tabset is what
+ * row of two stacked tabsets, and *Widgets Structure* is a top-level sibling). So the editor tabset is what
  * splits the row, and each child is classified by **where it sits against it**:
  *
  * | child | side |
  * |---|---|
- * | the canvas tabset — `EDITORS`, `RUNTIME-EDITORS`, or the full simulator's *Preview* | **canvas** |
+ * | the editor tabset — `EDITORS`, `RUNTIME-EDITORS`, or the full simulator's *Preview* | **editor area** |
  * | before it | **left** |
  * | after it | **right** |
  *
- * The canvas is identified by its declared id first (the runtime model's tabset is empty until EEZ adds the
+ * The editor area is identified by its declared id first (the runtime model's tabset is empty until EEZ adds the
  * runtime's editor tab to it, so its *contents* cannot be used at the moment of the switch), then by the
- * component it holds. When no canvas tabset can be identified at all — a hand-made model — the old
+ * component it holds. When no editor tabset can be identified at all — a hand-made model — the old
  * content rule takes over (`PROPERTIES` → right, anything else → left).
  *
  * ## The model is not one model
@@ -36,7 +36,7 @@
  * `layoutModels.root` is a computed that EEZ swaps per mode (`store/layout-models.tsx:226-234`):
  * `rootEditor` while editing, `rootRuntime` for Run/Debug (*Active Flows* · *Watch* on the left,
  * *Queue* · *Logs* on the right, and no *Properties* anywhere), `rootDockerSimulator` for Full Sim (the
- * *Preview* is the canvas and the right column is *Build Logs* over *Preview Logs*). Projecting whichever
+ * *Preview* is the editor area and the right column is *Build Logs* over *Preview Logs*). Projecting whichever
  * model is the root *now* is what makes the shell follow the mode; a projection memoised on the project
  * store alone kept drawing the editor's panels after **Run** was pressed.
  *
@@ -246,7 +246,7 @@ function selectedBorderTabId(border: FlexLayout.Node): string | undefined {
 /**
  * Turns one side's areas into the shell's region shape.
  *
- * `columns` are the root row's children for that side, in model order (they run from the canvas outwards on
+ * `columns` are the root row's children for that side, in model order (they run from the editor area outwards on
  * the right, and from the window edge inwards on the left). `border` is that side's border, which FlexLayout
  * draws *around* the root row — a separate strip in the old page, which the shell has no third column for, so
  * its tabs join the flat strip in the position the old page drew them (`first` on the left, `last` on the
@@ -359,7 +359,7 @@ export interface EezLayoutProjection {
     bottom: ProjectedRegion;
     /** The tabset the editor tabs are added to — its **runtime** id (flexlayout regenerates ids on
      *  parse; `EDITORS_TABSET_ID` is only the declared one, see `tabsetJsonId`). */
-    canvasTabsetId: string | null;
+    editorTabsetId: string | null;
 }
 
 /**
@@ -368,17 +368,18 @@ export interface EezLayoutProjection {
  *
  * Both matter: Run/Debug switch `layoutModels.root` to `rootRuntime`, whose editor tabset is
  * `RUNTIME-EDITORS` — and that tabset is empty until EEZ adds the runtime's editor tab to it, so the id
- * is the only reliable way to recognise the canvas at the moment of the switch.
+ * is the only reliable way to recognise the editor area at the moment of the switch.
  */
 export const EDITORS_TABSET_ID = "EDITORS";
 export const RUNTIME_EDITORS_TABSET_ID = "RUNTIME-EDITORS";
-const CANVAS_TABSET_IDS = [EDITORS_TABSET_ID, RUNTIME_EDITORS_TABSET_ID];
+const EDITOR_TABSET_IDS = [EDITORS_TABSET_ID, RUNTIME_EDITORS_TABSET_ID];
 
 /**
- * The component the **full simulator** model puts in the canvas: its *Preview* tab (`rootDockerSimulator`),
- * which is a panel rather than an editor — the preview *is* the canvas in that mode.
+ * The component the **full simulator** model puts in the editor area: its *Preview* tab
+ * (`rootDockerSimulator`), which is a panel rather than an editor — the preview *is* the editor area in
+ * that mode.
  */
-const CANVAS_PANEL_COMPONENTS = ["editor", "dockerSimulatorPreview"];
+const EDITOR_PANEL_COMPONENTS = ["editor", "dockerSimulatorPreview"];
 
 /** The tab that means "this side is the properties side" (mirrors `LayoutModels.PROPERTIES_TAB_ID`). */
 export const PROPERTIES_TAB_ID = "PROPERTIES";
@@ -401,25 +402,25 @@ function tabsetJsonId(tabset: FlexLayout.TabSetNode): string | undefined {
     return id && !id.startsWith("#") ? id : undefined;
 }
 
-/** True when the tabset shows the canvas — the editor tabs, or the full simulator's preview. */
-function isCanvasTabset(node: FlexLayout.Node): boolean {
+/** True when the tabset shows the editor area — the editor tabs, or the full simulator's preview. */
+function isEditorTabset(node: FlexLayout.Node): boolean {
     if (!(node instanceof FlexLayout.TabSetNode)) {
         return false;
     }
 
     const declared = tabsetJsonId(node);
-    if (declared && CANVAS_TABSET_IDS.includes(declared)) {
+    if (declared && EDITOR_TABSET_IDS.includes(declared)) {
         return true;
     }
 
     // Fallback for a model whose `_attributes` were rebuilt (e.g. one saved after the ids changed):
-    // the tabset that already holds an editor (or the preview) is the canvas.
+    // the tabset that already holds an editor (or the preview) is the editor area.
     return node
         .getChildren()
         .some(
             (child) =>
                 child instanceof FlexLayout.TabNode &&
-                CANVAS_PANEL_COMPONENTS.includes(String(child.getComponent() ?? ""))
+                EDITOR_PANEL_COMPONENTS.includes(String(child.getComponent() ?? ""))
         );
 }
 
@@ -508,7 +509,7 @@ export function projectEezLayout(
         left: EMPTY_REGION(),
         right: EMPTY_REGION(),
         bottom: EMPTY_REGION(),
-        canvasTabsetId: null
+        editorTabsetId: null
     };
 
     if (!model) {
@@ -523,25 +524,25 @@ export function projectEezLayout(
         borderGroups[location] = groupOfBorder(border, location);
     }
 
-    // ── the canvas first: it is what splits the root row into the two sides, and every root model EEZ
-    // ships is `[ <left columns>, <canvas tabset>, <right columns> ]` — measured for the editor model
+    // ── the editor area first: it is what splits the root row into the two sides, and every root model EEZ
+    // ships is `[ <left columns>, <editor tabset>, <right columns> ]` — measured for the editor model
     // (left area · EDITORS · properties) and for the two others (Run/Debug: left columns · RUNTIME-EDITORS ·
     // Queue+Logs; Full Sim: Preview · the two log columns).
     const root = model.getRoot();
     const children = root.getChildren();
-    const canvasIndex = children.findIndex((child) => isCanvasTabset(child));
+    const editorIndex = children.findIndex((child) => isEditorTabset(child));
 
-    // ── classify each top-level child by its **position** against the canvas, and expand it into the
+    // ── classify each top-level child by its **position** against the editor area, and expand it into the
     // *columns* of its side (the root row is horizontal, so its children sit side by side).
-    // The content rule is only the fallback, for a model whose canvas tabset cannot be identified: the
+    // The content rule is only the fallback, for a model whose editor tabset cannot be identified: the
     // runtime and full-simulator models hold no *Properties* tab at all, so that rule alone sent their
     // right-hand columns to the left region.
     const leftColumns: Group[] = [];
     const rightColumns: Group[] = [];
 
     children.forEach((child, index) => {
-        if (index === canvasIndex) {
-            projection.canvasTabsetId = child.getId();
+        if (index === editorIndex) {
+            projection.editorTabsetId = child.getId();
             return;
         }
 
@@ -550,7 +551,7 @@ export function projectEezLayout(
             return;
         }
 
-        const onTheRight = canvasIndex >= 0 ? index > canvasIndex : containsNodeId(child, PROPERTIES_TAB_ID);
+        const onTheRight = editorIndex >= 0 ? index > editorIndex : containsNodeId(child, PROPERTIES_TAB_ID);
         (onTheRight ? rightColumns : leftColumns).push(...columns);
     });
 
@@ -589,13 +590,13 @@ export function projectedPanelIds(projection: EezLayoutProjection): string[] {
 }
 
 /**
- * What the shell draws around the canvas, for the mode EEZ is in.
+ * What the shell draws around the editor area, for the mode EEZ is in.
  *
  * Taken from the origin (`ProjectEditor.Content`), not invented: when the runtime is on **without** the
  * debugger it returns the runtime page *before* it looks at the layout model (`ProjectEditor.tsx:312-331`), so
  * Run draws **the page alone** — no side panels, no bottom dock, only the toolbar above it. The debugger is the
  * one that uses a workbench at all (`rootRuntime`: *Active Flows · Watch* | *Queue · Logs*), and Full Sim uses
- * `rootDockerSimulator` (Preview as the canvas, the log column on the right).
+ * `rootDockerSimulator` (Preview as the editor area, the log column on the right).
  *
  * Mirrored naively — panels always projected from the model — Run mode showed the *debugger* layout, which is
  * what the user reported.
@@ -604,13 +605,13 @@ export type EezRegionPlan =
     /** No project (or no model yet): labelled placeholders, so the shell keeps its shape while it boots. */
     | "placeholders"
     /** The runtime page owns the whole area: **no** left/right/bottom regions at all. */
-    | "canvas-only"
+    | "editor-only"
     /** The panels of the model the mode selects. */
     | "projected";
 
 export function eezRegionPlan(mode: EezEditorMode, model: unknown): EezRegionPlan {
     if (mode === "run") {
-        return "canvas-only";
+        return "editor-only";
     }
 
     // A missing model is not "no panels": it is a state the shell cannot describe yet, and dropping the

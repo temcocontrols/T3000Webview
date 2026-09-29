@@ -44,7 +44,7 @@ const useStyles = makeStyles({
         // Same containing-block rule as `body` below: a document may put panel content straight into this
         // column (LCD's page list has no tab strip), and EEZ panels size against their host.
         position: "relative",
-        // No border of its own: the shell's splitter draws the hairline against the canvas, and a second rule
+        // No border of its own: the shell's splitter draws the hairline against the middle area, and a second rule
         // 1 px away from it reads as a rendering defect. The tint is what separates it from the body.
         backgroundColor: tokens.colorNeutralBackground2
     },
@@ -270,7 +270,7 @@ export const RegionPanel: React.FC<RegionPanelProps> = ({
     );
 
     const secondary = region.secondary;
-    /** `side: "end"` puts the second column between the body and the canvas. */
+    /** `side: "end"` puts the second column between the body and the middle area. */
     const secondaryAtEnd = secondary?.side === "end";
     /**
      * What the column actually gets.
@@ -329,7 +329,7 @@ export const RegionPanel: React.FC<RegionPanelProps> = ({
                     if (start == null) {
                         return;
                     }
-                    // Dragging towards the canvas widens the body, so the column shrinks when it sits at the end.
+                    // Dragging towards the middle area widens the body, so the column shrinks when it sits at the end.
                     const wanted = start + (secondaryAtEnd ? -delta : delta);
                     onSecondaryWidthChange?.(
                         Math.round(Math.min(secondary.max, Math.max(secondary.min, wanted)))
@@ -341,7 +341,7 @@ export const RegionPanel: React.FC<RegionPanelProps> = ({
     /*
      * The rail, on the region's **outer** edge: the origin's border bar is drawn on the window edge, so a
      * left region's rail comes before everything and a right region's after — never between the body and
-     * the canvas. The open tab's panel renders in the rail's own column (no strip of its own: the bar is the
+     * the middle area. The open tab's panel renders in the rail's own column (no strip of its own: the bar is the
      * switcher), which is what keeps the region's normal top strip down to its own column's tabs.
      */
     const rail = region.rail;

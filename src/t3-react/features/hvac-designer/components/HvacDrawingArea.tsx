@@ -156,7 +156,7 @@ export const HvacDrawingArea: React.FC<{ ids?: HvacDrawingAreaIds }> = ({ ids = 
        * beside the input). The engine overwrites position/size/opacity itself. `rows={1}` only avoids a tall
        * default box before the first edit.
        *
-       * WHY IT SITS BESIDE THE CANVAS AND NOT INSIDE IT: `HvacDocument` empties `svg-area`, `h-ruler` and
+       * WHY IT SITS BESIDE THE DRAWING AREA AND NOT INSIDE IT: `HvacDocument` empties `svg-area`, `h-ruler` and
        * `v-ruler` with `replaceChildren()` when it initialises, to drop the DOM a previous mount left
        * behind. Anything React renders in there is detached while React still believes it is mounted, and
        * the engine then cannot find it (measured: the input existed in the module but not in the DOM).
@@ -177,12 +177,12 @@ export const HvacDrawingArea: React.FC<{ ids?: HvacDrawingAreaIds }> = ({ ids = 
       {/*
        * The hidden clipboard fields the engine's clipboard module looks up **by id** at init
        * (`T3Clipboard.Init` → `#_IEclipboardDiv`, `#_clipboardInput`). The origin declares them in the page
-       * (`app/SmartDraw.htm`); here the canvas owns them, and that is load-bearing: the port's `Init` returns
+       * (`app/SmartDraw.htm`); here the engine's host owns them, and that is load-bearing: the port's `Init` returns
        * early — *"Required DOM elements not found, skipping clipboard initialization"* — when
        * `#_clipboardInput` is missing, so **no** `copy`/`cut`/`paste` document listener is installed and
        * nothing the browser copies (text or shapes) ever reaches the engine.
        *
-       * `T3Clipboard.FocusOnClipboardInput()` parks focus here after every canvas mouse-up, which is how the
+       * `T3Clipboard.FocusOnClipboardInput()` parks focus here after every drawing mouse-up, which is how the
        * module recognises an engine copy; `useHtmlFocusGuard` therefore ignores these ids — otherwise a
        * click on the canvas would look like typing in a panel and close the engine's typing gate.
        */}

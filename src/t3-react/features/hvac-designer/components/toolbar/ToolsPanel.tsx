@@ -54,7 +54,7 @@ const handleToolActivate = (tool: any) => {
    * once its record has been prepared). A click that arrives before that would run into `T3Gv.opt` while it
    * is still undefined — `DrawUtil.PreDragDropOrStamp` dereferences `T3Gv.opt.mainAppHammer` — and throw.
    * Arming a tool against a document that is not there yet has no meaning, so the click is simply ignored
-   * (the canvas is covered by the loading overlay in that window).
+   * (the drawing area is covered by the loading overlay in that window).
    */
   if (!T3Gv?.opt) {
     return;

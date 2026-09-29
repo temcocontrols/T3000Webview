@@ -8,7 +8,7 @@
  * The assertions that matter:
  *  1. every panel in the model appears in exactly one region (nothing is dropped silently);
  *  2. the palettes/structure panes that EEZ stacks in the left column become left-region tabs;
- *  3. the editor tabset is the canvas, and it is **not** treated as a panel;
+ *  3. the editor tabset is the editor area, and it is **not** treated as a panel;
  *  4. the projection is safe on an empty model (the document renders before a project opens).
  */
 import { describe, expect, it } from "vitest";
@@ -399,14 +399,14 @@ describe("projectEezLayout", () => {
         expect(projection.right.panels.map((p) => p.id)).toEqual([PROPERTIES_TAB_ID]);
     });
 
-    it("reports the editor tabset as the canvas and never as a panel", () => {
+    it("reports the editor tabset as the editor area and never as a panel", () => {
         const projection = projectEezLayout(model());
 
         // The editors tabset is identified by the tab it holds (`component === "editor"`), which is how
         // the live model can be recognised even after flexlayout regenerates an id.
-        expect(projection.canvasTabsetId).toBeTruthy();
-        expect(typeof projection.canvasTabsetId).toBe("string");
-        expect(projectedPanelIds(projection)).not.toContain(projection.canvasTabsetId);
+        expect(projection.editorTabsetId).toBeTruthy();
+        expect(typeof projection.editorTabsetId).toBe("string");
+        expect(projectedPanelIds(projection)).not.toContain(projection.editorTabsetId);
         // the editor tab itself is never projected as a panel either
         expect(projectedPanelIds(projection)).not.toContain("EDITOR_TAB");
     });
@@ -417,7 +417,7 @@ describe("projectEezLayout", () => {
             expect(projection.left.panels).toEqual([]);
             expect(projection.right.panels).toEqual([]);
             expect(projection.bottom.panels).toEqual([]);
-            expect(projection.canvasTabsetId).toBeNull();
+            expect(projection.editorTabsetId).toBeNull();
         }
     });
 
@@ -425,7 +425,7 @@ describe("projectEezLayout", () => {
      * EEZ swaps `layoutModels.root` per mode (`store/layout-models.tsx:226-234`): `rootEditor`, then
      * `rootRuntime` for Run/Debug, then `rootDockerSimulator` for Full Sim. The shell projects whichever
      * model is the root *now*, so the two other models have to be read correctly — they have no
-     * *Properties* tab at all, which is why the sides are classified by position against the canvas.
+     * *Properties* tab at all, which is why the sides are classified by position against the editor area.
      */
     describe("the other two root models", () => {
         /** `rootRuntime` — Run/Debug, verbatim from `layout-models.tsx`. */
@@ -524,7 +524,7 @@ describe("projectEezLayout", () => {
             expect(projection.bottom.panels).toEqual([]);
         });
 
-        it("recognises the runtime canvas tabset while it is still empty", () => {
+        it("recognises the runtime editor tabset while it is still empty", () => {
             const projection = projectEezLayout(runtimeModel());
 
             /*
@@ -533,11 +533,11 @@ describe("projectEezLayout", () => {
              * by contents instead sent the runtime's Page/Widgets tree into no region at all and the right-hand
              * column to the left.
              */
-            expect(projection.canvasTabsetId).toBe(RUNTIME_EDITORS_TABSET_ID);
+            expect(projection.editorTabsetId).toBe(RUNTIME_EDITORS_TABSET_ID);
             expect(projectedPanelIds(projection)).not.toContain(RUNTIME_EDITORS_TABSET_ID);
         });
 
-        /** `rootDockerSimulator` — Full Sim: the preview is the canvas, the logs are the right column. */
+        /** `rootDockerSimulator` — Full Sim: the preview is the editor area, the logs are the right column. */
         const dockerSimulatorModel = () =>
             FlexLayout.Model.fromJson({
                 global: {},
@@ -605,12 +605,12 @@ describe("projectEezLayout", () => {
                 "dockerSimulatorPreviewLogs"
             ]);
 
-            // The preview is a *panel* tabset, not the editor tabset, and it is the canvas.
-            expect(projection.canvasTabsetId).toBe(model.getRoot().getChildren()[0].getId());
+            // The preview is a *panel* tabset, not the editor tabset, and it is the editor area.
+            expect(projection.editorTabsetId).toBe(model.getRoot().getChildren()[0].getId());
             expect(projectedPanelIds(projection)).not.toContain("DOCKER_SIMULATOR_PREVIEW");
         });
 
-        it("falls back to the Properties rule for a model whose canvas cannot be identified", () => {
+        it("falls back to the Properties rule for a model whose editor tabset cannot be identified", () => {
             // A hand-made model: no editor tabset anywhere, so only the contents can say which side is which.
             const handMade = FlexLayout.Model.fromJson({
                 global: {},
@@ -633,7 +633,7 @@ describe("projectEezLayout", () => {
 
             const projection = projectEezLayout(handMade);
 
-            expect(projection.canvasTabsetId).toBeNull();
+            expect(projection.editorTabsetId).toBeNull();
             expect(projection.left.panels.map((p) => p.id)).toEqual(["PAGES"]);
             expect(projection.right.panels.map((p) => p.id)).toEqual([PROPERTIES_TAB_ID]);
         });
@@ -647,7 +647,7 @@ describe("projectEezLayout", () => {
          * which is what the user reported as "still showing left and right panels".
          */
         it("gives Run the whole area, even though a model exists", () => {
-            expect(eezRegionPlan("run", model())).toBe("canvas-only");
+            expect(eezRegionPlan("run", model())).toBe("editor-only");
         });
 
         it("projects the panels for edit, debug and the full simulator", () => {

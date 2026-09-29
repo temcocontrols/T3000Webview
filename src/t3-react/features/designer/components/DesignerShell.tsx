@@ -1,20 +1,20 @@
 /**
  * Designer — the shell.
  *
- * The ONLY layout component of the feature: five slots (top / left / canvas / right / status) plus an
+ * The ONLY layout component of the feature: five slots (top / left / middle / right / status) plus an
  * optional bottom dock. It never imports an engine; everything comes from the `DocumentRuntime` the
  * document host computes.
  *
  * Two rules in here are load-bearing (see docs/t3000/architecture/designer/design.md §10):
- *  1. the canvas host element is mounted once per document and never re-keyed — the HVAC engine cannot
+ *  1. the middle area's host element is mounted once per document and never re-keyed — the HVAC engine cannot
  *     be re-initialised and the EEZ app owns a second React root;
- *  2. a document's loading/error state is drawn as an OVERLAY over the canvas, never by replacing the
- *     canvas subtree, so an engine always finds its DOM.
+ *  2. a document's loading/error state is drawn as an OVERLAY over the middle area, never by replacing its
+ *     subtree, so an engine always finds its DOM.
  */
 import React, { useCallback, useMemo, useRef } from "react";
 import { makeStyles, tokens } from "@fluentui/react-components";
 import type { DocumentAdapter, DocumentRuntime, RegionSpec } from "../DocumentAdapter";
-import { useCanvasResize } from "../hooks/useCanvasResize";
+import { useAreaResize } from "../hooks/useAreaResize";
 import {
     layoutStore,
     resolveRegionHeight,
@@ -76,10 +76,11 @@ const useStyles = makeStyles({
         backgroundColor: tokens.colorNeutralBackground3
     },
     /**
-     * A document's canvas strip (editor tabs) — a sibling of the canvas host, so the host is never re-keyed.
-     * Its height is the document's business; this only pins it and lets it stretch across the middle column.
+     * A document's content tab strip (e.g. the editor tabs of an engine that keeps several editors open) —
+     * a sibling of the content host, so the host is never re-keyed. Its height is the document's business;
+     * this only pins it and lets it stretch across the middle column.
      */
-    canvasStrip: {
+    contentStrip: {
         flexShrink: 0,
         minWidth: 0,
         minHeight: 0
@@ -104,11 +105,11 @@ const useStyles = makeStyles({
     }
 });
 
-/** Minimum width the canvas keeps, whatever the panels ask for. */
-const CANVAS_MIN_WIDTH_PX = 240;
+/** Minimum width the middle area keeps, whatever the panels ask for. */
+const AREA_MIN_WIDTH_PX = 240;
 
-/** Minimum height the canvas keeps when the bottom dock is resized. */
-const CANVAS_MIN_HEIGHT_PX = 160;
+/** Minimum height the middle area keeps when the bottom dock is resized. */
+const AREA_MIN_HEIGHT_PX = 160;
 
 /** Two 4 px splitters. */
 const SPLITTER_TOTAL_PX = 8;
@@ -123,21 +124,21 @@ export interface DesignerShellProps {
     adapter: DocumentAdapter;
     runtime: DocumentRuntime;
     /**
-     * What the middle area contains when the document publishes no canvas.
+     * What the middle area contains when the document publishes no content of its own.
      *
      * `DesignerLayout` (the route-level layout) passes the router's `<Outlet/>` here, so the document
      * renders *inside* the shell instead of building the shell around itself.
      */
     children?: React.ReactNode;
-    /** Notified (debounced) when the canvas area changes size; the document re-lays out. */
-    onCanvasResize?: () => void;
+    /** Notified (debounced) when the middle area moved or changed size; the document re-lays out there. */
+    onAreaResize?: () => void;
 }
 
 export const DesignerShell: React.FC<DesignerShellProps> = ({
     adapter,
     runtime,
     children,
-    onCanvasResize
+    onAreaResize
 }) => {
     const styles = useStyles();
     const layout = runtime.layout;
@@ -145,7 +146,7 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
     const layoutState = useKindLayout(kind);
 
     const middleHostRef = useRef<HTMLDivElement>(null);
-    useCanvasResize(middleHostRef, onCanvasResize);
+    useAreaResize(middleHostRef, onAreaResize);
 
     const viewportWidth = useViewportWidth();
     const viewportHeight = useViewportHeight();
@@ -167,12 +168,12 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
     const rightWidth = resolveRegionWidth(layoutState, "right", rightSpec?.width);
     const bottomHeight = resolveRegionHeight(layoutState, bottomSpec?.height);
 
-    // Responsive: on a narrow viewport the panels would starve the canvas (they are fixed-width by design), so
+    // Responsive: on a narrow viewport the panels would starve the middle area (they are fixed-width by design), so
     // they are *effectively collapsed* — but they are **never omitted**. A region that disappears takes its
     // chevron with it, and then a panel the user collapsed can never be reopened: measured at a 520 px pane,
     // both panels were simply absent, which is exactly the report "when they have been collapsed, they cannot be
     // expanded". The rail is 28 px, so leaving it there costs almost nothing and always keeps the way back.
-    const needs = CANVAS_MIN_WIDTH_PX + SPLITTER_TOTAL_PX;
+    const needs = AREA_MIN_WIDTH_PX + SPLITTER_TOTAL_PX;
     const hideRight = viewportWidth < COMPACT_WIDTH_PX || viewportWidth - leftWidth - rightWidth < needs;
     const hideLeft =
         viewportWidth < NARROW_WIDTH_PX ||
@@ -187,7 +188,7 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
     const forceCollapseLeft = hideLeft && !leftByUser;
     const forceCollapseRight = hideRight && !rightByUser;
 
-    // A region the rule would hide but the user expanded opens at a width that still leaves the canvas its
+    // A region the rule would hide but the user expanded opens at a width that still leaves the middle area its
     // minimum — never at its remembered size, which is what the rule is about in the first place.
     const rightTaken = forceCollapseRight ? RAIL_WIDTH_PX : rightWidth;
     const leftTaken = forceCollapseLeft ? RAIL_WIDTH_PX : leftWidth;
@@ -236,7 +237,7 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
             const requested = origin.size + delta;
             const available = Math.max(
                 spec.min,
-                viewportWidth - rightTaken - CANVAS_MIN_WIDTH_PX - SPLITTER_TOTAL_PX
+                viewportWidth - rightTaken - AREA_MIN_WIDTH_PX - SPLITTER_TOTAL_PX
             );
             const next = Math.min(spec.max, available, Math.max(spec.min, requested));
             layoutStore.setRegionSize(kind, "left", next, spec.default);
@@ -255,7 +256,7 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
             const requested = origin.size - delta;
             const available = Math.max(
                 spec.min,
-                viewportWidth - leftTaken - CANVAS_MIN_WIDTH_PX - SPLITTER_TOTAL_PX
+                viewportWidth - leftTaken - AREA_MIN_WIDTH_PX - SPLITTER_TOTAL_PX
             );
             const next = Math.min(spec.max, available, Math.max(spec.min, requested));
             layoutStore.setRegionSize(kind, "right", next, spec.default);
@@ -276,7 +277,7 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
             }
             // Dragging the handle upwards makes the dock taller.
             const requested = origin.size - delta;
-            const available = Math.max(spec.min, viewportHeight - CANVAS_MIN_HEIGHT_PX - SPLITTER_TOTAL_PX);
+            const available = Math.max(spec.min, viewportHeight - AREA_MIN_HEIGHT_PX - SPLITTER_TOTAL_PX);
             const next = Math.min(spec.max, available, Math.max(spec.min, requested));
             layoutStore.setBottomHeight(kind, next);
         },
@@ -284,12 +285,12 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
     );
 
     /**
-     * The middle area's content: the document's own canvas when it publishes one, otherwise the
-     * router's outlet (the route-level layout case) — never both. The host element around it is made
-     * once and never re-keyed, so an engine that mounts a root into it is never remounted.
+     * The middle area's content: the document's own node when it publishes one, otherwise the router's outlet
+     * (the route-level layout case) — never both. The host element around it is made once and never re-keyed,
+     * so an engine that mounts a root into it is never remounted.
      */
-    const canvasNode =
-        layout.canvas && "node" in layout.canvas ? layout.canvas.node : children ?? null;
+    const contentNode =
+        layout.content && "node" in layout.content ? layout.content.node : children ?? null;
 
     /**
      * The dock's region, with its tab selection wrapped.
@@ -322,7 +323,7 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
      * A request from the **engine** to show one of its panels has to win over a remembered "the user collapsed
      * this dock". Check opens *Checks*, a failed Build opens *Output*, a search opens *Search References* —
      * measured live before this: the model selected the tab, the shell drew a 32 px strip, and the click
-     * looked dead (the canvas did not move at all). The dock is collapsed by default *and* the store remembers
+     * looked dead (the area did not move at all). The dock is collapsed by default *and* the store remembers
      * a collapse, so a store value written earlier must not veto a later request.
      *
      * Keyed on `revealRevision`, not on `activeTabId`: the spec is stale whenever the dock's own toggle
@@ -441,13 +442,13 @@ export const DesignerShell: React.FC<DesignerShellProps> = ({
                 ) : null}
 
                 <div className={styles.middleWrap}>
-                    {layout.canvasTabs ? (
-                        <div className={styles.canvasStrip} data-shell-canvas-tabs="true">
-                            {layout.canvasTabs}
+                    {layout.contentTabs ? (
+                        <div className={styles.contentStrip} data-shell-content-tabs="true">
+                            {layout.contentTabs}
                         </div>
                     ) : null}
                     <div className={styles.middleHost} ref={middleHostRef}>
-                        {canvasNode}
+                        {contentNode}
                     </div>
                     {runtime.error ? (
                         <div className={styles.overlay}>

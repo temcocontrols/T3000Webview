@@ -4,7 +4,7 @@
  * These pin the decisions that are cheap to break and expensive to notice:
  *  1. the designer route must not be swallowed by the Design Hub menu branch (a one-character bug
  *     with a 100 % visible symptom);
- *  2. a document's loading state must NEVER unmount the canvas 鈥?the HVAC engine cannot be
+ *  2. a document's loading state must NEVER unmount its content host 鈥?the HVAC engine cannot be
  *     re-initialised and the EEZ app owns a second React root;
  *  3. a one-tab region with `header: "never"` renders no chrome, which is what keeps the HVAC
  *     document looking like the existing page;
@@ -49,7 +49,7 @@ import {
 } from "../../../src/t3-react/features/designer/components/ShellTopBar";
 import { DESIGNER_DOCUMENTS } from "../../../src/t3-react/features/designer/registry";
 import {
-    canvasIdsOf,
+    drawingAreaIdsOf,
     makeAreaIds
 } from "../../../src/t3-react/features/designer/documents/hvac/hvacAreaIds";
 import { AreaIds } from "../../../src/lib/t3-hvac/Data/Constant/AreaIds";
@@ -85,11 +85,11 @@ function makeRuntime(layout: ShellLayout, extra: Partial<DocumentRuntime> = {}):
     return { layout, title: "Test document", ...extra };
 }
 
-const CANVAS_MARKER = "canvas-content-marker";
+const CONTENT_MARKER = "content-body-marker";
 const LOADING_MARKER = "loading-overlay-marker";
 
-function canvasLayout(overrides: Partial<ShellLayout> = {}): ShellLayout {
-    return { canvas: { node: <div>{CANVAS_MARKER}</div> }, ...overrides };
+function contentLayout(overrides: Partial<ShellLayout> = {}): ShellLayout {
+    return { content: { node: <div>{CONTENT_MARKER}</div> }, ...overrides };
 }
 
 /* ------------------------------------------------------------------ 1. routing */
@@ -252,12 +252,12 @@ describe("layout store", () => {
 /* ------------------------------------------------------------------ 3. shell structure */
 
 describe("DesignerShell", () => {
-    it("renders the canvas content, and does not put the document title in the band", () => {
+    it("renders the content area, and does not put the document title in the band", () => {
         const markup = renderToStaticMarkup(
-            <DesignerShell adapter={adapter} runtime={makeRuntime(canvasLayout())} />
+            <DesignerShell adapter={adapter} runtime={makeRuntime(contentLayout())} />
         );
 
-        expect(markup).toContain(CANVAS_MARKER);
+        expect(markup).toContain(CONTENT_MARKER);
         /*
          * The band's identity block was removed on request (the app menu bar already navigates, and the
          * name is in the status bar and on the Design Hub card) — so the document's own title must NOT
@@ -266,31 +266,31 @@ describe("DesignerShell", () => {
         expect(markup).not.toContain("Test document");
     });
 
-    it("keeps the canvas mounted while the document loads (overlay, never replacement)", () => {
+    it("keeps the content host mounted while the document loads (overlay, never replacement)", () => {
         const markup = renderToStaticMarkup(
             <DesignerShell
                 adapter={adapter}
-                runtime={makeRuntime(canvasLayout(), { loading: <div>{LOADING_MARKER}</div> })}
+                runtime={makeRuntime(contentLayout(), { loading: <div>{LOADING_MARKER}</div> })}
             />
         );
         expect(markup).toContain(LOADING_MARKER);
         // The regression that matters: R1/R7 鈥?an engine must always find its DOM.
-        expect(markup).toContain(CANVAS_MARKER);
+        expect(markup).toContain(CONTENT_MARKER);
     });
 
-    it("keeps the canvas mounted when the document fails to load", () => {
+    it("keeps the content host mounted when the document fails to load", () => {
         const markup = renderToStaticMarkup(
             <DesignerShell
                 adapter={adapter}
-                runtime={makeRuntime(canvasLayout(), { error: <div>failed</div> })}
+                runtime={makeRuntime(contentLayout(), { error: <div>failed</div> })}
             />
         );
         expect(markup).toContain("failed");
-        expect(markup).toContain(CANVAS_MARKER);
+        expect(markup).toContain(CONTENT_MARKER);
     });
 
     it("renders no panel chrome for a single tab that opts out of a header", () => {
-        const layout = canvasLayout({
+        const layout = contentLayout({
             left: {
                 id: "left",
                 tabs: [{ id: "tools", label: "Tools", header: "never", content: () => <div>tools-body</div> }],
@@ -306,7 +306,7 @@ describe("DesignerShell", () => {
     });
 
     it("renders a tab strip when a region has several tabs, and marks the active one", () => {
-        const layout = canvasLayout({
+        const layout = contentLayout({
             right: {
                 id: "right",
                 tabs: [
@@ -328,7 +328,7 @@ describe("DesignerShell", () => {
     });
 
     it("renders a region body as a stack of sections, one strip each, split by a draggable divider", () => {
-        const layout = canvasLayout({
+        const layout = contentLayout({
             left: {
                 id: "left",
                 // The flat list is still what a placeholder/flat renderer would show; the body uses `sections`.
@@ -387,7 +387,7 @@ describe("DesignerShell", () => {
     });
 
     it("renders a second column beside the body, with its own strip", () => {
-        const layout = canvasLayout({
+        const layout = contentLayout({
             left: {
                 id: "left",
                 tabs: [{ id: "pages", label: "Pages", content: () => <div>pages-body</div> }],
@@ -419,12 +419,12 @@ describe("DesignerShell", () => {
         expect(markup).toContain("pages-body");
         expect(markup).toContain("Widgets Structure");
         expect(markup).toContain("structure-body");
-        // `side: "end"` = the column faces the canvas, i.e. it is drawn after the body.
+        // `side: "end"` = the column faces the middle area, i.e. it is drawn after the body.
         expect(markup.indexOf("pages-body")).toBeLessThan(markup.indexOf("structure-body"));
     });
 
     it("renders the bottom dock collapsed by default, without its body", () => {
-        const layout = canvasLayout({
+        const layout = contentLayout({
             bottom: {
                 id: "bottom",
                 tabs: [{ id: "checks", label: "Checks", content: () => <div>checks-body</div> }],
@@ -439,7 +439,7 @@ describe("DesignerShell", () => {
     });
 
     it("renders extra status chips", () => {
-        const layout = canvasLayout({ statusExtra: <span>extra-chip</span> });
+        const layout = contentLayout({ statusExtra: <span>extra-chip</span> });
         const markup = renderToStaticMarkup(<DesignerShell adapter={adapter} runtime={makeRuntime(layout)} />);
         expect(markup).toContain("extra-chip");
     });
@@ -449,14 +449,14 @@ describe("DesignerShell", () => {
         // properties to `.t3-designer[data-doc-kind^="lvgl"]`, and Emotion hashes `styles.root`, so these
         // two attributes are the only stable hooks. Removing either silently un-themes the EEZ workbench.
         const markup = renderToStaticMarkup(
-            <DesignerShell adapter={adapter} runtime={makeRuntime(canvasLayout())} />
+            <DesignerShell adapter={adapter} runtime={makeRuntime(contentLayout())} />
         );
         expect(markup).toContain("t3-designer");
         expect(markup).toContain('data-doc-kind="hvac-schematic"');
     });
 
     it("shows undo/redo only when the document exposes a history", () => {
-        const plain = renderToStaticMarkup(<DesignerShell adapter={adapter} runtime={makeRuntime(canvasLayout())} />);
+        const plain = renderToStaticMarkup(<DesignerShell adapter={adapter} runtime={makeRuntime(contentLayout())} />);
         expect(plain).not.toContain('aria-label="Undo"');
         expect(plain).not.toContain('aria-label="Redo"');
 
@@ -464,7 +464,7 @@ describe("DesignerShell", () => {
             <DesignerShell
                 adapter={adapter}
                 runtime={makeRuntime(
-                    canvasLayout({ history: { undo: () => undefined, redo: () => undefined } })
+                    contentLayout({ history: { undo: () => undefined, redo: () => undefined } })
                 )}
             />
         );
@@ -502,7 +502,7 @@ describe("HVAC engine DOM contract", () => {
         const firstValues = Object.values(first);
         expect(firstValues).toHaveLength(8);
         expect(firstValues.some((value) => Object.values(second).includes(value))).toBe(false);
-        expect(canvasIdsOf(first)).toEqual({
+        expect(drawingAreaIdsOf(first)).toEqual({
             documentArea: "document-area-d1",
             svgArea: "svg-area-d1",
             hRuler: "h-ruler-d1",

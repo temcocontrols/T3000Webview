@@ -8,7 +8,7 @@
  *
  * `Tstat10SimulatorPage` is already a Fluent-`tokens` three-panel designer (Toolbox · Canvas ·
  * Properties, plus a View mode with the bezel and the debug panel). There is no engine to drive: it is
- * pure React state (`useDesignerState`, `useSimulatorState`). So the whole page goes in the canvas slot
+ * pure React state (`useDesignerState`, `useSimulatorState`). So the whole page goes in the content slot
  * exactly as it is, and the shell supplies the chrome around it.
  *
  * ## The bug this fixes
@@ -20,7 +20,7 @@
  * today**. The shell now provides the target inside its own top bar, which is where the control belongs.
  *
  * Ordering matters for that portal: the page reads `document.getElementById` *during render*, so on the
- * very first commit the target would not be in the DOM yet. The canvas therefore mounts one commit later
+ * very first commit the target would not be in the DOM yet. The page therefore mounts one commit later
  * (`ready` below) — the shell's middle-area host itself is stable, only the page's first render is deferred.
  */
 import React, { useEffect, useMemo, useState, useSyncExternalStore, useLayoutEffect } from "react";
@@ -89,7 +89,7 @@ export const LcdDocumentHost: React.FC<DocumentHostProps> = ({ navigate }) => {
         return () => setLcdPageHosted(false);
     }, []);
 
-    // Design mode = the designer's regions; View mode = the simulator layout filling the canvas, exactly
+    // Design mode = the designer's regions; View mode = the simulator layout filling the middle area, exactly
     // as the page draws it today.
     const mode = useSyncExternalStore(subscribeLcdMode, getLcdMode, getLcdMode);
 
@@ -107,7 +107,7 @@ export const LcdDocumentHost: React.FC<DocumentHostProps> = ({ navigate }) => {
                   // body's share (measured: a 170 region left the toolbox 30 px).
                   width: { default: 310, min: 260, max: 420 },
                   collapsible: true,
-                  // The page list sits between the toolbox and the canvas, i.e. on the `end` side.
+                  // The page list sits between the toolbox and the middle area, i.e. on the `end` side.
                   secondary: {
                       id: "pages",
                       content: () => <Slot slot="pages" />,

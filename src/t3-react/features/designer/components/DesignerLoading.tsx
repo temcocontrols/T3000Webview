@@ -7,7 +7,7 @@
  *     fallback, `pages/DesignerRouteFallback.tsx`, which also covers the host chunk because
  *     `DesignerPage` adds no boundary of its own;
  *   · the document's own data (a drawing, a project) — `DocumentRuntime.loading`, which the shell draws
- *     as an overlay over the canvas (`DesignerShell`, `styles.overlay`).
+ *     as an overlay over the content area (`DesignerShell`, `styles.overlay`).
  *
  * Why one component instead of one spinner per phase: the waits are **sequential but look like three
  * different events** when each draws its own wording and its own position — the route fallback used to

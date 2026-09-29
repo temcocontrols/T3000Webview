@@ -27,7 +27,7 @@ const EDITABLE_SELECTOR = "input, textarea, select, [contenteditable='true']";
  * Engine-owned fields that must never close the typing gate.
  *
  * - `#T3TouchProxy` — keystrokes there *are* the drawing's text.
- * - the clipboard helpers — `T3Clipboard.FocusOnClipboardInput()` parks focus there after every canvas
+ * - the clipboard helpers — `T3Clipboard.FocusOnClipboardInput()` parks focus there after every drawing
  *   mouse-up (that is how the clipboard module recognises an engine copy), so a click on the drawing would
  *   otherwise look exactly like the user typing in a panel.
  */
@@ -41,7 +41,7 @@ const ENGINE_OWNED_IDS = new Set([
 /**
  * True when focus on `element` should silence the engine.
  *
- * The canvas container is focusable (`tabIndex={0}`) but is not editable, so clicking the drawing still
+ * The drawing container is focusable (`tabIndex={0}`) but is not editable, so clicking the drawing still
  * hands the keyboard back — which is the behaviour the origin produced with `focusout`.
  */
 function ownsTheKeyboard(element: EventTarget | null): element is HTMLElement {
@@ -57,7 +57,7 @@ function ownsTheKeyboard(element: EventTarget | null): element is HTMLElement {
  * Records the focused HTML control and closes / reopens the engine's typing gate with it.
  *
  * Mount this with the document: the listeners are on `document`, because the controls that steal focus
- * (properties panel, tool panel, shell bands) are siblings of the canvas, not descendants of it.
+ * (properties panel, tool panel, shell bands) are siblings of the drawing area, not descendants of it.
  */
 export function useHtmlFocusGuard(enabled = true) {
     useEffect(() => {

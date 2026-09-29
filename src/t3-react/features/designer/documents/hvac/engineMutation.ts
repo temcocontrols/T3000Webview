@@ -2,7 +2,7 @@
  * Designer — the single funnel for HVAC document mutations (P1b).
  *
  * Everything a panel writes goes through here, because the engine needs three things in a specific
- * order and any missed step is invisible until the user notices a missing undo or a stale canvas:
+ * order and any missed step is invisible until the user notices a missing undo or a stale drawing:
  *
  *   1. `ObjectUtil.GetObjectPtr(id, true)` — the **preserved** block. Cloning a copy aside is what the
  *      engine itself does before it changes an object (`SelectUtil.ts:209`), and it is the only safe
@@ -71,7 +71,7 @@ export function applyHvacMutation(
         // `CompleteOperation` repaints through `SvgUtil.RenderDirtySVGObjects()`, and that
         // call is wrapped in `if (T3Gv.opt.dirtyList.length !== 0)` - with an empty dirty
         // list it does nothing at all. So without this line the edit reaches the model but
-        // never the canvas: the shape keeps its old geometry, while the selection handles
+        // never the drawing: the shape keeps its old geometry, while the selection handles
         // are rebuilt unconditionally from `RotationAngle` (`SvgUtil.ts:89`), which is what
         // made a rotation look like it "only rotated the select layer".
         //

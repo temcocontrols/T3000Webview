@@ -4,13 +4,13 @@
  * ADDITIVE BY DESIGN (D11): `/t3000/eez` keeps rendering the original `EezStudioApp`; this document is
  * only reachable through `/t3000/designer/lvgl-9-5/:id?` and `/t3000/designer/lvgl-flow-9-5/:id?`.
  *
- * ## P2.1 — host the whole workbench in the canvas slot
+ * ## P2.1 — host the whole workbench in the content slot
  *
  * The EEZ app is its own React root: `home/main.tsx:183-194` looks up `#EezStudio_Content` and calls
  * `createRoot(...)` on it. `EezStudioApp` owns that element plus everything around it — the backend
  * health handshake, the `?open=` / `?new=` / `?examples=` hand-off and the `eez-studio-action` → IPC
- * bridge. All of that is reused **unchanged**: the canvas slot renders `<EezStudioApp />`, so
- * `#EezStudio_Content` ends up inside `DesignerShell`'s canvas host and nothing else has to move.
+ * bridge. All of that is reused **unchanged**: the content slot renders `<EezStudioApp />`, so
+ * `#EezStudio_Content` ends up inside `DesignerShell`'s content host and nothing else has to move.
  *
  * That is deliberate: P2.1 exists to prove the *hosting* works (route, project open, WASM, SVG surface,
  * hand-off) before any panel is taken out of FlexLayout's hands.
@@ -27,7 +27,7 @@
  *     `home/tabs-store.tsx:457`), which is what makes rendering EEZ panels from another React root work;
  *   - the active project comes from `activeProject.ts`, published by `ProjectEditorView` on mount;
  *   - EEZ itself switches to `hostMode` (`project-editor/hostMode.ts`), where `ProjectEditor.Content`
- *     renders only the **active editor** instead of its FlexLayout container. The canvas slot keeps
+ *     renders only the **active editor** instead of its FlexLayout container. The content slot keeps
  *     `<EezStudioApp />`, so the flow editor still finds the DOM it expects and nothing is drawn twice.
  *
  * Deliberately NOT in this step (tracked in the phase doc): the theme bridge (P2.7), scoping EEZ's global
@@ -43,11 +43,11 @@
  * the shell collapse to a title bar plus an empty area — reported as *"the editor, the left panel and the
  * panel beside it are gone"*. The regions are therefore drawn as placeholders while `projectStore` is
  * null, at the same sizes as the real ones and **silently** — the sizes are what the edit needs, and the
- * shell already shows the one `Loading…`. The canvas keeps `<EezStudioApp />`, so the boot progress is
+ * shell already shows the one `Loading…`. The content slot keeps `<EezStudioApp />`, so the boot progress is
  * still visible (and it is where the backend/project state is reported — see `placeholderRegion`).
  *
  * Rules inherited from the shell (same as the HVAC document):
- *  - the canvas element is memoised and never re-keyed — `home/main.tsx` mounts a root into it, and a
+ *  - the content element is memoised and never re-keyed — `home/main.tsx` mounts a root into it, and a
  *    remount would leave the previous root attached to a detached node;
  *  - the document is mounted once (`registry.ts` + the shell's single-mount guarantee, R7).
  */
@@ -123,7 +123,7 @@ const LVGL_ADAPTER: DocumentAdapter = { kind: "lvgl-9-5", engine: "eez", viewpor
  * The left region holds the **Components Palette** and, beside it, the *Widgets Structure* column, sized from the
  * model's sibling weights (18.43 : 13.97 — see `secondaryWidth`), so the palette's default is also the structure
  * column's parent number: 245 px here gives ~186 px there, i.e. a **431 px** region instead of 518 (user request:
- * the old 295 px palette took 40 % of a 1280 px window and left the canvas 408 px). The weights, not these pixels,
+ * the old 295 px palette took 40 % of a 1280 px window and left the editor 408 px). The weights, not these pixels,
  * are the origin's own values — the old 295 px was simply the weight applied to a 1600 px window.
  */
 const LEFT_WIDTH = { default: 245, min: 180, max: 360 };
@@ -330,7 +330,7 @@ function regionSpec(
      * that case with `EezStudio_PageStructure_NoPageSelected`, a flat `@panelHeaderColor` block: measured
      * live with the Settings editor open, the column was 186 × 673 px of dead grey next to the palette.
      * The shell drops the column with the page editor (see `getActivePageEditor`) — the same rule that
-     * already drops a region with no panels, and it hands the freed width back to the canvas.
+     * already drops a region with no panels, and it hands the freed width back to the editor area.
      *
      * Only a column whose panels are *all* page-structure is dropped, so a second column holding anything
      * else (a future one, or an EEZ build that adds tabs to it) keeps its tabs.
@@ -351,7 +351,7 @@ function regionSpec(
               defaultWidth: secondaryWidth(region),
               min: LEFT_SECONDARY_WIDTH.min,
               max: LEFT_SECONDARY_WIDTH.max,
-              // The old page drew this column *inside* the left area, i.e. towards the canvas.
+              // The old page drew this column *inside* the left area, i.e. towards the middle area.
               side: "end" as const
           }
         : undefined;
@@ -418,7 +418,7 @@ const NO_PROJECTION = {
     left: { panels: [] },
     right: { panels: [] },
     bottom: { panels: [] },
-    canvasTabsetId: null
+    editorTabsetId: null
 } as const;
 
 const LvglDocument: React.FC<LvglDocumentProps> = ({ mode }) => {
@@ -648,36 +648,36 @@ const LvglDocument: React.FC<LvglDocumentProps> = ({ mode }) => {
         };
 
         /*
-         * The canvas **tab strip**: one chip per open editor (page, flow, style …) with its close button —
-         * EEZ's own canvas chrome, which the origin got from flexlayout's tab bar over the `EDITORS` tabset
+         * The editor **tab strip**: one chip per open editor (page, flow, style …) with its close button —
+         * EEZ's own editor chrome, which the origin got from flexlayout's tab bar over the `EDITORS` tabset
          * (`EditorsStore.refresh` adds a tab per editor). Hosted, the shell draws only the *active* editor,
          * so the bar had to be re-expressed; EEZ keeps the data and the behaviour, the shell only places it
-         * above the canvas host. It renders nothing when no editor is open (Run, Full Sim).
+         * above the content host. It renders nothing when no editor is open (Run, Full Sim).
          */
-        const canvasTabs = (
+        const contentTabs = (
             <ProjectContext.Provider value={projectStore}>
                 <EditorTabsView />
             </ProjectContext.Provider>
         );
 
-        if (plan === "canvas-only") {
+        if (plan === "editor-only") {
             /*
              * **Run** (`runtime && !isDebuggerActive`): the origin returns the runtime page *before* it looks
              * at the layout model (`ProjectEditor.tsx:312-331`), so the workbench is not drawn at all — the
              * running screen owns the whole area. Panels here would be the *debugger's* layout, which is not
              * what Run means.
              */
-            return { top, canvasTabs, history };
+            return { top, contentTabs, history };
         }
 
         /*
          * A region exists only while the current model has panels for it. Full Sim, for instance, has **no
-         * left columns at all** (`rootDockerSimulator`: the Preview is the canvas, the right column is the two
+         * left columns at all** (`rootDockerSimulator`: the Preview is the editor area, the right column is the two
          * log panels), and an empty region would still cost its width and draw a head with nothing in it.
          */
         return {
             top,
-            canvasTabs,
+            contentTabs,
             ...(projection.left.panels.length > 0
                 ? {
                       left: regionSpec(

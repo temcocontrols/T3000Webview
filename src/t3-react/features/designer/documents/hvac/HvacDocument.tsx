@@ -8,7 +8,7 @@
  * Differences from the legacy page, all deliberate:
  *  - the engine is initialised exactly ONCE per mount, guarded against React StrictMode's double
  *    effect invoke (`main.tsx:17` enables StrictMode) — the HVAC engine cannot be re-initialised;
- *  - the canvas element is memoised, so panel toggles / state changes never remount it;
+ *  - the drawing area is memoised, so panel toggles / state changes never remount it;
  *  - loading and error states are drawn as an overlay INSIDE the shell, so the engine always finds
  *    its DOM (the legacy page early-returns and unmounts the drawing area instead);
  *  - the fixed 150 ms / 400 ms / 50 ms relayout timers are kept (they get the first frame right) but
@@ -51,7 +51,7 @@ import { hvacViewport } from "./hvacViewport";
 import { hvacHistoryCommands } from "./hvacCommands";
 import { viewportCommands } from "../../commands/viewportCommands";
 import { useRegisterCommands } from "../../commands/CommandBus";
-import { canvasIdsOf, makeAreaIds } from "./hvacAreaIds";
+import { drawingAreaIdsOf, makeAreaIds } from "./hvacAreaIds";
 import type { HvacAreaIdMap } from "./hvacAreaIds";
 import { AreaIds } from "@/lib/t3-hvac/Data/Constant/AreaIds";
 import DataOpt from "@/lib/t3-hvac/Opt/Data/DataOpt";
@@ -83,7 +83,7 @@ const RECORD_LOAD_GRACE_MS = 3000;
 /**
  * The open drawing's **record** follows the engine's saves.
  *
- * The engine owns the canvas and persists it to its own storage; a drawing record (design hub: localStorage
+ * The engine owns the document and persists it to its own storage; a drawing record (design hub: localStorage
  * index + disk mirror) has to carry that document or the drawing cannot be reopened. Rather than chasing
  * every save entry point (band Save, `Ctrl+S`, the properties panel's four `SaveAct` calls, delete), the
  * engine announces persistence once — `DataOpt.SaveAppStateV2()` is the funnel for all of them — and this
@@ -97,8 +97,8 @@ let documentPersistTimer: number | undefined;
 /**
  * How the running document was prepared (see `prepareEngineDocument`).
  *
- * `unknown` means the canvas does **not** stand for the stored drawing: mirroring then would replace a real
- * drawing with an empty canvas, so the mirror stays off for that session.
+ * `unknown` means the running document does **not** stand for the stored drawing: mirroring then would replace
+ * a real drawing with an empty one, so the mirror stays off for that session.
  */
 let openDocumentSource: EngineDocumentSource = 'unknown';
 
@@ -183,6 +183,34 @@ function useHvacEngine(
         }
     }, []);
 
+    /*
+     * Re-lay out the drawing area after the shell moved or resized it (a panel collapsed/expanded, the dock
+     * toggled, the window resized) — published to the shell as `onAreaResize`.
+     *
+     * `DocUtil.UpdateWorkArea` is the engine's own answer to "the area is now this big": it sizes and positions
+     * the svg area inside the available rect, then re-reads the work area, re-clamps the scroll and re-applies
+     * the document transform. Two things it must do for the panels to behave:
+     *
+     *   · the element must **fit** the area. Measured 2026-09-29: with the right panel open the middle host
+     *     clips the svg area, and since the element owns the scrollbar, the right-hand end of the drawing —
+     *     including the scrollbar itself — became unreachable. Only a resize fixes that;
+     *   · the numbers the engine converts clicks with must be re-read *after* that resize, which
+     *     `UpdateWorkArea` does (`CalcWorkArea` runs after the CSS is applied). Measured before this wiring:
+     *     collapsing the left panel moved the area 189.9 → 112.8 while `dispX` stayed 189.9 four seconds later,
+     *     so every click was off by the panel's width.
+     *
+     * What it deliberately does NOT do is touch the document extent (`docWidth/docHeight`) — that is not the
+     * user's to change, and changing it on a panel toggle is what made a placed shape land away from the
+     * cursor. The drawing keeps its coordinates and its zoom; only the surface is re-fitted.
+     */
+    const relayoutArea = useCallback(() => {
+        try {
+            T3Gv?.docUtil?.UpdateWorkArea?.();
+        } catch {
+            /* a failed relayout must not break the editor */
+        }
+    }, []);
+
     // Teardown lives in its own effect so the init below can be deferred without deferring this.
     useEffect(() => {
         aliveRef.current = true;
@@ -238,11 +266,11 @@ function useHvacEngine(
             /*
              * From here on every save the engine makes belongs to the drawing that was prepared above —
              * mirror it back into that drawing's record (`persistOpenDocument` skips the mirror when the
-             * record could not be read, so an empty canvas can never overwrite a stored drawing).
+             * record could not be read, so an empty document can never overwrite a stored drawing).
              */
             DataOpt.documentPersistHook = persistOpenDocument;
 
-            // Same first-frame nudges the legacy page uses, now that the canvas is guaranteed to
+            // Same first-frame nudges the legacy page uses, now that the drawing area is guaranteed to
             // be mounted (the overlay approach never unmounts it).
             requestAnimationFrame(refreshLayout);
             window.setTimeout(refreshLayout, 150);
@@ -276,7 +304,7 @@ function useHvacEngine(
         }
     }, [ready, refreshLayout, ids, prepareDocument]);
 
-    return { refreshLayout };
+    return { refreshLayout, relayoutArea };
 }
 
 /* ------------------------------------------------------------------ runtime */
@@ -302,7 +330,7 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
     const engineReady = frameReady && !waitingForRecord;
 
     const prepareDocument = useCallback(() => prepareOpenDocument(ctx.id), [ctx.id]);
-    const { refreshLayout } = useHvacEngine(ids, engineReady, prepareDocument);
+    const { relayoutArea } = useHvacEngine(ids, engineReady, prepareDocument);
 
     /*
      * Finish the engine's app-layer registration for a shape that landed without it (the library tools placed by
@@ -367,10 +395,10 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
         });
     }, 500);
 
-    const canvas = useMemo(
+    const drawingArea = useMemo(
         () => (
             <div id={ids.workAreaColumn} style={fillHeight}>
-                <HvacDrawingArea ids={canvasIdsOf(ids)} />
+                <HvacDrawingArea ids={drawingAreaIdsOf(ids)} />
             </div>
         ),
         [ids]
@@ -459,7 +487,7 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
                 collapsible: true
             }
         };
-    }, [canvas, ctx, ids]);
+    }, [drawingArea, ctx, ids]);
 
     return useMemo<DocumentRuntime>(
         () => ({
@@ -471,6 +499,8 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
             // The shell draws this in its overlay — the same node and the same wording the route fallback
             // uses, so the wait for the drawing looks like a continuation of the wait for the chunk.
             loading: isLoading ? <DesignerLoading label={designerLoadingLabel(HVAC_DOCUMENT_KIND)} /> : undefined,
+            // Panels moving the drawing area must not leave the surface clipped or the mapping stale.
+            onAreaResize: relayoutArea,
             error: error ? (
                 <>
                     <Text size={400} weight="semibold">
@@ -485,7 +515,7 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
         }),
         // The object identity is the publish signal: it must change only when something the layout
         // draws changes, never merely because this component re-rendered.
-        [layout, drawingName, documentId, name, coords, msg, isLoading, error, ctx]
+        [layout, drawingName, documentId, name, coords, msg, isLoading, error, ctx, relayoutArea]
     );
 }
 
@@ -536,7 +566,7 @@ export const HvacDocumentHost: React.FC<DocumentHostProps> = ({ id, query, navig
     return (
         <>
             <div id={ids.workAreaColumn} style={fillHeight}>
-                <HvacDrawingArea ids={canvasIdsOf(ids)} />
+                <HvacDrawingArea ids={drawingAreaIdsOf(ids)} />
             </div>
             {/* Right-click context menu — watches `ctxMenuConfig` from the core library. */}
             <T3ContextMenu />

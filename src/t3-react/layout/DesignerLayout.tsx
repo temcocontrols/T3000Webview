@@ -114,6 +114,12 @@ export const DesignerLayout: React.FC = () => {
         <DesignerShell
             adapter={adapter}
             runtime={runtime}
+            /*
+             * The shell watches the drawing area and tells the document when it moved or changed size (panel
+             * collapse/expand, dock toggle, window resize). HVAC re-reads its screen→document mapping there;
+             * documents without one publish nothing.
+             */
+            onAreaResize={runtime.onAreaResize}
         >
             <Outlet />
         </DesignerShell>

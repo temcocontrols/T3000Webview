@@ -36,7 +36,7 @@ function runtimeWith(layout: ShellLayout): DocumentRuntime {
 /** A left region with a body and a secondary column on the requested side. */
 function layoutWithSecondary(side?: "start" | "end"): ShellLayout {
     return {
-        canvas: { node: <div>canvas-marker</div> },
+        content: { node: <div>content-marker</div> },
         left: {
             id: "left",
             tabs: [{ id: "widgets", label: "Widgets", header: "never", content: () => <div>body-marker</div> }],

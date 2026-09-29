@@ -11,7 +11,7 @@ export { layoutStore, useKindLayout } from "./hooks/useDesignerLayoutStore";
 export { DESIGNER_DOCUMENTS } from "./registry";
 export type { DocumentHostProps, DocumentEntry } from "./registry";
 export type {
-    CanvasSpec,
+    ContentSpec,
     Command,
     CommandId,
     CommandRegistry,

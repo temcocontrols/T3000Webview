@@ -12,7 +12,7 @@
  *
  * Two tables for one device field is why the link-entry panel and the point grid ended up disagreeing:
  * range 11 is `Low/High` on the page, while the engine holds `on: "Low", off: "High", direct: true` — the
- * pair comes out swapped. The canvas renderer still needs the legacy reading, so **nothing there is
+ * pair comes out swapped. The drawing renderer still needs the legacy reading, so **nothing there is
  * changed**: this class reads the pages' exports and answers every range question from them, and the
  * designer (the `Data` section and the Link Entry grid) asks here instead.
  *

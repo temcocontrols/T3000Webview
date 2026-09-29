@@ -863,7 +863,7 @@ const sanitizeDeviceText = (value: unknown): string => {
  * `sanitizeDeviceText` over a whole entry, for the copy that gets linked.
  *
  * The widget's own renderer draws `description`/`label`/range names straight from the linked entry, so the fill has
- * to be gone *there* as well — otherwise the panel shows clean text while the shape on the canvas still reads
+ * to be gone *there* as well — otherwise the panel shows clean text while the shape on the drawing still reads
  * `\uFFFD\uFFFD\uFFFD`. Numbers and ids pass through untouched (only strings are rewritten), and any string is safe
  * to cut: everything from the first fill character on is fill, never text.
  */
@@ -2399,7 +2399,7 @@ const GaugeSettingsDialog: React.FC<{
  *
  * Writes are legacy `TraceSettingChange`, call for call: the value goes onto the app item **and** into
  * `QuasarUtil.UpdateSvgElementSettings`, which is what pushes it into the selected object's draw settings so
- * the canvas redraws, then `SaveAct()` commits.
+ * the drawing redraws, then `SaveAct()` commits.
  */
 const WidgetSection: React.FC<{ onError: (message: string | undefined) => void }> = ({ onError }) => {
     const styles = useStyles();
@@ -2855,7 +2855,7 @@ export const HvacPropertiesPanel: React.FC<{ enabled?: boolean }> = ({ enabled =
                 </span>
                 <span className={styles.emptyTitle}>No selection</span>
                 <span className={styles.emptyHint}>
-                    Select a shape on the canvas to inspect and edit its properties.
+                    Select a shape on the drawing to inspect and edit its properties.
                 </span>
             </div>
         );

@@ -26,8 +26,8 @@ export function makeAreaIds(suffix: string): HvacAreaIdMap {
     };
 }
 
-/** The subset the canvas markup needs. */
-export interface HvacCanvasIds {
+/** The subset the drawing-area markup needs. */
+export interface HvacDrawingAreaIds {
     documentArea: string;
     svgArea: string;
     hRuler: string;
@@ -35,7 +35,7 @@ export interface HvacCanvasIds {
     cRuler: string;
 }
 
-export function canvasIdsOf(ids: HvacAreaIdMap): HvacCanvasIds {
+export function drawingAreaIdsOf(ids: HvacAreaIdMap): HvacDrawingAreaIds {
     return {
         documentArea: ids.workArea,
         svgArea: ids.svgArea,
@@ -46,7 +46,7 @@ export function canvasIdsOf(ids: HvacAreaIdMap): HvacCanvasIds {
 }
 
 /** The historical ids — identical to `DEFAULT_AREA_IDS` in the engine. */
-export const LEGACY_CANVAS_IDS: HvacCanvasIds = {
+export const LEGACY_DRAWING_AREA_IDS: HvacDrawingAreaIds = {
     documentArea: "document-area",
     svgArea: "svg-area",
     hRuler: "h-ruler",
