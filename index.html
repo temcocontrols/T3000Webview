@@ -39,6 +39,49 @@
     <link rel="icon" type="image/ico" href="icons/favicon.ico" />
   </head>
   <body>
+    <!--
+      T3000 view switcher — the startup decision, and the only non-React piece of the feature.
+
+      Two apps share this one bundle, and which one is mounted is decided at boot from the hash
+      (`t3000-react-root` is only mounted for `/t3000…`, see `src/boot/react.tsx` + `src/shared/routes.ts`):
+        `#/`            the classic (Vue) app — what T3000 has always opened
+        `#/t3000/…`     the new (React) app
+        `#/t3000/ui-switch`  the page that asks which one you want
+
+      This runs before any bundle loads so the wrong view is never painted:
+        a remembered `new`  → straight to the new app, no question
+        a remembered classic → left alone
+        nothing remembered   → the switcher page, once per session
+
+      Keys mirror `src/shared/uiFlavor.ts` — change them in BOTH places.
+    -->
+    <script>
+      (function () {
+        try {
+          var FLAVOR_KEY = 't3.ui.flavor';
+          var SESSION_KEY = 't3.ui.choiceDone';
+          var base = location.pathname + location.search;
+
+          /* Only ever intercept the classic root: deep links (`#/hvac/t2`, `#/t3000/…`) are the user's own. */
+          var hash = (location.hash || '').replace(/^#/, '');
+          if (hash !== '' && hash !== '/') return;
+
+          var flavor = localStorage.getItem(FLAVOR_KEY);
+          if (flavor === 'new') {
+            location.replace(base + '#/t3000/');
+            return;
+          }
+          if (flavor === 'classic') return;
+
+          /* No remembered choice: ask once, but never twice in the same session (see the session key). */
+          if (sessionStorage.getItem(SESSION_KEY)) return;
+          location.replace(base + '#/t3000/ui-switch');
+        } catch (e) {
+          /* storage disabled: fall through to the classic app */
+        }
+      })();
+    </script>
+
     <!-- quasar:entry-point -->
   </body>
 </html>

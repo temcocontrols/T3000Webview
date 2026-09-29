@@ -192,6 +192,17 @@ const ProjectDetailPage = React.lazy(() =>
 );
 
 /**
+ * The view switcher (`#/t3000/ui-switch`) — the one page that must render with **no** chrome.
+ *
+ * It stands in for both apps: the classic root (`#/`) redirects here while the choice is unknown (see the
+ * inline script in `index.html`), and both UIs' *Help ▸ Switch View* will point here later. Contracts live
+ * in `src/shared/uiFlavor.ts`.
+ */
+const UiSwitchPage = React.lazy(() =>
+  import('../features/ui-switch/pages/UiSwitchPage').then((m) => ({ default: m.UiSwitchPage }))
+);
+
+/**
  * Protected Route Wrapper
  * Redirects to login if not authenticated
  * TODO: Re-enable authentication after testing
@@ -623,6 +634,20 @@ export const App: React.FC = () => {
                         }
                       />
                     </Route>
+
+                    {/**
+                     * View switcher — deliberately **outside** every layout: no menu bar, no device tree, no
+                     * panels. It is shown before the user has chosen a view, so it cannot depend on either
+                     * app's chrome. A static path outranks the `/t3000` branch's `*` child, so it wins here.
+                     */}
+                    <Route
+                      path="/t3000/ui-switch"
+                      element={
+                        <React.Suspense fallback={<div>Loading...</div>}>
+                          <UiSwitchPage />
+                        </React.Suspense>
+                      }
+                    />
 
                     {/* Fallback route */}
                   </Routes>
