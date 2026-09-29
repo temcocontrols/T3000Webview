@@ -49,8 +49,13 @@ import { useHvacAutoRecord } from "./useHvacAutoRecord";
 import { useHtmlFocusGuard } from "./useHtmlFocusGuard";
 import { hvacViewport } from "./hvacViewport";
 import { hvacHistoryCommands } from "./hvacCommands";
-import { viewportCommands } from "../../commands/viewportCommands";
-import { useRegisterCommands } from "../../commands/CommandBus";
+/*
+ * Side-effect import: hands the canvas the point pages' range vocabulary (state words, units) so a widget's
+ * label names a state exactly as its own properties panel does. Kept as an import rather than a call so it can
+ * never be lost by a later refactor of the init effect. See the module for why the engine needs to be told.
+ */
+import "./bindingVocabulary";
+import { viewportCommands } from "../../commands/viewportCommands";import { useRegisterCommands } from "../../commands/CommandBus";
 import { drawingAreaIdsOf, makeAreaIds } from "./hvacAreaIds";
 import type { HvacAreaIdMap } from "./hvacAreaIds";
 import { AreaIds } from "@/lib/t3-hvac/Data/Constant/AreaIds";

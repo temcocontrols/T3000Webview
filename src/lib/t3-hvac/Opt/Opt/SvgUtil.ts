@@ -8,6 +8,7 @@ import EvtUtil from "../../Event/EvtUtil";
 import LogUtil from '../../Util/LogUtil';
 import '../../Util/T3Hammer';
 import ObjectUtil from "../Data/ObjectUtil";
+import BindingLabelUtil from "../Common/BindingLabelUtil";
 import UIUtil from "../UI/UIUtil";
 import ActionUtil from "./ActionUtil";
 import LayerUtil from "./LayerUtil";
@@ -260,6 +261,17 @@ class SvgUtil {
 
       if (shapeContainer) {
         drawingData.PostCreateShapeCallback(svgDocument, shapeContainer, renderCallback);
+
+        /*
+         * The label of a linked widget, drawn as SVG inside the shape's own container — so it moves, zooms and
+         * rotates with the shape, and is placed **before** `SetRotation` below so the shape's rotation carries
+         * it along.
+         *
+         * This is the single place every shape is rendered through, which is why the label lives here rather
+         * than in `S.SvgSymbol` (where classic had it): the classic SVG canvas labelled symbol widgets only,
+         * and every other shape was left to the drawer page's Vue DOM overlay. See `BindingLabelUtil`.
+         */
+        BindingLabelUtil.AddToShape(svgDocument, drawingData, shapeContainer);
       }
 
       try {

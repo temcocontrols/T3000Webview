@@ -150,12 +150,16 @@ class SvgSymbol extends BaseSymbol {
     var apsItem = QuasarUtil.GetItemFromAPSV2(this.uniqueId);
     LogUtil.Debug("= S.SvgSymbol | CreateShape apsItem:", apsItem);
 
-    var needRefreshVue = apsItem && apsItem.t3Entry;
-    if (needRefreshVue) {
-      LogUtil.Debug("= S.SvgSymbol | CreateShape apsItem:", apsItem);
-      const foreignObj = ForeignObjUtil.CreateVueObject(svgDocument, frame, apsItem);
-      container.AddElement(foreignObj);
-    }
+    /*
+     * NOTE: a linked widget's label (full label / label / value, per the item's own Display field) is **not**
+     * added here. It used to be, via `ForeignObjUtil.CreateVueObject(...)` → the Vue component `ObjectType3`
+     * inside a <foreignObject>; that component is a `null` stub in this tree (the React migration dropped it),
+     * so the call only produced an empty box above the widget and drew nothing.
+     *
+     * The label now comes from `BindingLabelUtil.AddToShape`, called from `SvgUtil.AddSVGObject` — the single
+     * path every shape is rendered through — so symbol widgets and plain shapes get identical treatment.
+     * The debug log above stays: it is the cheap way to see whether a symbol has an app-layer record at all.
+     */
 
     // Add SVG text object if applicable
     if (this.DataID !== -1) {
