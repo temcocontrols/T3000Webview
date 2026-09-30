@@ -1,5 +1,30 @@
 # Switching between Classic View and New View
 
+> ## ⚠ PARKED 2026-09-30 — nothing on this page runs today
+>
+> The automatic *Choose your view* chooser is the wrong shape for what T3000 actually needs. The agreed
+> replacement is **explicit**: a **WEBVIEW** button in the T3000 app (Chrome icon) that opens the webview, and
+> inside the webview a matching **WIN11** item in the menu system whose tooltip reads
+> *"Back to the Windows T3000.exe"*. Both icons get hover tooltips.
+>
+> Everything below is therefore **commented out, not deleted** — the design and its measured history are kept
+> for the successor and for anyone who has to reason about the old keys:
+>
+> | Disabled | Where |
+> |---|---|
+> | the startup decision / first-run redirect | `index.html` (inline script, inside an HTML comment) |
+> | the in-page `hashchange` guard | `src/boot/react.tsx` (import + call) |
+> | the `/t3000/ui-switch` route | `src/t3-react/app/App.tsx` (lazy import + `<Route>`) |
+> | *Help ▸ Switch View* (both menu sets) | `src/t3-react/config/menuConfig.ts` |
+> | the classic notice bar | already removed 2026-09-30 |
+>
+> Consequences today: `#/` always opens the **classic** app (nothing redirects, no question is asked), and
+> `#/t3000/ui-switch` no longer has a route — it falls through to the `/t3000` shell. `src/shared/uiFlavor.ts`
+> and `src/t3-react/features/ui-switch/pages/UiSwitchPage.tsx` are left in place, unreferenced, so restoring is
+> an uncomment in the five places above. Stored `t3.ui.flavor` / `t3.ui.choiceDone` values become inert.
+>
+> The rest of this page describes the parked feature as built.
+
 T3000 ships **one** WebView bundle that contains two interfaces. Which one loads is decided from the URL,
 and the user's choice is remembered between launches.
 
@@ -16,10 +41,11 @@ and the user's choice is remembered between launches.
    *Don't ask me again* checkbox (ticked by default).
 2. **After choosing with the box ticked**: T3000 opens that view directly, with no question.
 3. **After choosing with the box unticked**: it opens the chosen view now, and asks again on the next launch.
-4. **Changing later**: *Help ▸ Switch View* in the new view; the notice bar at the top of the classic home
-   page in the classic view. Both open the same switcher page.
-5. If the new interface ever gets in the way, the way back is always the same: the notice bar / Help menu
-   entry, or simply `http://localhost:9103/#/`.
+4. **Changing later**: *Help ▸ Switch View* in the new view opens the switcher page. The classic view has **no
+   banner** of its own (one was removed on 2026-09-30 at the user's request) — the switcher is reached there by
+   URL: `http://localhost:9103/#/t3000/ui-switch`.
+5. If the new interface ever gets in the way, the way back is always the same: *Help ▸ Switch View* →
+   **Open Classic View**, or simply `http://localhost:9103/#/`.
 
 The T3000 help/update flow is untouched — updating T3000 changes nothing about how the views are chosen.
 
@@ -33,10 +59,9 @@ The T3000 help/update flow is untouched — updating T3000 changes nothing about
 | `src/t3-react/features/ui-switch/pages/UiSwitchPage.tsx` | The switcher page itself (React + Fluent UI), registered as a **bare** route — no menu bar, no device tree. |
 | `src/t3-react/app/App.tsx` | The `/t3000/ui-switch` route. |
 | `src/t3-react/config/menuConfig.ts` | *Help ▸ Switch View* (shared by the main app, Design Hub, the HVAC designer and the simulator menus, plus the EEZ menu set). |
-| `src/t3-vue/pages/HvacDrawer/IndexPage.vue` | The notice bar on the classic home page — the entry point for a customer who never leaves the classic view. |
 
-Keys are duplicated in `index.html` and in `IndexPage.vue` (neither can import the TS module) — **change them
-in all three places.**
+Keys are duplicated in `index.html` and in `src/shared/uiFlavor.ts` (the startup script cannot import the TS
+module) — **change them in both places.**
 
 ### Two enforcement points, one rule
 
@@ -73,9 +98,10 @@ so a reload and an in-page navigation can never disagree:
 > views control the same T3000 system — the same devices, points, programs and drawings — so you can switch
 > whenever you like without losing anything.
 >
-> **To switch later:** in the New View, use *Help ▸ Switch View*. In the Classic View, click **Try New View**
-> in the bar at the top of the screen, or open `http://localhost:9103/#/t3000/` directly. To go back to the
-> Classic View: *Help ▸ Switch View* → **Open Classic View**, or open `http://localhost:9103/#/`.
+> **To switch later:** in the New View, use *Help ▸ Switch View*. From the Classic View, open the switcher page
+> at `http://localhost:9103/#/t3000/ui-switch`, or `http://localhost:9103/#/t3000/` for the New View directly —
+> the classic UI itself carries no banner. To go back to the Classic View: *Help ▸ Switch View* →
+> **Open Classic View**, or open `http://localhost:9103/#/`.
 >
 > The new interface is a preview: if something does not work the way you expect, switch back to the Classic
 > View and tell us what happened — that is exactly the feedback we need before it becomes the default.

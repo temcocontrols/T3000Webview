@@ -94,66 +94,6 @@
   width: 100%;
   height: 100%;
 }
-
-/*
- * New View notice — the classic app is what T3000 opens (`#/`), so this bar is the only way a customer can
- * discover the new interface (nobody guesses `#/t3000/`). It opens the switcher page, which owns the
- * "how to switch back and forth" explanation; the dismissed flag is remembered in `t3.ui.noticeDismissed`.
- * Deliberately one bar: nothing else in the classic app knows about the new one.
- */
-.view-notice {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  background-color: #e5f1fb;
-  border-bottom: 1px solid #cfe4f7;
-  color: #12395c;
-  font-size: 12px;
-}
-
-.view-notice-text {
-  flex: 1;
-  min-width: 0;
-  /*
-   * Never wraps. At a narrow window the sentence truncates instead of growing the bar over several lines and
-   * pushing the links out of reach — which is what it did before this was added (measured at 379 px: four
-   * lines of text, both links pushed outside the bar).
-   */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/*
- * The two actions are **links**, not buttons — normal size, nothing that reads as a toolbar control, and a
- * real `href` so the destination shows on hover and middle-click / open-in-new-tab works. The click handler
- * still does the `replaceState` + reload that switching views requires (see `switchView` in the script).
- */
-.view-notice-link {
-  color: #0f6cbd;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-  padding: 2px;
-  border-radius: 3px;
-}
-
-.view-notice-link:hover,
-.view-notice-link:focus-visible {
-  text-decoration: underline;
-}
-
-.view-notice-link:focus-visible {
-  outline: 2px solid #0f6cbd;
-  outline-offset: 1px;
-}
-
-/* "Compare views" is the quieter of the two — it explains rather than acts. */
-.view-notice-link--secondary {
-  color: #2f5f8a;
-  font-weight: 400;
-}
 </style>
 
 <template>
@@ -161,22 +101,6 @@
     <div class="full-area">
 
       <div class="top-area">
-        <!--
-          New View notice — see the `showViewNotice` block in the script. Dismissable, and only ever the
-          entry point: the switching itself happens on `#/t3000/ui-switch` (a React route).
-        -->
-        <div class="view-notice" v-if="showViewNotice">
-          <q-icon name="campaign" size="18px" />
-          <span class="view-notice-text">
-            A modernized T3000 interface is available. You can switch between Classic View and New View at any
-            time — nothing is lost.
-          </span>
-          <a class="view-notice-link" href="#/t3000/" @click.prevent="openNewView">Try New View</a>
-          <a class="view-notice-link view-notice-link--secondary" href="#/t3000/ui-switch"
-            @click.prevent="openViewSwitcher">Compare views</a>
-          <q-btn flat dense round size="sm" icon="close" aria-label="Dismiss" @click="dismissViewNotice" />
-        </div>
-
         <!-- Top Toolbar -->
         <top-toolbar @menu-action="handleMenuAction" :object="appState.items[appState.activeItemIndex]"
           :selected-count="appState.selectedTargets?.length" :disable-undo="locked || undoHistory.length < 1"
@@ -899,48 +823,6 @@ const continuesObjectTypes = ["Duct", "Wall", "Int_Ext_Wall"];
 const importJsonDialog = ref({ addedCount: 0, active: false, uploadBtnLoading: false, data: null });
 // const savedNotify = ref(false); // Notification state for saving
 const contextMenuShow = ref(false); // State of the context menu visibility
-
-/*
- * New View notice (the classic side of the view switcher).
- *
- * The classic app boots at `#/`, so this is where a customer meets the new interface for the first time;
- * the switcher page (`#/t3000/ui-switch`) carries the explanation of how to come back, so this bar stays
- * one sentence and one link. Keys mirror `src/shared/uiFlavor.ts` — change them in both places.
- */
-const VIEW_NOTICE_STORAGE_KEY = 't3.ui.noticeDismissed';
-const showViewNotice = ref(localStorage.getItem(VIEW_NOTICE_STORAGE_KEY) !== '1');
-
-function dismissViewNotice() {
-  showViewNotice.value = false;
-  try {
-    localStorage.setItem(VIEW_NOTICE_STORAGE_KEY, '1');
-  } catch (e) {
-    /* storage disabled — the bar simply reappears next launch */
-  }
-}
-
-/*
- * Switching views = rewrite the hash with `history.replaceState`, then reload. Not a plain hash change:
- * the React app's mount point is a module-level singleton (`isInitialized` in `src/boot/react.tsx`), so a
- * hash-only switch works once and leaves the new view blank the next time round. And not a hash change plus
- * a reload either: that makes the Vue router lazy-import `ReactContainer.vue` and the reload cancels it
- * mid-flight ("error loading dynamically imported module: …/ReactContainer.vue"). `replaceState` fires no
- * event either router listens to, so only the reload does any work.
- */
-function switchView(hash) {
-  window.history.replaceState(null, '', `${location.pathname}${location.search}${hash}`);
-  window.location.reload();
-}
-
-/** Straight into the new view — the notice bar's primary action. */
-function openNewView() {
-  switchView('#/t3000/');
-}
-
-/** The switcher page — the place that explains both views and how to come back. */
-function openViewSwitcher() {
-  switchView('#/t3000/ui-switch');
-}
 
 // Computed property for loading panels progress
 const loadingPanelsProgress = computed(() => {

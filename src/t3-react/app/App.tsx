@@ -192,15 +192,16 @@ const ProjectDetailPage = React.lazy(() =>
 );
 
 /**
- * The view switcher (`#/t3000/ui-switch`) — the one page that must render with **no** chrome.
+ * DISABLED 2026-09-30 — the view switcher is parked, so this page is not routed. Uncomment to restore;
+ * the replacement is a WEBVIEW button in the T3000 app (see `docs/t3000/features/view-switcher.md`).
  *
- * It stands in for both apps: the classic root (`#/`) redirects here while the choice is unknown (see the
- * inline script in `index.html`), and both UIs' *Help ▸ Switch View* will point here later. Contracts live
- * in `src/shared/uiFlavor.ts`.
+ * It stood in for both apps: the classic root (`#/`) redirected here while the choice was unknown (the inline
+ * script in `index.html`), and both UIs' *Help ▸ Switch View* pointed here. Contracts live in
+ * `src/shared/uiFlavor.ts`.
  */
-const UiSwitchPage = React.lazy(() =>
-  import('../features/ui-switch/pages/UiSwitchPage').then((m) => ({ default: m.UiSwitchPage }))
-);
+// const UiSwitchPage = React.lazy(() =>
+//   import('../features/ui-switch/pages/UiSwitchPage').then((m) => ({ default: m.UiSwitchPage }))
+// );
 
 /**
  * Protected Route Wrapper
@@ -635,19 +636,23 @@ export const App: React.FC = () => {
                       />
                     </Route>
 
-                    {/**
-                     * View switcher — deliberately **outside** every layout: no menu bar, no device tree, no
+                    {/*
+                     * DISABLED 2026-09-30 — view switcher parked (`docs/t3000/features/view-switcher.md`);
+                     * uncomment this block to restore it.
+                     *
+                     * View switcher — deliberately outside every layout: no menu bar, no device tree, no
                      * panels. It is shown before the user has chosen a view, so it cannot depend on either
                      * app's chrome. A static path outranks the `/t3000` branch's `*` child, so it wins here.
+                     *
+                     * <Route
+                     *   path="/t3000/ui-switch"
+                     *   element={
+                     *     <React.Suspense fallback={<div>Loading...</div>}>
+                     *       <UiSwitchPage />
+                     *     </React.Suspense>
+                     *   }
+                     * />
                      */}
-                    <Route
-                      path="/t3000/ui-switch"
-                      element={
-                        <React.Suspense fallback={<div>Loading...</div>}>
-                          <UiSwitchPage />
-                        </React.Suspense>
-                      }
-                    />
 
                     {/* Fallback route */}
                   </Routes>

@@ -15,7 +15,7 @@ import { AreaIds } from '@/lib/t3-hvac/Data/Constant/AreaIds';
  * interface. Imported, never hard-coded, so the two sides cannot drift (`src/shared/uiFlavor.ts` owns the
  * contract). The classic app shows a notice bar that opens the same page, so the wording lives in one place.
  */
-import { SWITCH_VIEW_HASH } from '@/shared/uiFlavor';
+import { SWITCH_VIEW_HASH } from '@/shared/uiFlavor'; // DISABLED 2026-09-30 — only the parked *Help ▸ Switch View* items used this; remove this line when they are deleted for good.
 
 /**
  * Home Menu — one-click return to the T3000 inputs page.
@@ -586,6 +586,7 @@ export const helpMenu: MenuItem = {
       action: MenuAction.HelpContents,
       icon: 'Book',
     },
+    /*
     {
       id: 'help-switch-view',
       label: 'Switch View (Classic / New)',
@@ -595,6 +596,7 @@ export const helpMenu: MenuItem = {
       },
       icon: 'ArrowSync',
     },
+    */
     {
       id: 'help-version-history',
       label: 'Version History',
@@ -1404,7 +1406,8 @@ export const eezHelpMenu: MenuItem = {
   icon: 'QuestionCircle',
   children: [
     { id: 'eez-help-docs', label: 'Documentation', type: 'item', action: MenuAction.EezDocumentation, shortcut: 'F1', icon: 'Book' },
-    { id: 'eez-help-switch-view', label: 'Switch View (Classic / New)', type: 'item', action: () => { window.location.hash = SWITCH_VIEW_HASH; }, icon: 'ArrowSync' },
+    // DISABLED 2026-09-30 — view switcher parked (see docs/t3000/features/view-switcher.md).
+    // { id: 'eez-help-switch-view', label: 'Switch View (Classic / New)', type: 'item', action: () => { window.location.hash = SWITCH_VIEW_HASH; }, icon: 'ArrowSync' },
     { id: 'eez-help-div1', type: 'divider' },
     { id: 'eez-help-about', label: 'About EEZ Studio', type: 'item', action: MenuAction.EezAbout, icon: 'Info' },
   ],

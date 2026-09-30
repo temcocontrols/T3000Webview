@@ -40,24 +40,26 @@
   </head>
   <body>
     <!--
-      T3000 view switcher — the startup decision, and the only non-React piece of the feature.
+      T3000 view switcher — **DISABLED 2026-09-30** (parked, not deleted).
 
-      Two apps share this one bundle, and which one is mounted is decided at boot from the hash
-      (`t3000-react-root` is only mounted for `/t3000…`, see `src/boot/react.tsx` + `src/shared/routes.ts`):
-        `#/`            the classic (Vue) app — what T3000 has always opened
-        `#/t3000/…`     the new (React) app
-        `#/t3000/ui-switch`  the page that asks which one you want
+      The automatic chooser this decided is the wrong shape for what T3000 actually needs: the replacement is an
+      explicit *WEBVIEW* button in the T3000 app (Chrome icon) plus a matching *WIN11* item inside the webview's
+      menu, whose tooltip reads "Back to the Windows T3000.exe". Until that lands, nothing here runs.
 
-      This runs before any bundle loads so the wrong view is never painted:
-        a remembered `new`  → straight to the new app, no question
-        a remembered classic → left alone
-        nothing remembered   → the switcher page, once per session
+      To restore: uncomment the script below *and* the guard in `src/boot/react.tsx`. Contract and history:
+      `docs/t3000/features/view-switcher.md`.
 
-      Keys mirror `src/shared/uiFlavor.ts` — change them in BOTH places.
-
-      This can only see a document load. In-page navigation to the classic root (typing `#/`) is caught at
-      runtime by `installUiFlavorHashGuard()`, installed from `src/boot/react.tsx`.
+      What it used to do — two apps share this one bundle, and which one is mounted is decided at boot from the
+      hash (`t3000-react-root` is only mounted for `/t3000…`, see `src/boot/react.tsx` + `src/shared/routes.ts`):
+        `#/`                 the classic (Vue) app — what T3000 has always opened
+        `#/t3000/…`          the new (React) app
+        `#/t3000/ui-switch`  the page that asked which one you want
+      A remembered `new` went straight to the new app, a remembered classic was left alone, and nothing
+      remembered meant the switcher page once per session. Keys mirror `src/shared/uiFlavor.ts` (two places).
+      It could only see a document load; in-page navigation to the classic root was caught by
+      `installUiFlavorHashGuard()` from `src/boot/react.tsx`.
     -->
+    <!--
     <script>
       (function () {
         try {
@@ -84,6 +86,7 @@
         }
       })();
     </script>
+    -->
 
     <!-- quasar:entry-point -->
   </body>

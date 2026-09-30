@@ -7,7 +7,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { isReactRoute } from '../shared/routes';
-import { installUiFlavorHashGuard } from '../shared/uiFlavor';
+// DISABLED 2026-09-30 — view switcher parked; uncomment with the call in the default export below.
+// import { installUiFlavorHashGuard } from '../shared/uiFlavor';
 
 // Track if React has already been initialized
 let reactRoot: ReactDOM.Root | null = null;
@@ -50,10 +51,14 @@ export function initializeReactApp() {
  * NOTE: React is now initialized by ReactContainer.vue's onMounted hook
  * This ensures the DOM element exists before React tries to mount
  *
- * The view-choice guard is installed here because a boot file runs on **every** document, before either app
- * renders — the listener has to already be in place when the hash changes inside the classic app, which the
- * `index.html` startup redirect never sees. See `installUiFlavorHashGuard`.
+ * The view-choice guard used to be installed here, because a boot file runs on **every** document, before
+ * either app renders — the listener had to be in place when the hash changed inside the classic app, which the
+ * `index.html` startup redirect never sees.
+ *
+ * DISABLED 2026-09-30 — the view switcher feature is parked (see `docs/t3000/features/view-switcher.md`); the
+ * replacement is a WEBVIEW button in the T3000 app, not an automatic chooser. Restore by uncommenting the
+ * import above and the call below.
  */
 export default () => {
-  installUiFlavorHashGuard();
+  // installUiFlavorHashGuard();
 };
