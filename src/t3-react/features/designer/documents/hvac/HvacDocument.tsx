@@ -60,8 +60,10 @@ import { drawingAreaIdsOf, makeAreaIds } from "./hvacAreaIds";
 import type { HvacAreaIdMap } from "./hvacAreaIds";
 import { AreaIds } from "@/lib/t3-hvac/Data/Constant/AreaIds";
 import DataOpt from "@/lib/t3-hvac/Opt/Data/DataOpt";
-import { captureCurrentDocument, hasLocalDrawing, prepareEngineDocument, updateDrawing } from "@t3-react/features/hvac-designer/services/drawingService";
+import { captureCurrentDocument, hasLocalDrawing, prepareEngineDocument, recordDocument } from "@t3-react/features/hvac-designer/services/drawingService";
 import type { EngineDocumentSource } from "@t3-react/features/hvac-designer/services/drawingService";
+import type { DrawingLoadResult } from "@t3-react/features/hvac-designer/hooks/useDrawing";
+import { resolveHvacDocumentId, resolveHvacDocumentName, resolveHvacDocumentSerial } from "./hvacDocumentId";
 
 export const HVAC_DOCUMENT_KIND = "hvac-schematic" as const;
 
@@ -94,21 +96,50 @@ const RECORD_LOAD_GRACE_MS = 3000;
  * engine announces persistence once — `DataOpt.SaveAppStateV2()` is the funnel for all of them — and this
  * mirrors the live document into the record of whichever drawing is open.
  *
- * Debounced, because a single user action can persist more than once, and a no-op when the document is not
- * backed by a record (an unsaved new drawing, which the hub has not created yet).
+ * Debounced, because a single user action can persist more than once, and off unless the canvas is known to
+ * be the drawing it would be filed under — see `openDocumentSource`.
  */
 let documentPersistTimer: number | undefined;
 
 /**
- * How the running document was prepared (see `prepareEngineDocument`).
+ * The drawing the running document belongs to — the id and the name the route asked for.
+ *
+ * Held here rather than read from the store: this is exactly what `prepareEngineDocument` was given, so the
+ * mirror cannot file a document under a different drawing than the one the engine was prepared with.
+ */
+let openDocumentId: string | undefined;
+let openDocumentName: string | undefined;
+let openDocumentSerial: number | undefined;
+
+/**
+ * How the running document was prepared (see `prepareEngineDocument` and `EngineDocumentSource`).
  *
  * `unknown` means the running document does **not** stand for the stored drawing: mirroring then would replace
  * a real drawing with an empty one, so the mirror stays off for that session.
  */
 let openDocumentSource: EngineDocumentSource = 'unknown';
 
-function prepareOpenDocument(id: string | undefined): void {
+function prepareOpenDocument(
+    id: string | undefined,
+    name: string | undefined,
+    serial: number | undefined,
+    lookup: DrawingLoadResult | null
+): void {
+    openDocumentId = id;
+    openDocumentName = name;
+    openDocumentSerial = serial;
     openDocumentSource = prepareEngineDocument(id);
+
+    /*
+     * `prepareEngineDocument` can only see the local index, so with no record there it says `unknown` — the
+     * safe assumption for a document it did not seed. The record lookup settles it: a *missing* answer means
+     * the drawing does not exist yet, so this empty canvas **is** that new drawing and its saves belong in its
+     * record (`fresh`). An *unavailable* answer stays `unknown`: the stored drawing was never seen, so nothing
+     * of ours may be written over it.
+     */
+    if (openDocumentSource === 'unknown' && lookup === 'missing') {
+        openDocumentSource = 'fresh';
+    }
 }
 
 function persistOpenDocument(): void {
@@ -119,18 +150,21 @@ function persistOpenDocument(): void {
     documentPersistTimer = window.setTimeout(() => {
         documentPersistTimer = undefined;
         try {
-            if (openDocumentSource === 'unknown') {
+            if (openDocumentSource !== 'record' && openDocumentSource !== 'fresh') {
                 return;
             }
-            const drawingId = useHvacDesignerStore.getState().drawingId;
-            if (!drawingId) {
+            if (!openDocumentId) {
                 return;
             }
             const document = captureCurrentDocument();
             if (!document) {
                 return;
             }
-            void updateDrawing(drawingId, { document }).catch(() => undefined);
+            // Creates the record on the drawing's first save — see `recordDocument`.
+            recordDocument(openDocumentId, document, {
+                name: openDocumentName,
+                serialNumber: openDocumentSerial
+            });
         } catch {
             /* mirroring must never break the editor */
         }
@@ -323,18 +357,40 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
     const frameReady = useDesignerFrameReady(designerDocumentKey(HVAC_DOCUMENT_KIND, ctx.id));
 
     /*
+     * WHICH DRAWING THIS IS. The path segment when the route carries one, otherwise the device/graphic the
+     * Hub's *Create & Open* navigates with (`hvacDocumentId.ts` explains why that pair has to become an id).
+     * Everything below — the wait, the engine's storage, the record the save is mirrored into — must use this
+     * id, and not `ctx.id`, or a drawing opened from the Hub would have no identity at all.
+     *
+     * `designerDocumentKey` above deliberately keeps `ctx.id`: that key names the *route slot* the shell
+     * publishes, and the shell computes it from the route's own params (`DesignerLayout.tsx:54`).
+     */
+    const documentId = useMemo(() => resolveHvacDocumentId(ctx.id, ctx.query), [ctx.id, ctx.query]);
+    const documentName = useMemo(() => resolveHvacDocumentName(ctx.query), [ctx.query]);
+    const documentSerial = useMemo(() => resolveHvacDocumentSerial(ctx.query), [ctx.query]);
+
+    /*
      * …and it must not start before the drawing's document is known. That is decided from localStorage
      * (`prepareEngineDocument`, run synchronously just before the engine initialises):
      *   · the record is in this browser       → no wait at all;
      *   · the record only exists on disk      → wait for `loadDrawing`, which fetches and caches it …
      *   · … but never longer than the grace   → a stalled request must not leave the engine unstarted.
      */
-    const hasLocalRecord = useMemo(() => (ctx.id ? hasLocalDrawing(ctx.id) : false), [ctx.id]);
+    const hasLocalRecord = useMemo(() => (documentId ? hasLocalDrawing(documentId) : false), [documentId]);
     const [recordRequestSettled, setRecordRequestSettled] = useState(false);
-    const waitingForRecord = Boolean(ctx.id) && !hasLocalRecord && !recordRequestSettled;
+    const waitingForRecord = Boolean(documentId) && !hasLocalRecord && !recordRequestSettled;
     const engineReady = frameReady && !waitingForRecord;
 
-    const prepareDocument = useCallback(() => prepareOpenDocument(ctx.id), [ctx.id]);
+    /*
+     * How that lookup ended — the one fact `prepareEngineDocument` cannot have, and the reason it can tell
+     * "no record exists yet" apart from "the record could not be read" only here (see `prepareOpenDocument`).
+     */
+    const recordLookupRef = useRef<DrawingLoadResult | null>(null);
+
+    const prepareDocument = useCallback(
+        () => prepareOpenDocument(documentId, documentName, documentSerial, recordLookupRef.current),
+        [documentId, documentName, documentSerial]
+    );
     const { relayoutArea } = useHvacEngine(ids, engineReady, prepareDocument);
 
     /*
@@ -351,7 +407,6 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
     // `useDrawing`'s callbacks are `useCallback`s over the whole zustand store, so their identity
     // changes whenever the store changes — depending on them here makes `createNew()`/`loadDrawing()`
     // retrigger the effect and loop until React throws "Maximum update depth exceeded".
-    const documentId = ctx.id;
     const loadOrCreateOnceRef = useRef<string | undefined>(undefined);
     useEffect(() => {
         if (loadOrCreateOnceRef.current === documentId) {
@@ -364,13 +419,35 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
          * disk — which is what makes the engine's *synchronous* prepare above find it, here or on the next
          * open. The engine is started by the effect above, not by this promise, except while
          * `waitingForRecord` is true — and that wait has the grace timer below as its ceiling.
+         *
+         * `allowMissing` is what makes a drawing that does not exist yet a normal first open instead of an
+         * error screen. Its outcome is recorded because only this lookup can tell "no record exists" from
+         * "the record could not be read", and `prepareOpenDocument` needs that to decide whether the canvas
+         * may be mirrored into the record (see `EngineDocumentSource`).
          */
-        const prepare = async () => {
-            if (documentId) {
-                await loadDrawing(documentId);
-            } else {
+        const prepare = async (): Promise<DrawingLoadResult> => {
+            if (!documentId) {
                 createNew();
+                return 'missing';
             }
+
+            const result = await loadDrawing(documentId, { allowMissing: true });
+
+            if (result !== 'loaded') {
+                /*
+                 * No record in this browser (and, when the store answered, none on disk either): the drawing
+                 * is new — but its **identity** is the route's, so give the store that name and device now.
+                 * The canvas keeps the id it will be saved under, and the header stops calling a drawing the
+                 * user created "Unsaved new drawing".
+                 */
+                const store = useHvacDesignerStore.getState();
+                store.loadDrawing(documentId, [], []);
+                if (documentName) {
+                    store.setDrawingName(documentName);
+                }
+            }
+
+            return result;
         };
 
         const recordGraceTimer = window.setTimeout(() => {
@@ -378,6 +455,9 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
         }, RECORD_LOAD_GRACE_MS);
 
         prepare()
+            .then((result) => {
+                recordLookupRef.current = result;
+            })
             .catch((loadError) => {
                 console.error("[Designer] Failed to load drawing:", loadError);
             })

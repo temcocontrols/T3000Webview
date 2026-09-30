@@ -9,17 +9,26 @@ import {
   saveDrawing as saveToDB,
   updateDrawing as updateInDB,
   loadDrawing as loadFromDB,
+  recordFailureReason,
   exportDrawing,
   importDrawing,
 } from '../services/drawingService';
 import { Drawing, ExportOptions, ImportOptions } from '../types/drawing.types';
+
+/**
+ * How a record lookup ended.
+ *
+ * `missing` (the store holds no such drawing) and `unavailable` (the store could not answer) are outcomes a
+ * caller acts on, not failures — see `EngineDocumentSource` in the service.
+ */
+export type DrawingLoadResult = 'loaded' | 'missing' | 'unavailable';
 
 interface UseDrawingResult {
   isSaving: boolean;
   isLoading: boolean;
   error: string | null;
   saveDrawing: () => Promise<void>;
-  loadDrawing: (id: string) => Promise<void>;
+  loadDrawing: (id: string, options?: { allowMissing?: boolean }) => Promise<DrawingLoadResult>;
   exportAs: (options: ExportOptions) => Promise<void>;
   importFrom: (file: File, options: ImportOptions) => Promise<void>;
   createNew: () => void;
@@ -81,9 +90,15 @@ export function useDrawing(): UseDrawingResult {
 
   /**
    * Load drawing from database
+   *
+   * @param options.allowMissing
+   *   When true, "this browser has no record of the drawing yet" is an **outcome**, not an error: it returns
+   *   `missing`/`unavailable` instead of setting `error` and rejecting, because a drawing created from the Hub
+   *   legitimately does not exist until its first save. Default `false`, which is what the legacy page wants:
+   *   any failure sets `error` and rejects.
    */
   const loadDrawing = useCallback(
-    async (id: string) => {
+    async (id: string, options?: { allowMissing?: boolean }): Promise<DrawingLoadResult> => {
       setIsLoading(true);
       setError(null);
 
@@ -97,7 +112,13 @@ export function useDrawing(): UseDrawingResult {
          */
         store.loadDrawing(drawing.id, drawing.shapes, drawing.layers);
         store.setDrawingName(drawing.name);
+        return 'loaded';
       } catch (err) {
+        const reason = recordFailureReason(err);
+        if (options?.allowMissing && reason) {
+          return reason;
+        }
+
         const message = err instanceof Error ? err.message : 'Failed to load drawing';
         setError(message);
         throw err;

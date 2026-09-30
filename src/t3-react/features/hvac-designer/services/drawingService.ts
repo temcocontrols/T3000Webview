@@ -82,12 +82,58 @@ export function hasLocalDrawing(id: string): boolean {
 }
 
 /**
- * What `prepareEngineDocument` found — i.e. how far the engine's document can be trusted.
+ * What the running document stands for — i.e. how far the engine's document can be trusted.
  *
- * `unknown` is the case that matters: the record is not in this browser and this browser has not been able
- * to read it (yet), so the canvas no longer reflects the stored drawing and mirroring must not run.
+ * | value | meaning | mirror |
+ * |---|---|---|
+ * | `record` | seeded from the drawing's record — the canvas *is* that drawing | on |
+ * | `fresh` | the record was looked for and does not exist — a new drawing under a known id | on |
+ * | `unknown` | the record could not be read — the canvas is **not** known to be the stored drawing | **off** |
+ * | `empty` | no id at all — there is nothing to save it as | **off** |
+ *
+ * `fresh` cannot be decided here: only the asynchronous lookup can tell "the store has no such drawing" (a
+ * 404, so creating it is safe) from "the store could not be reached" (never overwrite what we could not
+ * read). The caller therefore starts from `unknown` and upgrades it when its lookup answered *missing*.
  */
-export type EngineDocumentSource = 'record' | 'empty' | 'unknown';
+export type EngineDocumentSource = 'record' | 'fresh' | 'unknown' | 'empty';
+
+/** Why a record lookup did not produce a drawing. */
+export type RecordFailureReason = 'missing' | 'unavailable';
+
+/**
+ * A record lookup that did not produce a drawing.
+ *
+ * `reason` is the distinction a caller has to act on — see `EngineDocumentSource`.
+ */
+export class DrawingRecordError extends Error {
+  readonly code = 'T3_DRAWING_RECORD';
+
+  constructor(readonly id: string, readonly reason: RecordFailureReason, detail?: string) {
+    super(
+      reason === 'missing'
+        ? `Drawing not found: ${id}`
+        : `Drawing record unavailable: ${id}${detail ? ` (${detail})` : ''}`
+    );
+    this.name = 'DrawingRecordError';
+  }
+}
+
+/** The `reason` of a record failure, or `null` for any other error. */
+export function recordFailureReason(error: unknown): RecordFailureReason | null {
+  if (error instanceof DrawingRecordError) {
+    return error.reason;
+  }
+
+  /*
+   * Tolerate a second instance of this module (Vite dev serves the edited copy as `?t=…`, so `instanceof`
+   * does not hold across the two) — the code/reason pair is the stable signal.
+   */
+  const candidate = error as { code?: unknown; reason?: unknown } | undefined;
+  const reason = candidate?.reason;
+  return candidate?.code === 'T3_DRAWING_RECORD' && (reason === 'missing' || reason === 'unavailable')
+    ? reason
+    : null;
+}
 
 /**
  * Puts the right document in the engine's storage for `id`, synchronously. Called immediately before the
@@ -96,9 +142,14 @@ export type EngineDocumentSource = 'record' | 'empty' | 'unknown';
  * A record that has no `document` (written before this existed, or an empty new drawing) **clears** the
  * engine's storage: "no document" means an empty canvas, never the previous drawing that happens to still
  * be in this browser.
+ *
+ * Returns three of the four `EngineDocumentSource` values; `fresh` is the caller's to decide, because it
+ * needs the answer of the asynchronous record lookup — see that type.
  */
 export function prepareEngineDocument(id: string | undefined): EngineDocumentSource {
   if (!id) {
+    // No identity at all: there is nothing this document could be saved as, so it must not inherit the
+    // previous drawing either.
     clearDrawingDocument();
     return 'empty';
   }
@@ -199,17 +250,91 @@ export async function saveDrawing(drawing: Drawing): Promise<{ success: boolean;
 }
 
 /**
- * Update an existing drawing.
+ * Save an existing drawing — an **explicit** save (band Save, `Ctrl+S`, the properties panel).
+ *
+ * Upserts: the drawing's identity comes from the route (`hvacDocumentId.ts`), so the first explicit save of a
+ * drawing created from the Hub has nowhere else to land. The automatic path does not use this function — the
+ * engine's saves are mirrored by `recordDocument`, which is the one that knows the running document is this
+ * drawing.
  */
 export async function updateDrawing(id: string, drawing: Partial<Drawing>): Promise<{ success: boolean }> {
   const drawings = getLocalDrawings();
-  if (drawings[id]) {
-    drawings[id] = withCurrentDocument({ ...drawings[id], ...drawing, id, updatedAt: new Date().toISOString() });
-    saveLocalDrawings(drawings);
-    // Best-effort disk mirror.
-    await saveDrawingToDisk(id, drawings[id]);
-  }
+  drawings[id] = withCurrentDocument({
+    ...(drawings[id] ?? createEmptyRecord(id)),
+    ...drawing,
+    id,
+    updatedAt: new Date().toISOString(),
+  });
+  saveLocalDrawings(drawings);
+  // Best-effort disk mirror.
+  await saveDrawingToDisk(id, drawings[id]);
   return { success: true };
+}
+
+/**
+ * A record for a drawing this browser has never stored.
+ *
+ * `shapes`/`layers` are the React store's lists and *are* read back when a drawing is opened
+ * (`useDrawing.loadDrawing` → `store.loadDrawing`), so they are `[]` rather than absent: the engine's document
+ * is the content, and `undefined` here would break the store's own reads.
+ */
+function createEmptyRecord(id: string): Drawing {
+  const now = new Date().toISOString();
+  return {
+    id,
+    name: 'Untitled Drawing',
+    width: 0,
+    height: 0,
+    backgroundColor: '#ffffff',
+    shapes: [],
+    layers: [],
+    symbols: [],
+    createdAt: now,
+    updatedAt: now,
+    version: 1,
+  } as Drawing;
+}
+
+/**
+ * Writes the engine's document into a drawing's record, **creating** the record on the drawing's first save.
+ *
+ * Called only by the designer's mirror (`documents/hvac/HvacDocument.persistOpenDocument`), the one place that
+ * knows the running document *is* that drawing. `updateDrawing` above keeps its different job (an explicit
+ * save); this is the other half of the pair — the Hub's *Create & Open* opens a drawing that does not exist
+ * yet, so its first autosave has to create the record or the work is lost on reload.
+ *
+ * The record's `name`/`serialNumber` come from the route the drawing was opened with, so it shows up in the
+ * Hub's list under the name and device the user picked.
+ */
+export function recordDocument(
+  id: string,
+  document: unknown,
+  options?: { name?: string; serialNumber?: number }
+): void {
+  try {
+    const drawings = getLocalDrawings();
+    const existing = drawings[id];
+    const record: Drawing = {
+      ...(existing ?? createEmptyRecord(id)),
+      id,
+      // An existing name wins: the user may have renamed the drawing since it was created.
+      name: existing?.name && existing.name !== 'Untitled Drawing' ? existing.name : options?.name || existing?.name || id,
+      document,
+      updatedAt: new Date().toISOString(),
+    } as Drawing;
+
+    if (options?.serialNumber !== undefined) {
+      record.serialNumber = options.serialNumber;
+    }
+
+    drawings[id] = record;
+    saveLocalDrawings(drawings);
+
+    // Best-effort disk mirror — the same one an explicit save writes.
+    void saveDrawingToDisk(id, record);
+  } catch {
+    /* the mirror must never break the editor */
+  }
 }
 
 /**
@@ -220,10 +345,11 @@ export async function loadDrawing(id: string): Promise<Drawing> {
   if (drawings[id]) return drawings[id];
 
   // Try disk (backend) — the drawing may exist on disk but not in this browser.
+  let answer: Response | undefined;
   try {
-    const r = await fetchWithTimeout(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`);
-    if (r.ok) {
-      const drawing = (await r.json()) as Drawing;
+    answer = await fetchWithTimeout(`/api/design-hub/hvac-drawings/${encodeURIComponent(id)}`);
+    if (answer.ok) {
+      const drawing = (await answer.json()) as Drawing;
       /*
        * Cache it in the local index: that index is what `updateDrawing` writes back to, so a record that
        * existed only on disk could otherwise never be saved from this browser.
@@ -232,9 +358,17 @@ export async function loadDrawing(id: string): Promise<Drawing> {
       saveLocalDrawings(drawings);
       return drawing;
     }
-  } catch { /* API unavailable */ }
+  } catch { /* no answer — reported as `unavailable` below */ }
 
-  throw new Error(`Drawing not found: ${id}`);
+  /*
+   * Only a 404 says "there is no such drawing". Anything else (a 5xx, a dead proxy, a stalled request) means
+   * the store could not answer, and the caller must not treat a canvas it invented as the stored drawing.
+   */
+  if (answer?.status === 404) {
+    throw new DrawingRecordError(id, 'missing');
+  }
+
+  throw new DrawingRecordError(id, 'unavailable', answer ? `HTTP ${answer.status}` : 'no response');
 }
 
 /**
