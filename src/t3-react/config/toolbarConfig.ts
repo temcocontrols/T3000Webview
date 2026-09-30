@@ -50,6 +50,7 @@ import {
   ArrowClockwiseRegular,
   ArrowSyncRegular,
   TagRegular,
+  WindowDevToolsRegular,
 } from '@fluentui/react-icons';
 
 /**
@@ -237,6 +238,29 @@ export const toolbarConfig: ToolbarButton[] = [
     description:'Refresh data from device',
     action: 'refresh',
     shortcut: 'F5',
+  },
+  /*
+   * The desktop-app group — last, preceded by a divider that also pushes the group to the right end of the
+   * toolbar (see Header.tsx), because this button leaves the web app instead of navigating inside it. It is
+   * the web half of the WEBVIEW pair: the T3000 toolbar opens this UI in the user's own browser, and this
+   * icon goes back to the desktop window (which also closes that browser window — see `focusDesktopApp`).
+   * Its icon renders slightly larger than the others (our own vector glyph, not one of the bitmap icons).
+   * Icon file: /assets/t3icon/toolbar/win11.svg.
+   */
+  {
+    id: 'toolbar-divider-desktop',
+    icon: WindowDevToolsRegular,
+    label: '',
+    tooltip: '',
+    divider: true,
+  },
+  {
+    id: 'toolbar-win11',
+    icon: WindowDevToolsRegular,
+    label: 'Windows T3000',
+    tooltip: 'Back to the Windows T3000.exe',
+    description: 'Switch to the T3000 desktop application window',
+    action: 'focusDesktopApp',
   },
   // {
   //   id: 'toolbar-haystack-tags',

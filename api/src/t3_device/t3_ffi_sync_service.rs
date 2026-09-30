@@ -69,6 +69,7 @@ pub enum WebViewMessageType {
     LOGGING_DATA = 15, // Used for full device data sync
     UPDATE_WEBVIEW_LIST = 16, // Used for updating full records (inputs/outputs/variables)
     GET_WEBVIEW_LIST = 17, // Used for refreshing data from device (inputs/outputs/variables)
+    BACK_TO_DESKTOP = 18, // WEBVIEW button: restore + resize the T3000 window, close the browser we opened
 }
 
 // Global function pointers - will be loaded from T3000.exe at runtime

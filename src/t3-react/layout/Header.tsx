@@ -102,6 +102,7 @@ import { getMenusForPath } from '@t3-react/config/menuConfig';
 import { MenuAction } from '@common/react/types/menu';
 import type { MenuItem as MenuItemConfig } from '@common/react/types/menu';
 import { toolbarConfig } from '@t3-react/config/toolbarConfig';
+import { focusDesktopApp } from '@t3-react/shared/services/desktopBridge';
 import { useAuthStore, useStatusBarStore } from '@t3-react/store';
 import { useUIStore } from '@t3-react/store/uiStore';
 import { useChatStore } from '@t3-react/store/chatStore';
@@ -186,6 +187,9 @@ const useStyles = makeStyles({
     gap: '5px',
     // backgroundColor: 'red',
     marginLeft: '8px',
+    // Fill the row so the divider in front of the desktop-app group can push that group to the right end
+    // with `marginLeft: auto` (see the render loop).
+    flex: '1',
   },
   toolbarIconBtn: {
     display: 'inline-flex',
@@ -222,6 +226,14 @@ const useStyles = makeStyles({
     height: '28px',
     display: 'block',
     imageRendering: 'pixelated',
+  },
+  /* The desktop-app icon (back to the Windows T3000.exe) is our own vector glyph rather than one of the
+     bitmap-style toolbar icons, so it renders a little larger and not pixelated. */
+  toolbarIconImgDesktop: {
+    width: '32px',
+    height: '32px',
+    display: 'block',
+    imageRendering: 'auto',
   },
   toolbarDivider: {
     width: '1px',
@@ -836,6 +848,20 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
       } else {
         status.setMessage('No refreshable data on this page', 'info');
       }
+    } else if (item.action === 'focusDesktopApp') {
+      /*
+       * "Back to the Windows T3000.exe": the desktop side restores + resizes its window, brings it to the
+       * front and closes the browser window it opened. `window.close()` afterwards is a courtesy attempt —
+       * only a window the app itself opened (Chrome/Edge app mode) may close itself; for an ordinary tab it
+       * is ignored and T3000 is simply in front.
+       */
+      void focusDesktopApp().then(() => {
+        try {
+          window.close();
+        } catch {
+          /* a normal tab cannot be closed by script */
+        }
+      });
     } else {
       LogUtil.Warn('Unhandled toolbar action:', item);
     }
@@ -1065,7 +1091,16 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
           <div className={styles.toolbarSection}>
             {toolbarConfig.map((item, index) => {
               if (item.divider) {
-                return <div key={`divider-${index}`} className={styles.toolbarDivider} />;
+                // A divider placed in front of the desktop-app group also pushes that group to the right
+                // end of the row, so leaving the web app for T3000 reads as a separate, outboard action.
+                const pushesRight = toolbarConfig[index + 1]?.action === 'focusDesktopApp';
+                return (
+                  <div
+                    key={`divider-${index}`}
+                    className={styles.toolbarDivider}
+                    style={pushesRight ? { marginLeft: 'auto' } : undefined}
+                  />
+                );
               }
 
               // Map toolbar id to SVG icon filename
@@ -1101,7 +1136,11 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
                     <img
                       src={svgSrc}
                       alt={item.label}
-                      className={styles.toolbarIconImg}
+                      className={
+                        item.action === 'focusDesktopApp'
+                          ? styles.toolbarIconImgDesktop
+                          : styles.toolbarIconImg
+                      }
                     />
                   </button>
                 </Tooltip>
