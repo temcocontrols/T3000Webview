@@ -466,6 +466,43 @@ re-pointed when it addresses a different shape.
 best-effort to `PUT /api/design-hub/hvac-drawings/{id}` (`:39-55`), record shape `Drawing`
 (`types/drawing.types.ts:11-38`), ids `drawing-${Date.now()}` (`:66`).
 
+### The drawing's identity in the route
+
+A drawing is opened two ways, and they disagree about where the id lives:
+
+| Opened from | URL | id |
+|---|---|---|
+| Design Hub list / project catalog | `designerPath('hvac-schematic', d.id)` | **path** segment |
+| Hub tile → *Create & Open* (`NewDrawingDialog.tsx:129-141`) | `/t3000/designer/hvac-schematic?device=<serial>&graphic=<n>&name=<name>` | **query only** — the drawing does not exist yet |
+
+`documents/hvac/hvacDocumentId.ts` (pure) resolves both into one id — `device-<serial>-graphic-<n>` for the
+second form — and the document host uses that id for the wait, the engine's storage and the record mirror.
+Before it existed, the second form had **no** identity: `prepareEngineDocument(undefined)` took its anonymous
+branch and *cleared* the engine's storage on every load, while the mirror had no id to file a record under — so
+a drawing made on that URL was never saved and a reload showed an empty canvas (a data-loss bug, not a
+rendering one). `designerDocumentKey` still uses the raw `ctx.id`, because that names the **route slot** the
+shell publishes (`DesignerLayout.tsx:54`), not the drawing.
+
+### Which document the canvas is (and when a save may be mirrored)
+
+`EngineDocumentSource` (`drawingService.ts`) is decided before the engine initialises, and it is what the
+mirror keys off:
+
+| Source | Meaning | Mirror |
+|---|---|---|
+| `record` | seeded from the drawing's record — the canvas *is* that drawing | on |
+| `fresh` | the record was looked for and does not exist — a new drawing under a known id | on (creates the record) |
+| `unknown` | the record could not be read — the canvas is **not** known to be the stored drawing | **off** |
+| `empty` | no id at all — nothing to save it as | **off** |
+
+`fresh` cannot be decided synchronously: only the record lookup can tell "the store has no such drawing" (a 404
+— `recordFailureReason` → `missing`, safe to create) from "the store could not answer" (a 5xx, a dead proxy, a
+stall — `unavailable`, where an automatic write could destroy a copy that was never seen). So the host starts
+from `prepareEngineDocument`'s `unknown` and upgrades it to `fresh` when its own lookup said `missing`. The
+engine announces every persistence through `DataOpt.saveAppStateV2` → `documentPersistHook`
+(`HvacDocument.persistOpenDocument`, 400 ms debounce) → `recordDocument`, which **upserts** — the first
+autosave of a drawing created from the Hub is what creates its record.
+
 | Mark | Change |
 |---|---|
 | `UNCHANGED` | `designerStore` (out of scope). Do **not** wire it to the engine in this project |
@@ -539,6 +576,7 @@ model then holds two `paraInfo` entries and the SVG two `<tspan>`s.
 | The clipboard module must initialise | `T3Clipboard.Init` returns early when `#_clipboardInput` is absent, installing no `copy` / `cut` / `paste` listener. The host declares `#_crossTabClipboardDiv` / `#_IEclipboardDiv` / `#_clipboardInput` (`HvacDrawingArea`, origin markup from `app/SmartDraw.htm`) |
 | Shape paste works without a system payload | `T3Clipboard.PasteFromSystemEvent` falls back to `ToolActUtil.PasteObjects()` when the browser is not pasting into a field: a shape copy exists only in `header.ClipboardBuffer` — `DoCutCopy` writes `Text` / `text/plain`, while `Paste()` rebuilds from `text/html` |
 | While the field has focus the engine performs the action | `T3Clipboard`'s listener calls `event.preventDefault()` when `#T3TouchProxy` is focused |
+| The async write is best-effort and never throws | `T3Clipboard.DoCutCopy` guards both async-clipboard steps: the `clipboard-write` permission probe is wrapped in `try`/`catch` with its rejection swallowed (the result is unused, and the descriptor is invalid in Gecko and WebKit — where the origin's unguarded call leaks an uncaught rejection), and `navigator.clipboard.write()` gets a `.catch` that reports through `LogUtil.Debug`. A rejected write is expected: Chromium refuses it while the document is unfocused, and in that case `header.ClipboardBuffer` is still filled, so engine-internal paste keeps working |
 
 **Constraint on the browser path.** Handing cut/copy to the browser is not available: the engine's copy writes
 through `navigator.clipboard.write` (`CanUseAsyncClipboard()`), which Chromium refuses while the document is

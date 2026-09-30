@@ -67,17 +67,17 @@ Splitters reuse the repo recipe (`MainLayout.tsx:56-63` style, `:142-172` drag m
 | Bottom | — | **tabs**: Checks · Output · Search · References, collapsed | — (Debug panel in view mode) |
 | StatusBar | name · coords · zoom · Saved/Unsaved · message | page size · zoom · modified · error/warning counts | widget count · grid/coords |
 
-## 3. `CanvasHost` — the one area an engine owns
+## 3. The middle area — the one area an engine owns
 
 * Element is created once per document and **never re-keyed** (the HVAC engine cannot be re-initialised;
   the EEZ root is its own React root).
-* Resize → `ResizeObserver` → debounced (100 ms) `adapter.onCanvasResize?.()`; HVAC maps it to
-  `T3Gv.docUtil.HandleResizeEvent()` (`DocUtil.ts:659`), replacing the two fixed `setTimeout` refreshes
-  (`HvacDesignerPage.tsx:109-121`) and the collapse-triggered one (`:149-160`).
+* Resize → `ResizeObserver` → debounced (100 ms) `adapter.onAreaResize?.()`; HVAC maps it to
+  `T3Gv.docUtil.UpdateWorkArea()` (re-fit + re-read the click mapping), replacing the two fixed `setTimeout`
+  refreshes (`HvacDesignerPage.tsx:109-121`) and the collapse-triggered one (`:149-160`).
 * `position: relative`, `overflow: hidden`, `flex:1`, `minWidth:0`, `minHeight:0`;
   background `tokens.colorNeutralBackground3`.
 * HVAC needs its ids to exist **before** `mount()` (`InitializeWorkArea` throws when the selector does not
-  resolve — `DocUtil.ts:197-205`): the canvas renders its markup, then the adapter mounts.
+  resolve — `DocUtil.ts:197-205`): the region renders its markup, then the adapter mounts.
 
 ## 4. `StatusBar` — `NEW` `ShellStatusBar.tsx` on top of the existing `EditorStatusBar`
 
