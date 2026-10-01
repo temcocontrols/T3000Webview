@@ -1661,9 +1661,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           (s) => s.pointId === point.point_id && s.pointType === point.point_type
         );
         if (seriesIndex !== -1) {
-          const unitFromHistory = String(
+          const rawUnitFromHistory = String(
             point.unit ?? point.units ?? point.range_field ?? point.range ?? ''
           ).trim();
+          // 255 is T3000's "unused/unknown" code, not a unit.
+          const unitFromHistory = rawUnitFromHistory === '255' ? '' : rawUnitFromHistory;
 
           const currentUnit = String(updatedSeries[seriesIndex].unit || '').trim();
           const shouldReplaceUnit =
@@ -1682,9 +1684,11 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
             }
           } else if (typeof rawDa === 'number') {
             updatedSeries[seriesIndex].digitalAnalog = rawDa === 0 ? 'Digital' : 'Analog';
-          } else if (typeof point.is_analog === 'boolean') {
-            // API returns is_analog boolean when digitalAnalog/digital_analog fields are absent
-            updatedSeries[seriesIndex].digitalAnalog = point.is_analog ? 'Analog' : 'Digital';
+          } else if (point.is_analog === true) {
+            // Only the positive case is meaningful. The API reports is_analog=false both for real
+            // digital points and for points whose Digital_Analog is the "unknown" code (255), and
+            // trusting false turned ranged points (0-255 IN/OUT) into Off/On rows.
+            updatedSeries[seriesIndex].digitalAnalog = 'Analog';
           }
 
           // Off/On-like unit labels imply digital state mapping.
@@ -1834,7 +1838,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           });
 
           const unitRaw = (point?.units ?? point?.unit ?? point?.rangeLabel ?? point?.range_field ?? '') as string;
-          const resolvedUnit = String(unitRaw || '').trim();
+          const trimmedUnit = String(unitRaw || '').trim();
+          // 255 = T3000 "unused/unknown" code, not a unit.
+          const resolvedUnit = trimmedUnit === '255' ? '' : trimmedUnit;
 
           if (point) {
             const rawValue = point.digitalAnalog ?? point.digital_analog;
@@ -1902,7 +1908,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
           const pointId = `${pointPrefix}${pointNumber + 1}`;
 
           // Determine analog/digital from range metadata (same heuristics as monitorInputs path)
-          const rangeUnit = String(rangeItem.units || rangeItem.unit || '').trim();
+          const rangeUnitRaw = String(rangeItem.units || rangeItem.unit || '').trim();
+          const rangeUnit = rangeUnitRaw === '255' ? '' : rangeUnitRaw;
           const rawDa = rangeItem.digital_analog ?? rangeItem.digitalAnalog;
           let digitalAnalog: 'Analog' | 'Digital' = 'Analog';
           if (typeof rawDa === 'string') {
@@ -3437,8 +3444,8 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
 
         return (
           <>
-            {/* ANALOG AREA */}
-            {(visAnalog.length > 0 || (viewAnalog.length === 0 && viewDigital.length === 0)) && viewAnalog.length > 0 && (
+            {/* UNIFIED CHART AREA — analog bands and digital rows share one chart and one x-axis */}
+            {displayedSeries.length > 0 && (
               <div className={styles.analogArea}>
                 {/* Expand tab — only visible when panel is collapsed */}
                 {leftPanelCollapsed && (
@@ -3535,36 +3542,9 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
               </div>
             )}
 
-            {/* DIGITAL AREA */}
-            {viewDigital.length > 0 && viewAnalog.length === 0 && (
-              <div className={styles.digitalArea}>
-                {/* Expand tab — only visible when panel is collapsed */}
-                {leftPanelCollapsed && (
-                  <div className={styles.expandTab} onClick={() => setLeftPanelCollapsed(false)} title="Show panel">
-                    <ChevronRightRegular fontSize={10} />
-                  </div>
-                )}
-                <div className={mergeClasses(styles.digitalLeftPanel, leftPanelCollapsed ? styles.leftPanelCollapsed : undefined)}>
-                  {viewAnalog.length === 0 && renderSeriesToolbar()}
-                  {viewAnalog.length > 0 && (
-                    <div className={styles.seriesPanelHeader}>
-                      <Text size={200} weight="semibold">
-                        Digital ({visDigital.length}/{viewDigital.length})
-                      </Text>
-                    </div>
-                  )}
-                  <div className={styles.seriesPanel}>
-                    {viewDigital.map((s, i) => renderSeriesItem(s, viewAnalog.length + i))}
-                  </div>
-                </div>
-                <div className={styles.digitalRightPanel}>
-                  {/* One unified chart for every digital series (same band layout as the analog
-                      area) — a chart per series used to draw one x-axis and one label row each. */}
-                  <TrendChart series={visDigital} timeBase={timeBase === 'custom' ? '1h' : timeBase} showGrid={showGrid}
-                    chartType="analog" timeOffset={timeOffset} />
-                </div>
-              </div>
-            )}
+            {/* DIGITAL AREA removed — digital series are drawn as rows inside the unified chart
+                above. Rendering one chart per digital point produced an x-axis (and a label and
+                date row) per point, where the Vue version has a single x-axis. */}
 
             {/* Generic empty state when no series at all */}
             {viewAnalog.length === 0 && viewDigital.length === 0 && (
