@@ -1,20 +1,4 @@
-# [BETA] The new T3000 web interface — open it with the Chrome button in the toolbar
-
-> **Draft notes — delete this block before posting**
-> - Everything in `[square brackets]` is a placeholder: replace it or delete the line.
-> - `[Screenshot N]` marks where an image goes (see the checklist at the end of this file).
-> - Version used in the examples: `V:26.0930.01` — it is shown in the new interface's top bar (classic T3000
->   shows it in Help ▸ About).
-> - LCD UI is deliberately **not** advertised in this beta (still being finished): it stays out of the feature
->   list and the screenshots — only one line under *What happens next* mentions it. Delete that line too if you
->   would rather not mention it at all.
-> - Suggested posting: one pinned thread, categories as separate headings (users can link/reply to a section).
-
-### Title options (pick one)
-
-1. **Beta: the new T3000 web interface — open it with the Chrome button in the toolbar**
-2. **Try the new T3000 UI (beta) — Inputs, Trend Logs, Haystack, AI Assistant and the new Designer**
-3. **Beta preview: one click from T3000 to the new web interface**
+# Try the new T3000 UI (beta) — Inputs, Trend Logs, Haystack, AI Assistant and the new Designer
 
 ---
 
