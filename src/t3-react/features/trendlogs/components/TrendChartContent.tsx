@@ -3558,12 +3558,10 @@ export const TrendChartContent: React.FC<TrendChartContentProps> = (props) => {
                   </div>
                 </div>
                 <div className={styles.digitalRightPanel}>
-                  {visDigital.map((ds) => (
-                    <div key={ds.name} className={styles.channelChart}>
-                      <TrendChart series={[ds]} timeBase={timeBase === 'custom' ? '1h' : timeBase} showGrid={showGrid}
-                        chartType="digital" timeOffset={timeOffset} />
-                    </div>
-                  ))}
+                  {/* One unified chart for every digital series (same band layout as the analog
+                      area) — a chart per series used to draw one x-axis and one label row each. */}
+                  <TrendChart series={visDigital} timeBase={timeBase === 'custom' ? '1h' : timeBase} showGrid={showGrid}
+                    chartType="analog" timeOffset={timeOffset} />
                 </div>
               </div>
             )}

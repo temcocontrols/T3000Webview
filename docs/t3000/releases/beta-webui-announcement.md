@@ -39,7 +39,7 @@ That is the whole round trip. Everything after this section is detail you can re
 
 ## 1. How to open the new interface
 
-Two ways, both use the same beta copy:
+Two ways to open it:
 
 1. **From the address bar** — with the beta running, open `http://localhost:9103/#/t3000/` in any browser.
    From another PC on the same network, use this PC's address instead of `localhost`, for example
@@ -80,7 +80,7 @@ The beta is on the network drive:
 
 ## 3. What to try — by category
 
-Each section has a short "what it is", where to find it, and what to test.
+Each section has a short summary, where to find it, and the detailed document.
 
 **Where the detailed documents are.** They are built into the beta itself — open
 `http://localhost:9103/#/t3000/documentation` (or **Help ▸ Documentation** in the menu) and pick the chapter named
