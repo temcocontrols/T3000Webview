@@ -3,7 +3,11 @@
 > **Draft notes — delete this block before posting**
 > - Everything in `[square brackets]` is a placeholder: replace it or delete the line.
 > - `[Screenshot N]` marks where an image goes (see the checklist at the end of this file).
-> - Version used in the examples: `V:26.0930.01` — check yours in **Help ▸ About**.
+> - Version used in the examples: `V:26.0930.01` — it is shown in the new interface's top bar (classic T3000
+>   shows it in Help ▸ About).
+> - LCD UI is deliberately **not** advertised in this beta (still being finished): it stays out of the feature
+>   list and the screenshots — only one line under *What happens next* mentions it. Delete that line too if you
+>   would rather not mention it at all.
 > - Suggested posting: one pinned thread, categories as separate headings (users can link/reply to a section).
 
 ### Title options (pick one)
@@ -18,7 +22,7 @@
 
 We have been building a second, modern interface for T3000. It runs next to the classic one, opens in your own
 browser, and covers the parts of the system you use every day: **Inputs, Outputs, Variables, Trend Logs,
-Haystack tags, MCP tools, the AI Assistant, and the new Designer (HVAC schematics, LCD UI, LVGL / EEZ Studio)**.
+Haystack tags, MCP tools, the AI Assistant, and the new Designer (HVAC schematics, LVGL / EEZ Studio)**.
 
 This is a **beta**: it is ready for you to look at and try, and we want your feedback before the official
 release. Please do **not** use it as your only tool for live buildings yet.
@@ -28,6 +32,22 @@ release. Please do **not** use it as your only tool for live buildings yet.
 | Everyone | Install the beta copy from the network drive on a spare PC or next to your current T3000, and click around. |
 | Anyone who owns a test panel / lab device | Please try real work on it: edit points, run a trend, tag a device, draw an HVAC graphic. |
 | Production / live sites | Keep using the classic T3000 for now. The beta does not touch your existing installation, but we would rather you break things in the lab first. |
+
+### At a glance
+
+- **One click to open it:** the **Chrome button** at the right end of the T3000 toolbar.
+- **One click back:** the **Windows icon** in the new interface returns you to the classic T3000.
+- **Nothing to install:** copy the beta folder from the network drive and run `T3000.exe` from there.
+- **Your current T3000 and its data stay as they are** — the beta is a separate copy.
+
+### Your first five minutes
+
+1. Open the beta and click the **Chrome button** in the toolbar.
+2. Check that **Inputs** lists one of your devices with the right name and points.
+3. Edit one value and commit it — on a test panel if you can.
+4. Click the **Windows icon** to return to the classic T3000.
+
+That is the whole round trip. Everything after this section is detail you can read as you need it.
 
 ## 1. How to open the new interface
 
@@ -81,7 +101,6 @@ Each section has a short "what it is", where to find it, and what to test. Detai
 | MCP tools + AI Assistant | **AI Assistant ▸ MCP** | [link] |
 | New Designer — HVAC | **Design Hub ▸ HVAC** | [link — `docs/t3000/design-hub/`] |
 | New Designer — LVGL / EEZ Studio | **Design Hub ▸ LVGL 9.5 · LVGL with Flow 9.5** | [link — `docs/t3000/t3-eez-studio/`] |
-| New Designer — LCD UI | **Design Hub ▸ LCD UI** | [link — `docs/t3000/tstat-lcd/`] |
 
 ### 3.1 Inputs, Outputs, Variables
 
@@ -128,14 +147,13 @@ check the tool list / settings on the MCP page.
 [Screenshot 11: MCP tools page]
 Docs: [link]
 
-### 3.5 The new Designer — HVAC, LCD UI and LVGL / EEZ Studio
+### 3.5 The new Designer — HVAC and LVGL / EEZ Studio
 
 **What it is:** your graphics and embedded UI projects, made in the browser and deployed to the device. The
 Design Hub is the dashboard: create a drawing by type, pick the device, then edit and deploy.
 
 **Try:**
 - **HVAC:** create a schematic for a device's graphic slot (1–8), draw an air handler, save, reload, deploy.
-- **LCD UI:** design a thermostat screen and simulate it live.
 - **LVGL / EEZ Studio:** create an LVGL 9.5 project (or LVGL with Flow 9.5) and open it in the EEZ Studio editor.
 
 **Good to know:** a drawing belongs to **one device + one graphic slot**, and the hub tells you when a slot is
@@ -183,7 +201,8 @@ Even "it worked" reports are useful — tell us which category you tried and whe
 ## 7. What happens next
 
 This beta is for gathering feedback. After it we will publish an **official release** with the fixes and the
-remaining pages, announced here. Thank you for helping us get there.
+remaining pages, announced here. The **LCD UI designer** is not part of this beta — it is still being finished
+and will follow in a later update. Thank you for helping us get there.
 
 [Signature — T3000 team / contact name / e-mail]
 
