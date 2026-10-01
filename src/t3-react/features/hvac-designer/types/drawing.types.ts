@@ -15,7 +15,7 @@ export interface Drawing {
   graphicId?: string; // Link to graphics table
   serialNumber?: number; // Link to device
 
-  // Canvas settings
+  // Drawing size and background
   width: number;
   height: number;
   backgroundColor: string;
@@ -28,7 +28,7 @@ export interface Drawing {
   /**
    * The engine's document — the authoritative content of an HVAC drawing.
    *
-   * The engine (not the React store) owns the canvas, so `shapes` above is not where a drawing's content
+   * The engine (not the React store) owns the drawing, so `shapes` above is not where a drawing's content
    * lives: this payload is the same set of stores the engine writes to localStorage
    * (`DataOpt.CaptureDocument`), seeded back into the engine before it initialises (`SeedDocument`).
    * Absent on records written before this existed, and on non-HVAC drawing kinds.

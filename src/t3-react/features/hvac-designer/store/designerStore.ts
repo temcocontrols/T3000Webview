@@ -51,7 +51,7 @@ interface HvacDesignerState {
 }
 
 interface HvacDesignerActions {
-  // Canvas actions
+  // View actions
   setZoom: (zoom: number) => void;
   setZoomValue: (zoom: number) => void;
   setPan: (x: number, y: number) => void;

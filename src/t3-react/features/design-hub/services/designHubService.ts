@@ -134,7 +134,7 @@ const DEFAULT_LIBRARIES: LibraryItem[] = [
   {
     id: 'lib-templates',
     name: 'Drawing Templates',
-    description: 'Reusable starter canvases: schematic, floor plan, panel',
+    description: 'Reusable starter templates: schematic, floor plan, panel',
     kind: 'template',
     count: 6,
     source: 'local',
@@ -526,6 +526,48 @@ export const designHubService = {
       return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
+    }
+  },
+
+  /**
+   * Write the record of a drawing the editor is about to open, so a project created from the Hub is in the
+   * list before anything is drawn on it — the designer's mirror only writes on a save.
+   *
+   * `replace` resets a drawing that is already stored: `createdAt` and the name are kept, the stored
+   * `document` is dropped so the engine starts an empty drawing (`prepareEngineDocument`).
+   */
+  createHvacDrawingRecord(
+    id: string,
+    options: { name?: string; serialNumber?: number; replace?: boolean } = {}
+  ): void {
+    try {
+      const map = this.getHvacDrawingsRaw();
+      const existing = options.replace ? map[id] : undefined;
+      const now = new Date().toISOString();
+      const record: Record<string, any> = {
+        ...(existing ?? {}),
+        id,
+        name: options.name?.trim() || existing?.name || 'Untitled Drawing',
+        typeId: existing?.typeId ?? 'hvac-schematic',
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        width: existing?.width ?? 0,
+        height: existing?.height ?? 0,
+        backgroundColor: existing?.backgroundColor ?? '#ffffff',
+        shapes: existing?.shapes ?? [],
+        layers: existing?.layers ?? [],
+        symbols: existing?.symbols ?? [],
+        version: existing?.version ?? 1,
+      };
+      if (options.serialNumber !== undefined) {
+        record.serialNumber = options.serialNumber;
+      }
+      // No `document`: an empty drawing, never the previous one still in this browser's engine storage.
+      delete record.document;
+      map[id] = record;
+      localStorage.setItem(HVAC_DRAWINGS_KEY, JSON.stringify(map));
+    } catch {
+      /* the Hub list must never block opening the editor */
     }
   },
 

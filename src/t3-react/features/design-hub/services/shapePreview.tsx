@@ -142,3 +142,16 @@ export function getDrawingForProject(project: HubProject): any | null {
     return null;
   }
 }
+
+/**
+ * Whether there is anything to show in a preview.
+ *
+ * An HVAC record always renders an SVG — its background is part of it — so "a preview exists" is not the same
+ * as "the drawing has content". A fresh drawing would otherwise show an empty white tile where the other
+ * cards show their type icon.
+ */
+export function hasDrawingContent(project: HubProject): boolean {
+  if (project.source !== 'hvac') return false;
+  const drawing = getDrawingForProject(project);
+  return Array.isArray(drawing?.shapes) && drawing.shapes.length > 0;
+}

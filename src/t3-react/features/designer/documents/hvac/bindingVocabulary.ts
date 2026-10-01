@@ -4,13 +4,13 @@
  * A range is described twice in this codebase — the engine's legacy table (`IdxUtils.getEntryRange`, over
  * `T3Data.ranges`) and the point pages' tables (`PointRange`) — and they disagree: the legacy table can swap a
  * digital pair (`direct`) and uses symbols for units (`°C`) where the pages write `Deg.C`. The inspector's Value
- * row, the Display-field options and the Link Entry picker all read the pages' side, so the canvas label must
+ * row, the Display-field options and the Link Entry picker all read the pages' side, so the engine's label must
  * too, or a widget prints one state and its own properties print another.
  *
  * The engine cannot import `PointRange` itself (nothing under `src/lib/t3-hvac/**` imports `@/t3-react/**`), so
  * this module — which can — installs it into `BindingLabelUtil` as a vocabulary. Imported for its side effect by
- * `HvacDocument`, i.e. whenever the HVAC canvas is mounted. Nothing else changes: without an installed
- * vocabulary the label keeps the engine's legacy reading, which is what the Vue canvases print.
+ * `HvacDocument`, i.e. whenever an HVAC drawing is open. Nothing else changes: without an installed
+ * vocabulary the label keeps the engine's legacy reading, which is what the legacy pages print.
  *
  * The three answers below are **verbatim** the conditions `HvacPropertiesPanel` uses to choose between a state
  * list and a number field for its Value row (`isMsv` / `rangeUnset` / `isSwitch`), so the two stay in step by

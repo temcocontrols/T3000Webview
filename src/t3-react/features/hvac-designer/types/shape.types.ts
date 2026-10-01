@@ -1,6 +1,6 @@
 /**
  * Shape Types
- * Defines all drawable shapes on the canvas
+ * Defines all drawable shapes of a drawing
  */
 
 import { Point, Transform } from './viewport.types';

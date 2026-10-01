@@ -22,7 +22,7 @@ export interface DrawingType {
   accent: string;
   /** Fluent icon key (resolved via DESIGN_HUB_ICONS). */
   icon: string;
-  /** Default canvas for a new drawing. */
+  /** Default size for a new drawing. */
   template?: { width: number; height: number; backgroundColor: string };
   /** How the "New Drawing" dialog should configure this type. */
   createMode?: 'hvac' | 'lcd' | 'lvgl';

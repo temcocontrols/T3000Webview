@@ -15,6 +15,7 @@ import type { DeployLogEntry, HubProject } from '../types';
 import { getDrawingType } from '../drawingTypes';
 import { HubIcon } from '../icons';
 import { DrawingPreview } from './DrawingPreview';
+import { hasDrawingContent } from '../services/shapePreview';
 import { DeleteProjectPopover } from './DeleteProjectPopover';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { designHubService } from '../services/designHubService';
@@ -77,7 +78,9 @@ export const ProjectCard: React.FC<{
   const lastDeploy = deployLogs.find((l) => l.kind !== 'reset');
   const lastReset = deployLogs.find((l) => l.kind === 'reset');
 
-  const hasPreview = project.source === 'hvac';
+  // Only an HVAC drawing that has shapes shows a preview: a fresh one is a white tile on a white background,
+  // which reads as an empty box. Those cards get their type icon instead, the same as the EEZ/LVGL cards.
+  const hasPreview = hasDrawingContent(project);
 
   // Device status as a small pill (Local / SN xxxx / Deployed).
   let statusLabel: string;
@@ -168,11 +171,7 @@ export const ProjectCard: React.FC<{
     >
       <div
         className={styles.projectThumb}
-        style={
-          hasPreview
-            ? { background: '#ffffff' }
-            : { background: `color-mix(in srgb, ${accent} 12%, #ffffff)` }
-        }
+        style={{ background: `color-mix(in srgb, ${accent} 12%, #ffffff)` }}
       >
         {hasPreview ? (
           <div className={styles.projectThumbMedia}>

@@ -6,7 +6,7 @@
  *  - LCD UI           → device                             → tstat10-simulator
  *  - LVGL / LVGL+Flow → device + name                      → EEZ New Project wizard
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Dialog,
@@ -26,6 +26,8 @@ import { designHubService } from '../services/designHubService';
 import { HubIcon } from '../icons';
 import { LvglCreateDialog } from './LvglCreateDialog';
 import styles from '../pages/DesignHubPage.module.css';
+import { designerPath } from '@t3-react/features/designer/kinds';
+import { resolveHvacDocumentId } from '@t3-react/features/designer/documents/hvac/hvacDocumentId';
 
 interface DialogDevice {
   serialNumber: number;
@@ -78,6 +80,18 @@ async function fetchDevices(): Promise<DialogDevice[]> {
   }
 }
 
+/**
+ * The id the engine files a drawing under for a device + graphic slot — the same call the designer makes from
+ * the route (`hvacDocumentId.ts`), so the dialog can tell which slots the device already has drawings on.
+ */
+function hvacSlotId(serial: number | '', slot: number): string | undefined {
+  if (serial === '') return undefined;
+  return resolveHvacDocumentId(
+    undefined,
+    new URLSearchParams({ device: String(serial), graphic: String(slot) })
+  );
+}
+
 export const NewDrawingDialog: React.FC<{
   type: DrawingType | null;
   onClose: () => void;
@@ -88,14 +102,18 @@ export const NewDrawingDialog: React.FC<{
   const [deviceSerial, setDeviceSerial] = useState<number | ''>('');
   const [graphic, setGraphic] = useState(1);
   const [name, setName] = useState('');
+  // Once the name is typed by hand, the suggestion stops following the device/slot.
+  const [nameEdited, setNameEdited] = useState(false);
 
   // Reset fields whenever a different type is opened. LVGL types are handled by
   // LvglCreateDialog (below), so skip all of this state for them.
   useEffect(() => {
     if (type && type.createMode !== 'lvgl') {
-      setName(type.createMode === 'hvac' ? 'HVAC' : type.name);
       setDeviceSerial('');
       setGraphic(1);
+      setNameEdited(false);
+      // HVAC is left empty here — the suggestion below fills it from the device and the slot.
+      setName(type.createMode === 'hvac' ? '' : type.name);
     }
   }, [type]);
 
@@ -118,6 +136,50 @@ export const NewDrawingDialog: React.FC<{
     }
   }, [type]);
 
+  const selectedDevice = devices.find((d) => d.serialNumber === deviceSerial);
+
+  /*
+   * HVAC — the device + graphic slot *is* the drawing's identity.
+   *
+   * The engine files a drawing under `device-<serial>-graphic-<n>`, so handing out a slot that already has a
+   * record would replace that drawing. The dialog marks the used slots, opens on the first free one, and
+   * offers the existing drawing when a used slot is picked.
+   */
+  const usedSlots = useMemo(() => {
+    const out: Record<number, { id: string; name: string }> = {};
+    if (type?.createMode !== 'hvac' || deviceSerial === '') return out;
+    const raw = designHubService.getHvacDrawingsRaw();
+    for (let slot = 1; slot <= 8; slot++) {
+      const id = hvacSlotId(deviceSerial, slot);
+      const record = id ? raw[id] : undefined;
+      if (id && record) out[slot] = { id, name: String(record.name || id) };
+    }
+    return out;
+  }, [type, deviceSerial]);
+
+  // Open on the first free slot of the selected device.
+  useEffect(() => {
+    if (type?.createMode !== 'hvac' || deviceSerial === '') return;
+    const raw = designHubService.getHvacDrawingsRaw();
+    for (let slot = 1; slot <= 8; slot++) {
+      const id = hvacSlotId(deviceSerial, slot);
+      if (!id || !raw[id]) {
+        setGraphic(slot);
+        return;
+      }
+    }
+    setGraphic(1);
+  }, [type, deviceSerial]);
+
+  // The suggested name follows the device and the slot ("HVAC ESP11134 G2") until it is edited by hand.
+  const suggestedName =
+    type?.createMode === 'hvac' && deviceSerial !== ''
+      ? `HVAC ${selectedDevice?.name ?? `SN ${deviceSerial}`} G${graphic}`
+      : '';
+  useEffect(() => {
+    if (suggestedName && !nameEdited) setName(suggestedName);
+  }, [suggestedName, nameEdited]);
+
   if (!type) return null;
 
   // LVGL 9.5 / LVGL + Flow 9.5 use a two-mode dialog (Create New / Load from Device).
@@ -126,13 +188,29 @@ export const NewDrawingDialog: React.FC<{
   }
 
   const handleCreate = () => {
+    // What the drawing will be called: what was typed, else the suggestion.
+    const drawingName = name.trim() || suggestedName;
+
+    /* HVAC: the drawing is filed under the device + slot, so write its record now — the Hub lists the project
+     * straight away and the designer opens it as an empty drawing (a record without a `document`). */
+    if (type.createMode === 'hvac' && deviceSerial !== '') {
+      const id = hvacSlotId(deviceSerial, graphic);
+      if (id) {
+        designHubService.createHvacDrawingRecord(id, {
+          name: drawingName,
+          serialNumber: Number(deviceSerial),
+          replace: Boolean(usedSlots[graphic]),
+        });
+      }
+    }
+
     const params = new URLSearchParams();
     if (deviceSerial !== '') params.set('device', String(deviceSerial));
     if (type.createMode === 'hvac') params.set('graphic', String(graphic));
     if (type.createMode === 'lvgl' && type.wizardType) params.set('new', type.wizardType);
-    if (name.trim()) params.set('name', name.trim());
+    if (drawingName) params.set('name', drawingName);
 
-    designHubService.recordActivity('created', `Started "${name.trim() || type.name}"`, {
+    designHubService.recordActivity('created', `Started "${drawingName || type.name}"`, {
       detail: `${type.name}${deviceSerial !== '' ? ` · SN ${deviceSerial}` : ''}`,
       typeId: type.id,
     });
@@ -153,7 +231,20 @@ export const NewDrawingDialog: React.FC<{
     }, 0);
   };
 
-  const selectedDevice = devices.find((d) => d.serialNumber === deviceSerial);
+  /** Open the drawing that already occupies the selected slot instead of replacing it. */
+  const openExisting = () => {
+    const existing = usedSlots[graphic];
+    if (!existing) return;
+    const target = designerPath('hvac-schematic', existing.id);
+    onClose();
+    window.setTimeout(() => {
+      try {
+        navigate(target);
+      } catch (err) {
+        console.error('[NewDrawingDialog] navigate failed:', err, target);
+      }
+    }, 0);
+  };
 
   // Same list rules as the device picker: online devices grouped by building,
   // offline/unknown devices in a trailing group.
@@ -227,29 +318,58 @@ export const NewDrawingDialog: React.FC<{
             </Field>
 
             {type.createMode === 'hvac' && (
-              <Field
-                label={<span style={{ fontSize: 12, fontWeight: 600 }}>Graphic Slot</span>}
-                hint={<span style={{ fontSize: 11 }}>Each device/panel holds up to 8 graphics</span>}
-              >
-                <select
-                  className={styles.dialogSelect}
-                  value={graphic}
-                  onChange={(e) => setGraphic(Number(e.target.value))}
+              <>
+                <Field
+                  label={<span style={{ fontSize: 12, fontWeight: 600 }}>Graphic Slot</span>}
+                  hint={<span style={{ fontSize: 11 }}>Each device/panel holds up to 8 graphics</span>}
                 >
-                  {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      Graphic {n}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+                  <select
+                    className={styles.dialogSelect}
+                    value={graphic}
+                    onChange={(e) => setGraphic(Number(e.target.value))}
+                  >
+                    {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        Graphic {n}
+                        {usedSlots[n] ? ' · in use' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                {usedSlots[graphic] && (
+                  <div className={styles.dialogWarn}>
+                    <InfoRegular style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }} />
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                      <span>
+                        Graphic {graphic} on this device already holds{' '}
+                        <strong>{usedSlots[graphic].name}</strong> — creating replaces that drawing.
+                      </span>
+                      <Button size="small" appearance="secondary" onClick={openExisting}>
+                        Open existing
+                      </Button>
+                    </span>
+                  </div>
+                )}
+              </>
             )}
 
-            <Field label={<span style={{ fontSize: 12, fontWeight: 600 }}>Name</span>}>
+            <Field
+              label={<span style={{ fontSize: 12, fontWeight: 600 }}>Name</span>}
+              hint={
+                type.createMode === 'hvac' ? (
+                  <span style={{ fontSize: 11 }}>Suggested from the device and slot — edit if you like</span>
+                ) : undefined
+              }
+            >
               <Input
                 size="medium"
                 value={name}
-                onChange={(_, d) => setName(d.value)}
+                onChange={(_, d) => {
+                  setName(d.value);
+                  // An emptied field takes the suggestion again.
+                  setNameEdited(d.value.trim().length > 0);
+                }}
                 placeholder={type.name}
                 style={{ fontSize: 13 }}
               />
@@ -273,7 +393,7 @@ export const NewDrawingDialog: React.FC<{
               Cancel
             </Button>
             <Button size="medium" appearance="primary" disabled={deviceSerial === ''} onClick={handleCreate} style={{ fontWeight: 400, fontSize: 13 }}>
-              Create &amp; Open
+              {type.createMode === 'hvac' && usedSlots[graphic] ? 'Replace & Open' : 'Create & Open'}
             </Button>
           </DialogActions>
         </DialogBody>

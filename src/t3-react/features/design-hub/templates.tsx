@@ -1,6 +1,6 @@
 /**
- * Drawing Templates — ready-made starter canvases per drawing type.
- * "New from template" creates a drawing with the template's canvas + hint.
+ * Drawing Templates — ready-made starters per drawing type.
+ * "New from template" creates a drawing from the template's content + hint.
  */
 import type { DrawingType } from './types';
 
@@ -19,7 +19,7 @@ export const DRAWING_TEMPLATES: DrawingTemplate[] = [
   {
     id: 'tpl-hvac-schematic',
     name: 'HVAC Schematic',
-    description: 'Blank schematic canvas with title block, ready for ductwork',
+    description: 'Blank schematic with title block, ready for ductwork',
     typeId: 'hvac-schematic',
     width: 1600,
     height: 1000,
@@ -55,7 +55,7 @@ export const DRAWING_TEMPLATES: DrawingTemplate[] = [
     width: 128,
     height: 128,
     backgroundColor: '#000000',
-    hint: 'LCD pixel canvas',
+    hint: 'LCD pixel layout',
   },
 ];
 

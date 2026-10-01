@@ -20,11 +20,11 @@ const LOCAL_STORAGE_KEY = 't3-hvac-drawings';
 
 /* ── the engine's document ──
  *
- * The canvas belongs to the engine, so a drawing's content is the engine's document, not the React
+ * The engine owns the drawing, so a drawing's content is the engine's document, not the React
  * store's shape list. These three calls are the whole bridge:
  *   capture → the record follows every engine save
  *   seed    → the engine restores the record's document on its next initialise
- *   clear   → "new drawing" starts from an empty canvas instead of the previous document
+ *   clear   → "new drawing" starts from an empty document instead of the previous one
  * All three are best-effort: a drawing must still open when the engine is not loaded yet.
  */
 
@@ -86,14 +86,16 @@ export function hasLocalDrawing(id: string): boolean {
  *
  * | value | meaning | mirror |
  * |---|---|---|
- * | `record` | seeded from the drawing's record — the canvas *is* that drawing | on |
- * | `fresh` | the record was looked for and does not exist — a new drawing under a known id | on |
- * | `unknown` | the record could not be read — the canvas is **not** known to be the stored drawing | **off** |
+ * | `record` | seeded from the drawing's record — the document *is* that drawing | on |
+ * | `fresh` | no stored document to seed — a new drawing under a known id | on |
+ * | `unknown` | the record could not be read — the document is **not** known to be the stored drawing | **off** |
  * | `empty` | no id at all — there is nothing to save it as | **off** |
  *
- * `fresh` cannot be decided here: only the asynchronous lookup can tell "the store has no such drawing" (a
- * 404, so creating it is safe) from "the store could not be reached" (never overwrite what we could not
- * read). The caller therefore starts from `unknown` and upgrades it when its lookup answered *missing*.
+ * `fresh` cannot be decided here when the record is merely *absent*: only the asynchronous lookup can tell
+ * "the store has no such drawing" (a 404, so creating it is safe) from "the store could not be reached"
+ * (never overwrite what we could not read). The caller starts from `unknown` and upgrades it when its lookup
+ * answered *missing*. A record that exists but holds no document is `fresh` right away — the Hub's
+ * *Create & Open* writes exactly that, so the project is listed before anything is drawn on it.
  */
 export type EngineDocumentSource = 'record' | 'fresh' | 'unknown' | 'empty';
 
@@ -140,11 +142,11 @@ export function recordFailureReason(error: unknown): RecordFailureReason | null 
  * engine initialises.
  *
  * A record that has no `document` (written before this existed, or an empty new drawing) **clears** the
- * engine's storage: "no document" means an empty canvas, never the previous drawing that happens to still
+ * engine's storage: "no document" means an empty drawing, never the previous one that happens to still
  * be in this browser.
  *
- * Returns three of the four `EngineDocumentSource` values; `fresh` is the caller's to decide, because it
- * needs the answer of the asynchronous record lookup — see that type.
+ * Returns `record`, `fresh`, `unknown` or `empty`. `fresh` for an absent record is the caller's to decide: it
+ * needs the answer of the asynchronous lookup — see that type.
  */
 export function prepareEngineDocument(id: string | undefined): EngineDocumentSource {
   if (!id) {
@@ -157,7 +159,7 @@ export function prepareEngineDocument(id: string | undefined): EngineDocumentSou
   const record = peekLocalDrawing(id);
   if (!record) {
     // Not readable here: start clean rather than show whatever the engine still holds, and report it so the
-    // caller does not mirror this (empty) canvas back over the stored drawing.
+    // caller does not mirror this empty document back over the stored drawing.
     clearDrawingDocument();
     return 'unknown';
   }
@@ -168,8 +170,12 @@ export function prepareEngineDocument(id: string | undefined): EngineDocumentSou
     return 'record';
   }
 
+  // The record exists but holds no document: the drawing is empty — what the Hub writes when it creates a
+  // project. There *is* an identity, so this document is that new drawing and its saves belong in its record:
+  // `fresh`, never `empty`, because `empty` switches the mirror off for the whole session and the work would
+  // be lost on reload.
   clearDrawingDocument();
-  return 'empty';
+  return 'fresh';
 }
 
 /**
@@ -292,7 +298,12 @@ function createEmptyRecord(id: string): Drawing {
     createdAt: now,
     updatedAt: now,
     version: 1,
-  } as Drawing;
+    // The same starting settings the Hub writes for a new drawing.
+    gridSize: 10,
+    snapToGrid: true,
+    showRulers: false,
+    showGrid: false,
+  };
 }
 
 /**
@@ -362,7 +373,7 @@ export async function loadDrawing(id: string): Promise<Drawing> {
 
   /*
    * Only a 404 says "there is no such drawing". Anything else (a 5xx, a dead proxy, a stalled request) means
-   * the store could not answer, and the caller must not treat a canvas it invented as the stored drawing.
+   * the store could not answer, and the caller must not treat a document it invented as the stored drawing.
    */
   if (answer?.status === 404) {
     throw new DrawingRecordError(id, 'missing');

@@ -1,5 +1,5 @@
 /**
- * TemplatesSection — ready-made starter canvases per drawing type.
+ * TemplatesSection — ready-made starter templates per drawing type.
  */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +29,7 @@ export const TemplatesSection: React.FC = () => {
           <HubIcon icon="DocumentAdd" size={18} />
           Templates
         </div>
-        <span className={styles.sectionHint}>Start from a ready-made canvas</span>
+        <span className={styles.sectionHint}>Start from a ready-made template</span>
       </div>
 
       <div className={styles.typeGrid}>

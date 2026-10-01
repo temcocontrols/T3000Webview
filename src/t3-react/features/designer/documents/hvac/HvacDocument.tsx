@@ -50,7 +50,7 @@ import { useHtmlFocusGuard } from "./useHtmlFocusGuard";
 import { hvacViewport } from "./hvacViewport";
 import { hvacHistoryCommands } from "./hvacCommands";
 /*
- * Side-effect import: hands the canvas the point pages' range vocabulary (state words, units) so a widget's
+ * Side-effect import: hands the engine the point pages' range vocabulary (state words, units) so a widget's
  * label names a state exactly as its own properties panel does. Kept as an import rather than a call so it can
  * never be lost by a later refactor of the init effect. See the module for why the engine needs to be told.
  */
@@ -96,8 +96,8 @@ const RECORD_LOAD_GRACE_MS = 3000;
  * engine announces persistence once — `DataOpt.SaveAppStateV2()` is the funnel for all of them — and this
  * mirrors the live document into the record of whichever drawing is open.
  *
- * Debounced, because a single user action can persist more than once, and off unless the canvas is known to
- * be the drawing it would be filed under — see `openDocumentSource`.
+ * Debounced, because a single user action can persist more than once, and off unless the open document is
+ * known to be the drawing it would be filed under — see `openDocumentSource`.
  */
 let documentPersistTimer: number | undefined;
 
@@ -133,7 +133,7 @@ function prepareOpenDocument(
     /*
      * `prepareEngineDocument` can only see the local index, so with no record there it says `unknown` — the
      * safe assumption for a document it did not seed. The record lookup settles it: a *missing* answer means
-     * the drawing does not exist yet, so this empty canvas **is** that new drawing and its saves belong in its
+     * the drawing does not exist yet, so this empty document **is** that new drawing and its saves belong in its
      * record (`fresh`). An *unavailable* answer stays `unknown`: the stored drawing was never seen, so nothing
      * of ours may be written over it.
      */
@@ -422,7 +422,7 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
          *
          * `allowMissing` is what makes a drawing that does not exist yet a normal first open instead of an
          * error screen. Its outcome is recorded because only this lookup can tell "no record exists" from
-         * "the record could not be read", and `prepareOpenDocument` needs that to decide whether the canvas
+         * "the record could not be read", and `prepareOpenDocument` needs that to decide whether the document
          * may be mirrored into the record (see `EngineDocumentSource`).
          */
         const prepare = async (): Promise<DrawingLoadResult> => {
@@ -437,7 +437,7 @@ export function useHvacDocumentRuntime(ctx: MountContext, ids: HvacAreaIdMap): D
                 /*
                  * No record in this browser (and, when the store answered, none on disk either): the drawing
                  * is new — but its **identity** is the route's, so give the store that name and device now.
-                 * The canvas keeps the id it will be saved under, and the header stops calling a drawing the
+                 * The document keeps the id it will be saved under, and the header stops calling a drawing the
                  * user created "Unsaved new drawing".
                  */
                 const store = useHvacDesignerStore.getState();

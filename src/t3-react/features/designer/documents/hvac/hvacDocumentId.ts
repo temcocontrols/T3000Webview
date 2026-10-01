@@ -14,7 +14,7 @@
  *
  * With no id, `prepareEngineDocument(undefined)` took its anonymous branch — clear the engine's storage — and
  * `persistOpenDocument` had no id to write a record under. So a drawing made on such a URL was never saved:
- * the next load (or reload) showed an empty canvas. That is a data-loss bug, not a rendering one.
+ * the next load (or reload) showed an empty drawing. That is a data-loss bug, not a rendering one.
  *
  * The rule below is the whole fix: the pair from the query becomes the same kind of id the path would have
  * carried (`device-<serial>-graphic-<n>`), so the drawing is prepared, mirrored and reopened under one stable

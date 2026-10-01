@@ -184,7 +184,7 @@ export const HvacDrawingArea: React.FC<{ ids?: HvacDrawingAreaIds }> = ({ ids = 
        *
        * `T3Clipboard.FocusOnClipboardInput()` parks focus here after every drawing mouse-up, which is how the
        * module recognises an engine copy; `useHtmlFocusGuard` therefore ignores these ids — otherwise a
-       * click on the canvas would look like typing in a panel and close the engine's typing gate.
+       * click on the drawing area would look like typing in a panel and close the engine's typing gate.
        */}
       <div id="_crossTabClipboardDiv" style={CLIPBOARD_HELPER_STYLE}>
         <div id="_IEclipboardDiv" contentEditable />
