@@ -11,11 +11,11 @@ New capabilities that come with it:
 - **MCP tools and the AI Assistant** — ask questions about your system in plain language
 - **The new Designer** — HVAC schematics and LVGL / EEZ Studio, drawn in the browser, deployed to the device
 - **Shared Center DB** — trend logs and device data in one central Microsoft SQL Server database shared by
-  several T3000 PCs
+  several T3000 PCs 
 
-This is a **beta**: it is ready for you to look at and try, and we want your feedback before the official
-release. Please do **not** use it as your only tool for live buildings yet — try it on a spare PC or a test
-panel first. Installing it does not change your existing T3000 installation.
+This is a **beta** release. We are making it available early so you can explore the new features and tell us what works, what does not, and what could be improved. The feedback we receive during this phase will help shape the official release.
+
+Please do **not** use it as your sole tool for live buildings yet. Try it first on a spare PC or a test panel. Installing the beta does not change your existing T3000 installation.
 
 ### At a glance
 
@@ -69,7 +69,7 @@ The beta is on the network drive:
 [\\your-server\share\T3000-Beta-V26.0930.01\   ← fill in the real path]
 ```
 
-1. Copy the **whole folder** to a local disk (e.g. `C:\T3000-Beta\`). Running it from the network drive works,
+1. Copy the **T3000Beta.zip** to a local disk (e.g. `C:\T3000-Beta\`). Running it from the network drive works,
    but it is slower and can be locked by other users.
 2. Run `T3000.exe` **from that new folder**. Do not copy it over your production installation.
 3. Click the **Chrome button** in the toolbar (or open `http://localhost:9103/#/t3000/`).
