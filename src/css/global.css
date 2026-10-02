@@ -192,3 +192,33 @@ button:disabled {
   h2 { font-size: 1.5rem; }
   h3 { font-size: 1.25rem; }
 }
+
+/* Fluent v9 Switch — the off state must read as a switch, not a "mouse"
+ * ----------------------------------------------------------------------------
+ * Fluent's unchecked style is a *hollow* track with a *dark* knob (#616161, and
+ * #575757 while hovered). At table size that reads as a dark dot with a thin line
+ * through it — the "mouse". Filling the track and keeping the knob light makes the
+ * off state read the same way as the on state, in every engine.
+ * The `color` on the hover/press rules matters: Fluent's own hover rule darkens the
+ * knob again, which is why hovering still looked wrong after the first attempt.
+ * The `.fui-Switch` ancestor raises specificity — Fluent injects its rules later in
+ * the cascade, so an equal-specificity tie would go to Fluent.
+ * Geometry is deliberately left alone: Fluent's own 18px thumb box in the 40x20
+ * track is correct (the visible circle is 14.4px with a ~2.8px inset). */
+.fui-Switch .fui-Switch__input:enabled:not(:checked) ~ .fui-Switch__indicator {
+  background-color: #bfbfbf;
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.fui-Switch .fui-Switch__input:enabled:not(:checked):hover ~ .fui-Switch__indicator {
+  background-color: #b3b3b3;
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.fui-Switch .fui-Switch__input:enabled:not(:checked):hover:active ~ .fui-Switch__indicator {
+  background-color: #a6a6a6;
+  border-color: transparent;
+  color: #ffffff;
+}

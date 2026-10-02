@@ -13,7 +13,8 @@ New capabilities that come with it:
 - **Shared Center DB** — trend logs and device data in one central Microsoft SQL Server database shared by
   several T3000 PCs 
 
-This is a **beta** release. We are making it available early so you can explore the new features and tell us what works, what does not, and what could be improved. The feedback we receive during this phase will help shape the official release.
+This is a **beta** release, so you can try the new interface early. Any feedback — what works, what does not,
+what could be improved — helps us make it better.
 
 Please do **not** use it as your sole tool for live buildings yet. Try it first on a spare PC or a test panel. Installing the beta does not change your existing T3000 installation.
 
@@ -73,8 +74,8 @@ The beta is on the network drive:
    but it is slower and can be locked by other users.
 2. Run `T3000.exe` **from that new folder**. Do not copy it over your production installation.
 3. Click the **Chrome button** in the toolbar (or open `http://localhost:9103/#/t3000/`).
-4. The version is shown in the new interface's top bar (e.g. `V:26.0930.01`); T3000 itself shows it in
-   Help ▸ About. Please quote it in your feedback.
+4. The version is shown in the top bar of the new interface (e.g. `V:26.0930.01`) — that is the number to
+   quote if you report something.
 
 
 ## 3. What to try — by category
@@ -189,14 +190,11 @@ GitHub repository:
   your normal browser profile do not apply.
 - Please keep using the T3000 window for anything critical; nothing is removed by installing the beta.
 
-## 7. Feedback and suggestions
+## 7. Feedback, and what comes next
 
-We would like to hear from you — how it feels to use, what is missing, what should work differently. Any
-suggestion is welcome, big or small; we will work them into the next version. Post in this thread, and if
-something goes wrong, a screenshot or the version number (Help ▸ About) helps us reproduce it.
+Comments are welcome at any time — anything you notice, from a wrong value to a page that is still missing, is
+useful to us. A screenshot or the version number makes a problem easier to reproduce, and
+everything posted in this thread reaches the team.
 
-## 8. What happens next
-
-This is a beta — your feedback and suggestions shape what comes next. We will move on to an **official
-release** and continue with our normal updates from there, announced here. Thank you for trying it and for
-helping us get there.
+After the beta we will publish an **official release** and continue with our normal updates from there,
+announced here. Thank you for trying it.
