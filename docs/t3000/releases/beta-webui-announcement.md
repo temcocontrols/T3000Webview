@@ -64,19 +64,15 @@ the T3000 window and closes the browser window that T3000 opened.
 
 ## 2. Where to get the beta
 
-The beta is on the network drive:
+The beta is on OneDrive — the link opens in a new tab:
 
-```
-[\\your-server\share\T3000-Beta-V26.0930.01\   ← fill in the real path]
-```
+<a href="https://1drv.ms/u/c/3e5b15de3781d1ac/IQDpktb2q34PSLqnHMKCcf--AYybu-idx87Rv3HBizAfHGE?e=Mt6c97" target="_blank" rel="noopener">https://1drv.ms/u/c/3e5b15de3781d1ac/IQDpktb2q34PSLqnHMKCcf--AYybu-idx87Rv3HBizAfHGE?e=Mt6c97</a>
 
-1. Copy the **T3000Beta.zip** to a local disk (e.g. `C:\T3000-Beta\`). Running it from the network drive works,
-   but it is slower and can be locked by other users.
+1. Unzip **T3000Beta.zip** to a local disk (e.g. `C:\T3000-Beta\`).
 2. Run `T3000.exe` **from that new folder**. Do not copy it over your production installation.
 3. Click the **Chrome button** in the toolbar (or open `http://localhost:9103/#/t3000/`).
 4. The version is shown in the top bar of the new interface (e.g. `V:26.0930.01`) — that is the number to
    quote if you report something.
-
 
 ## 3. What to try — by category
 
