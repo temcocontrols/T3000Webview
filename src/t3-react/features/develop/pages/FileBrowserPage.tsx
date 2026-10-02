@@ -8,6 +8,10 @@ import React, { useState, useEffect } from 'react';
 import { Text, Button, Spinner, DataGrid, DataGridHeader, DataGridHeaderCell, DataGridBody, DataGridRow, DataGridCell, TableColumnDefinition, createTableColumn, Drawer, DrawerHeader, DrawerHeaderTitle, DrawerBody, Tooltip } from '@fluentui/react-components';
 import { ArrowSyncRegular, FolderRegular, DocumentRegular, ChevronUpRegular, ChevronDownRegular, ChevronLeftRegular, ChevronRightRegular, FolderOpenRegular, InfoRegular, DismissRegular, ErrorCircleRegular } from '@fluentui/react-icons';
 import styles from './FileBrowserPage.module.css';
+import { API_BASE_URL as BASE_URL } from '../../../config/constants';
+
+/** File browser endpoints: /api/develop/files/list, /api/develop/files/read */
+const API_BASE_URL = `${BASE_URL}/api/develop/files`;
 
 interface FileNode {
   name: string;

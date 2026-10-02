@@ -38,6 +38,10 @@ import {
   PlugDisconnectedRegular,
 } from '@fluentui/react-icons';
 import styles from './SystemLogsPage.module.css';
+import { API_BASE_URL as BASE_URL } from '../../../config/constants';
+
+/** System log endpoints: /api/develop/logs/dates, /files, /content, /clear */
+const API_BASE_URL = `${BASE_URL}/api/develop/logs`;
 
 type LogLevel = 'all' | 'ERROR' | 'WARN' | 'INFO' | 'DEBUG';
 
