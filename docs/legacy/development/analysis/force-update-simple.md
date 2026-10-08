@@ -4,7 +4,7 @@
 
 The "Update T3000" button launches `Update.exe` which performs this version check:
 
-### Version Comparison Logic:
+### Version Comparison Logic
 ```cpp
 // In Update/UpdateDlg.cpp line 552:
 if ((PC_T3000_Version < T3000_FTP_Version) || (PC_T3000_Version == 0))
@@ -19,7 +19,7 @@ else
 }
 ```
 
-### Version Sources:
+### Version Sources
 - **PC_T3000_Version**: Read from `{T3000 folder}\Database\temp\MonitorIndex.ini` section `[Version]` key `T3000`
 - **T3000_FTP_Version**: Downloaded from `temcocontrols.com/ftp/firmware/ProductPath.ini` section `[Version]` key `T3000Version`
 

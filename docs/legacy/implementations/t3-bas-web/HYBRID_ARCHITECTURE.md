@@ -1,12 +1,10 @@
 # T3000 WebView - Hybrid Vue + React Architecture
 
-**Version**: 0.9.0
-**Last Updated**: November 6, 2025
 **Architecture**: Hybrid (Vue 3 + Quasar / React 18 + Fluent UI)
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Overview](#overview)
 2. [Architecture](#architecture)
@@ -32,11 +30,11 @@ Both applications coexist in the same project using **route-based splitting**. T
 
 ### Why Hybrid?
 
-✅ **Zero migration cost** - Existing Vue features keep working
-✅ **New features in React + Fluent UI** - Microsoft design system
-✅ **Gradual transition** - Can take years if needed
-✅ **Lower risk** - No big-bang rewrite
-✅ **Team learning** - Learn React while building new features
+ **Zero migration cost** - Existing Vue features keep working
+ **New features in React + Fluent UI** - Microsoft design system
+ **Gradual transition** - Can take years if needed
+ **Lower risk** - No big-bang rewrite
+ **Team learning** - Learn React while building new features
 
 ---
 
@@ -181,11 +179,11 @@ T3000Webview5/
 
 ### Structure Benefits
 
-✅ **Clear Separation**: Each framework's library code is isolated (`vue/`, `react/`, `shared/`)
-✅ **No Duplication**: Distinct purpose for each subfolder
-✅ **Logical Grouping**: All library code unified under `lib/`
-✅ **Easy Navigation**: Know exactly where to find code
-✅ **Migration Path**: Move files from `vue/` to `shared/` as Vue components modernize
+ **Clear Separation**: Each framework's library code is isolated (`vue/`, `react/`, `shared/`)
+ **No Duplication**: Distinct purpose for each subfolder
+ **Logical Grouping**: All library code unified under `lib/`
+ **Easy Navigation**: Know exactly where to find code
+ **Migration Path**: Move files from `vue/` to `shared/` as Vue components modernize
 
 ### Import Patterns
 
@@ -535,10 +533,10 @@ const unsubscribe = EventBus.on(SHARED_EVENTS.DEVICE_SELECTED, (device) => {
 ```
 
 **Guidelines**:
-- ✅ **New pages**: Always use React + Fluent UI
-- ✅ **New features for existing Vue pages**: Keep in Vue
-- ✅ **Shared utilities**: Put in `src/lib/shared/`
-- ✅ **New components for both**: Create in both frameworks or use web components
+- **New pages**: Always use React + Fluent UI
+- **New features for existing Vue pages**: Keep in Vue
+- **Shared utilities**: Put in `src/lib/shared/`
+- **New components for both**: Create in both frameworks or use web components
 
 ---
 
@@ -666,10 +664,10 @@ refactor(shared): improve API error handling
 
 **Current Implementation Status**: ~85% Complete
 
-- ✅ Phase 0-16: Core infrastructure complete (121 tasks)
-- ⏳ Phase 17: Testing & debugging (in progress)
-- ⏳ Phase 18: Documentation (this file!)
-- ⏳ Phase 19: Production build & deployment
+- Phase 0-16: Core infrastructure complete (121 tasks)
+- Phase 17: Testing & debugging (in progress)
+- Phase 18: Documentation (this file!)
+- Phase 19: Production build & deployment
 
 **Next Steps**:
 1. Fix remaining TypeScript errors in alarmStore/trendStore (~390 errors, non-critical)

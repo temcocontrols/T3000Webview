@@ -7,7 +7,7 @@
 #### WebSocketClient.ts - Critical Memory Leak
 **File:** `src/lib/T3000/Hvac/Opt/Socket/WebSocketClient.ts`
 **Lines:** 100-160
-**Severity:** 🚨 CRITICAL
+**Severity:** CRITICAL
 
 ```typescript
 // BUG: Event listeners never removed - MEMORY LEAK
@@ -45,7 +45,7 @@ if (this.reloadInitialDataInterval) {
 #### EvtUtil.ts - Event Listener Cleanup Missing
 **File:** `src/lib/T3000/Hvac/Event/EvtUtil.ts`
 **Lines:** Various
-**Severity:** 🚨 CRITICAL
+**Severity:** CRITICAL
 
 ```typescript
 // BUG: jQuery event handlers never removed
@@ -61,7 +61,7 @@ T3Gv.opt.WorkAreaHammer.on('drag', EvtUtil.Evt_WorkAreaHammerDrag);
 #### Utils1.ts - Multiple Null Reference Risks
 **File:** `src/lib/T3000/Hvac/Util/Utils1.ts`
 **Lines:** 25-45, 150-200
-**Severity:** 🚨 MAJOR
+**Severity:** MAJOR
 
 ```typescript
 // BUG: No null check before method calls
@@ -107,7 +107,7 @@ static Alert(message?: string, additionalText?: string, okCallback?: () => void)
 #### T3Data.ts - Global State Mutations Without Validation
 **File:** `src/lib/T3000/Hvac/Data/T3Data.ts`
 **Lines:** 564-650
-**Severity:** 🚨 MAJOR
+**Severity:** MAJOR
 
 ```typescript
 // BUG: Direct mutations without validation
@@ -123,7 +123,7 @@ export const T3000_Data = ref({
 ### 3. Type Safety Issues
 
 #### Multiple Files - TypeScript `any` Usage
-**Severity:** ⚠️ MEDIUM
+**Severity:** MEDIUM
 
 ```typescript
 // utils1.ts - Line 25
@@ -146,7 +146,7 @@ static Evt_WorkAreaHammerClick(event) {
 #### WebSocketClient.ts - Inadequate Error Recovery
 **File:** `src/lib/T3000/Hvac/Opt/Socket/WebSocketClient.ts`
 **Lines:** 60-80
-**Severity:** 🚨 MAJOR
+**Severity:** MAJOR
 
 ```typescript
 // BUG: No error handling for connection failures
@@ -197,7 +197,7 @@ private attemptReconnect() {
 #### Utils1.ts - Inefficient Deep Copy
 **File:** `src/lib/T3000/Hvac/Util/Utils1.ts`
 **Lines:** 160-240
-**Severity:** ⚠️ MEDIUM
+**Severity:** MEDIUM
 
 ```typescript
 // BUG: Recursive deep copy without circular reference protection
@@ -220,7 +220,7 @@ static DeepCopy(source) {
 #### T3Data.ts - Large Reactive Objects
 **File:** `src/lib/T3000/Hvac/Data/T3Data.ts`
 **Lines:** 621-650
-**Severity:** ⚠️ MEDIUM
+**Severity:** MEDIUM
 
 ```typescript
 // BUG: Huge reactive objects causing performance issues
@@ -239,7 +239,7 @@ export const appState = ref(cloneDeep(emptyProject));
 #### WebSocketClient.ts - Connection State Race
 **File:** `src/lib/T3000/Hvac/Opt/Socket/WebSocketClient.ts`
 **Lines:** 120-160
-**Severity:** 🚨 MAJOR
+**Severity:** MAJOR
 
 ```typescript
 // BUG: Race condition between send and connect
@@ -265,7 +265,7 @@ sendMessage(message: string) {
 #### Utils1.ts - Unsafe Object Construction
 **File:** `src/lib/T3000/Hvac/Util/Utils1.ts`
 **Lines:** 70-100
-**Severity:** ⚠️ MEDIUM
+**Severity:** MEDIUM
 
 ```typescript
 // BUG: Unsafe object instantiation
@@ -289,7 +289,7 @@ static CloneBlock(sourceObject) {
 ### 8. Inconsistent Error Handling Patterns
 
 #### Multiple Files - Pattern Inconsistencies
-**Severity:** ⚠️ MEDIUM
+**Severity:** MEDIUM
 
 ```typescript
 // Pattern 1: Silent failures (Utils1.ts)
@@ -315,7 +315,7 @@ private onError(event: Event) {
 
 #### T3Gv.ts and T3Data.ts - Architectural Problems
 **Files:** Multiple
-**Severity:** 🚨 MAJOR
+**Severity:** MAJOR
 
 ```typescript
 // BUG: Direct global state mutations without validation
@@ -335,7 +335,7 @@ T3Gv.state.currentStateId = 5; // Direct mutation
 #### EvtUtil.ts - Unsafe DOM Operations
 **File:** `src/lib/T3000/Hvac/Event/EvtUtil.ts`
 **Lines:** 200-250
-**Severity:** ⚠️ MEDIUM
+**Severity:** MEDIUM
 
 ```typescript
 // BUG: No null checks for DOM elements
@@ -351,19 +351,19 @@ static Evt_WorkAreaMouseWheel(event) {
 
 ## Summary of Critical Issues
 
-### Immediate Action Required (🚨 CRITICAL)
+### Immediate Action Required ( CRITICAL)
 1. **Memory Leaks in WebSocketClient** - Event listeners and intervals not cleaned up
 2. **Memory Leaks in EvtUtil** - jQuery and Hammer.js events not removed
 3. **Null Reference Errors** - Multiple functions missing null checks
 4. **Race Conditions** - WebSocket connection state management
 5. **Global State Mutations** - No validation or synchronization
 
-### High Priority (🚨 MAJOR)
+### High Priority ( MAJOR)
 1. **Error Handling** - Inconsistent patterns across modules
 2. **Type Safety** - Missing TypeScript types
 3. **Performance Issues** - Inefficient deep copying and large reactive objects
 
-### Medium Priority (⚠️ MEDIUM)
+### Medium Priority ( MEDIUM)
 1. **Security Issues** - Unsafe object construction
 2. **DOM Operations** - Missing error handling
 3. **Code Organization** - Large files violating single responsibility

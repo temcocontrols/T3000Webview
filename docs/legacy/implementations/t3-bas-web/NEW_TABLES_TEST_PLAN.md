@@ -1,9 +1,8 @@
 # New Tables Testing Plan
-**Date**: 2025-11-27
 **Goal**: Identify which new table causes DLL initialization failure (missing logs)
 
 ## Test Strategy
-Add ONE table at a time, rebuild, test logs. Mark ✅ if logs appear, ❌ if logs stop.
+Add ONE table at a time, rebuild, test logs. Mark if logs appear, if logs stop.
 
 ## Baseline (Working State)
 - [ ] Step 0: ALL new tables disabled → **TEST FIRST** (should have logs)
@@ -43,8 +42,8 @@ Add ONE table at a time, rebuild, test logs. Mark ✅ if logs appear, ❌ if log
 4. Copy DLL: `Copy-Item "d:\1025\github\temcocontrols\T3000Webview7\api\target\i686-pc-windows-msvc\release\t3_webview_api.dll" "D:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\t3_webview_api.dll" -Force`
 5. Start T3000.exe
 6. Check for logs: `Get-ChildItem "D:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\T3WebLog\2025-11\1127" -Filter "*CppMsg*" | Select-Object Name, Length, LastWriteTime`
-7. If logs appear (>1KB): ✅ PASS - Keep enabled, continue to next
-8. If logs stop (<500 bytes): ❌ FAIL - This route has the issue, disable it
+7. If logs appear (>1KB): PASS - Keep enabled, continue to next
+8. If logs stop (<500 bytes): FAIL - This route has the issue, disable it
 
 ## Results
 (To be filled during testing)

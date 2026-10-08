@@ -6,7 +6,7 @@
 
 ---
 
-## 📋 Executive Summary
+## Executive Summary
 
 The T3000 library is a comprehensive HVAC (Heating, Ventilation, and Air Conditioning) drawing and control system built with TypeScript/JavaScript. It provides a sophisticated web-based interface for creating, visualizing, and managing HVAC system drawings with real-time data integration through WebSocket communication with C++ backend systems.
 
@@ -14,7 +14,7 @@ The T3000 library is a comprehensive HVAC (Heating, Ventilation, and Air Conditi
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 ### System Architecture
 
@@ -47,7 +47,7 @@ graph LR
 
 ---
 
-## 📁 Directory Structure Analysis
+## Directory Structure Analysis
 
 ### Root Structure
 ```
@@ -68,7 +68,7 @@ src/lib/T3000/
 
 ### Module Responsibilities
 
-#### 1. **Basic/ - Drawing Primitives** 🎨
+#### 1. **Basic/ - Drawing Primitives**
 **Purpose**: Low-level SVG element wrappers and drawing primitives  
 **Architecture**: Hierarchical inheritance (`Element` → `Container` → `Document`)  
 **Key Files**:
@@ -78,7 +78,7 @@ src/lib/T3000/
 - `B.ForeignObject.ts` - HTML/Vue integration within SVG
 - `B.Rect.ts`, `B.Oval.ts`, `B.Line.ts` - Basic shapes
 
-#### 2. **Shape/ - HVAC Objects** 🔧
+#### 2. **Shape/ - HVAC Objects**
 **Purpose**: HVAC-specific drawing objects with business logic  
 **Architecture**: Extends Basic/ with domain knowledge  
 **Key Files**:
@@ -87,7 +87,7 @@ src/lib/T3000/
 - `S.Connector.ts` - HVAC connection management (3,120+ lines)
 - `S.ForeignObject.ts` - Vue component integration in shapes
 
-#### 3. **Data/ - State Management** 📊
+#### 3. **Data/ - State Management**
 **Purpose**: Global state, configuration, and data models  
 **Architecture**: Centralized state with Vue reactivity  
 **Key Files**:
@@ -96,12 +96,12 @@ src/lib/T3000/
 - `Constant/` - System constants (10 files)
 - `Instance/` - Object factories and instances
 
-#### 4. **Opt/ - Business Logic** ⚙️
+#### 4. **Opt/ - Business Logic**
 **Purpose**: Core operations, event handling, utilities  
 **Architecture**: Service-oriented with utility classes  
 **Sub-directories**: 14 specialized modules including UI, Socket, Common, etc.
 
-#### 5. **Util/ - Utilities** 🛠️
+#### 5. **Util/ - Utilities**
 **Purpose**: Helper functions and cross-cutting concerns  
 **Key Files**:
 - `LogUtil.ts` - Configurable logging system
@@ -110,47 +110,47 @@ src/lib/T3000/
 
 ---
 
-## 🔍 Critical Issues & Status
+## Critical Issues & Status
 
-### 1. **🚨 HIGH PRIORITY Issues**
+### 1. ** HIGH PRIORITY Issues**
 
-#### Missing UIUtil.UpdateDisplayCoordinates ✅ **RESOLVED**
+#### Missing UIUtil.UpdateDisplayCoordinates **RESOLVED**
 - **Status**: Function found in `UIUtil.ts` line 54
 - **Implementation**: Complete coordinate display functionality
 - **Action**: No action required
 
-#### Template Issues in ScheduleAnnual.vue ✅ **RESOLVED**
+#### Template Issues in ScheduleAnnual.vue **RESOLVED**
 - **Status**: Fixed deprecated `v-model:visible` to `v-model:open`
 - **Issues Fixed**: Holiday calculations, dynamic year handling, TypeScript types
 - **Action**: Updates applied successfully
 
-### 2. **🔧 MEDIUM PRIORITY Issues**
+### 2. ** MEDIUM PRIORITY Issues**
 
-#### Massive T3Data.ts File 🔴 **NEEDS ATTENTION**
+#### Massive T3Data.ts File **NEEDS ATTENTION**
 - **Size**: 1,779 lines
 - **Problem**: Violates single responsibility principle
 - **Contents**: Mixed data types, configurations, constants
 - **Risk**: Maintenance difficulty, testing complexity
 - **Recommendation**: Split into focused modules
 
-#### Global State Dependencies 🟡 **MONITORING**
+#### Global State Dependencies **MONITORING**
 - **Issue**: Heavy reliance on static T3Gv properties
 - **Risk**: Testing difficulties, circular dependencies
 - **Example**: `T3Gv.opt.svgDoc = T3Gv.docUtil.DocObject()`
 - **Recommendation**: Implement dependency injection
 
-### 3. **⚠️ LOW PRIORITY Issues**
+### 3. ** LOW PRIORITY Issues**
 
-#### Inconsistent Error Handling 🟡 **IMPROVEMENT NEEDED**
+#### Inconsistent Error Handling **IMPROVEMENT NEEDED**
 - **Issue**: Mixed error handling patterns
 - **Examples**: Some use try-catch, others use LogUtil
 - **Recommendation**: Standardize error handling approach
 
 ---
 
-## 📈 Strengths Analysis
+## Strengths Analysis
 
-### ✅ **Architectural Excellence**
+### **Architectural Excellence**
 
 1. **Clean Separation of Concerns**
    - Basic/Shape separation enables reusability
@@ -173,7 +173,7 @@ src/lib/T3000/
    - C++ backend integration
    - Configurable logging system
 
-### ✅ **Advanced Capabilities**
+### **Advanced Capabilities**
 
 1. **Vue-SVG Integration**
    - ForeignObject support for Vue components in SVG
@@ -192,7 +192,7 @@ src/lib/T3000/
 
 ---
 
-## 🎯 Data Flow Architecture
+## Data Flow Architecture
 
 ### State Management Flow
 ```typescript
@@ -220,21 +220,21 @@ Vue Components → T3000 Library → Shape Objects → Basic Elements → T3Svg 
 
 ---
 
-## 📊 Technical Metrics
+## Technical Metrics
 
 | Category | Metric | Status | Notes |
 |----------|--------|--------|-------|
-| **Codebase Size** | ~150+ files | 🟢 | Well organized |
-| **Total LOC** | ~50,000+ | 🟡 | Large but manageable |
-| **Largest File** | T3Data.ts (1,779 lines) | 🔴 | Needs refactoring |
-| **TypeScript Coverage** | 95%+ | 🟢 | Excellent typing |
-| **Dependencies** | Vue 3, Ant Design, etc. | 🟢 | Modern stack |
-| **Documentation** | Class-level docs | 🟢 | Good coverage |
-| **Test Coverage** | Unknown | 🔴 | Needs assessment |
+| **Codebase Size** | ~150+ files | | Well organized |
+| **Total LOC** | ~50,000+ | | Large but manageable |
+| **Largest File** | T3Data.ts (1,779 lines) | | Needs refactoring |
+| **TypeScript Coverage** | 95%+ | | Excellent typing |
+| **Dependencies** | Vue 3, Ant Design, etc. | | Modern stack |
+| **Documentation** | Class-level docs | | Good coverage |
+| **Test Coverage** | Unknown | | Needs assessment |
 
 ---
 
-## 🚀 Recommendations
+## Recommendations
 
 ### Phase 1: Immediate Actions (Week 1)
 - [ ] Set up unit testing framework (Jest/Vitest)
@@ -265,7 +265,7 @@ Vue Components → T3000 Library → Shape Objects → Basic Elements → T3Svg 
 
 ---
 
-## 🔧 Implementation Examples
+## Implementation Examples
 
 ### Current Global State Pattern
 ```typescript
@@ -298,7 +298,7 @@ class SomeUtil {
 
 ---
 
-## 📚 Development Guidelines
+## Development Guidelines
 
 ### Code Standards
 1. **TypeScript**: Strict mode enabled, proper interface definitions
@@ -314,7 +314,7 @@ class SomeUtil {
 
 ---
 
-## 🏆 Quality Assessment
+## Quality Assessment
 
 | Aspect | Score | Rationale |
 |---------|-------|-----------|
@@ -331,23 +331,23 @@ class SomeUtil {
 
 ---
 
-## 📝 Conclusion
+## Conclusion
 
 The T3000 library represents a **sophisticated, enterprise-grade HVAC visualization system** with:
 
 ### Strategic Strengths
-- ✅ Modern web architecture (Vue 3 + TypeScript)
-- ✅ Professional drawing capabilities with HVAC domain expertise
-- ✅ Real-time C++ integration for live data
-- ✅ Extensible component system
-- ✅ Mobile-friendly touch support
-- ✅ Scalable SVG-based rendering
+- Modern web architecture (Vue 3 + TypeScript)
+- Professional drawing capabilities with HVAC domain expertise
+- Real-time C++ integration for live data
+- Extensible component system
+- Mobile-friendly touch support
+- Scalable SVG-based rendering
 
 ### Investment Areas
-- 🔧 Comprehensive testing infrastructure
-- 🔧 Large file refactoring (T3Data.ts)
-- 🔧 Dependency injection implementation
-- 🔧 Performance monitoring
+- Comprehensive testing infrastructure
+- Large file refactoring (T3Data.ts)
+- Dependency injection implementation
+- Performance monitoring
 
 ### Verdict
 This is an **excellent foundation** demonstrating deep domain expertise and solid engineering practices. The architecture is well-designed for long-term maintainability and extensibility. With focused improvements in testing and some refactoring, this system is positioned to serve as a robust platform for HVAC visualization and control applications.

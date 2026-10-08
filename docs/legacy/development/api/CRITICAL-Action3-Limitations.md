@@ -1,4 +1,4 @@
-# 🚨 CRITICAL: Action 3 (UPDATE_ENTRY) Field Limitations
+# CRITICAL: Action 3 (UPDATE_ENTRY) Field Limitations
 
 ## Major Finding
 
@@ -51,51 +51,51 @@ case WEBVIEW_MESSAGE_TYPE::UPDATE_ENTRY:
 
 ## Supported Fields by Entry Type
 
-### ✅ BAC_IN (Inputs) - Only 3 Fields
+### BAC_IN (Inputs) - Only 3 Fields
 
 | Field Name | Type | Supported by Action 3 | Supported by Action 16 |
 |------------|------|----------------------|------------------------|
-| `control` | int | ✅ YES | ✅ YES |
-| `value` | float | ✅ YES | ✅ YES |
-| `auto_manual` | int | ✅ YES | ✅ YES |
-| `description` / `fullLabel` | string | ❌ **NO** | ✅ YES |
-| `label` | string | ❌ **NO** | ✅ YES |
-| `range` | int | ❌ **NO** | ✅ YES |
-| `filter` | int | ❌ **NO** | ✅ YES |
-| `digital_analog` | int | ❌ **NO** | ✅ YES |
-| `calibration_sign` | int | ❌ **NO** | ✅ YES |
-| `calibration_h` | int | ❌ **NO** | ✅ YES |
-| `calibration_l` | int | ❌ **NO** | ✅ YES |
-| `decom` | int | ❌ **NO** | ✅ YES |
+| `control` | int | Yes YES | Yes YES |
+| `value` | float | Yes YES | Yes YES |
+| `auto_manual` | int | Yes YES | Yes YES |
+| `description` / `fullLabel` | string | No **NO** | Yes YES |
+| `label` | string | No **NO** | Yes YES |
+| `range` | int | No **NO** | Yes YES |
+| `filter` | int | No **NO** | Yes YES |
+| `digital_analog` | int | No **NO** | Yes YES |
+| `calibration_sign` | int | No **NO** | Yes YES |
+| `calibration_h` | int | No **NO** | Yes YES |
+| `calibration_l` | int | No **NO** | Yes YES |
+| `decom` | int | No **NO** | Yes YES |
 
-### ✅ BAC_OUT (Outputs) - Only 3 Fields
-
-| Field Name | Type | Supported by Action 3 | Supported by Action 16 |
-|------------|------|----------------------|------------------------|
-| `control` | int | ✅ YES | ✅ YES |
-| `value` | float | ✅ YES | ✅ YES |
-| `auto_manual` | int | ✅ YES | ✅ YES |
-| `description` / `fullLabel` | string | ❌ **NO** | ✅ YES |
-| `label` | string | ❌ **NO** | ✅ YES |
-| `range` | int | ❌ **NO** | ✅ YES |
-| (all other fields) | various | ❌ **NO** | ✅ YES |
-
-### ✅ BAC_VAR (Variables) - Only 3 Fields
+### BAC_OUT (Outputs) - Only 3 Fields
 
 | Field Name | Type | Supported by Action 3 | Supported by Action 16 |
 |------------|------|----------------------|------------------------|
-| `control` | int | ✅ YES | ✅ YES |
-| `value` | float | ✅ YES | ✅ YES |
-| `auto_manual` | int | ✅ YES | ✅ YES |
-| `description` / `fullLabel` | string | ❌ **NO** | ✅ YES |
-| `label` | string | ❌ **NO** | ✅ YES |
-| (all other fields) | various | ❌ **NO** | ✅ YES |
+| `control` | int | Yes YES | Yes YES |
+| `value` | float | Yes YES | Yes YES |
+| `auto_manual` | int | Yes YES | Yes YES |
+| `description` / `fullLabel` | string | No **NO** | Yes YES |
+| `label` | string | No **NO** | Yes YES |
+| `range` | int | No **NO** | Yes YES |
+| (all other fields) | various | No **NO** | Yes YES |
+
+### BAC_VAR (Variables) - Only 3 Fields
+
+| Field Name | Type | Supported by Action 3 | Supported by Action 16 |
+|------------|------|----------------------|------------------------|
+| `control` | int | Yes YES | Yes YES |
+| `value` | float | Yes YES | Yes YES |
+| `auto_manual` | int | Yes YES | Yes YES |
+| `description` / `fullLabel` | string | No **NO** | Yes YES |
+| `label` | string | No **NO** | Yes YES |
+| (all other fields) | various | No **NO** | Yes YES |
 
 ---
 
 ## Impact on API Design
 
-### ❌ These API Calls Will NOT Work as Expected
+### These API Calls Will NOT Work as Expected
 
 ```bash
 # This will return success but field is NOT updated!
@@ -112,7 +112,7 @@ PUT /api/t3-device/inputs/237219/5/field/range
 Body: { "value": 3 }
 ```
 
-### ✅ These API Calls WILL Work
+### These API Calls WILL Work
 
 ```bash
 # Value update - WORKS
@@ -133,10 +133,10 @@ Body: { "value": 0 }
 ## The Silent Failure Problem
 
 **This is dangerous because:**
-1. ✅ API returns HTTP 200 OK
-2. ✅ API returns `{ "success": true }`
-3. ✅ FFI call succeeds
-4. ❌ **But the field is NOT updated in C++!**
+1. API returns HTTP 200 OK
+2. API returns `{ "success": true }`
+3. FFI call succeeds
+4. **But the field is NOT updated in C++!**
 
 The C++ code:
 - Receives the JSON
@@ -210,9 +210,9 @@ async fn update_input_field(
 ### Option 3: Document and Warn (Current Approach)
 
 Keep current implementation but:
-- ✅ Document the limitation clearly
-- ✅ Add validation warnings
-- ✅ Guide frontend developers to use Action 16
+- Document the limitation clearly
+- Add validation warnings
+- Guide frontend developers to use Action 16
 
 ---
 
@@ -274,13 +274,13 @@ const updateComplexField = async (field: string, value: any) => {
 
 ## Testing Checklist
 
-- [ ] Test Action 3 with `value` field → ✅ Should work
-- [ ] Test Action 3 with `control` field → ✅ Should work
-- [ ] Test Action 3 with `auto_manual` field → ✅ Should work
-- [ ] Test Action 3 with `fullLabel` field → ❌ Should fail or be rejected
-- [ ] Test Action 3 with `label` field → ❌ Should fail or be rejected
-- [ ] Test Action 3 with `range` field → ❌ Should fail or be rejected
-- [ ] Test Action 16 with `fullLabel` + all fields → ✅ Should work
+- [ ] Test Action 3 with `value` field → Should work
+- [ ] Test Action 3 with `control` field → Should work
+- [ ] Test Action 3 with `auto_manual` field → Should work
+- [ ] Test Action 3 with `fullLabel` field → Should fail or be rejected
+- [ ] Test Action 3 with `label` field → Should fail or be rejected
+- [ ] Test Action 3 with `range` field → Should fail or be rejected
+- [ ] Test Action 16 with `fullLabel` + all fields → Should work
 - [ ] Verify device data actually changes (not just API success)
 
 ---
@@ -290,9 +290,9 @@ const updateComplexField = async (field: string, value: any) => {
 | Aspect | Action 3 | Action 16 |
 |--------|----------|-----------|
 | **Supported Fields** | **Only 3:** control, value, auto_manual | **All fields** |
-| **For fullLabel** | ❌ Silently fails | ✅ Works |
-| **For label** | ❌ Silently fails | ✅ Works |
-| **For range** | ❌ Silently fails | ✅ Works |
+| **For fullLabel** | No Silently fails | Yes Works |
+| **For label** | No Silently fails | Yes Works |
+| **For range** | No Silently fails | Yes Works |
 | **Performance** | Fast (1 field) | Slower (all fields) |
 | **Use Case** | Value/control updates only | Everything else |
 

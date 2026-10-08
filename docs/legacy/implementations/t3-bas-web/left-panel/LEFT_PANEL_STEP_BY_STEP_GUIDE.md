@@ -25,13 +25,13 @@
 
 ---
 
-# Overview
+## Overview
 
 This document provides a comprehensive guide for implementing the left panel device tree in the T3000 React application, matching the functionality of the C++ T3000 application.
 
 This combines both architectural planning and step-by-step implementation instructions in one comprehensive document.
 
-**📖 C++ Design Reference**: For detailed information about the original C++ implementation (tree_product structure, CImageTreeCtrl methods, threading patterns, and message handlers), see [`LEFT_PANEL_CPP_DESIGN.md`](./LEFT_PANEL_CPP_DESIGN.md).
+** C++ Design Reference**: For detailed information about the original C++ implementation (tree_product structure, CImageTreeCtrl methods, threading patterns, and message handlers), see [`LEFT_PANEL_CPP_DESIGN.md`](./LEFT_PANEL_CPP_DESIGN.md).
 
 ## Key Features
 - **Device Hierarchy**: Building → Subnet → Device tree structure
@@ -56,7 +56,7 @@ This combines both architectural planning and step-by-step implementation instru
 
 ---
 
-# Architecture & Design
+## Architecture & Design
 
 ## Component Hierarchy
 
@@ -105,7 +105,7 @@ The application uses a three-layer state management approach:
 
 ---
 
-# Data Structure & Models
+## Data Structure & Models
 
 ## Core Data Structures (TypeScript Interfaces)
 
@@ -187,7 +187,7 @@ export interface SubnetInfo {
 
 ---
 
-# State Management
+## State Management
 
 ## Zustand Device Tree Store
 
@@ -243,7 +243,7 @@ interface DeviceTreeState {
 
 ---
 
-# API Integration Layer
+## API Integration Layer
 
 ## API Endpoints Overview
 
@@ -341,7 +341,7 @@ interface ScanOptions {
 
 ---
 
-# Database Schema
+## Database Schema
 
 The devices table structure from your existing API:
 
@@ -374,7 +374,7 @@ CREATE TABLE devices (
 
 ---
 
-# Architecture & Design
+## Architecture & Design
 
 ## Component Hierarchy
 
@@ -415,7 +415,7 @@ The application uses a three-layer state management approach:
 
 ---
 
-# Context Menu Implementation
+## Context Menu Implementation
 
 ## Context Menu Structure
 
@@ -490,7 +490,7 @@ export const TreeContextMenu: React.FC<ContextMenuProps> = ({
 
 ---
 
-# Data Communication & Synchronization
+## Data Communication & Synchronization
 
 ## Real-time Status Updates
 
@@ -553,7 +553,7 @@ export class SyncService {
 
 ---
 
-# Sorting & Filtering Logic
+## Sorting & Filtering Logic
 
 ## Tree Builder with Sorting
 
@@ -635,7 +635,7 @@ const statusOrder = { online: 0, offline: 1, unknown: 2 };
 
 ---
 
-# C++ Integration Points
+## C++ Integration Points
 
 ## FFI Communication (if needed)
 
@@ -670,7 +670,7 @@ export class FFIService {
 
 ---
 
-# Performance Considerations
+## Performance Considerations
 
 ## Optimization Strategies
 1. **Virtual Scrolling**: For large device lists (>100 devices)
@@ -686,7 +686,7 @@ export class FFIService {
 
 ---
 
-# Error Handling
+## Error Handling
 
 ```typescript
 // Error handling pattern
@@ -711,7 +711,7 @@ try {
 
 ---
 
-# Testing Strategy
+## Testing Strategy
 
 ## Unit Tests
 - Tree builder logic
@@ -734,7 +734,7 @@ try {
 
 ---
 
-# Phase 1: Foundation Setup
+## Phase 1: Foundation Setup
 
 ## Step 1.1: Create TypeScript Types
 
@@ -1521,7 +1521,7 @@ export type {
 
 ---
 
-# Phase 2: Core Tree Component
+## Phase 2: Core Tree Component
 
 ## Step 2.1: Create Tree Builder Utility
 
@@ -1962,7 +1962,7 @@ function getDeviceIconComponent(iconName: string): React.ComponentType {
 
 ---
 
-# Phase 3: Data Integration
+## Phase 3: Data Integration
 
 ## Step 3.1: Create Status Monitor Hook
 
@@ -2088,7 +2088,7 @@ class SyncService {
       return;
     }
 
-    console.log('🚀 Starting background sync service...');
+    console.log(' Starting background sync service...');
     this.isRunning = true;
 
     // Initial sync
@@ -2109,7 +2109,7 @@ class SyncService {
    * Stop background sync
    */
   stop() {
-    console.log('⏹️ Stopping background sync service...');
+    console.log(' Stopping background sync service...');
 
     if (this.syncIntervalId) {
       clearInterval(this.syncIntervalId);
@@ -2129,11 +2129,11 @@ class SyncService {
    */
   private async syncDevices() {
     try {
-      console.log('🔄 Syncing devices from database...');
+      console.log(' Syncing devices from database...');
       await useDeviceTreeStore.getState().refreshDevices();
-      console.log('✅ Device sync complete');
+      console.log(' Device sync complete');
     } catch (error) {
-      console.error('❌ Device sync failed:', error);
+      console.error(' Device sync failed:', error);
     }
   }
 
@@ -2149,7 +2149,7 @@ class SyncService {
         await checkDeviceOnline(device.serialNumber);
       }
     } catch (error) {
-      console.error('❌ Status check failed:', error);
+      console.error(' Status check failed:', error);
     }
   }
 

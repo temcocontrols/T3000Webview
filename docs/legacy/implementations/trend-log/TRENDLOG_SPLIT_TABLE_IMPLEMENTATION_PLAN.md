@@ -8,7 +8,7 @@
 
 ---
 
-## 📋 Executive Summary
+## Executive Summary
 
 This document outlines the complete implementation plan to optimize the TRENDLOG_DATA table by splitting it into two tables:
 - **TRENDLOG_DATA** (Parent/Main) - Stores point metadata once
@@ -22,7 +22,7 @@ This document outlines the complete implementation plan to optimize the TRENDLOG
 
 ---
 
-## 🎯 Design Overview
+## Design Overview
 
 ### Current Problem
 The existing single-table design repeats metadata for every log entry:
@@ -71,7 +71,7 @@ OPTIMIZED: Two-Table Design (GOOD - Normalized)
 
 ---
 
-## 📊 Table Schemas
+## Table Schemas
 
 ### Table 1: TRENDLOG_DATA (Parent - Metadata)
 
@@ -154,7 +154,7 @@ ON TRENDLOG_DATA_DETAIL(parent_id, logging_time DESC);
 
 ---
 
-## 🔄 Data Flow Diagrams
+## Data Flow Diagrams
 
 ### Flow 1: Initial System Start (First Time)
 
@@ -268,7 +268,7 @@ ON TRENDLOG_DATA_DETAIL(parent_id, logging_time DESC);
 
 ---
 
-## 📝 Complete Implementation Steps
+## Complete Implementation Steps
 
 ### Phase 1: Database Schema Changes
 
@@ -493,7 +493,7 @@ VACUUM;
 
 ---
 
-## 🔧 Implementation Details
+## Implementation Details
 
 ### Parent ID Caching Strategy
 
@@ -565,7 +565,7 @@ impl TrendlogParentCache {
 
 ---
 
-## 📊 Impact Analysis
+## Impact Analysis
 
 ### Files to Update
 
@@ -584,17 +584,17 @@ impl TrendlogParentCache {
 ### API Endpoints (No Breaking Changes!)
 
 All endpoints maintain backward compatibility:
-- ✅ `POST /api/t3_device/devices/{id}/trendlogs/{id}/history`
-- ✅ `GET /api/t3_device/devices/{id}/trendlog-data/recent`
-- ✅ `GET /api/t3_device/devices/{id}/trendlog-data/stats`
-- ✅ `POST /api/t3_device/devices/{id}/trendlog-data/smart`
-- ✅ `POST /api/t3_device/trendlog-data/realtime`
-- ✅ `POST /api/t3_device/trendlog-data/realtime/batch`
-- ✅ `DELETE /api/t3_device/devices/{id}/trendlog-data/cleanup`
+- `POST /api/t3_device/devices/{id}/trendlogs/{id}/history`
+- `GET /api/t3_device/devices/{id}/trendlog-data/recent`
+- `GET /api/t3_device/devices/{id}/trendlog-data/stats`
+- `POST /api/t3_device/devices/{id}/trendlog-data/smart`
+- `POST /api/t3_device/trendlog-data/realtime`
+- `POST /api/t3_device/trendlog-data/realtime/batch`
+- `DELETE /api/t3_device/devices/{id}/trendlog-data/cleanup`
 
 ---
 
-## ⚠️ Risks & Mitigation
+## Risks & Mitigation
 
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
@@ -606,32 +606,32 @@ All endpoints maintain backward compatibility:
 
 ---
 
-## ✅ Success Criteria
+## Success Criteria
 
 1. **Data Integrity**
-   - ✅ All rows migrated successfully
-   - ✅ Row counts match (parent + details = original)
-   - ✅ Sample data verification passes
+   - All rows migrated successfully
+   - Row counts match (parent + details = original)
+   - Sample data verification passes
 
 2. **Performance**
-   - ✅ Insert operations 2-3× faster
-   - ✅ Query operations maintain or improve speed
-   - ✅ Database size reduced by 40-55%
+   - Insert operations 2-3× faster
+   - Query operations maintain or improve speed
+   - Database size reduced by 40-55%
 
 3. **Functionality**
-   - ✅ All API endpoints work unchanged
-   - ✅ Frontend displays data correctly
-   - ✅ FFI sync continues working
-   - ✅ Realtime data saves successfully
+   - All API endpoints work unchanged
+   - Frontend displays data correctly
+   - FFI sync continues working
+   - Realtime data saves successfully
 
 4. **Stability**
-   - ✅ No errors in logs for 7 days
-   - ✅ No data loss detected
-   - ✅ Backup/restore tested successfully
+   - No errors in logs for 7 days
+   - No data loss detected
+   - Backup/restore tested successfully
 
 ---
 
-## 📅 Timeline Estimate
+## Timeline Estimate
 
 | Phase | Duration | Dependencies |
 |-------|----------|--------------|
@@ -646,55 +646,3 @@ All endpoints maintain backward compatibility:
 | **Total** | **4-5 days** | - |
 
 ---
-
-## 🚀 Next Steps
-
-### Option A: Proceed with Full Implementation
-If you approve this design, I will:
-1. Create the SQL schema files
-2. Generate SeaORM entities
-3. Implement the migration script
-4. Update the service layer
-5. Write comprehensive tests
-
-### Option B: Request Changes
-Let me know if you want to adjust:
-- Table names or structure
-- Migration strategy
-- Caching approach
-- Timeline or phases
-
-### Option C: Pilot Test First
-We can:
-1. Implement on a development copy
-2. Run performance benchmarks
-3. Verify data integrity
-4. Show you results before production
-
----
-
-## ❓ Questions for Confirmation
-
-Please confirm or provide feedback on:
-
-1. **Table Names**: Are `TRENDLOG_DATA` (parent) and `TRENDLOG_DATA_DETAIL` (child) acceptable?
-
-2. **Foreign Key**: Use `parent_id` or another name like `trendlog_data_id`?
-
-3. **Migration Timing**: Can we schedule a maintenance window, or must it be zero-downtime?
-
-4. **Cleanup**: Drop old table after 7 days, 30 days, or keep indefinitely?
-
-5. **Cache Size**: Is 1000 entries in LRU cache appropriate for your scale?
-
-6. **Testing**: Do you have specific test scenarios to add?
-
----
-
-**Status**: Ready for implementation
-
-Implementation options:
-- ✅ Proceed with implementation as designed
-- 🔄 Make adjustments (specify what to change)
-- 🧪 Run a pilot test first
-

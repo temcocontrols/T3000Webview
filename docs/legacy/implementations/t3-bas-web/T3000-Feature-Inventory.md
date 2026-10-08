@@ -1,8 +1,6 @@
 # T3000 Feature Inventory and Analysis
 
-**Date**: 2025-11-04
 **Purpose**: Complete catalog of T3000 C++ application features for migration planning
-**Status**: In Progress
 
 ---
 
@@ -256,8 +254,8 @@ DLG_BACNET_VIEW             = 12 // BACnet device view
 ## Migration Priority Matrix
 
 ### Phase 1: Core Infrastructure (MUST HAVE)
-1. ✅ Building/Device Tree (`WorkspaceBar` → Vue QTree)
-2. ✅ Trend Log/Monitor (`TrendLogView` → ECharts page)
+1. Building/Device Tree (`WorkspaceBar` → Vue QTree)
+2. Trend Log/Monitor (`TrendLogView` → ECharts page)
 3. Main Tstat View (`T3000View` → Vue page)
 4. BACnet Input/Output/Variable grids
 5. Network scan and device discovery
@@ -372,30 +370,6 @@ DLG_BACNET_VIEW             = 12 // BACnet device view
 
 ---
 
-## Next Steps
-
-1. **Get Screenshots**: Need visual references of key dialogs
-2. **User Workflow Analysis**: Document how features are actually used
-3. **Prioritization Meeting**: Confirm Phase 1 scope with stakeholders
-4. **Mockup Creation**: Design Vue equivalents for top 10 dialogs
-5. **Proof of Concept**: Build 2-3 representative components
-
----
-
-## Questions for Stakeholders
-
-1. Which features are used most frequently by customers?
-2. Which features are essential vs nice-to-have?
-3. Can we simplify any complex features (e.g., graphics editor)?
-4. Are there features that can be retired/deprecated?
-5. Do we have analytics on feature usage?
-
----
-
-**Status**: Initial inventory complete. See companion files:
-- `T3000-Complete-Dialog-List.csv` - Full spreadsheet of all 229 dialogs
-- `dialog-ids.txt` - Raw dialog ID definitions from resource.h
-
 ## Complete Feature Count by Subsystem
 
 | Subsystem | Dialog Count | Criticality | Migration Complexity |
@@ -456,8 +430,8 @@ Given the scope, we recommend **NOT migrating all 229 dialogs**. Instead:
 **Goal**: Replace most common daily-use features
 
 Priority dialogs (already partially implemented):
-1. ✅ Building/Device Tree - Workspace navigation
-2. ✅ Trend Log View - Data visualization (ECharts)
+1. Building/Device Tree - Workspace navigation
+2. Trend Log View - Data visualization (ECharts)
 3. **Login & User Management** - Authentication
 4. **Network Scan & Device Discovery** - Device management
 5. **BACnet Input/Output/Variable** - Data point grids (3 dialogs)
@@ -592,19 +566,19 @@ Build once, use many times:
 
 ## Next Action Items
 
-### For Product Owner/Manager:
+### For Product Owner/Manager
 1. **Usage Analytics**: Get data on most-used features (if available)
 2. **User Interviews**: Talk to 5-10 customers about their daily workflows
 3. **Feature Prioritization**: Confirm Phase 1 scope is correct
 4. **Budget Approval**: Allocate 3 developers for 6-9 months (Phase 1-2)
 
-### For Development Team:
+### For Development Team
 1. **Take Screenshots**: Capture all Phase 1 dialogs from running T3000.exe
 2. **Create Mockups**: Design Vue equivalents in Figma/Sketch
 3. **Prototype DataPointGrid**: Build reusable grid component first
 4. **BACnet FFI Layer**: Design C++/Rust interface for protocol stack
 
-### For Stakeholders:
+### For Stakeholders
 1. **Review CSV**: Prioritize dialogs in `T3000-Complete-Dialog-List.csv`
 2. **Approve Scope**: Confirm 40-50 dialogs (not all 229) is acceptable
 3. **Legacy Plan**: Decide if keeping T3000.exe for 1-2 years is acceptable

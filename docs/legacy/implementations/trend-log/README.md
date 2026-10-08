@@ -1,6 +1,6 @@
 # T3000 Trend Log Integration Documentation
 
-## 📖 Complete Guide
+## Complete Guide
 
 **→ [T3000 Trend Log Complete Integration Guide](tlm-TrendLog-Complete-Integration-Guide.md)**
 

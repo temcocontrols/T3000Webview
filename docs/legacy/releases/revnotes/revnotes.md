@@ -1,18 +1,17 @@
 
-## 2024-11-01
+# 2024-11-01
 
-#### 1. Added a toolbar along the top with menu [Edit] and [Object]'s all options.
+## 1. Added a toolbar along the top with menu [Edit] and [Object]'s all options.
 
 ![1](./pic/2024-11-01/1.png)
 
-#### 1. Added a new option "Weld Selected" to menu [Edit] and top toolbar. Allow user to weld two selected ducts into one duct.
+### 1. Added a new option "Weld Selected" to menu [Edit] and top toolbar. Allow user to weld two selected ducts into one duct.
 
 ![2](./pic/2024-11-01/2.png)
 
-
 ## 2024-11-22
 
-#### 1. Updated the “Weld Selectedfunction to make the welded item resizable and moveable.
+### 1. Updated the “Weld Selectedfunction to make the welded item resizable and moveable.
 
 ![1](./pic/2024-11-22/1.png)
 
@@ -28,13 +27,11 @@
 
 ![1](./pic/2024-11-22/4.png)
 
-
 ## 2024-12-13
 
-#### 1. Updated the default value of link entry's [Display field] to description field, and can remember the user last selection after window been closed.
+### 1. Updated the default value of link entry's [Display field] to description field, and can remember the user last selection after window been closed.
 
 ![1](./pic/2024-12-13/1.png)
-
 
 #### 2. Updated the Auto/Manual mode icon with larger size.
 
@@ -50,7 +47,7 @@
 
 ## 2024-12-18
 
-#### 1. Added a new feature [Insert key], to add a new shape and automatically link to the selected entry when the insert key been pressed
+### 1. Added a new feature [Insert key], to add a new shape and automatically link to the selected entry when the insert key been pressed
 
 ![1](./pic/2024-12-18/1.png)
 
@@ -58,11 +55,11 @@
 
 ## 2025-01-21
 
-#### 1. Added a new feature, to access the "Webview Graphic" via external browser (Firefox, Chrome, Microsoft Edge).
+### 1. Added a new feature, to access the "Webview Graphic" via external browser (Firefox, Chrome, Microsoft Edge).
 
 ![1](./pic/2025-01-21/1.png)
 
-##### 1.1 Open the T3000 application, and keep it running.
+#### 1.1 Open the T3000 application, and keep it running.
 
 ![1](./pic/2025-01-21/2.png)
 
@@ -101,7 +98,7 @@ use cmd "ipconfig" to find the IPV4 address (e.g. 192.168.1.8)
 ![1](./pic/2025-01-21/10.png)
 
 ## 2025-05-21
-#### 1. Added a drawing area with SVG as backend technology for drawing shapes, ducts, pipes, and walls. Open the T3000 application.
+### 1. Added a drawing area with SVG as backend technology for drawing shapes, ducts, pipes, and walls. Open the T3000 application.
 Access the HVAC drawer via a web browser with URL http://localhost:9104 and switch to "New UI" by clicking the last tab on the top menu bar.
 
 ![1](./pic/2025-05-21/1.png)
@@ -150,7 +147,7 @@ Mouse hovering displays the full function name.
 
 ## 2025-12-21
 
-#### 1. Added new Trend Log Beta page with modern charting interface. Includes top control bar, left data panel, and large chart display area.
+### 1. Added new Trend Log Beta page with modern charting interface. Includes top control bar, left data panel, and large chart display area.
 
 ![1](./pic/2025-12-21/1.png)
 
@@ -214,7 +211,7 @@ Mouse hovering displays the full function name.
 
 ## 2026-02-04
 
-#### 1. Fixed digital chart Y-axis display with reversed configuration and correct label ordering. Y-axis now displays first state at top and second state at bottom (e.g., "Close" at top for "Close/Open" units, "Off" at top for "Off/On" units), providing intuitive visual representation matching unit string definition.
+### 1. Fixed digital chart Y-axis display with reversed configuration and correct label ordering. Y-axis now displays first state at top and second state at bottom (e.g., "Close" at top for "Close/Open" units, "Off" at top for "Off/On" units), providing intuitive visual representation matching unit string definition.
 
 ![1](./pic/2026-02-04/1.png)
 

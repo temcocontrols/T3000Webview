@@ -26,7 +26,7 @@ g_Input_data[temp_panel_id].at(entry_index).decom = json["decom"].asInt();
 | C++ Field Name | JSON Key Expected | Type | Notes |
 |----------------|------------------|------|-------|
 | `control` | `"control"` | int | Set twice in C++ (probably a bug) |
-| `value` | `"value"` | float | ⚠️ **Multiplied by 1000 in C++!** |
+| `value` | `"value"` | float | Warning **Multiplied by 1000 in C++!** |
 | `description` | `"description"` | string | Full label (long name) |
 | `label` | `"label"` | string | Short label |
 | `range` | `"range"` | int | Range type |
@@ -64,7 +64,7 @@ let input_json = json!({
 });
 ```
 
-### ✅ All Fields Match Correctly!
+### All Fields Match Correctly
 
 ---
 
@@ -137,24 +137,24 @@ Frontend (TypeScript)          Rust API                    C++
 
 | Frontend Field | Rust Struct Field | JSON to C++ | C++ Field | Match Status |
 |----------------|------------------|-------------|-----------|--------------|
-| `fullLabel` | `full_label` | `"description"` | `description` | ✅ Correct |
-| `label` | `label` | `"label"` | `label` | ✅ Correct |
-| `value` | `value` | `"value"` | `value` | ✅ Correct |
-| `range` | `range` | `"range"` | `range` | ✅ Correct |
-| `autoManual` | `auto_manual` | `"auto_manual"` | `auto_manual` | ✅ Correct |
-| `control` | `control` | `"control"` | `control` | ✅ Correct |
-| `filter` | `filter` | `"filter"` | `filter` | ✅ Correct |
-| `digitalAnalog` | `digital_analog` | `"digital_analog"` | `digital_analog` | ✅ Correct |
-| `calibrationSign` | `calibration_sign` | `"calibration_sign"` | `calibration_sign` | ✅ Correct |
-| `calibrationH` | `calibration_h` | `"calibration_h"` | `calibration_h` | ✅ Correct |
-| `calibrationL` | `calibration_l` | `"calibration_l"` | `calibration_l` | ✅ Correct |
-| `decom` | `decom` | `"decom"` | `decom` | ✅ Correct |
+| `fullLabel` | `full_label` | `"description"` | `description` | Yes Correct |
+| `label` | `label` | `"label"` | `label` | Yes Correct |
+| `value` | `value` | `"value"` | `value` | Yes Correct |
+| `range` | `range` | `"range"` | `range` | Yes Correct |
+| `autoManual` | `auto_manual` | `"auto_manual"` | `auto_manual` | Yes Correct |
+| `control` | `control` | `"control"` | `control` | Yes Correct |
+| `filter` | `filter` | `"filter"` | `filter` | Yes Correct |
+| `digitalAnalog` | `digital_analog` | `"digital_analog"` | `digital_analog` | Yes Correct |
+| `calibrationSign` | `calibration_sign` | `"calibration_sign"` | `calibration_sign` | Yes Correct |
+| `calibrationH` | `calibration_h` | `"calibration_h"` | `calibration_h` | Yes Correct |
+| `calibrationL` | `calibration_l` | `"calibration_l"` | `calibration_l` | Yes Correct |
+| `decom` | `decom` | `"decom"` | `decom` | Yes Correct |
 
 ---
 
 ## Important Notes
 
-### ⚠️ Value Field Special Handling
+### Value Field Special Handling
 
 C++ multiplies the value by 1000:
 ```cpp
@@ -168,7 +168,7 @@ g_Input_data[temp_panel_id].at(entry_index).value = json["value"].asFloat() * 10
 
 **Why?** The device stores values as integers with implicit decimal places for precision.
 
-### ✅ All Required Metadata Fields Present
+### All Required Metadata Fields Present
 
 ```rust
 "action": 16,           // ✅ Identifies UPDATE_WEBVIEW_LIST
@@ -182,17 +182,17 @@ g_Input_data[temp_panel_id].at(entry_index).value = json["value"].asFloat() * 10
 
 ## Validation
 
-### ✅ Frontend → Rust: Correct
+### Frontend → Rust: Correct
 - TypeScript camelCase → Rust snake_case via `#[serde(rename_all = "camelCase")]`
 - All fields properly mapped
 
-### ✅ Rust → C++: Correct
+### Rust → C++: Correct
 - Rust uses exact JSON keys expected by C++
 - `full_label` → `"description"` (correct mapping)
 - `auto_manual` → `"auto_manual"` (correct underscore format)
 - All 12 fields present
 
-### ✅ C++ Processing: Correct
+### C++ Processing: Correct
 - All fields are read from JSON
 - Fields are assigned to global data structure
 - Data is written to device via `WritePrivateData_Blocking()`
@@ -201,7 +201,7 @@ g_Input_data[temp_panel_id].at(entry_index).value = json["value"].asFloat() * 10
 
 ## Test Payload Example
 
-### Frontend Call:
+### Frontend Call
 ```typescript
 PUT /api/t3-device/inputs/237219/5
 Content-Type: application/json
@@ -222,7 +222,7 @@ Content-Type: application/json
 }
 ```
 
-### Rust Receives:
+### Rust Receives
 ```rust
 UpdateInputFullRequest {
     full_label: Some("Room Temperature Sensor"),
@@ -240,7 +240,7 @@ UpdateInputFullRequest {
 }
 ```
 
-### Rust Sends to C++:
+### Rust Sends to C++
 ```json
 {
   "action": 16,
@@ -263,7 +263,7 @@ UpdateInputFullRequest {
 }
 ```
 
-### C++ Processes:
+### C++ Processes
 ```cpp
 g_Input_data[1].at(5).control = 0;
 g_Input_data[1].at(5).value = 25500;  // 25.5 * 1000
@@ -283,7 +283,7 @@ g_Input_data[1].at(5).decom = 0;
 
 ## Conclusion
 
-✅ **All fields are correctly mapped through the entire chain:**
+ **All fields are correctly mapped through the entire chain:**
 - Frontend camelCase → Rust snake_case → C++ underscore format
 - Field count: **12 data fields + 5 metadata fields** = 17 total
 - All C++ expected fields are present

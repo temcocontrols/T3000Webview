@@ -118,11 +118,11 @@ if (unitCode >= 0 && unitCode <= 22) {           // was >= 1
 
 ## Validation Results
 
-✅ **No Breaking Changes**: All existing unit codes continue to work
-✅ **No Compilation Errors**: Updated code compiles successfully
-✅ **100% T3000.rc Compatibility**: All official units now supported
-✅ **Backward Compatibility**: Previous implementations remain functional
-✅ **Extended Functionality**: Support for environmental and industrial sensors
+ **No Breaking Changes**: All existing unit codes continue to work
+ **No Compilation Errors**: Updated code compiles successfully
+ **100% T3000.rc Compatibility**: All official units now supported
+ **Backward Compatibility**: Previous implementations remain functional
+ **Extended Functionality**: Support for environmental and industrial sensors
 
 ## Impact on TrendLogModal Functionality
 

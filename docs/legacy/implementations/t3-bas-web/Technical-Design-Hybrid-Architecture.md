@@ -1,5 +1,5 @@
 # Technical Design Document: Hybrid Vue + React Architecture
-# T3000 Webview - Dual Framework Implementation
+## T3000 Webview - Dual Framework Implementation
 
 **Version**: 1.1
 **Date**: November 5, 2025
@@ -9,39 +9,23 @@
 
 ---
 
-## Document Control
+## User Decisions Confirmed
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-11-05 | Dev Team | Initial technical design |
-| 1.1 | 2025-11-05 | Dev Team | **Updated with user decisions: `t3-vue`, `t3-react`, `common` folders + Option B aliases** |
+### Folder Naming (Final)
+- **Vue folder**: `src/t3-vue/` (clearer than `vue-app`)
+- **React folder**: `src/t3-react/` (clearer than `react-app`)
+- **Shared folder**: `src/common/` (clearer than `shared`)
 
----
+### Import Alias Strategy (Final)
+- **Option B Selected**: Explicit aliases (`@t3-vue/`, `@t3-react/`, `@common/`)
+- **Update ~262 Vue files**: Change `@/` → `@t3-vue/` (automated)
+- **Router guarantee**: Paths stay identical, only import strings change
 
-## ✅ USER DECISIONS CONFIRMED
-
-### Folder Naming (Final):
-- ✅ **Vue folder**: `src/t3-vue/` (clearer than `vue-app`)
-- ✅ **React folder**: `src/t3-react/` (clearer than `react-app`)
-- ✅ **Shared folder**: `src/common/` (clearer than `shared`)
-
-### Import Alias Strategy (Final):
-- ✅ **Option B Selected**: Explicit aliases (`@t3-vue/`, `@t3-react/`, `@common/`)
-- ✅ **Update ~262 Vue files**: Change `@/` → `@t3-vue/` (automated)
-- ✅ **Router guarantee**: Paths stay identical, only import strings change
-
-### Key Benefits of User's Choices:
+### Key Benefits of User's Choices
 1. **Clear naming**: `t3-vue` and `t3-react` show framework ownership
 2. **Explicit imports**: Code is self-documenting
 3. **Better tooling**: IDE autocomplete works perfectly
 4. **Future-proof**: Easy to add more apps later
-
----
-
-## Approval Required From:
-- [ ] Technical Lead
-- [ ] Product Owner
-- [ ] Development Team Lead
 
 ---
 
@@ -68,11 +52,11 @@ Implement a **hybrid architecture** that allows Vue 3 (existing) and React 18 + 
 
 ### 1.2 Business Goals
 
-- ✅ Preserve existing Vue/Quasar functionality (zero regression risk)
-- ✅ Enable new T3BASWeb features using React + Fluent UI
-- ✅ Provide gradual migration path (no "big bang" rewrite)
-- ✅ Maintain developer productivity during transition
-- ✅ Achieve Microsoft Fluent design for new features
+- Preserve existing Vue/Quasar functionality (zero regression risk)
+- Enable new T3BASWeb features using React + Fluent UI
+- Provide gradual migration path (no "big bang" rewrite)
+- Maintain developer productivity during transition
+- Achieve Microsoft Fluent design for new features
 
 ### 1.3 Key Metrics
 
@@ -160,11 +144,11 @@ Implement a **hybrid architecture** that allows Vue 3 (existing) and React 18 + 
 | `/v2/trendlog` | Vue | Quasar | Existing |
 | `/v2/modbus` | Vue | Quasar | Existing |
 | `/v2/apps` | Vue | Quasar | Existing |
-| `/t3000/*` | React | Fluent UI | 🆕 NEW |
-| `/t3000/tstat` | React | Fluent UI | 🆕 NEW |
-| `/t3000/bacnet/input` | React | Fluent UI | 🆕 NEW |
-| `/t3000/bacnet/output` | React | Fluent UI | 🆕 NEW |
-| `/t3000/network` | React | Fluent UI | 🆕 NEW |
+| `/t3000/*` | React | Fluent UI | NEW |
+| `/t3000/tstat` | React | Fluent UI | NEW |
+| `/t3000/bacnet/input` | React | Fluent UI | NEW |
+| `/t3000/bacnet/output` | React | Fluent UI | NEW |
+| `/t3000/network` | React | Fluent UI | NEW |
 
 ### 2.3 Data Flow Architecture
 
@@ -645,7 +629,7 @@ T3000Webview5/
 
 ### 3.2 Critical Files Implementation
 
-#### File 1: `src/main.ts` (Route Dispatcher) 🎯
+#### File 1: `src/main.ts` (Route Dispatcher)
 
 **Purpose**: Detect route and load appropriate framework
 **Priority**: CRITICAL - This is the entry point
@@ -692,9 +676,9 @@ if (currentPath.startsWith('/t3000')) {
 ```
 
 **Testing Strategy**:
-- ✅ Manual: Visit `/v2/dashboard` → Should load Vue
-- ✅ Manual: Visit `/t3000/tstat` → Should load React
-- ✅ Unit: Mock window.location, verify correct import called
+- Manual: Visit `/v2/dashboard` → Should load Vue
+- Manual: Visit `/t3000/tstat` → Should load React
+- Unit: Mock window.location, verify correct import called
 
 ---
 
@@ -1244,14 +1228,14 @@ Based on comprehensive analysis of the T3000 C++ source code (`T3000.rc`, `MainF
 
 #### 4.1.1 Top Menu Bar (7 Main Menus)
 
-**📁 File**
+** File**
 - New Project
 - Save As... (Ctrl+S)
 - Load File (Ctrl+L)
 - Import... (Ctrl+I)
 - Exit
 
-**🔧 Tools**
+** Tools**
 - Connect (Ctrl+C)
 - Change Modbus ID
 - Bacnet Tool
@@ -1268,7 +1252,7 @@ Based on comprehensive analysis of the T3000 C++ source code (`T3000.rc`, `MainF
 - Disconnect the serial port (Ctrl+D)
 - Login my account
 
-**👁️ View**
+** View**
 - Toolbars and Docking Windows
   - Tool Bar
   - Building Pane
@@ -1278,13 +1262,13 @@ Based on comprehensive analysis of the T3000 C++ source code (`T3000.rc`, `MainF
   - Office 2007 (Blue Style, Silver Style)
 - Refresh (F2)
 
-**💾 Database**
+** Database**
 - Building Config Database
 - All Nodes... (Ctrl+N)
 - IONameConfig
 - LogDetail
 
-**⚙️ Control** (Maps to Tool Icon Toolbar)
+** Control** (Maps to Tool Icon Toolbar)
 - Graphics (Alt-G)
 - Programs (Alt-P)
 - Inputs (Alt-I)
@@ -1299,12 +1283,12 @@ Based on comprehensive analysis of the T3000 C++ source code (`T3000.rc`, `MainF
 - Remote Points (Alt-R)
 - Configuration (Alt-E)
 
-**🔀 Miscellaneous**
+** Miscellaneous**
 - Load Descriptors
 - Write into flash
 - GSM Connection
 
-**❓ Help**
+** Help**
 - Contents
 - Version History
 - About Software...
@@ -1316,23 +1300,23 @@ The icon toolbar provides quick access to Control menu items. Each button opens 
 
 | Icon | Label | Keyboard | Window Constant | Dialog/View Type |
 |------|-------|----------|-----------------|------------------|
-| ℹ️ | **Information** | - | WINDOW_SETTING | Settings Dialog (Device Info) |
-| 📥 | **Inputs** | Alt-I | WINDOW_INPUT | Inputs View (Grid) |
-| 📤 | **Outputs** | Alt-O | WINDOW_OUTPUT | Outputs View (Grid) |
-| 📝 | **Variables** | Alt-V | WINDOW_VARIABLE | Variables View (Grid) |
-| ⚙️ | **Programs** | Alt-P | WINDOW_PROGRAM | Programs View (Code Editor) |
-| 🔄 | **PID Loops** | Alt-L | WINDOW_CONTROLLER | Controllers View (PID Settings) |
-| 🎨 | **Graphics** | Alt-G | WINDOW_SCREEN | Graphics Editor (Canvas) |
-| 📅 | **Schedules** | Alt-S | WINDOW_WEEKLY | Weekly Schedule (Grid) |
-| 🗓️ | **Holidays** | Alt-H | WINDOW_ANNUAL | Annual Routines (Calendar) |
-| 📈 | **Trend Logs** | Alt-T | WINDOW_MONITOR | Trend Monitor (Chart) |
-| 🚨 | **Alarms** | Alt-A | WINDOW_ALARMLOG | Alarm Log (List) |
-| 🌐 | **Array** | - | WINDOW_ARRAY | Array Data Dialog |
-| 🔗 | **Network Points** | Alt-N | WINDOW_REMOTE_POINT | Remote Points (Modbus/BACnet Grid) |
-| 🔧 | **Configuration** | Alt-E | WINDOW_SETTING | Settings Dialog |
-| 🔍 | **Discover** | - | MY_SCAN Dialog | Device Scanning Dialog |
-| 🏢 | **Buildings** | - | - | Building Configuration Dialog |
-| 🔄 | **Refresh Data** | F2 | - | Calls OnViewRefresh() function |
+| ℹ | **Information** | - | WINDOW_SETTING | Settings Dialog (Device Info) |
+| | **Inputs** | Alt-I | WINDOW_INPUT | Inputs View (Grid) |
+| | **Outputs** | Alt-O | WINDOW_OUTPUT | Outputs View (Grid) |
+| | **Variables** | Alt-V | WINDOW_VARIABLE | Variables View (Grid) |
+| | **Programs** | Alt-P | WINDOW_PROGRAM | Programs View (Code Editor) |
+| | **PID Loops** | Alt-L | WINDOW_CONTROLLER | Controllers View (PID Settings) |
+| | **Graphics** | Alt-G | WINDOW_SCREEN | Graphics Editor (Canvas) |
+| | **Schedules** | Alt-S | WINDOW_WEEKLY | Weekly Schedule (Grid) |
+| | **Holidays** | Alt-H | WINDOW_ANNUAL | Annual Routines (Calendar) |
+| | **Trend Logs** | Alt-T | WINDOW_MONITOR | Trend Monitor (Chart) |
+| Important | **Alarms** | Alt-A | WINDOW_ALARMLOG | Alarm Log (List) |
+| | **Array** | - | WINDOW_ARRAY | Array Data Dialog |
+| | **Network Points** | Alt-N | WINDOW_REMOTE_POINT | Remote Points (Modbus/BACnet Grid) |
+| | **Configuration** | Alt-E | WINDOW_SETTING | Settings Dialog |
+| | **Discover** | - | MY_SCAN Dialog | Device Scanning Dialog |
+| | **Buildings** | - | - | Building Configuration Dialog |
+| | **Refresh Data** | F2 | - | Calls OnViewRefresh() function |
 
 **Important Notes**:
 - **"Information"** icon shows the **Settings Dialog** with device system info (Address, Firmware, Serial Number, Hardware Version)
@@ -1628,15 +1612,15 @@ The T3-React application will use Fluent UI v9 components to match the desktop a
 
 #### Critical Path Tasks (Must Complete First)
 
-1. ✅ **Phase 0-2** (Days 1-3.5): Setup → Folder structure → Move Vue files
-2. ✅ **Phase 3** (Days 4-5): TypeScript types (everything depends on this)
-3. ✅ **Phase 4** (Days 6-7): API layer (pages need this)
-4. ✅ **Phase 5-8** (Days 8-13): Config, routing, stores, hooks (foundation)
-5. ✅ **Phase 9** (Days 14-16): Layout components (shell of the app)
-6. ✅ **Phase 10-13** (Days 17-20): UI components (pages use these)
-7. ✅ **Phase 14** (Days 21-22): First page (Inputs - establishes pattern)
-8. ✅ **Phase 15** (Days 23-30): Remaining pages (parallel work possible)
-9. ✅ **Phase 16-19** (Days 31-40): Integration, testing, deployment
+1. **Phase 0-2** (Days 1-3.5): Setup → Folder structure → Move Vue files
+2. **Phase 3** (Days 4-5): TypeScript types (everything depends on this)
+3. **Phase 4** (Days 6-7): API layer (pages need this)
+4. **Phase 5-8** (Days 8-13): Config, routing, stores, hooks (foundation)
+5. **Phase 9** (Days 14-16): Layout components (shell of the app)
+6. **Phase 10-13** (Days 17-20): UI components (pages use these)
+7. **Phase 14** (Days 21-22): First page (Inputs - establishes pattern)
+8. **Phase 15** (Days 23-30): Remaining pages (parallel work possible)
+9. **Phase 16-19** (Days 31-40): Integration, testing, deployment
 
 #### Files to Create by Category
 
@@ -1730,10 +1714,10 @@ The T3-React application will use Fluent UI v9 components to match the desktop a
 - [ ] Verify shared API client works in Vue
 
 **Deliverables**:
-- ✅ Project structure migrated
-- ✅ Vite configured for dual build
-- ✅ Vue app working (no regressions)
-- ✅ Shared infrastructure created
+- Project structure migrated
+- Vite configured for dual build
+- Vue app working (no regressions)
+- Shared infrastructure created
 
 ---
 
@@ -1781,10 +1765,10 @@ The T3-React application will use Fluent UI v9 components to match the desktop a
 - [ ] Manual: Navigate back to Vue app
 
 **Deliverables**:
-- ✅ MainLayout (Fluent UI)
-- ✅ React Router configured
-- ✅ TstatView page working
-- ✅ Navigation between apps working
+- MainLayout (Fluent UI)
+- React Router configured
+- TstatView page working
+- Navigation between apps working
 
 ---
 
@@ -1819,10 +1803,10 @@ The T3-React application will use Fluent UI v9 components to match the desktop a
 - [ ] **Day 5**: Knowledge transfer & retrospective
 
 **Deliverables**:
-- ✅ All tests passing
-- ✅ Documentation complete
-- ✅ Deployed to production
-- ✅ Team trained
+- All tests passing
+- Documentation complete
+- Deployed to production
+- Team trained
 
 ---
 

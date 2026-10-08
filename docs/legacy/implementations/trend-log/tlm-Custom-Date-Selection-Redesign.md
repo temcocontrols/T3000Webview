@@ -1,6 +1,5 @@
 # TrendLogModal Custom Date Selection Redesign
 
-**Date**: July 18, 2025
 **Component**: `src/components/NewUI/TrendLogModal.vue`
 **Feature**: Custom Date Selection Popup Modal
 

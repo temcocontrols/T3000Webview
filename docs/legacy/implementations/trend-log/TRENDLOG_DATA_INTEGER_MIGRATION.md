@@ -65,11 +65,11 @@ SELECT CreatedBy, COUNT(*) FROM TRENDLOG_DATA GROUP BY CreatedBy;
 ```
 
 **Benefits of this approach:**
-- ✅ No schema changes needed (TEXT fields remain TEXT)
-- ✅ Simple UPDATE statements (no table recreation)
-- ✅ Can be rolled back easily
-- ✅ Works with existing indexes
-- ✅ No downtime required
+- No schema changes needed (TEXT fields remain TEXT)
+- Simple UPDATE statements (no table recreation)
+- Can be rolled back easily
+- Works with existing indexes
+- No downtime required
 
 ## Code Changes Implemented
 
@@ -237,17 +237,17 @@ Frontend code should:
 3. Example: `parseInt(data.data_source) === T3Constant.DataSource.FFI_SYNC`
 
 ## Deployment Steps
-1. ✅ Deploy code changes (constants, entity, services)
-2. ⏳ Run database migration script (scheduled maintenance window)
-3. ⏳ Verify data integrity post-migration
-4. ⏳ Update frontend to use new constants (optional, backward compatible)
-5. ⏳ Monitor logs for any errors related to data_source/created_by
+1. Deploy code changes (constants, entity, services)
+2. Run database migration script (scheduled maintenance window)
+3. Verify data integrity post-migration
+4. Update frontend to use new constants (optional, backward compatible)
+5. Monitor logs for any errors related to data_source/created_by
 
 ## Status
-- **Code Changes**: ✅ Complete (compiled successfully)
-- **Database Migration**: ⏳ Pending (requires maintenance window)
-- **Testing**: ⏳ In Progress
-- **Frontend Updates**: ⏳ Optional (backward compatible)
+- **Code Changes**: Complete (compiled successfully)
+- **Database Migration**: Pending (requires maintenance window)
+- **Testing**: In Progress
+- **Frontend Updates**: Optional (backward compatible)
 
 ## References
 - Entity: `api/src/entity/t3_device/trendlog_data.rs`

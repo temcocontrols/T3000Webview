@@ -1,6 +1,5 @@
 # T3000 Trendlog Database Design - Comprehensive Analysis & Solution
 
-**Date:** August 7, 2025
 **Branch:** feature/new-ui
 **Status:** Design Phase - No Implementation Yet
 
@@ -14,7 +13,7 @@ This document provides a comprehensive solution for implementing historical data
 
 ## Current System Analysis
 
-### 🏗️ Existing Architecture
+### Existing Architecture
 
 ```
 T3000 C++ Application (Main Process)
@@ -32,7 +31,7 @@ T3000 C++ Application (Main Process)
     └── Real-time Communication Only
 ```
 
-### 📊 Current Data Flow
+### Current Data Flow
 
 ```
 Hardware Devices → T3000 C++ → Rust API → Vue Frontend
@@ -41,7 +40,7 @@ BACnet/Modbus    Message Loop   WebSocket    Live Display
    Protocol                    HTTP API     (No History)
 ```
 
-### 📁 Current Database Usage (webview_database.db)
+### Current Database Usage (webview_database.db)
 
 **Purpose:** Modbus register management and configuration
 - `modbus_register` - Modbus register definitions
@@ -50,7 +49,7 @@ BACnet/Modbus    Message Loop   WebSocket    Live Display
 - `user` - Authentication data
 - `files` - File management
 
-**⚠️ Recent Trendlog Changes to Rollback:**
+** Recent Trendlog Changes to Rollback:**
 - `m20250122_000000_data_management_schema.rs` migration
 - Data management entities in `api/src/entity/data_management/`
 - Any trendlog-related tables added since July 28, 2025
@@ -59,7 +58,7 @@ BACnet/Modbus    Message Loop   WebSocket    Live Display
 
 ## Hardware Architecture Analysis
 
-### 🏭 T3000 Device Points Structure
+### T3000 Device Points Structure
 
 | Point Type | Count | Description | Examples |
 |------------|-------|-------------|----------|
@@ -69,7 +68,7 @@ BACnet/Modbus    Message Loop   WebSocket    Live Display
 | PID | 16 | Control loops | HVAC control algorithms |
 | MON | 16 | Monitor configs | Trendlog schedules |
 
-### ⏱️ Trendlog Timebase System
+### Trendlog Timebase System
 
 Based on T3000 C++ source code analysis:
 
@@ -89,18 +88,18 @@ Based on T3000 C++ source code analysis:
 
 ## Current Trendlog Implementation Analysis
 
-### 🖥️ Frontend Components
+### Frontend Components
 - `TrendLogChart.vue` - Main chart component with real-time data
 - `TrendLogModal.vue` - Modal interface for configuration
 - `TrendLogDashboard.vue` - Dashboard view
 - `TrendLogLayout.vue` - Page layout structure
 
-### 🔌 Communication Methods
+### Communication Methods
 1. **Built-in WebView2** - Direct C++ to JavaScript messages
 2. **External Browser** - WebSocket client (Port 9104)
 3. **HTTP API** - REST endpoints (Port 9103)
 
-### ⚡ Current Limitations
+### Current Limitations
 - **No Historical Storage** - Only real-time data display
 - **Performance Issues** - Continuous live data fetching
 - **No Offline Access** - Requires T3000 running
@@ -110,7 +109,7 @@ Based on T3000 C++ source code analysis:
 
 ## New Trendlog Database Design
 
-### 🗃️ Database Separation Strategy
+### Database Separation Strategy
 
 ```
 EXISTING: webview_database.db (Keep Unchanged)
@@ -129,7 +128,7 @@ NEW: trendlog_database.db (Separate Database)
 └── collection_status        -- Background service status
 ```
 
-### 📋 Database Schema Design
+### Database Schema Design
 
 #### 1. Devices Table
 ```sql
@@ -218,7 +217,7 @@ CREATE TABLE trend_config_points (
 
 ## Data Collection Strategy
 
-### 🔄 Background Collection Service (Rust)
+### Background Collection Service (Rust)
 
 ```rust
 // Proposed architecture for background data collection
@@ -247,7 +246,7 @@ impl TrendlogCollector {
 }
 ```
 
-### 🕐 Collection Scheduling
+### Collection Scheduling
 
 ```
 Timebase Schedule (Background Service):
@@ -257,7 +256,7 @@ Timebase Schedule (Background Service):
 └── 1-4 day intervals     → Archive queue
 ```
 
-### 📊 Data Retention Strategy
+### Data Retention Strategy
 
 ```sql
 -- Retention Policies Table
@@ -281,7 +280,7 @@ INSERT INTO retention_policies VALUES
 
 ## T3000 Folder Structure Integration
 
-### 📁 Following T3000 Conventions
+### Following T3000 Conventions
 
 Based on T3000 architecture analysis:
 
@@ -296,7 +295,7 @@ T3000_Building_Automation_System/
 │       └── trendlog_database.db -- New historical data
 ```
 
-### 🛠️ Database Creation Strategy
+### Database Creation Strategy
 
 1. **Schema Definition** → `ResourceFile/trendlog_schema.sql`
 2. **Database Creation** → `Database/trendlog_database.db`
@@ -307,7 +306,7 @@ T3000_Building_Automation_System/
 
 ## API Endpoints Design
 
-### 📡 Historical Data Access
+### Historical Data Access
 
 ```rust
 // Historical data retrieval
@@ -332,7 +331,7 @@ POST /api/trendlog/data/bulk
 }
 ```
 
-### ⚙️ Configuration Management
+### Configuration Management
 
 ```rust
 // Trend configuration management
@@ -349,7 +348,7 @@ POST /api/trendlog/control/{action}  // start, stop, restart
 
 ## Frontend Integration Strategy
 
-### 🖥️ Enhanced Chart Components
+### Enhanced Chart Components
 
 ```typescript
 // Combined data service (historical + real-time)
@@ -376,7 +375,7 @@ class TrendlogDataService {
 }
 ```
 
-### 📋 Admin Dashboard Features
+### Admin Dashboard Features
 
 ```vue
 <!-- New Admin Dashboard Component -->
@@ -406,7 +405,7 @@ class TrendlogDataService {
 
 ## Implementation Strategy
 
-### 🚀 Phase 0: Rollback & Cleanup (Priority 1)
+### Phase 0: Rollback & Cleanup (Priority 1)
 
 ```bash
 # 1. Remove recent trendlog changes from webview_database.db
@@ -424,28 +423,28 @@ rm api/migration/src/m20250122_000000_data_management_schema.rs
 # - file management
 ```
 
-### 📅 Phase 1: New Database Foundation
+### Phase 1: New Database Foundation
 
 - [ ] Create `trendlog_database.db` schema
 - [ ] Implement basic Rust entities and migrations
 - [ ] Set up database connection management
 - [ ] Create initial API endpoints
 
-### 📅 Phase 2: Background Collection Service
+### Phase 2: Background Collection Service
 
 - [ ] BACnet bulk data collection service
 - [ ] Scheduled collection based on timebase
 - [ ] Error handling and retry logic
 - [ ] Data validation and quality tracking
 
-### 📅 Phase 3: API & Frontend Integration
+### Phase 3: API & Frontend Integration
 
 - [ ] Historical data query endpoints
 - [ ] Frontend chart component updates
 - [ ] Combined real-time + historical views
 - [ ] Performance optimization
 
-### 📅 Phase 4: Admin Dashboard & Management
+### Phase 4: Admin Dashboard & Management
 
 - [ ] Admin dashboard for database management
 - [ ] Configuration management UI
@@ -456,25 +455,25 @@ rm api/migration/src/m20250122_000000_data_management_schema.rs
 
 ## Technical Considerations
 
-### 📈 Performance Requirements
+### Performance Requirements
 
 - **Data Volume:** ~20 devices × 256 points × 8760 hours/year = ~45M records/year
 - **Query Performance:** Sub-200ms for typical historical queries
 - **Collection Efficiency:** 95%+ successful data collection rate
 - **Storage Growth:** ~10-20GB per year with retention policies
 
-### 🔧 Rust vs C# BACnet Implementation
+### Rust vs C# BACnet Implementation
 
 **Recommendation: Rust Implementation**
 
 | Aspect | Rust | C# |
 |--------|------|-----|
-| Integration | ✅ Native DLL for T3000 | ⚠️ Additional runtime dependency |
-| Performance | ✅ Zero-cost abstractions | ⚠️ GC overhead |
-| Memory Safety | ✅ Compile-time guarantees | ⚠️ Runtime checks |
-| Existing Codebase | ✅ Builds on current API | ❌ Separate service required |
+| Integration | Yes Native DLL for T3000 | Warning Additional runtime dependency |
+| Performance | Yes Zero-cost abstractions | Warning GC overhead |
+| Memory Safety | Yes Compile-time guarantees | Warning Runtime checks |
+| Existing Codebase | Yes Builds on current API | No Separate service required |
 
-### 🛡️ Data Integrity & Backup
+### Data Integrity & Backup
 
 ```sql
 -- Database integrity checks
@@ -491,7 +490,7 @@ PRAGMA integrity_check;
 
 ## Risk Assessment & Mitigation
 
-### ⚠️ High Risk Areas
+### High Risk Areas
 
 1. **Data Loss During Collection**
    - *Mitigation:* Redundant collection, immediate backup
@@ -505,7 +504,7 @@ PRAGMA integrity_check;
 4. **Storage Space Exhaustion**
    - *Mitigation:* Automated retention policies, monitoring
 
-### 🔒 Security Considerations
+### Security Considerations
 
 - **Database Encryption:** SQLite encryption for sensitive data
 - **API Authentication:** Secure endpoints with rate limiting
@@ -516,45 +515,14 @@ PRAGMA integrity_check;
 
 ## Access Methods
 
-### 🌐 Built-in Edge Browser
+### Built-in Edge Browser
 - Direct WebView2 integration with T3000
 - Native C++ to JavaScript communication
 - Optimal performance for embedded use
 
-### 🌍 External Browser Support
+### External Browser Support
 - HTTP API access via localhost:9103
 - WebSocket real-time communication
 - Full feature parity with built-in browser
 
 ---
-
-## Next Steps & Confirmation
-
-### ✅ Design Review Required
-
-This comprehensive design addresses all requirements:
-
-1. ✅ **Separate Database** - New `trendlog_database.db` independent of `webview_database.db`
-2. ✅ **BACnet Collection** - Background service with bulk data retrieval
-3. ✅ **Performance Solution** - Reduces live data fetching load
-4. ✅ **Historical Storage** - Years of data with retention policies
-5. ✅ **Admin Dashboard** - Database management and monitoring
-6. ✅ **T3000 Integration** - Follows existing folder structure
-7. ✅ **Dual Access** - Built-in browser + external browser support
-8. ✅ **Rollback Strategy** - Clean separation from existing system
-
-### 🔍 Ready for Confirmation
-
-**Please review this design and confirm:**
-
-1. **Database separation approach** - Is this the right strategy?
-2. **BACnet collection service** - Should this be in Rust or C#?
-3. **Timebase integration** - Are the T3000 constants correctly mapped?
-4. **Performance targets** - Are the metrics realistic?
-5. **Implementation timeline** - Is 8 weeks reasonable?
-
-**Once confirmed, implementation will proceed phase by phase with regular checkpoints.**
-
----
-
-*This design document represents a complete solution ready for implementation. All technical details have been carefully considered based on the existing T3000 architecture and requirements.*

@@ -115,11 +115,11 @@ Hvac.WsClient.SaveGraphic(currentDevice.deviceId, currentDevice.graphic, data);
 
 ## **Solution Benefits**
 
-✅ **Eliminates Race Condition**: No saves during uncertain state
-✅ **Data Integrity**: Only saves when appState and location are consistent
-✅ **Simple Logic**: Clear rule - grpSwitch exists = no saves
-✅ **Auto-Recovery**: Saves resume once navigation completes
-✅ **Backwards Compatible**: No changes to existing data structures
+ **Eliminates Race Condition**: No saves during uncertain state
+ **Data Integrity**: Only saves when appState and location are consistent
+ **Simple Logic**: Clear rule - grpSwitch exists = no saves
+ **Auto-Recovery**: Saves resume once navigation completes
+ **Backwards Compatible**: No changes to existing data structures
 
 ## **Behavior After Fix**
 
@@ -139,10 +139,10 @@ Hvac.WsClient.SaveGraphic(currentDevice.deviceId, currentDevice.graphic, data);
 
 | Scenario | grpSwitch State | Save Behavior | Expected Result |
 |----------|----------------|---------------|-----------------|
-| Normal editing | `null` | ✅ Proceeds | Saves to current device |
-| User clicks GRP | `{panelId: 2, entryIndex: 5}` | ❌ Blocked | No save corruption |
-| Navigation complete | `null` | ✅ Resumes | Saves to current device |
-| Page reload | `null` (cleared) | ✅ Normal | Clean state |
+| Normal editing | `null` | Yes Proceeds | Saves to current device |
+| User clicks GRP | `{panelId: 2, entryIndex: 5}` | No Blocked | No save corruption |
+| Navigation complete | `null` | Yes Resumes | Saves to current device |
+| Page reload | `null` (cleared) | Yes Normal | Clean state |
 
 ## **Files Modified**
 
@@ -192,7 +192,7 @@ Hvac.WsClient.SaveGraphic(currentDevice.deviceId, currentDevice.graphic, data);
 - **IndexPage.vue**: GRP navigation UI triggers
 
 ## **Resolution Status**
-✅ **RESOLVED** - Conservative blocking approach implemented and tested
+ **RESOLVED** - Conservative blocking approach implemented and tested
 
 ---
 *Created: January 2025*

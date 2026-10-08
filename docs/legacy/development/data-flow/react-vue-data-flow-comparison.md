@@ -119,12 +119,12 @@ useEffect(() => {
 **Real-time Mode (Auto Scroll ON):**
 - Loads historical data to populate initial view
 - Starts 5-second interval for real-time updates
-- Badge shows "⚡ Live" with green color
+- Badge shows " Live" with green color
 
 **Historical Mode (Auto Scroll OFF):**
 - Stops real-time interval
 - Only shows historical data from database
-- Badge shows "📚 Historical" with blue color
+- Badge shows " Historical" with blue color
 
 **Separate Effect for Auto Scroll:**
 ```typescript
@@ -160,16 +160,16 @@ useEffect(() => {
 - Advanced optimization: Checks data reuse before loading
 
 ### React (TrendChartContent.tsx) - Now Implemented
-- ✅ Uses `useState()` for state management
-- ✅ Uses `useEffect()` for side effects
-- ✅ Uses `TrendChartApiService` for API calls
-- ✅ Real-time data updates via interval (5 seconds)
-- ✅ Smart data loading with gap detection
-- ✅ Debounced timebase changes (300ms)
-- ✅ Request cancellation via AbortController
-- ✅ Data deduplication and merging
-- ✅ Connection error tracking
-- ✅ Dual-mode support (real-time vs historical)
+- Uses `useState()` for state management
+- Uses `useEffect()` for side effects
+- Uses `TrendChartApiService` for API calls
+- Real-time data updates via interval (5 seconds)
+- Smart data loading with gap detection
+- Debounced timebase changes (300ms)
+- Request cancellation via AbortController
+- Data deduplication and merging
+- Connection error tracking
+- Dual-mode support (real-time vs historical)
 
 ## Data Flow Diagram
 

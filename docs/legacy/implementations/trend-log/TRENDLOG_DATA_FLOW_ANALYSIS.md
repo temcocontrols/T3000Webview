@@ -90,36 +90,36 @@ IF total_points > 0:
 
 ## Potential Problems - What Could Prevent Data Insertion
 
-### Problem 1: ❌ Validation Blocks All Devices
+### Problem 1: Validation Blocks All Devices
 **Symptom**: If all devices have serial_number=0 or panel_id=0, they get skipped
 **Location**: Lines ~775-792 (validation code)
-**Check**: Look for warning logs: "⚠️ Device has SerialNumber=0" or "⚠️ Device has PanelId=0"
+**Check**: Look for warning logs: " Device has SerialNumber=0" or " Device has PanelId=0"
 
-### Problem 2: ❌ Empty Response from C++
+### Problem 2: Empty Response from C++
 **Symptom**: C++ returns 0 devices in LOGGING_DATA response
 **Location**: Lines ~758-767
-**Check**: Look for log: "⚠️ Device X returned 0 devices (C++ validation failed)"
+**Check**: Look for log: " Device X returned 0 devices (C++ validation failed)"
 
-### Problem 3: ❌ Transaction Rollback
+### Problem 3: Transaction Rollback
 **Symptom**: Transaction fails and rolls back before commit
 **Location**: Lines ~635-645 (transaction error handling)
 **Check**: Look for error logs indicating database errors
 
-### Problem 4: ❌ Parse Failure
+### Problem 4: Parse Failure
 **Symptom**: JSON parsing fails, skips device
 **Location**: Lines ~743-755
-**Check**: Look for log: "❌ JSON parse failed for device"
+**Check**: Look for log: " JSON parse failed for device"
 
-### Problem 5: ❌ Points Array Empty
+### Problem 5: Points Array Empty
 **Symptom**: Device parsed successfully but has 0 points
 **Location**: Line ~827
 **Check**: `total_trend_points = input + output + variable = 0`
 **Result**: `insert_trend_logs()` never called because `if total_trend_points > 0` fails
 
-### Problem 6: ❌ insert_trend_logs() Returns Error
+### Problem 6: insert_trend_logs() Returns Error
 **Symptom**: Function called but returns Err()
 **Location**: Lines ~831-836
-**Check**: Look for log: "❌ Trend log insertion failed"
+**Check**: Look for log: " Trend log insertion failed"
 
 ## Diagnostic Steps
 
@@ -127,13 +127,13 @@ IF total_points > 0:
 **Path**: `D:\1025\github\temcocontrols\T3000_Building_Automation_System\T3000 Output\Debug\T3WebLog\YYYY-MM\MMDD\T3_FFI_*_HHMM.txt`
 
 **Look for**:
-- "🚀 Sequential FFI sync cycle starting" ← Service started
-- "📋 GET_PANELS_LIST returned N panels" ← How many devices found
-- "📝 Processing device data - Serial: X" ← Device processing started
-- "✅ Device X data sync completed" ← Device completed successfully
-- "📊 Trend logs inserted (N entries)" ← Trend log insertion attempted
-- "❌ Trend log insertion failed" ← Insertion error
-- "⚠️ Device has SerialNumber=0" ← Validation blocked device
+- " Sequential FFI sync cycle starting" ← Service started
+- " GET_PANELS_LIST returned N panels" ← How many devices found
+- " Processing device data - Serial: X" ← Device processing started
+- " Device X data sync completed" ← Device completed successfully
+- " Trend logs inserted (N entries)" ← Trend log insertion attempted
+- " Trend log insertion failed" ← Insertion error
+- " Device has SerialNumber=0" ← Validation blocked device
 
 ### 2. Check C++ Export Logs
 **Path**: `T3WebLog\YYYY-MM\MMDD\T3_CppMsg_BacnetWebView_Exports_HHMM.txt`
@@ -181,7 +181,7 @@ SELECT * FROM DATABASE_CONFIG WHERE config_key = 'ffi_sync_interval_minutes';
 **Solution**: Fix C++ LOGGING_DATA to include points
 
 ### Scenario C: Transaction Rollback
-**Evidence**: Logs show "📊 Trend logs inserted" but database is empty
+**Evidence**: Logs show " Trend logs inserted" but database is empty
 **Cause**: Transaction commits but then gets rolled back due to error
 **Solution**: Check for transaction errors after trend log insertion
 
@@ -189,11 +189,3 @@ SELECT * FROM DATABASE_CONFIG WHERE config_key = 'ffi_sync_interval_minutes';
 **Evidence**: No recent log files in T3WebLog
 **Cause**: FFI sync service disabled or not started
 **Solution**: Check DATABASE_CONFIG table, restart service
-
-## Next Steps to Diagnose
-
-1. **Find the latest FFI sync log file** and read last 100 lines
-2. **Count records in T3_DEVICE, INPUT_POINT tables** to see if device sync worked
-3. **Check if `insert_trend_logs()` was called** by searching logs for "📊 Trend logs inserted"
-4. **Identify which scenario matches** the evidence
-5. **Apply targeted fix** based on root cause

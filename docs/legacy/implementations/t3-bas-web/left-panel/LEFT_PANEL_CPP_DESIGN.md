@@ -245,5 +245,3 @@ If you'd like, I can now:
 
 References:
 - See `T3000-Source/T3000/MainFrm.h` and `ImageTreeCtrl.h` for primary definitions used above.
-
-

@@ -1,9 +1,8 @@
-# Action 17 - GET_WEBVIEW_LIST
+# Action 17 - GET_Webview_List
 
 **Complete Documentation for Message 17 Implementation**
 
-**Status:** ✅ Backend Complete (Inputs, Outputs, Variables) | ⏳ C++ Pending | 🎯 Ready for Testing
-**Last Updated:** November 21, 2025
+**Status:** Yes Backend Complete (Inputs, Outputs, Variables) | C++ Pending | Ready for Testing
 
 ---
 
@@ -642,7 +641,7 @@ const handleRefreshSingleInput = async (inputIndex: string) => {
 ## C++ Integration
 
 ### Current Status
-⏳ **Pending** - C++ team needs to implement Action 17 handler
+ **Pending** - C++ team needs to implement Action 17 handler
 
 ### Required C++ Implementation
 
@@ -984,7 +983,7 @@ WHERE serial_number = 1234567 AND InputIndex = 5;
 
 ## Implementation Checklist
 
-### ✅ Completed
+### Completed
 
 - [x] Rust backend routes for all 3 entity types (Inputs, Outputs, Variables)
 - [x] Module and route registration
@@ -996,7 +995,7 @@ WHERE serial_number = 1234567 AND InputIndex = 5;
 - [x] TypeScript compilation (no errors in services)
 - [x] Documentation consolidated
 
-### ⏳ Pending
+### Pending
 
 - [ ] C++ Action 17 implementation in `HandleWebViewMsg()`
 - [ ] End-to-end testing with real devices
@@ -1004,27 +1003,6 @@ WHERE serial_number = 1234567 AND InputIndex = 5;
 - [ ] Performance testing (batch refresh with 64+ items)
 - [ ] Error handling edge cases
 - [ ] Extend to other entity types (Programs, Schedules, etc.)
-
-### 🎯 Next Steps
-
-1. **C++ Team:**
-   - Implement `case 17` handler
-   - Test BACnet device reading
-   - Return proper JSON structure
-
-2. **Testing Team:**
-   - Test all 3 refresh triggers on each page
-   - Verify animations work
-   - Test error scenarios (device offline, invalid index)
-   - Load test with large batches
-
-3. **Future Enhancements:**
-   - Add progress indicators for batch refresh
-   - Implement retry logic for failed refreshes
-   - Add refresh history/audit log
-   - Support partial batch refresh (continue on error)
-
----
 
 ## File Reference
 

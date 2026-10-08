@@ -1,5 +1,5 @@
 
-## localStorage ===========================
+# localStorage ===========================
 
 New Project | newProject |
 localStorage.removeItem("appState");
@@ -35,7 +35,6 @@ localStorage.setItem("user", JSON.stringify(user.value));
 //not in webview load data from localStorage.getItem('appState')
 
 ## localStorage ===========================
-
 
 ## Fetching Data from External Explorer
 
@@ -101,7 +100,6 @@ void ExecuteJavaScript(wil::com_ptr<ICoreWebView2> webView) {
 ```
 
 By following these steps, you can fetch data from an external explorer and integrate it into your C++ application using Microsoft Edge and a Rust server.
-
 
 ## Posting Messages to WebView2 from Firefox
 
@@ -181,8 +179,6 @@ webView->add_WebMessageReceived(
 
 By following these steps, you can post messages from a standalone Firefox browser to an integrated WebView2 in your C++ application using WebSockets.
 
-
-
 ## Connecting to WebSocket Server in C++ and Handling Messages
 
 To connect to a WebSocket server in your C++ application and handle messages, you can use the WebSocket++ library. Here are the steps:
@@ -246,8 +242,6 @@ int main() {
 3. **Handle Messages**: Implement the `on_message` method to process incoming messages from the WebSocket server.
 
 By following these steps, you can connect to a WebSocket server from your C++ application, send messages, and handle incoming messages.
-
-
 
 ```cpp
 #include <boost/asio.hpp>
@@ -364,10 +358,8 @@ int main() {
 
 By following these steps, you can create a WebSocket client using WebSocket++ to connect to a WebSocket server, send messages, and handle incoming messages.
 
-
 $env:VCPKG_ROOT = "D:\1025\github\microsoft\vcpkg"
 $env:PATH = "$env:VCPKG_ROOT;$env:PATH"
-
 
 ## Connecting to WebSocket Server using Boost.Asio
 
@@ -431,13 +423,11 @@ int main() {
 
 By following these steps, you can connect to a WebSocket server using Boost.Asio and WebSocket++ in your C++ application.
 
-
 ## Connecting to WebSocket Server using Boost.Asio Only
 
 To connect to a WebSocket server using only Boost.Asio, you can follow these steps:
 
 1. **Include Boost.Asio Library**: Ensure you have Boost.Asio installed and included in your project.
-
 
 ## Installing Boost.Asio
 
@@ -476,7 +466,6 @@ g++ -I /path/to/boost_1_76_0 -L /path/to/boost_1_76_0/stage/lib your_code.cpp -o
 ```
 
 By following these steps, you can install and use Boost.Asio in your project.
-
 
 ```cpp
 #include <boost/asio.hpp>
@@ -545,7 +534,6 @@ int main() {
 ```
 
 By following these steps, you can connect to a WebSocket server using only Boost.Asio in your C++ application.
-
 
 ## Adding Custom String to WebSocket Connection
 
@@ -622,7 +610,6 @@ int main() {
 ```
 
 By following these steps, you can add a custom string to the WebSocket connection, pass it to the server, and handle it on the server side to decide whether to send a message back to the related clients.
-
 
 ## Using WebSocket++ with boost 1.66.0
 
@@ -730,7 +717,7 @@ private:
     client c;
 };
 
-## --
+## (untitled)
 
 ## Connecting to WebSocket Server using Windows Sockets
 
@@ -1006,7 +993,6 @@ socket.Close();
 
 By following these steps, you can connect to a WebSocket server using MFC SocketCore in your C++ application.
 
-
 ## Connecting to WebSocket Server using MFC CAsyncSocket
 
 To connect to a WebSocket server using MFC `CAsyncSocket`, you can follow these steps:
@@ -1096,7 +1082,6 @@ int main() {
 ```
 
 By following these steps, you can connect to a WebSocket server using MFC `CAsyncSocket` in your C++ application.
-
 
 ## Handling WebSocket Errors in MFC CAsyncSocket
 
@@ -1312,7 +1297,6 @@ Conclusion
 
 By following these steps, you should be able to debug and resolve the invalidcode (4) error in your MFC CAsyncSocket WebSocket client.
 
-
 ## Protocol(InvalidOpcode(11)) Error
 
 The `Protocol(InvalidOpcode(11))` error in the context of WebSockets indicates that the WebSocket frame being sent or received contains an invalid opcode. In the WebSocket protocol, opcodes are used to define the type of frame being transmitted. The valid opcodes are:
@@ -1382,7 +1366,6 @@ void SendWebSocketMessage(const std::string& message) {
 ```
 
 By ensuring that the WebSocket frames are correctly constructed and transmitted, you can avoid the `Protocol(InvalidOpcode(11))` error.
-
 
 ```cpp
 void sendMessage(const std::wstring& message) {
@@ -1486,8 +1469,6 @@ After the handshake is complete, the connection is established, and both the cli
 The handshake does not require creating WebSocket frames because it uses standard HTTP headers to negotiate the connection upgrade. Once the connection is established, subsequent communication uses WebSocket frames, which need to be constructed as shown in your example code.
 
 If you have any further questions or need more details, feel free to ask!
-
-
 
 ### Creating a WebSocket Frame using `WideCharToMultiByte`
 
@@ -1720,8 +1701,6 @@ int main() {
 
 By following these steps, you can send a message to a WebSocket server using WinSock2 in your C++ application.
 
-
-
 ```cpp
 void sendMessage(SOCKET ConnectSocket, const CString& message) {
   // Convert the CString to a UTF-8 encoded string
@@ -1821,7 +1800,6 @@ int main() {
   return 0;
 }
 ```
-
 
 WebSocket
 
@@ -1932,7 +1910,6 @@ int main() {
 
 By following these steps, you can keep the WebSocket connection alive and attempt to reconnect if the connection is lost, up to a maximum of 5 times.
 
-
 ## Keeping WebSocket Connection Alive in TypeScript
 
 To keep the WebSocket connection always online and check whether the server is down, you can implement a mechanism to periodically send ping messages and attempt reconnection if the connection is lost. Here is an example of how to achieve this in TypeScript:
@@ -2006,7 +1983,6 @@ const wsClient = new WebSocketClient("ws://localhost:9104");
 
 By following these steps, you can keep the WebSocket connection alive and attempt to reconnect if the connection is lost, up to a maximum of 5 times.
 
-
 ## Exporting and Importing Instances in JavaScript
 
 When you export an instance of a class in JavaScript and import it in multiple files, each import will reference the same instance. This is because JavaScript modules are singletons, meaning that the module is evaluated once and the same instance is shared across all imports.
@@ -2051,8 +2027,6 @@ In this example, `x` is the same instance of `A` across `file1.js`, `file2.js`, 
 ### Conclusion
 
 When you export an instance of a class and import it in multiple files, all imports will reference the same instance. This allows you to share state across different parts of your application.
-
-
 
 ## Using Shared Instances in Vue Components
 
@@ -2164,8 +2138,6 @@ export default {
 ```
 
 ==WebSocket error: Capacity(MessageTooLong { size: 295201692257404, max_size: 16777216 })
-
-
 
 ```cpp
 void sendMessage(SOCKET ConnectSocket, const CString& message) {
@@ -2284,7 +2256,6 @@ To debug Rust code in Visual Studio Code (VS Code), follow these steps:
 
 By following these steps, you can debug Rust code in Visual Studio Code effectively.
 
-
 {"header":{"clientId":"-","from":"T3"},"message":{"action":13,"clientId":"11111111-1111-1111-1111-111111111111"}}
 
 Capacity(MessageTooLong { size: 295201692257404, max_size: 16777216 })
@@ -2308,7 +2279,6 @@ For large payloads (greater than 65535 bytes), the overhead is 1 byte (FIN and o
 
 Therefore, the maximum length of a `CString` that can be sent given the `max_size` of 16777216 bytes is 16777202 bytes.
 
-
 To transfer the maximum length of a string in kilobytes (KB), you can convert the bytes to kilobytes by dividing the byte size by 1024. Here is the implementation:
 
 ```cpp
@@ -2328,7 +2298,6 @@ int main() {
 ```
 
 This code calculates the maximum payload size in kilobytes and prints it to the console.
-
 
 ## Capacity(MessageTooLong { size: 295201692257404, max_size: 16777216 })
 
@@ -2477,7 +2446,6 @@ async fn handle_connection(stream: tokio::net::TcpStream) {
 
 In this example, the server assumes that incoming text messages are UTF-8 encoded and processes them accordingly.
 
-
 The maximum frame size for `tokio::net::TcpStream` is not explicitly defined by Tokio itself. Instead, it depends on the underlying TCP/IP protocol and the operating system's configuration. TCP does not impose a strict limit on the size of the data that can be sent in a single write operation, but it is generally recommended to keep the frame size within reasonable limits to avoid issues with network congestion and buffer sizes.
 
 For WebSocket communication over `tokio::net::TcpStream`, the maximum frame size is typically determined by the WebSocket protocol and the WebSocket library you are using. For example, the `tokio-tungstenite` library has a default maximum frame size of 16 MiB (16777216 bytes).
@@ -2586,7 +2554,6 @@ async fn handle_connection(stream: tokio::net::TcpStream, config: WebSocketConfi
 
 In this example, the maximum frame size is set to 32 MiB. Adjust the `max_frame_size` value as needed for your application.
 
-
 ## In 32-bit application, should use uint64_t to store the messge length value for some large json text string.
 
 ## std::vector<unsigned char> CreateWebSocketFrame(const CString& message) {
@@ -2667,7 +2634,6 @@ if (error_message.IsEmpty()) {
 ```
 
 The `IsEmpty` method returns `TRUE` if the `CString` is empty or contains only whitespace characters, and `FALSE` otherwise.
-
 
 ## Add new function for processing the data received from websocket server at T3 application
 

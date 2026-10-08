@@ -1,6 +1,4 @@
 # T3000 FFI Two-Tier Sync System Design
-**Version:** 2.0
-**Date:** October 29, 2025
 **Status:** Design Review
 
 ---
@@ -13,11 +11,11 @@ This document describes the redesigned two-tier synchronization system for T3000
 2. **Full Rediscovery** (`rediscover.interval_secs`): Periodic device list refresh (default 1 hour)
 
 **Key Benefits:**
-- ✅ Reduces unnecessary GET_PANELS_LIST calls (from every cycle to once per hour)
-- ✅ Always uses latest device list for LOGGING_DATA sync
-- ✅ Automatically handles new/disappeared devices
-- ✅ Maintains consistent data collection frequency
-- ✅ Optimized database operations (UPDATE existing, INSERT new)
+- Reduces unnecessary GET_PANELS_LIST calls (from every cycle to once per hour)
+- Always uses latest device list for LOGGING_DATA sync
+- Automatically handles new/disappeared devices
+- Maintains consistent data collection frequency
+- Optimized database operations (UPDATE existing, INSERT new)
 
 ---
 
@@ -672,41 +670,41 @@ async fn sync_logging_data_for_all_devices(
 
 ### Benefits
 
-✅ **Reduced Network Load**
+ **Reduced Network Load**
 - GET_PANELS_LIST: From every 10 min → once per hour (83% reduction)
 - Only LOGGING_DATA runs frequently
 
-✅ **Automatic Device Discovery**
+ **Automatic Device Discovery**
 - New devices automatically included after next rediscovery
 - Disappeared devices automatically excluded
 
-✅ **Consistent Data Collection**
+ **Consistent Data Collection**
 - LOGGING_DATA runs at fixed intervals regardless of device count
 - Predictable timing for trend analysis
 
-✅ **Database Optimization**
+ **Database Optimization**
 - Parent records updated only when metadata changes
 - Detail records efficiently inserted with minimal overhead
 - Proper indexing on ParentId and LoggingTime_Fmt
 
-✅ **Monitoring & Debugging**
+ **Monitoring & Debugging**
 - Clear metadata tracking for both GET_PANELS_LIST and LOGGING_DATA
 - Easy to identify rediscovery cycles vs quick syncs
 - RecordsInserted shows data volume trends
 
 ### Trade-offs
 
-⚠️ **Delayed Device Discovery**
+ **Delayed Device Discovery**
 - New devices only discovered at next rediscovery interval
 - Max delay = rediscover.interval_secs (e.g., 1 hour)
 - Mitigation: Reduce rediscover interval for critical environments
 
-⚠️ **Increased Cycle Time**
+ **Increased Cycle Time**
 - Total cycle time = LOGGING_DATA (~5 min) + sleep (10 min) = ~15 min
 - Not exactly ffi.sync_interval_secs (10 min from start to start)
 - Mitigation: Calculate remaining sleep time to achieve exact intervals
 
-⚠️ **Memory Overhead**
+ **Memory Overhead**
 - Cached device list kept in memory
 - Minimal impact (~1KB for 100 devices)
 

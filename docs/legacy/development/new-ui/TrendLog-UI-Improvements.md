@@ -1,6 +1,5 @@
 # TrendLog UI Improvements - Implementation Plan
 
-**Date:** December 2, 2025
 **Component:** `TrendLogChart.vue`
 **Branch:** `feature/t3-was-web`
 

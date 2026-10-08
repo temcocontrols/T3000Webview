@@ -134,13 +134,13 @@ PT 1K -200 to 300°C
 
 ## Key Differences Found
 
-### Digital Units Issues:
+### Digital Units Issues
 1. **Order discrepancies**: Current TrendLogModal has some units in different order
 2. **Missing variations**: Some digital units have variations (e.g., "On/Off" vs "Off/On")
 3. **State order**: Some digital states are in reverse order in current implementation
 4. **Missing units**: Some digital units from T3000.rc are missing
 
-### Analog Units Issues:
+### Analog Units Issues
 1. **Missing units**: Several analog units from T3000.rc are missing in current implementation
 2. **Different symbols**: Some unit symbols don't match T3000 conventions
 3. **Missing ranges**: Input-specific units with ranges are not represented

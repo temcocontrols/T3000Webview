@@ -1,35 +1,34 @@
 # TRENDLOG Split-Table Implementation Status
 
-**Date**: October 23, 2025
 **Status**: Phase 1-3 Complete, Compilation Errors Expected
 
 ---
 
-## ✅ Completed Work
+## Completed Work
 
-### Phase 1: Database Schema ✅
-- ✅ Created `TRENDLOG_DATA` (parent table) with 13 fields
-- ✅ Created `TRENDLOG_DATA_DETAIL` (child table) with 7 fields
-- ✅ Renamed old table to `TRENDLOG_DATA_OLD` for migration
-- ✅ Added 15 new indexes for optimized queries
-- ✅ Updated schema file: `api/migration/sql/webview_t3_device_schema.sql`
+### Phase 1: Database Schema
+- Created `TRENDLOG_DATA` (parent table) with 13 fields
+- Created `TRENDLOG_DATA_DETAIL` (child table) with 7 fields
+- Renamed old table to `TRENDLOG_DATA_OLD` for migration
+- Added 15 new indexes for optimized queries
+- Updated schema file: `api/migration/sql/webview_t3_device_schema.sql`
 
-### Phase 2: SeaORM Entities ✅
-- ✅ Created `trendlog_data.rs` (parent entity with id primary key)
-- ✅ Created `trendlog_data_detail.rs` (child entity with parent_id FK)
-- ✅ Created `trendlog_data_old.rs` (legacy entity for migration)
-- ✅ Added parent-child relations (one-to-many / many-to-one)
-- ✅ Updated `mod.rs` to export all entities
+### Phase 2: SeaORM Entities
+- Created `trendlog_data.rs` (parent entity with id primary key)
+- Created `trendlog_data_detail.rs` (child entity with parent_id FK)
+- Created `trendlog_data_old.rs` (legacy entity for migration)
+- Added parent-child relations (one-to-many / many-to-one)
+- Updated `mod.rs` to export all entities
 
-### Phase 3: Migration Infrastructure ✅
-- ✅ Created `migrate_trendlog_split.rs` with batch migration logic
-- ✅ Created `trendlog_parent_cache.rs` with LRU-like caching
-- ✅ Added parent_id lookup/create with cache support
-- ✅ Batch operations for efficient bulk inserts
+### Phase 3: Migration Infrastructure
+- Created `migrate_trendlog_split.rs` with batch migration logic
+- Created `trendlog_parent_cache.rs` with LRU-like caching
+- Added parent_id lookup/create with cache support
+- Batch operations for efficient bulk inserts
 
 ---
 
-## ⚠️ Current State: Compilation Errors (EXPECTED)
+## Current State: Compilation Errors (EXPECTED)
 
 The code currently has **45 compilation errors** because:
 - Service layer still uses old single-table structure
@@ -40,79 +39,7 @@ The code currently has **45 compilation errors** because:
 
 ---
 
-## 🔄 Next Steps Required
-
-### OPTION A: Migrate Data First, Then Update Code
-**Recommended for production systems with existing data**
-
-#### Step 1: Recreate Database with New Schema
-```powershell
-# Backup current database
-cd api
-$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-Copy-Item "Database\webview_t3_device.db" "Database\webview_t3_device_backup_$timestamp.db"
-
-# Drop and recreate with new schema
-Remove-Item "Database\webview_t3_device.db"
-sqlite3 "Database\webview_t3_device.db" < "migration\sql\webview_t3_device_schema.sql"
-```
-
-#### Step 2: Run Migration Script
-You'll need to create a binary to run the migration:
-
-```rust
-// api/src/bin/migrate_trendlog.rs
-use t3_webview_api::db_connection::establish_t3_device_connection;
-use t3_webview_api::t3_device::migrate_trendlog_split::migrate_trendlog_data;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Starting TRENDLOG_DATA migration...\n");
-
-    let db = establish_t3_device_connection().await?;
-    migrate_trendlog_data(&db).await?;
-
-    println!("\nMigration completed successfully!");
-    Ok(())
-}
-```
-
-Then run:
-```powershell
-cd api
-cargo run --bin migrate_trendlog --release
-```
-
-#### Step 3: Update Service Layer
-After migration completes, update these files to use new split-table structure:
-
-**Files to Update** (45 locations):
-1. `api/src/t3_device/trendlog_data_service.rs` - Core service (24 errors)
-2. `api/src/t3_device/t3_ffi_sync_service.rs` - FFI sync (18 errors)
-3. `api/src/t3_device/routes.rs` - API endpoints (3 errors)
-
-**Key Changes Needed**:
-- Replace direct inserts with parent_id cache + detail insert
-- Update queries to JOIN parent + detail tables
-- Change field references (value → detail.value, etc.)
-
-### OPTION B: Fresh Start (No Existing Data)
-**Recommended for testing/development**
-
-If you don't have important data in TRENDLOG_DATA:
-
-```powershell
-# Simpler approach - just recreate database
-cd api
-Remove-Item "Database\webview_t3_device.db" -Force
-sqlite3 "Database\webview_t3_device.db" < "migration\sql\webview_t3_device_schema.sql"
-```
-
-Then proceed directly to updating service layer code.
-
----
-
-## 📝 Service Layer Update Plan
+## Service Layer Update Plan
 
 ### File 1: `trendlog_data_service.rs`
 
@@ -186,7 +113,7 @@ Lines 1462-1478 (endpoint that accesses `.value` and `.logging_time_fmt`):
 
 ---
 
-## 🎯 Recommended Action Plan
+## Recommended Action Plan
 
 **I recommend we proceed step-by-step:**
 
@@ -208,17 +135,17 @@ Lines 1462-1478 (endpoint that accesses `.value` and `.logging_time_fmt`):
 
 ---
 
-## 📊 Expected Results After Completion
+## Expected Results After Completion
 
-- ✅ Database size reduced by 41-55%
-- ✅ Insert operations 2-3× faster
-- ✅ Query operations maintain/improve speed
-- ✅ All API endpoints work unchanged
-- ✅ Frontend sees no difference
+- Database size reduced by 41-55%
+- Insert operations 2-3× faster
+- Query operations maintain/improve speed
+- All API endpoints work unchanged
+- Frontend sees no difference
 
 ---
 
-## ❓ What Would You Like Me to Do Next?
+## What Would You Like Me to Do Next?
 
 Please choose:
 

@@ -2,21 +2,21 @@
 
 ## Critical Finding: Different Payload Requirements
 
-### ❌ Initial Mistake
+### Initial Mistake
 We initially thought Action 16 could update just one field like Action 3, but **this is wrong**.
 
 ---
 
 ## Action 3: UPDATE_ENTRY (Single Field Update)
 
-### ⚠️ CRITICAL LIMITATION: Only 3 Fields Supported!
+### CRITICAL LIMITATION: Only 3 Fields Supported
 
 Action 3 **ONLY** supports these fields:
 - `control` (int)
 - `value` (float)
 - `auto_manual` (int)
 
-**❌ NOT SUPPORTED:**
+** NOT SUPPORTED:**
 - `fullLabel` / `description` - Must use Action 16
 - `label` - Must use Action 16
 - `range` - Must use Action 16
@@ -24,7 +24,7 @@ Action 3 **ONLY** supports these fields:
 - `calibration_*` - Must use Action 16
 - Any other fields - Must use Action 16
 
-### ✅ Payload: Only the changed field (if supported)
+### Payload: Only the changed field (if supported)
 ```json
 {
   "value": 25.5  // Works for value field only
@@ -50,7 +50,7 @@ else if (field.compare("auto_manual") == 0) {
 
 ## Action 16: UPDATE_WEBVIEW_LIST (Full Record Update)
 
-### ❌ Payload: ALL fields required (not just one!)
+### Payload: ALL fields required (not just one!)
 ```json
 {
   "fullLabel": "New Room Temperature",  // ← Changed field
@@ -88,7 +88,7 @@ g_Input_data[temp_panel_id].at(entry_index).auto_manual = json["auto_manual"].as
 
 ## The Problem
 
-### ❌ Wrong Approach (What we did initially)
+### Wrong Approach (What we did initially)
 ```typescript
 // Only sending the changed field - OTHER FIELDS WILL BE LOST!
 const payload = {
@@ -96,7 +96,7 @@ const payload = {
 };
 ```
 
-### ✅ Correct Approach (What we fixed)
+### Correct Approach (What we fixed)
 ```typescript
 // Must send ALL fields with current values + the one changed field
 const currentInput = inputs.find(input =>
@@ -124,11 +124,11 @@ const payload = {
 
 ## When to Use Each Action
 
-### Use Action 3 (UPDATE_ENTRY) when:
-- ✅ Updating **ONLY** `control`, `value`, or `auto_manual` fields
-- ✅ Inline editing of value or auto/manual toggle
-- ✅ Quick numeric value updates
-- ⚠️ **LIMITED: Only 3 fields supported!**
+### Use Action 3 (UPDATE_ENTRY) when
+- Updating **ONLY** `control`, `value`, or `auto_manual` fields
+- Inline editing of value or auto/manual toggle
+- Quick numeric value updates
+- **LIMITED: Only 3 fields supported!**
 
 **Pros:**
 - Simple payload
@@ -141,11 +141,11 @@ const payload = {
 
 ---
 
-### Use Action 16 (UPDATE_WEBVIEW_LIST) when:
-- ✅ Updating **multiple fields** at once (e.g., save button with many changes)
-- ✅ You have all current field values available
-- ✅ Bulk update scenario
-- ⚠️ **Be careful: Must provide ALL fields!**
+### Use Action 16 (UPDATE_WEBVIEW_LIST) when
+- Updating **multiple fields** at once (e.g., save button with many changes)
+- You have all current field values available
+- Bulk update scenario
+- **Be careful: Must provide ALL fields!**
 
 **Pros:**
 - Can update multiple fields atomically
@@ -153,7 +153,7 @@ const payload = {
 - Validates serial number
 
 **Cons:**
-- ⚠️ **Dangerous:** Will overwrite all fields with provided values
+- **Dangerous:** Will overwrite all fields with provided values
 - Requires fetching current data first
 - More complex payload
 
@@ -218,8 +218,8 @@ const updateMultipleFields = async (
 ### Should we fix the Rust backend?
 
 **Option A: Keep current behavior (match C++ exactly)**
-- ✅ Maintains compatibility with C++ code
-- ❌ Frontend must provide all fields
+- Maintains compatibility with C++ code
+- Frontend must provide all fields
 
 **Option B: Add read-modify-write to Rust (easier for frontend)**
 ```rust
@@ -254,11 +254,11 @@ let input_json = json!({
 | Aspect | Action 3 (UPDATE_ENTRY) | Action 16 (UPDATE_WEBVIEW_LIST) |
 |--------|------------------------|--------------------------------|
 | **Purpose** | Single field update | Full record update |
-| **Supported Fields** | ⚠️ **Only 3:** control, value, auto_manual | ✅ All 12+ fields |
+| **Supported Fields** | Warning **Only 3:** control, value, auto_manual | Yes All 12+ fields |
 | **Payload** | `{ "value": newValue }` | All 12+ fields required |
 | **C++ Behavior** | Read-modify-write | Direct overwrite |
-| **Safety** | ✅ Safe | ⚠️ Dangerous if misused |
+| **Safety** | Yes Safe | Warning Dangerous if misused |
 | **Use Case** | Value/control updates only | Label, range, and all updates |
-| **Recommended** | ✅ For value/control only | ✅ For fullLabel, label, range, etc. |
+| **Recommended** | Yes For value/control only | Yes For fullLabel, label, range, etc. |
 
 **The key insight:** Action 16 is **not a superset** of Action 3. It's a different operation with different semantics!

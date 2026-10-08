@@ -169,14 +169,14 @@ Background Collection Service (RealtimeDataService)
 
 ## Why Removed
 
-### Primary Reasons:
+### Primary Reasons
 1. **Module Deleted**: `RealtimeDataService` module was removed during `MODULE_CLEANUP_2025-01`
 2. **Non-Functional**: Endpoints referenced non-existent types and methods
 3. **Incomplete Implementation**: Config update logic was stubbed out
 4. **Alternative Mechanisms**: Better approaches exist (see below)
 5. **Complexity**: Added unnecessary complexity for limited benefit
 
-### Code Comments Found:
+### Code Comments Found
 ```rust
 // TEMPORARILY DISABLED - DATA COLLECTION ENDPOINTS (Need field name updates)
 // Note: C++ expects field names matching Str_table_point structure
@@ -271,12 +271,12 @@ ws.onmessage = (event) => {
 
 ## Frontend Impact
 
-### Pages That Referenced Collection (No Longer Applicable):
+### Pages That Referenced Collection (No Longer Applicable)
 - `DatabaseManagementPage.vue` - Showed collection status (can be removed)
 - `DatabasePartitionsPanel.vue` - Referenced `TRENDLOG_DATA` table (still valid)
 - `MonitoringStatsPanel.vue` - Displayed collection stats (can show table stats instead)
 
-### No Breaking Changes:
+### No Breaking Changes
 - No frontend currently calls `/collection/*` endpoints
 - Data display pages continue working with manual insertion endpoints
 - TrendLog charts work identically (query `TRENDLOG_DATA` table)
@@ -285,7 +285,7 @@ ws.onmessage = (event) => {
 
 ## Data Collection Configuration (Historical Reference)
 
-### Config Structure (Not Implemented):
+### Config Structure (Not Implemented)
 ```rust
 struct DataCollectionConfig {
     enabled: bool,
@@ -306,7 +306,7 @@ struct DataCollectionConfig {
 
 ## Migration Guide
 
-### If You Need Automated Collection:
+### If You Need Automated Collection
 
 #### Option A: Implement External Script
 1. Create Python/Node.js script using template above
@@ -331,17 +331,17 @@ struct DataCollectionConfig {
 
 ## Files Modified
 
-### Routes File:
+### Routes File
 - **File**: `api/src/t3_device/routes.rs`
 - **Removed**: Lines 1047-1228 (6 handler functions)
 - **Removed**: Lines 1315-1320 (6 route registrations)
 
-### State File:
+### State File
 - **File**: `api/src/app_state.rs`
 - **Status**: `data_collector` field already commented out (lines 114, 131)
 - **No Changes Needed**: Field was never enabled
 
-### Module File:
+### Module File
 - **File**: `api/src/t3_device/mod.rs`
 - **Status**: `pub mod realtime_data_service;` already commented (per cleanup docs)
 - **No Changes Needed**: Module already removed
@@ -350,7 +350,7 @@ struct DataCollectionConfig {
 
 ## Testing Impact
 
-### Removed Test Scenarios:
+### Removed Test Scenarios
 - Start collection service
 - Stop collection service
 - Query service status
@@ -358,7 +358,7 @@ struct DataCollectionConfig {
 - Trigger immediate collection
 - Service lifecycle (startup, shutdown, restart)
 
-### Remaining Test Scenarios (Valid):
+### Remaining Test Scenarios (Valid)
 - Manual data insertion via `/trendlog-data/realtime`
 - Batch insertion via `/trendlog-data/realtime/batch`
 - Historical data queries
@@ -369,16 +369,16 @@ struct DataCollectionConfig {
 
 ## References
 
-### Documentation:
+### Documentation
 - Original Design: `docs/t3000/1.TRENDLOG_DATABASE_DESIGN.md` (lines 530-544)
 - Module Cleanup: `docs/project/MODULE_CLEANUP_2025-01.md` (lines 85, 102, 105)
 
-### Related Code:
+### Related Code
 - FFI Bridge: `T3000-Source/T3000/BacnetWebView_Exports.cpp` (line 95)
 - Data Service: `api/src/t3_device/trendlog_data_service.rs` (active, for manual insertion)
 - Database Schema: `api/migration/sql/webview_t3_device_schema.sql`
 
-### Frontend References:
+### Frontend References
 - Database Management: `src/t3-vue/components/Database/DatabaseManagementPage.vue`
 - TrendLog Pages: `src/t3-vue/pages/TrendLog/IndexPageSocket.vue`
 

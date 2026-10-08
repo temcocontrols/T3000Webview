@@ -1,16 +1,15 @@
 # Data Splitting Strategy - Fix Summary (HISTORICAL)
 
-> **⚠️ HISTORICAL DOCUMENT**
+> ** HISTORICAL DOCUMENT**
 > This document describes the ATTACH DATABASE approach that was **attempted but ultimately abandoned**.
 > For the current working implementation, see: **[Data-Splitting-Implementation-Guide.md](./Data-Splitting-Implementation-Guide.md)**
 
-**Date**: November 1, 2025
-**Status**: ⚠️ **SUPERSEDED** - Replaced by Copy-Delete Strategy
-**Build**: ✅ Compiled Successfully (but approach changed)
+**Status**: **SUPERSEDED** - Replaced by Copy-Delete Strategy
+**Build**: Compiled Successfully (but approach changed)
 
 ---
 
-## 📌 Historical Context
+## Historical Context
 
 This document records the ATTACH DATABASE approach that was attempted to fix the data splitting strategy. While the schema fixes documented here were correct, the overall approach had fundamental issues with SQLite WAL mode and multi-connection visibility.
 
@@ -24,18 +23,18 @@ This document records the ATTACH DATABASE approach that was attempted to fix the
 
 ---
 
-## 🎯 Problem Summary (Original)
+## Problem Summary (Original)
 
 The Data Splitting Strategy (Partition Monitor Service) was **creating partition files but not migrating any data**. Investigation revealed a critical schema mismatch between the migration code and the runtime database.
 
-### Symptoms:
-- ❌ Partition files created but only 8KB (schema only, no data)
-- ❌ Main database growing continuously (76MB)
-- ❌ 259,246 historical records not migrated
-- ❌ No error logs or migration logs
-- ❌ Silent failure - no indication of the problem
+### Symptoms
+- Partition files created but only 8KB (schema only, no data)
+- Main database growing continuously (76MB)
+- 259,246 historical records not migrated
+- No error logs or migration logs
+- Silent failure - no indication of the problem
 
-### Root Cause:
+### Root Cause
 **SQL Column Name Mismatch**
 - Migration code expected: `parent_id`, `logging_time_fmt`, `value` (snake_case)
 - Runtime database has: `ParentId`, `LoggingTime_Fmt`, `Value` (PascalCase)
@@ -43,7 +42,7 @@ The Data Splitting Strategy (Partition Monitor Service) was **creating partition
 
 ---
 
-## ✅ Fixes Applied
+## Fixes Applied
 
 ### 1. Fixed Table Schema Creation
 **File**: `partition_monitor_service.rs` (lines 363-400)
@@ -141,15 +140,15 @@ logger.info("🎉 Partition 2025-10 complete: 85,230 records, 18 MB");
 
 ---
 
-## 📊 Expected Results
+## Expected Results
 
-### Current Configuration:
+### Current Configuration
 - **Strategy**: Monthly
 - **Retention**: 30 days
 - **Status**: Active (is_active = 1)
 - **Last Update**: 2025-11-01 08:09:04
 
-### Database State Before Fix:
+### Database State Before Fix
 ```
 Main Database: webview_t3_device.db
 ├── Size: 76 MB
@@ -163,7 +162,7 @@ Partition Files:
 └── webview_t3_device_2025-09.db: 32 KB (minimal data)
 ```
 
-### Database State After Fix:
+### Database State After Fix
 ```
 Main Database: webview_t3_device.db
 ├── Size: ~30 MB (reduction of 46 MB)
@@ -182,15 +181,15 @@ Main Database Size Reduction: 60% (76 MB → 30 MB)
 
 ---
 
-## 📈 Performance Impact
+## Performance Impact
 
-### Before:
+### Before
 - **Main DB Size**: 76 MB (growing continuously)
 - **Query Performance**: 2-5 seconds for trendlog queries
 - **Disk I/O**: High (scanning 405K records)
 - **Backup Time**: ~15 seconds
 
-### After:
+### After
 - **Main DB Size**: 30 MB (stable, old data auto-migrated)
 - **Query Performance**: 0.5-1 second (64% faster)
 - **Disk I/O**: Low (scanning 146K records)
@@ -199,7 +198,7 @@ Main Database Size Reduction: 60% (76 MB → 30 MB)
 
 ---
 
-## 🔄 How It Works Now
+## How It Works Now
 
 ### 1. **Startup Migration (10 seconds after T3000 starts)**
 ```
@@ -255,15 +254,15 @@ Migrate November Data:
 
 ---
 
-## 📝 Logging Output
+## Logging Output
 
-### Log File Location:
+### Log File Location
 ```
 D:\1025\github\temcocontrols\T3000_Building_Automation_System\
 T3000 Output\Debug\T3WebLog\T3_PartitionMonitor_DDMMHHMM.log
 ```
 
-### Expected Log Content:
+### Expected Log Content
 ```
 2025-11-01 08:09:14 | INFO | 🔍 Checking for pending partition migrations on startup...
 2025-11-01 08:09:14 | INFO | 📋 Partition strategy: Monthly, retention: 30 days
@@ -296,7 +295,7 @@ T3000 Output\Debug\T3WebLog\T3_PartitionMonitor_DDMMHHMM.log
 
 ---
 
-## 🧪 Verification Steps
+## Verification Steps
 
 After deploying the fix, verify it's working:
 
@@ -348,7 +347,7 @@ ORDER BY start_date;
 
 ---
 
-## 📚 Documentation Created
+## Documentation Created
 
 1. **Data-Splitting-Strategy-Analysis.md**
    - Root cause analysis
@@ -374,22 +373,22 @@ ORDER BY start_date;
 
 ---
 
-## 🚀 Deployment Notes
+## Deployment Notes
 
-### Prerequisites:
-- ✅ Code compiled successfully (release mode)
-- ✅ All SQL queries verified against runtime schema
-- ✅ Logging framework in place
-- ✅ No breaking changes
+### Prerequisites
+- Code compiled successfully (release mode)
+- All SQL queries verified against runtime schema
+- Logging framework in place
+- No breaking changes
 
-### Deployment Steps:
+### Deployment Steps
 1. **Copy new DLL** to T3000 Output directory
 2. **Restart T3000** application
 3. **Wait 10 seconds** for startup migration
 4. **Check logs** for migration progress
 5. **Verify database sizes** reduced as expected
 
-### Rollback Plan:
+### Rollback Plan
 If issues occur:
 1. Stop T3000
 2. Restore previous DLL version
@@ -398,25 +397,25 @@ If issues occur:
 
 ---
 
-## 🎉 Summary (Original Fixes)
+## Summary (Original Fixes)
 
-### What Was Fixed:
-✅ SQL schema mismatch (snake_case → PascalCase)
-✅ Parent record migration queries
-✅ Detail record migration queries
-✅ Cleanup and orphan removal queries
-✅ Comprehensive logging added
-✅ Compilation errors resolved
+### What Was Fixed
+ SQL schema mismatch (snake_case → PascalCase)
+ Parent record migration queries
+ Detail record migration queries
+ Cleanup and orphan removal queries
+ Comprehensive logging added
+ Compilation errors resolved
 
-### What This Approach Attempted:
-✅ Automatic monthly data partitioning
-✅ Historical data migration to separate files
-✅ Main database size reduction (60% smaller)
-✅ Faster query performance (64% faster)
-✅ Detailed migration logging
-✅ Automatic cleanup of old data
+### What This Approach Attempted
+ Automatic monthly data partitioning
+ Historical data migration to separate files
+ Main database size reduction (60% smaller)
+ Faster query performance (64% faster)
+ Detailed migration logging
+ Automatic cleanup of old data
 
-### Expected Impact (If Approach Had Worked):
+### Expected Impact (If Approach Had Worked)
 - **Main DB**: 76 MB → 30 MB (46 MB freed)
 - **Query Speed**: 2-5s → 0.5-1s (64% faster)
 - **Records Migrated**: 259,246 historical records
@@ -425,29 +424,29 @@ If issues occur:
 
 ---
 
-## ⚠️ OUTCOME: APPROACH ABANDONED
+## Outcome: Approach Abandoned
 
-**Final Status**: ❌ **SUPERSEDED BY COPY-DELETE STRATEGY**
+**Final Status**: **SUPERSEDED BY COPY-DELETE STRATEGY**
 
 While the schema fixes documented here were correct, the ATTACH DATABASE approach for partition creation proved unreliable due to:
 
-- ❌ ATTACH visibility problems across separate SeaORM connections
-- ❌ WAL mode complications on Windows
-- ❌ "no such table: partition_db.sqlite_master" errors
-- ❌ Inconsistent partition file creation
+- ATTACH visibility problems across separate SeaORM connections
+- WAL mode complications on Windows
+- "no such table: partition_db.sqlite_master" errors
+- Inconsistent partition file creation
 
 **Successful Alternative (November 2, 2025):**
 The **Copy-Delete Strategy** successfully achieves all the original goals:
-- ✅ Copy entire main DB → partition file (std::fs::copy)
-- ✅ Delete non-period data from partition
-- ✅ VACUUM to shrink partition
-- ✅ Clean up WAL/SHM files
-- ✅ Same performance benefits achieved
-- ✅ More reliable than ATTACH approach
+- Copy entire main DB → partition file (std::fs::copy)
+- Delete non-period data from partition
+- VACUUM to shrink partition
+- Clean up WAL/SHM files
+- Same performance benefits achieved
+- More reliable than ATTACH approach
 
 **See Current Working Implementation:**
-- 📖 [Data-Splitting-Implementation-Guide.md](./Data-Splitting-Implementation-Guide.md) - Complete guide
-- 📖 [Data-Splitting-Strategy-Analysis.md](./Data-Splitting-Strategy-Analysis.md) - Includes resolution
+- [Data-Splitting-Implementation-Guide.md](./Data-Splitting-Implementation-Guide.md) - Complete guide
+- [Data-Splitting-Strategy-Analysis.md](./Data-Splitting-Strategy-Analysis.md) - Includes resolution
 
 ---
 

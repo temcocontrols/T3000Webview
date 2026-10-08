@@ -1,6 +1,5 @@
 # BACnet Protocol Research and YABE Analysis
 
-**Date:** July 29, 2025
 **Project:** T3000 BACnet Integration Research
 **Focus:** YABE Implementation Study and Block Read Analysis
 

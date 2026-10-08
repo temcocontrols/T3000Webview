@@ -248,9 +248,9 @@ Develop
 **Connection Panel**:
 - Transport selector: WebSocket / FFI / WebView2
 - Connection status indicator with color:
-  - 🟢 Green: Connected
-  - 🔴 Red: Disconnected
-  - 🟡 Yellow: Connecting
+  - Green: Connected
+  - Red: Disconnected
+  - Yellow: Connecting
 - Connection info: URL/endpoint
 - Auto-reconnect toggle
 - Connect/Disconnect buttons
@@ -299,7 +299,7 @@ Develop
 **Message History**:
 - Last 20 sent messages
 - Show timestamp, action, parameters
-- Status indicator (✓ success, ✗ error)
+- Status indicator ( success, error)
 - Response time
 - Click to reload message in builder
 - Clear history button
@@ -422,22 +422,22 @@ src/t3-react/features/develop/
 ## 6. Security Considerations
 
 ### File Access
-- ✅ Restrict to runtime folder only
-- ✅ No parent directory traversal (../)
-- ✅ Read-only by default
-- ✅ Whitelist file extensions for preview
+- Restrict to runtime folder only
+- No parent directory traversal (../)
+- Read-only by default
+- Whitelist file extensions for preview
 
 ### Database Access
-- ✅ Read-only queries by default
-- ✅ Confirm before DELETE/UPDATE
-- ✅ Query timeout (10 seconds)
-- ✅ Row limit (1000 rows max)
+- Read-only queries by default
+- Confirm before DELETE/UPDATE
+- Query timeout (10 seconds)
+- Row limit (1000 rows max)
 
 ### Transport Testing
-- ✅ Local connections only (localhost)
-- ✅ Timeout for all requests
-- ✅ Validate message format
-- ✅ Error boundary for crashes
+- Local connections only (localhost)
+- Timeout for all requests
+- Validate message format
+- Error boundary for crashes
 
 ---
 
@@ -484,10 +484,10 @@ src/t3-react/features/develop/
 ## 9. Implementation Priority
 
 ### Phase 1 (MVP)
-1. ✅ Develop layout with left nav
-2. ✅ File browser (basic tree view)
-3. ✅ Database viewer (table list + SELECT queries)
-4. ✅ Transport tester (basic send/receive)
+1. Develop layout with left nav
+2. File browser (basic tree view)
+3. Database viewer (table list + SELECT queries)
+4. Transport tester (basic send/receive)
 
 ### Phase 2 (Enhanced)
 5. SQL editor with syntax highlighting

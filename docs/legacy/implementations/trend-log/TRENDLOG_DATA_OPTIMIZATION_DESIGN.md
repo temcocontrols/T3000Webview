@@ -1,6 +1,6 @@
 # TRENDLOG_DATA Optimization Design - Split Table Strategy
 
-## 📊 Current Situation Analysis
+## Current Situation Analysis
 
 ### Runtime Database Statistics (from T3000 Debug Database)
 - **Total Records**: 146,702
@@ -61,7 +61,7 @@ For 146,702 records with 256 unique points:
 
 ---
 
-## 🎯 Proposed Solution: Split Table Design
+## Proposed Solution: Split Table Design
 
 ### Design Overview
 Split into 2 tables:
@@ -76,7 +76,7 @@ Split into 2 tables:
 
 ---
 
-## 📐 New Table Structures
+## New Table Structures
 
 ### Table 1: TRENDLOG_DATA_MAIN (Metadata Table)
 **Purpose**: Store static/semi-static point information **once per unique point**
@@ -160,7 +160,7 @@ ON TRENDLOG_DATA_DETAIL(point_main_id, logging_time DESC);
 
 ---
 
-## 🔄 Data Flow & Operations
+## Data Flow & Operations
 
 ### 1. Initial System Start (First Time)
 **What happens**: Discover and register all points
@@ -314,7 +314,7 @@ WHERE serial_number = 237219
 
 ---
 
-## 📈 Performance Comparison
+## Performance Comparison
 
 ### Storage Efficiency
 
@@ -354,7 +354,7 @@ ORDER BY d.logging_time DESC LIMIT 100;
 
 ---
 
-## 🔧 Implementation Impact Analysis
+## Implementation Impact Analysis
 
 ### Components Affected
 
@@ -379,9 +379,9 @@ async fn insert_trendlog_data_optimized(db: &DatabaseConnection, data: TrendlogD
 ```
 
 **Impact**:
-- ✅ **Benefit**: 60-70% faster inserts
-- ⚠️ **Risk**: Need to handle cache invalidation
-- 🔨 **Effort**: Medium (2-3 hours coding)
+- **Benefit**: 60-70% faster inserts
+- **Risk**: Need to handle cache invalidation
+- **Effort**: Medium (2-3 hours coding)
 
 ---
 
@@ -403,9 +403,9 @@ let data = trendlog_data_detail::Entity::find()
 ```
 
 **Impact**:
-- ✅ **Benefit**: Faster queries, smaller result sets
-- ⚠️ **Risk**: More complex SQL joins
-- 🔨 **Effort**: Medium (3-4 hours for all queries)
+- **Benefit**: Faster queries, smaller result sets
+- **Risk**: More complex SQL joins
+- **Effort**: Medium (3-4 hours for all queries)
 
 ---
 
@@ -413,13 +413,13 @@ let data = trendlog_data_detail::Entity::find()
 **Files**: `src/components/NewUI/TrendLogChart.vue`
 
 **Changes Required**:
-- ✅ **No changes required!** API response format stays the same
-- ✅ Backend handles the JOIN transparently
+- **No changes required!** API response format stays the same
+- Backend handles the JOIN transparently
 
 **Impact**:
-- ✅ **Benefit**: No frontend changes needed
-- ✅ **Risk**: None
-- 🔨 **Effort**: Zero
+- **Benefit**: No frontend changes needed
+- **Risk**: None
+- **Effort**: Zero
 
 ---
 
@@ -447,9 +447,9 @@ ALTER TABLE TRENDLOG_DATA RENAME TO TRENDLOG_DATA_OLD;
 ```
 
 **Impact**:
-- ⚠️ **Risk**: Data migration takes time (minutes for large DBs)
-- ⚠️ **Risk**: Need rollback strategy
-- 🔨 **Effort**: Medium (migration script + testing)
+- **Risk**: Data migration takes time (minutes for large DBs)
+- **Risk**: Need rollback strategy
+- **Effort**: Medium (migration script + testing)
 
 ---
 
@@ -461,44 +461,44 @@ ALTER TABLE TRENDLOG_DATA RENAME TO TRENDLOG_DATA_OLD;
 - Define relations between tables
 
 **Impact**:
-- ✅ **Benefit**: Type-safe database operations
-- 🔨 **Effort**: Low (SeaORM CLI can auto-generate)
+- **Benefit**: Type-safe database operations
+- **Effort**: Low (SeaORM CLI can auto-generate)
 
 ---
 
-## 🚀 Migration Strategy
+## Migration Strategy
 
 ### Phase 1: Preparation (No Downtime)
-1. ✅ Create new tables (TRENDLOG_DATA_MAIN, TRENDLOG_DATA_DETAIL)
-2. ✅ Keep old TRENDLOG_DATA table intact
-3. ✅ Create SeaORM entities for new tables
-4. ✅ Create caching layer for point_main_id lookups
+1. Create new tables (TRENDLOG_DATA_MAIN, TRENDLOG_DATA_DETAIL)
+2. Keep old TRENDLOG_DATA table intact
+3. Create SeaORM entities for new tables
+4. Create caching layer for point_main_id lookups
 
 ### Phase 2: Dual-Write Mode (Testing)
-1. ✅ Write to BOTH old and new tables
-2. ✅ Read from old table (safe fallback)
-3. ✅ Compare data integrity
-4. ✅ Monitor performance metrics
+1. Write to BOTH old and new tables
+2. Read from old table (safe fallback)
+3. Compare data integrity
+4. Monitor performance metrics
 
 ### Phase 3: Data Migration (Scheduled Downtime)
-1. ⚠️ Stop FFI sync service
-2. ⚠️ Migrate existing 146K records to new structure
-3. ⚠️ Verify data integrity (row counts, checksums)
-4. ⚠️ Update indexes and statistics
+1. Stop FFI sync service
+2. Migrate existing 146K records to new structure
+3. Verify data integrity (row counts, checksums)
+4. Update indexes and statistics
 
 ### Phase 4: Cutover (Switch to New)
-1. ✅ Switch reads to new tables
-2. ✅ Stop writing to old table
-3. ✅ Monitor for 24 hours
-4. ✅ Keep old table as backup for 7 days
+1. Switch reads to new tables
+2. Stop writing to old table
+3. Monitor for 24 hours
+4. Keep old table as backup for 7 days
 
 ### Phase 5: Cleanup
-1. ✅ Drop old TRENDLOG_DATA table
-2. ✅ Reclaim disk space (VACUUM)
+1. Drop old TRENDLOG_DATA table
+2. Reclaim disk space (VACUUM)
 
 ---
 
-## 📊 Expected Results
+## Expected Results
 
 ### After Implementation
 
@@ -515,74 +515,21 @@ ALTER TABLE TRENDLOG_DATA RENAME TO TRENDLOG_DATA_OLD;
 
 ---
 
-## ✅ Recommendation
+## Recommendation
 
-### **STRONGLY RECOMMENDED** to implement this optimization because:
+### **STRONGLY RECOMMENDED** to implement this optimization because
 
-1. ✅ **Massive storage savings** (80-85% reduction)
-2. ✅ **Better performance** (2-3× faster operations)
-3. ✅ **Cleaner data model** (separation of concerns)
-4. ✅ **Easier maintenance** (update metadata without touching history)
-5. ✅ **Scalability** (supports millions of records efficiently)
-6. ✅ **No frontend changes** (transparent to UI)
+1. **Massive storage savings** (80-85% reduction)
+2. **Better performance** (2-3× faster operations)
+3. **Cleaner data model** (separation of concerns)
+4. **Easier maintenance** (update metadata without touching history)
+5. **Scalability** (supports millions of records efficiently)
+6. **No frontend changes** (transparent to UI)
 
-### **Low Risk** because:
-- ✅ Can be implemented gradually (dual-write mode)
-- ✅ Old table kept as backup
-- ✅ Rollback strategy available
-- ✅ Well-tested migration pattern
-
----
-
-## 📝 Next Steps
-
-### If You Approve This Design:
-
-1. **I will create**:
-   - ✅ SQL schema for TRENDLOG_DATA_MAIN and TRENDLOG_DATA_DETAIL
-   - ✅ Migration script to convert existing data
-   - ✅ SeaORM entity definitions
-   - ✅ Updated Rust backend code (insert/query operations)
-   - ✅ Caching layer for point_main_id lookups
-   - ✅ Testing procedures
-
-2. **Timeline Estimate**:
-   - Schema creation: 1 hour
-   - Backend code updates: 4-6 hours
-   - Migration script: 2 hours
-   - Testing: 3-4 hours
-   - **Total**: 1-2 days of work
-
-3. **Your Review Points**:
-   - ❓ Do the table names look good? (MAIN vs DETAIL)
-   - ❓ Any additional metadata fields needed in MAIN table?
-   - ❓ Should we add batch_id or session_id to group syncs?
-   - ❓ Migration timing preference (immediate or scheduled)?
+### **Low Risk** because
+- Can be implemented gradually (dual-write mode)
+- Old table kept as backup
+- Rollback strategy available
+- Well-tested migration pattern
 
 ---
-
-## 🤔 Questions for You
-
-1. **Table Names**: Are `TRENDLOG_DATA_MAIN` and `TRENDLOG_DATA_DETAIL` acceptable names? Or prefer:
-   - `TRENDLOG_POINTS` and `TRENDLOG_VALUES`
-   - `TRENDLOG_METADATA` and `TRENDLOG_TIMESERIES`
-   - Other suggestions?
-
-2. **Migration Timing**: When would you like to migrate?
-   - During development (now, in test environment)
-   - After testing (production migration later)
-   - Gradual rollout (dual-write mode first)
-
-3. **Additional Features**: Should we add?
-   - `batch_id` to group all points from same sync cycle?
-   - `quality_flag` to mark good/bad/suspicious readings?
-   - Partitioning by time period (monthly/quarterly)?
-
-4. **Backward Compatibility**: Should we:
-   - Keep old table indefinitely as backup?
-   - Create database VIEW mimicking old structure?
-   - Drop old table after 30 days?
-
----
-
-**Please review and let me know if you approve this design or need any modifications!**

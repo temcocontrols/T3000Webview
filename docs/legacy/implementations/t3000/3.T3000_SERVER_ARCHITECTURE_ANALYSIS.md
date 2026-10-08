@@ -117,10 +117,10 @@ User Interface
 
 The following files require rollback to July 28th state:
 
-#### Migration File to Remove:
+#### Migration File to Remove
 - `api/migration/src/m20250122_000000_data_management_schema.rs` (350 lines)
 
-#### Entity Files to Remove:
+#### Entity Files to Remove
 - `api/src/entity/data_management/devices.rs`
 - `api/src/entity/data_management/monitoring_points.rs`
 - `api/src/entity/data_management/realtime_data_cache.rs`
@@ -129,7 +129,7 @@ The following files require rollback to July 28th state:
 - `api/src/entity/data_management/trend_log_points.rs`
 - `api/src/entity/data_management/mod.rs`
 
-#### Additional Files to Check:
+#### Additional Files to Check
 - Any references to data_management module in:
   - `api/src/lib.rs`
   - `api/migration/src/lib.rs`

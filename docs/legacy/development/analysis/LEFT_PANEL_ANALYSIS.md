@@ -9,7 +9,7 @@ The device list is displaying but with incorrect data because:
 
 ## C++ Tree Building Logic (MainFrm.cpp:1755-2255)
 
-### Key Steps:
+### Key Steps
 1. **LoadProductFromDB()**: Main function that builds entire tree
 2. **Database Query**: `SELECT * FROM ALL_NODE where Building_Name = '%s'`
 3. **Tree Structure**:
@@ -20,7 +20,7 @@ The device list is displaying but with incorrect data because:
            └── Devices (hProductItem)
    ```
 
-### Critical Fields from C++:
+### Critical Fields from C++
 ```cpp
 // Tree Product Structure
 tree_product {
@@ -36,13 +36,13 @@ tree_product {
 }
 ```
 
-### Device Display Logic (MainFrm.cpp:2180):
+### Device Display Logic (MainFrm.cpp:2180)
 ```cpp
 CString strProduct = q.getValuebyName(L"Product_name");
 tvInsert.item.pszText = (LPTSTR)(LPCTSTR)strProduct;
 ```
 
-### Icon Assignment (MainFrm.cpp:2048-2150):
+### Icon Assignment (MainFrm.cpp:2048-2150)
 - Based on `product_class_id`:
   - PM_CM5 (5) → TVINSERV_CMFIVE
   - PM_TSTAT10 (26) → TVINSERV_TSTAT8
@@ -50,7 +50,7 @@ tvInsert.item.pszText = (LPTSTR)(LPCTSTR)strProduct;
   - PM_T322AI (20) → TVINSERV_NET_WORK
   - etc.
 
-### Building/Subnet Logic (MainFrm.cpp:1965-1980):
+### Building/Subnet Logic (MainFrm.cpp:1965-1980)
 ```cpp
 // Creates "Local View" node for TCP devices
 if (b_remote_connection == false) {

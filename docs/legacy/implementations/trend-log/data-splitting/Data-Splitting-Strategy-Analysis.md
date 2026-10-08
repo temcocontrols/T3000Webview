@@ -5,7 +5,7 @@ The Data Splitting Strategy (Partition Monitor Service) is designed to automatic
 
 ---
 
-## 🎯 Feature Purpose
+## Feature Purpose
 
 **Goal**: Automatically split historical trendlog data into separate database files to:
 - Keep the main database size manageable (< 100MB target)
@@ -21,7 +21,7 @@ The Data Splitting Strategy (Partition Monitor Service) is designed to automatic
 
 ---
 
-## 📊 Configuration Status
+## Configuration Status
 
 ### Current Configuration (from `database_partition_config` table)
 ```
@@ -37,14 +37,14 @@ created_at: 2025-10-30 17:54:40
 updated_at: 2025-11-01 08:09:04
 ```
 
-**✅ Partitioning is ENABLED with MONTHLY strategy**
+** Partitioning is ENABLED with MONTHLY strategy**
 - Should create new partition when month changes
 - Should migrate data older than current month
 - Last updated on 2025-11-01, suggesting partition check happened
 
 ---
 
-## 📁 Current Database State
+## Current Database State
 
 ### Main Database
 - **File**: `webview_t3_device.db` (76MB)
@@ -67,11 +67,11 @@ Result: 1 record for webview_t3_device_2025-11-01.db
 - Records: 0
 ```
 
-**⚠️ Issue Identified**: Partition files created but NO DATA MIGRATED
+** Issue Identified**: Partition files created but NO DATA MIGRATED
 
 ---
 
-## 🔍 Root Cause Analysis
+## Root Cause Analysis
 
 ### Issue #1: Database Schema Mismatch
 
@@ -110,7 +110,7 @@ Result:
 1|Value|TEXT|1||0
 ```
 
-**🔴 CRITICAL MISMATCH**:
+** CRITICAL MISMATCH**:
 - Runtime DB: `ParentId`, `Value` (2 columns only, Pascal case)
 - Expected: `parent_id`, `value`, `logging_time`, `logging_time_fmt`, etc. (snake_case with timestamps)
 
@@ -131,9 +131,9 @@ Partition monitor service creates full schema (lines 103-133) with all columns i
 ### Issue #3: Missing Comprehensive Logging
 
 **Current Logging**:
-- ✅ Service startup logged (`T3_PartitionMonitor` logger exists)
-- ✅ Hourly checks logged
-- ❌ NO logging for:
+- Service startup logged (`T3_PartitionMonitor` logger exists)
+- Hourly checks logged
+- NO logging for:
   - Migration start/completion
   - Record counts migrated
   - Errors during migration
@@ -144,7 +144,7 @@ Partition monitor service creates full schema (lines 103-133) with all columns i
 
 ---
 
-## 📋 Service Implementation Details
+## Service Implementation Details
 
 ### 1. Startup Flow (lib.rs lines 195-225)
 
@@ -211,7 +211,7 @@ graph TD
 
 ---
 
-## 🚧 Why Partition Files are 8KB
+## Why Partition Files are 8KB
 
 The 8KB partition file contains:
 1. SQLite database headers (~4KB)
@@ -226,31 +226,31 @@ The 8KB partition file contains:
 
 ---
 
-## ✅ What Works Currently
+## What Works Currently
 
-1. ✅ Partition configuration saved and loaded correctly
-2. ✅ Hourly background service running
-3. ✅ Startup migration check executes
-4. ✅ Period boundary detection (Daily, Weekly, Monthly)
-5. ✅ Partition file creation with proper naming
-6. ✅ `database_files` tracking table registration
-7. ✅ WAL mode and SQLite optimizations applied
-
----
-
-## ❌ What Doesn't Work
-
-1. ❌ Data migration queries fail (column mismatch)
-2. ❌ No records moved from main DB to partitions
-3. ❌ No partition-specific logging (can't verify execution)
-4. ❌ Main database size never reduces
-5. ❌ Partition files remain empty (8KB with schema only)
-6. ❌ Error handling doesn't surface issues to logs
-7. ❌ Schema incompatibility between code and runtime DB
+1. Partition configuration saved and loaded correctly
+2. Hourly background service running
+3. Startup migration check executes
+4. Period boundary detection (Daily, Weekly, Monthly)
+5. Partition file creation with proper naming
+6. `database_files` tracking table registration
+7. WAL mode and SQLite optimizations applied
 
 ---
 
-## 🔧 Required Fixes
+## What Doesn't Work
+
+1. Data migration queries fail (column mismatch)
+2. No records moved from main DB to partitions
+3. No partition-specific logging (can't verify execution)
+4. Main database size never reduces
+5. Partition files remain empty (8KB with schema only)
+6. Error handling doesn't surface issues to logs
+7. Schema incompatibility between code and runtime DB
+
+---
+
+## Required Fixes
 
 ### Fix #1: Update Migration Queries to Match Runtime Schema
 
@@ -333,46 +333,46 @@ if let Err(e) = partition_monitor_service::check_startup_migrations().await {
 
 ---
 
-## 📈 Testing Plan
+## Testing Plan
 
 ### Test Case 1: Schema Compatibility
 1. Query actual runtime DB schema
 2. Update migration queries to use correct column names
 3. Test migration with 1 day of data
 4. Verify:
-   - ✅ Records migrated successfully
-   - ✅ Partition file contains data
-   - ✅ Main DB size reduced
-   - ✅ Logs show record counts
+   - Records migrated successfully
+   - Partition file contains data
+   - Main DB size reduced
+   - Logs show record counts
 
 ### Test Case 2: Monthly Strategy
 1. Configure Monthly strategy
 2. Wait for month change (or simulate by setting test date)
 3. Verify:
-   - ✅ New partition created on 1st of month
-   - ✅ Previous month's data migrated
-   - ✅ Logs show migration details
-   - ✅ `database_files` table updated
+   - New partition created on 1st of month
+   - Previous month's data migrated
+   - Logs show migration details
+   - `database_files` table updated
 
 ### Test Case 3: Daily Strategy
 1. Configure Daily strategy
 2. Wait 24 hours (or simulate)
 3. Verify:
-   - ✅ New partition created daily
-   - ✅ Yesterday's data migrated
-   - ✅ Logs show daily migrations
+   - New partition created daily
+   - Yesterday's data migrated
+   - Logs show daily migrations
 
 ### Test Case 4: Startup Recovery
 1. Stop service with pending migrations
 2. Restart service
 3. Verify:
-   - ✅ Startup check detects gaps
-   - ✅ Missing periods migrated
-   - ✅ Logs show recovery process
+   - Startup check detects gaps
+   - Missing periods migrated
+   - Logs show recovery process
 
 ---
 
-## 📊 Performance Considerations
+## Performance Considerations
 
 ### Current State
 - **Main DB**: 76MB (405,642 records)
@@ -387,26 +387,7 @@ if let Err(e) = partition_monitor_service::check_startup_migrations().await {
 
 ---
 
-## 🎯 Next Steps
-
-1. **Immediate**:
-   - Query runtime DB schema to understand actual column names
-   - Update migration queries in `partition_monitor_service.rs`
-   - Add comprehensive logging to all partition operations
-
-2. **Short Term**:
-   - Test migration with 1 day of data
-   - Verify logs show proper execution
-   - Document working flow
-
-3. **Long Term**:
-   - Monitor partition service in production
-   - Add UI indicators for partition status
-   - Consider automatic cleanup of old partitions
-
----
-
-## 📝 Related Files
+## Related Files
 
 - `api/src/database_management/partition_monitor_service.rs` - Main partition logic
 - `api/src/database_management/mod.rs` - Database config service
@@ -416,7 +397,7 @@ if let Err(e) = partition_monitor_service::check_startup_migrations().await {
 
 ---
 
-## 🔗 Dependencies
+## Dependencies
 
 - **SeaORM**: Database access and queries
 - **SQLite**: ATTACH DATABASE for cross-file operations
@@ -425,19 +406,19 @@ if let Err(e) = partition_monitor_service::check_startup_migrations().await {
 
 ---
 
-## 📌 Summary
+## Summary
 
-**Status**: 🟡 **PARTIALLY WORKING** - Infrastructure operational, data migration blocked by schema mismatch
+**Status**: **PARTIALLY WORKING** - Infrastructure operational, data migration blocked by schema mismatch
 
-**Priority**: 🔴 **HIGH** - Main DB will continue growing without working partitioning
+**Priority**: **HIGH** - Main DB will continue growing without working partitioning
 
-**Effort**: 🟢 **LOW** - Fix requires query updates and logging additions (2-4 hours)
+**Effort**: **LOW** - Fix requires query updates and logging additions (2-4 hours)
 
-**Impact**: 🔵 **HIGH** - Critical for long-term database performance and maintainability
+**Impact**: **HIGH** - Critical for long-term database performance and maintainability
 
 ---
 
-## 🎯 RESOLUTION (November 2, 2025)
+## RESOLUTION (November 2, 2025)
 
 ### Final Solution: Copy-Delete Strategy
 
@@ -586,7 +567,7 @@ Total              | ~5s      | Per partition
 
 ### Deployment Status
 
-**Current State**: ✅ Ready for Testing
+**Current State**: Ready for Testing
 - [x] Copy-delete strategy implemented
 - [x] WAL/SHM cleanup working
 - [x] Query service enhanced with logging
@@ -609,17 +590,7 @@ Total              | ~5s      | Per partition
 4. **WAL files need explicit cleanup** on Windows
 5. **Keep metadata simple**: Don't delete parent records, only details
 
-### Next Steps
-
-1. ✅ Monitor partition creation in production environment
-2. ✅ Verify query service works with real data
-3. ⏳ Test over multiple period transitions
-4. ⏳ Enable main DB deletion after confidence gained
-5. ⏳ Monitor disk space savings
-
----
-
-## 📚 Related Documentation
+## Related Documentation
 
 For complete implementation details, see:
 - **[Data-Splitting-Implementation-Guide.md](./Data-Splitting-Implementation-Guide.md)** - Comprehensive implementation guide with updated flows
@@ -628,5 +599,5 @@ For complete implementation details, see:
 ---
 
 *Analysis Last Updated: November 2, 2025*
-*Status: ✅ RESOLVED with Copy-Delete Strategy*
+*Status: RESOLVED with Copy-Delete Strategy*
 *Status: Pending schema investigation and query fixes*

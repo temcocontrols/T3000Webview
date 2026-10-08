@@ -1,6 +1,6 @@
 # T3000 Building Automation System — WebView Edition
 
-## 🔍 Overview
+## Overview
 
 We have built a **new web‑based layout for the T3000 Building Automation System**, designed as an assist system to the existing T3000 desktop application.  
 
@@ -13,7 +13,7 @@ It’s essentially the **web version of T3000**: same functionality, same depth,
 ![2](./pic/02.png)
 ---
 
-## 📋 How to Use It
+## How to Use It
 
 Getting started is simple:
 
@@ -25,7 +25,7 @@ Getting started is simple:
 
 ---
 
-## 🔀 What’s the Same, What’s New, and What’s Next
+## What’s the Same, What’s New, and What’s Next
 
 ### Kept the Same
 
@@ -146,7 +146,7 @@ Integrated help and guides directly within the interface. *
 
 ---
 
-## ⚙️ How It Works
+## How It Works
 
 The general flow is straightforward:  
 - **Field devices** send data and events.  
@@ -156,7 +156,7 @@ The general flow is straightforward:
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 - **Frontend**: React 18 + Fluent UI v9  
 - **Backend**: Rust (Axum) + WebSocket  
@@ -164,4 +164,3 @@ The general flow is straightforward:
 - **Device Interface**: FFI calls into T3000.exe BACnet engine   
 
 ---
-

@@ -295,29 +295,29 @@ Advanced tool behavior:
 ### 1. vs. AutoCAD
 | Feature | AutoCAD | T3000 Drawing Library |
 |---------|---------|----------------------|
-| Drawing Precision | ✅ High | ✅ CAD-level |
-| HVAC Specialization | ❌ Generic | ✅ HVAC-specific |
-| Real-Time Data | ❌ Static | ✅ Live integration |
-| Web-Based | ❌ Desktop only | ✅ Browser-native |
-| Collaboration | 💰 Paid add-on | ✅ Built-in |
+| Drawing Precision | Yes High | Yes CAD-level |
+| HVAC Specialization | No Generic | Yes HVAC-specific |
+| Real-Time Data | No Static | Yes Live integration |
+| Web-Based | No Desktop only | Yes Browser-native |
+| Collaboration | Paid add-on | Yes Built-in |
 
 ### 2. vs. Visio
 | Feature | Visio | T3000 Drawing Library |
 |---------|-------|----------------------|
-| Shape Libraries | ✅ Extensive | ✅ HVAC-specialized |
-| Vector Graphics | ✅ Yes | ✅ SVG-native |
-| Data Integration | ⚠️ Limited | ✅ Real-time T3000 |
-| Web Deployment | ❌ Desktop/Office 365 | ✅ Any browser |
-| Programming API | ⚠️ COM/VBA | ✅ Modern TypeScript |
+| Shape Libraries | Yes Extensive | Yes HVAC-specialized |
+| Vector Graphics | Yes Yes | Yes SVG-native |
+| Data Integration | Warning Limited | Yes Real-time T3000 |
+| Web Deployment | No Desktop/Office 365 | Yes Any browser |
+| Programming API | Warning COM/VBA | Yes Modern TypeScript |
 
 ### 3. vs. D3.js
 | Feature | D3.js | T3000 Drawing Library |
 |---------|-------|----------------------|
-| Data Visualization | ✅ Excellent | ✅ HVAC-optimized |
-| Drawing Tools | ❌ None | ✅ Professional CAD |
-| User Interaction | ⚠️ Custom coding | ✅ Built-in tools |
-| HVAC Domain | ❌ Generic | ✅ Domain-specific |
-| Learning Curve | ❌ Steep | ✅ HVAC-intuitive |
+| Data Visualization | Yes Excellent | Yes HVAC-optimized |
+| Drawing Tools | No None | Yes Professional CAD |
+| User Interaction | Warning Custom coding | Yes Built-in tools |
+| HVAC Domain | No Generic | Yes Domain-specific |
+| Learning Curve | No Steep | Yes HVAC-intuitive |
 
 ## Strategic Advantages
 

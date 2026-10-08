@@ -191,7 +191,7 @@ To test the startup sync:
 
 ## Summary
 
-✅ **ONE-TIME sync** at startup populates TRENDLOG config for all devices
-✅ **Manual refresh** available via HTTP API or UI
-✅ **No overhead** on periodic sync (only data, not config)
-✅ **Fast UI** - no waiting for FFI calls when opening trendlog window
+ **ONE-TIME sync** at startup populates TRENDLOG config for all devices
+ **Manual refresh** available via HTTP API or UI
+ **No overhead** on periodic sync (only data, not config)
+ **Fast UI** - no waiting for FFI calls when opening trendlog window

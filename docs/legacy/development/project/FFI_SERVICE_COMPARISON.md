@@ -15,13 +15,13 @@
 **Simple pass-through HTTP API** - Acts as a thin middleware layer between frontend and T3000 FFI
 
 ### Key Features
-- ✅ Single HTTP endpoint: `/api/t3000/ffi/call`
-- ✅ Receives JSON message from frontend
-- ✅ Calls `BacnetWebView_HandleWebViewMsg` FFI function
-- ✅ Returns raw FFI response to frontend
-- ✅ **No data processing** - just passes data through
-- ✅ **No database operations** - pure FFI wrapper
-- ✅ **No background sync** - only responds to HTTP requests
+- Single HTTP endpoint: `/api/t3000/ffi/call`
+- Receives JSON message from frontend
+- Calls `BacnetWebView_HandleWebViewMsg` FFI function
+- Returns raw FFI response to frontend
+- **No data processing** - just passes data through
+- **No database operations** - pure FFI wrapper
+- **No background sync** - only responds to HTTP requests
 
 ### Architecture
 ```
@@ -50,14 +50,14 @@ Frontend ← HTTP Response ← JSON Response ← FFI Response ←───┘
 **Primary T3000 integration service** - Complete data synchronization and management system
 
 ### Key Features
-- ✅ **Background sync service** - runs continuously
-- ✅ **Database synchronization** - stores data in `webview_t3_device.db`
-- ✅ **Device management** - tracks devices, points, trendlogs
-- ✅ **Multi-device support** - syncs data from multiple T3000 devices
-- ✅ **Trendlog data collection** - saves INPUT/OUTPUT/VARIABLE point data
-- ✅ **Configurable intervals** - default 30-second sync
-- ✅ **One-time startup sync** - `sync_all_trendlog_configs()`
-- ✅ **Complete data processing** - parses, transforms, stores data
+- **Background sync service** - runs continuously
+- **Database synchronization** - stores data in `webview_t3_device.db`
+- **Device management** - tracks devices, points, trendlogs
+- **Multi-device support** - syncs data from multiple T3000 devices
+- **Trendlog data collection** - saves INPUT/OUTPUT/VARIABLE point data
+- **Configurable intervals** - default 30-second sync
+- **One-time startup sync** - `sync_all_trendlog_configs()`
+- **Complete data processing** - parses, transforms, stores data
 
 ### Architecture
 ```
@@ -104,35 +104,35 @@ Log to T3WebLog
 |---------|-------------------|----------------------|
 | **Size** | 183 lines | 1,954 lines |
 | **Purpose** | HTTP passthrough | Full sync service |
-| **Database** | ❌ None | ✅ Full database ops |
-| **Background Service** | ❌ No | ✅ Yes (continuous) |
-| **Data Processing** | ❌ Raw passthrough | ✅ Parse, transform, store |
-| **Multi-Device** | ❌ Single call | ✅ Multiple devices |
-| **Trendlog Storage** | ❌ No | ✅ TRENDLOG_DATA table |
-| **Startup Sync** | ❌ No | ✅ One-time sync |
+| **Database** | No None | Yes Full database ops |
+| **Background Service** | No No | Yes Yes (continuous) |
+| **Data Processing** | No Raw passthrough | Yes Parse, transform, store |
+| **Multi-Device** | No Single call | Yes Multiple devices |
+| **Trendlog Storage** | No No | Yes TRENDLOG_DATA table |
+| **Startup Sync** | No No | Yes One-time sync |
 | **HTTP Endpoints** | 1 endpoint | 0 endpoints (background only) |
 | **FFI Functions Called** | `BacnetWebView_HandleWebViewMsg` | Multiple FFI functions |
-| **Constants Used** | ❌ No | ✅ DATA_SOURCE_FFI_SYNC, etc. |
+| **Constants Used** | No No | Yes DATA_SOURCE_FFI_SYNC, etc. |
 | **Logging** | Basic API logging | Structured T3WebLog logging |
 
 ---
 
 ## When to Use Each
 
-### Use `t3_ffi_api_service` when:
-- ✅ Need quick FFI call from frontend
-- ✅ Don't need data persistence
-- ✅ Want simple request/response pattern
-- ✅ Testing FFI functionality
-- ✅ Alternative to WebSocket
+### Use `t3_ffi_api_service` when
+- Need quick FFI call from frontend
+- Don't need data persistence
+- Want simple request/response pattern
+- Testing FFI functionality
+- Alternative to WebSocket
 
-### Use `t3_ffi_sync_service` when:
-- ✅ Need continuous background sync
-- ✅ Want historical data storage
-- ✅ Need multi-device monitoring
-- ✅ Require offline data access
-- ✅ Building trend charts/analysis
-- ✅ Need database persistence
+### Use `t3_ffi_sync_service` when
+- Need continuous background sync
+- Want historical data storage
+- Need multi-device monitoring
+- Require offline data access
+- Building trend charts/analysis
+- Need database persistence
 
 ---
 
@@ -151,6 +151,6 @@ They **complement each other**, not duplicate:
 
 ## Recommendation
 
-✅ **Keep both files** - they serve different purposes and are both actively used.
+ **Keep both files** - they serve different purposes and are both actively used.
 
 **Do NOT merge or remove either one.**

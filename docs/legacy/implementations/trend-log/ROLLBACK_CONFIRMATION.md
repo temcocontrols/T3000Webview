@@ -15,7 +15,7 @@ This document confirms all files that need to be rolled back to the state before
 - **Directory**: `api/src/entity/data_management/`
 - **Action**: DELETE entire directory and all contents
 
-#### Files in data_management directory:
+#### Files in data_management directory
 - `api/src/entity/data_management/mod.rs`
 - `api/src/entity/data_management/devices.rs`
 - `api/src/entity/data_management/monitoring_points.rs`
@@ -121,7 +121,7 @@ rm -rf api/src/entity/data_management/
 cd api && cargo check
 ```
 
-## Confirmation ✅
+## Confirmation
 
 **CONFIRMED**: All files listed above require rollback to restore the system to the pre-January 22nd state, providing a clean foundation for the new trendlog database implementation.
 

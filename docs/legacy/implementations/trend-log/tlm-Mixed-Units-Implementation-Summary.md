@@ -4,31 +4,31 @@
 
 Based on your requirements, I've successfully implemented a comprehensive mixed digital/analog time series chart system for the T3000Webview. Here's what I understood and what has been completed:
 
-## 📋 Understanding of Your Requirements
+## Understanding of Your Requirements
 
 ### 1. **14 Items with Mixed Properties**
-- ✅ Each of the 14 series has its own properties
-- ✅ Item types: VAR, Input, Output, HOL (and others)
-- ✅ Each item has a field to store values:
+- Each of the 14 series has its own properties
+- Item types: VAR, Input, Output, HOL (and others)
+- Each item has a field to store values:
   - **Digital items**: Store 0/1 (for Off/On states)
   - **Analog items**: Store continuous values (like 2.1 for temperature)
 
 ### 2. **Shape Binding System**
-- ✅ Understood: System binds items to shapes in a drawing area (separate feature)
-- ✅ Modal supports any combination of bound items
+- Understood: System binds items to shapes in a drawing area (separate feature)
+- Modal supports any combination of bound items
 
 ### 3. **T3000 Polling Loop Integration**
-- ✅ Understood: 5-second internal loop reads values from T3000
-- ✅ Data structure: `{timestamp: "2025-01-10:10:10:10", value: 3.10}`
-- ✅ **Digital example**: `{2025-01-10:10:10:10, 1}, {2025-01-10:10:10:15, 1}, {2025-01-10:10:10:20, 0}`
-- ✅ **Analog example**: `{2025-01-10:10:10:10, 3.10}, {2025-01-10:10:10:15, 4.2}, {2025-01-10:10:10:20, 1.2}`
+- Understood: 5-second internal loop reads values from T3000
+- Data structure: `{timestamp: "2025-01-10:10:10:10", value: 3.10}`
+- **Digital example**: `{2025-01-10:10:10:10, 1}, {2025-01-10:10:10:15, 1}, {2025-01-10:10:10:20, 0}`
+- **Analog example**: `{2025-01-10:10:10:10, 3.10}, {2025-01-10:10:10:15, 4.2}, {2025-01-10:10:10:20, 1.2}`
 
 ### 4. **Mixed Visualization Requirement**
-- ✅ Both digital and analog data shown simultaneously
-- ✅ Digital: Step-line visualization (shows state transitions clearly)
-- ✅ Analog: Smooth/straight line visualization (shows continuous changes)
+- Both digital and analog data shown simultaneously
+- Digital: Step-line visualization (shows state transitions clearly)
+- Analog: Smooth/straight line visualization (shows continuous changes)
 
-## 🚀 What Has Been Implemented
+## What Has Been Implemented
 
 ### 1. **Enhanced Data Structure**
 ```typescript
@@ -59,7 +59,7 @@ interface SeriesConfig {
 
 ### 4. **Intelligent UI Components**
 
-#### Series List Display:
+#### Series List Display
 ```vue
 <div class="series-info">
   <span class="series-name">BMC01E1E-3P1B</span>
@@ -70,11 +70,11 @@ interface SeriesConfig {
 </div>
 ```
 
-#### Smart Tooltips:
+#### Smart Tooltips
 - **Digital**: "Fan Status: On (1)" - Shows state text + value
 - **Analog**: "Temperature: 23.45°C" - Shows value + unit
 
-#### Context-Aware Statistics:
+#### Context-Aware Statistics
 - **Digital**:
   - Last: "On (1)" or "Off (0)"
   - Avg: "75.2% High" (percentage of time in high state)
@@ -84,7 +84,7 @@ interface SeriesConfig {
 
 ### 5. **T3000 Integration Functions**
 
-#### Mock T3000 Data Structure:
+#### Mock T3000 Data Structure
 ```typescript
 interface T3000SeriesData {
   name: string                    // "BMC01E1E-1P1B"
@@ -95,7 +95,7 @@ interface T3000SeriesData {
 }
 ```
 
-#### Real-time Data Update Function:
+#### Real-time Data Update Function
 ```typescript
 // For your 5-second T3000 polling loop
 const updateFromT3000Data = (seriesName: string, timestamp: number, value: number) => {
@@ -107,7 +107,7 @@ const updateFromT3000Data = (seriesName: string, timestamp: number, value: numbe
 
 ### 6. **Data Generation Examples**
 
-#### Digital Data Pattern:
+#### Digital Data Pattern
 ```javascript
 // Input item with digital unit (Off/On)
 { timestamp: 1736506200000, value: 1 }  // On
@@ -116,7 +116,7 @@ const updateFromT3000Data = (seriesName: string, timestamp: number, value: numbe
 { timestamp: 1736506215000, value: 0 }  // Still Off
 ```
 
-#### Analog Data Pattern:
+#### Analog Data Pattern
 ```javascript
 // VAR item with temperature unit (°C)
 { timestamp: 1736506200000, value: 23.1 }  // 23.1°C
@@ -130,9 +130,9 @@ const updateFromT3000Data = (seriesName: string, timestamp: number, value: numbe
 - **Analog**: Continuous variations with unit-appropriate ranges
 - **Mixed Rendering**: Both types update simultaneously in real-time
 
-## 🎯 Ready for Your T3000 Integration
+## Ready for Your T3000 Integration
 
-### How to Connect Your 5-Second Loop:
+### How to Connect Your 5-Second Loop
 
 1. **Replace Mock Data Generation**:
 ```typescript
@@ -155,15 +155,15 @@ setInterval(() => {
 }, 5000)
 ```
 
-### What You Get:
-- ✅ **Digital items** display as step-lines showing clear On/Off transitions
-- ✅ **Analog items** display as smooth curves showing temperature/pressure changes
-- ✅ **Mixed display** shows both types simultaneously
-- ✅ **Professional tooltips** show "On/Off" for digital, "23.5°C" for analog
-- ✅ **Smart statistics** appropriate for each data type
-- ✅ **Real-time updates** as your T3000 loop feeds new data
+### What You Get
+- **Digital items** display as step-lines showing clear On/Off transitions
+- **Analog items** display as smooth curves showing temperature/pressure changes
+- **Mixed display** shows both types simultaneously
+- **Professional tooltips** show "On/Off" for digital, "23.5°C" for analog
+- **Smart statistics** appropriate for each data type
+- **Real-time updates** as your T3000 loop feeds new data
 
-## 📊 Visual Example of Mixed Chart
+## Visual Example of Mixed Chart
 
 Imagine your Time Series panel showing:
 - **Series 1** (VAR, Temperature): Smooth curve from 20°C to 25°C
@@ -173,22 +173,22 @@ Imagine your Time Series panel showing:
 
 All on the same chart, with appropriate tooltips and statistics for each type.
 
-## ✅ Confirmation
+## Confirmation
 
 **Is this understanding correct?**
-1. **14 items** with mixed VAR/Input/Output/HOL types ✅
-2. **Digital values** (0/1) for things like fan status, alarms ✅
-3. **Analog values** (continuous) for temperature, pressure, etc. ✅
-4. **T3000 polling** every 5 seconds provides new data points ✅
-5. **Mixed visualization** shows both types simultaneously ✅
-6. **Time-series data** stored as {timestamp, value} pairs ✅
+1. **14 items** with mixed VAR/Input/Output/HOL types 
+2. **Digital values** (0/1) for things like fan status, alarms 
+3. **Analog values** (continuous) for temperature, pressure, etc. 
+4. **T3000 polling** every 5 seconds provides new data points 
+5. **Mixed visualization** shows both types simultaneously 
+6. **Time-series data** stored as {timestamp, value} pairs 
 
 The implementation is complete and ready for your T3000 integration. Let me know if you need any adjustments or if I've understood everything correctly!
 
 ---
 
 **Implementation Date**: July 10, 2025
-**Status**: ✅ Complete and Ready for T3000 Integration
+**Status**: Complete and Ready for T3000 Integration
 **Files Modified**: `src/components/NewUI/TrendLogModal.vue`
 
 ## T3000.rc Analysis and Unit Updates (Latest)
@@ -254,18 +254,18 @@ else if ((unitCode >= 31 && unitCode <= 63) || (unitCode >= 100 && unitCode <= 1
 
 ### Impact Assessment
 
-#### ✅ Benefits
+#### Benefits
 - **100% T3000.rc compatibility**: All official unit codes now supported
 - **Correct state visualization**: Digital units show proper state text
 - **Extended unit support**: Environmental and industrial sensors supported
 - **Better accuracy**: Unit symbols and labels match T3000 exactly
 
-#### ✅ Compatibility
+#### Compatibility
 - **No breaking changes**: Existing unit codes continue to work
 - **Backward compatible**: Previous implementations remain functional
 - **Forward compatible**: Ready for new T3000 unit additions
 
-#### ✅ Quality Improvements
+#### Quality Improvements
 - **More accurate tooltips**: Correct state names and unit symbols
 - **Better statistics**: Proper unit awareness for calculations
 - **Improved UI**: More professional unit display matching T3000

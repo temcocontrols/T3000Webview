@@ -1,6 +1,5 @@
-## T3000 → WebView Migration Analysis
+# T3000 → WebView Migration Analysis
 
-Date: 2025-11-03
 Branch: feature/new-ui
 
 This document captures a first-pass, actionable analysis and migration plan to move the legacy MFC-based T3000 C++ application into the WebView / web stack used by this repository. It is intentionally pragmatic and phased so the team can deliver incremental value while preserving the existing UI and workflows.
@@ -100,12 +99,6 @@ This document captures a first-pass, actionable analysis and migration plan to m
 - Generate an automated inventory CSV listing all `*.cpp` and `*.h` under `T3000-Source/T3000` with classification by folder and guessed subsystem. (I can produce this next.)
 - Add `docs/t3-application/COMPONENT-MAPPING.csv` to track per-file migration progress.
 - Seed top-level Vue shell pages and a placeholder `T3000-shell` route in `src/pages/` so design work can start in parallel.
-
-## Next steps (immediate)
-1. Run a file inventory pass and produce a per-file mapping CSV. (I can generate this now.)
-2. Create `docs/t3-application/COMPONENT-MAPPING.csv` and populate with initial entries for high-value dialogs (TrendLog, GraphicView, Bacnet* files).
-3. Implement Rust service endpoints for building/device tree and trend queries (small API to test end-to-end).
-4. Implement a minimal Vue shell page with a static tree and TrendLog chart wired to a mock endpoint to validate layout.
 
 ## Files created/edited
 - `docs/t3-application/T3000-Migration-Analysis.md` — this file (planning & roadmap).

@@ -87,16 +87,3 @@ const ANALOG_UNITS = {
 3. **Export Format**: Should CSV export show digital states as text or numeric?
 4. **Unit Display**: Show unit codes or descriptive names in the UI?
 5. **Real-time Updates**: Same update frequency for both digital and analog?
-
-## Next Steps
-
-1. Confirm analysis accuracy
-2. Implement unit type system
-3. Update chart configuration for mixed visualization
-4. Test with sample digital and analog data
-5. Validate step-line rendering for digital units
-
----
-
-**Analysis Date**: July 10, 2025
-**Status**: Pending Implementation Confirmation
