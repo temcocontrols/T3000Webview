@@ -87,8 +87,8 @@ the shell must draw, because `ProjectEditor.Content` returns the runtime page *i
 |---|---|---|---|
 | **Edit** | `rootEditor` | Pages·Widgets·Actions above Components Palette + Widgets Structure (rail = Texts…Changes) | the active editor |
 | **Run** | runtime on, **no** debugger | **none** — `Content` returns the runtime page before it looks at the model | the running screen, full area |
-| **Debug** | runtime on, debugger active | `rootRuntime`: Pages·Widgets·Actions ／ Active Flows ／ Watch · Queue·Breakpoints ／ Logs | the active editor (the runtime page) |
-| **Full Sim** | `rootDockerSimulator` | left **none** · right Build Logs ／ Preview Logs | the model's *Preview* panel |
+| **Debug** | runtime on, debugger active | `rootRuntime`: Pages·Widgets·Actions / Active Flows / Watch · Queue·Breakpoints / Logs | the active editor (the runtime page) |
+| **Full Sim** | `rootDockerSimulator` | left **none** · right Build Logs / Preview Logs | the model's *Preview* panel |
 | *(no project)* | — | placeholders, labelled from the URL | `EezStudioApp`'s boot state |
 
 Consequences the projection had to absorb:

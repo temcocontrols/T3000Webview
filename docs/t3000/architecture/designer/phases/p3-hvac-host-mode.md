@@ -136,7 +136,6 @@ and `HvacCanvas.tsx` renders those ids. Benefits: two documents can never collid
 
 ## 5. Acceptance criteria
 
-
 - All five containers come from configuration; defaults unchanged.
 - The grep gate in §3.2 is clean.
 - Old page and new page both work. — *after P4 both URLs land on the same document, re-checked in this pass (settled undo ring, drawing rendering, 7 objects)*

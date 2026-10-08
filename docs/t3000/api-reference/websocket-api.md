@@ -1,4 +1,4 @@
-﻿# WebSocket API
+# WebSocket API
 
 <!-- USER-GUIDE -->
 
@@ -37,7 +37,7 @@ const ws = new WebSocket('ws://localhost:9103/ws');
 
 <!-- TECHNICAL -->
 
-# WebSocket API
+## WebSocket API
 
 ## Protocol Specification
 
@@ -288,10 +288,3 @@ class WebSocketServer {
   }
 }
 ```
-
-## Next Steps
-
-- [REST API](./rest-api)
-- [Events](./events)
-- [Modbus Protocol](./modbus-protocol)
-

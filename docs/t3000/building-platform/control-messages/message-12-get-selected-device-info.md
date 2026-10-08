@@ -1,4 +1,4 @@
-# Message 12: GET_SELECTED_DEVICE_INFO
+# Message 12: GET_Selected_Device_Info
 
 <!-- USER-GUIDE -->
 The GET_SELECTED_DEVICE_INFO message retrieves information about the currently selected device in T3000.

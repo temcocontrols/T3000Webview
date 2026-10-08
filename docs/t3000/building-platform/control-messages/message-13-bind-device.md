@@ -13,7 +13,7 @@ The BIND_DEVICE message associates a device with a panel. This message is curren
 **Direction:** Frontend → Backend
 **Location:** Not implemented
 **Purpose:** Bind device to panel
-**Status:** ⚠️ Not implemented
+**Status:** Not implemented
 
 ## Expected Request Format
 

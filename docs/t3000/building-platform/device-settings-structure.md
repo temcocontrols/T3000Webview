@@ -691,8 +691,6 @@ console.log(`Module: ${moduleName}`); // "Module: T3-BB"
 
 **Note:** Values 1-4 are legacy Asix-based controllers. Modern ARM-based controllers use values 5-8 and above.
 
-
-
 ### Rust API Endpoint
 
 ```rust

@@ -1,4 +1,4 @@
-# Message: SAVE_GRAPHIC_DATA
+# Message: Save_Graphic_Data
 
 <!-- USER-GUIDE -->
 The SAVE_GRAPHIC_DATA message saves modified graphic screen configurations back to the device. Use this after editing HMI screens in the graphic editor.
@@ -523,7 +523,7 @@ const saveWithRetry = async (
 
 ## Related Messages
 
-### GET_INITIAL_DATA / LOAD_GRAPHIC_ENTRY
+### GET_Initial_Data / Load_Graphic_Entry
 
 Load screen before saving:
 ```

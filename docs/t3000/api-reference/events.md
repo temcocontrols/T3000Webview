@@ -1,4 +1,4 @@
-﻿# Events
+# Events
 
 <!-- USER-GUIDE -->
 
@@ -39,7 +39,7 @@ Use WebSocket API to receive real-time events.
 
 <!-- TECHNICAL -->
 
-# Event System Architecture
+## Event System Architecture
 
 ## Event Bus Implementation
 
@@ -456,10 +456,3 @@ const criticalAlarms = await logger.queryEvents({
   limit: 50
 });
 ```
-
-## Next Steps
-
-- [REST API](./rest-api)
-- [WebSocket API](./websocket-api)
-- [Modbus Protocol](./modbus-protocol)
-

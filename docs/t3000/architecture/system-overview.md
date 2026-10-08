@@ -172,7 +172,7 @@ Enable automatic daily backups to protect your configuration and historical data
 │  WebView App │
 └──────┬───────┘
        │
-       ▼
+ 
 ┌──────────────────────────────────────┐
 │  1. Frontend Initialization          │
 │     - Load Vue.js application        │
@@ -180,7 +180,7 @@ Enable automatic daily backups to protect your configuration and historical data
 │     - Request device list            │
 └──────┬───────────────────────────────┘
        │ HTTP GET /api/t3_device/scan_network
-       ▼
+ 
 ┌──────────────────────────────────────┐
 │  2. Backend API Handler              │
 │     - Receive scan request           │
@@ -188,7 +188,7 @@ Enable automatic daily backups to protect your configuration and historical data
 │     scan_network_for_devices()       │
 └──────┬───────────────────────────────┘
        │
-       ▼
+ 
 ┌──────────────────────────────────────┐
 │  3. BACnet FFI Layer (C++)           │
 │     - Broadcast Who-Is               │
@@ -197,7 +197,7 @@ Enable automatic daily backups to protect your configuration and historical data
 │     - Return device list             │
 └──────┬───────────────────────────────┘
        │
-       ▼
+ 
 ┌──────────────────────────────────────┐
 │  4. Database Storage                 │
 │     - Insert/Update panels table     │
@@ -205,7 +205,7 @@ Enable automatic daily backups to protect your configuration and historical data
 │     - Cache device metadata          │
 └──────┬───────────────────────────────┘
        │
-       ▼
+ 
 ┌──────────────────────────────────────┐
 │  5. Frontend Update                  │
 │     - Receive device list JSON       │
@@ -219,21 +219,21 @@ Enable automatic daily backups to protect your configuration and historical data
 ```
 User Clicks Device
        │
-       ▼
+ 
 ┌──────────────────────────────────────┐
 │  Frontend: SELECT_PANEL              │
 │     action: 1                        │
 │     panelId, serialNumber            │
 └──────┬───────────────────────────────┘
        │ WebSocket Message
-       ▼
+ 
 ┌──────────────────────────────────────┐
 │  Backend: Message Handler            │
 │     - Parse control message          │
 │     - Route to panel_handler()       │
 └──────┬───────────────────────────────┘
        │
-       ▼
+ 
 ┌──────────────────────────────────────┐
 │  FFI: Read Device Data               │
 │     - Connect to device IP           │
@@ -244,7 +244,7 @@ User Clicks Device
 │       * Programs, Schedules, etc     │
 └──────┬───────────────────────────────┘
        │
-       ▼
+ 
 ┌──────────────────────────────────────┐
 │  Database: Cache Update              │
 │     - Write to webview_t3_device.db  │
@@ -252,7 +252,7 @@ User Clicks Device
 │     - Store with objectinstance      │
 └──────┬───────────────────────────────┘
        │
-       ▼
+ 
 ┌──────────────────────────────────────┐
 │  Frontend: Display Data              │
 │     - WebSocket broadcast            │
@@ -454,26 +454,26 @@ Electron/Tauri Desktop App
 
 ### Prerequisites
 ```bash
-# Rust toolchain
+## Rust toolchain
 rustup install stable
 
-# Node.js & npm
+## Node.js & npm
 nvm install 18
 
-# Quasar CLI
+## Quasar CLI
 npm install -g @quasar/cli
 ```
 
 ### Development Setup
 ```bash
-# 1. Start backend
+## 1. Start backend
 cd api
 cargo run
 
-# 2. Start frontend
+## 2. Start frontend
 npm run client-dev
 
-# 3. Access UI
+## 3. Access UI
 open http://localhost:3004
 ```
 

@@ -1,4 +1,4 @@
-# Message 10: SAVE_LIBRARY_DATA
+# Message 10: Save_Library_Data
 
 <!-- USER-GUIDE -->
 The SAVE_LIBRARY_DATA message saves HVAC equipment library data to a JSON file on the server.

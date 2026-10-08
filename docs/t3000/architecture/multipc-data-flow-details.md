@@ -139,7 +139,7 @@ Browser request arrives
 
 **Conflict handling:** UPSERT by `(serial_number)` or `(number, product_model)` — last write wins. Since each PC scans different panels, conflicts are rare.
 
-### 3.2 INPUTS / OUTPUTS / VARIABLES (Category A)
+### 3.2 Inputs / Outputs / Variables (Category A)
 
 **Source:** FFI `GET_PANEL_DATA` → reads point values from each discovered device.
 
@@ -151,19 +151,19 @@ Browser request arrives
 
 **Key:** `(pid, panel_number, point_index)` — unique per panel, no cross-PC conflict.
 
-### 3.3 PROGRAMS / SCHEDULES / PID_TABLE / HOLIDAYS (Category B)
+### 3.3 Programs / Schedules / PID_Table / Holidays (Category B)
 
 **Source:** FFI reads these from panels along with point data.
 
 Same flow as Category A. These are configuration data that changes rarely.
 
-### 3.4 TRENDLOGS / TRENDLOG_INPUTS / TRENDLOG_DATA (Category C)
+### 3.4 Trendlogs / Trendlog_Inputs / Trendlog_Data (Category C)
 
 **Source:** FFI `LOGGING_DATA` cycle — discovery of trendlog configs and summary data.
 
 Same flow as Category A. These are metadata/summary tables, relatively small.
 
-### 3.5 TRENDLOG_DATA_DETAIL (Category D) ⭐ Special
+### 3.5 TRENDLOG_DATA_DETAIL (Category D) Special
 
 **Source:** FFI `LOGGING_DATA` cycle — actual timestamped trend values.
 

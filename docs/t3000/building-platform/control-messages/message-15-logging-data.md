@@ -13,7 +13,7 @@ The LOGGING_DATA message (Action 15) triggers comprehensive data collection from
 **Direction:** Frontend → Backend
 **Location:** BacnetWebView.cpp line 3040
 **Purpose:** Bulk data collection for all panel points
-**Status:** ⚠️ Disabled by default in release builds
+**Status:** Disabled by default in release builds
 
 ## Request Format
 

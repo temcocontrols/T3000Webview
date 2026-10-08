@@ -1,4 +1,4 @@
-﻿# REST API
+# REST API
 
 <!-- USER-GUIDE -->
 
@@ -344,12 +344,3 @@ curl -X POST http://localhost:9103/api/t3_device/devices/237219/batch_save_input
    - Track API response times
    - Monitor error rates
    - Set up alerts for service degradation
-
-### Next Steps
-
-- [WebSocket API](./websocket-api) - Real-time data updates
-- [Events](./events) - Event system documentation
-- [Modbus Protocol](./modbus-protocol) - Modbus integration
-
-<!-- /TECHNICAL -->
-

@@ -39,7 +39,7 @@ The T3000 WebView provides a comprehensive REST API for building automation and 
 
 ## Complete API Index
 
-### 🏢 Device Management (15 endpoints)
+### Device Management (15 endpoints)
 
 ```
 GET    /api/t3_device/devices ................................. List all devices
@@ -61,7 +61,7 @@ GET /api/t3_device/devices
 
 ---
 
-### 📊 Data Points (60 endpoints)
+### Data Points (60 endpoints)
 
 #### Inputs (20 endpoints)
 ```
@@ -101,7 +101,7 @@ PUT /api/t3_device/outputs/5000000
 
 ---
 
-### ⚙️ Control & Automation (40 endpoints)
+### Control & Automation (40 endpoints)
 
 #### Programs (10 endpoints)
 ```
@@ -156,7 +156,7 @@ DELETE /api/t3_device/annual-routines/:id ..................... Delete routine
 
 ---
 
-### 📈 Trend Logging (25 endpoints)
+### Trend Logging (25 endpoints)
 
 ```
 GET    /api/t3_device/devices/:id/trendlogs ................... Get all trendlogs
@@ -180,7 +180,7 @@ GET /api/t3_device/trendlogs/1/data?start=2026-01-01&end=2026-01-09
 
 ---
 
-### 🗂️ Generic Tables (30 endpoints)
+### Generic Tables (30 endpoints)
 
 ```
 GET    /api/t3_device/:table .................................. Get table records
@@ -208,7 +208,7 @@ GET /api/t3_device/users?device_id=1
 
 ---
 
-### 💾 Database Management (20 endpoints)
+### Database Management (20 endpoints)
 
 ```
 GET    /api/db_management/settings ............................ Get all settings
@@ -228,7 +228,7 @@ POST   /api/database/restore .................................. Restore from bac
 
 ---
 
-### 🛠️ Developer Tools (10 endpoints)
+### Developer Tools (10 endpoints)
 
 ```
 GET    /api/develop/files/list ................................ List files
@@ -252,7 +252,7 @@ POST /api/develop/database/query
 
 ---
 
-### 🔧 System & Utilities (15 endpoints)
+### System & Utilities (15 endpoints)
 
 ```
 GET    /api/health ............................................ Health check
@@ -281,7 +281,7 @@ POST /api/login
 
 ---
 
-### 🌐 WebSocket (Real-time Communication)
+### WebSocket (Real-time Communication)
 
 ```
 WS     /ws .................................................... WebSocket connection
@@ -399,9 +399,9 @@ CorsLayer::new()
 
 <!-- TECHNICAL -->
 
-#### Complete Endpoint Reference
+### Complete Endpoint Reference
 
-##### Quick Reference Table
+#### Quick Reference Table
 
 All **215+ endpoints** organized by HTTP method and category:
 

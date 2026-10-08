@@ -1,4 +1,4 @@
-# Message: UPDATE_WEBVIEW_LIST
+# Message: Update_Webview_List
 
 <!-- USER-GUIDE -->
 UPDATE_WEBVIEW_LIST writes values to device entries in bulk. Use this to update multiple inputs, outputs, variables, or other entry types in a single operation.
@@ -44,13 +44,13 @@ UPDATE_WEBVIEW_LIST writes values to device entries in bulk. Use this to update 
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `action` | Integer | ✅ | Must be 16 |
-| `source` | Integer | ✅ | Message source: 0=T3000, 1=WebUI |
-| `panelId` | Integer | ✅ | Panel number (0-254) |
-| `serialNumber` | Integer | ✅ | Device serial number |
-| `entryType` | Integer | ✅ | Type of entry to update |
-| `objectinstance` | Integer | ✅ | BACnet object instance |
-| `data` | Array | ✅ | Array of updates (index + values) |
+| `action` | Integer | Yes | Must be 16 |
+| `source` | Integer | Yes | Message source: 0=T3000, 1=WebUI |
+| `panelId` | Integer | Yes | Panel number (0-254) |
+| `serialNumber` | Integer | Yes | Device serial number |
+| `entryType` | Integer | Yes | Type of entry to update |
+| `objectinstance` | Integer | Yes | BACnet object instance |
+| `data` | Array | Yes | Array of updates (index + values) |
 
 ### Update Data Fields
 

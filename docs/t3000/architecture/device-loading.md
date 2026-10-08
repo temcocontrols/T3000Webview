@@ -111,9 +111,9 @@ Total Time: 2-5 seconds for typical device
 
 <!-- TECHNICAL -->
 
-#### Complete Technical Data Flow
+### Complete Technical Data Flow
 
-##### Full System Sequence Diagram
+#### Full System Sequence Diagram
 
 ```
 ┌───────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  ┌─────────────┐
@@ -713,4 +713,3 @@ CREATE INDEX idx_inputs_objectinstance ON inputs(objectinstance);
 - **FFI Interface**: `api/src/ffi_interface.rs`
 - **Database**: `api/src/db_connection.rs`
 - **C++ BACnet**: `api/build/bacnet_ffi.dll`
-

@@ -47,17 +47,17 @@ GET_ENTRIES retrieves multiple specific entries by their exact indices. Unlike G
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `action` | String | ✅ | Must be "GET_ENTRIES" |
-| `source` | Integer | ✅ | Message source: 0=T3000, 1=WebUI |
-| `data` | Array | ✅ | Array of entry specifications |
+| `action` | String | Yes | Must be "GET_ENTRIES" |
+| `source` | Integer | Yes | Message source: 0=T3000, 1=WebUI |
+| `data` | Array | Yes | Array of entry specifications |
 
 ### Entry Specification
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `panelId` | Integer | ✅ | Panel number |
-| `index` | Integer | ✅ | Entry index |
-| `type` | Integer | ✅ | Entry type (1=IN, 2=OUT, 3=VAR, etc.) |
+| `panelId` | Integer | Yes | Panel number |
+| `index` | Integer | Yes | Entry index |
+| `type` | Integer | Yes | Entry type (1=IN, 2=OUT, 3=VAR, etc.) |
 
 ## Response Format
 
@@ -198,7 +198,7 @@ Read from different panels:
 }
 ```
 
-## Comparison: GET_ENTRIES vs GET_WEBVIEW_LIST
+## Comparison: GET_Entries Vs GET_Webview_List
 
 | Feature | GET_ENTRIES | GET_WEBVIEW_LIST |
 |---------|-------------|------------------|

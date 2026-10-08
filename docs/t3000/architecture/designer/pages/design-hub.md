@@ -13,7 +13,7 @@ directions against each other).
 
 ## 1. Pages
 
-### `DesignHubPage` — `#/t3000/design` — **LINK-ONLY**
+### `DesignHubPage` — `#/t3000/design` — **Link-only**
 
 | Area | Component (line) | Notes |
 |---|---|---|
@@ -26,7 +26,7 @@ directions against each other).
 | Drag-drop import | `:104-113`, overlay `:344-378` | drops SVG/JSON → `importFile()` → `navigate(r.openPath)` (`:110`) |
 | URL params | `?create=<typeId>` **live** (`:79-86`, stripped by rewriting the hash at `:278-286`); `?tab=` **dead** (see §4) | |
 
-### `ProjectDetailPage` — `#/t3000/design/projects/:id` — **LINK-ONLY**
+### `ProjectDetailPage` — `#/t3000/design/projects/:id` — **Link-only**
 
 Hero, info cells, large preview, snapshots, compare, deploy log, actions (Open / Rename / Duplicate / Share /
 Delete). Its **Open** is the only designer navigation: `window.location.hash = \`#${project.openPath}\``
@@ -47,7 +47,7 @@ Delete). Its **Open** is the only designer navigation: `window.location.hash = \
 | `CommandPalette` | Ctrl+K commands | as above | `:44, 52-58, 60-68, 124` | `UNCHANGED` |
 | `ProjectCard` | green **Open** | `#${project.openPath}` | `:100` | `UNCHANGED` |
 | `ActivityPanel` | recent-activity row | `#${p.openPath}` | `:74` | `UNCHANGED` — **currently unmounted** |
-| `DesignMenuBar` | File ▸ New Drawing / Back to Hub / … | `designerPath('hvac-schematic')` (`:114`), `/t3000/design` (`:113`) | | `CHANGED` — still **exported (`index.tsx:6`) but rendered nowhere**; if it is revived it must use the registry |
+| `DesignMenuBar` | File New Drawing / Back to Hub / … | `designerPath('hvac-schematic')` (`:114`), `/t3000/design` (`:113`) | | `CHANGED` — still **exported (`index.tsx:6`) but rendered nowhere**; if it is revived it must use the registry |
 | `NewTypeDialog` | user registers a custom type (hidden by `getAllDrawingTypes`) | `designerPath('hvac-schematic')` as default **and** placeholder | `:39, 49, 70, 113` | `CHANGED` (the field stays free text — a custom type may point anywhere) |
 | `EditorStatusBar` | — | consumes `t3-editor-status` | `:37-49` | `MOVED` into the shell's status slot (see `designer-shell-areas.md` §4) |
 | `useEditorCommands` | publishes status/commands | `:24-32` | | `MOD`: the shell adapters' publisher; **nothing calls `emitEditorStatus`** |

@@ -323,7 +323,6 @@ without it), the counts the allowance was taken on, `edgePx` (the boundary term)
 first metric, and whether it had enough ink to decide), `box+` (the overhang) and `bboxIoU` as reported
 severity.
 
-
 ## 6a. Live sweep result (2026-09-16) — no failing row on any page
 
 Per page, on the dev server, read from a settled scorecard (`settled === true` and
@@ -447,4 +446,3 @@ the pixels do not, so the fault is in a fill or a binding rather than in layout.
   transparent areas would otherwise compare against an unset canvas.
 - Per-object rows restrict the pixel comparison to that object's `area`, which is what localises a failure
   to a widget and a part.
-

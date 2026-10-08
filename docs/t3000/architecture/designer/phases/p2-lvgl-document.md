@@ -61,7 +61,7 @@ The one thing that could invalidate D8. With the root model **not rendered**:
 
 **If (1)–(5) all pass**: proceed with pure projection — **zero** changes to `store/editor.ts`.
 
-#### Spike result — **PASS (`T3-LB-ESP_SN1028` project open)**
+### Spike result — **PASS (`T3-LB-ESP_SN1028` project open)**
 
 Method: the stores were exposed through a temporary dev hook (`window.__eez = { editorsStore, navigationStore,
 outputSectionsStore, layoutModels, project, LayoutModels }` in `ProjectEditor.tsx`'s `componentDidMount`,
@@ -398,10 +398,9 @@ layout) → version bump · R17 (re-render cost) → memoised tab content, `/…
 
 ## 6. Acceptance criteria
 
-
 - An LVGL project is fully editable on `/t3000/designer/lvgl-9-5[/:id]`.
 - `?svgDiff=1` → 0 failing rows on every reachable page (baseline: 13 pages) — *measured with the panels in shell regions; the sweep needs the page preview mounted*.
-- `__lvglSvg.interaction()` → `editorHotspots > 0` and `selectionChrome > 0`. — *`editorHotspots: 7` ✔; `selectionChrome` is a FlowEditor-overlay counter and is 0 under `?svg=1` by construction (`LVGLSvgPage.tsx:988-990`)*
+- `__lvglSvg.interaction()` → `editorHotspots > 0` and `selectionChrome > 0`. — *`editorHotspots: 7` ; `selectionChrome` is a FlowEditor-overlay counter and is 0 under `?svg=1` by construction (`LVGLSvgPage.tsx:988-990`)*
 - Panels live in shell slots; FlexLayout renders **only** inside panel content that needs it.
 - No EEZ global CSS affects an HVAC document in the same session. — *the bridge is scoped to `.t3-designer[data-doc-kind^="lvgl"]` (measured exactly one host element); the residual globals (`#EezStudio_Content`'s rule, `*`/`body`/`input`) are the deliberate P2.8 revert — see [`../theme-and-css.md`](../theme-and-css.md) §4*
 - `npx vitest run lvgl-svg designer-shell designer-lvgl-projection` green.

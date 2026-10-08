@@ -316,7 +316,6 @@ one empty, one with text + shapes (to exercise rulers/fonts), one large (to exer
 
 ## 6. Acceptance criteria
 
-
 - `/t3000/designer/hvac-schematic[/:id]` renders the drawing, editable exactly as today.
 - The comparison script matches (drawing region pixel-identical).
 - Right panel shows the selection; never crashes on any object class.

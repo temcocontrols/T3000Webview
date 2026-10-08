@@ -1,4 +1,4 @@
-# Message 17: GET_WEBVIEW_LIST
+# Message 17: GET_Webview_List
 
 <!-- USER-GUIDE -->
 GET_WEBVIEW_LIST retrieves specific data from BACnet devices. Use this message to read inputs, outputs, variables, programs, PID controllers, or monitors from a device.
@@ -38,14 +38,14 @@ GET_WEBVIEW_LIST retrieves specific data from BACnet devices. Use this message t
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `action` | Integer | ✅ | Must be 17 |
-| `source` | Integer | ✅ | Message source: 0=T3000, 1=WebUI |
-| `panelId` | Integer | ✅ | Panel number (0-254) |
-| `serialNumber` | Integer | ✅ | Device serial number |
-| `entryType` | Integer | ✅ | Type of entry to read (see Entry Types) |
-| `entryIndexStart` | Integer | ✅ | Starting index (0-based) |
-| `entryIndexEnd` | Integer | ✅ | Ending index (inclusive) |
-| `objectinstance` | Integer | ✅ | BACnet object instance |
+| `action` | Integer | Yes | Must be 17 |
+| `source` | Integer | Yes | Message source: 0=T3000, 1=WebUI |
+| `panelId` | Integer | Yes | Panel number (0-254) |
+| `serialNumber` | Integer | Yes | Device serial number |
+| `entryType` | Integer | Yes | Type of entry to read (see Entry Types) |
+| `entryIndexStart` | Integer | Yes | Starting index (0-based) |
+| `entryIndexEnd` | Integer | Yes | Ending index (inclusive) |
+| `objectinstance` | Integer | Yes | BACnet object instance |
 
 ### Entry Types
 
@@ -466,7 +466,7 @@ Device → BACnet Protocol → GetPrivateDataSaveSPBlocking()
 
 ## Comparison with Other Messages
 
-### vs GET_PANEL_DATA
+### Vs GET_Panel_Data
 - **GET_PANEL_DATA:** Loads ALL cached data for entire panel
 - **GET_WEBVIEW_LIST:** Reads specific entry type with range
 

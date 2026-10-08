@@ -1,4 +1,4 @@
-# Message 14: SAVE_NEW_LIBRARY_DATA
+# Message 14: Save_NEW_Library_Data
 
 <!-- USER-GUIDE -->
 The SAVE_NEW_LIBRARY_DATA message saves the new T3 HVAC equipment library data to a JSON file on the server.

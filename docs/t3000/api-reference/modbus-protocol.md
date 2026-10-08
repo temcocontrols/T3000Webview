@@ -1,4 +1,4 @@
-﻿# Modbus Protocol
+# Modbus Protocol
 
 <!-- USER-GUIDE -->
 
@@ -43,7 +43,7 @@ Modbus TCP/IP and RTU protocol support for legacy devices.
 
 <!-- TECHNICAL -->
 
-# Modbus Protocol Implementation
+## Modbus Protocol Implementation
 
 ## Protocol Specifications
 
@@ -421,10 +421,3 @@ class ModbusConnectionPool {
   }
 }
 ```
-
-## Next Steps
-
-- [REST API](./rest-api)
-- [WebSocket API](./websocket-api)
-- [Events](./events)
-
