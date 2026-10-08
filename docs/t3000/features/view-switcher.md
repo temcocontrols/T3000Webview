@@ -1,6 +1,6 @@
 # Switching between Classic View and New View
 
-> ## ⚠ PARKED 2026-09-30 — nothing on this page runs today
+> ## PARKED 2026-09-30 — nothing on this page runs today
 >
 > The automatic *Choose your view* chooser is the wrong shape for what T3000 actually needs. The agreed
 > replacement is **explicit**: a **WEBVIEW** button in the T3000 app (Chrome icon) that opens the webview, and
@@ -15,7 +15,7 @@
 > | the startup decision / first-run redirect | `index.html` (inline script, inside an HTML comment) |
 > | the in-page `hashchange` guard | `src/boot/react.tsx` (import + call) |
 > | the `/t3000/ui-switch` route | `src/t3-react/app/App.tsx` (lazy import + `<Route>`) |
-> | *Help ▸ Switch View* (both menu sets) | `src/t3-react/config/menuConfig.ts` |
+> | *Help Switch View* (both menu sets) | `src/t3-react/config/menuConfig.ts` |
 > | the classic notice bar | already removed 2026-09-30 |
 >
 > Consequences today: `#/` always opens the **classic** app (nothing redirects, no question is asked), and
@@ -41,10 +41,10 @@ and the user's choice is remembered between launches.
    *Don't ask me again* checkbox (ticked by default).
 2. **After choosing with the box ticked**: T3000 opens that view directly, with no question.
 3. **After choosing with the box unticked**: it opens the chosen view now, and asks again on the next launch.
-4. **Changing later**: *Help ▸ Switch View* in the new view opens the switcher page. The classic view has **no
+4. **Changing later**: *Help Switch View* in the new view opens the switcher page. The classic view has **no
    banner** of its own (one was removed on 2026-09-30 at the user's request) — the switcher is reached there by
    URL: `http://localhost:9103/#/t3000/ui-switch`.
-5. If the new interface ever gets in the way, the way back is always the same: *Help ▸ Switch View* →
+5. If the new interface ever gets in the way, the way back is always the same: *Help Switch View* →
    **Open Classic View**, or simply `http://localhost:9103/#/`.
 
 The T3000 help/update flow is untouched — updating T3000 changes nothing about how the views are chosen.
@@ -58,7 +58,7 @@ The T3000 help/update flow is untouched — updating T3000 changes nothing about
 | `src/boot/react.tsx` | Installs the hash guard — a boot file runs on every document, in both apps. |
 | `src/t3-react/features/ui-switch/pages/UiSwitchPage.tsx` | The switcher page itself (React + Fluent UI), registered as a **bare** route — no menu bar, no device tree. |
 | `src/t3-react/app/App.tsx` | The `/t3000/ui-switch` route. |
-| `src/t3-react/config/menuConfig.ts` | *Help ▸ Switch View* (shared by the main app, Design Hub, the HVAC designer and the simulator menus, plus the EEZ menu set). |
+| `src/t3-react/config/menuConfig.ts` | *Help Switch View* (shared by the main app, Design Hub, the HVAC designer and the simulator menus, plus the EEZ menu set). |
 
 Keys are duplicated in `index.html` and in `src/shared/uiFlavor.ts` (the startup script cannot import the TS
 module) — **change them in both places.**
@@ -98,9 +98,9 @@ so a reload and an in-page navigation can never disagree:
 > views control the same T3000 system — the same devices, points, programs and drawings — so you can switch
 > whenever you like without losing anything.
 >
-> **To switch later:** in the New View, use *Help ▸ Switch View*. From the Classic View, open the switcher page
+> **To switch later:** in the New View, use *Help Switch View*. From the Classic View, open the switcher page
 > at `http://localhost:9103/#/t3000/ui-switch`, or `http://localhost:9103/#/t3000/` for the New View directly —
-> the classic UI itself carries no banner. To go back to the Classic View: *Help ▸ Switch View* →
+> the classic UI itself carries no banner. To go back to the Classic View: *Help Switch View* →
 > **Open Classic View**, or open `http://localhost:9103/#/`.
 >
 > The new interface is a preview: if something does not work the way you expect, switch back to the Classic

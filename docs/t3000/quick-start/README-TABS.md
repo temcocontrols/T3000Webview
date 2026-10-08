@@ -7,7 +7,7 @@ The documentation system now supports **dual-mode content** - allowing you to se
 ## How It Works
 
 When you add special HTML comments to your markdown files, the documentation viewer will display tabs at the top:
-- ☰ **Overview** - Beginner-friendly, step-by-step instructions
+- **Overview** - Beginner-friendly, step-by-step instructions
 - </> **Developer** - Code examples, API references, advanced configuration
 
 ## Usage
@@ -60,15 +60,15 @@ const config = { /* ... */ };
 ### When to Use Tabs
 
 **Good use cases:**
-- ✅ API documentation (user explanation + code examples)
-- ✅ Configuration guides (UI instructions + programmatic config)
-- ✅ Feature documentation (how to use + how to integrate)
-- ✅ Troubleshooting (simple fixes + advanced debugging)
+- API documentation (user explanation + code examples)
+- Configuration guides (UI instructions + programmatic config)
+- Feature documentation (how to use + how to integrate)
+- Troubleshooting (simple fixes + advanced debugging)
 
 **Not recommended:**
-- ❌ Pure tutorial content (just use normal markdown)
-- ❌ Single-audience documentation
-- ❌ Very short pages (< 200 words)
+- Pure tutorial content (just use normal markdown)
+- Single-audience documentation
+- Very short pages (< 200 words)
 
 ## Examples
 
@@ -105,7 +105,7 @@ See these files for working examples:
 ## Future Enhancements
 
 Possible additions:
-- 📱 **Mobile** tab for mobile-specific instructions
-- 🔧 **Admin** tab for administrator configuration
-- 🌍 **Integration** tab for third-party integration
-- 📊 **Examples** tab for real-world use cases
+- **Mobile** tab for mobile-specific instructions
+- **Admin** tab for administrator configuration
+- **Integration** tab for third-party integration
+- **Examples** tab for real-world use cases

@@ -218,17 +218,17 @@ Response (protocol error):
 
 | Spec Requirement | Status |
 |---|---|
-| Streamable HTTP transport (POST + GET + DELETE) | ✅ |
-| `Mcp-Session-Id` header | ✅ |
-| `initialize` with `protocolVersion`, `serverInfo`, `capabilities` | ✅ `2025-03-26` |
-| `capabilities.tools.listChanged: true` | ✅ |
-| `notifications/initialized` (no response) | ✅ |
-| Protocol-level `t3000_ping` | ✅ |
-| `tools/list` with `name`, `title`, `description`, `inputSchema` | ✅ |
-| `tools/call` success: `{ content: [{ type: "text", text }] }` | ✅ |
-| `tools/call` error: `{ content: [...], isError: true }` | ✅ |
-| Standard JSON-RPC error codes | ✅ |
-| Works with all modern MCP clients (VS Code, Claude, Cursor, etc.) | ✅ |
+| Streamable HTTP transport (POST + GET + DELETE) | Yes |
+| `Mcp-Session-Id` header | Yes |
+| `initialize` with `protocolVersion`, `serverInfo`, `capabilities` | Yes `2025-03-26` |
+| `capabilities.tools.listChanged: true` | Yes |
+| `notifications/initialized` (no response) | Yes |
+| Protocol-level `t3000_ping` | Yes |
+| `tools/list` with `name`, `title`, `description`, `inputSchema` | Yes |
+| `tools/call` success: `{ content: [{ type: "text", text }] }` | Yes |
+| `tools/call` error: `{ content: [...], isError: true }` | Yes |
+| Standard JSON-RPC error codes | Yes |
+| Works with all modern MCP clients (VS Code, Claude, Cursor, etc.) | Yes |
 
 ---
 
@@ -238,8 +238,8 @@ Response (protocol error):
 
 | `confirm` | OUTPUT/VARIABLE | INPUT |
 |---|---|---|
-| `false` | ❌ Error | ✅ Accepted |
-| `true` | ✅ Accepted | ✅ Accepted |
+| `false` | No Error | Yes Accepted |
+| `true` | Yes Accepted | Yes Accepted |
 
 ---
 

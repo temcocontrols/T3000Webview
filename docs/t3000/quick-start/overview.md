@@ -66,12 +66,6 @@ Familiarize yourself with the main sections:
 
 **Scheduling**: Automate building operations based on occupancy and time of day.
 
-## Next Steps
-
-- [Installation Guide](installation) - Detailed installation instructions
-- [Configuration](configuration) - Configure your system settings
-- [Device Management](../device-management/connecting-devices) - Connect your first device
-
 ## Getting Help
 
 If you encounter any issues:
@@ -81,7 +75,7 @@ If you encounter any issues:
 
 <!-- TECHNICAL -->
 
-# Quick Start Overview
+## Quick Start Overview
 
 ## System Architecture
 
@@ -280,9 +274,3 @@ impl ProtocolHandler for CustomProtocol {
 // Register handler
 system.register_protocol("custom", CustomProtocol);
 ```
-
-## Next Steps
-
-- [REST API Reference](../api-reference/rest-api)
-- [WebSocket API](../api-reference/websocket-api)
-- [Modbus Protocol](../api-reference/modbus-protocol)

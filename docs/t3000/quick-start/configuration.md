@@ -21,9 +21,9 @@ Gateway: 192.168.1.1
 ```
 
 **Protocol Settings**
-- ✓ Enable Modbus TCP (Port 502)
-- ✓ Enable BACnet (Port 47808)
-- ○ Enable HTTP API (Port 8080)
+- Enable Modbus TCP (Port 502)
+- Enable BACnet (Port 47808)
+- Enable HTTP API (Port 8080)
 
 ### Database Settings
 
@@ -33,7 +33,7 @@ Default: C:\ProgramData\Temco\T3000\Database
 ```
 
 **Backup**
-- Enable automatic backups: ✓
+- Enable automatic backups: 
 - Backup frequency: Daily at 2:00 AM
 - Keep backups for: 30 days
 - Backup location: `C:\Backups\T3000`
@@ -127,16 +127,16 @@ Use TLS: ✓
 ### Password Policy
 
 - Minimum length: 8 characters
-- Require uppercase: ✓
-- Require numbers: ✓
-- Require symbols: ○
+- Require uppercase: 
+- Require numbers: 
+- Require symbols: 
 - Password expiry: 90 days
 
 ### Session Settings
 
 - Timeout: 30 minutes
 - Concurrent logins: Allowed
-- Remember last login: ✓
+- Remember last login: 
 
 ## Performance Optimization
 
@@ -175,27 +175,19 @@ Schedule regular maintenance:
 
 ## Configuration Best Practices
 
-✅ **Do:**
+ **Do:**
 - Back up configuration regularly
 - Use strong passwords
 - Enable audit logging
 - Test network connectivity before adding devices
 
-❌ **Don't:**
+ **Don't:**
 - Use default passwords in production
 - Disable security features without reason
 - Set poll rates too aggressively
 - Ignore backup alerts
 
-## Next Steps
-
-- [Connecting Devices](../device-management/connecting-devices)
-- [Creating Graphics](../features/graphics)
-- [Setting Up Schedules](../features/schedules)
-
-<!-- TECHNICAL -->
-
-# Configuration Guide
+## Configuration Guide
 
 ## Programmatic Configuration
 
@@ -603,12 +595,6 @@ function validateConfiguration(config: unknown): boolean {
 }
 ```
 
-## Next Steps
-
-- [REST API Reference](../api-reference/rest-api)
-- [Device API](../device-management/device-configuration)
-- [Database Schema](../api-reference/events)
-
 ## Initial Configuration
 
 After installation, configure these essential settings.
@@ -626,9 +612,9 @@ Gateway: 192.168.1.1
 ```
 
 **Protocol Settings**
-- ✓ Enable Modbus TCP (Port 502)
-- ✓ Enable BACnet (Port 47808)
-- ○ Enable HTTP API (Port 8080)
+- Enable Modbus TCP (Port 502)
+- Enable BACnet (Port 47808)
+- Enable HTTP API (Port 8080)
 
 ### Database Settings
 
@@ -638,7 +624,7 @@ Default: C:\ProgramData\Temco\T3000\Database
 ```
 
 **Backup**
-- Enable automatic backups: ✓
+- Enable automatic backups: 
 - Backup frequency: Daily at 2:00 AM
 - Keep backups for: 30 days
 - Backup location: `C:\Backups\T3000`
@@ -732,16 +718,16 @@ Use TLS: ✓
 ### Password Policy
 
 - Minimum length: 8 characters
-- Require uppercase: ✓
-- Require numbers: ✓
-- Require symbols: ○
+- Require uppercase: 
+- Require numbers: 
+- Require symbols: 
 - Password expiry: 90 days
 
 ### Session Settings
 
 - Timeout: 30 minutes
 - Concurrent logins: Allowed
-- Remember last login: ✓
+- Remember last login: 
 
 ## Performance Optimization
 
@@ -778,21 +764,15 @@ Schedule regular maintenance:
 3. Select saved `.json` file
 4. Restart application when prompted
 
-## Next Steps
-
-- [Connecting Devices](../device-management/connecting-devices)
-- [Creating Graphics](../features/graphics)
-- [Setting Up Schedules](../features/schedules)
-
 ## Configuration Best Practices
 
-✅ **Do:**
+ **Do:**
 - Back up configuration regularly
 - Use strong passwords
 - Enable audit logging
 - Test network connectivity before adding devices
 
-❌ **Don't:**
+ **Don't:**
 - Use default passwords in production
 - Disable security features without reason
 - Set poll rates too aggressively

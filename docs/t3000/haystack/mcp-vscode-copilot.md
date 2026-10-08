@@ -1,6 +1,6 @@
-## VS Code Copilot MCP Setup
+# VS Code Copilot MCP Setup
 
-> ⬅️ [Back to MCP Server tab](/#/t3000/ai-assistant/mcp)
+> [Back to MCP Server tab](/#/t3000/ai-assistant/mcp)
 
 Connect VS Code Copilot to the T3000 MCP server to let Copilot query devices, read/write points, and manage Haystack tags.
 
@@ -35,7 +35,6 @@ Replace `<host>` with `localhost` (local) or the machine's LAN IP (remote).
 | | |
 |---|---|
 | ![Settings](images/vscode1.png) | ![Config](images/vscode2.png) |
-
 
 ---
 

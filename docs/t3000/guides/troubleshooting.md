@@ -1,4 +1,4 @@
-﻿# Troubleshooting Guide
+# Troubleshooting Guide
 
 <!-- USER-GUIDE -->
 
@@ -44,7 +44,7 @@ See [Device Troubleshooting](../device-management/device-troubleshooting) for de
 
 <!-- TECHNICAL -->
 
-# Advanced Troubleshooting
+## Advanced Troubleshooting
 
 ## Diagnostic Tools
 
@@ -503,10 +503,3 @@ healingSystem.registerHealthCheck({
   autoHeal: false  // Require manual intervention
 });
 ```
-
-## Next Steps
-
-- [Performance Tuning](./performance-tuning)
-- [Best Practices](./best-practices)
-- [FAQ](./faq)
-

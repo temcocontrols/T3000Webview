@@ -1,6 +1,6 @@
 # Haystack v1 — Legacy Single-Table Design
 
-> ⚠️ **DEPRECATED — June 2026**  
+> **DEPRECATED — June 2026**  
 > Replaced by [v2-haystack-current-implementation.md](./v2-haystack-current-implementation.md)
 
 ## Purpose

@@ -41,10 +41,10 @@ To add a device manually:
 
 Device connection states:
 
-- 🟢 **Online**: Device is connected and responding
-- 🟡 **Connecting**: Attempting to establish connection
-- 🔴 **Offline**: Device is not responding
-- ⚠️ **Error**: Connection error occurred
+- **Online**: Device is connected and responding
+- **Connecting**: Attempting to establish connection
+- **Offline**: Device is not responding
+- **Error**: Connection error occurred
 
 ## Network Configuration
 
@@ -96,14 +96,7 @@ Allow the following ports through your firewall:
 4. **Backup Configuration**: Export device settings periodically
 5. **Network Segmentation**: Use VLANs to organize devices by zone/function
 
-## Next Steps
-
-- [Device Configuration](./device-configuration) - Configure device settings
-- [Device Monitoring](./device-monitoring) - Monitor device status and data
-
-<!-- TECHNICAL -->
-
-# Connecting Devices
+## Connecting Devices
 
 ## Programmatic Device Discovery
 
@@ -450,13 +443,6 @@ ws.onmessage = (event) => {
 };
 ```
 
-## Next Steps
-
-- [Device Configuration API](./device-configuration)
-- [REST API Reference](../api-reference/rest-api)
-- [WebSocket API](../api-reference/websocket-api)
-- [Modbus Protocol](../api-reference/modbus-protocol)
-
 ## Overview
 
 The T3000 Web application provides multiple methods to discover and connect to BACnet devices on your network. This guide covers the different connection methods and best practices.
@@ -494,10 +480,10 @@ To add a device manually:
 
 Device connection states:
 
-- 🟢 **Online**: Device is connected and responding
-- 🟡 **Connecting**: Attempting to establish connection
-- 🔴 **Offline**: Device is not responding
-- ⚠️ **Error**: Connection error occurred
+- **Online**: Device is connected and responding
+- **Connecting**: Attempting to establish connection
+- **Offline**: Device is not responding
+- **Error**: Connection error occurred
 
 ## Network Configuration
 
@@ -548,9 +534,3 @@ Allow the following ports through your firewall:
 3. **Regular Health Checks**: Monitor connection status regularly
 4. **Backup Configuration**: Export device settings periodically
 5. **Network Segmentation**: Use VLANs to organize devices by zone/function
-
-## Next Steps
-
-- [Device Configuration](./device-configuration) - Configure device settings
-- [Device Monitoring](./device-monitoring) - Monitor device status and data
-- [Troubleshooting](./device-troubleshooting) - Resolve common issues

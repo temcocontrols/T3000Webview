@@ -18,7 +18,7 @@ what could be improved — helps us make it better.
 
 Please do **not** use it as your sole tool for live buildings yet. Try it first on a spare PC or a test panel. Installing the beta does not change your existing T3000 installation.
 
-### At a glance
+## At a glance
 
 - **One click to open it:** the **Chrome button** at the right end of the T3000 toolbar.
 - **One click back:** the **Windows icon** in the new interface returns you to the T3000 window.
@@ -81,12 +81,12 @@ Each section has a short summary, where to find it, and the detailed document.
 | Category | In the new interface | Detailed document |
 |---|---|---|
 | Inputs, Outputs, Variables | **Inputs · Outputs · Variables** | <a href="https://github.com/temcocontrols/T3000Webview/tree/feature/lvgl-svg-renderer/docs/t3000/data-points/" target="_blank" rel="noopener">Data points</a> |
-| Trend Logs (new) | **Trend Logs · Trend Policy · Trends ▸ Chart** | <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/features/trendlogs.md" target="_blank" rel="noopener">Trend Logs</a> |
+| Trend Logs (new) | **Trend Logs · Trend Policy · Trends Chart** | <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/features/trendlogs.md" target="_blank" rel="noopener">Trend Logs</a> |
 | Haystack tags | **Haystack Tags · Auto-Tagging** | <a href="https://github.com/temcocontrols/T3000Webview/tree/feature/lvgl-svg-renderer/docs/t3000/haystack/" target="_blank" rel="noopener">Haystack &amp; MCP</a> |
-| MCP tools + AI Assistant | **AI Assistant ▸ MCP** | <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/haystack/mcp-vscode-copilot.md" target="_blank" rel="noopener">MCP — VS Code Copilot</a> |
-| New Designer — HVAC | **Design Hub ▸ HVAC** | <a href="https://github.com/temcocontrols/T3000Webview/tree/feature/lvgl-svg-renderer/docs/t3000/design-hub/" target="_blank" rel="noopener">Design Hub</a> |
-| New Designer — LVGL / EEZ Studio | **Design Hub ▸ LVGL 9.5 · LVGL with Flow 9.5** | <a href="https://github.com/temcocontrols/T3000Webview/tree/feature/lvgl-svg-renderer/docs/t3000/t3-eez-studio/" target="_blank" rel="noopener">EEZ Studio</a> |
-| Shared Center DB | **Database ▸ Database Configuration** | <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/shared-db/shared-center-db-summary.md" target="_blank" rel="noopener">Shared Center DB</a> |
+| MCP tools + AI Assistant | **AI Assistant MCP** | <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/haystack/mcp-vscode-copilot.md" target="_blank" rel="noopener">MCP — VS Code Copilot</a> |
+| New Designer — HVAC | **Design Hub HVAC** | <a href="https://github.com/temcocontrols/T3000Webview/tree/feature/lvgl-svg-renderer/docs/t3000/design-hub/" target="_blank" rel="noopener">Design Hub</a> |
+| New Designer — LVGL / EEZ Studio | **Design Hub LVGL 9.5 · LVGL with Flow 9.5** | <a href="https://github.com/temcocontrols/T3000Webview/tree/feature/lvgl-svg-renderer/docs/t3000/t3-eez-studio/" target="_blank" rel="noopener">EEZ Studio</a> |
+| Shared Center DB | **Database Database Configuration** | <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/shared-db/shared-center-db-summary.md" target="_blank" rel="noopener">Shared Center DB</a> |
 
 ### 3.1 Inputs, Outputs, Variables
 
@@ -97,7 +97,7 @@ point, edit a value and commit it — the same works for outputs and variables.
 ![Outputs page](images/051-outputs-page.png)
 ![Variables page](images/052-variables-page.png)
 ![one point being edited / committed](images/06-edit-and-commit-point.png)
-Docs: <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/data-points/inputs.md" target="_blank" rel="noopener">Inputs</a>. In the beta: **Documentation ▸ Data Points**.
+Docs: <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/data-points/inputs.md" target="_blank" rel="noopener">Inputs</a>. In the beta: **Documentation Data Points**.
 
 ### 3.2 Trend Logs (new)
 
@@ -106,7 +106,7 @@ trend on an input, set the interval and samples, watch it collect, then open it 
 
 ![Trend Logs list](images/07-trend-logs-list.png)
 ![trend chart](images/08-trend-chart.png)
-Docs: <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/features/trendlogs.md" target="_blank" rel="noopener">Trend Logs</a>. In the beta: **Documentation ▸ Features ▸ Trend Logs**.
+Docs: <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/features/trendlogs.md" target="_blank" rel="noopener">Trend Logs</a>. In the beta: **Documentation Features Trend Logs**.
 
 ### 3.3 Haystack tags
 
@@ -115,7 +115,7 @@ the suggestions, then search or filter by a tag.
 
 ![Haystack Tags](images/09-haystack-tags.png)
 ![Auto-Tagging suggestions](images/10-auto-tagging.png)
-Docs: <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/haystack/README.md" target="_blank" rel="noopener">Haystack tags</a>. In the beta: **Documentation ▸ Haystack & MCP**.
+Docs: <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/haystack/README.md" target="_blank" rel="noopener">Haystack tags</a>. In the beta: **Documentation Haystack & MCP**.
 
 ### 3.4 MCP tools and the AI Assistant
 
@@ -127,7 +127,7 @@ supply air temperature on SN …"), and check the tool list and settings on the 
 ![AI Assistant answering a question](images/11-ai-assistant-1.png)
 ![MCP tools page](images/12-mcp-tools.png)
 Docs: <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/haystack/mcp-vscode-copilot.md" target="_blank" rel="noopener">MCP — VS Code Copilot</a>. In the beta:
-**Documentation ▸ Haystack & MCP**.
+**Documentation Haystack & MCP**.
 
 ### 3.5 The new Designer — HVAC and LVGL / EEZ Studio
 
@@ -143,30 +143,30 @@ open the existing drawing instead of overwriting it.
 ![LVGL / EEZ Studio editor](images/15-lvgl-eez-studio.png)
 Docs: <a href="https://github.com/temcocontrols/T3000Webview/tree/feature/lvgl-svg-renderer/docs/t3000/design-hub/" target="_blank" rel="noopener">Design Hub</a> (HVAC),
 <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/t3-eez-studio/manual/01-overview.md" target="_blank" rel="noopener">EEZ Studio manual</a> (LVGL / EEZ Studio). In the beta:
-**Documentation ▸ Design Studio (Tstat11)**.
+**Documentation Design Studio (Tstat11)**.
 
 ### 3.6 Shared Center DB — one database for the whole network
 
 The trend logs and device data of several T3000 PCs kept in **one central Microsoft SQL Server** database,
 instead of every PC keeping its own copy — the reason a trend started on one PC can be read from another. Install
 SQL Server Express (25–40 minutes, guide below), enable TCP/IP, then point T3000 at that server in
-**Database ▸ Database Configuration** and start a trend. Open the same trend from a second PC to confirm both PCs
+**Database Database Configuration** and start a trend. Open the same trend from a second PC to confirm both PCs
 write into the central database.
 
 **Note:** SQL Server Express allows up to **10 GB per database** — if you expect more, use SQL Server Standard
 or higher.
 
-![Database ▸ Database Configuration with the central server filled in](images/16-center-db-configuration-0.png)
+![Database Database Configuration with the central server filled in](images/16-center-db-configuration-0.png)
 ![the same trend read from a second PC](images/16-center-db-configuration-1.png)
 
 Docs: <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/shared-db/shared-center-db-summary.md" target="_blank" rel="noopener">Shared Center DB</a> — install:
 <a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/shared-db/sql-server-express-setup.md" target="_blank" rel="noopener">SQL Server Express setup</a>, configure:
-<a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/shared-db/t3000-center-db-config.md" target="_blank" rel="noopener">T3000 Center DB configuration</a>. In the beta: **Documentation ▸ Shared DB**.
+<a href="https://github.com/temcocontrols/T3000Webview/blob/feature/lvgl-svg-renderer/docs/t3000/shared-db/t3000-center-db-config.md" target="_blank" rel="noopener">T3000 Center DB configuration</a>. In the beta: **Documentation Shared DB**.
 
 ## 4. Where the detailed documents are
 
 They are built into the beta itself — open `http://localhost:9103/#/t3000/documentation` (or
-**Help ▸ Documentation** in the menu) and pick the chapter named in each section above. The same pages are in the
+**Help Documentation** in the menu) and pick the chapter named in each section above. The same pages are in the
 GitHub repository:
 <a href="https://github.com/temcocontrols/T3000Webview/tree/feature/lvgl-svg-renderer/docs/t3000/" target="_blank" rel="noopener">the T3000 documentation folder</a>.
 

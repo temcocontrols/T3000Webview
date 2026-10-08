@@ -1,4 +1,4 @@
-﻿# Holidays
+# Holidays
 
 <!-- USER-GUIDE -->
 
@@ -32,14 +32,7 @@ Define holidays and special days:
 2. Exception schedules
 3. Weekly schedules (lowest priority)
 
-## Next Steps
-
-- [Schedules](./schedules) - Weekly schedules
-- [Programs](../data-points/programs) - Control programs
-
-<!-- TECHNICAL -->
-
-# Holidays
+## Holidays
 
 ## Holiday Management API
 
@@ -101,8 +94,3 @@ class HolidayChecker {
   }
 }
 ```
-
-## Next Steps
-
-- [Schedules API](./schedules)
-- [REST API](../api-reference/rest-api)

@@ -1,4 +1,4 @@
-﻿# Performance Tuning
+# Performance Tuning
 
 <!-- USER-GUIDE -->
 
@@ -60,7 +60,7 @@ Current configuration:
 
 <!-- TECHNICAL -->
 
-# Advanced Performance Tuning
+## Advanced Performance Tuning
 
 ## Database Optimization
 
@@ -511,10 +511,3 @@ await metrics.measureAsync('fetch-device-data', () =>
   fetch('/api/devices/389001').then(r => r.json())
 );
 ```
-
-## Next Steps
-
-- [Best Practices](./best-practices)
-- [Troubleshooting](./troubleshooting)
-- [FAQ](./faq)
-

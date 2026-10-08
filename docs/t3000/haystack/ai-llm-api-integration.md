@@ -1,6 +1,6 @@
 # AI Integration — Cloud LLM APIs
 
-> ⬅️ [Back to Docs](/#/t3000/documentation/t3000/haystack) &nbsp;|&nbsp; [Local LLM Server](/#/t3000/documentation/t3000/haystack/ai-local-llm-server) &nbsp;|&nbsp; [AI Chat Page Design](/#/t3000/documentation/t3000/haystack/ai-chat-page-design)
+> [Back to Docs](/#/t3000/documentation/t3000/haystack) &nbsp;|&nbsp; [Local LLM Server](/#/t3000/documentation/t3000/haystack/ai-local-llm-server) &nbsp;|&nbsp; [AI Chat Page Design](/#/t3000/documentation/t3000/haystack/ai-chat-page-design)
 
 How T3000 connects to cloud-hosted LLM providers (Anthropic Claude, Google Gemini) for the built-in AI chat panel. The T3000 backend acts as a secure proxy — your API key never leaves the server.
 

@@ -93,7 +93,7 @@ Implemented full data binding and update flow for the Settings page with byte-le
   - Gateway → updates `gate_addr`
   - TCP Type → updates `tcp_type`
 
-### 4. SETTINGS_FIELD_MAPPING.md (NEW FILE)
+### 4. Settings_Field_Mapping.MD (NEW File)
 **Location:** `src/t3-react/features/settings/SETTINGS_FIELD_MAPPING.md`
 
 **Content:**

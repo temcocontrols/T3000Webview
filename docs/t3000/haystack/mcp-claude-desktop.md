@@ -1,6 +1,6 @@
-## Claude Desktop MCP Setup
+# Claude Desktop MCP Setup
 
-> ⬅️ [Back to MCP Server tab](/#/t3000/ai-assistant/mcp)
+> [Back to MCP Server tab](/#/t3000/ai-assistant/mcp)
 
 Connect Claude Desktop to the T3000 MCP server to let Claude query devices, read/write points, manage Haystack tags, and run analytics.
 
@@ -77,7 +77,7 @@ Close and reopen Claude Desktop. On first run, `npx` will automatically download
 
 ## Step 4: Verify Connection
 
-Look for the 🔌 **plug icon** in Claude's interface — it confirms the MCP server is connected.
+Look for the **plug icon** in Claude's interface — it confirms the MCP server is connected.
 
 ---
 
@@ -130,7 +130,6 @@ See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-ex
 | **Settings** | `t3000_settings_read`, `t3000_settings_write`, `t3000_device_control` |
 | **Control Logic** | `t3000_program_list`, `t3000_program_read`, `t3000_alarm_settings_read`, `t3000_users_list`, `t3000_graphics_list` |
 | **Documentation** | `t3000_doc_list`, `t3000_doc_read`, `t3000_pid_list`, `t3000_holiday_list`, `t3000_building_summary` |
-
 
 | | |
 |---|---|

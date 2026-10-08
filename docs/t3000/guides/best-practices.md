@@ -1,4 +1,4 @@
-﻿# Best Practices
+# Best Practices
 
 <!-- USER-GUIDE -->
 
@@ -54,7 +54,7 @@ Recommended practices for optimal T3000 system operation.
 
 <!-- TECHNICAL -->
 
-# Best Practices for T3000 Development
+## Best Practices for T3000 Development
 
 ## Code Architecture
 
@@ -494,10 +494,3 @@ async function readPoint(
   // Implementation
 }
 ```
-
-## Next Steps
-
-- [FAQ](./faq)
-- [Troubleshooting](./troubleshooting)
-- [Performance Tuning](./performance-tuning)
-

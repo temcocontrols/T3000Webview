@@ -52,10 +52,10 @@ Your device needs an IP address to communicate on the network.
 
 Check these boxes to turn features on:
 
-- ☑️ **Trend Logging** - Save historical data (recommended)
-- ☑️ **Alarms** - Get notified of problems (recommended)
-- ☑️ **Schedules** - Automate operations (if needed)
-- ☑️ **Remote Access** - Access from other locations (optional)
+- **Trend Logging** - Save historical data (recommended)
+- **Alarms** - Get notified of problems (recommended)
+- **Schedules** - Automate operations (if needed)
+- **Remote Access** - Access from other locations (optional)
 
 ### Saving Your Changes
 
@@ -66,7 +66,7 @@ Check these boxes to turn features on:
 3. Wait to see if device responds (usually 5-10 seconds)
 4. If everything works, click **Save**
 
-⚠️ **Warning:** Some changes require the device to restart. You might lose connection for 1-2 minutes.
+ **Warning:** Some changes require the device to restart. You might lose connection for 1-2 minutes.
 
 ### Backing Up Your Settings
 
@@ -430,11 +430,3 @@ ws.send(JSON.stringify({
      console.error('Config update failed, rolled back:', error);
    }
    ```
-
-## Next Steps
-
-- [Device Monitoring](./device-monitoring) - Monitor configured devices
-- [Troubleshooting](./device-troubleshooting) - Resolve configuration issues
-- [REST API](../api-reference/rest-api) - Full API documentation
-
-<!-- /TECHNICAL -->

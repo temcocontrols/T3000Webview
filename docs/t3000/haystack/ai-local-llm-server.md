@@ -1,6 +1,6 @@
 # AI Integration — Local LLM Server
 
-> ⬅️ [Back to Docs](/#/t3000/documentation/t3000/haystack) &nbsp;|&nbsp; [Cloud LLM APIs](/#/t3000/documentation/t3000/haystack/ai-llm-api-integration) &nbsp;|&nbsp; [AI Chat Page Design](/#/t3000/documentation/t3000/haystack/ai-chat-page-design)
+> [Back to Docs](/#/t3000/documentation/t3000/haystack) &nbsp;|&nbsp; [Cloud LLM APIs](/#/t3000/documentation/t3000/haystack/ai-llm-api-integration) &nbsp;|&nbsp; [AI Chat Page Design](/#/t3000/documentation/t3000/haystack/ai-chat-page-design)
 
 How to run a local LLM server on your network and connect T3000 to it. No cloud API keys needed — all processing stays inside your building.
 
@@ -110,10 +110,10 @@ http://192.168.1.50:11434/v1
 
 | Model | Tool calling | Notes |
 |-------|-------------|-------|
-| `llama3.1:8b` | ✅ Good | Best overall for tool use |
-| `qwen2.5:7b` | ✅ Good | Strong at structured outputs |
-| `mistral:7b` | ⚠️ Partial | May miss tools occasionally |
-| `phi3:mini` | ❌ Limited | Not recommended for tool chains |
+| `llama3.1:8b` | Yes Good | Best overall for tool use |
+| `qwen2.5:7b` | Yes Good | Strong at structured outputs |
+| `mistral:7b` | Warning Partial | May miss tools occasionally |
+| `phi3:mini` | No Limited | Not recommended for tool chains |
 
 ---
 
@@ -345,11 +345,11 @@ POST http://{host}:{port}/v1/chat/completions
 
 | Model | Size | Tool Calling | Notes |
 |-------|------|-------------|-------|
-| `llama3.1:8b` | 8B | ✅ Excellent | Best all-around for tool use |
-| `qwen2.5:7b` | 7B | ✅ Excellent | Strong at JSON/formatted output |
-| `mistral-nemo:12b` | 12B | ✅ Good | Larger context window |
-| `gemma2:9b` | 9B | ⚠️ Good | May need prompt tuning |
-| `phi3:mini` | 3.8B | ❌ Weak | Too small for reliable tool calls |
+| `llama3.1:8b` | 8B | Yes Excellent | Best all-around for tool use |
+| `qwen2.5:7b` | 7B | Yes Excellent | Strong at JSON/formatted output |
+| `mistral-nemo:12b` | 12B | Yes Good | Larger context window |
+| `gemma2:9b` | 9B | Warning Good | May need prompt tuning |
+| `phi3:mini` | 3.8B | No Weak | Too small for reliable tool calls |
 
 ---
 

@@ -13,10 +13,10 @@ AI chat explain them.
 The design deliberately follows open‑fdd's **concepts** (rules as tunable data, semantic
 roles, confirm windows) but re‑implemented **natively in T3000's Rust stack**:
 
-- ✅ rules stored as **DB rows** (managed like the existing auto‑tagging rules)
-- ✅ one reusable **Rust evaluator** (no SQL engine, no DataFusion)
-- ✅ nothing compiled into the binary (rules are data)
-- ✅ reuses what T3000 already has: Haystack/Brick tags, trendlog history, MCP server, AI chat
+- rules stored as **DB rows** (managed like the existing auto‑tagging rules)
+- one reusable **Rust evaluator** (no SQL engine, no DataFusion)
+- nothing compiled into the binary (rules are data)
+- reuses what T3000 already has: Haystack/Brick tags, trendlog history, MCP server, AI chat
 
 ---
 

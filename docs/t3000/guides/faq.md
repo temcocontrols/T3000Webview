@@ -1,4 +1,4 @@
-﻿# Frequently Asked Questions
+# Frequently Asked Questions
 
 <!-- USER-GUIDE -->
 
@@ -61,7 +61,7 @@ A: Check documentation first, then contact support with error details.
 
 <!-- TECHNICAL -->
 
-# Developer FAQ
+## Developer FAQ
 
 ## Architecture
 
@@ -346,10 +346,3 @@ server {
     }
 }
 ```
-
-## Next Steps
-
-- [Best Practices](./best-practices)
-- [Troubleshooting](./troubleshooting)
-- [Performance Tuning](./performance-tuning)
-

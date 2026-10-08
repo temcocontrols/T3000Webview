@@ -1,4 +1,4 @@
-﻿# Schedules
+# Schedules
 
 <!-- USER-GUIDE -->
 
@@ -31,14 +31,7 @@ Monday-Friday:
 Saturday-Sunday:
 - All day: Unoccupied mode, 60F
 
-## Next Steps
-
-- [Holidays](./holidays) - Holiday/exception schedules
-- [Programs](../data-points/programs) - Schedule programs
-
-<!-- TECHNICAL -->
-
-# Schedules
+## Schedules
 
 ## Schedule API
 
@@ -178,9 +171,3 @@ await client.writeProperty({
   }
 });
 ```
-
-## Next Steps
-
-- [REST API](../api-reference/rest-api)
-- [BACnet Objects](../api-reference/modbus-protocol)
-- [Programs](../data-points/programs)

@@ -89,8 +89,8 @@ scan_network(timeout_secs)
 | Aspect | C++ | Rust |
 |---|---|---|
 | Adapter enum | `GetAdaptersInfo()` Win32 API | `ipconfig /all` string parsing |
-| Broadcast target | `255.255.255.255:1234` | Same ✅ |
-| Bind port | `57619–57623` | Same ✅ |
+| Broadcast target | `255.255.255.255:1234` | Same Yes |
+| Bind port | `57619–57623` | Same Yes |
 | Socket model | Blocking `select()` + `recvfrom()` | Async Tokio `UdpSocket` |
 | Timeout | Fixed 8-second `select()` | Configurable via parameter |
 | Dedup | Tracks seen IPs in send buffer | `HashSet<u32>` after scan |

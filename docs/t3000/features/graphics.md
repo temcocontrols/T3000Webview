@@ -1,4 +1,4 @@
-﻿# Graphics
+# Graphics
 
 <!-- USER-GUIDE -->
 
@@ -38,14 +38,7 @@ Graphics provide intuitive visual representations of equipment, floor plans, and
 - Label all elements clearly
 - Test on different screen sizes
 
-## Next Steps
-
-- [Dashboard](../../quick-start/overview) - Main dashboard
-- [Monitoring](../device-management/device-monitoring) - Data monitoring
-
-<!-- TECHNICAL -->
-
-# Graphics
+## Graphics
 
 ## Graphics Rendering
 
@@ -125,8 +118,3 @@ class GraphicsDataBinder {
   }
 }
 ```
-
-## Next Steps
-
-- [REST API](../api-reference/rest-api)
-- [WebSocket API](../api-reference/websocket-api)
