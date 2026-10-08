@@ -26,7 +26,7 @@ and MobX work with no rendering involved.
    `writeFile` → `openProject` — `Wizard.tsx:1240`, `:1553`, `:1567`, `:1655-1660`, `:1690`, `:1746`
 8. Filesystem via the browser shim → `/api/eez-studio/{make-folder,write-text-file,read-text-file}` —
    `stubs/fs/index.ts:257-306`, `api/src/eez_studio/mod.rs:1500-1510`
-9. Disk: `<cwd>/T3Web/t3-eez/project/<name>/<name>.eez-project` — `mod.rs:121`, `:1312-1320`
+9. Disk: `<cwd>/ResourceFile/webview/t3web/t3-eez/project/<name>/<name>.eez-project` — `mod.rs:121`, `:1312-1320`
 10. Open: `openProject` → `addProjectTab` → `loadProject` → `ProjectStore.openFile` → `setProject` —
     `home/tabs-store.tsx:1458,573,465`, `project-editor/store/index.ts:768`
 11. First page: `ensureFirstPageVisible` → `openEditor(userPages[0])` — `home/tabs-store.tsx:511-550`

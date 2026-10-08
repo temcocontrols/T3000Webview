@@ -96,9 +96,9 @@ kept local" and continues fully functional.
 The dashboard **project history** is driven by the real created projects, not seeds:
 
 - **EEZ / LVGL** projects live on disk at `<data_root>/project/<name>/<name>.eez-project`
-  (`data_root` = `<cwd>/T3Web/t3-eez`) and are listed via `GET /api/eez-studio/projects`.
+  (`data_root` = `<cwd>/ResourceFile/webview/t3web/t3-eez`) and are listed via `GET /api/eez-studio/projects`.
 - **HVAC** drawings stay localStorage-primary, with a best-effort disk mirror under
-  `<T3Web>/t3-hvac/<id>/<id>.json` (`GET/PUT/DELETE /api/design-hub/hvac-drawings`).
+  `<ResourceFile/webview/t3web>/t3-hvac/<id>/<id>.json` (`GET/PUT/DELETE /api/design-hub/hvac-drawings`).
 - **Simulator** has no real project storage yet → hidden.
 
 The unified loader lives in `src/t3-react/features/design-hub/services/projectCatalog.ts`

@@ -47,7 +47,8 @@ Two WASM runtimes are now served:
 │ Rust Backend (port 9103)                        │
 │                                                 │
 │  routes_wasm() — ServeDir at:                   │
-│    T3Web/t3-eez/resources/eez-studio-wasm/      │
+│    ResourceFile/webview/t3web/t3-eez/           │
+│      resources/eez-studio-wasm/                 │
 │                                                 │
 │  Contents (copied by build.rs):                 │
 │   wasm/                                         │
@@ -173,10 +174,10 @@ emmake ninja -j4
        │
 3. cargo build (or cargo build --release)
        │  build.rs auto-copies from studio-wasm-libs/release/wasm/
-       │  → target/<profile>/T3Web/t3-eez/resources/eez-studio-wasm/wasm/
+       │  → target/<profile>/ResourceFile/webview/t3web/t3-eez/resources/eez-studio-wasm/wasm/
        │
 4. Rust server serves at runtime
-       │  /eez-studio-wasm/wasm/... → T3Web/t3-eez/resources/eez-studio-wasm/
+       │  /eez-studio-wasm/wasm/... → ResourceFile/webview/t3web/t3-eez/resources/eez-studio-wasm/
 ```
 
 > **Never manually copy files into `api/target/`.** The pipeline is: edit in `studio-wasm-libs` → `build-all.bat` → `cargo build` (auto-copy) → serve.

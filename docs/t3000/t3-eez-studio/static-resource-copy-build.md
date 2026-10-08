@@ -24,16 +24,16 @@ The browser has no filesystem access. EEZ Studio code (ported from Electron) use
 browser JS → browser-stub fs.promises.readFile()
   → GET /api/eez-studio/read-text-file?path=eez-framework-amalgamation/eez-flow.h
     → Rust server: resolve_path(data_root(), path)
-      → T3Web/t3-eez/resources/eez-framework-amalgamation/eez-flow.h
+      → ResourceFile/webview/t3web/t3-eez/resources/eez-framework-amalgamation/eez-flow.h
 ```
 
-`data_root()` (in `api/src/eez_studio/mod.rs`) → `{current_dir}/T3Web/t3-eez/`.
+`data_root()` (in `api/src/eez_studio/mod.rs`) → `{current_dir}/ResourceFile/webview/t3web/t3-eez/`.
 
 ---
 
 ## 2. Build Script — `api/build.rs`
 
-Runs automatically on every `cargo build` and `cargo build --release`. All destinations resolve to `{profile_root}/T3Web/t3-eez/resources/`.
+Runs automatically on every `cargo build` and `cargo build --release`. All destinations resolve to `{profile_root}/ResourceFile/webview/t3web/t3-eez/resources/`.
 
 ### 2.1. Three Copy Helpers
 
@@ -92,7 +92,7 @@ MaterialIcons-Regular.woff2, Roboto-Regular.ttf, RobotoMono-Regular.ttf
 ### 2.4. Complete Output Tree
 
 ```
-target/<profile>/T3Web/t3-eez/resources/
+target/<profile>/ResourceFile/webview/t3web/t3-eez/resources/
 ├── eez-framework-amalgamation/      ← copy_resource_dir (studio-wasm-libs)
 │   ├── eez-flow.h
 │   ├── eez-flow.cpp
@@ -189,16 +189,18 @@ viteConf.server.proxy = {
 │                                                                  │
 │  2. cargo build --release                                        │
 │     → target/release/*.dll                                       │
-│     → target/release/T3Web/t3-eez/resources/                     │
+│     → target/release/ResourceFile/webview/t3web/                 │
+│         t3-eez/resources/                                        │
 │         eez-framework-amalgamation/    (framework C sources)     │
 │         docker-build/                  (Docker build scripts)    │
 │         eez-studio-wasm/wasm/          (WASM runtimes)           │
 │         eez-studio-assets/             (fonts)                   │
 │                                                                  │
 │  3. Manual packaging:                                            │
-│     copy target/release/*.dll          → package/                │
-│     copy target/release/T3Web/         → package/T3Web/          │
-│     copy dist/spa/                     → package/www/            │
+│     copy target/release/*.dll            → package/              │
+│     copy target/release/ResourceFile/    → package/              │
+│          webview/t3web/                                          │
+│     copy dist/spa/                       → package/www/          │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -210,9 +212,9 @@ Both the DLL and its runtime resources originate from a single `target/release/`
 
 | File | Role |
 |------|------|
-| `api/build.rs` | Three copy helpers; copies all resources into `target/<profile>/T3Web/t3-eez/resources/` |
+| `api/build.rs` | Three copy helpers; copies all resources into `target/<profile>/ResourceFile/webview/t3web/t3-eez/resources/` |
 | `api/src/server.rs` | Mounts `/eez-studio-wasm`, `/eez-studio-assets`, SPA fallback |
-| `api/src/eez_studio/mod.rs` | `data_root()` → `{cwd}/T3Web/t3-eez/`; `read_text_file` handler; registers the `/api/eez-studio/*` file routes via `bridge_routes()` |
+| `api/src/eez_studio/mod.rs` | `data_root()` → `{cwd}/ResourceFile/webview/t3web/t3-eez/`; `read_text_file` handler; registers the `/api/eez-studio/*` file routes via `bridge_routes()` |
 | `quasar.config.js` | Vite dev proxy for `/eez-studio-wasm` and `/eez-studio-assets` |
 | `../../studio-wasm-libs/release/` | Origin: framework amalgamation + WASM runtimes |
 | `../../eez-studio/resources/docker-build/` | Origin: Docker build scripts |
