@@ -81,6 +81,7 @@ function parseArgs(argv) {
     else if (a === '--map') args.mapHeader = next();
     else if (a === '--hhc') args.hhc = next();
     else if (a === '--section-name') args.sectionName = next();
+    else if (a === '--print-tree') args.printTree = true;
     else if (a === '--no-deploy') args.deploy = false;
     else if (a === '--keep-original') args.keepOriginal = true;
     else if (a === '--help' || a === '-h') {
@@ -115,35 +116,112 @@ function titleCase(s) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// Folder name -> human section title used in the Contents tree.
-const SECTION_TITLES = {
+/** Case-insensitive, separator-normalised key for absolute-path lookups. */
+const normPath = (p) => path.resolve(p).replace(/\\/g, '/').toLowerCase();
+
+// ─── Documentation sources & Contents-tree design ────────────────────────────
+/**
+ * Markdown roots folded into the help file. Each becomes a sub-book of the
+ * single "T3Web" book, which is placed LAST in the Contents tree.
+ */
+const DOC_ROOTS = [
+  { key: 't3000', dir: path.join(REPO_ROOT, 'docs', 't3000') },
+  { key: 'legacy', dir: path.join(REPO_ROOT, 'docs', 'legacy') },
+];
+
+/** Display name of each docs root (depth 1 of the T3Web tree). */
+const GROUP_TITLES = {
+  t3000: 'T3000 Documentation',
+  legacy: 'Engineering & Legacy Docs',
+};
+
+/** Folder name -> display name, at any depth of the tree. */
+const TITLES = {
+  // ── docs/t3000
   'api-reference': 'API Reference',
   appendix: 'Appendix',
   architecture: 'Architecture',
   'bacnet-api': 'Design Studio (Tstat11) API',
   'building-platform': 'Building Platform',
   components: 'Components',
+  'control-messages': 'Control Messages',
   'data-points': 'Data Points',
   debugging: 'Debugging',
   'design-hub': 'Design Hub',
+  designer: 'Designer',
   'device-management': 'Device Management',
   features: 'Features',
   guides: 'Guides',
   haystack: 'Haystack & MCP',
-  icons: 'Icons',
+  'lvgl-svg': 'LVGL SVG',
+  manual: 'Manual',
+  pages: 'Pages',
+  phases: 'Phases',
   'quick-start': 'Quick Start',
   releases: 'Releases',
   'shared-db': 'Shared DB',
+  'sql-server-express': 'SQL Server Express',
   't3-eez-studio': 'Design Studio (Tstat11)',
   'tstat-lcd': 'Tstat LCD',
+  // ── docs/legacy
+  analysis: 'Analysis',
+  api: 'API',
+  bacnet: 'BACnet',
+  bugs: 'Bug Investigations',
+  'data-flow': 'Data Flow',
+  'data-mnt': 'Data Maintenance',
+  'data-splitting': 'Data Splitting',
+  database: 'Database',
+  develop: 'Developer Setup',
+  development: 'Development',
+  hvac: 'HVAC',
+  implementations: 'Implementations',
+  input: 'Input',
+  layout: 'Layout',
+  'left-panel': 'Left Panel',
+  'legacy-code': 'Legacy Code',
+  'new-ui': 'New UI',
+  project: 'Project',
+  revnotes: 'Release Notes',
+  't3-bas-web': 'T3 BAS Web',
+  't3-newui': 'T3 New UI',
+  't3-vue': 'T3 Vue',
+  t3000: 'T3000',
+  'trend-log': 'Trend Log',
+  v0: 'v0 (early design)',
 };
-const sectionTitle = (folder) => SECTION_TITLES[folder] || titleCase(folder);
+
+/**
+ * Preferred child order per tree path. Names not listed sort alphabetically
+ * after the listed ones. '' orders the two top-level groups.
+ */
+const ORDER = {
+  '': ['t3000', 'legacy'],
+  t3000: [
+    'quick-start', 'shared-db', 'architecture', 'design-hub', 'components',
+    'device-management', 'data-points', 'features', 'guides', 'building-platform',
+    'api-reference', 'haystack', 'tstat-lcd', 't3-eez-studio', 'bacnet-api', 'releases',
+  ],
+  legacy: ['development', 'implementations', 'legacy-code', 'releases'],
+  'legacy/development': [
+    'project', 'analysis', 'api', 'bacnet', 'database', 'data-mnt', 'data-flow',
+    'develop', 'new-ui', 'bugs',
+  ],
+  'legacy/implementations': ['t3-bas-web', 't3-vue', 't3000', 'hvac', 'trend-log'],
+};
 
 /**
  * Title of the top-level Contents book that holds the Markdown docs.
  * Override with --section-name "...".
  */
 const DOC_SECTION_TITLE = 'T3Web';
+
+/** Slug (file name) of the T3Web landing page. */
+const LANDING_SLUG = 'docs-index';
+
+/** Label for a folder node: depth 1 uses the docs-root name, deeper uses TITLES. */
+const folderLabel = (key, pathPrefix) =>
+  (!pathPrefix ? GROUP_TITLES[key] : TITLES[key]) || titleCase(key);
 
 // ─── Step 1: decompile the shipped CHM ───────────────────────────────────────
 function decompile(chm, work) {
@@ -196,21 +274,76 @@ function headings(md) {
   return res;
 }
 
-const EXTRA_CSS = `/* Extra rules so plain Markdown HTML sits well inside the Dr.Explain stylesheets */
-.description_on_page h1, .description_on_page h2, .description_on_page h3,
-.description_on_page h4, .description_on_page h5, .description_on_page h6 { margin-top: 1.1em; }
-.description_on_page p { margin: 0.6em 0; }
-.description_on_page img { max-width: 100%; height: auto; }
-.description_on_page pre { background: #f6f8fa; border: 1px solid #d8dee4; border-radius: 4px;
-  padding: 10px 12px; overflow-x: auto; }
+/**
+ * Extra rules so plain Markdown HTML sits well inside the Dr.Explain stylesheets.
+ *
+ * IMPORTANT: the Dr.Explain theme contains `.b-article { background-color:#3f3f3f;
+ * color:#ffffff; }` and re-colours its own text through private classes (.p, .deh1,
+ * ...). Markdown produces plain <p>/<pre>/<table>, which inherit that WHITE text and
+ * become invisible on the light page. Every element we emit therefore needs an
+ * explicit colour.
+ */
+const EXTRA_CSS = `/* Markdown pages folded into the Dr.Explain manual */
+
+/* The Dr.Explain theme paints the article dark:
+     .b-article { background-color:#3f3f3f; color:#ffffff; }
+   and re-colours its own text with private classes (.p, .deh1, span.code, ...).
+   Plain Markdown HTML inherits the white colour, so code blocks and tables came
+   out white-on-light and unreadable. Our pages therefore ship a self-contained
+   LIGHT theme: neutralise the article colours, then colour every element we emit
+   explicitly. (Loaded after all.stylesheet, so !important wins.) */
+html, body { background: #ffffff; }
+
+.b-article,
+.b-article__wrapper,
+.b-article__innerWrapper { background-color: #ffffff !important; color: #24292f !important; }
+
+.description_on_page,
+.description_on_page p,
+.description_on_page li,
+.description_on_page dd,
+.description_on_page dt,
+.description_on_page blockquote,
+.description_on_page strong,
+.description_on_page em,
+.description_on_page b,
+.description_on_page i,
+.description_on_page span,
+.description_on_page div { color: #24292f !important; }
+
+.description_on_page h1,
+.description_on_page h2,
+.description_on_page h3,
+.description_on_page h4,
+.description_on_page h5,
+.description_on_page h6 { margin-top: 1.1em; }
+
+.description_on_page a { color: #0b5cad !important; }
+
+.description_on_page pre,
+.description_on_page code,
+.description_on_page code *,
+.description_on_page kbd,
+.description_on_page samp { color: #24292f !important; }
+
+.description_on_page pre { background: #f6f8fa !important; border: 1px solid #d8dee4;
+  border-radius: 4px; padding: 10px 12px; overflow-x: auto; }
 .description_on_page code { font-family: Consolas, "Courier New", monospace; font-size: 92%; }
-.description_on_page pre code { background: none; border: 0; padding: 0; }
+.description_on_page pre code { background: none !important; border: 0; padding: 0; }
+
 .description_on_page table { border-collapse: collapse; margin: 0.8em 0; }
-.description_on_page th, .description_on_page td { border: 1px solid #d0d7de; padding: 5px 9px; }
-.description_on_page th { background: #f3f2f1; }
-.description_on_page blockquote { margin: 0.8em 0; padding: 0.2em 1em; border-left: 3px solid #d0d7de;
-  color: #5b5b5b; }
+.description_on_page th, .description_on_page td { border: 1px solid #d0d7de; padding: 5px 9px;
+  color: #24292f !important; }
+.description_on_page th { background: #f3f2f1 !important; }
+
+.description_on_page blockquote { margin: 0.8em 0; padding: 0.2em 1em; border-left: 3px solid #d0d7de; }
 .description_on_page hr { border: 0; border-top: 1px solid #e1e1e1; margin: 1.4em 0; }
+.description_on_page img { max-width: 100%; height: auto; }
+
+/* T3Web landing page */
+.description_on_page .t3web-count { font-weight: normal !important; font-size: 85%;
+  color: #6a737d !important; }
+.description_on_page .t3web-lead { color: #57606a !important; }
 `;
 
 /** Page shell reusing the manual's own stylesheets. */
@@ -291,6 +424,31 @@ function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/**
+ * project.hhc / project.hhk are ANSI files, so every name written into them must
+ * be ASCII - legacy doc headings contain emoji and arrows (🚨, →, ✅, —) that
+ * would otherwise be corrupted. Common symbols are transliterated first.
+ */
+function tocText(s) {
+  return String(s)
+    .replace(/[\u2192\u279C\u27A1]/g, '->')
+    .replace(/[\u2190]/g, '<-')
+    .replace(/[\u2194\u21C4\u21D4]/g, '<->')
+    .replace(/[\u2018\u2019\u201A]/g, "'")
+    .replace(/[\u201C\u201D\u201E]/g, '"')
+    .replace(/[\u2013\u2014\u2015]/g, '-')
+    .replace(/[\u2022\u00B7]/g, '-')
+    .replace(/\u2026/g, '...')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[\u2713\u2714\u2705]/g, '[ok]')
+    .replace(/[\u26A0\uFE0F]/g, '[!]')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 /** Copy referenced images into the work tree and rewrite their src. */
 function localiseImages(html, mdFile, work, slugDir) {
   return html.replace(/(<img\b[^>]*\bsrc=")([^"]+)(")/gi, (full, pre, src, post) => {
@@ -310,53 +468,170 @@ function localiseImages(html, mdFile, work, slugDir) {
 }
 
 /** Rewrite links to sibling docs so they resolve inside the CHM. */
-function localiseLinks(html, mdFile, docsRoot, slugByRel) {
+function localiseLinks(html, mdFile, slugByAbs) {
   return html.replace(/(<a\b[^>]*\bhref=")([^"]+)(")/gi, (full, pre, href, post) => {
     if (/^(https?:|mailto:|#|data:|\/)/i.test(href)) return full;
     const [target, frag = ''] = href.split('#');
     if (!/\.md$/i.test(target)) return full;
     const abs = path.resolve(path.dirname(mdFile), decodeURIComponent(target));
-    const rel = path.relative(docsRoot, abs).replace(/\\/g, '/');
-    const slug = slugByRel.get(rel);
+    const slug = slugByAbs.get(normPath(abs));
     if (!slug) return full;
     return `${pre}${slug}.htm${frag ? '#' + frag : ''}${post}`;
   });
 }
 
 // ─── Step 3: Contents tree (.hhc) ────────────────────────────────────────────
-function tocInsert(docs, sectionName = DOC_SECTION_TITLE) {
-  // group -> [ {title, file} ]
-  const groups = new Map();
+/**
+ * Builds the nested folder tree shared by the .hhc writer and --print-tree.
+ * Keys are folder segments of each document's branch, e.g.
+ * "t3000/quick-start" or "legacy/implementations/t3-bas-web".
+ */
+function buildDocTree(docs) {
+  const root = { children: new Map(), files: [] };
   for (const d of docs) {
-    const g = d.rel.split('/')[0];
-    if (!groups.has(g)) groups.set(g, []);
-    groups.get(g).push(d);
+    let node = root;
+    for (const seg of d.branch.split('/')) {
+      if (!node.children.has(seg)) node.children.set(seg, { children: new Map(), files: [] });
+      node = node.children.get(seg);
+    }
+    node.files.push(d);
   }
+  return root;
+}
 
+/** Ordered child keys: preferred order first (ORDER), then alphabetical. */
+function sortedChildKeys(node, pathPrefix) {
+  const order = ORDER[pathPrefix] || [];
+  return [...node.children.keys()].sort((a, b) => {
+    const ia = order.indexOf(a);
+    const ib = order.indexOf(b);
+    const ra = ia === -1 ? Number.MAX_SAFE_INTEGER : ia;
+    const rb = ib === -1 ? Number.MAX_SAFE_INTEGER : ib;
+    return ra - rb || a.localeCompare(b);
+  });
+}
+
+/** Files of a node: the "Overview" page first, then alphabetical by title. */
+function sortedFiles(node) {
+  return [...node.files].sort((a, b) => {
+    const oa = a.isOverview ? 0 : 1;
+    const ob = b.isOverview ? 0 : 1;
+    return oa - ob || a.title.localeCompare(b.title);
+  });
+}
+
+const countDocs = (node) =>
+  node.files.length + [...node.children.values()].reduce((n, c) => n + countDocs(c), 0);
+
+/** First page of a subtree (used to link a book heading to its first topic). */
+function firstDocOf(node, pathPrefix) {
+  const own = sortedFiles(node)[0];
+  if (own) return own;
+  for (const key of sortedChildKeys(node, pathPrefix)) {
+    const hit = firstDocOf(node.children.get(key), pathPrefix ? `${pathPrefix}/${key}` : key);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
+ * Builds the body of the T3Web landing page - a sitemap of every collection,
+ * sub-book and page, so clicking the T3Web book in the Contents lands on a
+ * real page instead of a bare node.
+ */
+function landingHtml(docs, sectionName) {
+  const root = buildDocTree(docs);
+  const out = [
+    `<h1>${escapeHtml(sectionName)}</h1>`,
+    `<p class="t3web-lead">T3000 documentation bundled into this help file: ` +
+      `<b>${docs.length}</b> pages in <b>${root.children.size}</b> collections. ` +
+      `Use the list below, or the Contents / Index / Search panes on the left.</p>`,
+  ];
+
+  const walk = (node, pathPrefix, depth) => {
+    let html = '';
+    const files = sortedFiles(node);
+    if (files.length) {
+      html += '<ul>';
+      for (const f of files) html += `<li><a href="${f.slug}.htm">${escapeHtml(f.title)}</a></li>`;
+      html += '</ul>';
+    }
+    for (const key of sortedChildKeys(node, pathPrefix)) {
+      const child = node.children.get(key);
+      const childPath = pathPrefix ? `${pathPrefix}/${key}` : key;
+      const first = firstDocOf(child, childPath);
+      const label = escapeHtml(folderLabel(key, pathPrefix));
+      const head = first ? `<a href="${first.slug}.htm">${label}</a>` : label;
+      const tag = depth === 0 ? 'h2' : depth === 1 ? 'h3' : 'h4';
+      html +=
+        `<${tag}>${head} <span class="t3web-count">(${countDocs(child)} pages)</span></${tag}>`;
+      html += walk(child, childPath, depth + 1);
+    }
+    return html;
+  };
+
+  out.push(walk(root, '', 0));
+  return out.join('\n');
+}
+
+/** Plain-text preview of the Contents tree (used by --print-tree). */
+function previewTree(docs, sectionName) {
+  const root = buildDocTree(docs);
+  const lines = [`${sectionName}  (${docs.length} pages)`];
+  const walk = (node, pathPrefix, indent) => {
+    for (const key of sortedChildKeys(node, pathPrefix)) {
+      const child = node.children.get(key);
+      const childPath = pathPrefix ? `${pathPrefix}/${key}` : key;
+      lines.push(`${indent}${folderLabel(key, pathPrefix)}  (${countDocs(child)})`);
+      walk(child, childPath, indent + '   ');
+    }
+    for (const f of sortedFiles(node)) lines.push(`${indent}- ${f.title}`);
+  };
+  walk(root, '', '  ');
+  return lines.join('\n');
+}
+
+/** Renders the book: folders become sub-books at any depth, files become leaves. */
+function tocInsert(docs, sectionName = DOC_SECTION_TITLE, landingSlug = null) {
   const li = (name, local, children = '') => `
 <LI><OBJECT type="text/sitemap">
-<param name="Name" value="${escapeHtml(name)}"/>
+<param name="Name" value="${escapeHtml(tocText(name))}"/>
 ${local ? `<param name="Local" value="${local}"/>\n` : ''}</OBJECT>
 <UL>
 ${children}
 </UL>
 </LI>`;
 
-  let body = '';
-  for (const [folder, items] of [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-    const leaves = items
-      .sort((a, b) => a.rel.localeCompare(b.rel))
-      .map((d) => li(d.title, `${d.slug}.htm`))
-      .join('');
-    body += li(sectionTitle(folder), '', leaves);
-  }
-  return li(sectionName, null, body);
+  const root = buildDocTree(docs);
+  const render = (node, pathPrefix) => {
+    let out = '';
+    for (const key of sortedChildKeys(node, pathPrefix)) {
+      const childPath = pathPrefix ? `${pathPrefix}/${key}` : key;
+      out += li(folderLabel(key, pathPrefix), '', render(node.children.get(key), childPath));
+    }
+    for (const f of sortedFiles(node)) out += li(f.title, `${f.slug}.htm`);
+    return out;
+  };
+
+  return li(sectionName, landingSlug ? `${landingSlug}.htm` : null, render(root, ''));
 }
 
 // ─── Step 4: Index (.hhk) ────────────────────────────────────────────────────
-function indexInsert(docs) {
+function indexInsert(docs, extra = []) {
   const seen = new Set();
   let out = '';
+  for (const e of extra) {
+    if (!e.name || !e.local) continue;
+    seen.add(e.name.toLowerCase());
+    out += `
+<LI><OBJECT type="text/sitemap">
+<param name="Name" value="${escapeHtml(tocText(e.name))}" />
+<param name="Local" value="${e.local}" />
+</OBJECT>
+<UL>
+</UL>
+</LI>`;
+  }
   for (const d of docs) {
     for (const kw of [d.title, ...d.headings]) {
       const key = kw.toLowerCase();
@@ -364,7 +639,7 @@ function indexInsert(docs) {
       seen.add(key);
       out += `
 <LI><OBJECT type="text/sitemap">
-<param name="Name" value="${escapeHtml(kw)}" />
+<param name="Name" value="${escapeHtml(tocText(kw))}" />
 <param name="Local" value="${d.slug}.htm" />
 </OBJECT>
 <UL>
@@ -544,45 +819,116 @@ function main() {
   const chm = !args.chm && fs.existsSync(backupChm) ? backupChm : requestedChm;
   const mapHeader = args.mapHeader || process.env.T3000_HELP_MAP_H || DEFAULTS.mapHeader;
   const hhcExe = args.hhc || process.env.HHC_EXE || DEFAULTS.hhc;
-  const docsRoot = path.resolve(args.docs || process.env.T3000_HELP_DOCS || DEFAULTS.docs);
+  const docsRoots = args.docs
+    ? [{ key: 't3000', dir: path.resolve(args.docs) }]
+    : DOC_ROOTS.map((r) => ({ ...r }));
   const work = path.resolve(args.work || DEFAULTS.work);
   const out = path.resolve(args.out || path.join(path.dirname(requestedChm), 'T3000_Help.chm'));
   const sectionName = args.sectionName || DOC_SECTION_TITLE;
 
-  console.log(`\nT3000 Help CHM build\n  source  : ${chm}\n  docs    : ${docsRoot}\n  work    : ${work}\n  output  : ${out}\n`);
+  console.log(
+    `\nT3000 Help CHM build\n  source  : ${chm}\n  docs    : ${docsRoots
+      .map((r) => `${r.dir}`)
+      .join('\n            ')}\n  book    : ${sectionName} (placed last in Contents)\n  work    : ${work}\n  output  : ${out}\n`
+  );
   if (!fs.existsSync(hhcExe)) throw new Error(`hhc.exe not found: ${hhcExe}\nInstall "HTML Help Workshop" or pass --hhc <path>.`);
-  if (!fs.existsSync(docsRoot)) throw new Error(`Markdown root not found: ${docsRoot}`);
+  for (const r of docsRoots) {
+    if (!fs.existsSync(r.dir)) throw new Error(`Markdown root not found: ${r.dir}`);
+  }
 
-  console.log('1) Decompiling the existing help file');
+  console.log('1) Scanning documentation sources');
+  const docs = [];
+  for (const root of docsRoots) {
+    for (const abs of collectMarkdown(root.dir)) {
+      const rel = path.relative(root.dir, abs).replace(/\\/g, '/');
+      const relDir = path.dirname(rel);
+      // `images`/`assets` folders are not books - their Markdown belongs to the
+      // parent section (e.g. manual/images/README.md -> Manual > Overview).
+      const dirSegs = (!relDir || relDir === '.' ? '' : relDir.replace(/\\/g, '/'))
+        .split('/')
+        .filter((s) => s && !/^(images?|assets|img)$/i.test(s));
+      const dir = dirSegs.join('/');
+      const slug = 'docs-' + slugify(`${root.key}/${rel.replace(/\.md$/i, '')}`);
+      const md = fs.readFileSync(abs, 'utf8');
+      const base = path.basename(rel, '.md');
+      const isOverview = /^(readme|index)$/i.test(base);
+      docs.push({
+        abs: path.resolve(abs),
+        branch: dir ? `${root.key}/${dir}` : root.key,
+        rootKey: root.key,
+        rel,
+        slug,
+        title: isOverview ? 'Overview' : firstHeading(md) || titleCase(base),
+        md,
+        headings: headings(md),
+        isOverview,
+      });
+    }
+  }
+  if (!docs.length) throw new Error('No .md files found under the configured docs roots.');
+
+  // Two Markdown files can slugify to the same topic name (they differ only by
+  // case or punctuation, e.g. TRENDLOG_DATA_FLOW_ANALYSIS.md vs
+  // TrendLog-Data-Flow-Analysis.md). CHM file names are case-insensitive, so
+  // disambiguate with a numeric suffix instead of silently overwriting a page.
+  const usedSlugs = new Set();
+  for (const d of docs) {
+    const base = d.slug;
+    let n = 1;
+    while (usedSlugs.has(d.slug)) d.slug = `${base}-${++n}`;
+    if (d.slug !== base) {
+      warn(
+        `duplicate topic name "${base}" - ${path.relative(REPO_ROOT, d.abs)} published as ${d.slug}.htm`
+      );
+    }
+    usedSlugs.add(d.slug);
+  }
+
+  const slugByAbs = new Map(docs.map((d) => [normPath(d.abs), d.slug]));
+
+  if (args.printTree) {
+    console.log(`\nContent tree preview (no build performed):\n`);
+    console.log(previewTree(docs, sectionName));
+    console.log('');
+    return;
+  }
+
+  console.log(`\n2) Decompiling the existing help file`);
   decompile(chm, work);
-
-  console.log('2) Converting Markdown topics');
-  const mdFiles = collectMarkdown(docsRoot);
-  if (!mdFiles.length) throw new Error(`No .md files under ${docsRoot}`);
-
-  const docs = mdFiles.map((abs) => {
-    const rel = path.relative(docsRoot, abs).replace(/\\/g, '/');
-    const slug = 'docs-' + slugify(rel.replace(/\.md$/i, ''));
-    const md = fs.readFileSync(abs, 'utf8');
-    const title = firstHeading(md) || titleCase(path.basename(rel, '.md'));
-    return { abs, rel, slug, title, md, headings: headings(md) };
-  });
-  const slugByRel = new Map(docs.map((d) => [d.rel, d.slug]));
+  console.log('3) Converting Markdown topics');
 
   fs.mkdirSync(path.join(work, 'css'), { recursive: true });
   fs.writeFileSync(path.join(work, 'css', 'docs-extra.stylesheet'), EXTRA_CSS, 'utf8');
+
+  // Landing page for the whole book. The Contents node "T3Web" points here, so
+  // selecting the book opens a real sitemap instead of a bare branch.
+  fs.writeFileSync(
+    path.join(work, `${LANDING_SLUG}.htm`),
+    pageShell({
+      title: `${sectionName} Documentation`,
+      breadcrumb: sectionName,
+      fileName: `${LANDING_SLUG}.htm`,
+      content: landingHtml(docs, sectionName),
+      prev: null,
+      next: null,
+    }),
+    'utf8'
+  );
+  ok(`Landing page written (${LANDING_SLUG}.htm - ${docs.length} pages listed)`);
 
   marked.setOptions({ gfm: true, breaks: false });
   docs.forEach((d, i) => {
     let html = marked.parse(d.md);
     const slugDir = d.slug.replace(/^docs-/, '');
     html = localiseImages(html, d.abs, work, slugDir);
-    html = localiseLinks(html, d.abs, docsRoot, slugByRel);
+    html = localiseLinks(html, d.abs, slugByAbs);
 
     const prev = i > 0 ? { title: docs[i - 1].title, file: `${docs[i - 1].slug}.htm` } : null;
     const next = i < docs.length - 1 ? { title: docs[i + 1].title, file: `${docs[i + 1].slug}.htm` } : null;
-    const folder = d.rel.split('/')[0];
-    const breadcrumb = `T3000 Docs › ${sectionTitle(folder)}`;
+    const trail = d.branch.split('/').slice(1).map((s) => TITLES[s] || titleCase(s));
+    const breadcrumb = [sectionName, GROUP_TITLES[d.rootKey] || titleCase(d.rootKey), ...trail]
+      .filter(Boolean)
+      .join(' › ');
 
     fs.writeFileSync(
       path.join(work, `${d.slug}.htm`),
@@ -592,27 +938,32 @@ function main() {
   });
   ok(`${docs.length} Markdown pages converted`);
 
-  console.log('3) Extending the Contents tree and Index');
+  console.log('4) Extending the Contents tree and Index');
   const hhcPath = path.join(work, 'project.hhc');
   const pristineHhc = fs.readFileSync(hhcPath, 'latin1'); // before our section is added
   let hhc = pristineHhc;
   const escapedName = sectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   if (!new RegExp(`value="${escapedName}"`).test(hhc)) {
-    // Insert as the FIRST top-level book so it is visible without scrolling.
-    hhc = hhc.replace(/(<BODY>\s*<UL>)/i, `$1\n${tocInsert(docs, sectionName)}\n`);
+    // Append as the LAST top-level book in the Contents tree.
+    hhc = hhc.replace(/<\/UL>\s*<\/BODY>/i, `${tocInsert(docs, sectionName, LANDING_SLUG)}\n</UL>\n</BODY>`);
     fs.writeFileSync(hhcPath, hhc, 'latin1');
-    ok(`Contents tree extended (top-level book "${sectionName}")`);
+    ok(`Contents tree extended (top-level book "${sectionName}", placed last)`);
   } else {
     warn(`Contents tree already contains a "${sectionName}" book - not re-adding`);
   }
 
   const hhkPath = path.join(work, 'project.hhk');
   let hhk = fs.readFileSync(hhkPath, 'latin1');
-  hhk = hhk.replace(/<\/UL>\s*<\/BODY>/i, `${indexInsert(docs)}\n</UL>\n</BODY>`);
+  hhk = hhk.replace(
+    /<\/UL>\s*<\/BODY>/i,
+    `${indexInsert(docs, [
+      { name: `${sectionName} Documentation`, local: `${LANDING_SLUG}.htm` },
+    ])}\n</UL>\n</BODY>`
+  );
   fs.writeFileSync(hhkPath, hhk, 'latin1');
   ok('Index extended');
 
-  console.log('4) Writing project.hhp (FILES + ALIAS + MAP)');
+  console.log('5) Writing project.hhp (FILES + ALIAS + MAP)');
   const ctx = contextMap(mapHeader, pristineHhc);
   const files = listFilesForHhp(work);
   writeHhp(work, files, ctx);
@@ -642,7 +993,7 @@ function main() {
     warn(`${ctx.unmatched.length} context IDs not auto-mapped (${summary}) -> ${report}`);
   }
 
-  console.log('5) Compiling with hhc.exe');
+  console.log('6) Compiling with hhc.exe');
   // hhc.exe returns a non-zero exit code even on a clean compile, so success is
   // judged by the output file, not by the exit code.
   let hhcOut = '';
@@ -663,6 +1014,7 @@ function main() {
   }
   ok(`Compiled: ${(fs.statSync(compiled).size / 1048576).toFixed(1)} MB`);
 
+  const altOut = path.join(REPO_ROOT, 'build', 'help-chm', 'T3000_Help.chm');
   if (args.deploy && !args.keepOriginal) {
     if (fs.existsSync(out)) {
       const backup = out.replace(/\.chm$/i, '.original.chm');
@@ -671,13 +1023,23 @@ function main() {
         ok(`Backed up the original to ${backup}`);
       }
     }
-    fs.copyFileSync(compiled, out);
-    ok(`Deployed to ${out}`);
+    try {
+      fs.copyFileSync(compiled, out);
+      ok(`Deployed to ${out}`);
+    } catch (e) {
+      if (e && (e.code === 'EBUSY' || e.code === 'EPERM')) {
+        fs.mkdirSync(path.dirname(altOut), { recursive: true });
+        fs.copyFileSync(compiled, altOut);
+        warn(`Could not overwrite ${out} - the file is open in the Help viewer.`);
+        warn(`Close the help window and re-run, or copy it yourself from:\n     ${altOut}`);
+      } else {
+        throw e;
+      }
+    }
   } else {
-    const alt = path.join(REPO_ROOT, 'build', 'help-chm', 'T3000_Help.chm');
-    fs.mkdirSync(path.dirname(alt), { recursive: true });
-    fs.copyFileSync(compiled, alt);
-    ok(`Not deployed - result copied to ${alt}`);
+    fs.mkdirSync(path.dirname(altOut), { recursive: true });
+    fs.copyFileSync(compiled, altOut);
+    ok(`Not deployed - result copied to ${altOut}`);
   }
   console.log('\nDone.\n');
 }
