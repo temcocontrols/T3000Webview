@@ -95,7 +95,8 @@ struct DeleteFileQuery {
 // Helpers
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Resolve a user-supplied path to an absolute path under T3Web/t3-eez.
+/// Resolve a user-supplied path to an absolute path under
+/// `ResourceFile/webview/t3web/t3-eez`.
 ///
 /// `PathBuf::join` does NOT normalise `..` components, so we do it manually.
 /// Additionally, the LVGL WASM runtime prepends a virtual `/wasm/` prefix to
@@ -132,7 +133,8 @@ fn resolve_path(base: &str, user_path: &str) -> PathBuf {
 pub(crate) fn data_root() -> PathBuf {
     std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
-        .join("T3Web").join("t3-eez")
+        .join(crate::constants::T3WEB_REL_DIR)
+        .join("t3-eez")
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1390,8 +1392,8 @@ struct EezProjectsResponse {
     projects: Vec<EezProjectEntry>,
 }
 
-/// The HVAC drawings root — sibling of `t3-eez` under `T3Web`
-/// (e.g. `<cwd>/T3Web/t3-hvac`).
+/// The HVAC drawings root — sibling of `t3-eez` under the T3 WebView data folder
+/// (e.g. `<cwd>/ResourceFile/webview/t3web/t3-hvac`).
 fn hvac_root() -> PathBuf {
     let mut root = data_root();
     if let Some(parent) = root.parent() {
@@ -1514,7 +1516,8 @@ struct HvacDrawingsResponse {
     drawings: Vec<HvacDrawingEntry>,
 }
 
-/// List HVAC drawings saved on disk under `<T3Web>/t3-hvac/<id>/<id>.json`.
+/// List HVAC drawings saved on disk under
+/// `<ResourceFile/webview/t3web>/t3-hvac/<id>/<id>.json`.
 async fn list_hvac_drawings() -> Json<HvacDrawingsResponse> {
     let root = hvac_root();
     let mut drawings = Vec::new();
@@ -1642,7 +1645,7 @@ pub fn bridge_routes(router: Router<T3AppState>) -> Router<T3AppState> {
         .route("/api/eez-studio/store", post(store_handler))
         // Design Hub — real project catalog
         .route("/api/eez-studio/projects", get(list_eez_projects))
-        // HVAC drawings disk persistence (<T3Web>/t3-hvac/<id>/<id>.json)
+        // HVAC drawings disk persistence (<ResourceFile/webview/t3web>/t3-hvac/<id>/<id>.json)
         .route("/api/design-hub/hvac-drawings", get(list_hvac_drawings))
         .route("/api/design-hub/hvac-drawings/:id", get(get_hvac_drawing))
         .route("/api/design-hub/hvac-drawings/:id", put(put_hvac_drawing))

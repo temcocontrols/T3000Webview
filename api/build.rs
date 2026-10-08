@@ -1,9 +1,18 @@
 use std::path::Path;
 
+/// Relative staging path that mirrors the deployed runtime layout.
+///
+/// The runtime resolves its data under
+/// `{runtime_root}/ResourceFile/webview/t3web/` (see
+/// `api/src/constants.rs::T3WEB_REL_DIR`), so the build output staged here must
+/// use the same relative path for dev runs and packaging to line up.
+const T3WEB_REL_DIR: &str = "ResourceFile/webview/t3web";
+
 /// Copy a directory tree into the Cargo output profile root.
 ///
 /// Source paths are resolved relative to `CARGO_MANIFEST_DIR` (the `api/`
-/// crate root).  The destination is `target/<profile>/T3Web/t3-eez/resources/`
+/// crate root).  The destination is
+/// `target/<profile>/ResourceFile/webview/t3web/t3-eez/resources/`
 /// — this matches `data_root()` at runtime (see `api/src/eez_studio/mod.rs`).
 ///
 /// **Adding new static resources for release packaging:**
@@ -16,7 +25,7 @@ fn copy_resource_dir(manifest_dir: &str, profile_root: &Path, relative_src: &str
     // Strip the last path component as the dir name (e.g. "eez-framework-amalgamation")
     let dir_name = src.file_name().expect("source must be a directory path");
     let dst = profile_root
-        .join("T3Web")
+        .join(T3WEB_REL_DIR)
         .join("t3-eez")
         .join("resources")
         .join(dir_name);
@@ -38,7 +47,7 @@ fn copy_resource_dir(manifest_dir: &str, profile_root: &Path, relative_src: &str
 
 /// Copy selected individual files from a source directory into the destination.
 /// Each entry in `files` is (source_filename, dest_filename_or_subpath).
-/// Destination: profile_root/T3Web/t3-eez/resources/{dest_rel}/
+/// Destination: profile_root/ResourceFile/webview/t3web/t3-eez/resources/{dest_rel}/
 fn copy_selected_files(
     manifest_dir: &str,
     profile_root: &Path,
@@ -48,7 +57,7 @@ fn copy_selected_files(
 ) {
     let src_dir = Path::new(manifest_dir).join(relative_src_dir);
     let dst_dir = profile_root
-        .join("T3Web")
+        .join(T3WEB_REL_DIR)
         .join("t3-eez")
         .join("resources")
         .join(dest_rel);
@@ -144,7 +153,7 @@ fn main() {
 
     // ── Static resources copied into the release output tree ──────────────
     // Source paths are relative to api/ (CARGO_MANIFEST_DIR).
-    // Destination: target/<profile>/T3Web/t3-eez/resources/<dir>/
+    // Destination: target/<profile>/ResourceFile/webview/t3web/t3-eez/resources/<dir>/
     // These are packaged alongside the DLL for distribution.
 
     copy_resource_dir(

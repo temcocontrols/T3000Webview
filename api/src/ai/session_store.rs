@@ -1,9 +1,10 @@
 // AI Chat — JSON-file session persistence.
 //
-// Sessions are stored as individual JSON files under T3Web/ai-assistant/,
+// Sessions are stored as individual JSON files under
+// ResourceFile/webview/t3web/ai-assistant/,
 // with an index.json listing all sessions (id, title, date, message count).
 //
-//      T3Web/ai-assistant/
+//      ResourceFile/webview/t3web/ai-assistant/
 //      ├── index.json              ← [{id, title, created_at, message_count}]
 //      ├── a1b2c3d4.json           ← session messages
 //      └── e5f6g7h8.json

@@ -14,7 +14,7 @@ pub fn memory_file() -> PathBuf { data_dir().join("mcp_memory.json") }
 pub fn current_device_file() -> PathBuf {
     std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
-        .join("T3Web")
+        .join(crate::constants::T3WEB_REL_DIR)
         .join("ai-assistant")
         .join("mcp_device_context.json")
 }

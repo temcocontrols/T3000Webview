@@ -43,14 +43,27 @@ pub fn get_t3000_database_path() -> PathBuf {
     get_t3000_runtime_path().join("Database")
 }
 
-/// Get the T3000 log directory path (T3Web\logs under the runtime folder)
+/// Relative path (under the T3000 runtime root) of the T3 WebView runtime data
+/// folder — `ResourceFile/webview/t3web`.
+///
+/// All WebView-persisted data lives beneath it: `logs/`, `ai-assistant/`,
+/// `t3-eez/` (EEZ projects + static resources) and `t3-hvac/` (drawings).
+///
+/// It is deliberately nested inside `ResourceFile/webview/` (sibling of `www`)
+/// so the T3000 installer/updater ships it with the rest of the webview payload
+/// instead of creating a stray top-level folder in the install root.
+pub const T3WEB_REL_DIR: &str = "ResourceFile/webview/t3web";
+
+/// Get the T3000 log directory path
+/// (`ResourceFile\webview\t3web\logs` under the runtime folder)
 pub fn get_t3000_log_path() -> PathBuf {
-    get_t3000_runtime_path().join("T3Web").join("logs")
+    get_t3000_runtime_path().join(T3WEB_REL_DIR).join("logs")
 }
 
 /// Get the AI Assistant sessions directory path
+/// (`ResourceFile\webview\t3web\ai-assistant` under the runtime folder)
 pub fn get_ai_sessions_path() -> PathBuf {
-    get_t3000_runtime_path().join("T3Web").join("ai-assistant")
+    get_t3000_runtime_path().join(T3WEB_REL_DIR).join("ai-assistant")
 }
 
 #[derive(Debug, Clone, Copy)]

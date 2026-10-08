@@ -247,7 +247,8 @@ impl FlowHandle {
 // File writer for FFI steps
 // ---------------------------------------------------------------------------
 
-/// Write `details` to `T3Web/logs/YYYY-MM/MMDD/{flow_id}_{seq}.txt`.
+/// Write `details` to
+/// `ResourceFile/webview/t3web/logs/YYYY-MM/MMDD/{flow_id}_{seq}.txt`.
 /// Returns the file path on success, or `None` if `details` is empty or write fails.
 async fn write_detail_file(
     flow_id: &str,

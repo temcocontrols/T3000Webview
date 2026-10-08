@@ -1,7 +1,8 @@
 /**
  * System Logs Routes
  *
- * Endpoints for viewing application logs from the T3Web\logs folder
+ * Endpoints for viewing application logs from the
+ * ResourceFile\webview\t3web\logs folder
  */
 
 use axum::{extract::Query, Json, http::StatusCode, response::IntoResponse};
@@ -53,7 +54,7 @@ pub struct ContentQuery {
     pub file: String,
 }
 
-/// Get available date folders from T3Web\logs
+/// Get available date folders from ResourceFile\webview\t3web\logs
 pub async fn get_dates() -> impl IntoResponse {
     let log_base = get_t3weblog_path();
 
@@ -164,7 +165,8 @@ pub async fn get_files(Query(query): Query<FilesQuery>) -> impl IntoResponse {
     (StatusCode::OK, Json(files))
 }
 
-/// Get the log path — delegates to constants::get_t3000_log_path() (T3Web\logs)
+/// Get the log path — delegates to constants::get_t3000_log_path()
+/// (ResourceFile\webview\t3web\logs)
 /// which resolves TEMCO_T3000_PATH env var → dev relative path → exe dir.
 fn get_t3weblog_path() -> PathBuf {
     std::env::var("T3WEBLOG_PATH")
@@ -186,7 +188,7 @@ pub async fn get_content(Query(query): Query<ContentQuery>) -> impl IntoResponse
     }
 }
 
-/// Clear all log files under the T3Web\logs directory tree.
+/// Clear all log files under the ResourceFile\webview\t3web\logs directory tree.
 pub async fn clear_logs() -> impl IntoResponse {
     let log_base = get_t3weblog_path();
     let mut deleted: u32 = 0;
