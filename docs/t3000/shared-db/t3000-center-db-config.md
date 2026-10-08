@@ -1,4 +1,4 @@
-﻿# T3000 Center DB Configuration
+# T3000 Center DB Configuration
 
 <!-- USER-GUIDE -->
 
@@ -251,5 +251,3 @@ The following table shows the complete setup flow at a glance:
 | 13 | Check **Sync & Database Health** and **Trend Logs** sections | Data flowing into SQL Server |
 
 > For Client PC setup, repeat Steps 1-13 on each client PC, selecting **Client** role in Step 5. No Init Schema is needed on client PCs.
-
-

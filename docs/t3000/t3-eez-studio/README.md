@@ -1,4 +1,4 @@
-## Design Studio (Tstat11)
+# Design Studio (Tstat11)
 
 **Design Studio (Tstat11)** is T3000's designer for embedded touchscreen UIs. You draw
 screens for the **Tstat11** display, preview them in the browser, and deploy them to the
@@ -19,7 +19,7 @@ editor opens.
 > workflow around that core** — the Design Hub, creating a project, binding a device and
 > deploying — rather than re-teaching the editor itself.
 
-### Start here in 3 steps
+## Start here in 3 steps
 
 | Step | What you do |
 |---|---|
@@ -52,19 +52,19 @@ Flow is a project setting, so it is not an irreversible choice.
 
 | Capability | LVGL 9.5 | LVGL with Flow 9.5 |
 |---|:--:|:--:|
-| Visual page/screen designer | ✅ | ✅ |
-| Widget library (label, button, switch, slider, bar, image, panel…) | ✅ | ✅ |
-| Styles, themes, fonts | ✅ | ✅ |
-| Bitmaps / images | ✅ | ✅ |
-| Variables | ✅ | ✅ |
-| **Flow logic editor** (actions, event handlers, timers) | — | ✅ |
-| Browser preview (Run mode) | ✅ | ✅ |
-| Full simulator (F7) | ✅ | ✅ |
-| Save / reopen project from disk | ✅ | ✅ |
-| Bind to a device | ✅ | ✅ |
-| Deploy to a device | ✅ | ✅ |
-| Start from an EEZ example project | ✅ | ✅ |
-| Load existing screens off a device | ✅ | ✅ |
+| Visual page/screen designer | Yes | Yes |
+| Widget library (label, button, switch, slider, bar, image, panel…) | Yes | Yes |
+| Styles, themes, fonts | Yes | Yes |
+| Bitmaps / images | Yes | Yes |
+| Variables | Yes | Yes |
+| **Flow logic editor** (actions, event handlers, timers) | — | Yes |
+| Browser preview (Run mode) | Yes | Yes |
+| Full simulator (F7) | Yes | Yes |
+| Save / reopen project from disk | Yes | Yes |
+| Bind to a device | Yes | Yes |
+| Deploy to a device | Yes | Yes |
+| Start from an EEZ example project | Yes | Yes |
+| Load existing screens off a device | Yes | Yes |
 
 ### Related documentation
 

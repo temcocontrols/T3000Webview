@@ -22,7 +22,7 @@ paths, so no documentation edit is needed once an image exists.
 | `07-hub-device-bar.png` | 1.3 | The **device bar** with a device selected — name plus the *On this device / Deployed / Unbound* counters. Crop to the bar. |
 | `08-lvgl-create-new.png` | 2.1 | The **New LVGL project** dialog, **Create New** tab, with a name typed in so the *Project file path* preview is filled. |
 | `09-lvgl-load-from-device.png` | 2.4 | The same dialog, **Load from Device** tab, device list expanded with **one device selected**. |
-| `10-lvgl-import-step-log.png` | 2.5 | The **import progress**: step rows with at least one ✔ and the detail log expanded. |
+| `10-lvgl-import-step-log.png` | 2.5 | The **import progress**: step rows with at least one Yes and the detail log expanded. |
 | `11-lvgl-example-create.png` | 2.3 | The **create-from-example** dialog with Name and Location filled in. |
 | `12-editor-overview.png` | 1.7, 3.1 | The **project editor** with a page open — left navigation, canvas, right-hand tabs. |
 | `13-editor-widgets-palette.png` | 3.2 | The **Components Palette** with a few widget groups expanded. |

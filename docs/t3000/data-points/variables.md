@@ -1,4 +1,4 @@
-﻿# Variables
+# Variables
 
 <!-- USER-GUIDE -->
 
@@ -44,14 +44,7 @@ Variables can be:
 - Set appropriate limits
 - Use consistent units
 
-## Next Steps
-
-- [Programs](./programs) - Control logic
-- [PID Loops](./pid-loops) - PID control
-
-<!-- TECHNICAL -->
-
-# Variables
+## Variables
 
 ## Variable Management API
 
@@ -252,9 +245,3 @@ class VariableCache {
   }
 }
 ```
-
-## Next Steps
-
-- [REST API Reference](../api-reference/rest-api)
-- [Programs](./programs)
-- [Inputs](./inputs)

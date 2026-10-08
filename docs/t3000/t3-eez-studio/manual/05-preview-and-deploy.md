@@ -1,4 +1,4 @@
-## 05 — Preview, Bind & Deploy
+# 05 — Preview, Bind & Deploy
 
 This chapter covers the last part of the workflow: checking the UI in the browser, telling
 T3000 which controller the project belongs to, and sending the design to that controller.
@@ -19,7 +19,7 @@ Design  →  Preview (Run)  →  Bind a device  →  Deploy  →  Deployed
 
 ---
 
-### 1. Preview before you deploy
+## 1. Preview before you deploy
 
 Always preview before deploying. The editor runs your project so you can click through it
 exactly as a user would.
@@ -158,7 +158,7 @@ always compare or restore.
 | Deploy stops with an error | Expand the failing step in the drawer — it names the step and the message. Fix the cause and deploy again; the remaining changes are retried. |
 | The deploy reports "nothing changed" | The exported project matches the last successful deploy. Edit and save the project, then deploy again. |
 | Deploy is slow on the first run | The first deploy sends every screen and image. Later deploys send only changes. |
-| The device does not show the new design | Re-run the deploy and confirm every step finished with a ✔ in the log. |
+| The device does not show the new design | Re-run the deploy and confirm every step finished with a Yes in the log. |
 | A large project fails partway with a connection error | A big first deploy can exceed the deploy timeout over a slow link. Deploy again — only the screens that did not make it are retried. |
 | The device answers during import but not during deploy (or the reverse) | Its API only runs while the panel is on the network. While it is in Wi-Fi setup mode the API is down. |
 

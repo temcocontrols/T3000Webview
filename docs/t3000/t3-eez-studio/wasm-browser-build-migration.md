@@ -1,6 +1,5 @@
 # LVGL WASM Browser Build Migration
 
-**Date:** 2025-06-25 (updated 2026-07-10)  
 **Project:** T3000 Webview — EEZ Studio Migration (Electron → Browser)  
 **Branch:** WASM runtime for LVGL project editor
 

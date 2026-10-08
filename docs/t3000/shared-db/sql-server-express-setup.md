@@ -249,7 +249,6 @@ Use the **mssql** extension in VS Code to confirm SQL Server is reachable before
 ![Step 12 - mssql extension connect](images/sql-server-express/36.png)
 ![Step 12 - Connection verified](images/sql-server-express/37.png)
 
-
 ---
 
 ## Summary

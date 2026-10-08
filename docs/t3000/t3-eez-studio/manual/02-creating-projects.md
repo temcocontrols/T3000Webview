@@ -1,4 +1,4 @@
-## 02 — Creating a Project
+# 02 — Creating a Project
 
 There are three ways to get an LVGL project. All three end with the project open in the
 editor.
@@ -22,7 +22,7 @@ editor.
 
 ---
 
-### 1. Way 1 — Create New
+## 1. Way 1 — Create New
 
 1. In the Design Hub, click the **LVGL 9.5** or **LVGL with Flow 9.5** tile — or click
    **New Drawing** in the top bar, which opens the same dialog.

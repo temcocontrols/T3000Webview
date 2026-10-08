@@ -50,10 +50,10 @@ On/off control signals:
 
 | # | Label | Description | Command | Feedback | Mode | Override | Status | Update |
 |---|-------|-------------|---------|----------|------|----------|--------|--------|
-| 1 | Damper_Pos | Supply Damper | 45% | 44% | Auto | No | ✅ Normal | 2s ago |
-| 2 | Fan_Speed | Supply Fan VFD | 75% | 75% | Auto | No | ✅ Normal | 2s ago |
-| 3 | HW_Valve | Hot Water Valve | 0% | 0% | Off | Yes | 🔧 Override | 2s ago |
-| 4 | Pump_Run | Chilled Water Pump | On | On | Auto | No | ✅ Normal | 2s ago |
+| 1 | Damper_Pos | Supply Damper | 45% | 44% | Auto | No | Yes Normal | 2s ago |
+| 2 | Fan_Speed | Supply Fan VFD | 75% | 75% | Auto | No | Yes Normal | 2s ago |
+| 3 | HW_Valve | Hot Water Valve | 0% | 0% | Off | Yes | Override | 2s ago |
+| 4 | Pump_Run | Chilled Water Pump | On | On | Auto | No | Yes Normal | 2s ago |
 
 ### Features
 
@@ -89,7 +89,7 @@ On/off control signals:
 - User sets output value directly
 - Program control disabled
 - Value held until released
-- Indicated with 🔧 icon
+- Indicated with icon
 
 **Off Mode:**
 - Output disabled
@@ -105,14 +105,14 @@ To override an output:
 2. Select **Manual Override** tab
 3. Set desired value (0-100% or On/Off)
 4. Click **Apply Override**
-5. Output shows 🔧 override indicator
+5. Output shows override indicator
 
 **Release Override:**
 1. Click overridden output
 2. Click **Release Override** button
 3. Output returns to automatic mode
 
-⚠️ **Warning**: Manual overrides persist until explicitly released. Remember to return outputs to Auto mode after maintenance.
+ **Warning**: Manual overrides persist until explicitly released. Remember to return outputs to Auto mode after maintenance.
 
 ## Output Configuration
 
@@ -350,16 +350,7 @@ Examples:
 4. Check sensor noise
 5. Verify loop stability
 
-## Next Steps
-
-- [Variables](./variables) - Calculated variables
-- [Programs](./programs) - Control programs
-- [PID Loops](./pid-loops) - PID control
-- [Schedules](../features/schedules) - Time-based control
-
-<!-- TECHNICAL -->
-
-# Outputs
+## Outputs
 
 ## BACnet Output Control
 
@@ -713,9 +704,3 @@ interlocks.addInterlock('VFD1', () => {
   return filterClean && !smokeAlarm;
 });
 ```
-
-## Next Steps
-
-- [REST API Reference](../api-reference/rest-api)
-- [Modbus Register Mapping](../api-reference/modbus-protocol)
-- [PID Loop Tuning](./pid-loops)

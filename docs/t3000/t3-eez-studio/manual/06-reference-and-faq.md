@@ -1,4 +1,4 @@
-## 06 — Reference & FAQ
+# 06 — Reference & FAQ
 
 Quick-reference tables, a glossary of the words you'll see in the UI, and answers to common
 questions.
@@ -17,25 +17,25 @@ questions.
 
 ---
 
-### 1. Feature matrix
+## 1. Feature matrix
 
 | Capability | LVGL 9.5 | LVGL with Flow 9.5 |
 |---|:--:|:--:|
-| Visual page/screen designer | ✅ | ✅ |
-| Widget library | ✅ | ✅ |
-| Styles, themes, colours | ✅ | ✅ |
-| Fonts | ✅ | ✅ |
-| Bitmaps / images | ✅ | ✅ |
-| Variables | ✅ | ✅ |
-| Flow logic editor | — | ✅ |
-| Breakpoints / flow debugging | — | ✅ |
-| Run / preview (F5) | ✅ | ✅ |
-| Full simulator (F7) | ✅ | ✅ |
-| Save & reopen from disk | ✅ | ✅ |
-| Start from an example | ✅ | ✅ |
-| Load screens from a device | ✅ | ✅ |
-| Bind to a device | ✅ | ✅ |
-| Incremental deploy | ✅ | ✅ |
+| Visual page/screen designer | Yes | Yes |
+| Widget library | Yes | Yes |
+| Styles, themes, colours | Yes | Yes |
+| Fonts | Yes | Yes |
+| Bitmaps / images | Yes | Yes |
+| Variables | Yes | Yes |
+| Flow logic editor | — | Yes |
+| Breakpoints / flow debugging | — | Yes |
+| Run / preview (F5) | Yes | Yes |
+| Full simulator (F7) | Yes | Yes |
+| Save & reopen from disk | Yes | Yes |
+| Start from an example | Yes | Yes |
+| Load screens from a device | Yes | Yes |
+| Bind to a device | Yes | Yes |
+| Incremental deploy | Yes | Yes |
 
 ---
 

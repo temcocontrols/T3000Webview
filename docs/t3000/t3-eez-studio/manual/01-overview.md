@@ -1,4 +1,4 @@
-## 01 — Overview
+# 01 — Overview
 
 This chapter explains what Design Studio (Tstat11) is, which of the two project types to
 choose, where you work, and what you are looking at on each screen.
@@ -14,7 +14,7 @@ choose, where you work, and what you are looking at on each screen.
 
 ---
 
-### 1. What Design Studio (Tstat11) is
+## 1. What Design Studio (Tstat11) is
 
 Design Studio (Tstat11) is the embedded-touchscreen designer inside T3000. With it you:
 
@@ -39,11 +39,11 @@ difference is whether **Flow** logic is enabled.
 
 | | **LVGL 9.5** | **LVGL with Flow 9.5** |
 |---|---|---|
-| Screens, widgets, styles, fonts, images | ✅ | ✅ |
-| Variables | ✅ | ✅ |
-| **Flow** logic editor (actions, event handlers, timers) | — | ✅ |
-| Browser preview / simulator | ✅ | ✅ |
-| Deploy to device | ✅ | ✅ |
+| Screens, widgets, styles, fonts, images | Yes | Yes |
+| Variables | Yes | Yes |
+| **Flow** logic editor (actions, event handlers, timers) | — | Yes |
+| Browser preview / simulator | Yes | Yes |
+| Deploy to device | Yes | Yes |
 
 **Choose LVGL 9.5** when the UI only needs to display things and use built-in widget
 behaviour (a switch toggles, a slider moves).

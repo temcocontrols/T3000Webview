@@ -1,4 +1,4 @@
-## 03 — Designing Screens
+# 03 — Designing Screens
 
 This chapter walks through the LVGL editor and the everyday tasks: creating pages, placing
 widgets, and managing styles, fonts and images.
@@ -17,7 +17,7 @@ widgets, and managing styles, fonts and images.
 
 ---
 
-### 1. The editor at a glance
+## 1. The editor at a glance
 
 ![The project editor](images/12-editor-overview.png)
 
@@ -30,7 +30,7 @@ widgets, and managing styles, fonts and images.
 | **Right-hand tabs** | Inspectors: **Properties**, **Components Palette**, **Styles**, **Fonts**, **Bitmaps**, **Themes** (and **Breakpoints** in Flow projects). |
 | **Top toolbar** | File and edit commands, **Check** / **Build**, run controls, and **Deploy to Device**. |
 
-#### Toolbar controls
+### Toolbar controls
 
 | Control | Purpose |
 |---|---|

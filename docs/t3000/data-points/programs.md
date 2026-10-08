@@ -85,9 +85,9 @@ View all programs in the Programs page:
 
 | # | Label | Status | Last Run | Exec Time | Errors |
 |---|-------|--------|----------|-----------|--------|
-| 1 | Zone_Control | ✅ Running | 1s ago | 5ms | 0 |
-| 2 | Schedule_Mgr | ✅ Running | 1s ago | 2ms | 0 |
-| 3 | Alarm_Logic | ✅ Running | 1s ago | 3ms | 0 |
+| 1 | Zone_Control | Yes Running | 1s ago | 5ms | 0 |
+| 2 | Schedule_Mgr | Yes Running | 1s ago | 2ms | 0 |
+| 3 | Alarm_Logic | Yes Running | 1s ago | 3ms | 0 |
 
 ### Program Editor
 
@@ -145,15 +145,7 @@ Common errors:
    - Document changes
    - Test before deploying
 
-## Next Steps
-
-- [PID Loops](./pid-loops) - PID control
-- [Schedules](../features/schedules) - Time-based control
-- [Variables](./variables) - Program variables
-
-<!-- TECHNICAL -->
-
-# Programs
+## Programs
 
 ## Program Execution Engine
 
@@ -358,9 +350,3 @@ class ProgramScheduler {
   }
 }
 ```
-
-## Next Steps
-
-- [REST API Reference](../api-reference/rest-api)
-- [WebSocket API](../api-reference/websocket-api)
-- [Variables](./variables)

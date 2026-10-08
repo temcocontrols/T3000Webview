@@ -8,48 +8,48 @@ Current build status, what's done, what's next, and the recommended build order.
 
 | Component | Location | Status |
 |---|---|---|
-| LCD container (320×480) | `LcdContainer.tsx` | ✅ Done |
-| Thermostat bezel + 4 buttons | `ThermostatBezel.tsx` | ✅ Done |
-| Main Display page | `ThermostatDisplay.tsx` | ✅ Done (hardcoded, not JSON-driven) |
-| Comm Settings page (JSON-driven) | `NetworkSettingsMenu.tsx` | ✅ Done |
-| Comm Settings JSON | `menuNetworkSettings.json` | ✅ Done |
-| Keyboard navigation (▲/▼/◄/►) | `useKeyboardNavigation.ts` | ✅ Done |
-| Simulator state management | `useSimulatorState.ts` | ✅ Done |
-| Debug panel (Grid/Coords/Redbox) | `DebugPanel.tsx` | ✅ Done |
-| Debug overlays on LCD | `NetworkSettingsMenu.tsx` | ✅ Done |
-| Auto-tester (simulated keypad) | `Tstat10SimulatorPage.tsx` | ✅ Done |
-| Temperature drift simulation | `useSimulatorState.ts` | ✅ Done |
-| Basic Export JSON | `Tstat10SimulatorPage.tsx` | ✅ Done (exports menuRows + data) |
-| CSS modules (lcd, simulator) | `styles/` | ✅ Done |
-| Mobile layout scaffolding | CSS + DebugPanel mobile mode | ✅ Basic |
-| WebView2 bridge (updateUI) | `useSimulatorState.ts` | ✅ Done |
-| 3-panel desktop layout | `Tstat10SimulatorPage.tsx` | ✅ Done |
+| LCD container (320×480) | `LcdContainer.tsx` | Yes Done |
+| Thermostat bezel + 4 buttons | `ThermostatBezel.tsx` | Yes Done |
+| Main Display page | `ThermostatDisplay.tsx` | Yes Done (hardcoded, not JSON-driven) |
+| Comm Settings page (JSON-driven) | `NetworkSettingsMenu.tsx` | Yes Done |
+| Comm Settings JSON | `menuNetworkSettings.json` | Yes Done |
+| Keyboard navigation (///) | `useKeyboardNavigation.ts` | Yes Done |
+| Simulator state management | `useSimulatorState.ts` | Yes Done |
+| Debug panel (Grid/Coords/Redbox) | `DebugPanel.tsx` | Yes Done |
+| Debug overlays on LCD | `NetworkSettingsMenu.tsx` | Yes Done |
+| Auto-tester (simulated keypad) | `Tstat10SimulatorPage.tsx` | Yes Done |
+| Temperature drift simulation | `useSimulatorState.ts` | Yes Done |
+| Basic Export JSON | `Tstat10SimulatorPage.tsx` | Yes Done (exports menuRows + data) |
+| CSS modules (lcd, simulator) | `styles/` | Yes Done |
+| Mobile layout scaffolding | CSS + DebugPanel mobile mode | Yes Basic |
+| WebView2 bridge (updateUI) | `useSimulatorState.ts` | Yes Done |
+| 3-panel desktop layout | `Tstat10SimulatorPage.tsx` | Yes Done |
 
 ### Stub / Partial
 
 | Component | Status | Notes |
 |---|---|---|
-| Sync Device button | ⚠️ Stub | Button exists, no handler |
-| Edit Mode button | ⚠️ Stub | Toggles state, no behavior |
-| Right panel (Register Browser) | ⚠️ Empty | Placeholder div |
+| Sync Device button | Warning Stub | Button exists, no handler |
+| Edit Mode button | Warning Stub | Toggles state, no behavior |
+| Right panel (Register Browser) | Warning Empty | Placeholder div |
 
 ### Not Built
 
 | Component | Priority | Notes |
 |---|---|---|
-| **LCD Screen Designer (blank canvas + toolbox)** | 🔴 High | Core feature — drag widgets onto empty canvas |
-| Widget Toolbox panel | 🔴 High | Categorized widget types: label, text, input, dropdown, icon, etc. |
-| Grid snap & alignment | 🔴 High | 17×10 grid, snap-to-cell, alignment guides |
-| Properties Panel | 🔴 High | Edit widget position, font, alignment, data binding |
-| Generic `LcdPageRenderer` | 🔴 High | Renders any page from JSON (used in both design & view mode) |
-| Page management (add/remove/tabs) | 🔴 High | Multiple pages, tab navigation |
-| `screenDefinition.json` (multi-page) | 🔴 High | Full export format with all pages and widgets |
-| JSON import (load & preview) | 🟡 Medium | Load existing definition into designer |
-| Undo/Redo | 🟡 Medium | History stack for design actions |
-| Template library | 🟡 Medium | Pre-built page templates as starting points |
-| Phone app rendering | 🟠 Future | Same JSON, mobile layout |
-| BLE auto-connect | 🟠 Future | Phone ↔ device communication |
-| Sync to device (Modbus) | 🟠 Future | Phase 2 from original spec |
+| **LCD Screen Designer (blank canvas + toolbox)** | High | Core feature — drag widgets onto empty canvas |
+| Widget Toolbox panel | High | Categorized widget types: label, text, input, dropdown, icon, etc. |
+| Grid snap & alignment | High | 17×10 grid, snap-to-cell, alignment guides |
+| Properties Panel | High | Edit widget position, font, alignment, data binding |
+| Generic `LcdPageRenderer` | High | Renders any page from JSON (used in both design & view mode) |
+| Page management (add/remove/tabs) | High | Multiple pages, tab navigation |
+| `screenDefinition.json` (multi-page) | High | Full export format with all pages and widgets |
+| JSON import (load & preview) | Medium | Load existing definition into designer |
+| Undo/Redo | Medium | History stack for design actions |
+| Template library | Medium | Pre-built page templates as starting points |
+| Phone app rendering | Future | Same JSON, mobile layout |
+| BLE auto-connect | Future | Phone ↔ device communication |
+| Sync to device (Modbus) | Future | Phase 2 from original spec |
 
 ## Recommended Build Order
 
@@ -229,27 +229,3 @@ src/t3-react/features/tstat10-simulator/
     ├── lcd.module.css
     └── simulator.module.css
 ```
-
-## Open Questions (Needs User Confirmation)
-
-### Pages
-- [ ] Are there more pages beyond the 4 confirmed? (Schedule, Alarm, PID?)
-- [ ] What are the exact FAN mode options?
-- [ ] What are the exact SYS mode options?
-
-### Navigation
-- [ ] How does the user leave a page with focusable rows? (Long press? Wrap past last row?)
-- [ ] Do bottom icons on Main page navigate to specific pages?
-
-### Edit Mode
-- [ ] Is Edit Mode for engineers only, or end-users too?
-- [ ] Should edited layouts be stored on the device?
-
-### Registers
-- [ ] Exact register numbers for temp, stp, hum, fan, sys?
-- [ ] Register block for storing screen definitions on device?
-
-### Phone
-- [ ] Native app or WebView?
-- [ ] BLE service UUID?
-- [ ] Command format for "get data"?

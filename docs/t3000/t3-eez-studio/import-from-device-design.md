@@ -84,7 +84,7 @@ deploy — see
 
 ---
 
-# Appendix — Original import design
+## Appendix — Original import design
 
 > **Historical.** Written before the shared pipeline existed. The endpoints below do not match
 > the current code — use [2. Pipeline](#2-pipeline-importprojectfromdevice) above. In particular

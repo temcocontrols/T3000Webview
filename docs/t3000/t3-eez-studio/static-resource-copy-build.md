@@ -1,6 +1,5 @@
 # Static Resource Copy — Build-Time Asset Pipeline
 
-**Date:** 2026-07-10  
 **Project:** T3000 Webview — EEZ Studio Migration (Electron → Browser)  
 **Topic:** Automatic resource copy from origin repos into Rust build output for release packaging
 
@@ -224,7 +223,7 @@ Both the DLL and its runtime resources originate from a single `target/release/`
 
 ## 7. Adding More Static Resources
 
-### Whole directory (all files):
+### Whole directory (all files)
 
 ```rust
 // In build.rs → main()
@@ -236,7 +235,7 @@ copy_resource_dir(
 // → resources/dir/
 ```
 
-### Specific files (with optional renaming):
+### Specific files (with optional renaming)
 
 ```rust
 copy_selected_files(
@@ -250,7 +249,7 @@ copy_selected_files(
 );
 ```
 
-### New server route:
+### New server route
 
 ```rust
 // In server.rs → create_t3_app()
@@ -263,7 +262,7 @@ fn routes_my_prefix() -> Router {
 }
 ```
 
-### New Vite proxy:
+### New Vite proxy
 
 ```javascript
 // In quasar.config.js → extendViteConf → viteConf.server.proxy

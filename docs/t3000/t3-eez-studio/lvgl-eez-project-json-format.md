@@ -1426,13 +1426,13 @@ The **Firmware JSON** strips all editor-only data, keeping only what the control
 | Field | Type | Always | Arc example | Label example |
 |---|---|---|---|---|
 | `type` | string | `"Widget"` | `"Widget"` | `"Widget"` |
-| `sub_type` | string | ✅ | `"arc"` | `"label"` |
-| `x_pos` | number | ✅ | `480` | `208` |
-| `y_pos` | number | ✅ | `120` | `160` |
-| `width` | number | ✅ | `80` | `200` |
-| `height` | number | ✅ | `80` | `23` |
-| `obj_text` | string | ✅ | `""` | `"zones[...].temperature"` |
-| `text_type` | string | ✅ | `"literal"` | `"expression"` |
+| `sub_type` | string | Yes | `"arc"` | `"label"` |
+| `x_pos` | number | Yes | `480` | `208` |
+| `y_pos` | number | Yes | `120` | `160` |
+| `width` | number | Yes | `80` | `200` |
+| `height` | number | Yes | `80` | `23` |
+| `obj_text` | string | Yes | `""` | `"zones[...].temperature"` |
+| `text_type` | string | Yes | `"literal"` | `"expression"` |
 
 **Optional on any widget:**
 - `style` — per-state overrides (`DEFAULT`, `PRESSED`, `CHECKED`, `DISABLED`)
@@ -1735,7 +1735,3 @@ void parse_widgets(cJSON *widgets, lv_obj_t *parent) {
     }
 }
 ```
-
-
-
-

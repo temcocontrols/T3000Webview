@@ -126,7 +126,7 @@ push itself goes through `/api/device-rest/<ip>/…`.
 
 ---
 
-# Appendix — Original BACnet design
+## Appendix — Original BACnet design
 
 > **Historical.** Everything below describes an earlier BACnet deployment proposal rather than
 > the shipped pipeline: deployment goes over REST ([1. Transport](#1-transport) through
@@ -432,10 +432,10 @@ The device firmware, on boot, parses the stored JSON and creates LVGL widgets fr
 
 | Option | Pros | Cons | Verdict |
 |--------|------|------|---------|
-| **BACnet/WS (REST)** | Standard, JSON-native | Requires HTTP server on device, complex TLS | ❌ Overkill for embedded |
-| **BACnet ObjectFile** | Standard BACnet object | File size limits, complex state machine | ❌ Poor fit for ~30KB JSON |
-| **BACnet/SC (WebSocket)** | Modern transport | Requires hub, new stack, certificate mgmt | ❌ Major refactor |
-| **Extend existing private transfer** | Already works, proven, devs know it | Non-standard, needs new message type (18) | ✅ Fastest, lowest risk |
+| **BACnet/WS (REST)** | Standard, JSON-native | Requires HTTP server on device, complex TLS | No Overkill for embedded |
+| **BACnet ObjectFile** | Standard BACnet object | File size limits, complex state machine | No Poor fit for ~30KB JSON |
+| **BACnet/SC (WebSocket)** | Modern transport | Requires hub, new stack, certificate mgmt | No Major refactor |
+| **Extend existing private transfer** | Already works, proven, devs know it | Non-standard, needs new message type (18) | Yes Fastest, lowest risk |
 
 ---
 

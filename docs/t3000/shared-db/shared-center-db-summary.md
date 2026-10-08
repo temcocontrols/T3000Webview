@@ -1,4 +1,4 @@
-﻿# Shared Center DB — Overview
+# Shared Center DB — Overview
 
 <!-- USER-GUIDE -->
 

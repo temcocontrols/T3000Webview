@@ -1,4 +1,4 @@
-## 04 — Adding Logic with EEZ Flow
+# 04 — Adding Logic with EEZ Flow
 
 **EEZ Flow** is the visual logic editor. It lets a screen *do* something when the user
 interacts with it or when a value changes — without writing code.
@@ -18,7 +18,7 @@ interacts with it or when a value changes — without writing code.
 
 ---
 
-### 1. What Flow is for
+## 1. What Flow is for
 
 Use Flow when the UI must react:
 

@@ -50,17 +50,17 @@ On/off status readings:
 
 | # | Label | Description | Value | Units | Status | Auto/Manual | Last Update |
 |---|-------|-------------|-------|-------|--------|-------------|-------------|
-| 1 | Zone_Temp | Zone Temperature | 72.5 | °F | ✅ Valid | Auto | 2s ago |
-| 2 | Supply_Press | Supply Pressure | 45.2 | PSI | ✅ Valid | Auto | 2s ago |
-| 3 | Return_Temp | Return Air Temp | 68.0 | °F | ✅ Valid | Auto | 2s ago |
-| 4 | CO2_Level | CO2 Concentration | 650 | PPM | ✅ Valid | Auto | 2s ago |
-| 5 | Occupancy | Room Occupied | Active | - | ✅ Valid | Auto | 2s ago |
+| 1 | Zone_Temp | Zone Temperature | 72.5 | °F | Yes Valid | Auto | 2s ago |
+| 2 | Supply_Press | Supply Pressure | 45.2 | PSI | Yes Valid | Auto | 2s ago |
+| 3 | Return_Temp | Return Air Temp | 68.0 | °F | Yes Valid | Auto | 2s ago |
+| 4 | CO2_Level | CO2 Concentration | 650 | PPM | Yes Valid | Auto | 2s ago |
+| 5 | Occupancy | Room Occupied | Active | - | Yes Valid | Auto | 2s ago |
 
 ### Features
 
 **Real-Time Updates:**
 - Auto-refresh every 5 seconds (configurable)
-- Manual refresh with 🔄 button
+- Manual refresh with button
 - Loading indicator during refresh
 
 **Batch Operations:**
@@ -118,10 +118,10 @@ Scaled Value:  72.5°F
 
 ### Status Indicators
 
-- ✅ **Valid**: Normal operation
-- ⚠️ **Uncertain**: Questionable data quality
-- ❌ **Fault**: Sensor error or out of range
-- 🔧 **Override**: Manual override active
+- **Valid**: Normal operation
+- **Uncertain**: Questionable data quality
+- **Fault**: Sensor error or out of range
+- **Override**: Manual override active
 
 ### Fault Detection
 
@@ -258,16 +258,7 @@ Examples:
 3. Add time delay
 4. Improve sensor filtering
 
-## Next Steps
-
-- [Outputs](./outputs) - Control output points
-- [Variables](./variables) - Calculated variables
-- [Trend Logs](../features/trendlogs) - Historical analysis
-- [Alarms](../features/alarms) - Alarm management
-
-<!-- TECHNICAL -->
-
-# Inputs
+## Inputs
 
 ## BACnet Input Objects
 
@@ -585,9 +576,3 @@ ws.onmessage = (event) => {
   }
 };
 ```
-
-## Next Steps
-
-- [REST API Reference](../api-reference/rest-api)
-- [WebSocket API](../api-reference/websocket-api)
-- [Modbus Protocol](../api-reference/modbus-protocol)
