@@ -17,6 +17,7 @@ import {
   Button,
   Spinner,
   Tooltip,
+  shorthands,
 } from '@fluentui/react-components';
 import {
   ArrowClockwiseRegular,
@@ -236,17 +237,20 @@ const useStyles = makeStyles({
   summaryTagOk: {
     color: '#107c10',
     backgroundColor: '#edf7ed',
-    borderColor: '#c7e7cb',
+    // borderColor: '#c7e7cb',
+    ...shorthands.borderColor('#c7e7cb'),
   },
   summaryTagFail: {
     color: '#d13438',
     backgroundColor: '#fdeeee',
-    borderColor: '#f5c2c3',
+    // borderColor: '#f5c2c3',
+    ...shorthands.borderColor('#f5c2c3'),
   },
   summaryTagTotal: {
     color: '#605e5c',
     backgroundColor: '#f3f2f1',
-    borderColor: '#e1dfdd',
+    // borderColor: '#e1dfdd',
+    ...shorthands.borderColor('#e1dfdd'),
   },
   activitySummaryOk: {
     color: '#107c10',
@@ -298,8 +302,8 @@ const useStyles = makeStyles({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '24px',
-    height: '24px',
+    width: '124px',
+    height: '124px',
     borderRadius: '6px',
     border: '1px solid #bfd8f2',
     background: '#edf5fe',
@@ -311,12 +315,14 @@ const useStyles = makeStyles({
     transitionDuration: '120ms',
     '&:hover': {
       background: '#e4f0fc',
-      borderColor: '#a9caed',
+      // borderColor: '#a9caed',
+      ...shorthands.borderColor('#a9caed'),
       boxShadow: '0 0 0 1px #e5f1fb inset',
     },
     '&:active': {
       background: '#ebf3fc',
-      borderColor: '#a9caed',
+      // borderColor: '#a9caed',
+      ...shorthands.borderColor('#a9caed'),
     },
   },
 
