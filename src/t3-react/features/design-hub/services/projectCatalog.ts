@@ -7,7 +7,7 @@
  *   - EEZ / LVGL : saved by the Rust backend under `<data_root>/project/<name>/`
  *                  (listed via `GET /api/eez-studio/projects`).
  *   - HVAC       : primary = localStorage (`t3-hvac-drawings`, UNCHANGED);
- *                  a disk mirror under `<T3Web>/t3-hvac/<id>/<id>.json` is
+ *                  a disk mirror under `<ResourceFile/webview/t3web>/t3-hvac/<id>/<id>.json` is
  *                  written on save (best-effort via `/api/design-hub`), and
  *                  listing from it is gated behind `HVAC_LIST_FROM_DISK`.
  *   - Simulator  : no real project storage yet → excluded.
@@ -44,7 +44,7 @@ const HVAC_DRAWINGS_URL = '/api/design-hub/hvac-drawings';
 
 /**
  * When true, the HVAC project list is read from the disk folder
- * (`<T3Web>/t3-hvac/<id>/<id>.json`). For now (folder untested) the dashboard
+ * (`<ResourceFile/webview/t3web>/t3-hvac/<id>/<id>.json`). For now (folder untested) the dashboard
  * lists HVAC from localStorage; flip this once the disk path is verified.
  */
 const HVAC_LIST_FROM_DISK = false;
@@ -175,7 +175,7 @@ export async function deleteEezProjectOnDisk(folder: string): Promise<boolean> {
  * Load the REAL created project list across engines.
  * - EEZ/LVGL: from disk via the backend.
  * - HVAC: from localStorage (`t3-hvac-drawings`) FOR NOW — the proven source.
- *   The disk mirror (`<T3Web>/t3-hvac/<id>/<id>.json`) is still written on save,
+ *   The disk mirror (`<ResourceFile/webview/t3web>/t3-hvac/<id>/<id>.json`) is still written on save,
  *   but we only start LISTING from it once it's tested: flip `HVAC_LIST_FROM_DISK`.
  * - Simulator: excluded (no real storage yet).
  */

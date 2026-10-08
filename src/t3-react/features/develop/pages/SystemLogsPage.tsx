@@ -1,8 +1,8 @@
 /**
  * System Logs Page
  *
- * View T3Web\logs application logs with real-time monitoring
- * Displays logs from: T3Web/logs/{YEAR-MONTH}/{MMDD}/T3_*.txt
+ * View ResourceFile\webview\t3web\logs application logs with real-time monitoring
+ * Displays logs from: ResourceFile/webview/t3web/logs/{YEAR-MONTH}/{MMDD}/T3_*.txt
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -111,7 +111,7 @@ export const SystemLogsPage: React.FC = () => {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Load available dates from T3Web\logs folder
+  // Load available dates from ResourceFile\webview\t3web\logs folder
   const loadAvailableDates = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/dates`);

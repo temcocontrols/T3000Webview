@@ -1,7 +1,7 @@
 /**
  * File Logs Tab
  *
- * Extracted from SystemLogsPage — browses T3Web/logs/*.txt files by date
+ * Extracted from SystemLogsPage — browses ResourceFile/webview/t3web/logs/*.txt files by date
  */
 
 import React, { useState, useEffect, useRef } from 'react';

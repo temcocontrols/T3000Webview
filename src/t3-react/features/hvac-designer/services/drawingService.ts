@@ -213,7 +213,7 @@ function saveLocalDrawings(drawings: Record<string, Drawing>): void {
 }
 
 // ── Disk persistence (best-effort, kept local to this service) ──────────────
-// Mirrors each drawing to `<T3Web>/t3-hvac/<id>/<id>.json` so the folder can
+// Mirrors each drawing to `<ResourceFile/webview/t3web>/t3-hvac/<id>/<id>.json` so the folder can
 // later be the source for the Design Hub list. localStorage stays the source of
 // truth; these fail silently when the backend isn't available.
 
@@ -248,7 +248,7 @@ export async function saveDrawing(drawing: Drawing): Promise<{ success: boolean;
   drawings[id] = withCurrentDocument({ ...drawing, id, updatedAt: new Date().toISOString() });
   saveLocalDrawings(drawings);
 
-  // Best-effort disk mirror under <T3Web>/t3-hvac/<id>/<id>.json.
+  // Best-effort disk mirror under <ResourceFile/webview/t3web>/t3-hvac/<id>/<id>.json.
   // localStorage stays primary.
   await saveDrawingToDisk(id, drawings[id]);
 
