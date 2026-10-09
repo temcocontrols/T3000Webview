@@ -14,9 +14,10 @@ export function useDocNavigation(initialPath: string = 't3000/quick-start/overvi
   const getDocPathFromUrl = useCallback(() => {
     const match = location.pathname.match(/\/t3000\/documentation\/(.*)/);
     if (match && match[1]) {
-      // Ensure path starts with t3000/ if it doesn't already
+      // Doc ids are docs-relative and already carry their collection folder:
+      // "t3000/..." or "legacy/...". Only a bare path defaults to t3000.
       const path = match[1];
-      return path.startsWith('t3000/') ? path : `t3000/${path}`;
+      return path.startsWith('t3000/') || path.startsWith('legacy/') ? path : `t3000/${path}`;
     }
     return initialPath;
   }, [location.pathname, initialPath]);

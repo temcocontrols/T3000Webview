@@ -96,13 +96,13 @@ export const LegacyDocSidebar: React.FC<LegacyDocSidebarProps> = ({
         {isExpanded && hasItems && (
           <div className={styles.items}>
             {section.items.map((item) => {
-              const isActive = currentPath === `legacy/${item.path}`;
+              const isActive = currentPath === item.path;
 
               return (
                 <button
                   key={item.path}
                   className={`${styles.item} ${isActive ? styles.active : ''}`}
-                  onClick={() => onNavigate(`legacy/${item.path}`)}
+                  onClick={() => onNavigate(item.path)}
                   title={item.title}
                 >
                   <Text size={200} className={styles.itemText}>{item.title}</Text>

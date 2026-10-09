@@ -17,7 +17,9 @@ interface ResolvedDocPaths {
 }
 
 function buildDocPaths(path: string): { local: ResolvedDocPaths; githubRaw: ResolvedDocPaths } {
-  const normalized = path.startsWith('legacy/') ? path.replace('legacy/', '') : path;
+  // Doc ids are docs-relative ("t3000/..." or "legacy/...") and DOCS_CONFIG
+  // points at /docs, so the id maps to the file as-is - no prefix stripping.
+  const normalized = path.replace(/^\/+/, '');
   const markdownPath = normalized.toLowerCase().endsWith('.md') ? normalized : `${normalized}.md`;
 
   return {
