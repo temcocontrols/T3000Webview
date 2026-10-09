@@ -188,8 +188,8 @@ navigate('/hvac-designer');
 
 ## Documentation
 
-- [README.md](./README.md) - Full module documentation
-- [Implementation Summary](../../../docs/hvac/hvac-designer-implementation-summary.md) - This file
+- [HVAC Overview](./01_overview.00-hvac-overview.md) - Full module documentation
+- [Implementation Summary](hvac-designer-implementation-summary.md) - This file
 - Inline code comments
 - TypeScript type definitions with JSDoc
 

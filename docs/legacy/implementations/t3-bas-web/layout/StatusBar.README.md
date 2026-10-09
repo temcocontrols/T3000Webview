@@ -1,4 +1,4 @@
-# Status Bar Component
+# Status Bar Component (legacy)
 
 ## Overview
 

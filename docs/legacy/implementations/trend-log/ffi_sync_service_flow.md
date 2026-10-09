@@ -748,7 +748,7 @@ CREATE TABLE APPLICATION_CONFIG_HISTORY (
 **Document Version**: 1.1
 **Last Updated**: October 22, 2025
 **Author**: T3000 Development Team
-**Related**: [BACnet Implementation Plan](../bacnet/BACnet-Implementation-Plan-Phase1.md)
+**Related**: [BACnet Implementation Plan](../../development/bacnet/BACnet-Implementation-Plan-Phase1.md)
 
 **Changelog:**
 - **v1.1** (Oct 22, 2025): Added Dynamic Configuration section with configurable sync interval feature

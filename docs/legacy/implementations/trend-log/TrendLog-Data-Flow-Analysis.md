@@ -1,4 +1,4 @@
-# TrendLog Data Flow Analysis
+# TrendLog Data Flow Analysis - Complete Diagram
 
 ## Complete Data Flow Diagram
 

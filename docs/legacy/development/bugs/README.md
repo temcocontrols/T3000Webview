@@ -17,37 +17,39 @@ This directory contains comprehensive documentation for the WebView2 cache persi
 - **Support Procedures**: Level 1-3 support with troubleshooting steps
 - **Implementation Timeline**: 6.5-hour detailed implementation log
 
-**Audience**: All stakeholders - developers, QA, operations, support, management### ** Supporting Documentation**
+**Audience**: All stakeholders - developers, QA, operations, support, management
 
-#### **Daily Development Log** ([daily.md](./daily.md))
-- Existing development notes and progress tracking
-- Historical context for ongoing work
+### ** Supporting Documentation**
 
-#### **Work Tracking** ([wt/](./wt/))
-- Project details and library documentation
-- Excel tracking sheets and reference materials
+#### **[grp-navigation-race-condition.md](./grp-navigation-race-condition.md)**
+- Race condition in panel-group navigation; same area, separate issue
 
 ## **Quick Reference Guide**
 
+All references below point into **[webview2-cache-complete.md](./webview2-cache-complete.md)** - it is the
+single source for this bug. The earlier per-topic fragments (`FINAL-SOLUTION.md`,
+`production-release-notes.md`, `implementation-steps.md`, `bugs/webview2-cache-issue.md`) were merged
+into it and no longer exist.
+
 ### **For Release Managers**
-1. **Start Here**: [FINAL-SOLUTION.md](./FINAL-SOLUTION.md)
-2. **Deployment**: [production-release-notes.md](./production-release-notes.md)
-3. **Risk Assessment**: Review rollback procedures in release notes
+1. **Start Here**: [webview2-cache-complete.md](./webview2-cache-complete.md)
+2. **Deployment**: [Production Deployment Guide](./webview2-cache-complete.md#production-deployment-guide)
+3. **Risk Assessment**: Review rollback procedures in that section
 
 ### **For Developers**
-1. **Technical Details**: [bugs/webview2-cache-issue.md](./bugs/webview2-cache-issue.md)
-2. **Implementation**: [implementation-steps.md](./implementation-steps.md)
+1. **Technical Details**: [Root Cause Analysis](./webview2-cache-complete.md#root-cause-analysis)
+2. **Implementation**: [Solution Implementation](./webview2-cache-complete.md#solution-implementation)
 3. **Code Changes**: BacnetWebView.cpp nuclear cache clearing (lines 586-603)
 
 ### **For Support Teams**
-1. **Issue Background**: [bugs/webview2-cache-issue.md](./bugs/webview2-cache-issue.md)
-2. **Troubleshooting**: Level 1-3 support procedures in FINAL-SOLUTION.md
-3. **Monitoring**: Alert thresholds in production-release-notes.md
+1. **Issue Background**: [Bug Report Summary](./webview2-cache-complete.md#bug-report-summary)
+2. **Troubleshooting**: [Support Procedures](./webview2-cache-complete.md#support-procedures) (Level 1-3)
+3. **Monitoring**: [Monitoring & Success Criteria](./webview2-cache-complete.md#monitoring--success-criteria)
 
 ### **For QA/Testing**
 1. **Test Scenarios**: Verification sections in bug report
-2. **Success Criteria**: FINAL-SOLUTION.md success metrics
-3. **Performance Benchmarks**: implementation-steps.md Phase 4.3
+2. **Success Criteria**: [Success Criteria](./webview2-cache-complete.md#success-criteria)
+3. **Performance Benchmarks**: [Performance Benchmarks](./webview2-cache-complete.md#performance-benchmarks)
 
 ## **Issue Overview**
 

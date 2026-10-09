@@ -563,5 +563,4 @@ This deployment guide covers:
 
 For questions or issues, refer to:
 - [HYBRID_ARCHITECTURE.md](./HYBRID_ARCHITECTURE.md) - Architecture guide
-- [TODO.md](./TODO.md) - Remaining tasks and known issues
 - [README.md](./README.md) - Project overview

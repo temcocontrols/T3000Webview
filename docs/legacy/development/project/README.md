@@ -5,17 +5,22 @@ This directory contains comprehensive documentation for the T3000 library codeba
 
 ## Documents
 
-### Analysis Reports
-- **[T3000-Library-Analysis.md](./T3000-Library-Analysis.md)** - Complete architectural and technical analysis of the T3000 library
-- **[T3000-Deep-Analysis.md](./T3000-Deep-Analysis.md)** - Detailed file-by-file analysis with comprehensive findings
-- **[T3000-Bug-Analysis.md](./T3000-Bug-Analysis.md)** - Specific bug identification with code examples and fixes
-- **[T3000-Refactoring-Plan.md](./T3000-Refactoring-Plan.md)** - Comprehensive refactoring strategy and implementation plan
-- **[T3000-Fixes-Implemented.md](./T3000-Fixes-Implemented.md)** - **COMPLETED FIXES** - Critical fixes implemented for memory leaks, type safety, and error handling
-- **[Node-Error-Handling-Implementation.md](./Node-Error-Handling-Implementation.md)** - **COMPLETED** - Comprehensive solution for "node is undefined" errors
-- **[Async-Component-Timeout-Implementation.md](./Async-Component-Timeout-Implementation.md)** - **NEW** - Comprehensive solution for "Async component timed out" errors
-- **[Empty-Page-Troubleshooting.md](./Empty-Page-Troubleshooting.md)** - **NEW** - Empty page issue analysis and resolution
-- **[TrendLogModal-Analysis-Log.md](./TrendLogModal-Analysis-Log.md)** - **NEW** - Comprehensive analysis and documentation of TrendLogModal component
-- **[TrendLogModal-Implementation-Log.md](./TrendLogModal-Implementation-Log.md)** - **NEW** - Technical implementation details and code patterns for TrendLogModal
+### Documents
+
+- **[PROJECT_STATUS.md](./PROJECT_STATUS.md)** - Project status summary
+- **[CHANGELOG.md](./CHANGELOG.md)** - T3000 WebView project change log
+- **[MODULE_CLEANUP_2025-01.md](./MODULE_CLEANUP_2025-01.md)** - Module cleanup summary (January 2025)
+- **[RENAME_T3000_FFI_SYNC_SERVICE.md](./RENAME_T3000_FFI_SYNC_SERVICE.md)** - Service rename: `t3000_ffi_sync_service` to `t3_ffi_sync_service`
+- **[FFI_SERVICE_COMPARISON.md](./FFI_SERVICE_COMPARISON.md)** - `t3_ffi_api_service.rs` vs `t3_ffi_sync_service.rs`
+- **[DATA_COLLECTION_ENDPOINTS_REMOVED.md](./DATA_COLLECTION_ENDPOINTS_REMOVED.md)** - Removal of the data collection endpoints
+- **[T3000-Source-Access-Guide.md](./T3000-Source-Access-Guide.md)** - Cache issue: root cause and solution
+- **[TRENDLOG_UI_IMPROVEMENTS.md](./TRENDLOG_UI_IMPROVEMENTS.md)** - TrendLog UI improvements
+
+Related documents that live in `../new-ui/`:
+
+- **[Node-Error-Handling-Implementation.md](../new-ui/Node-Error-Handling-Implementation.md)** - Solution for "node is undefined" errors
+- **[Async-Component-Timeout-Implementation.md](../new-ui/Async-Component-Timeout-Implementation.md)** - Solution for "Async component timed out" errors
+- **[Empty-Page-Troubleshooting.md](../new-ui/Empty-Page-Troubleshooting.md)** - Empty page issue analysis and resolution
 
 ## Analysis Summary
 

@@ -2064,7 +2064,6 @@ export const useDeviceStatusMonitor = (intervalMs: number = 30000) => {
  * See LEFT_PANEL_CPP_DESIGN.md Section 3 for CMainFrame thread management
  */
 
-```typescript
 /**
  * Background Sync Service
  * Periodically syncs device list from database
@@ -2216,7 +2215,7 @@ export const App: React.FC = () => {
 
 ---
 
-# Phase 4: Actions & Context Menu
+## Phase 4: Actions & Context Menu
 
 ## Step 4.1: Create Tree Toolbar Component
 
@@ -2516,7 +2515,7 @@ export const TreePanel: React.FC = () => {
 
 ---
 
-# Phase 5: Filtering & Sorting
+## Phase 5: Filtering & Sorting
 
 ## Step 5.1: Create Tree Filter Component
 
@@ -2641,7 +2640,7 @@ export const TreePanel: React.FC = () => {
 
 ---
 
-# Phase 6: Polish & Testing
+## Phase 6: Polish & Testing
 
 ## Step 6.1: Add Loading States
 
@@ -2978,7 +2977,7 @@ describe('TreePanel', () => {
 
 # Complete TODO Checklist
 
-## Phase 1: Foundation ✅
+## Phase 1: Foundation
 - [ ] Create `src/t3-react/types/device.ts` with all TypeScript interfaces
 - [ ] Create `src/t3-react/services/deviceApi.ts` with API service class
 - [ ] Create `src/t3-react/store/deviceTreeStore.ts` with Zustand store
@@ -2988,7 +2987,7 @@ describe('TreePanel', () => {
 - [ ] Test API endpoints with Rust backend
 - [ ] Verify store actions work correctly
 
-## Phase 2: Core Tree ✅
+## Phase 2: Core Tree
 - [ ] Create `src/t3-react/utils/treeBuilder.ts` with tree utilities
 - [ ] Update `src/t3-react/layout/TreePanel.tsx` with tree component
 - [ ] Test tree rendering with mock data
@@ -2998,7 +2997,7 @@ describe('TreePanel', () => {
 - [ ] Test tree with multiple buildings
 - [ ] Verify tree updates on data changes
 
-## Phase 3: Data Integration ✅
+## Phase 3: Data Integration
 - [ ] Create `src/t3-react/hooks/useDeviceStatusMonitor.ts`
 - [ ] Create `src/t3-react/services/syncService.ts`
 - [ ] Initialize sync service in `App.tsx`
@@ -3008,7 +3007,7 @@ describe('TreePanel', () => {
 - [ ] Monitor performance with many devices
 - [ ] Add logging for debugging
 
-## Phase 4: Actions & Context Menu ✅
+## Phase 4: Actions & Context Menu
 - [ ] Create `src/t3-react/components/TreeToolbar.tsx`
 - [ ] Create `src/t3-react/components/TreeContextMenu.tsx`
 - [ ] Integrate toolbar into TreePanel
@@ -3018,7 +3017,7 @@ describe('TreePanel', () => {
 - [ ] Implement context menu actions (connect, disconnect, rename, delete)
 - [ ] Test all actions with real devices
 
-## Phase 5: Filtering & Sorting ✅
+## Phase 5: Filtering & Sorting
 - [ ] Create `src/t3-react/components/TreeFilter.tsx`
 - [ ] Integrate filter into TreePanel
 - [ ] Implement search functionality
@@ -3028,7 +3027,7 @@ describe('TreePanel', () => {
 - [ ] Verify performance with large datasets
 - [ ] Add clear filter button
 
-## Phase 6: Polish & Testing ✅
+## Phase 6: Polish & Testing
 - [ ] Create `src/t3-react/components/TreeLoadingSkeleton.tsx`
 - [ ] Create `src/t3-react/components/TreeError.tsx`
 - [ ] Add loading states to TreePanel

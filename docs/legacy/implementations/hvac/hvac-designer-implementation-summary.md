@@ -234,7 +234,7 @@ Shapes[] → ShapeRenderer → Specific Shape Component → SVG Element
 - **With Graphic**: `http://localhost:3003/#/hvac-designer/123`
 
 ## Documentation
-- [README.md](./README.md) - Comprehensive user and developer documentation
+- [HVAC Overview](./01_overview.00-hvac-overview.md) - Comprehensive user and developer documentation
 - Type definitions include inline JSDoc comments
 - Components include inline comments explaining functionality
 

@@ -20,16 +20,15 @@ This directory contains comprehensive documentation for the T3000 Data Managemen
 
 ### User Documentation
 
-| Document | Purpose | Audience | Content |
-|----------|---------|----------|---------|
-| **[T3000_Data_Management_README.md](../api/data_management_README.md)** | Technical overview | Developers | Architecture, usage, integration guide |
-| **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** | HTTP API reference | Frontend developers | Endpoint specs, examples, response formats |
+The standalone data-management README and the HTTP API reference that used to live here were removed.
+Their content is covered by **[TECHNICAL_SPECIFICATION.md](./TECHNICAL_SPECIFICATION.md)** and, for the
+point-update endpoints, by **[../api/T3000-Point-Update-APIs.md](../api/T3000-Point-Update-APIs.md)**.
 
 ## Quick Navigation
 
 ### For Developers
 - **Architecture**: [TECHNICAL_SPECIFICATION.md](./TECHNICAL_SPECIFICATION.md) - Complete technical specs
-- **Integration**: [T3000_Data_Management_README.md](../api/data_management_README.md) - How to integrate
+- **Integration**: [TECHNICAL_SPECIFICATION.md](./TECHNICAL_SPECIFICATION.md) - How to integrate
 - **Development**: [DEVELOPMENT_NOTES.md](./DEVELOPMENT_NOTES.md) - Implementation details
 
 ### For System Administrators

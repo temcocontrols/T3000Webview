@@ -1,4 +1,4 @@
-# Trendlog Data Flow Analysis
+# Trendlog Data Flow Analysis - Data Not Being Saved (Investigation)
 
 ## Problem Statement
 Data is not being saved to `TRENDLOG_DATA` and `TRENDLOG_DATA_DETAIL` tables despite FFI sync service running.

@@ -600,6 +600,7 @@ Further optimized modal spacing and padding for maximum space efficiency while m
 
 ### Technical Implementation
 All changes made using CSS `:deep()` selectors to override Ant Design defaults:
+```
 ```css
 /* Modal content - completely optimized spacing */
 :deep(.t3-timeseries-modal .ant-modal-content) {

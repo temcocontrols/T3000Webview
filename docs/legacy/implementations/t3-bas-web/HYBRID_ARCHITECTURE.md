@@ -654,9 +654,9 @@ refactor(shared): improve API error handling
 
 ### Internal Docs
 
-- [Technical Design: Hybrid Architecture](./docs/t3-bas-web/Technical-Design-Hybrid-Architecture.md)
-- [React-Fluent-UI Migration Plan](./docs/t3-bas-web/React-Fluent-UI-Migration-Plan.md)
-- [Hybrid Vue-React Architecture](./docs/t3-bas-web/Hybrid-Vue-React-Architecture.md)
+- [Technical Design: Hybrid Architecture](Technical-Design-Hybrid-Architecture.md)
+- [React-Fluent-UI Migration Plan](React-Fluent-UI-Migration-Plan.md)
+- [Hybrid Vue-React Architecture](Hybrid-Vue-React-Architecture.md)
 
 ---
 

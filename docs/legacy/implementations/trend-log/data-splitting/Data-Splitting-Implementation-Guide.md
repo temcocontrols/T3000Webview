@@ -1016,8 +1016,8 @@ CREATE TABLE DATABASE_PARTITION_CONFIG (
 ## Related Documentation
 
 - [Data Splitting Analysis](./Data-Splitting-Strategy-Analysis.md) - Root cause analysis
-- [BACnet Integration](../bacnet/BACnet-Implementation-Plan-Phase1.md)
-- [FFI Sync Service](../t3000/T3000-Rust-API-WebView-Integration-Complete.md)
+- [BACnet Integration](../../../development/bacnet/BACnet-Implementation-Plan-Phase1.md)
+- [FFI Sync Service](../../../development/bacnet/T3000-Rust-API-WebView-Integration-Complete.md)
 
 ---
 
