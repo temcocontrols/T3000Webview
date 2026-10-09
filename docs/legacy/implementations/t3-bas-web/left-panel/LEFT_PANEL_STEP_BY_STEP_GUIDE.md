@@ -2975,7 +2975,7 @@ describe('TreePanel', () => {
 
 ---
 
-# Complete TODO Checklist
+## Complete TODO Checklist
 
 ## Phase 1: Foundation
 - [ ] Create `src/t3-react/types/device.ts` with all TypeScript interfaces
@@ -3043,7 +3043,7 @@ describe('TreePanel', () => {
 
 ---
 
-# Verification Steps
+## Verification Steps
 
 After implementing each phase, verify:
 
@@ -3092,7 +3092,7 @@ After implementing each phase, verify:
 
 ---
 
-# Implementation Roadmap
+## Implementation Roadmap
 
 ## Phase Timeline
 

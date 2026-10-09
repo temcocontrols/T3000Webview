@@ -1,4 +1,6 @@
-# T3000 Trendlog Database Design - Comprehensive Analysis & Solution
+# T3000 Trendlog Database Design - Architecture and Risk Analysis
+
+> Companion document: [Implementation Plan](../t3000/1.TRENDLOG_DATABASE_DESIGN.md)
 
 **Branch:** feature/new-ui
 **Status:** Design Phase - No Implementation Yet

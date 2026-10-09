@@ -291,8 +291,9 @@ A scheduled agent run produces one report and at most one PR:
 
 * **Stale** — pages whose `code` files changed after `reviewed`.
 * **Orphans** — pages no nav/manifest lists, or reachable from nothing.
-* **Duplicates** — near-identical pages (the `TRENDLOG_DATA_FLOW_ANALYSIS` / `TrendLog-Data-Flow-Analysis`
-  pair is a live example).
+* **Duplicates** — near-identical or identically-titled pages (the `TRENDLOG_DATA_FLOW_ANALYSIS` /
+  `TrendLog-Data-Flow-Analysis` pair and the two `TRENDLOG_DATABASE_DESIGN` revisions were live
+  examples; titles/names were disambiguated in phase 0, the merge decision stays with the editor).
 * **Misplaced audience** — engineering content inside the user manual, status words in user pages.
 * **Dead weight** — investigation notes superseded by a later conclusion, proposed for merge or deletion.
 
