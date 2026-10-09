@@ -1,3 +1,7 @@
+---
+keywords: [trend, trend log, trendlog, chart, history, logging]
+---
+
 # Trend Logs
 
 <!-- USER-GUIDE -->

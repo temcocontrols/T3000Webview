@@ -72,7 +72,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { marked } from 'marked';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -106,6 +106,7 @@ function parseArgs(argv) {
     else if (a === '--section-name') args.sectionName = next();
     else if (a === '--print-tree') args.printTree = true;
     else if (a === '--no-deploy') args.deploy = false;
+    else if (a === '--open') args.open = true;
     else if (a === '--keep-original') args.keepOriginal = true;
     else if (a === '--help' || a === '-h') {
       console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(0, 40).join('\n'));
@@ -141,6 +142,33 @@ function titleCase(s) {
 
 /** Case-insensitive, separator-normalised key for absolute-path lookups. */
 const normPath = (p) => path.resolve(p).replace(/\\/g, '/').toLowerCase();
+
+/**
+ * Splits optional YAML front matter off a page. Only the fields the build uses
+ * are read (`title`, `keywords`); anything else is left for later phases. The
+ * body is what gets rendered, so front matter never shows up in the CHM.
+ */
+function splitFrontMatter(md) {
+  const m = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(md);
+  if (!m) return { meta: {}, body: md };
+  const meta = {};
+  for (const line of m[1].split(/\r?\n/)) {
+    const kv = /^([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(.*)$/.exec(line);
+    if (!kv) continue;
+    const key = kv[1].toLowerCase();
+    const val = kv[2].trim();
+    if (/^\[.*\]$/.test(val)) {
+      meta[key] = val
+        .slice(1, -1)
+        .split(',')
+        .map((s) => s.trim().replace(/^["']|["']$/g, ''))
+        .filter(Boolean);
+    } else {
+      meta[key] = val.replace(/^["']|["']$/g, '');
+    }
+  }
+  return { meta, body: md.slice(m[0].length) };
+}
 
 // ─── Documentation sources & Contents-tree design ────────────────────────────
 /**
@@ -293,16 +321,17 @@ function docsForCollection(col) {
       if (flatten) segs.shift(); // drop the source folder the chapter maps
       const base = path.basename(relDocs, '.md');
       const isOverview = /^(readme|index)$/i.test(base);
-      const md = fs.readFileSync(abs, 'utf8');
+      const { meta, body } = splitFrontMatter(fs.readFileSync(abs, 'utf8'));
       docs.push({
         abs: path.resolve(abs),
         branch: segs.length ? `${prefix}/${segs.join('/')}` : prefix,
         chapterFrom,
         rel: relDocs,
         slug: 'docs-' + slugify(relDocs.replace(/\.md$/i, '')),
-        title: isOverview ? 'Overview' : firstHeading(md) || titleCase(base),
-        md,
-        headings: headings(md),
+        title: meta.title || (isOverview ? 'Overview' : firstHeading(body) || titleCase(base)),
+        md: body,
+        headings: headings(body),
+        keywords: [].concat(meta.keywords || []),
         isOverview,
       });
     };
@@ -759,6 +788,27 @@ function indexInsert(docs, extra = []) {
 </UL>
 </LI>`;
   }
+  // Curated keywords from the page front matter. These are authoritative and are
+  // added per page - the same keyword may legitimately point at several topics
+  // (the Help viewer groups them under one index node).
+  const curated = [];
+  for (const d of docs) for (const k of d.keywords || []) curated.push({ name: String(k), local: `${d.slug}.htm` });
+  curated.sort((a, b) => a.name.localeCompare(b.name));
+  const pairs = new Set();
+  for (const e of curated) {
+    const pair = `${e.name.toLowerCase()}|${e.local}`;
+    if (!e.name || !e.local || pairs.has(pair)) continue;
+    pairs.add(pair);
+    out += `
+<LI><OBJECT type="text/sitemap">
+<param name="Name" value="${escapeHtml(tocText(e.name))}" />
+<param name="Local" value="${e.local}" />
+</OBJECT>
+<UL>
+</UL>
+</LI>`;
+  }
+
   for (const d of docs) {
     for (const kw of [d.title, ...d.headings]) {
       const key = kw.toLowerCase();
@@ -1246,6 +1296,17 @@ function main() {
     `\nDone. ${deployed.length} help file(s) written` +
       `${args.deploy && !args.keepOriginal ? '' : ' (deploy disabled)'}.\n`
   );
+
+  // `help:preview` - build and open the result in the Help viewer, which is the
+  // only place a CHM can really be judged (merge, aliases, search index).
+  if (args.open && deployed.length) {
+    ok(`Opening ${deployed[0]}`);
+    try {
+      spawn(DEFAULTS.hh, [deployed[0]], { detached: true, stdio: 'ignore' }).unref();
+    } catch (e) {
+      warn(`Could not open the help viewer: ${e.message}`);
+    }
+  }
 }
 
 main();

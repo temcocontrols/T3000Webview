@@ -321,15 +321,16 @@ We are replacing the tool, so the replacement must do everything the doc colleag
 | Dr.Explain capability | Our answer | State |
 |---|---|---|
 | Topic tree (TOC) | generated `.hhc` from the registry | already works |
-| Index / keywords | `keywords:` front matter → generated `.hhk` | new (§7.1) |
+| Index / keywords | `keywords:` front matter → generated `.hhk` | **done** (2026-10-09) |
 | Full-text search | `Full-text search=Yes` — hhc compiles its own index | already works |
 | Context-sensitive help | registry owns the IDs → we **generate** `T3000_Help_Map.h` and the `.hhc` aliases | new, stronger than today (§9.3) |
 | Styled pages | `css/docs-extra.stylesheet` on the kept Dr.Explain base theme | already works |
 | Multiple formats | CHM (P0) and PDF (P2) from one Markdown source | CHM works |
 | Topic statuses / progress view | front matter + a generated status report for the doc colleague | new (§11) |
 | Screenshot annotation | capture helper + numbered-callout convention; manual annotation for now | **partial — known gap** |
-| Editor comfort for a non-technical writer | live preview (`npm run help:preview`) + generated status view | **partial — known gap** |
+| Editor comfort for a non-technical writer | live preview (`npm run help:preview`) + generated status view | **partial — `help:preview` done**, status view pending |
 | Team collaboration | git branches + PR review | different, not worse |
+| Works offline | `docs:blocking` gate fails on any remote asset reference | **done** (2026-10-09) |
 
 The two "partial" rows are the honest cost of leaving Dr.Explain, and they are why §11 gives the doc
 colleague a preview and a status view rather than "just use VS Code".
@@ -444,11 +445,12 @@ Non-blocking (expected in engineering material, must not be "cleaned": 303 statu
 
 ```
 npm run docs:audit        # lint (read-only)
+npm run docs:blocking     # lint, exit non-zero only for findings that break the shipped manual
 npm run docs:clean        # mechanical cleanup (dry-run by default)
 npm run build:help        # build + deploy the shipped CHM
 npm run help:tree         # preview the CHM Contents tree
-npm run help:preview      # (phase 1) build and open the CHM locally
-npm run docs:map          # (phase 1) regenerate T3000_Help_Map.h from the registry
+npm run help:preview      # build and open the CHM locally
+npm run docs:map          # (phase 1, remaining) regenerate T3000_Help_Map.h from the registry
 npm run docs:registry     # (phase 2) regenerate docs/help/index.json
 npm run docs:sync         # (phase 3) commit → summary + page updates
 ```

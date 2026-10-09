@@ -147,7 +147,10 @@ let totals = { headings: 0, emoji: 0, shout: 0, status: 0, mojibake: 0, nonAscii
 for (const abs of files) {
   const rel = path.relative(REPO_ROOT, abs).replace(/\\/g, '/');
   const raw = fs.readFileSync(abs, 'utf8');
-  const prose = stripFences(raw);
+  // YAML front matter is metadata, not content: it is excluded from every prose
+  // check, including the "H1 must be the first line" rule.
+  const body = raw.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+  const prose = stripFences(body);
   const hs = headings(prose);
   totals.headings += hs.length;
   tallyChars(prose);
@@ -206,8 +209,17 @@ for (const abs of files) {
   if (mk) { totals.markers++; push('marker', mk.slice(0, 6).join(', ')); }
 
   // ── code fences must be balanced or the rest of the page renders as code
-  const fenceCount = (raw.match(/^\s*(```|~~~)/gm) || []).length;
+  const fenceCount = (body.match(/^\s*(```|~~~)/gm) || []).length;
   if (fenceCount % 2) push('unbalanced-fence', `${fenceCount} fence delimiter(s) - odd`);
+
+  // ── the CHM has to work with no network: images, scripts and stylesheets must
+  //    be local. External *links* (a href) are fine, external *assets* are not.
+  const assetRe =
+    /(?:!\[[^\]]*\]\(\s*|<img[^>]+src=["']|<script[^>]+src=["']|<link[^>]+href=["']|@import\s+(?:url\()?["']|url\(\s*["']?)(https?:\/\/[^"')\s>]+)/gi;
+  const remote = new Set();
+  let am;
+  while ((am = assetRe.exec(body)) !== null) remote.add(am[1]);
+  if (remote.size) push('remote-asset', [...remote].slice(0, 5).join(', '));
 
   // ── authoring/process metadata
   const metaLabel = [];
@@ -272,7 +284,27 @@ const ORDER = [
   ['todo-line', 'TODO/FIXME line'],
   ['unbalanced-fence', 'unbalanced code fence (rest of page renders as code)'],
   ['broken-link', 'broken relative .md link'],
+  ['remote-asset', 'remote asset reference (breaks the offline CHM)'],
 ];
+
+/**
+ * Findings that must be zero for the audience that ships in the CHM. Everything
+ * else (status words, phase headings, changelogs) is legitimate in engineering
+ * notes and must not be "cleaned" by a well-meaning bot. See DESIGN.md 9.2.
+ */
+const BLOCKING = new Set([
+  'unbalanced-fence',
+  'broken-link',
+  'remote-asset',
+  'no-h1',
+  'h1-not-first',
+  'multiple-h1',
+  'marker',
+  'meta-section',
+  'attribution',
+  'todo-line',
+]);
+const USER_AUDIENCE = /^docs\/t3000\//;
 
 console.log(`\nDocs audit - ${files.length} Markdown files, ${(files.reduce((n, f) => n + fs.statSync(f).size, 0) / 1048576).toFixed(2)} MB, ${totals.headings} headings\n`);
 console.log('  count  issue');
@@ -354,4 +386,16 @@ if (LIST) {
 if (JSON_OUT) {
   fs.writeFileSync(JSON_OUT, JSON.stringify({ totals, findings }, null, 2), 'utf8');
   console.log(`\nJSON written to ${JSON_OUT}`);
+}
+
+// ── CI gate: exit non-zero only for findings that break the shipped manual
+if (args.includes('--blocking')) {
+  const hits = findings.filter((f) => BLOCKING.has(f.kind) && USER_AUDIENCE.test(f.file));
+  if (hits.length) {
+    console.log(`\n─── blocking findings in the user audience (${hits.length}) ───`);
+    for (const f of hits) console.log(`   ${f.kind.padEnd(16)} ${f.file}\n      ${f.detail}`);
+    process.exitCode = 1;
+  } else {
+    console.log('\nNo blocking findings in the user audience (docs/t3000) - gate passed.');
+  }
 }
