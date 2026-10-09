@@ -11,14 +11,17 @@
  * moved, renamed or copied - the web Documentation page and the MCP doc tools
  * keep working on docs/t3000/** and docs/legacy/** exactly as before.
  *
- *   docs/help/manual.json       -> T3000_Help.chm   ("manual": true)
- *   docs/help/reference.json    -> T3Web_Ref.chm
- *   docs/help/engineering.json  -> T3Web_Dev.chm
+ *   docs/help/manual.json       -> T3000_Help.chm   ("manual": true)  <- shipped
+ *   docs/help/reference.json    -> T3Web_Ref.chm                     <- optional
+ *   docs/help/engineering.json  -> T3Web_Dev.chm                     <- optional
  *
- * The manual is the master: its .hhp gets a [MERGE FILES] section listing the
- * other help files, and its Contents gets a node per merged file, so the Help
- * viewer shows one book ("T3Web") plus one node per merged help file, with a
- * unified Contents, Index and full-text search.
+ * Only the manual is built by default, so the product ships ONE help file. The
+ * other two are optional collections (offline browsing of the API / engineering
+ * docs); `--all` builds them and folds them into the manual's Contents with a
+ * [MERGE FILES] section. That merge is deliberately opt-in because a merged
+ * help file only works while all its parts sit in the same folder - and because
+ * HTML Help renders a merged TOC pointer as a plain topic, not as an expandable
+ * book, so the payoff is small.
  *
  * Why this exists
  * ---------------
@@ -41,9 +44,10 @@
  *
  * Usage
  * -----
- *   node scripts/build-t3000-help-chm.mjs                    # build every help file
- *   node scripts/build-t3000-help-chm.mjs --collection manual # one collection only
- *   node scripts/build-t3000-help-chm.mjs --print-tree        # show the tree, build nothing
+ *   node scripts/build-t3000-help-chm.mjs                           # build the shipped manual
+ *   node scripts/build-t3000-help-chm.mjs --all                      # + merge the optional collections
+ *   node scripts/build-t3000-help-chm.mjs --collection engineering   # one collection only
+ *   node scripts/build-t3000-help-chm.mjs --print-tree               # show the tree, build nothing
  *   node scripts/build-t3000-help-chm.mjs --out <file>        # custom output path
  *   node scripts/build-t3000-help-chm.mjs --docs <dir>        # docs base folder
  *   node scripts/build-t3000-help-chm.mjs --work <dir>        # custom working folder
@@ -95,6 +99,7 @@ function parseArgs(argv) {
     else if (a === '--chm') args.chm = next();
     else if (a === '--docs') args.docs = next();
     else if (a === '--collection') args.collection = next();
+    else if (a === '--all') args.all = true;
     else if (a === '--work') args.work = next();
     else if (a === '--map') args.mapHeader = next();
     else if (a === '--hhc') args.hhc = next();
@@ -1062,13 +1067,16 @@ function main() {
     throw new Error(`No collection manifests (*.json) found in ${HELP_DIR}`);
   }
   const stem = (c) => (c.manifest || '').replace(/\.json$/, '');
-  const wanted =
-    args.collection && args.collection !== 'all'
-      ? allCollections.filter((c) => stem(c) === args.collection)
-      : allCollections;
-  if (!wanted.length) {
+  // Shipped help = the manual alone. The other manifests are optional collections
+  // (offline browsing of the engineering / API docs) that are only built - and
+  // merged into the manual - on request.
+  const all = args.all || args.collection === 'all';
+  const picked = args.collection && !all ? allCollections.filter((c) => stem(c) === args.collection) : null;
+  if (picked && !picked.length) {
     throw new Error(`--collection ${args.collection} matched no manifest (have: ${allCollections.map(stem).join(', ')})`);
   }
+  const wanted = picked || (all ? allCollections : allCollections.filter((c) => c.manual));
+  if (!wanted.length) throw new Error('No collection manifest is marked "manual": true');
   const manualCol = wanted.find((c) => c.manual) || null;
   const others = wanted.filter((c) => c !== manualCol);
   const work = path.resolve(args.work || DEFAULTS.work);
@@ -1082,7 +1090,7 @@ function main() {
       `  master chm  : ${chm}\n` +
       `  collections : ${wanted.map((c) => `${c.manifest} -> ${c.chm}`).join('\n                ')}\n` +
       `  manual book : ${manualCol ? `${sectionName} (appended last in the manual's Contents)` : '(none)'}\n` +
-      `  merged into : ${manualCol ? others.map((c) => c.chm).join(', ') || '(nothing)' : '-'}\n` +
+      `  merged into : ${others.length ? others.map((c) => c.chm).join(', ') : '(nothing - use --all to merge)'}\n` +
       `  work        : ${work}\n  output      : ${out}\n`
   );
   if (!fs.existsSync(hhcExe)) throw new Error(`hhc.exe not found: ${hhcExe}\nInstall "HTML Help Workshop" or pass --hhc <path>.`);
