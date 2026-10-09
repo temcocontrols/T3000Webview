@@ -1,0 +1,13 @@
+{
+  "book": "T3Web Engineering",
+  "chm": "T3Web_Dev.chm",
+  "chapters": [
+    { "title": "Architecture", "from": "t3000/architecture" },
+    { "title": "Design Hub", "from": "t3000/design-hub" },
+    { "title": "Components", "from": "t3000/components" },
+    { "title": "Implementations", "from": "legacy/implementations" },
+    { "title": "Development", "from": "legacy/development" },
+    { "title": "Legacy Code", "from": "legacy/legacy-code" },
+    { "title": "Releases", "from": "legacy/releases" }
+  ]
+}

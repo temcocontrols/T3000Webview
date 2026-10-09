@@ -1,0 +1,15 @@
+{
+  "book": "T3Web",
+  "chm": "T3000_Help.chm",
+  "manual": true,
+  "chapters": [
+    { "title": "Getting Started", "from": "t3000/quick-start" },
+    { "title": "Installation", "from": "t3000/shared-db" },
+    { "title": "Devices", "from": "t3000/device-management" },
+    { "title": "Data Points", "from": "t3000/data-points" },
+    { "title": "Features", "from": "t3000/features" },
+    { "title": "Displays", "from": ["t3000/t3-eez-studio", "t3000/tstat-lcd"] },
+    { "title": "Troubleshooting", "from": "t3000/guides" },
+    { "title": "Release Notes", "from": "t3000/releases" }
+  ]
+}

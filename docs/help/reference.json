@@ -1,0 +1,10 @@
+{
+  "book": "T3Web Reference",
+  "chm": "T3Web_Ref.chm",
+  "chapters": [
+    { "title": "REST API", "from": "t3000/api-reference" },
+    { "title": "Building Platform", "from": "t3000/building-platform" },
+    { "title": "Haystack & MCP", "from": "t3000/haystack" },
+    { "title": "Design Studio API", "from": "t3000/bacnet-api" }
+  ]
+}

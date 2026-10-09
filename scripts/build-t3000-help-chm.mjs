@@ -2,8 +2,23 @@
 /**
  * build-t3000-help-chm.mjs
  * ---------------------------------------------------------------------------
- * Folds the T3000Webview Markdown documentation (docs/t3000/**) into the
- * native T3000 Help file: T3000_Help.chm
+ * Builds the native T3000 help files from the T3000Webview Markdown docs.
+ *
+ * What is built, and how it is decided
+ * ------------------------------------
+ * The help files are *declared* in docs/help/*.json. A manifest lists chapters
+ * and points at existing Markdown (paths relative to docs/), so no page is ever
+ * moved, renamed or copied - the web Documentation page and the MCP doc tools
+ * keep working on docs/t3000/** and docs/legacy/** exactly as before.
+ *
+ *   docs/help/manual.json       -> T3000_Help.chm   ("manual": true)
+ *   docs/help/reference.json    -> T3Web_Ref.chm
+ *   docs/help/engineering.json  -> T3Web_Dev.chm
+ *
+ * The manual is the master: its .hhp gets a [MERGE FILES] section listing the
+ * other help files, and its Contents gets a node per merged file, so the Help
+ * viewer shows one book ("T3Web") plus one node per merged help file, with a
+ * unified Contents, Index and full-text search.
  *
  * Why this exists
  * ---------------
@@ -16,8 +31,8 @@
  *   1. Decompiles the shipped T3000_Help.chm into a working folder
  *      (hh.exe -decompile) - that recovers all 128 topics, the Contents tree
  *      (project.hhc), the Index (project.hhk) and every asset (css/js/images).
- *   2. Converts every Markdown file under docs/t3000/** into an .htm topic that
- *      reuses the Dr.Explain stylesheets, so the new pages match the manual.
+ *   2. Converts every Markdown topic listed by the manifests into an .htm topic
+ *      that reuses the Dr.Explain stylesheets, so the new pages match the manual.
  *   3. Appends the new topics to project.hhc (Contents) and project.hhk (Index).
  *   4. Writes a project.hhp (the missing project file) with [FILES], and
  *      [ALIAS]/[MAP] reconstructed from T3000_Help_Map.h so F1 context help
@@ -26,12 +41,14 @@
  *
  * Usage
  * -----
- *   node scripts/build-t3000-help-chm.mjs                 # build, keep original backed up
- *   node scripts/build-t3000-help-chm.mjs --out <file>     # custom output path
- *   node scripts/build-t3000-help-chm.mjs --docs <dir>     # custom Markdown root
- *   node scripts/build-t3000-help-chm.mjs --work <dir>     # custom working folder
- *   node scripts/build-t3000-help-chm.mjs --no-deploy      # write to build dir only
- *   node scripts/build-t3000-help-chm.mjs --keep-original  # never overwrite the source
+ *   node scripts/build-t3000-help-chm.mjs                    # build every help file
+ *   node scripts/build-t3000-help-chm.mjs --collection manual # one collection only
+ *   node scripts/build-t3000-help-chm.mjs --print-tree        # show the tree, build nothing
+ *   node scripts/build-t3000-help-chm.mjs --out <file>        # custom output path
+ *   node scripts/build-t3000-help-chm.mjs --docs <dir>        # docs base folder
+ *   node scripts/build-t3000-help-chm.mjs --work <dir>        # custom working folder
+ *   node scripts/build-t3000-help-chm.mjs --no-deploy         # write to build dir only
+ *   node scripts/build-t3000-help-chm.mjs --keep-original     # never overwrite the source
  *
  * Environment overrides (same names, uppercase): T3000_HELP_CHM, T3000_HELP_MAP_H,
  * HHC_EXE, HH_EXE.
@@ -63,7 +80,7 @@ const DEFAULTS = {
   mapHeader: 'C:\\QN\\temcocontrols\\T3000_Building_Automation_System\\T3000\\T3000_Help_Map.h',
   hhc: 'C:\\Program Files (x86)\\HTML Help Workshop\\hhc.exe',
   hh: 'C:\\Windows\\hh.exe',
-  docs: path.join(REPO_ROOT, 'docs', 't3000'),
+  docs: path.join(REPO_ROOT, 'docs'), // base folder the manifests are relative to
   work: path.join(process.env.TEMP || REPO_ROOT, 't3000-help-chm'),
   out: null, // default: the source .chm location
 };
@@ -77,6 +94,7 @@ function parseArgs(argv) {
     if (a === '--out') args.out = next();
     else if (a === '--chm') args.chm = next();
     else if (a === '--docs') args.docs = next();
+    else if (a === '--collection') args.collection = next();
     else if (a === '--work') args.work = next();
     else if (a === '--map') args.mapHeader = next();
     else if (a === '--hhc') args.hhc = next();
@@ -196,7 +214,8 @@ const TITLES = {
  * after the listed ones. '' orders the two top-level groups.
  */
 const ORDER = {
-  '': ['t3000', 'legacy'],
+  // The top-level chapter order is encoded in the manifest chapter ids
+  // ("manual-01-..."), so there is no '' entry any more.
   t3000: [
     'quick-start', 'shared-db', 'architecture', 'design-hub', 'components',
     'device-management', 'data-points', 'features', 'guides', 'building-platform',
@@ -219,9 +238,104 @@ const DOC_SECTION_TITLE = 'T3Web';
 /** Slug (file name) of the T3Web landing page. */
 const LANDING_SLUG = 'docs-index';
 
-/** Label for a folder node: depth 1 uses the docs-root name, deeper uses TITLES. */
-const folderLabel = (key, pathPrefix) =>
-  (!pathPrefix ? GROUP_TITLES[key] : TITLES[key]) || titleCase(key);
+// ─── Collections: docs/help/*.json ───────────────────────────────────────────
+/**
+ * The help files are *defined* in docs/help/*.json. A manifest lists chapters and
+ * points at existing Markdown (relative to docs/), so no page is ever moved or
+ * copied - the web Documentation page and the MCP tools keep their paths.
+ */
+const HELP_DIR = path.join(REPO_ROOT, 'docs', 'help');
+/** Base folder the manifest paths are relative to (override with --docs). */
+let DOCS_BASE = path.join(REPO_ROOT, 'docs');
+/** "01-getting-started" -> "Getting Started" (filled while resolving a manifest). */
+const CHAPTER_TITLES = new Map();
+
+function loadCollections() {
+  if (!fs.existsSync(HELP_DIR)) return [];
+  const cols = fs
+    .readdirSync(HELP_DIR)
+    .filter((f) => f.endsWith('.json'))
+    .sort()
+    .map((f) => ({ ...JSON.parse(fs.readFileSync(path.join(HELP_DIR, f), 'utf8')), manifest: f }));
+  // The collection folded into T3000_Help.chm is built last (it needs to know the
+  // names of the files it merges).
+  return cols.sort((a, b) => Number(!!a.manual) - Number(!!b.manual));
+}
+
+/** Resolves one collection manifest into buildable topics. */
+function docsForCollection(col) {
+  const docs = [];
+  const colKey = (col.manifest || 'docs').replace(/\.json$/, '');
+  (col.chapters || []).forEach((ch, i) => {
+    const prefix = `${colKey}-${String(i + 1).padStart(2, '0')}-${slugify(ch.title || `chapter-${i + 1}`)}`;
+    const chapterFrom = [].concat(ch.from || [])[0] || null;
+    const fromList = [].concat(ch.from || []);
+    // A chapter that maps exactly one docs folder *is* that folder, so its pages
+    // attach to the chapter node directly instead of repeating the folder name
+    // ("Data Points > Data Points > Inputs"). With several source folders the
+    // folder name stays, because it is what separates them ("Displays > Design
+    // Studio", "Displays > Tstat LCD").
+    const flatten = !ch.pages && fromList.length === 1;
+    CHAPTER_TITLES.set(prefix, ch.title || `Chapter ${i + 1}`);
+
+    const add = (abs) => {
+      const relDocs = path.relative(DOCS_BASE, abs).replace(/\\/g, '/');
+      const sub = path.dirname(relDocs);
+      const segs = (sub === '.' ? '' : sub)
+        .split('/')
+        .slice(1) // drop the collection folder itself (t3000 / legacy)
+        .filter((s) => s && !/^(images?|assets|img)$/i.test(s));
+      if (flatten) segs.shift(); // drop the source folder the chapter maps
+      const base = path.basename(relDocs, '.md');
+      const isOverview = /^(readme|index)$/i.test(base);
+      const md = fs.readFileSync(abs, 'utf8');
+      docs.push({
+        abs: path.resolve(abs),
+        branch: segs.length ? `${prefix}/${segs.join('/')}` : prefix,
+        chapterFrom,
+        rel: relDocs,
+        slug: 'docs-' + slugify(relDocs.replace(/\.md$/i, '')),
+        title: isOverview ? 'Overview' : firstHeading(md) || titleCase(base),
+        md,
+        headings: headings(md),
+        isOverview,
+      });
+    };
+
+    for (const p of ch.pages || []) {
+      const abs = path.join(DOCS_BASE, p);
+      if (fs.existsSync(abs)) add(abs);
+      else warn(`${col.manifest}: page not found - ${p}`);
+    }
+    for (const from of fromList) {
+      const dir = path.join(DOCS_BASE, from);
+      if (!fs.existsSync(dir)) {
+        warn(`${col.manifest}: folder not found - ${from}`);
+        continue;
+      }
+      for (const abs of collectMarkdown(dir)) add(abs);
+    }
+  });
+
+  // Two files can slugify to the same topic name. CHM names are case-insensitive,
+  // so disambiguate instead of silently overwriting a page.
+  const used = new Set();
+  for (const d of docs) {
+    const base = d.slug;
+    let n = 1;
+    while (used.has(d.slug)) d.slug = `${base}-${++n}`;
+    if (d.slug !== base) warn(`duplicate topic name "${base}" - ${d.rel} published as ${d.slug}.htm`);
+    used.add(d.slug);
+  }
+  return docs;
+}
+
+/** Label for a folder node: a chapter uses its manifest title. */
+const folderLabel = (key, pathPrefix) => {
+  if (!pathPrefix && CHAPTER_TITLES.has(key)) return CHAPTER_TITLES.get(key);
+  const name = key.replace(/^\d+[-_]/, '');
+  return TITLES[name] || titleCase(name);
+};
 
 // ─── Step 1: decompile the shipped CHM ───────────────────────────────────────
 function decompile(chm, work) {
@@ -483,15 +597,23 @@ function localiseLinks(html, mdFile, slugByAbs) {
 // ─── Step 3: Contents tree (.hhc) ────────────────────────────────────────────
 /**
  * Builds the nested folder tree shared by the .hhc writer and --print-tree.
- * Keys are folder segments of each document's branch, e.g.
- * "t3000/quick-start" or "legacy/implementations/t3-bas-web".
+ * Keys are manifest chapter ids plus the document's own sub-folders, e.g.
+ * "manual-03-devices/quick-start". `orderKey` keeps the docs-relative folder
+ * path ("t3000/quick-start") because the curated ORDER table is written against
+ * those names.
  */
 function buildDocTree(docs) {
-  const root = { children: new Map(), files: [] };
+  const root = { children: new Map(), files: [], orderKey: '' };
   for (const d of docs) {
     let node = root;
     for (const seg of d.branch.split('/')) {
-      if (!node.children.has(seg)) node.children.set(seg, { children: new Map(), files: [] });
+      if (!node.children.has(seg)) {
+        node.children.set(seg, {
+          children: new Map(),
+          files: [],
+          orderKey: node === root ? d.chapterFrom || seg : `${node.orderKey}/${seg}`,
+        });
+      }
       node = node.children.get(seg);
     }
     node.files.push(d);
@@ -501,7 +623,7 @@ function buildDocTree(docs) {
 
 /** Ordered child keys: preferred order first (ORDER), then alphabetical. */
 function sortedChildKeys(node, pathPrefix) {
-  const order = ORDER[pathPrefix] || [];
+  const order = ORDER[node.orderKey || pathPrefix] || [];
   return [...node.children.keys()].sort((a, b) => {
     const ia = order.indexOf(a);
     const ib = order.indexOf(b);
@@ -780,15 +902,21 @@ function contextMap(mapHeaderPath, pristineHhc) {
   return { alias, map, unmatched };
 }
 
-function writeHhp(work, files, ctx) {
+function writeHhp(work, files, ctx, opts = {}) {
+  const {
+    compiledName = 'T3000_Help.chm',
+    title = 'T3000 Help',
+    defaultTopic = 'index.htm',
+    mergeFiles = [],
+  } = opts;
   const hhp = `${[
     '[OPTIONS]',
     'Compatibility=1.1 or later',
-    'Compiled file=T3000_Help.chm',
+    `Compiled file=${compiledName}`,
     'Contents file=project.hhc',
     'Index file=project.hhk',
-    'Default topic=index.htm',
-    'Title=T3000 Help',
+    `Default topic=${defaultTopic}`,
+    `Title=${title}`,
     'Language=0x409 English (United States)',
     'Display compile progress=No',
     'Full-text search=Yes',
@@ -803,10 +931,119 @@ function writeHhp(work, files, ctx) {
     '',
     '[MAP]',
     ...ctx.map,
+    ...(mergeFiles.length ? ['', '[MERGE FILES]', ...mergeFiles] : []),
     '',
   ].join('\n')}\n`;
   fs.writeFileSync(path.join(work, 'project.hhp'), hhp, 'utf8');
   return hhp;
+}
+
+/** Runs hhc.exe and returns the compiled file (hhc exits non-zero even on success). */
+function compileIn(workDir, hhcExe, chmName) {
+  let out = '';
+  try {
+    out = run(hhcExe, ['project.hhp'], { cwd: workDir });
+  } catch (e) {
+    out = (e.stdout || '') + (e.stderr || '');
+  }
+  const compiled = path.join(workDir, chmName);
+  if (!fs.existsSync(compiled)) {
+    console.log(out);
+    throw new Error(`Compilation failed - no ${chmName} produced.`);
+  }
+  const errs = out.split(/\r?\n/).filter((l) => /^HHC\d+/i.test(l.trim()));
+  if (errs.length) {
+    warn(`hhc.exe reported ${errs.length} problem(s):`);
+    errs.slice(0, 10).forEach((l) => console.log('     ' + l.trim()));
+  }
+  ok(`${chmName} compiled: ${(fs.statSync(compiled).size / 1048576).toFixed(1)} MB`);
+  return compiled;
+}
+
+/** Renders the landing page and every topic into `work`. */
+function writePages(docs, work, bookName) {
+  fs.mkdirSync(path.join(work, 'css'), { recursive: true });
+  fs.writeFileSync(path.join(work, 'css', 'docs-extra.stylesheet'), EXTRA_CSS, 'utf8');
+
+  // The book node in the Contents points here, so selecting the book opens a real
+  // sitemap instead of a bare branch.
+  fs.writeFileSync(
+    path.join(work, `${LANDING_SLUG}.htm`),
+    pageShell({
+      title: `${bookName} Documentation`,
+      breadcrumb: bookName,
+      fileName: `${LANDING_SLUG}.htm`,
+      content: landingHtml(docs, bookName),
+      prev: null,
+      next: null,
+    }),
+    'utf8'
+  );
+
+  const slugByAbs = new Map(docs.map((d) => [normPath(d.abs), d.slug]));
+  marked.setOptions({ gfm: true, breaks: false });
+  docs.forEach((d, i) => {
+    let html = marked.parse(d.md);
+    html = localiseImages(html, d.abs, work, d.slug.replace(/^docs-/, ''));
+    html = localiseLinks(html, d.abs, slugByAbs);
+
+    const prev = i > 0 ? { title: docs[i - 1].title, file: `${docs[i - 1].slug}.htm` } : null;
+    const next = i < docs.length - 1 ? { title: docs[i + 1].title, file: `${docs[i + 1].slug}.htm` } : null;
+    const trail = d.branch ? d.branch.split('/').map((s) => folderLabel(s, '')) : [];
+    const breadcrumb = [bookName, ...trail].filter(Boolean).join(' › ');
+
+    fs.writeFileSync(
+      path.join(work, `${d.slug}.htm`),
+      pageShell({ title: d.title, breadcrumb, fileName: `${d.slug}.htm`, content: html, prev, next }),
+      'utf8'
+    );
+  });
+  ok(`${bookName}: ${docs.length} pages + landing page`);
+}
+
+/**
+ * Builds a standalone help file (reference / engineering) from scratch, reusing
+ * the manual's compiled theme so all three help files look identical.
+ */
+function buildStandaloneCollection(col, themeDir, hhcExe, workBase) {
+  console.log(`\n-- ${col.book} (${col.manifest}) --`);
+  const w = path.join(workBase, `chm-${slugify(col.book)}`);
+  fs.rmSync(w, { recursive: true, force: true });
+  fs.mkdirSync(w, { recursive: true });
+
+  for (const d of ['css', 'js']) {
+    const from = path.join(themeDir, d);
+    if (fs.existsSync(from)) fs.cpSync(from, path.join(w, d), { recursive: true });
+  }
+  for (const f of ['de_style.stylesheet', 'custom.stylesheet', 'printed.stylesheet']) {
+    const from = path.join(themeDir, f);
+    if (fs.existsSync(from)) fs.copyFileSync(from, path.join(w, f));
+  }
+
+  const docs = docsForCollection(col);
+  if (!docs.length) {
+    warn(`${col.manifest}: no pages - skipped`);
+    return null;
+  }
+  writePages(docs, w, col.book);
+
+  const header =
+    `<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">\n<HTML>\n<HEAD>\n` +
+    `<meta name="GENERATOR" content="T3Web docs build"/>\n<!-- Sitemap 1.0 -->\n</HEAD>\n<BODY>\n`;
+  fs.writeFileSync(path.join(w, 'project.hhc'), `${header}<UL>\n${tocInsert(docs, col.book, LANDING_SLUG)}\n</UL>\n</BODY>\n</HTML>\n`, 'latin1');
+  fs.writeFileSync(
+    path.join(w, 'project.hhk'),
+    `${header}<UL>\n${indexInsert(docs, [{ name: col.book, local: `${LANDING_SLUG}.htm` }])}\n</UL>\n</BODY>\n</HTML>\n`,
+    'latin1'
+  );
+
+  writeHhp(w, listFilesForHhp(w), { alias: [], map: [] }, {
+    compiledName: col.chm,
+    title: col.book,
+    defaultTopic: `${LANDING_SLUG}.htm`,
+  });
+
+  return compileIn(w, hhcExe, col.chm);
 }
 
 // ─── main ────────────────────────────────────────────────────────────────────
@@ -819,229 +1056,188 @@ function main() {
   const chm = !args.chm && fs.existsSync(backupChm) ? backupChm : requestedChm;
   const mapHeader = args.mapHeader || process.env.T3000_HELP_MAP_H || DEFAULTS.mapHeader;
   const hhcExe = args.hhc || process.env.HHC_EXE || DEFAULTS.hhc;
-  const docsRoots = args.docs
-    ? [{ key: 't3000', dir: path.resolve(args.docs) }]
-    : DOC_ROOTS.map((r) => ({ ...r }));
+  if (args.docs) DOCS_BASE = path.resolve(args.docs);
+  const allCollections = loadCollections();
+  if (!allCollections.length) {
+    throw new Error(`No collection manifests (*.json) found in ${HELP_DIR}`);
+  }
+  const stem = (c) => (c.manifest || '').replace(/\.json$/, '');
+  const wanted =
+    args.collection && args.collection !== 'all'
+      ? allCollections.filter((c) => stem(c) === args.collection)
+      : allCollections;
+  if (!wanted.length) {
+    throw new Error(`--collection ${args.collection} matched no manifest (have: ${allCollections.map(stem).join(', ')})`);
+  }
+  const manualCol = wanted.find((c) => c.manual) || null;
+  const others = wanted.filter((c) => c !== manualCol);
   const work = path.resolve(args.work || DEFAULTS.work);
-  const out = path.resolve(args.out || path.join(path.dirname(requestedChm), 'T3000_Help.chm'));
-  const sectionName = args.sectionName || DOC_SECTION_TITLE;
+  const out = path.resolve(
+    args.out || path.join(path.dirname(requestedChm), manualCol ? manualCol.chm : 'T3000_Help.chm')
+  );
+  const sectionName = args.sectionName || (manualCol ? manualCol.book : DOC_SECTION_TITLE);
 
   console.log(
-    `\nT3000 Help CHM build\n  source  : ${chm}\n  docs    : ${docsRoots
-      .map((r) => `${r.dir}`)
-      .join('\n            ')}\n  book    : ${sectionName} (placed last in Contents)\n  work    : ${work}\n  output  : ${out}\n`
+    `\nT3Web help build\n` +
+      `  master chm  : ${chm}\n` +
+      `  collections : ${wanted.map((c) => `${c.manifest} -> ${c.chm}`).join('\n                ')}\n` +
+      `  manual book : ${manualCol ? `${sectionName} (appended last in the manual's Contents)` : '(none)'}\n` +
+      `  merged into : ${manualCol ? others.map((c) => c.chm).join(', ') || '(nothing)' : '-'}\n` +
+      `  work        : ${work}\n  output      : ${out}\n`
   );
   if (!fs.existsSync(hhcExe)) throw new Error(`hhc.exe not found: ${hhcExe}\nInstall "HTML Help Workshop" or pass --hhc <path>.`);
-  for (const r of docsRoots) {
-    if (!fs.existsSync(r.dir)) throw new Error(`Markdown root not found: ${r.dir}`);
-  }
 
-  console.log('1) Scanning documentation sources');
-  const docs = [];
-  for (const root of docsRoots) {
-    for (const abs of collectMarkdown(root.dir)) {
-      const rel = path.relative(root.dir, abs).replace(/\\/g, '/');
-      const relDir = path.dirname(rel);
-      // `images`/`assets` folders are not books - their Markdown belongs to the
-      // parent section (e.g. manual/images/README.md -> Manual > Overview).
-      const dirSegs = (!relDir || relDir === '.' ? '' : relDir.replace(/\\/g, '/'))
-        .split('/')
-        .filter((s) => s && !/^(images?|assets|img)$/i.test(s));
-      const dir = dirSegs.join('/');
-      const slug = 'docs-' + slugify(`${root.key}/${rel.replace(/\.md$/i, '')}`);
-      const md = fs.readFileSync(abs, 'utf8');
-      const base = path.basename(rel, '.md');
-      const isOverview = /^(readme|index)$/i.test(base);
-      docs.push({
-        abs: path.resolve(abs),
-        branch: dir ? `${root.key}/${dir}` : root.key,
-        rootKey: root.key,
-        rel,
-        slug,
-        title: isOverview ? 'Overview' : firstHeading(md) || titleCase(base),
-        md,
-        headings: headings(md),
-        isOverview,
-      });
-    }
+  console.log('1) Resolving collection manifests');
+  const docs = manualCol ? docsForCollection(manualCol) : [];
+  if (manualCol && !docs.length) {
+    throw new Error(`${manualCol.manifest}: no pages resolved - check the chapter paths.`);
   }
-  if (!docs.length) throw new Error('No .md files found under the configured docs roots.');
-
-  // Two Markdown files can slugify to the same topic name (they differ only by
-  // case or punctuation, e.g. TRENDLOG_DATA_FLOW_ANALYSIS.md vs
-  // TrendLog-Data-Flow-Analysis.md). CHM file names are case-insensitive, so
-  // disambiguate with a numeric suffix instead of silently overwriting a page.
-  const usedSlugs = new Set();
-  for (const d of docs) {
-    const base = d.slug;
-    let n = 1;
-    while (usedSlugs.has(d.slug)) d.slug = `${base}-${++n}`;
-    if (d.slug !== base) {
-      warn(
-        `duplicate topic name "${base}" - ${path.relative(REPO_ROOT, d.abs)} published as ${d.slug}.htm`
-      );
-    }
-    usedSlugs.add(d.slug);
-  }
-
-  const slugByAbs = new Map(docs.map((d) => [normPath(d.abs), d.slug]));
+  for (const c of others) ok(`${c.book}: ${docsForCollection(c).length} pages (${c.manifest})`);
 
   if (args.printTree) {
-    console.log(`\nContent tree preview (no build performed):\n`);
-    console.log(previewTree(docs, sectionName));
+    console.log('\nContent tree preview (no build performed):\n');
+    if (manualCol) console.log(previewTree(docs, sectionName));
+    for (const c of others) {
+      console.log(`\n${'-'.repeat(58)}\n`);
+      console.log(previewTree(docsForCollection(c), c.book));
+    }
     console.log('');
     return;
   }
 
-  console.log(`\n2) Decompiling the existing help file`);
+  console.log('\n2) Decompiling the master help file (theme + context map)');
   decompile(chm, work);
-  console.log('3) Converting Markdown topics');
 
-  fs.mkdirSync(path.join(work, 'css'), { recursive: true });
-  fs.writeFileSync(path.join(work, 'css', 'docs-extra.stylesheet'), EXTRA_CSS, 'utf8');
+  let pristineHhc = null;
+  if (manualCol) {
+    console.log('3) Converting Markdown topics');
+    writePages(docs, work, sectionName);
 
-  // Landing page for the whole book. The Contents node "T3Web" points here, so
-  // selecting the book opens a real sitemap instead of a bare branch.
-  fs.writeFileSync(
-    path.join(work, `${LANDING_SLUG}.htm`),
-    pageShell({
-      title: `${sectionName} Documentation`,
-      breadcrumb: sectionName,
-      fileName: `${LANDING_SLUG}.htm`,
-      content: landingHtml(docs, sectionName),
-      prev: null,
-      next: null,
-    }),
-    'utf8'
-  );
-  ok(`Landing page written (${LANDING_SLUG}.htm - ${docs.length} pages listed)`);
-
-  marked.setOptions({ gfm: true, breaks: false });
-  docs.forEach((d, i) => {
-    let html = marked.parse(d.md);
-    const slugDir = d.slug.replace(/^docs-/, '');
-    html = localiseImages(html, d.abs, work, slugDir);
-    html = localiseLinks(html, d.abs, slugByAbs);
-
-    const prev = i > 0 ? { title: docs[i - 1].title, file: `${docs[i - 1].slug}.htm` } : null;
-    const next = i < docs.length - 1 ? { title: docs[i + 1].title, file: `${docs[i + 1].slug}.htm` } : null;
-    const trail = d.branch.split('/').slice(1).map((s) => TITLES[s] || titleCase(s));
-    const breadcrumb = [sectionName, GROUP_TITLES[d.rootKey] || titleCase(d.rootKey), ...trail]
-      .filter(Boolean)
-      .join(' › ');
-
-    fs.writeFileSync(
-      path.join(work, `${d.slug}.htm`),
-      pageShell({ title: d.title, breadcrumb, fileName: `${d.slug}.htm`, content: html, prev, next }),
-      'utf8'
-    );
-  });
-  ok(`${docs.length} Markdown pages converted`);
-
-  console.log('4) Extending the Contents tree and Index');
-  const hhcPath = path.join(work, 'project.hhc');
-  const pristineHhc = fs.readFileSync(hhcPath, 'latin1'); // before our section is added
-  let hhc = pristineHhc;
-  const escapedName = sectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (!new RegExp(`value="${escapedName}"`).test(hhc)) {
-    // Append as the LAST top-level book in the Contents tree.
-    hhc = hhc.replace(/<\/UL>\s*<\/BODY>/i, `${tocInsert(docs, sectionName, LANDING_SLUG)}\n</UL>\n</BODY>`);
-    fs.writeFileSync(hhcPath, hhc, 'latin1');
-    ok(`Contents tree extended (top-level book "${sectionName}", placed last)`);
-  } else {
-    warn(`Contents tree already contains a "${sectionName}" book - not re-adding`);
-  }
-
-  const hhkPath = path.join(work, 'project.hhk');
-  let hhk = fs.readFileSync(hhkPath, 'latin1');
-  hhk = hhk.replace(
-    /<\/UL>\s*<\/BODY>/i,
-    `${indexInsert(docs, [
-      { name: `${sectionName} Documentation`, local: `${LANDING_SLUG}.htm` },
-    ])}\n</UL>\n</BODY>`
-  );
-  fs.writeFileSync(hhkPath, hhk, 'latin1');
-  ok('Index extended');
-
-  console.log('5) Writing project.hhp (FILES + ALIAS + MAP)');
-  const ctx = contextMap(mapHeader, pristineHhc);
-  const files = listFilesForHhp(work);
-  writeHhp(work, files, ctx);
-  ok(`project.hhp written: ${files.length} files, ${ctx.alias.length} context IDs mapped`);
-  if (ctx.unmatched.length) {
-    const groups = {};
-    for (const u of ctx.unmatched) {
-      const m = /^(IDH_[A-Z]+)_/.exec(u);
-      const k = m ? m[1] : 'other';
-      groups[k] = (groups[k] || 0) + 1;
+    console.log('4) Extending the Contents tree and Index');
+    const hhcPath = path.join(work, 'project.hhc');
+    pristineHhc = fs.readFileSync(hhcPath, 'latin1'); // before our section is added
+    let hhc = pristineHhc;
+    const escapedName = sectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // A merged help file only shows up in the unified Contents if the parent's
+    // own .hhc contains an entry that points at the child's topic tree.
+    const mergeToc = others
+      .map(
+        (c) =>
+          `<LI><OBJECT type="text/sitemap"><param name="Name" value="${tocText(c.book)}">\n` +
+          `<param name="Local" value="${c.chm}::/project.hhc"></OBJECT>`
+      )
+      .join('\n');
+    if (!new RegExp(`value="${escapedName}"`).test(hhc)) {
+      // Append as the LAST top-level book in the Contents tree.
+      const book = tocInsert(docs, sectionName, LANDING_SLUG) + (mergeToc ? `\n${mergeToc}` : '');
+      hhc = hhc.replace(/<\/UL>\s*<\/BODY>/i, `${book}\n</UL>\n</BODY>`);
+      fs.writeFileSync(hhcPath, hhc, 'latin1');
+      ok(
+        `Contents tree extended (book "${sectionName}" placed last${
+          others.length ? ` + ${others.length} merged help file(s)` : ''
+        })`
+      );
+    } else {
+      warn(`Contents tree already contains a "${sectionName}" book - not re-adding`);
     }
-    const summary = Object.entries(groups)
-      .map(([k, n]) => `${k}=${n}`)
-      .join(', ');
-    const report = path.join(work, 'unmatched-context-ids.txt');
-    fs.writeFileSync(
-      report,
-      `Context IDs that could not be auto-mapped (${ctx.unmatched.length}):\n` +
-        `Broke down as: ${summary}\n\n` +
-        `These are almost always element-level IDs (IDH_CONTROL_*) that point at an\n` +
-        `anchor INSIDE a page. The original .hhp / Dr.Explain project is required to\n` +
-        `recover them; topic-level IDs (IDH_TOPIC_*) are mapped.\n\n` +
-        ctx.unmatched.join('\n') +
-        '\n',
-      'utf8'
+
+    const hhkPath = path.join(work, 'project.hhk');
+    let hhk = fs.readFileSync(hhkPath, 'latin1');
+    hhk = hhk.replace(
+      /<\/UL>\s*<\/BODY>/i,
+      `${indexInsert(docs, [
+        { name: `${sectionName} Documentation`, local: `${LANDING_SLUG}.htm` },
+        ...others.map((c) => ({ name: c.book, local: `${c.chm}::/${LANDING_SLUG}.htm` })),
+      ])}\n</UL>\n</BODY>`
     );
-    warn(`${ctx.unmatched.length} context IDs not auto-mapped (${summary}) -> ${report}`);
+    fs.writeFileSync(hhkPath, hhk, 'latin1');
+    ok('Index extended');
   }
 
-  console.log('6) Compiling with hhc.exe');
-  // hhc.exe returns a non-zero exit code even on a clean compile, so success is
-  // judged by the output file, not by the exit code.
-  let hhcOut = '';
-  try {
-    hhcOut = run(hhcExe, ['project.hhp'], { cwd: work });
-  } catch (e) {
-    hhcOut = (e.stdout || '') + (e.stderr || '');
+  if (manualCol) {
+    console.log('5) Writing project.hhp (FILES + ALIAS + MAP)');
+    const ctx = contextMap(mapHeader, pristineHhc);
+    const files = listFilesForHhp(work);
+    writeHhp(work, files, ctx, {
+      compiledName: manualCol.chm,
+      title: manualCol.book,
+      defaultTopic: 'index.htm',
+      mergeFiles: others.map((c) => c.chm),
+    });
+    ok(`project.hhp written: ${files.length} files, ${ctx.alias.length} context IDs mapped`);
+    if (ctx.unmatched.length) {
+      const groups = {};
+      for (const u of ctx.unmatched) {
+        const m = /^(IDH_[A-Z]+)_/.exec(u);
+        const k = m ? m[1] : 'other';
+        groups[k] = (groups[k] || 0) + 1;
+      }
+      const summary = Object.entries(groups)
+        .map(([k, n]) => `${k}=${n}`)
+        .join(', ');
+      const report = path.join(work, 'unmatched-context-ids.txt');
+      fs.writeFileSync(
+        report,
+        `Context IDs that could not be auto-mapped (${ctx.unmatched.length}):\n` +
+          `Broke down as: ${summary}\n\n` +
+          `These are almost always element-level IDs (IDH_CONTROL_*) that point at an\n` +
+          `anchor INSIDE a page. The original .hhp / Dr.Explain project is required to\n` +
+          `recover them; topic-level IDs (IDH_TOPIC_*) are mapped.\n\n` +
+          ctx.unmatched.join('\n') +
+          '\n',
+        'utf8'
+      );
+      warn(`${ctx.unmatched.length} context IDs not auto-mapped (${summary}) -> ${report}`);
+    }
   }
-  const compiled = path.join(work, 'T3000_Help.chm');
-  if (!fs.existsSync(compiled)) {
-    console.log(hhcOut);
-    throw new Error('Compilation failed - no T3000_Help.chm produced.');
-  }
-  const errs = hhcOut.split(/\r?\n/).filter((l) => /^HHC\d+/i.test(l.trim()));
-  if (errs.length) {
-    warn(`hhc.exe reported ${errs.length} problem(s):`);
-    errs.slice(0, 20).forEach((l) => console.log('     ' + l.trim()));
-  }
-  ok(`Compiled: ${(fs.statSync(compiled).size / 1048576).toFixed(1)} MB`);
 
-  const altOut = path.join(REPO_ROOT, 'build', 'help-chm', 'T3000_Help.chm');
-  if (args.deploy && !args.keepOriginal) {
-    if (fs.existsSync(out)) {
-      const backup = out.replace(/\.chm$/i, '.original.chm');
-      if (!fs.existsSync(backup)) {
-        fs.copyFileSync(out, backup);
-        ok(`Backed up the original to ${backup}`);
+  // ─── Delivery ──────────────────────────────────────────────────────────────
+  const deployed = [];
+  const altDir = path.join(REPO_ROOT, 'build', 'help-chm');
+  const destDir = path.dirname(out);
+  const deliver = (src, name, label) => {
+    const dest = path.join(destDir, name);
+    if (args.deploy && !args.keepOriginal) {
+      if (fs.existsSync(dest)) {
+        const backup = dest.replace(/\.chm$/i, '.original.chm');
+        if (!fs.existsSync(backup)) {
+          fs.copyFileSync(dest, backup);
+          ok(`Backed up the existing ${name} -> ${path.basename(backup)}`);
+        }
+      }
+      try {
+        fs.copyFileSync(src, dest);
+        ok(`Deployed ${label} to ${dest}`);
+        deployed.push(dest);
+        return;
+      } catch (e) {
+        if (!e || (e.code !== 'EBUSY' && e.code !== 'EPERM')) throw e;
+        warn(`Could not overwrite ${dest} - the file is open in the Help viewer.`);
       }
     }
-    try {
-      fs.copyFileSync(compiled, out);
-      ok(`Deployed to ${out}`);
-    } catch (e) {
-      if (e && (e.code === 'EBUSY' || e.code === 'EPERM')) {
-        fs.mkdirSync(path.dirname(altOut), { recursive: true });
-        fs.copyFileSync(compiled, altOut);
-        warn(`Could not overwrite ${out} - the file is open in the Help viewer.`);
-        warn(`Close the help window and re-run, or copy it yourself from:\n     ${altOut}`);
-      } else {
-        throw e;
-      }
-    }
-  } else {
-    fs.mkdirSync(path.dirname(altOut), { recursive: true });
-    fs.copyFileSync(compiled, altOut);
-    ok(`Not deployed - result copied to ${altOut}`);
+    fs.mkdirSync(altDir, { recursive: true });
+    const alt = path.join(altDir, name);
+    fs.copyFileSync(src, alt);
+    ok(`${label} copied to ${alt}`);
+    deployed.push(alt);
+  };
+
+  if (manualCol) {
+    console.log('6) Compiling the manual with hhc.exe');
+    deliver(compileIn(work, hhcExe, manualCol.chm), manualCol.chm, manualCol.book);
   }
-  console.log('\nDone.\n');
+
+  // The reference / engineering help files are standalone: the manual's Contents
+  // links them, and [MERGE FILES] unifies Contents, Index and search at runtime.
+  for (const c of others) {
+    const built = buildStandaloneCollection(c, work, hhcExe, work);
+    if (built) deliver(built, c.chm, c.book);
+  }
+
+  console.log(
+    `\nDone. ${deployed.length} help file(s) written` +
+      `${args.deploy && !args.keepOriginal ? '' : ' (deploy disabled)'}.\n`
+  );
 }
 
 main();
