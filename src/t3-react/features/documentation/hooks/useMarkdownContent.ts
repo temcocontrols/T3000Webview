@@ -91,7 +91,10 @@ export function useMarkdownContent(path: string): MarkdownResult {
         }
 
         const text = await response.text();
-        const normalizedText = rewriteRelativeImagePaths(text, path, assetBaseUrl);
+        // Strip optional YAML front matter (title, keywords, ...): it is metadata
+        // for the help-file build, not page content.
+        const withoutFrontMatter = text.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+        const normalizedText = rewriteRelativeImagePaths(withoutFrontMatter, path, assetBaseUrl);
 
         if (isMounted) {
           setContent(normalizedText);

@@ -2585,6 +2585,28 @@ pub async fn execute_tool(
         }
 
         "t3000_doc_read" => {
+            /// Removes an optional leading YAML front matter block (`---` ... `---`).
+            /// It is metadata for the help-file build, not page content.
+            fn strip_front_matter(text: &str) -> String {
+                let t = text.trim_start_matches('\u{feff}');
+                let first_end = match t.find('\n') {
+                    Some(i) => i + 1,
+                    None => return text.to_string(),
+                };
+                if t[..first_end].trim_end() != "---" {
+                    return text.to_string();
+                }
+                let rest = &t[first_end..];
+                let mut offset = 0usize;
+                for line in rest.split_inclusive('\n') {
+                    if line.trim_end() == "---" {
+                        return rest[offset + line.len()..].to_string();
+                    }
+                    offset += line.len();
+                }
+                text.to_string()
+            }
+
             let doc_path = args.get("path").and_then(|v| v.as_str())
                 .ok_or_else(|| "path required".to_string())?;
             // Sanitize: prevent directory traversal
@@ -2614,6 +2636,7 @@ pub async fn execute_tool(
                 resp.text().await
                     .map_err(|e| format!("Failed to read response: {}", e))?
             };
+            let content = strip_front_matter(&content);
 
             // Extract title from the first markdown heading (any level: #, ##, ...)
             let title = content.lines()
