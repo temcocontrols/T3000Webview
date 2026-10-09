@@ -830,5 +830,5 @@ data[270] = 5;  // Save to flash every 5 minutes
 
 - [Device Configuration Guide](../device-management/device-configuration.md)
 - [Control Messages](../building-platform/control-messages/message-index.md)
-- [BACnet Protocol](./modbus-protocol.md)
-- [REST API Reference](./rest-api.md)
+- [BACnet Protocol](../api-reference/modbus-protocol.md)
+- [REST API Reference](../api-reference/rest-api.md)
