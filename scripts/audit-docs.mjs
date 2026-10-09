@@ -200,7 +200,9 @@ for (const abs of files) {
 
   // ── authoring leftovers
   for (const h of hs) if (JOURNAL.test(`## ${h.text}`)) { totals.journal++; push('journal-heading', `line ${h.line}: ${h.text.slice(0, 60)}`); break; }
-  const mk = prose.match(new RegExp(MARKER, 'g'));
+  // A marker inside an inline code span is a reference to code (`` `TODO` `` at
+  // :63-64), not an authoring leftover, so it does not count.
+  const mk = prose.replace(/`[^`\n]*`/g, '').match(new RegExp(MARKER, 'g'));
   if (mk) { totals.markers++; push('marker', mk.slice(0, 6).join(', ')); }
 
   // ── code fences must be balanced or the rest of the page renders as code

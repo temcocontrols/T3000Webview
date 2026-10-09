@@ -4,6 +4,9 @@ This folder does **not** contain documentation pages. It contains the *definitio
 of what goes into each compiled Windows help file, so that the pages themselves
 can stay exactly where the web Documentation page and the MCP tools expect them.
 
+> **Long-term direction: [DESIGN.md](./DESIGN.md)** — the proposed topic registry, the commit → docs
+> automation, the CI gates and the migration plan. Draft for review; nothing there is implemented yet.
+
 ```
 docs/
 ├── t3000/            ← page content (unchanged — used by the web viewer + MCP)
