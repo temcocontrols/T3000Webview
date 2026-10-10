@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Status | **Draft for review** — no decision taken, nothing implemented |
-| Decisions | Replace Dr.Explain with a system we own (product owner, 2026-10); the shipped help file is **CHM, always offline** |
+| Decisions | Our own help system, no external authoring tool (product owner, 2026-10); the shipped help file is **CHM, always offline** |
 | Scope | How product documentation is authored, kept current, and **compiled into the offline CHM that F1 opens** |
 | Out of scope | The content of individual pages; the T3000 application code |
 
@@ -11,14 +11,14 @@
 
 ## 1. Goal
 
-Build the help system we own, and stop depending on Dr.Explain: one Markdown source in git compiles
+Build the help system we own: one Markdown source in git compiles
 into the **offline CHM that F1 in T3000 opens**, with AI keeping the content organized and current and
 a human approving anything a customer reads.
 
 Concretely:
 
 1. `npm run build:help` produces the shippable `T3000_Help.chm` with **no other tool in the loop**.
-2. The file matches what Dr.Explain produced for us: topic tree, index/keywords, full-text search,
+2. The file delivers what the shipped manual needs: topic tree, index/keywords, full-text search,
    context-sensitive F1 help, styled pages — all **offline**, no network, no external assets.
 3. Adding or moving a page is a one-place edit (no nav lists, no manifest to hand-edit).
 4. A change to a feature either updates its page in the same commit, or the commit explains why not.
@@ -52,16 +52,16 @@ Real assets, already working:
 | `api/src/mcp/dispatch.rs` | MCP doc tools (`t3000_doc_list` / `t3000_doc_read`) | 12 sections |
 | `.github/workflows/` | Existing CI | 4 workflows |
 | `T3000_Help_Map.h` (C++) | F1 context IDs ↔ help topics | 131 of 216 mapped |
-| `T3000_Help.original.chm` | The pristine shipped manual we build on top of | 128 topics, produced with Dr.Explain, **no source project** |
+| `T3000_Help.original.chm` | The pristine shipped manual we build on top of | 128 topics, **no source project** (authored outside the repo) |
 
 ## 4. The problem
 
-**The requirement:** *"Ideally we want to get away from Dr.Explain… We need a long term solution help
-system. Use AI to help us keep it organized and up to date."* (product owner)
+**The requirement:** *"We need a long term solution help system. Use AI to help us keep it organized and
+up to date."* (product owner)
 
-Today's manual was made with Dr.Explain and **the project file is gone**, so the 128 topics are frozen:
-editing them needs Dr.Explain, and adding our own pages needed a script written by hand. Replacing the
-tool is therefore not a formatting question — it is "who owns the source of truth".
+Today's manual was authored outside the repo and **its project file is gone**, so the 128 topics are
+frozen: editing them needs a tool we no longer hold a project for, and adding our own pages needed a
+hand-written script. This is not a formatting question — it is "who owns the source of truth".
 
 The structural problem that stops any replacement from working:
 
@@ -82,7 +82,7 @@ Consequences, all observed:
 * 84 of 216 F1 context IDs are unmapped, and the mapping is one-way (code → topic string).
 * Quality rules are applied by a script a human has to remember to run (`182` files currently flagged,
   most of it legitimate engineering material that lives in the wrong audience bucket).
-* The 128 original CHM topics have **no source at all** (Dr.Explain project not kept) — the current
+* The 128 original CHM topics have **no source at all** (authored outside the repo, project not kept) — the current
   pipeline can extend them but never edit them.
 
 Root cause: **the structure of the documentation is duplicated in code, instead of being declared once
@@ -104,8 +104,8 @@ next to the content.**
    optional work.
 9. **Offline by construction.** Every asset a page needs ships inside the CHM; CI fails on remote
    references (`http(s)://` in `img`/`script`/`link`).
-10. **Capability parity with Dr.Explain is the acceptance test** (§10.1) — we replace it, we do not
-    lose anything the doc colleague relies on.
+10. **Nothing the doc colleague relies on may be lost** (§10.1) — the replacement is judged by what it
+    still does for her, not by how it is built.
 
 ## 6. Architecture
 
@@ -283,7 +283,7 @@ coverage gets to 100% by construction instead of by auditing.
 
 Because the CHM must work with no network (non-goal §2), CI fails if any page in the manual references a
 remote asset: `http(s)://` in `img src`, `script src`, `link href`, `@import`, or a CSS `url()`.
-Existing Dr.Explain pages pass this today; the risk is new Markdown pages pasting a web image.
+The legacy pages pass this today; the risk is new Markdown pages pasting a web image.
 
 ### 9.5 Weekly upkeep (scheduled, no human in the loop)
 
@@ -315,17 +315,17 @@ decision; the agent only proposes.
 Hard rule: **the CHM never depends on a network** — no CDN, no web fonts, no remote images, no
 server-side search. Everything it needs is compiled into the file.
 
-### 10.1 Capability parity with Dr.Explain (the acceptance test)
+### 10.1 What the replacement must still do (the acceptance test)
 
-We are replacing the tool, so the replacement must do everything the doc colleague and F1 rely on:
+We are replacing an authoring tool, so the replacement must do everything the doc colleague and F1 rely on:
 
-| Dr.Explain capability | Our answer | State |
+| Capability | Our answer | State |
 |---|---|---|
 | Topic tree (TOC) | generated `.hhc` from the registry | already works |
 | Index / keywords | `keywords:` front matter → generated `.hhk` | **done** (2026-10-09) |
 | Full-text search | `Full-text search=Yes` — hhc compiles its own index | already works |
 | Context-sensitive help | registry owns the IDs → we **generate** `T3000_Help_Map.h` and the `.hhc` aliases | new, stronger than today (§9.3) |
-| Styled pages | `css/docs-extra.stylesheet` on the kept Dr.Explain base theme | already works |
+| Styled pages | `css/docs-extra.stylesheet` on the kept base theme | already works |
 | Multiple formats | CHM (P0) and PDF (P2) from one Markdown source | CHM works |
 | Topic statuses / progress view | front matter + a generated status report for the doc colleague | new (§11) |
 | Screenshot annotation | capture helper + numbered-callout convention; manual annotation for now | **partial — known gap** |
@@ -333,7 +333,7 @@ We are replacing the tool, so the replacement must do everything the doc colleag
 | Team collaboration | git branches + PR review | different, not worse |
 | Works offline | `docs:blocking` gate fails on any remote asset reference | **done** (2026-10-09) |
 
-The two "partial" rows are the honest cost of leaving Dr.Explain, and they are why §11 gives the doc
+The two "partial" rows are the honest cost of the change, and they are why §11 gives the doc
 colleague a preview and a status view rather than "just use VS Code".
 
 ### 10.2 What we take from others
@@ -360,8 +360,8 @@ colleague a preview and a status view rather than "just use VS Code".
 
 Need a single named **docs editor** role. Without one owner this system degrades into "AI proposes, nobody
 merges", which is the same rot with more machinery. Note that this role is currently filled by the person
-who built the manual in Dr.Explain — §15.1 asks whether they move to Markdown or keep their old tool for
-authoring.
+who built the shipped manual with the previous tool — §15.1 asks whether they move to Markdown or keep
+their current editor for authoring.
 
 ## 12. Migration plan
 
@@ -370,7 +370,7 @@ Each phase is independently useful and ends in something demonstrable.
 | Phase | Work | Exit criteria | Estimate |
 |---|---|---|---|
 | **0. Baseline** | Fix the 3 fence breaks, 33 dead links, duplicate H1 pair; delete the orphan CHMs | `audit-docs.mjs` reports 0 blocking findings for `audience: user` | 0.5 day |
-| **1. CHM parity** | `keywords:` → index; generate `T3000_Help_Map.h` from the registry; `help:preview` (build + open); offline-safety gate | the CHM we build is indistinguishable in capability from the Dr.Explain one: tree, index, search, F1 IDs, styling — fully offline | 3–4 days |
+| **1. CHM parity** | `keywords:` → index; generate `T3000_Help_Map.h` from the registry; `help:preview` (build + open); offline-safety gate | the CHM we build matches the shipped manual's capability: tree, index, search, F1 IDs, styling — fully offline | 3–4 days |
 | **2. Registry** | Front matter (path-derived defaults) + `docs:registry` + generate the CHM manifest, web nav and MCP sections from it | one structure source; adding a page needs no code change | 2–3 days |
 | **3. Ownership + commit loop** | Fill `code:`/`owner:` for the manual's pages; `docs:sync` (commit → summary → affected pages → PR); auto-apply vs propose split | a feature commit produces a summary plus a page diff a human can approve | 4–6 days |
 | **4. Guards** | Docs-owed check, audit gate by audience, generated status view for the doc colleague, weekly upkeep report | a PR that changes a claimed feature without its page fails CI | 2 days |
@@ -379,15 +379,15 @@ Each phase is independently useful and ends in something demonstrable.
 Total to a working system (phases 0–4): roughly **12–16 person-days**, split across one developer and
 one docs owner. The hard part is phases 3 and 5 (content and ownership decisions), not the tooling.
 
-Phase 1 is deliberately first: it is the phase that proves we can leave Dr.Explain without losing the
-CHM, and it is the part the doc colleague can judge immediately.
+Phase 1 is deliberately first: it proves we can own the CHM end to end, and it is the part the doc
+colleague can judge immediately.
 
 ## 13. Alternatives considered
 
-**A. Buy Dr.Explain and keep authoring in it.** Rejected by the product owner (*"ideally we want to get
-away from doctor explain"*). Its own history makes the case: the project file was lost, which is why 128
-shipped topics cannot be edited today, and a binary project cannot take part in commit-driven review or
-AI upkeep. It stays as the **benchmark** — §10.1 is the capability checklist we must match.
+**A. Adopt a commercial authoring tool (binary project file).** Rejected: the previous one lost its
+project file, which is why 128 shipped topics cannot be edited today, and a binary project cannot take
+part in commit-driven review or AI upkeep. The capability checklist in §10.1 is what any alternative
+must still match.
 
 **B. Buy a knowledge base (Confluence, SharePoint wiki).** Rejected: leaves git, no code mapping, no CI
 gates, and forks the content away from the MCP tools and the CHM.
@@ -403,8 +403,8 @@ structure — it cannot substitute for one.
 
 | Metric | Today | Target |
 |---|---|---|
-| Who builds the shipped CHM | Dr.Explain (for 128 topics) + our append script | our pipeline, 100% |
-| Dr.Explain dependency | required to edit the existing manual | none |
+| Who builds the shipped CHM | an external authoring tool (128 topics) + our append script | our pipeline, 100% |
+| External authoring tool required to edit the shipped manual | yes | none |
 | Offline violations (remote refs in CHM pages) | not checked | 0, enforced in CI |
 | Structure sources | 4 hand-written | 1 (generated) |
 | Unclaimed code areas among changed files | unknown | < 20% |
@@ -415,12 +415,12 @@ structure — it cannot substitute for one.
 
 ## 15. Open decisions (need a human)
 
-**Settled:** the CHM stays and it is always offline; the web page is secondary; we replace Dr.Explain
-rather than buy it.
+**Settled:** the CHM stays and it is always offline; the web page is secondary; we build our own
+authoring path rather than buy one.
 
-1. **How does the doc colleague work?** This is the adoption risk of leaving Dr.Explain: do they author
-   in Markdown (VS Code + `help:preview`, AI drafting), or do we keep Dr.Explain *for them only* while
-   our pipeline owns the build and the source? §10.1 lists exactly what they lose (screenshot
+1. **How does the doc colleague work?** The adoption risk of this change: do they author in Markdown
+   (VS Code + `help:preview`, AI drafting), or do we keep their current editor while our pipeline owns
+   the build and the source? §10.1 lists exactly what they lose (screenshot
    annotation, editor comfort). **Answer this before phase 3.**
 2. Who is the **docs editor** (§11) — by name, with time allocated?
 3. Is a **PDF** manual needed (printing, translation hand-off, support), or is the CHM enough?

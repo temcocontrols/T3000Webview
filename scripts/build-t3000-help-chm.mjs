@@ -25,8 +25,8 @@
  *
  * Why this exists
  * ---------------
- * The existing T3000_Help.chm is authored in Dr.Explain and compiled with
- * HTML Help Workshop (hhc.exe). The Dr.Explain project (.dxp) and the
+ * The existing T3000_Help.chm was authored outside this repo and compiled with
+ * HTML Help Workshop (hhc.exe). Its authoring project (.dxp) and the
  * intermediate HTML Help project (.hhp) are NOT kept in the source tree, so
  * we cannot simply "add files to the project" and recompile.
  *
@@ -35,7 +35,7 @@
  *      (hh.exe -decompile) - that recovers all 128 topics, the Contents tree
  *      (project.hhc), the Index (project.hhk) and every asset (css/js/images).
  *   2. Converts every Markdown topic listed by the manifests into an .htm topic
- *      that reuses the Dr.Explain stylesheets, so the new pages match the manual.
+ *      that reuses the manual's own stylesheets, so the new pages match it.
  *   3. Appends the new topics to project.hhc (Contents) and project.hhk (Index).
  *   4. Writes a project.hhp (the missing project file) with [FILES], and
  *      [ALIAS]/[MAP] reconstructed from T3000_Help_Map.h so F1 context help
@@ -60,11 +60,11 @@
  * Notes
  * -----
  * - New topics are written as UTF-8 with an explicit charset meta; the original
- *   Dr.Explain pages stay windows-1252 and are copied through byte-for-byte
+ *   manual's own pages stay windows-1252 and are copied through byte-for-byte
  *   (latin1 round-trip) so nothing is corrupted.
  * - project.hhc / project.hhk are edited as latin1 (binary-safe) for the same
  *   reason.
- * - The Dr.Explain in-page "Menu" tab is populated by its own JS data index and
+ * - The manual's in-page "Menu" tab is populated by its own JS data index and
  *   cannot be extended here; the new pages appear in the CHM's native Contents
  *   and Index panes, which is what hhc compiles from .hhc/.hhk.
  */
@@ -423,17 +423,17 @@ function headings(md) {
 }
 
 /**
- * Extra rules so plain Markdown HTML sits well inside the Dr.Explain stylesheets.
+ * Extra rules so plain Markdown HTML sits well inside the manual's stylesheets.
  *
- * IMPORTANT: the Dr.Explain theme contains `.b-article { background-color:#3f3f3f;
+ * IMPORTANT: the manual's theme contains `.b-article { background-color:#3f3f3f;
  * color:#ffffff; }` and re-colours its own text through private classes (.p, .deh1,
  * ...). Markdown produces plain <p>/<pre>/<table>, which inherit that WHITE text and
  * become invisible on the light page. Every element we emit therefore needs an
  * explicit colour.
  */
-const EXTRA_CSS = `/* Markdown pages folded into the Dr.Explain manual */
+const EXTRA_CSS = `/* Markdown pages folded into the shipped manual */
 
-/* The Dr.Explain theme paints the article dark:
+/* The manual's theme paints the article dark:
      .b-article { background-color:#3f3f3f; color:#ffffff; }
    and re-colours its own text with private classes (.p, .deh1, span.code, ...).
    Plain Markdown HTML inherits the white colour, so code blocks and tables came
@@ -515,7 +515,7 @@ function pageShell({ title, breadcrumb, fileName, content, prev, next }) {
     ? `<div class="b-controlButtons"><ul class="b-controlButtons__items">${navBtns.join('')}</ul></div>`
     : '';
 
-  // `top` added by addHeadingAnchors equivalent is not needed; Dr.Explain uses #top.
+  // `top` added by addHeadingAnchors equivalent is not needed; the manual uses #top.
   return `<!DOCTYPE html>
 <html dir="ltr" lang="en">
 <head>
@@ -850,7 +850,7 @@ function listFilesForHhp(work) {
  *
  * The original .hhp (which held the real map) is not in the source tree, so
  * this is a best-effort reconstruction:
- *  - topic-level IDs (IDH_TOPIC_*) resolve well because Dr.Explain titles and
+ *  - topic-level IDs (IDH_TOPIC_*) resolve well because the manual's titles and
  *    the topic file names mirror the symbols;
  *  - element-level IDs (IDH_CONTROL_*) point at anchors *inside* pages and
  *    cannot be recovered - they are reported in unmatched-context-ids.txt.
@@ -898,7 +898,7 @@ function contextMap(mapHeaderPath, pristineHhc) {
   const map = [];
   const unmatched = [];
   for (const { symbol, id } of symbols) {
-    // Hand-mapped IDs whose Dr.Explain title/file name does not resemble the
+    // Hand-mapped IDs whose original title/file name does not resemble the
     // symbol. Verified against the recovered Contents tree of the original CHM.
     const OVERRIDES = {
       IDH_TOPIC_DESIGN_LAYERS: 'layers.htm',
@@ -1239,7 +1239,7 @@ function main() {
         `Context IDs that could not be auto-mapped (${ctx.unmatched.length}):\n` +
           `Broke down as: ${summary}\n\n` +
           `These are almost always element-level IDs (IDH_CONTROL_*) that point at an\n` +
-          `anchor INSIDE a page. The original .hhp / Dr.Explain project is required to\n` +
+          `anchor INSIDE a page. The original .hhp / authoring project is required to\n` +
           `recover them; topic-level IDs (IDH_TOPIC_*) are mapped.\n\n` +
           ctx.unmatched.join('\n') +
           '\n',
