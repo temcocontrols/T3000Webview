@@ -1,0 +1,184 @@
+# 07 — Offline outputs: website package, PDF, CHM
+
+*Covers: Offline Documentation (all three subsections).*
+
+Four artefacts, one source:
+
+| Artefact | Producer | Audience | Offline |
+|---|---|---|---|
+| DocFX site (`_site/`) | `docfx build` | humans on the network | — |
+| Offline website package (`T3000-Docs-<version>.zip`) | `_site` + relative-URL rewrite + zip | field laptops, partners | yes |
+| PDF manual (`T3000-Learn.pdf`) | `docfx pdf` | printing, archival, translation | yes |
+| CHM (`T3000_Help.chm`) | `npm run build:help` → `hhc.exe` | **F1 in the product** — the most important channel | yes |
+
+DocFX produces the first three. It **cannot** produce a CHM (no CHM writer exists in it), which is why the
+Node + `hhc.exe` pipeline stays — see `docs/help/DESIGN.md` for that pipeline's own details.
+
+---
+
+## 1. Offline website package
+
+The site as built is *almost* offline-ready; the only things that break when the folder is opened from the
+file system are root-relative URLs (in our case only the homepage uses them implicitly) and any remote
+reference.
+
+Build step — `scripts/docs-offline.mjs`, run by `npm run docs:offline`:
+
+```
+1. docfx build                                    →  _site/
+2. audit _site/**/*.{html,css,js} for remote URLs  →  fail on any http(s):// fetch
+                                                       (allow the ones in <a href> to external sites)
+3. rewrite root-relative hrefs/srcs to relative     →  so file:// navigation works
+4. write OFFLINE-README.txt (version, commit, date, how to open)
+5. zip  _site/  →  dist/T3000-Docs-<version>.zip
+6. list the zip in docs/t3000/releases/<version>.md (the download page)
+```
+
+Details that matter:
+
+- **Search works offline.** The build's search index ships inside the package, and the modern template's
+  search UI is client-side, so a field laptop gets the same search as the website.
+- **Images are already local** (the `remote-asset` rule forbids otherwise), so only URL form changes.
+- **Zip layout** is flat: `index.html` at the root of the archive, so "extract and open `index.html`" is
+  the whole instruction.
+- The package is versioned by the same `version` field the registry uses, so it cannot be published
+  untagged.
+- Size budget: warn above 150 MB (images dominate; if exceeded, prune screenshots by `audience`).
+
+---
+
+## 2. PDF manual
+
+PDF support requires **DocFX ≥ 2.73 and the modern template** (both satisfied by the pin).
+
+Enable and build — `npm run docs:pdf`:
+
+```
+1. docfx build docs/docfx.json          # pdf: true also renders a "Download PDF" button on the site
+2. docfx pdf   docs/docfx.json          # renders a PDF per TOC that has pdf: true
+```
+
+One manual, not many files: a **dedicated PDF TOC** produces exactly one PDF,
+
+```yaml
+# docs/toc.pdf.yml
+order: 200                 # larger order ⇒ this TOC does not become the site's navigation
+pdf: true
+pdfFileName: T3000-Learn.pdf
+pdfTocPage: true           # insert a "Table of Contents" page (page numbers clickable)
+pdfCoverPage: cover.html   # must be built: docs/cover.md → _site/cover.html
+items:
+- name: Getting Started
+  href: t3000/quick-start/toc.yml
+- name: Device Management
+  href: t3000/device-management/toc.yml
+- name: Data Points
+  href: t3000/data-points/toc.yml
+- name: Features
+  href: t3000/features/toc.yml
+- name: Building Platform
+  href: t3000/building-platform/toc.yml
+- name: Design Studio
+  href: t3000/t3-eez-studio/toc.yml
+- name: API Reference
+  href: t3000/api-reference/toc.yml
+- name: Troubleshooting
+  href: t3000/guides/toc.yml
+```
+
+Metadata that controls the PDF (all of it belongs in `toc.yml` / `docfx.json`, never in a page):
+
+| Key | Value here | Effect |
+|---|---|---|
+| `pdf` | `true` global; `false` for `legacy/**`, `design/**` via `fileMetadata` | include/exclude an area |
+| `pdfFileName` | `T3000-Learn.pdf` | output name (default `toc.pdf`) |
+| `pdfTocPage` | `true` | "Table of Contents" pages with page numbers |
+| `pdfCoverPage` | `cover.html` | full-bleed cover (`docs/cover.md`, built) |
+| `pdfPrintBackground` | `true` | keep background graphics (cover, callouts) |
+| `pdfHeaderTemplate` | custom HTML | running header, e.g. section name + T3000 |
+| `pdfFooterTemplate` | custom HTML | `<span class='pageNumber'></span> / <span class='totalPages'></span>` |
+| `pdfHeaderFooterOnCover` | `false` | clean cover |
+| `pdfHeaderFooterOnToc` | `true` | numbered TOC pages |
+
+Precedence for these keys is `fileMetadata` > values in `toc.yml` > `globalMetadata`, and values are
+selected per key (not deep-merged) — so exclude the engineering areas with `fileMetadata.pdf: false`
+instead of trying to subtract inside the PDF TOC.
+
+Cover and print styling (CSS in `templates/t3000/public/main.css`):
+
+```css
+@page { margin: 12mm }
+@media print {
+  pre, table { break-inside: avoid }
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: .85em }  /* printable links */
+}
+/* full-bleed cover */
+.cover { @page { margin: 0 } print-color-adjust: exact }
+/* TOC page: .pdftoc h1 / ul / li / .page-number / .spacer */
+```
+
+Verification (manual, per release): cover present, TOC page numbers correct, headers/footers on article
+pages only, no clipped code blocks, no page with a stray "Loading…" placeholder, PDF opens in two readers,
+bookmarks/outline present.
+
+---
+
+## 3. CHM (unchanged pipeline, added guarantees)
+
+```
+docs/help/manual.json  →  .hhp / .hhc / .hhk  →  hhc.exe  →  T3000_Help.chm  →  copied next to T3000.exe
+```
+
+What this design adds on top of the existing pipeline:
+
+| Addition | Why |
+|---|---|
+| Manifests are **generated from the registry** | one structure drives the CHM and the site |
+| Parity assertion: `toc.yml` page set == manifest page set | a page can never exist in one and not the other (`03-site-project.md` §4) |
+| Keywords from `registry.keywords` → `.hhk` | the CHM index is curated, not scraped |
+| `help_ids` from the registry → `[ALIAS]` / `[MAP]` | F1 context-sensitive help, generated rather than hand-maintained (see the F1 map task in `13-implementation-plan.md`) |
+| Build is a documented npm script with a dry-run | reproducible local and CI builds |
+| Verification checklist | opened CHM, F1 from a known topic, search, no missing images |
+
+CHM verification checklist (manual, per build — the compiler's exit code is unreliable, judge by the
+output file):
+
+```
+1. T3000_Help.chm exists and is > 20 MB
+2. opens in the help viewer; the contents tree expands to 2 levels
+3. Contents top-level books == the manual.json chapters
+4. search for "trendlog" and "BACnet" returns hits
+5. Index tab lists the curated keywords
+6. F1 from the main dialog opens the expected topic (needs the F1 map task)
+7. no "page cannot be displayed" placeholder: spot-check 5 pages with images
+```
+
+---
+
+## 4. Cross-output parity (the point of the whole design)
+
+| Check | Tool | Failure means |
+|---|---|---|
+| Site page set == CHM manifest page set | `docs:registry --check` | structure edited in one place only |
+| Every page renders in all three | build + compare page counts | a glob or exclude is wrong |
+| No remote assets in `_site` or `_chm` | `docs:blocking` | offline reading would break |
+| Broken links = 0 in the site build | DocFX warning count vs baseline | a link was written by hand and rotted |
+| PDF page count > 0 and covers every user chapter | `docs:pdf` + manual check | PDF TOC drifted from the site TOC |
+
+---
+
+## 5. Tasks
+
+| # | Task | Phase |
+|---|---|---|
+| 1 | `scripts/docs-offline.mjs` (audit → rewrite → zip) + `npm run docs:offline` | 4 |
+| 2 | `docs/cover.md` + cover/print CSS | 4 |
+| 3 | `docs/toc.pdf.yml` + `pdf*` metadata + `npm run docs:pdf` | 4 |
+| 4 | Download page block in `docs/t3000/releases/<version>.md` (generated) | 4 |
+| 5 | Registry-generated CHM manifests + keywords + `help_ids` | 1 |
+| 6 | CHM deployment step in the installer (copy next to `T3000.exe`) | 1 |
+| 7 | The verification checklists as release-checklist items | 1 |
+
+**Acceptance:** unzipping the offline package on an air-gapped machine gives a browsable, searchable site;
+`T3000-Learn.pdf` has a cover, a numbered TOC and no engineering area; `T3000_Help.chm` opens with the
+expected trees and its F1 topics resolve for the topics in the map.
