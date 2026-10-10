@@ -103,7 +103,7 @@ change next to the diff that caused the flag. Never committed by the tool.
 
 | # | Task | Phase |
 |---|---|---|
-| 1 | `docs-sync --summarise` (changelog) + prompt file + ledger | 2 |
+| 1 | `docs-sync --summarise` (changelog) + prompt file + ledger | **1** |
 | 2 | `docs-sync --impact` (candidate pages + classification) | 2 |
 | 3 | Follow-up PR generation (mechanical edits applied, prose proposed) | 2 |
 | 4 | Rule registry + `lastFired` pruning | 2 |

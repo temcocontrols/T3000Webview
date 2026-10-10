@@ -14,6 +14,9 @@
 
 An unowned page is a bug: `ship: true` requires `owner` (`05-content-and-registry.md` §2).
 
+Who may publish, who may waive a gate, how an urgent fix is approved, and how a page is retired are policy,
+not tooling — they live in `14-governance.md`.
+
 ---
 
 ## 2. Staleness rules
@@ -31,7 +34,7 @@ Weekly job `docs-report.yml` writes `docs/help/reports/staleness-<date>.md`:
 
 ```markdown
 # Documentation staleness — 2026-10-10
-commit a1b2c3d · 216 pages · 47 stale · 12 escalated
+commit a1b2c3d · 216 pages · 47 stale · 12 escalated · health 86/100
 
 ## Escalated (> 365 days)
 | page | owner | last reviewed | claimed code changed |
@@ -41,6 +44,9 @@ commit a1b2c3d · 216 pages · 47 stale · 12 escalated
 ## Owed (code changed, page not updated)
 ## Negative feedback (last 30 days)
 ## Unhandled feedback (> 30 days)
+## Media (missing 4 · unused 61 · oversized 9)
+## Search (top zero-result queries → to-do list)
+## Health 86/100  (staleness · broken links · unreviewed · feedback ratio)
 ```
 
 The report is committed by the job (so a week with no report is itself visible) and posted to the review
@@ -57,6 +63,7 @@ channel. It is the agenda for the weekly documentation slot — the mechanism on
 | Site builds | `npm run docs:site` | yes | every page renders; **broken-link warnings = 0**; total warnings ≤ baseline |
 | Offline safe | `npm run docs:offline -- --check` | yes | no remote URL anywhere in `_site` |
 | Docs owed | `npm run docs:owed -- --base <sha>` | yes for PRs touching `code` globs | a claimed feature that changed has a documentation change, or an explicit waiver |
+| Media | `npm run docs:media -- --check` | yes for `docs/t3000/**` | missing images, oversized files; unused/duplicate media reported |
 | CHM builds | `npm run build:help:dry` | yes before a release | the shipping help file still compiles and matches `toc.yml` |
 | PDF | `npm run docs:pdf` | release only | the manual renders with a cover and a numbered TOC |
 

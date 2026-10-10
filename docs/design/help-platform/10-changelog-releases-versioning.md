@@ -32,6 +32,11 @@ scripts/docs-sync.mjs --changelog <fromTag>..HEAD
 Idempotency: `.summarised.json` is `{ "<sha>": "<version>" }`. Re-running never re-summarises a commit, so
 the changelog can be regenerated at any time without duplicating text.
 
+**Phase: 1.** The commit-summary changelog is deliberately the *first* AI feature, not a phase-2 one: it is
+the ask that started this platform, it needs no other component (no feedback endpoint, no portal, no auth),
+and it is advisory — a bad summary is a PR comment, never a broken build. Impact analysis and prose drafting
+stay in phase 2, because those touch pages.
+
 The changelog page is a normal site page (registered in the registry as an area chapter), and is the
 `<source>` for `/docs/feed/changelog.xml`. It is also the **only** place users have to look for "what
 changed in the docs" — which is what makes the subscription system cheap (`09-…` §2).
@@ -65,6 +70,7 @@ side-channel document, so the review record is git history like everything else.
 | Are old versions readable? | yes — each version folder is a frozen `_site`; nothing is overwritten |
 | What about the CHM and PDF? | attached to the release (one `T3000_Help.chm`, one `T3000-Learn.pdf` per version) |
 | Backports? | only release-note and known-issue corrections: fix on `main`, cherry-pick to the version branch, re-publish that version's folder |
+| Retention | current version + the last 3 releases stay on the host; older folders remain as release artefacts. Media dominates the size — if retention is not enough, media is served once at a stable path and versions reference it |
 | Where is the version shown? | page-meta bar (`page-meta.json.v`) and the version switcher; the PDF cover and footer; the offline package filename |
 
 Multi-output builds: DocFX can emit named output groups (`build.groups` with a per-group `dest`). Evaluate
@@ -94,12 +100,12 @@ assistant.
 
 | # | Task | Phase |
 |---|---|---|
-| 1 | `docs-sync --changelog`, `.summarised.json`, `changelog/index.json` | 2 |
-| 2 | Changelog area chapter in the registry + `toc.yml` entry | 2 |
+| 1 | `docs-sync --changelog`, `.summarised.json`, `changelog/index.json` | **1** |
+| 2 | Changelog area chapter in the registry + `toc.yml` entry | **1** |
 | 3 | RSS feeds (`changelog.xml`, `releases.xml`) | 2 |
 | 4 | Release-note draft generator + PR flow | 2 |
-| 5 | `versions.json` emitter + version switcher widget (`04-…` §5) | 3 |
-| 6 | Per-tag publish job + `/docs/<version>/` layout | 3 |
+| 5 | `versions.json` emitter + version switcher widget (`04-…` §5) — widget renders only when a second version exists | 3 |
+| 6 | Per-tag publish job + `/docs/<version>/` layout + retention (current + last 3) | 3 |
 | 7 | Attach CHM/PDF/offline zip to the release | 4 |
 | 8 | Freeze policy + backport procedure documented for the release owner | 4 |
 

@@ -87,6 +87,7 @@ Rules that keep this stable:
       "version": "v26.0930",
       "help_ids": ["IDH_TOPIC_TREND_LOGS"],
       "code": ["src/t3-react/features/trendlog/**", "api/src/t3_device/trendlog*.rs"],
+      "aliases": ["t3000/features/trend-log"],
       "reviewed": { "sha": "a1b2c3d", "date": "2026-10-09", "by": "docs" }
     }
   },
@@ -96,6 +97,40 @@ Rules that keep this stable:
   }
 }
 ```
+
+### Keeping one file manageable: split registries
+
+`registry.json` stays the single *logical* source, but it may be composed of several files so that no single
+file becomes a 500-page blob that reviewers cannot read:
+
+```
+docs/help/registry.json          # products, categories, areas, waivers, generated: date
+ docs/help/registry.d/
+  ├─ t3000-quick-start.json      # pages, grouped by area or chapter
+  ├─ t3000-device-management.json
+  ├─ t3000-features.json
+  ├─ legacy.json
+  └─ design.json
+```
+
+The generator merges them in filename order into one in-memory model; a duplicate key is an error naming
+both files. `--check` still proves the whole model is reproducible. Splitting is a review convenience, not
+a second source of truth.
+
+### Page ids and `aliases`
+
+The page id **is** the docs-relative path (`t3000/features/trendlogs`) — that is what the in-app routes, the
+MCP `doc_read` input and every existing link already use, so a synthetic id would add a mapping layer and
+break a live contract for no benefit. The real risk is not the id, it is a *future* move, so the registry
+records the previous ids:
+
+```jsonc
+"aliases": ["t3000/features/trend-log"]
+```
+
+A retired path gets a **generated** redirect stub carrying `redirect_url` metadata (generated files may hold
+metadata; hand-written pages never do), so old links, bookmarks and subscriptions keep resolving. Moving a
+page is therefore allowed, expensive and explicit — never routine (`14-governance.md` §5).
 
 ### Validation rules (all `error` unless noted)
 
@@ -111,6 +146,9 @@ Rules that keep this stable:
 | `area` matches the page's path prefix | `area mismatch` |
 | `category` exists | `unknown category` |
 | `version` is a key of `versions.json` | `unknown version` |
+| `aliases` do not collide with a live page id | `alias shadows a live page` |
+| `deprecated: true` ⇒ a replacement page id or an explicit `superseded_by: null` | `deprecated without a replacement` (warning) |
+| waiver expiry is in the future | `expired waiver` |
 
 ---
 
@@ -160,6 +198,15 @@ Only what `main.js` needs per page (keeps the client payload tiny):
 ```json
 { "t3000/features/trendlogs": { "updated": "2026-10-09", "sha": "a1b2c3d", "owner": "trendlog", "stale": false, "v": "v26.0930" } }
 ```
+
+### `docs/help/docs-meta.json` (facets, fetched only by search)
+
+```json
+{ "pages": { "t3000/features/trendlogs": { "category": "products", "product": "t3000", "version": "v26.0930", "tags": ["trend","history"] } } }
+```
+
+Loaded lazily on first search interaction, so it costs nothing on a normal page view. `index.json` stays the
+full index for tooling; `docs-meta.json` is the only file the browser needs for facets.
 
 ### `docs/help/versions.json`
 

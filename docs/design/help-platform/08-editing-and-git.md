@@ -58,6 +58,7 @@ DocFX already has the mechanism; we configure it and fill the gaps.
 | Surface | Mechanism | Where configured |
 |---|---|---|
 | "Edit this page" / "Improve this doc" | `_gitContribute: { repo, branch }` + `_gitUrlPattern: "github"` | `docfx.json` `globalMetadata` |
+| Same, for a *second* source repo | `_gitContribute` mapped per source glob in `fileMetadata` | required as soon as content comes from more than one repo — the URL is config, not where the file sits |
 | "View source" | same keys, file path + line | `docfx.json` |
 | Turn git features off per area | `_disableContribution: true` (`legacy/**`, `design/**`) | `fileMetadata` |
 | Last updated (date) | `page-meta.json` → `main.js` page-meta bar | generated (`05-content-and-registry.md`) |

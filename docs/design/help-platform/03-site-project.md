@@ -37,7 +37,7 @@ shape below is the real one for this repo; comments are for this document only.
     "resource": [
       { "files": ["**/*.{png,jpg,jpeg,gif,svg,webp,ico}", "**/*.pdf", "**/*.zip"] }
     ],
-    "dest": "_site",
+    "dest": "../dist/docs",
     "template": ["default", "modern", "templates/t3000"],
     "globalMetadata": {
       "_appName": "T3000",
@@ -99,6 +99,37 @@ Decisions behind the parts that matter:
 
 ---
 
+### One build root, many sources
+
+The project is a **build root**: content is mapped in from one or more sources, and the URL comes from
+`dest`, so where a file physically lives never appears in a URL.
+
+```jsonc
+"content": [
+  { "files": ["**/*.md"], "src": "../docs/t3000",  "dest": "t3000"  },
+  { "files": ["**/*.md"], "src": "../docs/legacy", "dest": "legacy" },
+  { "files": ["**/*.md"], "src": "../docs/design", "dest": "design" },
+  // when another product's docs arrive — any path on disk, or a repo CI checks out:
+  { "files": ["**/*.md"], "src": "../../productX/docs", "dest": "productx" }
+]
+```
+
+`src` may point outside the folder that holds `docfx.json` (that is what makes a hub possible); `dest` sets
+the URL prefix. A second product therefore costs three lines here, one node in `docs/toc.yml`, and one area
+in the registry.
+
+Rules that keep the escape hatch open:
+
+1. **Always set `dest` per source** — never let a URL depend on where content happens to sit today.
+2. **Map `_gitContribute` per source glob** in `fileMetadata` once there is more than one repo, or "Edit this
+   page" will point at the wrong repository (`08-editing-and-git.md`).
+3. **One template, one search index, one build.** If a product needs its own branding, audience or release
+   cadence, that is a *separate* `docfx.json` — and it accepts having its own search.
+
+Lifting the whole hub into its own repository later (if several teams publish independently) moves only
+`docfx.json`, `toc.yml`, `templates/t3000/`, the registry and the scripts; the `src:` paths change to point
+at checked-out repos and nothing else does. See `00-architecture.md` Figure 7.
+
 ## 2. URL map
 
 DocFX uses "ugly URLs": the file path plus `.html`.
@@ -112,12 +143,22 @@ DocFX uses "ugly URLs": the file path plus `.html`.
 | `docs/t3000/media/run.png` (resource) | `/t3000/media/run.png` | unchanged |
 
 Because the site is served under the **same `/docs/` prefix** the app and the MCP tools already use, every
-existing path keeps its meaning — only the `.html` suffix is new for humans. Two options for the host:
+existing path keeps its meaning — only the `.html` suffix is new for humans.
 
-- **Preferred**: serve `_site` at `/docs/` with a rewrite that appends `.html` for extensionless paths.
-  Then `…/docs/t3000/quick-start/overview` (the form people paste) resolves too.
-- **Fallback**: serve the site at `/learn/` and let `/docs/…` keep returning raw Markdown, as it does
-  today for the app.
+Where it is served (decided — see `00-architecture.md` Figure 3):
+
+- **Canonical: `/docs/` on the existing Rust server (:9103)**, as a third static mount next to
+  `/eez-studio-wasm` and `/eez-studio-assets`: `DOCS_DIR` in `api/src/utils.rs` (env override, default
+  `./ResourceFile/webview/docs`) + `routes_docs()` + `.nest("/docs", routes_docs())` in `create_t3_app()`.
+  Same origin as `/api`, so the feedback endpoint and the app need no CORS work. Dev: start the server with
+  `DOCS_DIR=docs/_site`.
+- **Authoring preview: DocFX's own server on :8080** (`npm run docs:serve`) — never a published surface.
+- **Optional: a public static host** receives a byte-identical copy of `_site/`; publishing is a copy, never
+  a second build with different settings.
+
+DocFX emits links with the `.html` suffix and every link the site generates carries it, so no rewrite is
+needed. Only hand-typed extensionless URLs (`…/overview`) miss; if that matters later, add a small fallback
+that retries `<path>.html` before the SPA fallback — an isolated change, not a design constraint.
 
 Images and other resources are copied verbatim, so the relative image paths already used inside pages
 (`media/x.png`, `../images/y.png`) keep working.

@@ -26,18 +26,21 @@ Build step — `scripts/docs-offline.mjs`, run by `npm run docs:offline`:
 
 ```
 1. docfx build                                    →  _site/
-2. audit _site/**/*.{html,css,js} for remote URLs  →  fail on any http(s):// fetch
+2. pagefind --site _site                          →  _site/pagefind/**
+3. audit _site/**/*.{html,css,js} for remote URLs  →  fail on any http(s):// fetch
                                                        (allow the ones in <a href> to external sites)
-3. rewrite root-relative hrefs/srcs to relative     →  so file:// navigation works
-4. write OFFLINE-README.txt (version, commit, date, how to open)
-5. zip  _site/  →  dist/T3000-Docs-<version>.zip
-6. list the zip in docs/t3000/releases/<version>.md (the download page)
+4. rewrite root-relative hrefs/srcs to relative     →  so file:// navigation works
+5. verify search from file:// in a real browser     →  record the verdict in the release checklist
+6. write OFFLINE-README.txt (version, commit, date, how to open)
+7. zip  _site/  →  dist/T3000-Docs-<version>.zip
+8. list the zip in docs/t3000/releases/<version>.md (the download page)
 ```
 
 Details that matter:
 
-- **Search works offline.** The build's search index ships inside the package, and the modern template's
-  search UI is client-side, so a field laptop gets the same search as the website.
+- **Search works offline — after verification, not by assumption.** The Pagefind index ships inside the
+  package; if it cannot be fetched from `file://`, the package falls back to the engine's own index. Either
+  way a field laptop gets search without a network, and the release checklist records which index was used.
 - **Images are already local** (the `remote-asset` rule forbids otherwise), so only URL form changes.
 - **Zip layout** is flat: `index.html` at the root of the archive, so "extract and open `index.html`" is
   the whole instruction.
@@ -162,8 +165,10 @@ output file):
 | Site page set == CHM manifest page set | `docs:registry --check` | structure edited in one place only |
 | Every page renders in all three | build + compare page counts | a glob or exclude is wrong |
 | No remote assets in `_site` or `_chm` | `docs:blocking` | offline reading would break |
-| Broken links = 0 in the site build | DocFX warning count vs baseline | a link was written by hand and rotted |
+| Broken links = 0 in the site build | warning count vs baseline | a link was written by hand and rotted |
+| Media: no missing / oversized; unused reported | `docs:media --check` | image rot, the most common decay |
 | PDF page count > 0 and covers every user chapter | `docs:pdf` + manual check | PDF TOC drifted from the site TOC |
+| Search works from `file://` in the offline package | manual, recorded per release | users open the zip, not a server |
 
 ---
 
@@ -178,7 +183,60 @@ output file):
 | 5 | Registry-generated CHM manifests + keywords + `help_ids` | 1 |
 | 6 | CHM deployment step in the installer (copy next to `T3000.exe`) | 1 |
 | 7 | The verification checklists as release-checklist items | 1 |
+| 8 | Media report in the audit: missing / unused / duplicate / oversized | 1 |
+| 9 | Version snapshot publish + **retention (current + last 3, media shared)** | 4 |
 
 **Acceptance:** unzipping the offline package on an air-gapped machine gives a browsable, searchable site;
 `T3000-Learn.pdf` has a cover, a numbered TOC and no engineering area; `T3000_Help.chm` opens with the
 expected trees and its F1 topics resolve for the topics in the map.
+
+---
+
+## 6. Build & publish chain (the product payload)
+
+The docs ship **inside the product**: one product build, one publish pass, one runtime folder tree. No
+separate deployment, no second server, no manual copy.
+
+```
+npm run build                        (ONE product build — the docs ride along)
+  ├─ 1  quasar build        →  dist/spa/                    the app
+  ├─ 2  docs:registry       →  docs/docfx.json, docs/toc.yml, docs/help/*.json   (generated)
+  ├─ 3  docs:site           →  dist/docs/                   docfx build + pagefind
+  ├─ 4  build:help          →  T3000_Help.chm               (needs hhc.exe on the build host)
+  └─ 5  publish:webview     →  scripts/publish-webview.mjs  one pass, three targets:
+                                 dist/spa/*     →  …\ResourceFile\webview\www\
+                                 dist/docs/*    →  …\ResourceFile\webview\docs\   ← sibling, NOT www\docs
+                                 T3000_Help.chm →  next to T3000.exe
+
+runtime:  T3000.exe → rust service →  http://localhost:9103
+            /         the app  (www)
+            /docs/    the site (docs, from DOCS_DIR — a sibling folder, never inside www)
+            /api/*    REST + MCP
+```
+
+| Step | Command | Output |
+|---|---|---|
+| 1 | `npm run build` → `quasar build` | `dist/spa/` |
+| 2 | `npm run docs:registry` | `docs/docfx.json`, `docs/toc.yml`, `docs/help/*.json` |
+| 3 | `npm run docs:site` | `dist/docs/` (docfx build + pagefind) |
+| 4 | `npm run build:help` | `T3000_Help.chm` |
+| 5 | `npm run publish:webview` | `…\ResourceFile\webview\{www,docs}` + CHM beside `T3000.exe` |
+
+Rules and gotchas:
+
+1. `quasar build` **clears `dist/spa`**, so the site is emitted to its own `dist/docs` **after** the app
+   build and placed by the publish step — never written into `dist/spa`.
+2. `publish:webview` copies `dist/docs/*` into `ResourceFile\webview\docs\` — a **sibling** of `www`. The API
+   serves it through `DOCS_DIR` + `.nest("/docs", routes_docs())`.
+3. **Every** other mechanism that copies or mirrors `www` (installer, the product's own auto-update) must
+   carry `docs` too, or customers get a stale or missing site.
+4. **WebView2 cache**: `%LOCALAPPDATA%\T3000\EBWebView\` has served stale assets in this project before, so
+   the site's HTML/CSS/JS carry a build stamp (`?v=<build>`), and the update path clears the cache.
+5. `npm run deploy:t3000` and `deploy:t3000:build` are **dead** — `scripts/deploy-to-t3000.bat` does not
+   exist and `build:webview` is not defined. `publish:webview` replaces both and fixes the app's own deploy.
+6. Docs-only paths for local work: `npm run docs:site`, `docs:serve` (:8080, **dev only — never deployed**),
+   `docs:pdf`, `docs:offline`.
+
+**Acceptance (deploy):** after `npm run build` and `npm run publish:webview`, `T3000.exe` on a clean machine
+serves `http://localhost:9103/` (the app) and `http://localhost:9103/docs/` (the site) with no additional
+service, F1 opens the CHM, and nobody had to copy a file by hand.
