@@ -42,6 +42,7 @@ designed for but do not pay for on day one.
 | 12 | [`12-ai-features.md`](12-ai-features.md) | Future AI Features | commit analysis, impact analysis, stale detection, assistant |
 | 13 | [`13-implementation-plan.md`](13-implementation-plan.md) | Implementation Plan, Detailed Starting Steps | phases as PR-sized tasks with acceptance tests and a week-by-week phase 1 |
 | 14 | [`14-governance.md`](14-governance.md) | Documentation Review Process (the policy half) | roles, when review is required, publish authority, emergencies, waivers, page retirement |
+| 15 | [`15-online-editor.md`](15-online-editor.md) | Editing System (hosted half), Layer 3 | the phase-3 editor: **Monaco** (the VS Code core) source-first, self-hosted bundle, API, server-side git flow, safety rules |
 
 Related, outside this folder:
 
@@ -100,6 +101,9 @@ These are not open questions; everything in this folder assumes them.
 20. **The docs ride in the product build.** `npm run build` builds the app *and* the site (`dist/docs`), and
     one publish pass (`scripts/publish-webview.mjs`) places `www`, `docs` and the CHM into the runtime folder;
     `:8080` is dev-only. Docs-only builds and previews are extra scripts, not a second pipeline.
+21. **The online editor is Monaco** (the VS Code core): source-first, self-hosted custom bundle, preview from
+    `docfx build --serve`, gate findings as inline markers, and a toolbar we build (~1 day) because no
+    library ships our combination. No WYSIWYG — our pages are hard-wrapped (`15-online-editor.md`).
 
 ## Prerequisites for phase 1
 

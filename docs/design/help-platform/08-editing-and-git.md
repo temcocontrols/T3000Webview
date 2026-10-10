@@ -39,7 +39,7 @@ typed by hand).
 | Feature | Design |
 |---|---|
 | Entry point | "Edit this page" on the DocFX article → the portal editor at `/edit/<page-id>` (phase 1 links straight to GitHub instead) |
-| Editing | Markdown textarea with an outline of the page's headings and the registry fields shown read-only while editing |
+| Editing | **Monaco** (the VS Code core) source editor — heading outline in the breadcrumb bar; registry fields shown read-only while editing |
 | Preview | server-side render of the page (same DocFX pipeline) in a right pane; "view in site" opens it for real |
 | Image upload | `POST /api/docs/upload` → validated (content type, size ≤ 10 MB) → committed to the page's `media/` folder on the draft branch |
 | Draft save | the draft is a commit on branch `docs/<page-id>-<user>-<ts>`; no database table for content, ever |
@@ -48,6 +48,9 @@ typed by hand).
 | Conflicts | normal git conflict flow: the editor refuses to publish when the branch is behind `main` |
 
 **Invariant:** the portal never stores document bodies. It edits working-tree files and pushes branches.
+
+Full design — library choice, screen layout, API contract, server-side git flow and the safety rules — is in
+`15-online-editor.md`.
 
 ---
 

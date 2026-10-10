@@ -54,7 +54,7 @@ Goal: the DocFX site exists, its structure is declared once, and the shipped CHM
 | 3.2 | `versions.json` + switcher wiring | switching keeps the reader on the same page path when it exists |
 | 3.3 | Feedback endpoint + `docs_feedback` + owner routing | a "No" click writes a row routed to the page owner |
 | 3.4 | Helpfulness ratio + aging report | unhandled > 30 days appears in the weekly report |
-| 3.5 | Portal editor (Markdown, preview, upload, draft branch, publish = PR) | editing a page end-to-end produces a normal PR |
+| 3.5 | Portal editor: Monaco bundle + toolbar + preview + upload + draft branch + publish = PR — see `15-online-editor.md` | editing a page end-to-end produces a normal PR |
 | 3.6 | Roles/auth (editor, reviewer) | anonymous read; only roles can draft/publish |
 | 3.7 | Search beacon + monthly to-do list | zero-result queries appear as a to-do list |
 | 3.8 | `docs_subscriptions` + digest | category subscription notifies on a page change in that category |
