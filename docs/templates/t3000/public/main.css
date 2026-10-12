@@ -1,0 +1,66 @@
+/* T3000 template layer - brand + the small additions the modern template lacks.
+   Loaded after the modern template, so these rules win. Keep this file small on purpose:
+   every declaration here is something we must re-check when the engine is upgraded. */
+
+:root {
+  --t3-brand: #1769aa;
+  --t3-brand-dark: #0f4c7d;
+  --t3-border: #e6e6e6;
+  --t3-muted: #6b6b6b;
+}
+
+/* Bootstrap variables the modern template already uses */
+body {
+  --bs-link-color-rgb: 23, 105, 170;
+  --bs-link-hover-color-rgb: 15, 76, 125;
+}
+
+/* ---- page meta bar (forums from docs/help/page-meta.json) ---------------------------------- */
+.t3-pagemeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin: 0 0 1.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--t3-border);
+  border-radius: 6px;
+  background: #fafafa;
+  font-size: 0.875rem;
+  color: var(--t3-muted);
+}
+.t3-pagemeta a {
+  text-decoration: none;
+}
+.t3-pagemeta .t3-pagemeta-owner {
+  font-weight: 600;
+  color: #333;
+}
+.t3-pagemeta .t3-chip {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid var(--t3-border);
+  background: #fff;
+}
+.t3-pagemeta .t3-chip-warn {
+  border-color: #f0c36d;
+  background: #fff8e6;
+  color: #7a5a00;
+}
+/* the bar is hidden until data arrives, so a missing page-meta.json costs nothing */
+.t3-pagemeta[hidden] {
+  display: none;
+}
+
+/* ---- print (the PDF renders this same HTML) ------------------------------------------------ */
+@media print {
+  .t3-pagemeta {
+    display: none;
+  }
+  pre,
+  table {
+    break-inside: avoid;
+  }
+}

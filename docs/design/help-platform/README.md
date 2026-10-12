@@ -7,6 +7,9 @@ Markdown source, and the AI-assisted maintenance loop.
 Read `01-plan.md` for the platform design (the "what and why"). Every other file is the **buildable
 detail** for one part of it — schemas, file paths, commands, code sketches and acceptance tests.
 
+For a management-level summary — requirements, the system picture, phases and the decisions requested —
+read `16-management-overview.md`. It is the only file in this folder written for a non-engineering reader.
+
 ## The engine decision, in one line
 
 The website is published by **DocFX**, and the policy is **pin first, patch last**: phase 1 runs a pinned
@@ -43,6 +46,7 @@ designed for but do not pay for on day one.
 | 13 | [`13-implementation-plan.md`](13-implementation-plan.md) | Implementation Plan, Detailed Starting Steps | phases as PR-sized tasks with acceptance tests and a week-by-week phase 1 |
 | 14 | [`14-governance.md`](14-governance.md) | Documentation Review Process (the policy half) | roles, when review is required, publish authority, emergencies, waivers, page retirement |
 | 15 | [`15-online-editor.md`](15-online-editor.md) | Editing System (hosted half), Layer 3 | the phase-3 editor: **Monaco** (the VS Code core) source-first, self-hosted bundle, API, server-side git flow, safety rules |
+| 16 | [`16-management-overview.md`](16-management-overview.md) | the whole picture, for management | the one-page-for-the-boss view: requirements, system figures, roles, phases, risks, decisions requested — **also records the correction that the platform is a standalone internal app, not part of the T3000 runtime** |
 
 Related, outside this folder:
 

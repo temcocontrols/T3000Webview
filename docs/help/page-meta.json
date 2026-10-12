@@ -1,0 +1,2347 @@
+{
+  "design/help-platform/00-architecture": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "00 — High-level structure (start here)"
+  },
+  "design/help-platform/01-plan": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Learn Platform"
+  },
+  "design/help-platform/02-docfx-engine": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "02 — The DocFX engine (clone, build, pin, patch)"
+  },
+  "design/help-platform/03-site-project": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "03 — The site project: docfx.json, toc.yml, URLs"
+  },
+  "design/help-platform/04-template": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "04 — The T3000 template (website design)"
+  },
+  "design/help-platform/05-content-and-registry": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "05 — Content, the registry and the generated metadata"
+  },
+  "design/help-platform/06-search": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "06 — Search"
+  },
+  "design/help-platform/07-offline-pdf-chm": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "07 — Offline outputs: website package, PDF, CHM"
+  },
+  "design/help-platform/08-editing-and-git": {
+    "updated": "2026-10-10",
+    "sha": "fc15cc43",
+    "owner": "docs",
+    "stale": false,
+    "t": "08 — Editing, preview and Git integration"
+  },
+  "design/help-platform/09-feedback-subscriptions-notifications": {
+    "updated": "2026-10-10",
+    "sha": "4441af6d",
+    "owner": "docs",
+    "stale": false,
+    "t": "09 — Feedback, subscriptions and notifications"
+  },
+  "design/help-platform/10-changelog-releases-versioning": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "10 — What's New, release notes and version management"
+  },
+  "design/help-platform/11-review-and-cicd": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "11 — Review process, gates and CI/CD"
+  },
+  "design/help-platform/12-ai-features": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "12 — AI features"
+  },
+  "design/help-platform/13-implementation-plan": {
+    "updated": "2026-10-10",
+    "sha": "fc15cc43",
+    "owner": "docs",
+    "stale": false,
+    "t": "13 — Implementation plan"
+  },
+  "design/help-platform/14-governance": {
+    "updated": "2026-10-10",
+    "sha": "16eb399c",
+    "owner": "docs",
+    "stale": false,
+    "t": "14 — Governance: ownership, publishing, emergencies, retirement"
+  },
+  "design/help-platform/15-online-editor": {
+    "updated": "2026-10-10",
+    "sha": "fc15cc43",
+    "owner": "docs",
+    "stale": false,
+    "t": "15 — The online editor"
+  },
+  "design/help-platform/README": {
+    "updated": "2026-10-10",
+    "sha": "fc15cc43",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Learn Platform — design package"
+  },
+  "legacy/development/analysis/LEFT_PANEL_ANALYSIS": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Left Panel Device Tree Analysis"
+  },
+  "legacy/development/analysis/LEFT_PANEL_FIX_SUMMARY": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Left Panel Device Tree - Fixes Applied"
+  },
+  "legacy/development/analysis/TREE_VIEW_MODES_ANALYSIS": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Tree View Modes Analysis"
+  },
+  "legacy/development/analysis/force-update-simple": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "How to Force T3000 Update for Testing"
+  },
+  "legacy/development/analysis/t3000-version-checking": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Version Checking Mechanism"
+  },
+  "legacy/development/api/ACTION_17_REFRESH_WEBVIEW_LIST": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Action 17 - GETWebviewList"
+  },
+  "legacy/development/api/Action3-vs-Action16-Comparison": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Action 3 vs Action 16: Key Differences"
+  },
+  "legacy/development/api/CRITICAL-Action3-Limitations": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "CRITICAL: Action 3 (UPDATEENTRY) Field Limitations"
+  },
+  "legacy/development/api/T3000-Point-Update-APIs": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Point Update API Documentation"
+  },
+  "legacy/development/api/T3000-Point-Update-APIs-Summary": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Point Update APIs - Implementation Summary"
+  },
+  "legacy/development/api/UPDATE_WEBVIEW_LIST-Field-Mapping": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "UPDATEWEBVIEWLIST (Action 16) - Field Mapping Comparison"
+  },
+  "legacy/development/bacnet/BACnet-Implementation-Plan-Phase1": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 BACnet Integration - Implementation Plan Phase 1"
+  },
+  "legacy/development/bacnet/BACnet-Implementation-Technical-Roadmap": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "BACnet Implementation Technical Roadmap"
+  },
+  "legacy/development/bacnet/BACnet-Protocol-Research-YABE-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "BACnet Protocol Research and YABE Analysis"
+  },
+  "legacy/development/bacnet/BACnet-Testing-Guide": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "BACnet Tool Testing Guide"
+  },
+  "legacy/development/bacnet/BACnet-TrendLog-Windows-Tool-Guide": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "BACnet Trend Log Windows Tool - Implementation Guide"
+  },
+  "legacy/development/bacnet/README": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "BACnet Documentation Summary and Index"
+  },
+  "legacy/development/bacnet/T3000-BACnet-Infrastructure-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 BACnet Infrastructure - Complete Analysis"
+  },
+  "legacy/development/bacnet/T3000-BACnet-Integration-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 BACnet Integration Analysis"
+  },
+  "legacy/development/bacnet/T3000-BACnet-TimeScaleDB-Requirements-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 BACnet SQLite Integration - Requirements Analysis"
+  },
+  "legacy/development/bacnet/T3000-Rust-API-WebView-Integration-Complete": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Rust API & WebView Integration - Complete Feature Summary"
+  },
+  "legacy/development/bacnet/T3000-Source-Code-Analysis-Plan": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Source Code Analysis Plan"
+  },
+  "legacy/development/bacnet/T3000-Source-Code-Integration-Complete": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Source Code Integration Analysis - BACnet Implementation"
+  },
+  "legacy/development/bacnet/T3000-TrendLog-Analysis-Complete": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Trend Log Analysis & BACnet Integration Strategy"
+  },
+  "legacy/development/bacnet/T3000-WebView-Integration-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 WebView Integration Analysis"
+  },
+  "legacy/development/bacnet/TimeScaleDB-Integration-Guide": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "SQLite Integration Guide for T3000 BACnet System"
+  },
+  "legacy/development/bugs/README": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "WebView2 Cache Fix - Bug Documentation"
+  },
+  "legacy/development/bugs/grp-navigation-race-condition": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "GRP Navigation Auto-Save Race Condition"
+  },
+  "legacy/development/bugs/webview2-cache-complete": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "WebView2 Cache Issue - Complete Documentation"
+  },
+  "legacy/development/data-flow/T3000_Data_Initialization_Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000Data Initialization Analysis"
+  },
+  "legacy/development/data-flow/react-vue-data-flow-comparison": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "React vs Vue Data Flow Comparison - TrendChart Implementation"
+  },
+  "legacy/development/data-mnt/DEVELOPMENT_NOTES": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Data Management System - Development Notes"
+  },
+  "legacy/development/data-mnt/IMPLEMENTATION_LOG": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Data Management System - Implementation Log"
+  },
+  "legacy/development/data-mnt/README": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Data Management System - Documentation Index"
+  },
+  "legacy/development/data-mnt/T3000-BACnet-Block-Polling-Implementation": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 BACnet Block Polling Implementation Guide"
+  },
+  "legacy/development/data-mnt/T3000-TimescaleDB-Integration-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 TimescaleDB Integration Analysis"
+  },
+  "legacy/development/data-mnt/TECHNICAL_SPECIFICATION": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Data Management System - Technical Specification"
+  },
+  "legacy/development/data-mnt/TEST_SUCCESS_SUMMARY": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Database Integration Success"
+  },
+  "legacy/development/database/OPTIMIZATION_IMPLEMENTATION_SUMMARY": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Database Optimization Implementation Summary"
+  },
+  "legacy/development/database/SETTINGS_FIELD_MAPPING": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Settings Basic Information - Database Field Mapping"
+  },
+  "legacy/development/database/database-creation-options": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Database Creation Options - Implementation Guide"
+  },
+  "legacy/development/develop/DEVELOP_MENU_DESIGN": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Develop Menu - Design Specification"
+  },
+  "legacy/development/develop/IMPLEMENTATION_SUMMARY": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Developer Tools Implementation Summary"
+  },
+  "legacy/development/new-ui/Async-Component-Timeout-Implementation": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "Async Component Timeout Handling - Implementation Guide"
+  },
+  "legacy/development/new-ui/Chart-Implementation-Comparison": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Chart.js vs Grafana UI Implementation Summary"
+  },
+  "legacy/development/new-ui/Chart-Implementation-Status": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Chart.js Implementation Status"
+  },
+  "legacy/development/new-ui/Code-Patterns-Design-Principles-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Code Patterns & Design Principles Analysis - T3000 WebView"
+  },
+  "legacy/development/new-ui/Complete-Source-Code-Architecture-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Complete Source Code Architecture Analysis - T3000 WebView"
+  },
+  "legacy/development/new-ui/Complex-Dashboard-Library-Comparison": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Complex Dashboard Library Comparison for T3000"
+  },
+  "legacy/development/new-ui/Component-Hierarchy-Dependencies-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Component Hierarchy & Dependencies Analysis - T3000 WebView"
+  },
+  "legacy/development/new-ui/Empty-Page-Resolution-Summary": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Empty Page Issue Resolution - Summary"
+  },
+  "legacy/development/new-ui/Empty-Page-Troubleshooting": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 WebView Empty Page Troubleshooting Guide"
+  },
+  "legacy/development/new-ui/GRAFANA_IMPLEMENTATION_STATUS": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Grafana Chart Implementation - Status Summary"
+  },
+  "legacy/development/new-ui/Grafana-Chart-Implementation": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Chart Implementation using Grafana Libraries"
+  },
+  "legacy/development/new-ui/Node-Debugging-Guide": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "Node Debugging Guide for T3000"
+  },
+  "legacy/development/new-ui/Node-Error-Handling-Implementation": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "Node Error Handling - Implementation Summary"
+  },
+  "legacy/development/new-ui/Project-Status-Summary": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Webview Project Status Summary"
+  },
+  "legacy/development/new-ui/Router-Error-Resolution": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Router and Page Loading Error Resolution"
+  },
+  "legacy/development/new-ui/Selecto-Error-Fix-Documentation": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Selecto Component Error Fix - Performance Enhancement"
+  },
+  "legacy/development/new-ui/TrendLog-UI-Improvements": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLog UI Improvements - Implementation Plan"
+  },
+  "legacy/development/project/CHANGELOG": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 WebView Project - Change Log"
+  },
+  "legacy/development/project/DATA_COLLECTION_ENDPOINTS_REMOVED": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Data Collection Endpoints - Removal Documentation"
+  },
+  "legacy/development/project/FFI_SERVICE_COMPARISON": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Comparison: t3ffiapiservice.rs vs t3ffisyncservice.rs"
+  },
+  "legacy/development/project/MODULE_CLEANUP_2025-01": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 WebView API - Module Cleanup Summary"
+  },
+  "legacy/development/project/PROJECT_STATUS": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Project Status Summary"
+  },
+  "legacy/development/project/README": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Library Documentation"
+  },
+  "legacy/development/project/RENAME_T3000_FFI_SYNC_SERVICE": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Service Rename: t3000ffisyncservice → t3ffisyncservice"
+  },
+  "legacy/development/project/T3000-Source-Access-Guide": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 WebView Cache Issue - Root Cause & Solution"
+  },
+  "legacy/development/project/TRENDLOG_UI_IMPROVEMENTS": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLog UI Improvements - Technical Documentation"
+  },
+  "legacy/implementations/hvac/01_overview.00-hvac-overview": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000Webview HVAC Draw Area - Comprehensive Analysis Documentation"
+  },
+  "legacy/implementations/hvac/01_overview.01-master-summary": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Library Analysis - Master Summary"
+  },
+  "legacy/implementations/hvac/02_analysis.01-complete-file-analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Library - Complete File-by-File Analysis"
+  },
+  "legacy/implementations/hvac/02_analysis.02-deep-code-analysis": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Drawing Library - Deep Code Analysis & Improvement Recommendations"
+  },
+  "legacy/implementations/hvac/02_analysis.03-file-by-file-analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Drawing Library - File-by-File Analysis & Issues"
+  },
+  "legacy/implementations/hvac/02_analysis.04-library-analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Library Complete Analysis"
+  },
+  "legacy/implementations/hvac/03_arch.01-modernization-roadmap": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Library - Implementation Roadmap"
+  },
+  "legacy/implementations/hvac/03_arch.02-modernization-best-practices": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Drawing Library - Modernization & Best Practices Guide"
+  },
+  "legacy/implementations/hvac/03_arch.03-refactoring-plan": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Library Refactoring Plan"
+  },
+  "legacy/implementations/hvac/03_arch.04-structure-analysis": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "Full Analysis: T3000Webview HVAC Library"
+  },
+  "legacy/implementations/hvac/03_arch.05-module-structure-basic": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "HVAC Module Structure & Suggestions"
+  },
+  "legacy/implementations/hvac/03_arch.06-module-structure-deep": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "HVAC Library: Full Folder/File Analysis, Design Review, and Suggestions"
+  },
+  "legacy/implementations/hvac/04_bugs.01-bug-analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Library Bug Analysis Report"
+  },
+  "legacy/implementations/hvac/04_bugs.02-fixes-implemented": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Library Critical Fixes Implementation"
+  },
+  "legacy/implementations/hvac/05_phases.01-phase2-completion": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Library Refactoring - Phase 2 Completion Summary"
+  },
+  "legacy/implementations/hvac/05_phases.02-phase3-performance": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Phase 3: Performance Optimization Analysis"
+  },
+  "legacy/implementations/hvac/05_phases.03-phase3a-completion": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Phase 3: Performance Optimization - COMPLETION REPORT"
+  },
+  "legacy/implementations/hvac/05_phases.04-phase3b-completion": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Phase 3B Completion Report"
+  },
+  "legacy/implementations/hvac/05_phases.05-phase3c-advanced": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Phase 3C: Advanced Optimizations"
+  },
+  "legacy/implementations/hvac/05_phases.06-phase4-implementation": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Implementation Summary - Phase 4 Complete"
+  },
+  "legacy/implementations/hvac/06_shapes.01-shape-library-features": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "Shape Library Feature: Suggestions & Best Practices"
+  },
+  "legacy/implementations/hvac/06_shapes.02-shape-library-analysis": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Shape Library Analysis and Migration Design"
+  },
+  "legacy/implementations/hvac/06_shapes.03-complete-drawing-library": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Drawing Library - Complete Architecture Analysis"
+  },
+  "legacy/implementations/hvac/07_tech.01-technical-implementation": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Drawing Library - Technical Implementation Analysis"
+  },
+  "legacy/implementations/hvac/07_tech.02-security-analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Drawing Library - Security & Technical Excellence Analysis"
+  },
+  "legacy/implementations/hvac/07_tech.03-realtime-integration": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Drawing Library - Real-Time Integration & WebSocket Analysis"
+  },
+  "legacy/implementations/hvac/07_tech.04-utility-infrastructure": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Drawing Library - Comprehensive Utility & Infrastructure Deep Dive"
+  },
+  "legacy/implementations/hvac/07_tech.05-units-configuration": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000.rc Units Analysis and TrendLogModal Updates"
+  },
+  "legacy/implementations/hvac/08_guide.01-development-process-guide": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Drawing Library - Complete Development Process Guide"
+  },
+  "legacy/implementations/hvac/08_guide.02-complete-analysis-summary": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 HVAC Drawing Library - Complete Analysis Summary"
+  },
+  "legacy/implementations/hvac/08_guide.03-deep-analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Library Deep Analysis"
+  },
+  "legacy/implementations/hvac/hvac-designer-implementation-status": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "HVAC Designer Implementation Status"
+  },
+  "legacy/implementations/hvac/hvac-designer-implementation-summary": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "HVAC Designer Implementation Summary"
+  },
+  "legacy/implementations/hvac/hvac-designer-save-load-implementation": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "HVAC Designer - Save/Load Implementation Complete"
+  },
+  "legacy/implementations/t3-bas-web/DEPLOYMENT": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 WebView - Deployment Guide"
+  },
+  "legacy/implementations/t3-bas-web/Fluent-UI-vs-Ant-Design-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Fluent UI vs Ant Design Vue - Azure Portal Design Analysis"
+  },
+  "legacy/implementations/t3-bas-web/Full-React-Migration-Plan": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Full React + FluentUI Migration Plan"
+  },
+  "legacy/implementations/t3-bas-web/HYBRID_ARCHITECTURE": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 WebView - Hybrid Vue + React Architecture"
+  },
+  "legacy/implementations/t3-bas-web/Hybrid-Vue-React-Architecture": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Hybrid Architecture: Vue + React Coexistence Strategy"
+  },
+  "legacy/implementations/t3-bas-web/NEW_TABLES_TEST_PLAN": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "New Tables Testing Plan"
+  },
+  "legacy/implementations/t3-bas-web/README": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 to T3BASWeb Migration Documentation"
+  },
+  "legacy/implementations/t3-bas-web/React-Fluent-UI-Migration-Plan": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Complete Migration Plan: Vue → React + Fluent UI"
+  },
+  "legacy/implementations/t3-bas-web/T3000-Ant-Design-Migration-Plan": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 to T3BASWeb - Ant Design Vue Migration Plan"
+  },
+  "legacy/implementations/t3-bas-web/T3000-Feature-Inventory": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Feature Inventory and Analysis"
+  },
+  "legacy/implementations/t3-bas-web/T3000-Layout-Architecture-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 C++ Layout & Architecture - Complete Analysis"
+  },
+  "legacy/implementations/t3-bas-web/Technical-Design-Hybrid-Architecture": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Technical Design Document: Hybrid Vue + React Architecture"
+  },
+  "legacy/implementations/t3-bas-web/input/INPUTS_PAGE_IMPLEMENTATION": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Inputs Page Implementation Summary"
+  },
+  "legacy/implementations/t3-bas-web/input/INPUTS_PAGE_STATUS": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Inputs Page - Implementation Status"
+  },
+  "legacy/implementations/t3-bas-web/layout/StatusBar.README": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "Status Bar Component (legacy)"
+  },
+  "legacy/implementations/t3-bas-web/left-panel/IMPLEMENTATION_COMPLETE": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Left Panel Device Tree - Implementation Complete"
+  },
+  "legacy/implementations/t3-bas-web/left-panel/LEFT_PANEL_CPP_DESIGN": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Left Panel — C++ Design (mapped to React guide)"
+  },
+  "legacy/implementations/t3-bas-web/left-panel/LEFT_PANEL_STEP_BY_STEP_GUIDE": {
+    "updated": "2026-10-09",
+    "sha": "70f7bbb9",
+    "owner": "docs",
+    "stale": false,
+    "t": "Left Panel Device Tree - Complete Implementation Guide"
+  },
+  "legacy/implementations/t3-vue/TRENDLOG_USER_GUIDE": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Trend Log Beta - Quick Start Guide"
+  },
+  "legacy/implementations/t3000/0.T3db_DATABASE_SCHEMA_VERIFICATION": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Database Schema - Complete Implementation & Verification Guide"
+  },
+  "legacy/implementations/t3000/1.TRENDLOG_DATABASE_DESIGN": {
+    "updated": "2026-10-09",
+    "sha": "70f7bbb9",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Trendlog Database Design - Implementation Plan"
+  },
+  "legacy/implementations/t3000/12.1.T3000_Rust_Implementation_Roadmap": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Rust Implementation Roadmap"
+  },
+  "legacy/implementations/t3000/12.2.T3000_Missing_Implementation_Stages": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Implementation Status & Missing Stages Analysis"
+  },
+  "legacy/implementations/t3000/12.3.T3000_Complete_Implementation_Action_Plan": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Complete Implementation Action Plan - Step-by-Step Guide"
+  },
+  "legacy/implementations/t3000/12.T3000_Data_Integration_Strategy": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Data Integration Strategy - Implementation Plan"
+  },
+  "legacy/implementations/t3000/2.ROLLBACK_CONFIRMATION": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Rollback Confirmation: Data Management Schema Migration"
+  },
+  "legacy/implementations/t3000/3.T3000_SERVER_ARCHITECTURE_ANALYSIS": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 WebView Server Architecture & Process Flow Analysis"
+  },
+  "legacy/implementations/t3000/4.DETAILED_IMPLEMENTATION_PLAN": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Trendlog Implementation - Detailed Step-by-Step Plan"
+  },
+  "legacy/implementations/t3000/5.T3000_DATABASE_IMPLEMENTATION": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Device Database - Implementation Complete"
+  },
+  "legacy/implementations/t3000/6.T3000_DATABASE_CLEANUP": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Database Cleanup - Summary"
+  },
+  "legacy/implementations/t3000/7.PROJECT_ORGANIZATION": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Project Organization - Completed"
+  },
+  "legacy/implementations/t3000/8.DATABASE_ISOLATION_VERIFICATION": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Database Isolation Analysis & Verification"
+  },
+  "legacy/implementations/t3000/8.FOLDER_RENAME_SUMMARY": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Folder Rename: bacnet-trend → t3000"
+  },
+  "legacy/implementations/t3000/9.FINAL_CONFIRMATION_INDEPENDENT_DATABASE": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "FINAL CONFIRMATION: T3000 Database Independence"
+  },
+  "legacy/implementations/t3000/9.T3000_PROJECT_CLEANUP": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Project Cleanup Summary"
+  },
+  "legacy/implementations/t3000/IMPLEMENTATION_COMPLETE": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 C++ Integration Implementation Complete"
+  },
+  "legacy/implementations/t3000/SETTINGS_BASIC_INFO_STRUCTURE": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Settings - Basic Information Tab Structure (CORRECT)"
+  },
+  "legacy/implementations/trend-log/FFI-Service-Flow-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 WebView FFI Service Flow - Complete Analysis"
+  },
+  "legacy/implementations/trend-log/FFI_FUNCTIONS_COMPARISON": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "FFI Functions Flow and Data Comparison"
+  },
+  "legacy/implementations/trend-log/FFI_TWO_TIER_SYNC_DESIGN": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 FFI Two-Tier Sync System Design"
+  },
+  "legacy/implementations/trend-log/PARTITION_FEATURE_NOTES": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Data Partition Feature - Implementation Notes"
+  },
+  "legacy/implementations/trend-log/README": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Trend Log Integration Documentation"
+  },
+  "legacy/implementations/trend-log/T3000-Migration-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 → WebView Migration Analysis"
+  },
+  "legacy/implementations/trend-log/TRENDLOG_DATABASE_DESIGN": {
+    "updated": "2026-10-09",
+    "sha": "70f7bbb9",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Trendlog Database Design - Architecture and Risk Analysis"
+  },
+  "legacy/implementations/trend-log/TRENDLOG_DATA_FLOW_ANALYSIS": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "Trendlog Data Flow Analysis - Data Not Being Saved (Investigation)"
+  },
+  "legacy/implementations/trend-log/TRENDLOG_DATA_INTEGER_MIGRATION": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TRENDLOGDATA Field Type Migration - TEXT to INTEGER"
+  },
+  "legacy/implementations/trend-log/TRENDLOG_DATA_OPTIMIZATION_DESIGN": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TRENDLOGDATA Optimization Design - Split Table Strategy"
+  },
+  "legacy/implementations/trend-log/TRENDLOG_IMPLEMENTATION_PROGRESS": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TRENDLOG Split-Table Implementation - Progress Update"
+  },
+  "legacy/implementations/trend-log/TRENDLOG_IMPLEMENTATION_STATUS": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TRENDLOG Split-Table Implementation Status"
+  },
+  "legacy/implementations/trend-log/TRENDLOG_SPACE_SAVINGS_ANALYSIS": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TRENDLOGDATA Space Savings Analysis"
+  },
+  "legacy/implementations/trend-log/TRENDLOG_SPLIT_TABLE_IMPLEMENTATION_PLAN": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TRENDLOGDATA Split Table Implementation Plan"
+  },
+  "legacy/implementations/trend-log/TrendLog-Data-Flow-Diagram": {
+    "updated": "2026-10-09",
+    "sha": "70f7bbb9",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLog Data Flow Analysis - Complete Diagram"
+  },
+  "legacy/implementations/trend-log/TrendLog-Debug-Summary": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLog Data Flow Analysis Summary"
+  },
+  "legacy/implementations/trend-log/Trendlog-Features-Verification-Report": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Trendlog Features Verification Report"
+  },
+  "legacy/implementations/trend-log/data-splitting/Data-Splitting-Documentation": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Data Splitting Strategy - Documentation Overview"
+  },
+  "legacy/implementations/trend-log/data-splitting/Data-Splitting-Implementation-Guide": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "Data Splitting Strategy - Implementation Guide"
+  },
+  "legacy/implementations/trend-log/data-splitting/Data-Splitting-Strategy-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Data Splitting Strategy - Complete Analysis & Issue Report"
+  },
+  "legacy/implementations/trend-log/data-splitting/Data-Splitting-Strategy-Fix-Summary": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Data Splitting Strategy - Fix Summary (HISTORICAL)"
+  },
+  "legacy/implementations/trend-log/ffi_sync_service_flow": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 FFI Sync Service Flow Documentation"
+  },
+  "legacy/implementations/trend-log/tlm-Analysis-Log": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLogModal Component - Detailed Analysis & Log"
+  },
+  "legacy/implementations/trend-log/tlm-Custom-Date-Selection-Redesign": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLogModal Custom Date Selection Redesign"
+  },
+  "legacy/implementations/trend-log/tlm-Implementation": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Time Series Chart Modal Implementation Summary"
+  },
+  "legacy/implementations/trend-log/tlm-Implementation-Log": {
+    "updated": "2026-01-06",
+    "sha": "c6b07ced",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLogModal Implementation Log"
+  },
+  "legacy/implementations/trend-log/tlm-Light-Theme-Update": {
+    "updated": "2026-10-09",
+    "sha": "8f9840db",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLogModal Light Theme Update"
+  },
+  "legacy/implementations/trend-log/tlm-Mixed-Units-Analysis": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLogModal Mixed Units Implementation Analysis"
+  },
+  "legacy/implementations/trend-log/tlm-Mixed-Units-Implementation-Summary": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLogModal Mixed Digital/Analog Implementation Summary"
+  },
+  "legacy/implementations/trend-log/tlm-T3000rc-Update-Summary": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLogModal T3000.rc Unit Updates Summary"
+  },
+  "legacy/implementations/trend-log/tlm-TrendLog-Complete-Integration-Guide": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Trend Log Complete Integration Guide"
+  },
+  "legacy/implementations/trend-log/tlm_CONFIGURATION_ANALYSIS": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Timing Configuration Analysis - Implementation Complete"
+  },
+  "legacy/implementations/trend-log/trendlog-startup-sync": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Trendlog Configuration Startup Sync"
+  },
+  "legacy/legacy-code/v0/daily": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "localStorage ==========================="
+  },
+  "legacy/releases/revnotes/revnotes": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "2024-11-01"
+  },
+  "legacy/releases/revnotes/t3-newui/T3000 Building Automation System — WebView Edition": {
+    "updated": "2026-10-08",
+    "sha": "c82f5b7e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Building Automation System — WebView Edition"
+  },
+  "t3000/api-reference/control-automation": {
+    "updated": "2026-01-10",
+    "sha": "90602cd9",
+    "owner": "docs",
+    "stale": false,
+    "t": "Control & Automation API"
+  },
+  "t3000/api-reference/data-points": {
+    "updated": "2026-01-10",
+    "sha": "90602cd9",
+    "owner": "docs",
+    "stale": false,
+    "t": "Data Points API"
+  },
+  "t3000/api-reference/database-management": {
+    "updated": "2026-01-10",
+    "sha": "90602cd9",
+    "owner": "docs",
+    "stale": false,
+    "t": "Database Management API"
+  },
+  "t3000/api-reference/developer-tools": {
+    "updated": "2026-01-10",
+    "sha": "90602cd9",
+    "owner": "docs",
+    "stale": false,
+    "t": "Developer Tools API"
+  },
+  "t3000/api-reference/device-management": {
+    "updated": "2026-01-10",
+    "sha": "90602cd9",
+    "owner": "docs",
+    "stale": false,
+    "t": "Device Management API"
+  },
+  "t3000/api-reference/events": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Events"
+  },
+  "t3000/api-reference/generic-tables": {
+    "updated": "2026-01-10",
+    "sha": "90602cd9",
+    "owner": "docs",
+    "stale": false,
+    "t": "Generic Tables API"
+  },
+  "t3000/api-reference/modbus-protocol": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Modbus Protocol"
+  },
+  "t3000/api-reference/overview": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "API Reference Overview"
+  },
+  "t3000/api-reference/rest-api": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "REST API"
+  },
+  "t3000/api-reference/system-utilities": {
+    "updated": "2026-01-10",
+    "sha": "90602cd9",
+    "owner": "docs",
+    "stale": false,
+    "t": "System & Utilities API"
+  },
+  "t3000/api-reference/trendlogs": {
+    "updated": "2026-01-10",
+    "sha": "90602cd9",
+    "owner": "docs",
+    "stale": false,
+    "t": "Trend Logging API"
+  },
+  "t3000/api-reference/websocket-api": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "WebSocket API"
+  },
+  "t3000/architecture/MOBILE_ARCHITECTURE_GUIDE": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Mobile Architecture Guide"
+  },
+  "t3000/architecture/centralized-database-design": {
+    "updated": "2026-04-16",
+    "sha": "631d2467",
+    "owner": "docs",
+    "stale": false,
+    "t": "Centralized Database Design"
+  },
+  "t3000/architecture/centralized-database-multipc": {
+    "updated": "2026-04-16",
+    "sha": "631d2467",
+    "owner": "docs",
+    "stale": false,
+    "t": "Centralized Database: Multi-PC Architecture (v4 Final)"
+  },
+  "t3000/architecture/centralized-logging-design": {
+    "updated": "2026-05-15",
+    "sha": "946d96da",
+    "owner": "docs",
+    "stale": false,
+    "t": "Centralized Logging Design"
+  },
+  "t3000/architecture/designer/README": {
+    "updated": "2026-09-30",
+    "sha": "3d1cb217",
+    "owner": "docs",
+    "stale": false,
+    "t": "Unified Designer — design set"
+  },
+  "t3000/architecture/designer/change-map": {
+    "updated": "2026-09-30",
+    "sha": "3d1cb217",
+    "owner": "docs",
+    "stale": false,
+    "t": "Designer — full change map"
+  },
+  "t3000/architecture/designer/design": {
+    "updated": "2026-09-30",
+    "sha": "3d1cb217",
+    "owner": "docs",
+    "stale": false,
+    "t": "Unified Designer — one editor, per-document-type content"
+  },
+  "t3000/architecture/designer/eez-button-behaviour": {
+    "updated": "2026-09-30",
+    "sha": "3d1cb217",
+    "owner": "docs",
+    "stale": false,
+    "t": "EEZ editor — button-by-button: origin vs the unified shell"
+  },
+  "t3000/architecture/designer/interfaces": {
+    "updated": "2026-09-30",
+    "sha": "3d1cb217",
+    "owner": "docs",
+    "stale": false,
+    "t": "Designer — interfaces and contracts"
+  },
+  "t3000/architecture/designer/pages/README": {
+    "updated": "2026-09-28",
+    "sha": "8c5db96a",
+    "owner": "docs",
+    "stale": false,
+    "t": "Designer — page-by-page design"
+  },
+  "t3000/architecture/designer/pages/app-routes": {
+    "updated": "2026-09-28",
+    "sha": "8c5db96a",
+    "owner": "docs",
+    "stale": false,
+    "t": "Every route in the app, and how the Designer touches it"
+  },
+  "t3000/architecture/designer/pages/design-hub": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "The Design Hub, page by page — the entry point into every designer document"
+  },
+  "t3000/architecture/designer/pages/designer-shell-areas": {
+    "updated": "2026-09-30",
+    "sha": "4af9b05a",
+    "owner": "docs",
+    "stale": false,
+    "t": "The Designer shell — area-by-area design"
+  },
+  "t3000/architecture/designer/pages/hvac-document": {
+    "updated": "2026-09-30",
+    "sha": "4af9b05a",
+    "owner": "docs",
+    "stale": false,
+    "t": "The HVAC document, panel by panel"
+  },
+  "t3000/architecture/designer/pages/lcd-document": {
+    "updated": "2026-09-28",
+    "sha": "8c5db96a",
+    "owner": "docs",
+    "stale": false,
+    "t": "The LCD/simulator document, area by area (P5)"
+  },
+  "t3000/architecture/designer/pages/lvgl-document": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "The LVGL document, panel by panel"
+  },
+  "t3000/architecture/designer/phases/p1-shell-hvac": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "P1 — DesignerShell + the HVAC document on it"
+  },
+  "t3000/architecture/designer/phases/p2-lvgl-document": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "P2 — the LVGL document on the shell"
+  },
+  "t3000/architecture/designer/phases/p3-hvac-host-mode": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "P3 — HVAC host mode: the container comes from the shell"
+  },
+  "t3000/architecture/designer/phases/p4-route-consolidation": {
+    "updated": "2026-09-30",
+    "sha": "f68db84f",
+    "owner": "docs",
+    "stale": false,
+    "t": "P4 — route consolidation"
+  },
+  "t3000/architecture/designer/phases/p5-unification": {
+    "updated": "2026-09-30",
+    "sha": "f68db84f",
+    "owner": "docs",
+    "stale": false,
+    "t": "P5 — optional unification"
+  },
+  "t3000/architecture/designer/risks": {
+    "updated": "2026-09-30",
+    "sha": "3d1cb217",
+    "owner": "docs",
+    "stale": false,
+    "t": "Designer — risks, open questions, rollback"
+  },
+  "t3000/architecture/designer/theme-and-css": {
+    "updated": "2026-09-30",
+    "sha": "3d1cb217",
+    "owner": "docs",
+    "stale": false,
+    "t": "Designer — theme and CSS"
+  },
+  "t3000/architecture/device-loading": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Device Panel Loading"
+  },
+  "t3000/architecture/flow-logging-design": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Flow Logging Architecture — Design Document"
+  },
+  "t3000/architecture/lvgl-svg/README": {
+    "updated": "2026-09-16",
+    "sha": "1c546cb6",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL SVG Renderer"
+  },
+  "t3000/architecture/lvgl-svg/architecture": {
+    "updated": "2026-10-08",
+    "sha": "ebd843c2",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL SVG Renderer — Architecture"
+  },
+  "t3000/architecture/lvgl-svg/editor-integration": {
+    "updated": "2026-09-16",
+    "sha": "721b24b0",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL SVG Renderer — Editor Integration"
+  },
+  "t3000/architecture/lvgl-svg/fidelity-harness": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL SVG Renderer — Fidelity Harness"
+  },
+  "t3000/architecture/lvgl-svg/invariants": {
+    "updated": "2026-09-16",
+    "sha": "721b24b0",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL SVG Renderer — Scope & Invariants"
+  },
+  "t3000/architecture/lvgl-svg/primitives": {
+    "updated": "2026-09-16",
+    "sha": "1c546cb6",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL 9.5 — SVG Renderer: measured primitive inventory"
+  },
+  "t3000/architecture/lvgl-svg/rendering": {
+    "updated": "2026-09-16",
+    "sha": "22d4ca7b",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL SVG Renderer — Rendering"
+  },
+  "t3000/architecture/lvgl-svg/runtime-integration": {
+    "updated": "2026-09-14",
+    "sha": "79d2aeae",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL SVG Renderer — Runtime Integration"
+  },
+  "t3000/architecture/lvgl-svg/scene-contract": {
+    "updated": "2026-09-16",
+    "sha": "22d4ca7b",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL SVG Renderer — Scene Contract"
+  },
+  "t3000/architecture/lvgl-svg/wasm-bridge": {
+    "updated": "2026-09-16",
+    "sha": "22d4ca7b",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL SVG Renderer — WASM Bridge"
+  },
+  "t3000/architecture/multipc-data-flow-details": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Multi-PC Data Flow Details"
+  },
+  "t3000/architecture/system-overview": {
+    "updated": "2026-10-09",
+    "sha": "ecab284a",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 WebView System Architecture"
+  },
+  "t3000/bacnet-api/README": {
+    "updated": "2026-09-11",
+    "sha": "0849eff3",
+    "owner": "docs",
+    "stale": false,
+    "t": "Design Studio (Tstat11) API — Overview"
+  },
+  "t3000/bacnet-api/commands": {
+    "updated": "2026-09-11",
+    "sha": "0849eff3",
+    "owner": "docs",
+    "stale": false,
+    "t": "Design Studio (Tstat11) API — Endpoints"
+  },
+  "t3000/bacnet-api/screen-json": {
+    "updated": "2026-09-11",
+    "sha": "b27dfab8",
+    "owner": "docs",
+    "stale": false,
+    "t": "Screen JSON — Format Reference"
+  },
+  "t3000/building-platform/bacnet-commands": {
+    "updated": "2026-01-08",
+    "sha": "2ba4099e",
+    "owner": "docs",
+    "stale": false,
+    "t": "BACnet Commands Reference"
+  },
+  "t3000/building-platform/control-messages/message-10-save-library-data": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message 10: SaveLibraryData"
+  },
+  "t3000/building-platform/control-messages/message-11-delete-image": {
+    "updated": "2026-01-08",
+    "sha": "b578bf62",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message 11: DELETEIMAGE"
+  },
+  "t3000/building-platform/control-messages/message-12-get-selected-device-info": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message 12: GETSelectedDeviceInfo"
+  },
+  "t3000/building-platform/control-messages/message-13-bind-device": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message 13: BINDDEVICE"
+  },
+  "t3000/building-platform/control-messages/message-14-save-new-library-data": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message 14: SaveNEWLibraryData"
+  },
+  "t3000/building-platform/control-messages/message-15-logging-data": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message 15: LOGGINGDATA"
+  },
+  "t3000/building-platform/control-messages/message-17": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message 17: GETWebviewList"
+  },
+  "t3000/building-platform/control-messages/message-5-get-panel-range-info": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message 5: GETPanelRangeInfo"
+  },
+  "t3000/building-platform/control-messages/message-8-open-entry-edit-window": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message 8: OpenEntryEditWindow"
+  },
+  "t3000/building-platform/control-messages/message-9-save-image": {
+    "updated": "2026-01-08",
+    "sha": "b578bf62",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message 9: SAVEIMAGE"
+  },
+  "t3000/building-platform/control-messages/message-get-entries": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message: GETENTRIES"
+  },
+  "t3000/building-platform/control-messages/message-get-initial-data": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Graphics Messages: GETInitialData & LoadGraphicEntry"
+  },
+  "t3000/building-platform/control-messages/message-get-panel-data": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message: GETPanelData"
+  },
+  "t3000/building-platform/control-messages/message-get-panels-list": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message: GETPanelsList"
+  },
+  "t3000/building-platform/control-messages/message-index": {
+    "updated": "2026-10-09",
+    "sha": "ecab284a",
+    "owner": "docs",
+    "stale": false,
+    "t": "Control Messages Index"
+  },
+  "t3000/building-platform/control-messages/message-save-graphic-data": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message: SaveGraphicData"
+  },
+  "t3000/building-platform/control-messages/message-update-entry": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message: UPDATEENTRY"
+  },
+  "t3000/building-platform/control-messages/message-update-webview-list": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Message: UpdateWebviewList"
+  },
+  "t3000/building-platform/data-structures": {
+    "updated": "2026-01-08",
+    "sha": "2ba4099e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Data Structures Reference"
+  },
+  "t3000/building-platform/device-settings-structure": {
+    "updated": "2026-10-09",
+    "sha": "ecab284a",
+    "owner": "docs",
+    "stale": false,
+    "t": "Device Settings (READSETTINGCOMMAND)"
+  },
+  "t3000/building-platform/overview": {
+    "updated": "2026-10-08",
+    "sha": "e5e2834e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Building Platform Overview"
+  },
+  "t3000/components/status-bar": {
+    "updated": "2026-06-10",
+    "sha": "26c15948",
+    "owner": "docs",
+    "stale": false,
+    "t": "Status Bar Component"
+  },
+  "t3000/data-points/inputs": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Inputs"
+  },
+  "t3000/data-points/outputs": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Outputs"
+  },
+  "t3000/data-points/pid-loops": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "PID Loops"
+  },
+  "t3000/data-points/programs": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Programs"
+  },
+  "t3000/data-points/variables": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Variables"
+  },
+  "t3000/design-hub/README": {
+    "updated": "2026-10-08",
+    "sha": "ebd843c2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Design Hub — Developer & User Guide"
+  },
+  "t3000/device-management/connecting-devices": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Connecting Devices"
+  },
+  "t3000/device-management/device-configuration": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Device Configuration"
+  },
+  "t3000/device-management/device-monitoring": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Device Monitoring"
+  },
+  "t3000/device-management/device-troubleshooting": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Device Troubleshooting"
+  },
+  "t3000/device-management/lan-scanner": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "LAN Scanner — UDP Device Discovery"
+  },
+  "t3000/features/SETTINGS_FIELD_MAPPING": {
+    "updated": "2026-02-10",
+    "sha": "0f7c633e",
+    "owner": "docs",
+    "stale": false,
+    "t": "Settings Field Mapping: C++ ↔ Frontend"
+  },
+  "t3000/features/SETTINGS_IMPLEMENTATION_SUMMARY": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Settings Page Implementation Summary"
+  },
+  "t3000/features/alarms": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Alarms"
+  },
+  "t3000/features/graphics": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Graphics"
+  },
+  "t3000/features/holidays": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Holidays"
+  },
+  "t3000/features/schedules": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Schedules"
+  },
+  "t3000/features/trend-center-unified-design": {
+    "updated": "2026-05-27",
+    "sha": "c096b556",
+    "owner": "docs",
+    "stale": false,
+    "t": "Trend Center Unified Design"
+  },
+  "t3000/features/trendlog-xaxis-design": {
+    "updated": "2026-04-30",
+    "sha": "641f2fc2",
+    "owner": "docs",
+    "stale": false,
+    "t": "TrendLog Chart X-Axis Design"
+  },
+  "t3000/features/trendlogs": {
+    "updated": "2026-10-09",
+    "sha": "01a8e7c6",
+    "owner": "docs",
+    "stale": false,
+    "t": "Trend Logs"
+  },
+  "t3000/features/view-switcher": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Switching between Classic View and New View"
+  },
+  "t3000/guides/best-practices": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Best Practices"
+  },
+  "t3000/guides/faq": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Frequently Asked Questions"
+  },
+  "t3000/guides/performance-tuning": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Performance Tuning"
+  },
+  "t3000/guides/troubleshooting": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Troubleshooting Guide"
+  },
+  "t3000/haystack/README": {
+    "updated": "2026-09-11",
+    "sha": "b27dfab8",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Haystack & Semantic Layer Documentation"
+  },
+  "t3000/haystack/ai-chat-page-design": {
+    "updated": "2026-08-03",
+    "sha": "15a6ffc3",
+    "owner": "docs",
+    "stale": false,
+    "t": "AI Chat Page — Integration Design"
+  },
+  "t3000/haystack/ai-llm-api-integration": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "AI Integration — Cloud LLM APIs"
+  },
+  "t3000/haystack/ai-local-llm-server": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "AI Integration — Local LLM Server"
+  },
+  "t3000/haystack/fdd-native-engine": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "FDD — Native Fault Detection & Diagnostics for T3000"
+  },
+  "t3000/haystack/mcp-api-examples": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "MCP API Examples"
+  },
+  "t3000/haystack/mcp-claude-desktop": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Claude Desktop MCP Setup"
+  },
+  "t3000/haystack/mcp-vscode-copilot": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "VS Code Copilot MCP Setup"
+  },
+  "t3000/haystack/v1-haystack-legacy-single-table": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Haystack v1 — Legacy Single-Table Design"
+  },
+  "t3000/haystack/v2-haystack-current-implementation": {
+    "updated": "2026-07-15",
+    "sha": "155824b6",
+    "owner": "docs",
+    "stale": false,
+    "t": "Haystack v2 — Current Implementation"
+  },
+  "t3000/haystack/v3-haystack-auto-tagging-mcp": {
+    "updated": "2026-09-11",
+    "sha": "b27dfab8",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Haystack & Brick Auto-Tagging + MCP — Design Document"
+  },
+  "t3000/haystack/v4-haystack-mcp-complete": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 MCP Server — Design"
+  },
+  "t3000/index": {
+    "updated": "2026-01-07",
+    "sha": "41db2b3e",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Building Automation System"
+  },
+  "t3000/quick-start/README-TABS": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Documentation Tabs Feature"
+  },
+  "t3000/quick-start/configuration": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Configuration Guide"
+  },
+  "t3000/quick-start/installation": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Installation Guide"
+  },
+  "t3000/quick-start/overview": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Quick Start Overview"
+  },
+  "t3000/releases/beta-webui-announcement": {
+    "updated": "2026-10-08",
+    "sha": "9a82f3ed",
+    "owner": "docs",
+    "stale": false,
+    "t": "Try the new T3000 UI (beta) — Inputs, Trend Logs, Haystack, AI Assistant and the new Designer"
+  },
+  "t3000/releases/changelog/2026-10-11": {
+    "updated": null,
+    "sha": null,
+    "owner": "docs",
+    "stale": false,
+    "t": "Changelog - 2026-10-11"
+  },
+  "t3000/shared-db/shared-center-db-summary": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Shared Center DB — Overview"
+  },
+  "t3000/shared-db/sql-server-express-setup": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "SQL Server Express 2022 Setup for T3000 (Detailed Step-by-Step)"
+  },
+  "t3000/shared-db/t3000-center-db-config": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3000 Center DB Configuration"
+  },
+  "t3000/t3-eez-studio/README": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Design Studio (Tstat11)"
+  },
+  "t3000/t3-eez-studio/device-firmware-lvgl-architecture": {
+    "updated": "2026-09-11",
+    "sha": "0849eff3",
+    "owner": "docs",
+    "stale": false,
+    "t": "T3 Firmware — LVGL Display Architecture"
+  },
+  "t3000/t3-eez-studio/device-interface-deployment-via-bacnet-design": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Deploy to Device — as built (REST)"
+  },
+  "t3000/t3-eez-studio/import-from-device-design": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Import from Device — as built"
+  },
+  "t3000/t3-eez-studio/lvgl-eez-project-json-format": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": ".EEZ-Project JSON Format — Design Document"
+  },
+  "t3000/t3-eez-studio/manual/01-overview": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "01 — Overview"
+  },
+  "t3000/t3-eez-studio/manual/02-creating-projects": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "02 — Creating a Project"
+  },
+  "t3000/t3-eez-studio/manual/03-editing-screens": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "03 — Designing Screens"
+  },
+  "t3000/t3-eez-studio/manual/04-eez-flow": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "04 — Adding Logic with EEZ Flow"
+  },
+  "t3000/t3-eez-studio/manual/05-preview-and-deploy": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "05 — Preview, Bind & Deploy"
+  },
+  "t3000/t3-eez-studio/manual/06-reference-and-faq": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "06 — Reference & FAQ"
+  },
+  "t3000/t3-eez-studio/static-resource-copy-build": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Static Resource Copy — Build-Time Asset Pipeline"
+  },
+  "t3000/t3-eez-studio/wasm-browser-build-migration": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "LVGL WASM Browser Build Migration"
+  },
+  "t3000/tstat-lcd/edit-mode": {
+    "updated": "2026-04-07",
+    "sha": "9fdfdfac",
+    "owner": "docs",
+    "stale": false,
+    "t": "LCD Screen Designer"
+  },
+  "t3000/tstat-lcd/implementation-status": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Implementation Status"
+  },
+  "t3000/tstat-lcd/index": {
+    "updated": "2026-04-07",
+    "sha": "9fdfdfac",
+    "owner": "docs",
+    "stale": false,
+    "t": "Tstat LCD System — Documentation Index"
+  },
+  "t3000/tstat-lcd/json-schema": {
+    "updated": "2026-04-07",
+    "sha": "9fdfdfac",
+    "owner": "docs",
+    "stale": false,
+    "t": "JSON Schema — screenDefinition.json"
+  },
+  "t3000/tstat-lcd/system-overview": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "System Overview"
+  },
+  "t3000/tstat-lcd/widget-types": {
+    "updated": "2026-10-08",
+    "sha": "24a42da2",
+    "owner": "docs",
+    "stale": false,
+    "t": "Widget Types"
+  }
+}

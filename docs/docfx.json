@@ -1,0 +1,103 @@
+{
+  "build": {
+    "content": [
+      {
+        "files": [
+          "index.md",
+          "toc.yml"
+        ]
+      },
+      {
+        "files": [
+          "t3000/**/*.{md,yml}"
+        ],
+        "src": ".",
+        "dest": ".",
+        "exclude": [
+          "**/images/**",
+          "**/media/**",
+          "**/uploads/**",
+          "**/img/**"
+        ]
+      },
+      {
+        "files": [
+          "legacy/**/*.{md,yml}"
+        ],
+        "src": ".",
+        "dest": ".",
+        "exclude": [
+          "**/images/**",
+          "**/media/**",
+          "**/uploads/**",
+          "**/img/**"
+        ]
+      },
+      {
+        "files": [
+          "design/**/*.{md,yml}"
+        ],
+        "src": ".",
+        "dest": ".",
+        "exclude": [
+          "**/images/**",
+          "**/media/**",
+          "**/uploads/**",
+          "**/img/**"
+        ]
+      },
+      {
+        "files": [
+          "_admin/**/*.md"
+        ],
+        "src": ".",
+        "dest": ".",
+        "exclude": [
+          "**/images/**",
+          "**/media/**",
+          "**/uploads/**",
+          "**/img/**"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [
+          "**/*.{png,jpg,jpeg,gif,svg,webp,ico}",
+          "**/*.pdf",
+          "**/*.zip"
+        ],
+        "exclude": [
+          "todo/**"
+        ]
+      },
+      {
+        "files": [
+          "help/index.json",
+          "help/page-meta.json"
+        ]
+      }
+    ],
+    "dest": "../dist/docs",
+    "template": [
+      "default",
+      "modern",
+      "templates/t3000"
+    ],
+    "globalMetadata": {
+      "_appName": "T3000",
+      "_appTitle": "T3000 Documentation",
+      "_appFooter": "Temco Controls - T3000 documentation",
+      "_enableSearch": true,
+      "_lang": "en"
+    },
+    "fileMetadata": {
+      "_noindex": {
+        "design/**": true,
+        "todo/**": true,
+        "_admin/**": true
+      }
+    },
+    "disableGitFeatures": false
+  }
+}
