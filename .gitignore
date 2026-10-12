@@ -69,3 +69,11 @@ yarn-error.log*
 .vscode
 
 /api/log
+
+# --- docs platform ---------------------------------------------------------
+# site build output (published at /docs/ by the API, never committed)
+/dist
+# legacy docfx output location, if a build is ever pointed there
+docs/_site/
+# guard: the DocFX engine is a sibling clone (DOCFX_REPO), never vendored here
+tools/docfx/

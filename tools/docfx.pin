@@ -1,0 +1,20 @@
+{
+  "mode": "tool",
+  "repo": "https://github.com/dotnet/docfx",
+  "tag": null,
+  "commit": "96d08d8d6a4eb4c61ec01eff11272272d1ea6cf2",
+  "commitDate": "2026-10-04",
+  "commitSubject": "build(deps-dev): bump brace-expansion from 1.1.18 to 1.1.21 in /templates",
+  "toolVersion": "2.81.0",
+  "toolManifest": ".config/dotnet-tools.json",
+  "enginePathEnvVar": "DOCFX_REPO",
+  "enginePath": "C:/QN/temcocontrols/docfx",
+  "engineNotes": "Local clone of dotnet/docfx. Clean working tree; no tags fetched, so the pin is by commit. Not built yet (mode A build pending).",
+  "pinnedOn": "2026-10-11",
+  "pinnedBy": "docs-platform",
+  "dotnetSdk": "10.0.400",
+  "dotnetRuntimes": ["8.0.30", "10.0.11"],
+  "node": "24.15.0",
+  "patches": [],
+  "notes": "mode: tool | clone | global. PDF needs >= 2.73 + the modern template (2.81.0 is fine). The tool runs on the 8.0 runtime, which is installed."
+}
