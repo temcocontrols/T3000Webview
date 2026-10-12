@@ -31,6 +31,12 @@ lazy_static! {
     pub static ref SPA_DIR: String =
         env::var("SPA_DIR").unwrap_or_else(|_| "./ResourceFile/webview/www".to_string());
 
+    // DOCS_DIR is the generated documentation site (DocFX output), served at /docs/.
+    // Development: point it at the build output, e.g. DOCS_DIR=dist/docs.
+    // Release: the site is deployed beside the SPA as ./ResourceFile/webview/docs.
+    pub static ref DOCS_DIR: String =
+        env::var("DOCS_DIR").unwrap_or_else(|_| "./ResourceFile/webview/docs".to_string());
+
     pub static ref SHUTDOWN_CHANNEL: Arc<Mutex<mpsc::Sender<()>>> = Arc::new(Mutex::new(mpsc::channel(1).0));
 }
 

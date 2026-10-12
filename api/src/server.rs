@@ -22,7 +22,7 @@ use crate::{
     app_state::{AppState, T3AppState, create_t3_app_state},
     file::routes::file_routes,
     t3_device::routes::t3_device_routes,
-    utils::{SHUTDOWN_CHANNEL, SPA_DIR},
+    utils::{DOCS_DIR, SHUTDOWN_CHANNEL, SPA_DIR},
 };
 
 use super::reg_defs::routes::modbus_register_routes;
@@ -146,6 +146,17 @@ fn routes_assets() -> Router {
     )
 }
 
+/// Serves the generated documentation site (DocFX output) at `/docs/`.
+/// Development: `DOCS_DIR=dist/docs`. Release: `./ResourceFile/webview/docs`.
+fn routes_docs() -> Router {
+    Router::new().nest_service(
+        "/",
+        get_service(ServeDir::new(DOCS_DIR.as_str())).handle_error(|_| async move {
+            (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        }),
+    )
+}
+
 fn routes_static() -> Router {
     Router::new().nest_service(
         "/",
@@ -259,6 +270,8 @@ pub async fn create_t3_app(app_state: T3AppState) -> Result<Router, Box<dyn Erro
         // Serve WASM runtimes & font assets from the Rust resource tree (not public/)
         .nest("/eez-studio-wasm", routes_wasm())
         .nest("/eez-studio-assets", routes_assets())
+        // Generated documentation site: /docs/... (DOCS_DIR)
+        .nest("/docs", routes_docs())
         .fallback_service(routes_static())
         .layer(middleware::from_fn(propagate_flow_id))
         .layer(cors))
