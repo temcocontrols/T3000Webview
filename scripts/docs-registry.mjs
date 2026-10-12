@@ -17,9 +17,11 @@ import { execFileSync } from 'node:child_process';
 const ROOT = process.cwd();
 const DOCS = path.join(ROOT, 'docs');
 const REGISTRY_FILE = path.join(DOCS, 'help', 'registry.json');
-const AREAS = ['t3000', 'legacy', 'design'];
-const AUDIENCE = { t3000: 'user', legacy: 'developer', design: 'contributing' };
-const NOINDEX_AREAS = ['design'];
+// The `design` area left on 2026-10-12: the platform design moved to the temco-knowledge-extension
+// repository, so this repository publishes product content only.
+const AREAS = ['t3000', 'legacy'];
+const AUDIENCE = { t3000: 'user', legacy: 'developer' };
+const NOINDEX_AREAS = [];   // areas kept out of search; add one here rather than editing docfx.json
 const SKIP_DIRS = new Set(['media', 'images', 'uploads', 'img', 'node_modules', '.git']);
 const CHM_MANIFESTS = ['manual.json', 'reference.json', 'engineering.json'];
 
@@ -182,8 +184,6 @@ function genNavbar() {
     '  href: t3000/',
     '- name: Legacy / Engineering',
     '  href: legacy/',
-    '- name: Contributing',
-    '  href: design/',
   ];
   return lines.join('\n') + '\n';
 }

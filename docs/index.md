@@ -27,4 +27,3 @@ guides.
   [BACnet messages](t3000/building-platform/bacnet-commands.md)
 - **API reference** — [overview](t3000/api-reference/overview.md)
 - **Engineering notes** — [legacy](legacy/) (internal design and implementation history)
-- **Contributing** — [the help-platform design](design/help-platform/README.md)

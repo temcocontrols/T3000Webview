@@ -1,123 +1,4 @@
 {
-  "design/help-platform/00-architecture": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "00 — High-level structure (start here)"
-  },
-  "design/help-platform/01-plan": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "T3000 Learn Platform"
-  },
-  "design/help-platform/02-docfx-engine": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "02 — The DocFX engine (clone, build, pin, patch)"
-  },
-  "design/help-platform/03-site-project": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "03 — The site project: docfx.json, toc.yml, URLs"
-  },
-  "design/help-platform/04-template": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "04 — The T3000 template (website design)"
-  },
-  "design/help-platform/05-content-and-registry": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "05 — Content, the registry and the generated metadata"
-  },
-  "design/help-platform/06-search": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "06 — Search"
-  },
-  "design/help-platform/07-offline-pdf-chm": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "07 — Offline outputs: website package, PDF, CHM"
-  },
-  "design/help-platform/08-editing-and-git": {
-    "updated": "2026-10-10",
-    "sha": "fc15cc43",
-    "owner": "docs",
-    "stale": false,
-    "t": "08 — Editing, preview and Git integration"
-  },
-  "design/help-platform/09-feedback-subscriptions-notifications": {
-    "updated": "2026-10-10",
-    "sha": "4441af6d",
-    "owner": "docs",
-    "stale": false,
-    "t": "09 — Feedback, subscriptions and notifications"
-  },
-  "design/help-platform/10-changelog-releases-versioning": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "10 — What's New, release notes and version management"
-  },
-  "design/help-platform/11-review-and-cicd": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "11 — Review process, gates and CI/CD"
-  },
-  "design/help-platform/12-ai-features": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "12 — AI features"
-  },
-  "design/help-platform/13-implementation-plan": {
-    "updated": "2026-10-10",
-    "sha": "fc15cc43",
-    "owner": "docs",
-    "stale": false,
-    "t": "13 — Implementation plan"
-  },
-  "design/help-platform/14-governance": {
-    "updated": "2026-10-10",
-    "sha": "16eb399c",
-    "owner": "docs",
-    "stale": false,
-    "t": "14 — Governance: ownership, publishing, emergencies, retirement"
-  },
-  "design/help-platform/15-online-editor": {
-    "updated": "2026-10-10",
-    "sha": "fc15cc43",
-    "owner": "docs",
-    "stale": false,
-    "t": "15 — The online editor"
-  },
-  "design/help-platform/README": {
-    "updated": "2026-10-10",
-    "sha": "fc15cc43",
-    "owner": "docs",
-    "stale": false,
-    "t": "T3000 Learn Platform — design package"
-  },
   "legacy/development/analysis/LEFT_PANEL_ANALYSIS": {
     "updated": "2026-10-08",
     "sha": "c82f5b7e",
@@ -2184,8 +2065,8 @@
     "t": "Try the new T3000 UI (beta) — Inputs, Trend Logs, Haystack, AI Assistant and the new Designer"
   },
   "t3000/releases/changelog/2026-10-11": {
-    "updated": null,
-    "sha": null,
+    "updated": "2026-10-12",
+    "sha": "f27cf000",
     "owner": "docs",
     "stale": false,
     "t": "Changelog - 2026-10-11"

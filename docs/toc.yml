@@ -5,5 +5,3 @@ items:
   href: t3000/
 - name: Legacy / Engineering
   href: legacy/
-- name: Contributing
-  href: design/

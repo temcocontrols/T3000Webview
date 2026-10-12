@@ -4,9 +4,9 @@ This folder does **not** contain documentation pages. It contains the *definitio
 of what goes into each compiled Windows help file, so that the pages themselves
 can stay exactly where the web Documentation page and the MCP tools expect them.
 
-> **Platform design — start here: [../design/help-platform/README.md](../design/help-platform/README.md)** — the
-> T3000 Learn platform (DocFX site + CHM): components, data formats, algorithms, CI jobs and the
-> ordered implementation checklist.
+> **Platform design** — it moved to the **temco-knowledge-extension** repository
+> (`docs/design/help-platform/`) on 2026-10-12, because the platform's implementation lives there. It is no
+> longer registered or published from here.
 > **Pipeline design: [DESIGN.md](./DESIGN.md)** — the help-file build and the AI upkeep loop in detail.
 
 ```

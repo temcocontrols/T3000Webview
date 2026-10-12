@@ -35,19 +35,6 @@
       },
       {
         "files": [
-          "design/**/*.{md,yml}"
-        ],
-        "src": ".",
-        "dest": ".",
-        "exclude": [
-          "**/images/**",
-          "**/media/**",
-          "**/uploads/**",
-          "**/img/**"
-        ]
-      },
-      {
-        "files": [
           "_admin/**/*.md"
         ],
         "src": ".",
@@ -93,7 +80,6 @@
     },
     "fileMetadata": {
       "_noindex": {
-        "design/**": true,
         "todo/**": true,
         "_admin/**": true
       }
