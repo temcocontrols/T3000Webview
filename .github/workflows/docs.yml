@@ -1,0 +1,79 @@
+name: docs
+
+# Documentation gates and site build.
+#   lint : the structure is declared once, the pages pass the content gate, no missing images
+#   site : the DocFX site builds and is uploaded so reviewers can click through it
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'scripts/**'
+      - 'api/src/server.rs'
+      - 'api/src/utils.rs'
+      - 'package.json'
+      - '.config/dotnet-tools.json'
+      - '.github/workflows/docs.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'scripts/**'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore the pinned DocFX
+        run: dotnet tool restore
+
+      - name: Registry is generated and in sync
+        run: npm run docs:registry:check
+
+      - name: Content gate (links, fences, headings, offline assets)
+        run: npm run docs:blocking
+
+      - name: Media gate (no missing images in user docs)
+        run: npm run docs:media:check
+
+      - name: Docs owed (a claimed feature changed without its page)
+        if: github.event_name == 'pull_request'
+        run: node scripts/docs-owed.mjs --base ${{ github.event.pull_request.base.sha }}
+        continue-on-error: true
+
+  site:
+    runs-on: windows-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore the pinned DocFX
+        run: dotnet tool restore
+
+      - name: Build the documentation site
+        run: npm run docs:site
+
+      - name: Report the build summary
+        shell: pwsh
+        run: |
+          $pages = (Get-ChildItem 'dist/docs' -Recurse -File -Filter *.html |
+                    Where-Object { $_.Name -ne 'toc.html' } | Measure-Object).Count
+          $size  = [math]::Round((Get-ChildItem 'dist/docs' -Recurse -File |
+                    Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+          "pages=$pages sizeMB=$size" | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docs-site
+          path: dist/docs
+          retention-days: 7
