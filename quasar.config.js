@@ -262,7 +262,18 @@ module.exports = configure(function (/* ctx */) {
           "/eez-studio-wasm": proxyToBackend,
           // Font assets served from Rust resource tree
           "/eez-studio-assets": proxyToBackend,
+          // Images saved by the T3000 WebView2 host (SAVE_IMAGE) are written to
+          // <T3000>/ResourceFile/webview/www/uploads and served by the Rust host on
+          // 9103. Proxy them so /uploads/... resolves the same way in `quasar dev`.
+          "/uploads": proxyToBackend,
         };
+
+        // Visual Studio keeps locks on .vs\**\*.vsidx while the folder is open. Vite
+        // watches the whole project root, and that EBUSY is an unhandled FSWatcher
+        // 'error' that kills the dev server; the app then logs
+        // "GET /__vite_ping net::ERR_CONNECTION_REFUSED" forever.
+        // Vite merges this with its own node_modules/.git defaults.
+        viteConf.server.watch = { ...viteConf.server.watch, ignored: ["**/.vs/**"] };
       },
 
       viteVuePluginOptions: {

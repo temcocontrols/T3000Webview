@@ -1242,9 +1242,9 @@ class IdxPage2 {
   reloadPanelsData() {
     T3000_Data.value.loadingPanel = null;
 
-    console.log('[PanelLoad] reloadPanelsData called | isBuiltInEdge:', isBuiltInEdge.value,
-      '| panelsList:', T3000_Data.value.panelsList.length,
-      '| path:', isBuiltInEdge.value ? 'WebViewClient' : 'WebSocketClient');
+    // console.log('[PanelLoad] reloadPanelsData called | isBuiltInEdge:', isBuiltInEdge.value,
+    //   '| panelsList:', T3000_Data.value.panelsList.length,
+    //   '| path:', isBuiltInEdge.value ? 'WebViewClient' : 'WebSocketClient');
 
     if (isBuiltInEdge.value) {
       Hvac.WebClient.GetPanelsList();
