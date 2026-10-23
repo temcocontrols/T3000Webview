@@ -776,7 +776,7 @@ import Hvac from '@/lib/vue/T3000/Hvac/Hvac'
 import IdxUtils from '@/lib/vue/T3000/Hvac/Opt/Common/IdxUtils'
 
 import {
-  emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, /*user,*/ library, emptyLib, isBuiltInEdge,
+  emptyProject, appState, deviceAppState, deviceModel, rulersGridVisible, user, library, emptyLib, isBuiltInEdge,
   documentAreaPosition, viewportMargins, viewport, locked, T3_Types, T3000_Data, grpNav, selectPanelOptions, linkT3EntryDialog,
   savedNotify, undoHistory, redoHistory, moveable
 } from '@/lib/vue/T3000/Hvac/Data/T3Data'

@@ -38,14 +38,30 @@ pub fn scan_sql_server_instances(timeout_ms: u64) -> Vec<DiscoveredInstance> {
     // The subnet sweep skips local IPs to avoid noise, but the user may have SQL Server
     // installed on the same machine as T3000. Scan them explicitly here.
     let local_ips = get_all_local_ips();
+
+    // LAN addresses are probed first, loopback last. A result reported as
+    // 192.168.1.4 is usable by other PCs on the network; 127.0.0.1 only works
+    // on this machine, so it is used only when no LAN address answers.
+    let mut local_probe_ips: Vec<String> = local_ips.clone();
+    if !local_probe_ips.iter().any(|ip| ip == "127.0.0.1") {
+        local_probe_ips.push("127.0.0.1".to_string());
+    }
+
     let sql_ports: &[u16] = &[1433, 1432, 1434];
     let local_timeout = Duration::from_millis(300);
     let mut local_results: Vec<DiscoveredInstance> = Vec::new();
-    for ip in &local_ips {
+    // One entry per port: the same local service is reachable through both the LAN
+    // address and loopback, so only the first (LAN) match is kept.
+    let mut local_ports_found: HashSet<u16> = HashSet::new();
+    for ip in &local_probe_ips {
         for &port in sql_ports {
+            if local_ports_found.contains(&port) {
+                continue;
+            }
             let addr_str = format!("{}:{}", ip, port);
             if let Ok(addr) = addr_str.parse::<SocketAddr>() {
                 if TcpStream::connect_timeout(&addr, local_timeout).is_ok() {
+                    local_ports_found.insert(port);
                     local_results.push(DiscoveredInstance {
                         host: ip.clone(),
                         instance: None,
@@ -63,18 +79,50 @@ pub fn scan_sql_server_instances(timeout_ms: u64) -> Vec<DiscoveredInstance> {
     // --- Phase 2: UDP 1434 Browser discovery (secondary) ---
     let udp_results = scan_udp_1434(timeout_ms);
 
-    // --- Phase 3: Direct unicast UDP probe for ALL TCP-found hosts ---
+    // --- Phase 3: Direct unicast UDP probe for ALL TCP-found hosts + the local machine ---
     // Always unicast-probe every TCP-found host (not just those missing from broadcast).
     // Reason: UDP broadcast may only return some instances (e.g. MSSQLSERVER but not SQLEXPRESS).
     // A unicast CLNT_UCAST_EX (0x03) probe asks the Browser for ALL instances on that specific host.
-    let all_tcp: Vec<&DiscoveredInstance> = tcp_results.iter().chain(local_results.iter()).collect();
+    //
+    // The local machine is probed regardless of TCP results: a named instance
+    // (SQLEXPRESS) listens on a *dynamic* port, so the fixed-port TCP sweep can never
+    // find it, and a UDP broadcast is not looped back to the sending host.
+    let mut probe_hosts: Vec<String> = tcp_results
+        .iter()
+        .chain(local_results.iter())
+        .map(|inst| inst.host.clone())
+        .collect();
+    probe_hosts.extend(local_probe_ips.iter().cloned());
+
     let mut direct_results = Vec::new();
     let mut probed_hosts: HashSet<String> = HashSet::new();
-    for tcp_inst in &all_tcp {
-        if probed_hosts.insert(tcp_inst.host.clone()) {
-            let probed = probe_single_host_udp(&tcp_inst.host, timeout_ms);
-            if !probed.is_empty() {
-                direct_results.extend(probed);
+    for host in &probe_hosts {
+        if !probed_hosts.insert(host.clone()) {
+            continue;
+        }
+        let probed = probe_single_host_udp(host, timeout_ms);
+        if !probed.is_empty() {
+            direct_results.extend(probed);
+        }
+    }
+
+    // The local Browser is also queried through loopback (always reachable), but an
+    // instance discovered that way is only useful to *remote* PCs when it is bound
+    // to a LAN address too. Re-home such results onto the LAN IP when the
+    // discovered port actually accepts TCP there.
+    for inst in direct_results.iter_mut() {
+        if inst.host != "127.0.0.1" {
+            continue;
+        }
+        if let Some(port) = inst.port {
+            for lan_ip in &local_ips {
+                let addr_str = format!("{}:{}", lan_ip, port);
+                if let Ok(addr) = addr_str.parse::<SocketAddr>() {
+                    if TcpStream::connect_timeout(&addr, local_timeout).is_ok() {
+                        inst.host = lan_ip.clone();
+                        break;
+                    }
+                }
             }
         }
     }

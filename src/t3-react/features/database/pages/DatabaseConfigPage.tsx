@@ -875,7 +875,7 @@ export const DatabaseConfigPage: React.FC = () => {
       setScanResults(results);
       setScanDone({ count: results.length });
       if (results.length === 0) {
-        setMessage({ text: 'No SQL Server instances found. Check: (1) SQL Server service is running, (2) TCP port 1433 is open in Windows Firewall, (3) server is on the same network subnet. You can also enter the host and port manually.', type: 'warning' });
+        setMessage({ text: 'No SQL Server instances found. Check: (1) SQL Server service is running, (2) the TCP/IP protocol is enabled for the instance and its port (1433, or a fixed port for a named instance) is open in Windows Firewall, (3) for named instances such as SQLEXPRESS, the SQL Server Browser service is running (UDP 1434), (4) the server is on the same network subnet. You can also enter the host and port manually.', type: 'warning' });
       }
     } catch (err: any) {
       setScanError(err.message);
@@ -1557,7 +1557,7 @@ export const DatabaseConfigPage: React.FC = () => {
               <span>
                 {scanDone.count > 0
                   ? `Scan complete — found ${scanDone.count} instance${scanDone.count > 1 ? 's' : ''}`
-                  : 'Scan complete — no instances found. Verify SQL Server is running and TCP 1433 is not blocked by firewall.'}
+                  : 'Scan complete — no instances found. Verify SQL Server is running, TCP/IP is enabled for the instance, the port is not blocked by firewall, and SQL Server Browser is running for named instances.'}
               </span>
               <span className={styles.scanStepList}>
                 {SCAN_PHASES.map((_, idx) => (
