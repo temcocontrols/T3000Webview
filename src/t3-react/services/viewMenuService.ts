@@ -48,7 +48,7 @@ export const refreshView = async (): Promise<void> => {
   // Delegate to deviceTreeStore.scanForDevices which shows status bar messages
   // and updates the tree with online devices after the scan completes.
   const { useDeviceTreeStore } = await import('../features/devices/store/deviceTreeStore');
-  useDeviceTreeStore.getState().scanForDevices({ timeout: 8 }).catch(() => {});
+  useDeviceTreeStore.getState().scanForDevices({ timeout: 8, mode: 'full' }).catch(() => {});
 };
 
 /**

@@ -130,6 +130,7 @@ export interface DevicesResponse {
   devices: DeviceWithStats[];
   total: number;
   scanned?: number;         // devices found by scan (scan-refresh only)
+  mode?: 'udp' | 'full';    // passes that ran (scan-refresh only)
   udp_count?: number;       // devices found via UDP broadcast
   serial_count?: number;    // devices found on serial COM ports
   tcp_sub_count?: number;   // devices found via Modbus TCP sub-port gateways
@@ -145,4 +146,11 @@ export interface ScanOptions {
   ipRange?: string;
   comPort?: number;
   timeout?: number;
+  /**
+   * Discovery passes to run:
+   * - 'udp'  — UDP broadcast only (fast, ~1s; the C++ _FreshTreeView equivalent)
+   * - 'full' — UDP + serial COM + TCP sub-port (slow, manual refresh)
+   * Defaults to 'full'.
+   */
+  mode?: 'udp' | 'full';
 }

@@ -29,7 +29,7 @@ import styles from './TreePanel.module.css';
  * TreePanel Component
  */
 export const TreePanel: React.FC = () => {
-  const { viewMode, fetchDevices, loadDevicesWithSync, fetchProjectPointTree, isLoading, error, devices, treeData } = useDeviceTreeStore();
+  const { viewMode, fetchDevices, loadDevicesWithSync, scanForDevices, fetchProjectPointTree, isLoading, error, devices, treeData } = useDeviceTreeStore();
   const [showFilter, setShowFilter] = React.useState(false);
   const hasInitialized = React.useRef(false);
 
@@ -51,21 +51,19 @@ export const TreePanel: React.FC = () => {
       }
       hasInitialized.current = true;
 
-      // First, check database
+      // Phase 0: paint the tree from the local DB cache — instant, no network.
       await fetchDevices();
 
       // Prefetch the project point tree so switching views is instant (no loading flash)
       fetchProjectPointTree();
 
-      // If database is empty, auto-sync from T3000 (Action 4 + UDP scan)
-      const { devices } = useDeviceTreeStore.getState();
-      if (devices.length === 0) {
-        await loadDevicesWithSync({ skipInitialFetch: true });
-      } else {
-        // DB has devices from previous session — fire UDP scan in background (non-blocking)
-        const { scanForDevices } = useDeviceTreeStore.getState();
-        scanForDevices({ timeout: 8 }).catch(() => {});
-      }
+      // Phase 1: ask T3000 which panels it knows about (FFI action 4, the
+      // "message action"). One fast call; updates names and online state.
+      await loadDevicesWithSync({ skipInitialFetch: true });
+
+      // Phase 2: fast UDP discovery (~1s). Serial/TCP sub-port probing only runs
+      // from the toolbar refresh, mirroring C++ _FreshTreeView vs Scan_Product.
+      scanForDevices({ timeout: 8, mode: 'udp' }).catch(() => {});
     };
 
     initializeDevices();

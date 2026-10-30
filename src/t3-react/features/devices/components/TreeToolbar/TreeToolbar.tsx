@@ -36,7 +36,7 @@ interface TreeToolbarProps {
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
-  const { expandAll, collapseAll, viewMode, setViewMode, scanForDevices } = useDeviceTreeStore();
+  const { expandAll, collapseAll, viewMode, setViewMode, scanForDevices, loadDevicesWithSync } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -45,12 +45,14 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
-      // --- OLD: full FFI sync (Action 4 = GET_PANELS_LIST) -----------------
-      // Commented out for rollback. Action 4 returns stale C++ cached data,
-      // so the refresh icon now uses the UDP network scan below instead.
-      // await loadDevicesWithSync({ skipInitialFetch: true });
-      // ---------------------------------------------------------------------
-      await scanForDevices({ timeout: 8 });
+      // Phase 1: refresh the device list from T3000 (FFI action 4). Fast — the
+      // tree updates as soon as it returns.
+      await loadDevicesWithSync({ skipInitialFetch: true });
+
+      // Phase 2: deep discovery (UDP + serial COM + TCP sub-port). This can take
+      // minutes on a machine with many COM ports, so it runs in the background —
+      // the status bar reports progress and the tree repaints when it finishes.
+      scanForDevices({ timeout: 8, mode: 'full' }).catch(() => {});
     } catch (err) {
       console.error('Failed to refresh devices:', err);
       setMessage('Failed to refresh device list. Please try again.', 'error');
@@ -84,8 +86,7 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
       <Toolbar aria-label="Device tree toolbar" size="small">
 
         <Tooltip
-          content="Scan the network for T3000 devices (UDP) and update online/offline status"
-          relationship="label"
+          content="Refresh the device list from T3000, then scan the network (UDP), serial COM ports and TCP sub-ports"          relationship="label"
           positioning="below-start"
           size="small"
         >

@@ -195,15 +195,21 @@ export class DeviceApiService {
   }
 
   /**
-   * Run UDP LAN scan (command 0x64/0x65) and refresh all device info in DB.
-   * Returns the complete updated device list with all fields from the scan.
+   * Run device discovery and refresh all device info in DB.
+   *
+   * @param timeout hard cap in seconds (the UDP pass returns as soon as replies stop)
+   * @param mode    'udp' = UDP broadcast only (fast, ~1s); 'full' = UDP + serial COM
+   *                + TCP sub-port probing (slow, for the manual refresh)
    */
-  static async scanAndRefreshDevices(timeout: number = 8): Promise<DevicesResponse> {
+  static async scanAndRefreshDevices(
+    timeout: number = 8,
+    mode: 'udp' | 'full' = 'full'
+  ): Promise<DevicesResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/devices/scan-refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timeout }),
+        body: JSON.stringify({ timeout, mode }),
       });
       if (!response.ok) {
         const errorText = await response.text();

@@ -50,7 +50,7 @@ const isSubDevice = (d: DeviceInfo): boolean =>
 
 // Prevent duplicate bursts when multiple components trigger fetches at the same time.
 let fetchDevicesInFlight: Promise<void> | null = null;
-let scanInProgress = false;
+let scanInFlight: Promise<void> | null = null;
 
 /**
  * Device Tree State Interface
@@ -326,45 +326,69 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
       // Scan for new devices
       scanForDevices: async (options?: ScanOptions) => {
-        if (scanInProgress) return;
-        scanInProgress = true;
-        const { setMessage } = useStatusBarStore.getState();
+        // Only one scan may run at a time — the serial COM ports cannot be probed
+        // concurrently. A second request joins the running scan instead of being
+        // dropped, so the refresh button always ends up with fresh data.
+        if (scanInFlight) {
+          useStatusBarStore
+            .getState()
+            .setMessage('A device scan is already running — waiting for it to finish...', 'info');
+          return scanInFlight;
+        }
+
+        scanInFlight = (async () => {
+          const { setMessage } = useStatusBarStore.getState();
+          try {
+            setMessage(
+              options?.mode === 'udp'
+                ? 'Scanning the network (UDP) for T3000 devices...'
+                : 'Scanning network + serial (COM) ports for T3000 devices...',
+              'info'
+            );
+            const response = await DeviceApiService.scanAndRefreshDevices(
+              options?.timeout ?? 8,
+              options?.mode ?? 'full'
+            );
+
+            const cleanedDevices = response.devices
+              .map(device => ({
+                ...device,
+                nameShowOnTree: cleanDeviceName(device.nameShowOnTree, ''),
+                productName: cleanDeviceName(device.productName, ''),
+              }));
+
+            const newStatuses = new Map<number, DeviceStatus>();
+            cleanedDevices.forEach((d) => {
+              if (d.lastChecked) {
+                newStatuses.set(d.serialNumber, d.isOnline === true || d.isOnline === (1 as any) ? 'online' : 'offline');
+              }
+            });
+
+            // Keep ALL devices in the store — buildTreeStructure splits online (top)
+            // and offline (collapsible group at bottom).
+            set({ devices: cleanedDevices, deviceStatuses: newStatuses, lastSyncTime: new Date() });
+            get().buildTreeStructure();
+            const scannedCount = response.scanned ?? 0;
+            const parts: string[] = [`${scannedCount} device(s) found`];
+            if (response.serial_count) parts.push(`${response.serial_count} serial`);
+            if (response.udp_count) parts.push(`${response.udp_count} UDP`);
+            if (response.tcp_sub_count) parts.push(`${response.tcp_sub_count} TCP sub-port`);
+            setMessage(`Scan complete — ${parts.join(', ')}`, 'success');
+          } catch (error) {
+            setMessage('Network scan failed', 'warning');
+          }
+        })();
+
         try {
-          setMessage('Scanning network + serial (COM) ports for T3000 devices...', 'info');
-          const response = await DeviceApiService.scanAndRefreshDevices(options?.timeout ?? 8);
-
-          const cleanedDevices = response.devices
-            .map(device => ({
-              ...device,
-              nameShowOnTree: cleanDeviceName(device.nameShowOnTree, ''),
-              productName: cleanDeviceName(device.productName, ''),
-            }));
-
-          const newStatuses = new Map<number, DeviceStatus>();
-          cleanedDevices.forEach((d) => {
-            if (d.lastChecked) {
-              newStatuses.set(d.serialNumber, d.isOnline === true || d.isOnline === (1 as any) ? 'online' : 'offline');
-            }
-          });
-
-          // Keep ALL devices in the store — buildTreeStructure splits online (top)
-          // and offline (collapsible group at bottom).
-          set({ devices: cleanedDevices, deviceStatuses: newStatuses, lastSyncTime: new Date() });
-          get().buildTreeStructure();
-          const scannedCount = response.scanned ?? 0;
-          const parts: string[] = [`${scannedCount} device(s) found`];
-          if (response.serial_count) parts.push(`${response.serial_count} serial`);
-          if (response.udp_count) parts.push(`${response.udp_count} UDP`);
-          if (response.tcp_sub_count) parts.push(`${response.tcp_sub_count} TCP sub-port`);
-          setMessage(`Scan complete — ${parts.join(', ')}`, 'success');
-        } catch (error) {
-          setMessage('Network scan failed', 'warning');
+          await scanInFlight;
         } finally {
-          scanInProgress = false;
+          scanInFlight = null;
         }
       },
 
-      // Load devices with full sync (device list + selected device points)
+      // Phase 1 of device loading: pull the device list from T3000 (FFI action 4
+      // "message action") and mirror it into the DB. Fast, no network probing —
+      // the slow discovery is a separate step (scanForDevices).
       loadDevicesWithSync: async (options) => {
         const { setMessage } = useStatusBarStore.getState();
         const skipInitialFetch = Boolean(options?.skipInitialFetch);
@@ -479,25 +503,11 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               setMessage(`Found ${panels.length} device(s) but failed to save any to database`, 'error');
             }
 
-            // Mark offline devices: update last_checked for all DB devices not in FFI response,
-            // so the frontend can trust their isOnline=0 status (otherwise they stay "unknown")
-            try {
-              const onlineSerials = panels.map((p: any) => p.serial_number || p.serialNumber).filter(Boolean);
-              const allDbSerials = get().devices.map(d => d.serialNumber);
-              const offlineSerials = allDbSerials.filter(s => !onlineSerials.includes(s));
-              if (offlineSerials.length > 0) {
-                const now = new Date().toISOString();
-                await Promise.all(offlineSerials.map(s =>
-                  fetch(`${API_BASE_URL}/api/t3_device/devices/${s}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ is_online: 0, last_checked: now }),
-                  }).catch(() => { })
-                ));
-              }
-            } catch (e) {
-              console.warn('[loadDevicesWithSync] Failed to mark offline:', e);
-            }
+            // Offline marking is owned by the backend scan path, which debounces it
+            // (a device is only flipped after OFFLINE_GRACE_SECS of silence). Doing it
+            // here from the FFI panel list would reset last_checked on every page load
+            // and defeat that grace period — and action 4 can return a stale list.
+            // This phase only adds/refreshes devices.
 
             // Step 3: Reload from DB to get updated list
             await get().fetchDevices();
@@ -557,8 +567,8 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
           await transport.disconnect();
 
-          // Step 4: Background UDP LAN scan to enrich device info (non-blocking)
-          get().scanForDevices({ timeout: 8 }).catch(() => {});
+          // Phase 2 (deep discovery) is intentionally NOT chained here: callers run
+          // it as its own step so the device list and the slow scan stay separable.
         } catch (error) {
           LogUtil.Error('[loadDevicesWithSync] Failed:', error);
           const errorMsg = error instanceof Error ? error.message : 'Failed to load devices';
