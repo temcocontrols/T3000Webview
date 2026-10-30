@@ -1,4 +1,6 @@
 // T3000 Device Service - Aligned with pure T3000 structure
+use std::collections::HashSet;
+
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
 use crate::entity::t3_device::{devices, input_points, output_points, variable_points};
@@ -87,6 +89,8 @@ pub struct CreateDeviceRequest {
 pub struct ScanAndRefreshResult {
     pub devices: Vec<DeviceWithStats>,
     pub scanned_count: usize,
+    /// Which passes ran: `"udp"` or `"full"`.
+    pub mode: String,
     /// Devices found via UDP broadcast.
     pub udp_count: usize,
     /// Devices found on serial COM ports.
@@ -143,6 +147,48 @@ pub struct UpdateDeviceRequest {
     pub is_online: Option<i32>,                    // 0 = offline, 1 = online
     #[serde(rename = "last_checked")]
     pub last_checked: Option<String>,              // ISO 8601 timestamp
+}
+
+/// Which discovery passes a scan runs.
+///
+/// Mirrors the two scan entry points in T3000:
+/// * `Udp`  – C++ `RefreshNetWorkDeviceListByUDPFunc()`, run by the background
+///   `_FreshTreeView` thread roughly every minute. Fast (~1 s).
+/// * `Full` – C++ `CTStatScanner::ScanAll()`, run from the manual Scan button.
+///   Adds serial COM and Modbus TCP sub-port probing (30-60 s).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ScanMode {
+    /// UDP broadcast only.
+    Udp,
+    /// UDP + serial COM + TCP sub-port.
+    #[default]
+    Full,
+}
+
+impl ScanMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ScanMode::Udp => "udp",
+            ScanMode::Full => "full",
+        }
+    }
+}
+
+/// Devices absent from a scan are only marked offline once they have been
+/// unseen for this long. Mirrors the C++ `status_last_time[0..4]` ring buffer
+/// in `CheckDeviceStatus` (5 samples x ~60 s), which keeps a single missed UDP
+/// reply from greying out a live device.
+const OFFLINE_GRACE_SECS: i64 = 300;
+
+/// Device list + per-pass counts, whatever combination of passes produced it.
+struct ScanPass {
+    devices: Vec<crate::lan_scan::types::DiscoveredDevice>,
+    udp_count: usize,
+    serial_count: usize,
+    tcp_sub_count: usize,
+    com_ports: Vec<String>,
+    local_ips: Vec<String>,
 }
 
 pub struct T3DeviceService;
@@ -494,27 +540,72 @@ impl T3DeviceService {
             .cloned()
     }
 
-    /// Run a full multi-protocol scan (UDP + serial COM + TCP sub-port) and
-    /// upsert discovered devices into the DEVICES table.
+    /// Run a device scan and upsert discovered devices into the DEVICES table.
     /// Returns the updated device list with separate scanned vs. DB counts.
+    ///
+    /// `mode` selects UDP-only (fast, used for the automatic refresh) or the
+    /// full multi-protocol pass (UDP + serial COM + TCP sub-port).
     pub async fn scan_and_refresh(
         db: &DatabaseConnection,
         timeout_secs: u64,
+        mode: ScanMode,
     ) -> Result<ScanAndRefreshResult, AppError> {
         use crate::lan_scan::scanner;
 
+        let pass = match mode {
+            ScanMode::Udp => {
+                let udp = scanner::scan_network(timeout_secs).await;
+                for warning in &udp.warnings {
+                    tracing::warn!("[lan_scan] {}", warning);
+                }
+                tracing::info!(
+                    "[lan_scan] udp scan: {} device(s) across {} adapter(s)",
+                    udp.devices.len(),
+                    udp.adapters_scanned
+                );
+                ScanPass {
+                    udp_count: udp.devices.len(),
+                    devices: udp.devices,
+                    serial_count: 0,
+                    tcp_sub_count: 0,
+                    com_ports: Vec::new(),
+                    local_ips: udp.local_ips,
+                }
+            }
+            ScanMode::Full => {
+                let full = scanner::scan_all(timeout_secs).await;
+                ScanPass {
+                    udp_count: full.udp_count,
+                    serial_count: full.serial_count,
+                    tcp_sub_count: full.tcp_sub_count,
+                    com_ports: full.com_ports,
+                    local_ips: full.local_ips,
+                    devices: full.devices,
+                }
+            }
+        };
+
+        Self::apply_scan_results(db, pass, mode).await
+    }
+
+    /// Upsert one scan pass into DEVICES and mark vanished devices offline
+    /// (after the grace period). Shared by the UDP and full scan paths.
+    async fn apply_scan_results(
+        db: &DatabaseConnection,
+        pass: ScanPass,
+        mode: ScanMode,
+    ) -> Result<ScanAndRefreshResult, AppError> {
         let now = chrono::Utc::now().to_rfc3339();
-        let scan_result = scanner::scan_all(timeout_secs).await;
         // Local IPs used for scanning — the host PC IP recorded as pc_ip_address
         // (mirrors C++ `temp.NetCard_Address = local_enthernet_ip`).
-        let local_ips: Vec<String> = scan_result.local_ips.clone();
+        let local_ips = &pass.local_ips;
 
-        // Track which serials were found in this scan
-        let mut seen_serials: Vec<i32> = Vec::new();
+        // Serials seen in this pass.
+        let mut seen_serials: HashSet<i32> = HashSet::new();
 
-        for dev in &scan_result.devices {
+        for dev in &pass.devices {
             let sn = dev.serial_number as i32;
-            seen_serials.push(sn);
+            seen_serials.insert(sn);
 
             // A serial device's ip_address holds the COM port name (e.g. "COM3");
             // there is no IP to match against pc_ip_address.
@@ -585,28 +676,61 @@ impl T3DeviceService {
             }
         }
 
-        // Mark devices not seen in this scan as offline
+        // Mark vanished devices offline — but only after the grace period, so a
+        // single missed reply (or a short UDP timeout) cannot grey out a device
+        // that is actually alive. Mirrors the C++ `status_last_time` ring.
         if !seen_serials.is_empty() {
-            let all_devices = devices::Entity::find().all(db).await?;
-            for device in all_devices {
-                if !seen_serials.contains(&device.serial_number) {
-                    let mut active: devices::ActiveModel = device.into();
-                    active.is_online = Set(Some(0));
-                    active.last_checked = Set(Some(now.clone()));
-                    let _ = active.update(db).await;
+            let cutoff = chrono::Utc::now() - chrono::Duration::seconds(OFFLINE_GRACE_SECS);
+            let mut to_flip: Vec<i32> = Vec::new();
+
+            for device in devices::Entity::find().all(db).await? {
+                if device.is_online != Some(1) || seen_serials.contains(&device.serial_number) {
+                    continue;
+                }
+                let last_seen = device
+                    .last_checked
+                    .as_deref()
+                    .and_then(|ts| chrono::DateTime::parse_from_rfc3339(ts).ok())
+                    .map(|ts| ts.with_timezone(&chrono::Utc));
+                let expired = match last_seen {
+                    Some(ts) => ts < cutoff,
+                    None => true,
+                };
+                if expired {
+                    to_flip.push(device.serial_number);
+                }
+            }
+
+            if !to_flip.is_empty() {
+                let flipped = to_flip.len();
+                if let Err(e) = devices::Entity::update_many()
+                    .col_expr(devices::Column::IsOnline, sea_orm::sea_query::Expr::value(0))
+                    .col_expr(
+                        devices::Column::LastChecked,
+                        sea_orm::sea_query::Expr::value(now.clone()),
+                    )
+                    .filter(devices::Column::SerialNumber.is_in(to_flip))
+                    .exec(db)
+                    .await
+                {
+                    tracing::warn!("[lan_scan] failed to mark {} device(s) offline: {:?}", flipped, e);
+                } else {
+                    tracing::info!("[lan_scan] marked {} device(s) offline (unseen for >{}s)", flipped, OFFLINE_GRACE_SECS);
                 }
             }
         }
 
         // Return fresh device list with scan count
+        let scanned_count = seen_serials.len();
         match Self::get_all_devices_with_stats(db).await {
             Ok(devices) => Ok(ScanAndRefreshResult {
-                scanned_count: seen_serials.len(),
+                scanned_count,
                 devices,
-                udp_count: scan_result.udp_count,
-                serial_count: scan_result.serial_count,
-                tcp_sub_count: scan_result.tcp_sub_count,
-                com_ports: scan_result.com_ports.clone(),
+                mode: mode.as_str().to_string(),
+                udp_count: pass.udp_count,
+                serial_count: pass.serial_count,
+                tcp_sub_count: pass.tcp_sub_count,
+                com_ports: pass.com_ports,
             }),
             Err(e) => {
                 tracing::error!("[lan_scan] get_all_devices_with_stats failed: {:?}", e);
@@ -617,12 +741,13 @@ impl T3DeviceService {
                     .map(|mut d| { d.clean_all_fields(); DeviceWithStats { device: d, input_count: 0, output_count: 0, variable_count: 0, total_points: 0 } })
                     .collect();
                 Ok(ScanAndRefreshResult {
-                    scanned_count: seen_serials.len(),
+                    scanned_count,
                     devices: all_devices,
-                    udp_count: scan_result.udp_count,
-                    serial_count: scan_result.serial_count,
-                    tcp_sub_count: scan_result.tcp_sub_count,
-                    com_ports: scan_result.com_ports.clone(),
+                    mode: mode.as_str().to_string(),
+                    udp_count: pass.udp_count,
+                    serial_count: pass.serial_count,
+                    tcp_sub_count: pass.tcp_sub_count,
+                    com_ports: pass.com_ports,
                 })
             }
         }

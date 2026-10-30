@@ -1,10 +1,10 @@
-# T3 Firmware — LVGL Display Architecture
+> 1. [ ]  ***~~``~~***# T3 Firmware — LVGL Display Architecture
 
 ## Part 1 — Current Firmware (SquareLine Studio)
 
-**Branch:** `DynamicUI_Tstat11`  
-**Tool:** SquareLine Studio 1.6.0  
-**LVGL:** 9.5.0 (via ESP-IDF component manager)  
+**Branch:** `DynamicUI_Tstat11`
+**Tool:** SquareLine Studio 1.6.0
+**LVGL:** 9.5.0 (via ESP-IDF component manager)
 **Display:** 480 × 320 (landscape) via hardware SPI + GT911 touch (I2C)
 
 ---
@@ -197,20 +197,21 @@ target_sources(${COMPONENT_LIB} PRIVATE ${TEMCO_SCREEN_SOURCES})
 
 ## 6. Screens List
 
-| File | Screen | Lines | Purpose |
-|------|--------|-------|---------|
-| `ui_StartUpScreen.c` | Boot splash | 65 | Logo + initialization |
-| `ui_HomeScreen.c` | Main thermostat | 1,104 | Temperature, humidity, fan, mode |
-| `ui_MainMenu.c` | Settings menu | 547 | Navigation to sub-screens |
-| `ui_WifiConfig.c` | WiFi settings | 319 | SSID, password, scan |
-| `ui_NetworkConfig.c` | Network settings | 675 | IP, subnet, BACnet port |
-| `ui_Protocols.c` | Protocol config | 377 | BACnet, Modbus settings |
-| `ui_Parameters.c` | Parameter viewer | 170 | Device parameters |
-| `ui_Time.c` | Clock settings | 664 | Date/time/schedule |
-| `ui_ScheduleScreen.c` | Schedule overview | 965 | Weekly program list |
-| `ui_ScheduleEditScreen.c` | Schedule editor | 1,934 | Day/time/temp editing |
-| `ui_HolidayCalenderScreen.c` | Holiday calendar | 128 | Holiday date picker |
-| `ui_RemoteAccess.c` | Remote access | 182 | WireGuard / DDNS entry |
+
+| File                         | Screen            | Lines | Purpose                          |
+| ---------------------------- | ----------------- | ----- | -------------------------------- |
+| `ui_StartUpScreen.c`         | Boot splash       | 65    | Logo + initialization            |
+| `ui_HomeScreen.c`            | Main thermostat   | 1,104 | Temperature, humidity, fan, mode |
+| `ui_MainMenu.c`              | Settings menu     | 547   | Navigation to sub-screens        |
+| `ui_WifiConfig.c`            | WiFi settings     | 319   | SSID, password, scan             |
+| `ui_NetworkConfig.c`         | Network settings  | 675   | IP, subnet, BACnet port          |
+| `ui_Protocols.c`             | Protocol config   | 377   | BACnet, Modbus settings          |
+| `ui_Parameters.c`            | Parameter viewer  | 170   | Device parameters                |
+| `ui_Time.c`                  | Clock settings    | 664   | Date/time/schedule               |
+| `ui_ScheduleScreen.c`        | Schedule overview | 965   | Weekly program list              |
+| `ui_ScheduleEditScreen.c`    | Schedule editor   | 1,934 | Day/time/temp editing            |
+| `ui_HolidayCalenderScreen.c` | Holiday calendar  | 128   | Holiday date picker              |
+| `ui_RemoteAccess.c`          | Remote access     | 182   | WireGuard / DDNS entry           |
 
 **12 screens.** Also compiled from `TemcoScreen/`: `ui.c`, `ui_events.c` (214), `ui_helpers.c`
 (354), `ui_comp_hook.c`, `ui_font_Arial80.c` and 16 `ui_img_*.c` bitmap assets.
@@ -229,15 +230,16 @@ Line counts are from the current `DynamicUI_Tstat11` branch.
 
 ### Device-side REST API — as built
 
-| Aspect | Reality |
-|---|---|
-| Component | `components/temco_dynamic_display` |
-| Public API | `dynamic_display_api_start()` / `_stop()` / `dynamic_display_reset_to_defaults()` |
-| Server | `esp_http_server` on **port 80**, `max_uri_handlers = 20` |
-| Storage | SPIFFS partition **`screen_data`** (1 MB) → `/spiffs/screens/<name>.json`, `/spiffs/images/<name>.json` |
-| Defaults | 13 screens + 22 images seeded on first boot from `DefaultScreens/` / `DefaultImages/` (EMBED_TXTFILES) |
-| Body limit | 512 KB → responds `400` |
-| Component deps | `esp_http_server`, `spiffs`, `json`, `nvs_flash` |
+
+| Aspect         | Reality                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------- |
+| Component      | `components/temco_dynamic_display`                                                                      |
+| Public API     | `dynamic_display_api_start()` / `_stop()` / `dynamic_display_reset_to_defaults()`                       |
+| Server         | `esp_http_server` on **port 80**, `max_uri_handlers = 20`                                               |
+| Storage        | SPIFFS partition**`screen_data`** (1 MB) → `/spiffs/screens/<name>.json`, `/spiffs/images/<name>.json` |
+| Defaults       | 13 screens + 22 images seeded on first boot from`DefaultScreens/` / `DefaultImages/` (EMBED_TXTFILES)   |
+| Body limit     | 512 KB → responds`400`                                                                                 |
+| Component deps | `esp_http_server`, `spiffs`, `json`, `nvs_flash`                                                        |
 
 Port 80 is **shared** with the Wi-Fi setup portal: `wifi_web_server_start()` calls
 `dynamic_display_api_stop()` first, and `wifi_web_server_stop()` (invoked on
@@ -273,10 +275,11 @@ documented in
 
 ### 2.1 Two JSON Formats
 
-| Format | Producer | Consumer | Content |
-|--------|----------|----------|---------|
-| `.eez-project` | EEZ Studio save | Editor, build system | Full project: settings, pages, styles, fonts, bitmaps (base64), actions, connectionLines |
-| Firmware JSON | `firmware-export.ts` | Device firmware, mock store | Per-screen: widgets flattened, actions resolved, bitmaps as names only |
+
+| Format         | Producer             | Consumer                    | Content                                                                                  |
+| -------------- | -------------------- | --------------------------- | ---------------------------------------------------------------------------------------- |
+| `.eez-project` | EEZ Studio save      | Editor, build system        | Full project: settings, pages, styles, fonts, bitmaps (base64), actions, connectionLines |
+| Firmware JSON  | `firmware-export.ts` | Device firmware, mock store | Per-screen: widgets flattened, actions resolved, bitmaps as names only                   |
 
 ### 2.2 Export: .eez-project → Firmware JSON
 
@@ -297,15 +300,16 @@ userPages[]                              screens[]
 
 **Field mapping (export):**
 
-| `.eez-project` field | Firmware JSON field |
-|---------------------|-------------------|
-| `left` / `top` | `x_pos` / `y_pos` |
-| `width` / `height` | `width` / `height` |
-| `text` / `textType` | `obj_text` / `text_type` |
-| `localStyles.definition` | `style` |
-| `eventHandlers[]` | `events: { TRIGGER: { actions: [...] } }` |
+
+| `.eez-project` field               | Firmware JSON field                                    |
+| ---------------------------------- | ------------------------------------------------------ |
+| `left` / `top`                     | `x_pos` / `y_pos`                                      |
+| `width` / `height`                 | `width` / `height`                                     |
+| `text` / `textType`                | `obj_text` / `text_type`                               |
+| `localStyles.definition`           | `style`                                                |
+| `eventHandlers[]`                  | `events: { TRIGGER: { actions: [...] } }`              |
 | `actions[].action: "changeScreen"` | `actions: [{ action: "changeScreen", screen: "..." }]` |
-| `children[]` | `children: { ... }` (recursive) |
+| `children[]`                       | `children: { ... }` (recursive)                        |
 
 **Action resolution:** `connectionLines` linking widget events → `LVGLActionComponent` are resolved at export time. Actions are attached directly to widget events in the firmware JSON. Standalone action components are stripped.
 
@@ -313,25 +317,27 @@ userPages[]                              screens[]
 
 **One path** — REST through the T3000 host proxy. There is no BACnet fallback:
 
-| Direction | Call | Real transport |
-|-----------|------|----------------|
-| Push | `PUT /api/eez-device/screens/:name` (or `/screens` for all) | Browser → T3000 proxy `/api/device-rest/<ip>/…` → ESP32 **port 80** |
-| Pull | `GET /api/eez-device/screens/:name` | same |
-| Images | `POST /api/eez-device/images/push`, `GET /images/pull/:name` | same |
+
+| Direction | Call                                                         | Real transport                                                        |
+| --------- | ------------------------------------------------------------ | --------------------------------------------------------------------- |
+| Push      | `PUT /api/eez-device/screens/:name` (or `/screens` for all)  | Browser → T3000 proxy`/api/device-rest/<ip>/…` → ESP32 **port 80** |
+| Pull      | `GET /api/eez-device/screens/:name`                          | same                                                                  |
+| Images    | `POST /api/eez-device/images/push`, `GET /images/pull/:name` | same                                                                  |
 
 **API surface (`/api/eez-device/*`, all reached through the proxy):**
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| `GET` | `/device/info` | Screen list + counts (`screens` is an object keyed `screen1..N`) |
-| `GET` | `/screens` | Load all screens |
-| `PUT` | `/screens` | Deploy all screens — `{ screens: [{ name, json }] }` |
-| `GET` | `/screens/:name` | Load single screen |
-| `PUT` | `/screens/:name` | Deploy single screen — `{ json }` |
-| `PATCH` | `/screens/:name` | Delta update — `{ changes: [{ path, value }] }` |
-| `POST` | `/images/push` | Upload bitmap — `{ name, data_base64 }` |
-| `GET` | `/images/pull/:name` | Download bitmap |
-| `DELETE` | `/images/:name` | Remove bitmap |
+
+| Method   | Endpoint             | Purpose                                                          |
+| -------- | -------------------- | ---------------------------------------------------------------- |
+| `GET`    | `/device/info`       | Screen list + counts (`screens` is an object keyed `screen1..N`) |
+| `GET`    | `/screens`           | Load all screens                                                 |
+| `PUT`    | `/screens`           | Deploy all screens —`{ screens: [{ name, json }] }`             |
+| `GET`    | `/screens/:name`     | Load single screen                                               |
+| `PUT`    | `/screens/:name`     | Deploy single screen —`{ json }`                                |
+| `PATCH`  | `/screens/:name`     | Delta update —`{ changes: [{ path, value }] }`                  |
+| `POST`   | `/images/push`       | Upload bitmap —`{ name, data_base64 }`                          |
+| `GET`    | `/images/pull/:name` | Download bitmap                                                  |
+| `DELETE` | `/images/:name`      | Remove bitmap                                                    |
 
 Note there is **no `/devices` endpoint on the device** — the device list comes from the T3000
 host backend (`GET http://<host>:9103/api/t3_device/devices`).
@@ -354,20 +360,21 @@ widgets[]                              userPages[]
 
 **Field mapping (import):**
 
-| Firmware JSON field | `.eez-project` field |
-|-------------------|---------------------|
-| `x_pos` / `y_pos` | `left` / `top` |
-| `obj_text` / `text_type` | `text` / `textType` |
-| `style` | `localStyles.definition` |
-| `events[].actions[]` | `LVGLActionComponent` + `connectionLine` |
-| `children` | `children` / `components` (recursive) |
-| `min` / `max` / `value` | `min` / `max` / `value` / `valueType` |
-| `src` (image) | `image` |
-| `checked` / `checked_type` | `checkedState` / `checkedStateType` |
-| `long_mode` / `recolor` | `longMode` / `recolor` |
-| `inner_align` | `innerAlign` |
-| `options` / `selected` | `options` / `selected` |
-| `widget` (user_widget) | `userWidgetPageName` |
+
+| Firmware JSON field        | `.eez-project` field                     |
+| -------------------------- | ---------------------------------------- |
+| `x_pos` / `y_pos`          | `left` / `top`                           |
+| `obj_text` / `text_type`   | `text` / `textType`                      |
+| `style`                    | `localStyles.definition`                 |
+| `events[].actions[]`       | `LVGLActionComponent` + `connectionLine` |
+| `children`                 | `children` / `components` (recursive)    |
+| `min` / `max` / `value`    | `min` / `max` / `value` / `valueType`    |
+| `src` (image)              | `image`                                  |
+| `checked` / `checked_type` | `checkedState` / `checkedStateType`      |
+| `long_mode` / `recolor`    | `longMode` / `recolor`                   |
+| `inner_align`              | `innerAlign`                             |
+| `options` / `selected`     | `options` / `selected`                   |
+| `widget` (user_widget)     | `userWidgetPageName`                     |
 
 ### 2.5 Frontend Rendering (Browser)
 
@@ -386,6 +393,7 @@ Canvas-based LVGL display buffer → browser-rendered preview
 ```
 
 **Runtime loading** (from `lvgl-versions.ts`):
+
 1. Detects browser environment
 2. Loads JS glue via `<script>` tag (sets `globalThis.LVGLWasmRuntime`)
 3. Instantiates Emscripten module with LVGL compiled to WASM

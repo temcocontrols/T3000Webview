@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 
 use crate::app_state::T3AppState;
 use crate::server::debug_log;
-use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest};
+use crate::t3_device::services::{T3DeviceService, CreateDeviceRequest, UpdateDeviceRequest, ScanMode};
 use crate::t3_device::points_service::{T3PointsService, CreateInputPointRequest, CreateOutputPointRequest, CreateVariablePointRequest};
 use crate::entity::t3_device::{input_points, output_points, variable_points, trendlogs};
 use crate::t3_device::schedules_service::{T3ScheduleService, CreateScheduleRequest, UpdateScheduleRequest};
@@ -720,12 +720,18 @@ async fn get_devices_with_stats(
     }
 }
 
-/// Run UDP LAN scan (command 0x64/0x65) and upsert discovered devices into DB.
-/// Marks devices not seen in this scan as offline.
+/// Run a device scan and upsert discovered devices into DB.
+///
+/// `mode: "udp"` runs only the UDP broadcast pass (fast — the C++
+/// `RefreshNetWorkDeviceListByUDPFunc` equivalent). `mode: "full"` (default)
+/// adds serial COM and Modbus TCP sub-port probing (the C++ `ScanAll` pass).
+/// Devices unseen for 5 minutes are marked offline.
 #[derive(Deserialize)]
 struct ScanAndRefreshRequest {
     #[serde(default = "default_timeout")]
     timeout: u64,
+    #[serde(default)]
+    mode: ScanMode,
 }
 
 fn default_timeout() -> u64 { 8 }
@@ -736,19 +742,25 @@ async fn scan_and_refresh_devices(
 ) -> Result<Json<Value>, StatusCode> {
     let db = get_t3_device_conn!(state);
 
-    match T3DeviceService::scan_and_refresh(&*db, body.timeout).await {
+    match T3DeviceService::scan_and_refresh(&*db, body.timeout, body.mode).await {
         Ok(result) => {
-            tracing::info!("[lan_scan] HTTP response: {} scanned, {} in DB", result.scanned_count, result.devices.len());
+            tracing::info!(
+                "[lan_scan] HTTP response ({}): {} scanned, {} in DB",
+                result.mode,
+                result.scanned_count,
+                result.devices.len()
+            );
             Ok(Json(json!({
                 "devices": result.devices,
                 "total": result.devices.len(),
+                "mode": result.mode,
                 "scanned": result.scanned_count,
                 "udp_count": result.udp_count,
                 "serial_count": result.serial_count,
                 "tcp_sub_count": result.tcp_sub_count,
                 "com_ports": result.com_ports,
-                "message": format!("Scan found {} device(s) ({} UDP, {} serial, {} TCP sub-port), {} total in database",
-                    result.scanned_count, result.udp_count, result.serial_count, result.tcp_sub_count, result.devices.len())
+                "message": format!("Scan ({}) found {} device(s) ({} UDP, {} serial, {} TCP sub-port), {} total in database",
+                    result.mode, result.scanned_count, result.udp_count, result.serial_count, result.tcp_sub_count, result.devices.len())
             })))
         }
         Err(e) => {

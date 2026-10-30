@@ -1,18 +1,46 @@
 //! Async UDP broadcast scanner for T3000 device discovery.
 //!
 //! Port of the C++ `RefreshNetWorkDeviceListByUDPFunc()` from
-//! `T3000-Source/T3000/global_function.cpp:9796`.
+//! `T3000_Building_Automation_System/T3000/global_function.cpp:9887`.
 //!
 //! For each local network adapter, binds a UDP socket, broadcasts a
-//! 0x64 query to 255.255.255.255, and collects 0x65 responses for
-//! up to `timeout_secs` seconds.
+//! 0x64 query to 255.255.255.255, and collects 0x65 responses.
 
 use std::collections::HashSet;
-use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket as StdUdpSocket};
+use std::net::{Ipv4Addr, SocketAddrV4};
+#[cfg(not(target_os = "windows"))]
+use std::net::UdpSocket as StdUdpSocket;
 use std::time::Duration;
 
 use tokio::net::UdpSocket;
 use tokio::time::timeout;
+
+/// Silence after the last reply that ends the wait on one adapter.
+///
+/// The C++ re-arms an 8 s `select` after *every* packet, i.e. it really waits
+/// for "8 s of silence". A LAN device answers a broadcast in well under a
+/// millisecond, so a short quiet window gives the same answer set ~10x faster.
+const QUIET_WINDOW: Duration = Duration::from_millis(700);
+
+/// How long to wait for the *first* reply on an adapter before giving up.
+///
+/// A device that misses this window is picked up by the next scan; offline
+/// marking is debounced (`OFFLINE_GRACE_SECS` in the device service), so a
+/// missed reply never flips a live device to offline.
+const FIRST_REPLY_WAIT: Duration = Duration::from_millis(2000);
+
+/// Re-broadcast interval while listening.
+///
+/// One broadcast can be dropped — a device that misses it stays invisible until
+/// the next periodic scan. Re-sending the 5-byte query a couple of times costs
+/// nothing and makes discovery deterministic.
+const RESEND_INTERVAL: Duration = Duration::from_millis(250);
+
+/// Only re-broadcast during this window after the first query.
+///
+/// Re-sending must stop early: every reply extends the quiet window, so an
+/// unbounded resend loop would keep pushing the deadline out to the hard cap.
+const RESEND_PHASE: Duration = Duration::from_millis(600);
 
 use super::protocol::{self, build_scan_query, BROADCAST_DEST_PORT, SCAN_PORT_RANGE, RESPONSE_MSG};
 use super::types::{DiscoveredDevice, ScanResult};
@@ -33,64 +61,79 @@ struct LocalSubnetNode {
     gateway: String,    // ↔ StrGetway
 }
 
-/// Mirrors C++ `GetIPMaskGetWay()` — enumerates all IPv4 adapters with
-/// IP, subnet mask, and gateway. Populates the equivalent of `g_Vector_Subnet`.
+/// Mirrors C++ `GetIPMaskGetWay()` — enumerates every IPv4 adapter with its
+/// mask and gateway (populates the equivalent of `g_Vector_Subnet`).
+///
+/// Uses the Win32 IP Helper API, like the C++ does. Parsing `ipconfig /all`
+/// was locale-dependent: the `Subnet Mask` label is localized on non-English
+/// Windows, so every adapter was dropped and the scan silently fell back to a
+/// single interface — devices on any other NIC were never found.
+#[cfg(target_os = "windows")]
 fn get_ip_mask_gateway() -> Vec<LocalSubnetNode> {
+    use std::os::raw::c_char;
+    use winapi::um::iphlpapi::GetAdaptersInfo;
+    use winapi::um::iptypes::{IP_ADAPTER_INFO};
+
+    fn fixed_string(text: &[c_char]) -> String {
+        let bytes: Vec<u8> = text.iter().map(|&c| c as u8).take_while(|&b| b != 0).collect();
+        String::from_utf8_lossy(&bytes).trim().to_string()
+    }
+
     let mut nodes = Vec::new();
 
-    #[cfg(target_os = "windows")]
-    {
-        if let Ok(output) = std::process::Command::new("ipconfig").arg("/all").output() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let mut current_ip: Option<String> = None;
-            let mut current_mask: Option<String> = None;
-            let mut current_gw: Option<String> = None;
+    unsafe {
+        // First call only reports the required buffer size.
+        let mut size: u32 = 0;
+        GetAdaptersInfo(std::ptr::null_mut(), &mut size);
+        if size == 0 {
+            tracing::warn!("[lan_scan] GetAdaptersInfo reported no adapters");
+            return nodes;
+        }
 
-            for line in stdout.lines() {
-                let line = line.trim();
-                if line.contains("IPv4") && !line.contains("IPv6") {
-                    if let Some(v) = line.rsplit(':').next() {
-                        let ip_str = v.trim()
-                            .replace("(Preferred)", "")
-                            .trim()
-                            .to_string();
-                        if ip_str.parse::<Ipv4Addr>().is_ok() && !ip_str.starts_with("127.") {
-                            if let (Some(ip), Some(mask)) = (current_ip.take(), current_mask.take()) {
-                                if !ip.starts_with("169.254.") {
-                                    nodes.push(LocalSubnetNode { ip, mask, gateway: current_gw.take().unwrap_or_default() });
-                                }
-                            }
-                            current_ip = Some(ip_str);
-                        }
-                    }
-                }
-                if line.contains("Subnet Mask") {
-                    if let Some(v) = line.rsplit(':').next().map(|s| s.trim().to_string()) {
-                        current_mask = Some(v);
-                    }
-                }
-                if line.contains("Default Gateway") {
-                    if let Some(v) = line.rsplit(':').next().map(|s| s.trim().to_string()) {
-                        if v != "0.0.0.0" && !v.is_empty() { current_gw = Some(v); }
-                    }
-                }
+        // IP_ADAPTER_INFO contains pointers, so the buffer must be word aligned.
+        let words = (size as usize + std::mem::size_of::<u64>() - 1) / std::mem::size_of::<u64>();
+        let mut buf: Vec<u64> = vec![0; words];
+
+        if GetAdaptersInfo(buf.as_mut_ptr() as *mut IP_ADAPTER_INFO, &mut size) != 0 {
+            tracing::warn!(
+                "[lan_scan] GetAdaptersInfo failed: {}",
+                std::io::Error::last_os_error()
+            );
+            return nodes;
+        }
+
+        let mut cur = buf.as_ptr() as *const IP_ADAPTER_INFO;
+        while !cur.is_null() {
+            let adapter = &*cur;
+            let ip = fixed_string(&adapter.IpAddressList.IpAddress.String);
+            let mask = fixed_string(&adapter.IpAddressList.IpMask.String);
+            let gateway = fixed_string(&adapter.GatewayList.IpAddress.String);
+
+            // Loopback and APIPA (169.254.x.x) adapters cannot reach devices.
+            if !ip.is_empty()
+                && ip != "0.0.0.0"
+                && !ip.starts_with("127.")
+                && !ip.starts_with("169.254.")
+            {
+                nodes.push(LocalSubnetNode { ip, mask, gateway });
             }
-            if let (Some(ip), Some(mask)) = (current_ip.take(), current_mask.take()) {
-                if !ip.starts_with("169.254.") {
-                    nodes.push(LocalSubnetNode { ip, mask, gateway: current_gw.take().unwrap_or_default() });
-                }
-            }
+
+            cur = adapter.Next;
         }
     }
 
-    if nodes.is_empty() {
-        if let Ok(socket) = StdUdpSocket::bind("0.0.0.0:0") {
-            if socket.connect("8.8.8.8:80").is_ok() {
-                if let Ok(addr) = socket.local_addr() {
-                    let ip = addr.ip().to_string();
-                    if !ip.starts_with("127.") {
-                        nodes.push(LocalSubnetNode { ip, mask: String::new(), gateway: String::new() });
-                    }
+    nodes
+}
+
+#[cfg(not(target_os = "windows"))]
+fn get_ip_mask_gateway() -> Vec<LocalSubnetNode> {
+    let mut nodes = Vec::new();
+    if let Ok(socket) = StdUdpSocket::bind("0.0.0.0:0") {
+        if socket.connect("8.8.8.8:80").is_ok() {
+            if let Ok(addr) = socket.local_addr() {
+                let ip = addr.ip().to_string();
+                if !ip.starts_with("127.") {
+                    nodes.push(LocalSubnetNode { ip, mask: String::new(), gateway: String::new() });
                 }
             }
         }
@@ -98,14 +141,10 @@ fn get_ip_mask_gateway() -> Vec<LocalSubnetNode> {
     nodes
 }
 
-/// Extract IPs from adapter nodes for scanning.
-fn get_local_ips() -> Vec<String> {
-    get_ip_mask_gateway().into_iter().map(|n| n.ip).collect()
-}
-
 /// Scan the local network for T3000 devices via UDP broadcast.
 pub async fn scan_network(timeout_secs: u64) -> ScanResult {
-    let local_ips = get_local_ips();
+    let nodes = get_ip_mask_gateway();
+    let local_ips: Vec<String> = nodes.iter().map(|n| n.ip.clone()).collect();
     if local_ips.is_empty() {
         return ScanResult {
             devices: vec![],
@@ -115,17 +154,39 @@ pub async fn scan_network(timeout_secs: u64) -> ScanResult {
         };
     }
 
-    let mut all_devices: Vec<DiscoveredDevice> = Vec::new();
-    let mut warnings: Vec<String> = Vec::new();
-    let adapters_scanned = local_ips.len();
+    for node in &nodes {
+        tracing::info!(
+            "[lan_scan] adapter {} mask {} gateway {}",
+            node.ip,
+            if node.mask.is_empty() { "-" } else { &node.mask },
+            if node.gateway.is_empty() { "-" } else { &node.gateway }
+        );
+    }
 
     let query = build_scan_query();
-    let timeout_dur = Duration::from_secs(timeout_secs);
+    let adapters_scanned = local_ips.len();
 
-    for local_ip in &local_ips {
-        match scan_on_adapter(local_ip, &query, timeout_dur).await {
-            Ok(mut devices) => all_devices.append(&mut devices),
-            Err(e) => warnings.push(format!("{}: {}", local_ip, e)),
+    // One task per adapter. The C++ sweeps them sequentially only because it
+    // reuses a single global socket handle; distinct local-IP binds are
+    // independent, so running them at once turns `timeout x N` into `timeout`.
+    let mut tasks = tokio::task::JoinSet::new();
+    for ip in &local_ips {
+        let ip = ip.clone();
+        let q = query;
+        tasks.spawn(async move {
+            let result = scan_on_adapter(&ip, &q, timeout_secs).await;
+            (ip, result)
+        });
+    }
+
+    let mut all_devices: Vec<DiscoveredDevice> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
+
+    while let Some(joined) = tasks.join_next().await {
+        match joined {
+            Ok((_ip, Ok(mut devices))) => all_devices.append(&mut devices),
+            Ok((ip, Err(e))) => warnings.push(format!("{}: {}", ip, e)),
+            Err(_) => warnings.push("adapter scan task panicked".into()),
         }
     }
 
@@ -138,10 +199,17 @@ pub async fn scan_network(timeout_secs: u64) -> ScanResult {
     ScanResult { devices, adapters_scanned, local_ips, warnings }
 }
 
+/// Broadcast the query on one adapter and collect replies until the line goes
+/// quiet.
+///
+/// `timeout_secs` is a hard cap only: the wait ends as soon as replies stop
+/// arriving (`QUIET_WINDOW`), or after `FIRST_REPLY_WAIT` when nothing answers
+/// at all. The query is re-broadcast every `RESEND_INTERVAL` meanwhile, because
+/// a single dropped broadcast would otherwise hide a device until the next scan.
 async fn scan_on_adapter(
     local_ip: &str,
     query: &[u8; 5],
-    timeout_dur: Duration,
+    timeout_secs: u64,
 ) -> Result<Vec<DiscoveredDevice>, String> {
     let local_addr: Ipv4Addr = local_ip.parse().map_err(|e| format!("invalid local IP '{}': {}", local_ip, e))?;
     let socket = bind_scan_port(local_addr)?;
@@ -149,35 +217,67 @@ async fn scan_on_adapter(
 
     let broadcast_target = SocketAddrV4::new(Ipv4Addr::new(255, 255, 255, 255), BROADCAST_DEST_PORT);
     tracing::info!("[lan_scan] {} sending query to {}", local_ip, broadcast_target);
-    socket.send_to(query, broadcast_target).await.map_err(|e| format!("send_to broadcast failed: {}", e))?;
 
     let mut devices: Vec<DiscoveredDevice> = Vec::new();
     let mut buf = [0u8; 512];
-    let deadline = tokio::time::Instant::now() + timeout_dur;
+    let started = tokio::time::Instant::now();
+    let cap = started + Duration::from_secs(timeout_secs.max(1));
+    let mut last_reply: Option<tokio::time::Instant> = None;
+    let mut next_send = started;
     let mut packet_count = 0u32;
+    let mut send_count = 0u32;
 
     loop {
-        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
-        if remaining.is_zero() { break; }
+        let now = tokio::time::Instant::now();
 
-        match timeout(remaining, socket.recv_from(&mut buf)).await {
+        // Stop once the line has been quiet, or when nothing ever answered.
+        let stop_at = match last_reply {
+            Some(at) => (at + QUIET_WINDOW).min(cap),
+            None => (started + FIRST_REPLY_WAIT).min(cap),
+        };
+        if now >= stop_at { break; }
+
+        if now >= next_send && now < started + RESEND_PHASE {
+            if socket.send_to(query, broadcast_target).await.is_ok() {
+                send_count += 1;
+            }
+            next_send = now + RESEND_INTERVAL;
+        }
+
+        // Sleep straight through to the stop point once the resend phase is over.
+        let until = if now < started + RESEND_PHASE {
+            next_send.min(stop_at)
+        } else {
+            stop_at
+        };
+        let wait = until.saturating_duration_since(now).max(Duration::from_millis(1));
+
+        match timeout(wait, socket.recv_from(&mut buf)).await {
             Ok(Ok((n, _src))) => {
                 if n == 0 { continue; }
                 packet_count += 1;
+                last_reply = Some(tokio::time::Instant::now());
                 if buf[0] == RESPONSE_MSG {
                     if let Some(dev) = protocol::parse_scan_response(&buf[..n]) {
-                        tracing::info!("[lan_scan] {} found SN={} PID={} IP={} name={}", local_ip, dev.serial_number, dev.product_id, dev.ip_address, dev.panel_name);
-                        devices.push(dev);
+                        // Each of our queries is answered by every device, so the
+                        // same serial arrives several times.
+                        if !devices.iter().any(|d| d.serial_number == dev.serial_number) {
+                            tracing::info!("[lan_scan] {} found SN={} PID={} IP={} name={}", local_ip, dev.serial_number, dev.product_id, dev.ip_address, dev.panel_name);
+                            devices.push(dev);
+                        }
                     } else {
                         tracing::debug!("[lan_scan] {} parse failed for {}B response", local_ip, n);
                     }
                 }
             }
             Ok(Err(_)) => break,
-            Err(_elapsed) => break,
+            Err(_elapsed) => continue,
         }
     }
-    tracing::info!("[lan_scan] {} scan done: {} packets, {} devices found", local_ip, packet_count, devices.len());
+    tracing::info!(
+        "[lan_scan] {} scan done: {} query(s), {} packet(s), {} devices found",
+        local_ip, send_count, packet_count, devices.len()
+    );
     Ok(devices)
 }
 
