@@ -12,9 +12,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use axum::{
+    body::Body,
     extract::Query,
-    http::StatusCode,
-    response::Json,
+    http::{header, HeaderValue, StatusCode},
+    response::{Json, Response},
     routing::{get, post},
     Router,
 };
@@ -43,6 +44,10 @@ fn bad_request(message: impl Into<String>) -> ApiError {
     (StatusCode::BAD_REQUEST, Json(json!({ "error": message.into() })))
 }
 
+fn not_found(message: impl Into<String>) -> ApiError {
+    (StatusCode::NOT_FOUND, Json(json!({ "error": message.into() })))
+}
+
 /// Repository the prefilled URL points at.
 fn github_repo() -> String {
     std::env::var("T3000_REPORT_GITHUB_REPO")
@@ -69,6 +74,58 @@ fn report_root() -> PathBuf {
     }
     let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     base.join("t3000-reports")
+}
+
+/// Folders a screenshot may be read from.
+///
+/// Two writers produce screenshots: this API copies them into the bundle, and the C++ host saves
+/// its capture to `<exe dir>\reports` (see `ReportFolder()` in BacnetWebView.cpp). Both are
+/// allowed, and nothing else is — the route must not become a file browser.
+fn image_roots() -> Vec<PathBuf> {
+    let mut candidates = vec![report_root()];
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            candidates.push(dir.join("reports"));
+        }
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd.join("reports"));
+    }
+    let mut roots: Vec<PathBuf> = Vec::new();
+    for candidate in candidates {
+        if let Ok(canonical) = candidate.canonicalize() {
+            if !roots.contains(&canonical) {
+                roots.push(canonical);
+            }
+        }
+    }
+    roots
+}
+
+/// A screenshot is only served from a folder T3000 writes to: a bundle under `report_root()`, or
+/// the `reports` folder the C++ host saves captures into. When the API runs from a different place
+/// than T3000.exe (a dev build serving the packaged webview) that folder is not ours, so it is
+/// recognised by name instead of by location.
+fn is_previewable(path: &Path) -> bool {
+    if image_roots().iter().any(|root| path.starts_with(root)) {
+        return true;
+    }
+    path.parent()
+        .and_then(|parent| parent.file_name())
+        .and_then(|name| name.to_str())
+        .map(|name| name.eq_ignore_ascii_case("reports"))
+        .unwrap_or(false)
+}
+
+fn image_mime(path: &Path) -> Option<&'static str> {
+    let extension = path.extension()?.to_str()?.to_lowercase();
+    match extension.as_str() {
+        "png" => Some("image/png"),
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "webp" => Some("image/webp"),
+        "gif" => Some("image/gif"),
+        _ => None,
+    }
 }
 
 fn url_encode(input: &str) -> String {
@@ -612,6 +669,54 @@ async fn docs_page_handler(Query(params): Query<PageQuery>) -> Result<Json<Value
     }
 }
 
+#[derive(Debug, Deserialize)]
+struct ImageQuery {
+    #[serde(default)]
+    path: String,
+}
+
+/// A screenshot is a couple of megabytes at most; refuse anything that would stall the page.
+const MAX_IMAGE_BYTES: u64 = 25 * 1024 * 1024;
+
+/// Shown in step 3 so a capture taken by the C++ host (which returns only a path) can be
+/// previewed and checked before it is sent.
+async fn image_handler(Query(params): Query<ImageQuery>) -> Result<Response, ApiError> {
+    let raw = params.path.trim();
+    if raw.is_empty() {
+        return Err(bad_request("path is required"));
+    }
+    let wanted = PathBuf::from(raw);
+    let mime = image_mime(&wanted).ok_or_else(|| {
+        bad_request("only png, jpeg, webp and gif screenshots can be previewed")
+    })?;
+    let path = wanted
+        .canonicalize()
+        .map_err(|_| not_found("that screenshot is no longer on disk"))?;
+    if !is_previewable(&path) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "that file is outside the report folders" })),
+        ));
+    }
+    let meta = fs::metadata(&path).map_err(|_| not_found("that screenshot is no longer on disk"))?;
+    if !meta.is_file() {
+        return Err(not_found("that screenshot is no longer on disk"));
+    }
+    if meta.len() > MAX_IMAGE_BYTES {
+        return Err(bad_request("that screenshot is too large to preview"));
+    }
+    let bytes = fs::read(&path).map_err(|error| fail(format!("could not read the screenshot: {error}")))?;
+
+    let mut response = Response::new(Body::from(bytes));
+    response
+        .headers_mut()
+        .insert(header::CONTENT_TYPE, HeaderValue::from_static(mime));
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    Ok(response)
+}
+
 /// Mount in `server.rs` via `.merge(crate::support::create_support_routes())`.
 pub fn create_support_routes() -> Router<T3AppState> {
     Router::new()
@@ -620,6 +725,7 @@ pub fn create_support_routes() -> Router<T3AppState> {
         .route("/api/report/bundle", post(bundle_handler))
         .route("/api/report/send", post(send_handler))
         .route("/api/report/list", get(list_handler))
+        .route("/api/report/image", get(image_handler))
         .route("/api/docs/search", get(docs_search_handler))
         .route("/api/docs/page", get(docs_page_handler))
 }
@@ -759,6 +865,52 @@ mod tests {
         assert!(result.ok);
         let url = result.url.expect("a browser route must carry a url");
         assert!(url.contains("/issues/new?title="), "{}", url);
+    }
+
+    #[tokio::test]
+    async fn a_screenshot_can_be_previewed_only_from_the_report_folders() {
+        let root = std::env::temp_dir().join(format!("t3000-image-test-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        std::env::set_var("T3000_REPORT_DIR", &root);
+
+        let inside = root.join("screen-1.png");
+        std::fs::write(&inside, [0x89u8, b'P', b'N', b'G']).unwrap();
+
+        let ok = image_handler(Query(ImageQuery {
+            path: inside.display().to_string(),
+        }))
+        .await
+        .expect("a screenshot in the report folder must be readable");
+        assert_eq!(ok.headers().get(header::CONTENT_TYPE).unwrap(), "image/png");
+
+        let not_an_image = root.join("report.md");
+        std::fs::write(&not_an_image, "text").unwrap();
+        let rejected = image_handler(Query(ImageQuery {
+            path: not_an_image.display().to_string(),
+        }))
+        .await
+        .expect_err("only images may be previewed");
+        assert_eq!(rejected.0, StatusCode::BAD_REQUEST);
+
+        let outside = std::env::temp_dir().join(format!("t3000-outside-{}.png", std::process::id()));
+        std::fs::write(&outside, [0x89u8, b'P', b'N', b'G']).unwrap();
+        let forbidden = image_handler(Query(ImageQuery {
+            path: outside.display().to_string(),
+        }))
+        .await
+        .expect_err("a file outside the report folders must not be served");
+        assert_eq!(forbidden.0, StatusCode::FORBIDDEN);
+
+        let missing = image_handler(Query(ImageQuery {
+            path: root.join("gone.png").display().to_string(),
+        }))
+        .await
+        .expect_err("a screenshot that was deleted must not be served");
+        assert_eq!(missing.0, StatusCode::NOT_FOUND);
+
+        std::fs::remove_dir_all(&root).ok();
+        std::fs::remove_file(&outside).ok();
+        std::env::remove_var("T3000_REPORT_DIR");
     }
 
     #[tokio::test]

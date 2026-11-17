@@ -17,6 +17,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Badge,
   Button,
+  Dialog,
+  DialogSurface,
   Divider,
   DrawerBody,
   DrawerHeader,
@@ -37,6 +39,7 @@ import {
   CheckmarkCircleRegular,
   ClipboardPasteRegular,
   CopyRegular,
+  DismissRegular,
   DocumentTextRegular,
   EditRegular,
   ErrorCircleRegular,
@@ -234,6 +237,8 @@ export const ReportPage: React.FC = () => {
   const [checking, setChecking] = useState(false);
 
   const [shots, setShots] = useState<Shot[]>([]);
+  const [failedShots, setFailedShots] = useState<string[]>([]);
+  const [previewShot, setPreviewShot] = useState<{ shot: Shot; label: string } | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [captureError, setCaptureError] = useState('');
   const [logText, setLogText] = useState('');
@@ -345,6 +350,23 @@ export const ReportPage: React.FC = () => {
   // ── step 3: capture ──
 
   const addShot = (shot: Shot) => setShots((prev) => [...prev, shot]);
+
+  /** A pasted image carries its bytes; a host capture carries only a path, so the card
+      streams it back through `/api/report/image`. */
+  const shotSrc = (shot: Shot) => shot.dataUrl || (shot.path ? reportApi.imageUrl(shot.path) : '');
+
+  const removeShot = (index: number) => {
+    setShots((prev) => prev.filter((_, i) => i !== index));
+    setFailedShots([]);
+    setPreviewShot(null);
+  };
+
+  const clearShots = () => {
+    setShots([]);
+    setFailedShots([]);
+    setPreviewShot(null);
+    setCaptureError('');
+  };
 
   const capture = async () => {
     setCaptureError('');
@@ -519,6 +541,7 @@ export const ReportPage: React.FC = () => {
     setSendError('');
     setSuggestions([]);
     setShots([]);
+    setFailedShots([]);
     setCaptureError('');
     setClipboardNote('');
     setSummary('');
@@ -549,10 +572,7 @@ export const ReportPage: React.FC = () => {
       copyShot: () => void copyFirstShot(),
       check: () => void runSelfCheck(),
       draft: () => void runAiDraft(),
-      clearShots: () => {
-        setShots([]);
-        setCaptureError('');
-      },
+      clearShots: () => clearShots(),
       toggleDetails: () => setDetailsOpen((open) => !open),
       aiSettings: () => setAiSettingsOpen(true),
     });
@@ -794,13 +814,22 @@ export const ReportPage: React.FC = () => {
                   Screenshots and the last 200 runtime messages. You can paste an image with Ctrl+V.
                 </div>
               </div>
-              <Button
-                icon={capturing ? <Spinner size="tiny" /> : <CameraRegular />}
-                onClick={() => void capture()}
-                disabled={capturing}
-              >
-                {capturing ? 'Capturing…' : 'Capture screen'}
-              </Button>
+              <div className={styles.headerActions}>
+                {shots.length > 0 ? (
+                  <Tooltip content="Remove every screenshot from this report" relationship="label">
+                    <Button appearance="subtle" icon={<DismissRegular />} onClick={clearShots}>
+                      Clear all
+                    </Button>
+                  </Tooltip>
+                ) : null}
+                <Button
+                  icon={capturing ? <Spinner size="tiny" /> : <CameraRegular />}
+                  onClick={() => void capture()}
+                  disabled={capturing}
+                >
+                  {capturing ? 'Capturing…' : 'Capture screen'}
+                </Button>
+              </div>
             </div>
 
             {captureError ? (
@@ -819,35 +848,67 @@ export const ReportPage: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                shots.map((shot, index) => (
-                  <div key={`${shot.path}-${index}`} className={styles.shotCard}>
-                    {shot.dataUrl ? (
-                      <img className={styles.shotImage} src={shot.dataUrl} alt={`Screenshot ${index + 1}`} />
-                    ) : (
-                      <div className={styles.shotPlaceholder}>
-                        <CameraRegular />
-                        <span>
-                          {shot.width} x {shot.height}
+                shots.map((shot, index) => {
+                  const key = `${shot.path}-${index}`;
+                  const label = shot.path ? shot.path.split(/[\\/]/).pop() || shot.path : 'Pasted image';
+                  const broken = failedShots.includes(key);
+                  const src = broken ? '' : shotSrc(shot);
+                  return (
+                    <div key={key} className={styles.shotCard}>
+                      {src ? (
+                        <button
+                          type="button"
+                          className={styles.shotOpen}
+                          onClick={() => setPreviewShot({ shot, label })}
+                          aria-label={`View screenshot ${index + 1} larger`}
+                        >
+                          <img
+                            className={styles.shotImage}
+                            src={src}
+                            alt={`Screenshot ${index + 1}`}
+                            onError={() =>
+                              setFailedShots((prev) => (prev.includes(key) ? prev : [...prev, key]))
+                            }
+                          />
+                          <span className={styles.shotZoom} aria-hidden="true">
+                            <OpenRegular />
+                          </span>
+                        </button>
+                      ) : (
+                        <div className={styles.shotPlaceholder}>
+                          <CameraRegular />
+                          <span>
+                            {broken ? 'Preview not available' : `${shot.width} x ${shot.height}`}
+                          </span>
+                          {broken ? <span>Copy it into the issue instead</span> : null}
+                        </div>
+                      )}
+                      <div className={styles.shotMeta}>
+                        <span className={styles.shotPath} title={shot.path || 'from clipboard'}>
+                          {label}
                         </span>
-                      </div>
-                    )}
-                    <div className={styles.shotMeta}>
-                      <span className={styles.shotPath} title={shot.path || 'from clipboard'}>
-                        {shot.path || 'pasted image'}
-                      </span>
-                      {shot.path ? (
-                        <Tooltip content="Copy to clipboard so you can paste it into the issue" relationship="label">
+                        {shot.path ? (
+                          <Tooltip content="Copy to clipboard so you can paste it into the issue" relationship="label">
+                            <Button
+                              size="small"
+                              appearance="subtle"
+                              icon={<CopyRegular />}
+                              onClick={() => void copyShotToClipboard(shot.path)}
+                            />
+                          </Tooltip>
+                        ) : null}
+                        <Tooltip content="Remove this screenshot" relationship="label">
                           <Button
                             size="small"
                             appearance="subtle"
-                            icon={<CopyRegular />}
-                            onClick={() => void copyShotToClipboard(shot.path)}
+                            icon={<DismissRegular />}
+                            onClick={() => removeShot(index)}
                           />
                         </Tooltip>
-                      ) : null}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -1178,6 +1239,51 @@ export const ReportPage: React.FC = () => {
         }}
         onClose={() => setAiSettingsOpen(false)}
       />
+
+      {/* ── Screenshot preview ── */}
+      <Dialog
+        open={previewShot !== null}
+        onOpenChange={(_, data) => {
+          if (!data.open) {
+            setPreviewShot(null);
+          }
+        }}
+      >
+        <DialogSurface
+          className={styles.previewSurface}
+          aria-label={previewShot ? `Screenshot ${previewShot.label}` : 'Screenshot'}
+        >
+          <div className={styles.previewBody}>
+            <div className={styles.previewBar}>
+              {previewShot?.shot.path ? (
+                <Tooltip content="Copy to clipboard" relationship="label">
+                  <Button
+                    size="small"
+                    appearance="subtle"
+                    icon={<CopyRegular />}
+                    onClick={() => void copyShotToClipboard(previewShot.shot.path)}
+                  />
+                </Tooltip>
+              ) : null}
+              <Tooltip content="Close" relationship="label">
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={<DismissRegular />}
+                  onClick={() => setPreviewShot(null)}
+                />
+              </Tooltip>
+            </div>
+            {previewShot ? (
+              <img
+                className={styles.previewImage}
+                src={shotSrc(previewShot.shot)}
+                alt={previewShot.label}
+              />
+            ) : null}
+          </div>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 };

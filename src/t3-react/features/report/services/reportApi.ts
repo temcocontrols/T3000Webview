@@ -74,6 +74,9 @@ export const reportApi = {
     req<{ id: string; title: string; markdown: string }>(
       `/api/docs/page?id=${encodeURIComponent(id)}`
     ),
+
+  /** Streams a screenshot the T3000 host saved to disk; the card shows it inline. */
+  imageUrl: (path: string) => `${API_BASE_URL}/api/report/image?path=${encodeURIComponent(path)}`,
 };
 
 export default reportApi;
