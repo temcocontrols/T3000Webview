@@ -21,6 +21,8 @@
 //   Alarms (3):     alarm_list, alarm_acknowledge, trendlog_query
 //   Docs (2):       doc_list, doc_read
 //   Docs (2):       doc_list, doc_read
+//   Report (3):     report_self_check, report_docs_search, report_docs_page
+//                   (local rule table + offline documentation, for Help → Report an Issue)
 //   Device (12):    trendlog_list, trendlog_export, device_refresh, schedule_list, settings_read, settings_write, device_control,
 //                   program_list, program_read, pid_list, holiday_list, building_summary
 

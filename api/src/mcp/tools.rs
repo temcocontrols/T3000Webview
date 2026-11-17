@@ -1277,5 +1277,58 @@ lazy_static::lazy_static! {
             "required": ["serial_number"]
         }),
     },
+    ToolDef {
+        name: "t3000_report_self_check",
+        title: "Report Self-Check",
+        description: "Run the report rule table against a user's description of a problem. Returns concrete remedies (never generated text) plus the local documentation pages that cover the area. Use before filing or drafting a report, so the user can fix it themselves.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "What the user said is wrong, in their own words"
+                },
+                "area": {
+                    "type": "string",
+                    "description": "Optional screen or area, e.g. Inputs, Trend Logs, Database"
+                }
+            },
+            "required": ["message"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_report_docs_search",
+        title: "Search Local Documentation",
+        description: "Search the documentation shipped with this installation (offline, no network). Returns ranked page ids with an excerpt; read one with t3000_report_docs_page.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Words to look for, e.g. 'trend log not saving'"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum results (default 5, max 25)"
+                }
+            },
+            "required": ["query"]
+        }),
+    },
+    ToolDef {
+        name: "t3000_report_docs_page",
+        title: "Read Local Documentation Page",
+        description: "Read one documentation page by the id returned from t3000_report_docs_search. Returns the title and raw markdown.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Page id, e.g. 'guides/troubleshooting'"
+                }
+            },
+            "required": ["id"]
+        }),
+    },
     ];
 }

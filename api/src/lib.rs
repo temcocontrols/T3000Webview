@@ -40,6 +40,7 @@ pub mod ai;
 
 // Fault Detection & Diagnostics (native Rust engine, DB-managed rules)
 pub mod fdd;
+pub mod support;
 pub mod t3_socket;
 
 // Developer tools modules

@@ -3428,6 +3428,55 @@ pub async fn execute_tool(
             }).to_string())
         }
 
+        // ═══ Report an Issue: self-check + local docs ═══
+
+        "t3000_report_self_check" => {
+            let message = args.get("message")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "message required".to_string())?;
+            let area = args.get("area").and_then(|v| v.as_str()).unwrap_or_default();
+            let (suggestions, documents_searched) =
+                crate::support::self_check::evaluate_message(message, area);
+            serde_json::to_string_pretty(&json!({
+                "matched": !suggestions.is_empty(),
+                "suggestions": suggestions,
+                "documents_searched": documents_searched,
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_report_docs_search" => {
+            let query = args.get("query")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "query required".to_string())?;
+            let limit = args.get("limit")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(5)
+                .clamp(1, 25) as usize;
+            let results = crate::support::docs_index::search(query, limit);
+            serde_json::to_string_pretty(&json!({
+                "query": query,
+                "results": results,
+                "total_docs": crate::support::docs_index::count(),
+            }))
+            .map_err(|e| format!("Serialize error: {}", e))
+        }
+
+        "t3000_report_docs_page" => {
+            let id = args.get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "id required".to_string())?;
+            match crate::support::docs_index::page(id) {
+                Some((title, markdown)) => serde_json::to_string_pretty(&json!({
+                    "id": id,
+                    "title": title,
+                    "markdown": markdown,
+                }))
+                .map_err(|e| format!("Serialize error: {}", e)),
+                None => Err(format!("document not found: {}", id)),
+            }
+        }
+
         _ => Err(format!("Unknown tool: {}", name)),
     };
     match &result {
