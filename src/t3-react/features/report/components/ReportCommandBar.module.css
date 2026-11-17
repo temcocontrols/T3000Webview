@@ -1,0 +1,91 @@
+/**
+ * The report page's command bar — one row, no menus.
+ */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground3);
+  font-family: var(--t3-font-family);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 2px;
+  flex-shrink: 0;
+}
+
+.titleIcon {
+  font-size: 16px;
+  color: var(--colorBrandForeground1, #0078d4);
+}
+
+.titleText {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+  white-space: nowrap;
+}
+
+.separator {
+  width: 1px;
+  height: 18px;
+  background: var(--colorNeutralStroke2);
+  flex-shrink: 0;
+}
+
+.commands {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.commands :global(.fui-Button) {
+  border-radius: 0;
+  font-weight: 400;
+  font-size: 13px;
+  min-height: 26px;
+}
+
+.label {
+  white-space: nowrap;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding-left: 8px;
+  flex-shrink: 0;
+}
+
+.right :global(.fui-Button) {
+  border-radius: 0;
+}
+
+/* Host indicator. The old outline/subtle badge was grey-on-grey against the bar, so it read as
+   empty space; a tinted badge with an icon is legible in both states. `.bar` raises the
+   specificity above Fluent's own `.fui-Badge` rules. */
+.bar .hostBadge {
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* Narrow windows: keep one row, drop the words, keep the tooltips. */
+@media (max-width: 1100px) {
+  .label {
+    display: none;
+  }
+}

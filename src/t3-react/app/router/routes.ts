@@ -102,6 +102,7 @@ const HvacDesignerPage = lazy(() => import('../../features/hvac-designer/pages/H
 /** P4 — legacy composer route: redirects into the unified Designer (see `legacyRedirects.ts`). */
 const LegacyDesignerRedirect = lazy(() => import('./LegacyDesignerRedirect').then(m => ({ default: m.LegacyDesignerRedirect })));
 const DocumentationPage = lazy(() => import('../../features/documentation/pages/DocumentationPage').then(m => ({ default: m.DocumentationPage })));
+const ReportPage = lazy(() => import('../../features/report/pages/ReportPage').then(m => ({ default: m.ReportPage })));
 
 // Develop section pages
 const FileBrowserPage = lazy(() => import('../../features/develop/pages/FileBrowserPage'));
@@ -339,6 +340,11 @@ export const t3000Routes: T3000Route[] = [
     path: '/t3000/documentation',
     element: DocumentationPage,
     title: 'Documentation',
+  },
+  {
+    path: '/t3000/report',
+    element: ReportPage,
+    title: 'Report an Issue',
   },
   // Develop section routes
   {

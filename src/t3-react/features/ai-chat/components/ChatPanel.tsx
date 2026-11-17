@@ -27,87 +27,16 @@ import { SettingsDrawer } from './SettingsDrawer';
 import { ToolsDrawer } from './ToolsDrawer';
 import { Popover, PopoverTrigger, PopoverSurface, Button } from '@fluentui/react-components';
 import type { AiProviderSettings, ProviderType } from './SettingsDrawer';
+import {
+  isSettingsConfigured,
+  loadProviderCache,
+  loadSettings,
+  saveProviderCache,
+  saveSettings,
+  SETTINGS_STORAGE_KEY,
+} from '../services/aiSettingsStore';
+import type { ProviderCache } from '../services/aiSettingsStore';
 import styles from '../AiChat.module.css';
-
-const DEFAULT_SETTINGS: AiProviderSettings = {
-  provider: 'local',
-  endpoint: '',
-  model: '',
-  apiKey: '',
-};
-
-const STORAGE_KEY = 't3.ai.settings';
-const PROVIDER_CACHE_KEY = 't3.ai.providerCache';
-
-type ProviderCache = Record<ProviderType, Pick<AiProviderSettings, 'endpoint' | 'model' | 'apiKey'>>;
-
-// No fallback values — a fresh install must be configured by the user.
-const EMPTY_PROVIDER = { endpoint: '', model: '', apiKey: '' };
-
-const DEFAULT_CACHE: ProviderCache = {
-  local: { ...EMPTY_PROVIDER },
-  anthropic: { ...EMPTY_PROVIDER },
-  gemini: { ...EMPTY_PROVIDER },
-};
-
-const loadProviderCache = (): ProviderCache => {
-  try {
-    const raw = localStorage.getItem(PROVIDER_CACHE_KEY);
-    if (raw) return { ...DEFAULT_CACHE, ...JSON.parse(raw) };
-  } catch {}
-  return DEFAULT_CACHE;
-};
-
-const saveProviderCache = (cache: ProviderCache) => {
-  try {
-    localStorage.setItem(PROVIDER_CACHE_KEY, JSON.stringify(cache));
-  } catch {}
-};
-
-const loadSettings = (): AiProviderSettings => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as AiProviderSettings;
-      // Migrate old format: if provider-specific cache doesn't exist, seed it from current settings
-      if (!localStorage.getItem(PROVIDER_CACHE_KEY)) {
-        const cache = loadProviderCache();
-        const prov = parsed.provider as ProviderType;
-        cache[prov] = { endpoint: parsed.endpoint, model: parsed.model, apiKey: parsed.apiKey || '' };
-        saveProviderCache(cache);
-      }
-      return parsed;
-    }
-  } catch {}
-  return DEFAULT_SETTINGS;
-};
-
-const saveSettings = (s: AiProviderSettings) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-    // Also update the per-provider cache
-    const cache = loadProviderCache();
-    cache[s.provider] = { endpoint: s.endpoint, model: s.model, apiKey: s.apiKey || '' };
-    saveProviderCache(cache);
-  } catch {}
-
-  // Persist to the backend too, so settings survive across browsers/machines.
-  fetch(`${API_BASE_URL}/api/ai/settings`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      provider: s.provider,
-      model: s.model,
-      endpoint: s.endpoint,
-      api_key: s.apiKey || '',
-    }),
-  }).catch(() => {});
-};
-
-// "Configured" means both endpoint and model are filled in. Used to gate chat
-// sending and to show the first-run configuration banner.
-const isSettingsConfigured = (s: AiProviderSettings) =>
-  (s.endpoint || '').trim() !== '' && (s.model || '').trim() !== '';
 
 interface ChatPanelProps {
   variant?: 'full' | 'panel';
@@ -150,7 +79,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
           apiKey: typeof data?.api_key === 'string' ? data.api_key : '',
         };
         setAiSettings(serverSettings);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(serverSettings));
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(serverSettings));
         const cache = loadProviderCache();
         cache[serverSettings.provider] = {
           endpoint: serverSettings.endpoint,

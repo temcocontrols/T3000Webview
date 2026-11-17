@@ -589,6 +589,9 @@ export const Header: React.FC<HeaderProps> = ({ showToolbar = true }) => {
         case MenuAction.OpenQuickStart:
           navigate('/t3000/documentation'); // Will open to quick start section
           break;
+        case MenuAction.ReportBug:
+          helpHandlers.handleReportIssue();
+          break;
 
         // ── EEZ Studio menu actions ──
         // Navigation

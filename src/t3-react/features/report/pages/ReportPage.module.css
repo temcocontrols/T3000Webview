@@ -1,0 +1,580 @@
+/**
+ * Report an Issue — layout for the five-step report flow.
+ * Colours come from Fluent's CSS variables so the page follows the app theme.
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--colorNeutralBackground1);
+}
+
+/* The page asks for plain controls: normal weight, no rounding, the body text size.
+   Scoped to this page so the rest of the app keeps its Fluent defaults. */
+.container :global(.fui-Button) {
+  border-radius: 0;
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.container :global(.fui-Button__icon) {
+  font-size: 16px;
+}
+
+.container :global(.fui-Field__hint) {
+  font-size: 12px;
+  color: var(--colorNeutralForeground2);
+  line-height: 1.5;
+}
+
+.container :global(textarea::placeholder),
+.container :global(input::placeholder) {
+  font-size: 12px;
+  color: var(--colorNeutralForeground4);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 0 0 24px;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+
+/* ── Intro ── */
+
+.intro {
+  padding: 10px 16px 0;
+  font-size: 12px;
+  color: var(--colorNeutralForeground2);
+  line-height: 1.5;
+}
+
+/* Page-level notices sit straight in the column; only their outer spacing lives here. */
+.pageMessage {
+  margin: 12px 16px 0;
+}
+
+/* ── Panel ── */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 14px 16px 0;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+
+.muted {
+  font-size: 12px;
+  color: var(--colorNeutralForeground3);
+  line-height: 1.5;
+}
+
+/* Field captions: Fluent's default label is 14px/600, which outranks the page's own headings.
+   Descendant selector so it wins over `.fui-Label` regardless of style injection order. */
+.panel .fieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--colorNeutralForeground1);
+}
+
+.areaDropdown {
+  max-width: 260px;
+}
+
+/* Fluent sizes the Dropdown button and its options at 14px (--fontSizeBase300); the extra class
+   raises the specificity above `.fui-Dropdown` / `.fui-Option` so the 12px captions stay
+   consistent. The listbox renders in a portal, so it is not inside `.panel`. */
+.panel .areaDropdown {
+  font-size: 12px;
+}
+
+.areaListbox .fui-Option {
+  font-size: 12px;
+  line-height: 1.4;
+  min-height: 28px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+/* ── Kind picker ── */
+
+.kindRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.kindCard {
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground1);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.kindCard:hover {
+  border-color: var(--colorBrandStroke1);
+}
+
+.kindCardActive {
+  border-color: var(--colorBrandForeground1, #0078d4);
+  background: var(--colorBrandBackground2, #deecf9);
+}
+
+.kindTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+
+.kindHint {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+  line-height: 1.45;
+}
+
+/* ── Suggestions ── */
+
+/* Flat rows, hairline separated: no card box, no radius, no left severity bar. */
+.checkList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.checkItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground2);
+}
+
+/* Severity shows as a tinted border, never as a left bar. */
+.checkItem[data-severity='critical'] {
+  border-color: var(--colorPaletteRedBorder1, #eeacb2);
+}
+
+.checkItem[data-severity='warning'] {
+  border-color: var(--colorPaletteDarkOrangeBorder1, #f4bfab);
+}
+
+.checkHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.checkTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.checkAction {
+  font-size: 12px;
+  color: var(--colorNeutralForeground1);
+  line-height: 1.55;
+}
+
+.checkDoc {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 4px;
+  font-size: 11px;
+}
+
+.helpRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  font-size: 12px;
+}
+
+.helpLabel {
+  color: var(--colorNeutralForeground3);
+}
+
+.helpLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.sevCritical {
+  color: var(--colorPaletteRedForeground1, #c42b1c);
+  font-size: 16px;
+}
+
+.sevWarning {
+  color: var(--colorPaletteDarkOrangeForeground1, #c2670a);
+  font-size: 16px;
+}
+
+.sevInfo {
+  color: var(--colorBrandForeground1, #0078d4);
+  font-size: 16px;
+}
+
+/* ── Screenshots ── */
+
+.shotGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.emptyShot {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 22px 12px;
+  border: 1px dashed var(--colorNeutralStroke2);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--colorNeutralForeground2);
+}
+
+.emptyIcon {
+  font-size: 22px;
+  color: var(--colorNeutralForeground4);
+}
+
+.shotCard {
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--colorNeutralBackground2);
+}
+
+.shotImage {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+}
+
+.shotPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 120px;
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+}
+
+.shotMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+}
+
+.shotPath {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+  color: var(--colorNeutralForeground3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Log preview ── */
+
+.logPreview {
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 4px;
+  background: var(--colorNeutralBackground3);
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── Review ── */
+
+.bodyTextarea textarea {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+/* ── Done ── */
+
+.bundleBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 6px;
+  background: var(--colorNeutralBackground2);
+}
+
+.fileList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11px;
+  color: var(--colorNeutralForeground2);
+}
+
+.fileItem {
+  line-height: 1.6;
+}
+
+/* ── Details drawer ── */
+
+.drawer {
+  width: 340px;
+  max-width: 92vw;
+}
+
+.drawerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.envList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.envList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--colorNeutralStroke3);
+  color: var(--colorNeutralForeground1);
+}
+
+.envList li > span:first-child {
+  color: var(--colorNeutralForeground3);
+}
+
+.envList li > span:last-child {
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
+.sideTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+
+.sideTitleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sideLink {
+  font-size: 11px;
+}
+
+.emptySide {
+  padding: 10px;
+  border: 1px dashed var(--colorNeutralStroke2);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+  line-height: 1.5;
+}
+
+.reportList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reportItem {
+  padding: 6px 8px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 4px;
+  background: var(--colorNeutralBackground1);
+}
+
+.reportTitle {
+  font-size: 11px;
+  color: var(--colorNeutralForeground1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tipList {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+  line-height: 1.6;
+}
+
+@media (max-width: 900px) {
+  .side {
+    display: none;
+  }
+}
+/* ?? Stepper ?? */
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 0;
+  flex-wrap: wrap;
+}
+
+.stepChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground2);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--colorNeutralForeground3);
+  cursor: pointer;
+}
+
+.stepChip:hover {
+  border-color: var(--colorNeutralStroke1);
+  color: var(--colorNeutralForeground1);
+}
+
+.stepChip:focus-visible {
+  outline: 2px solid var(--colorStrokeFocus2, #000000);
+  outline-offset: 1px;
+}
+
+.stepChipActive,
+.stepChipActive:hover {
+  border-color: var(--colorBrandStroke1);
+  background: var(--colorBrandBackground2, #deecf9);
+  color: var(--colorBrandForeground1, #0078d4);
+  font-weight: 600;
+}
+
+.stepChipDone {
+  color: var(--colorNeutralForeground1);
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--colorNeutralBackground5);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.stepChipActive .stepNumber {
+  background: var(--colorBrandBackground, #0078d4);
+  color: #ffffff;
+}
+
+/* ?? Review step ?? */
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.sendRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.altRoutes {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.checkDetail {
+  font-size: 11px;
+  color: var(--colorNeutralForeground3);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

@@ -62,11 +62,20 @@ const target = resolveTarget();
 const www = path.join(target, 'www');
 const docs = path.join(target, 'docs');
 
+/** Quasar writes `dist/spa` for a standard SPA build, but this project builds into `dist`. */
+function appBuildDir() {
+  const spa = path.join(ROOT, 'dist', 'spa');
+  if (fs.existsSync(path.join(spa, 'index.html'))) {
+    return spa;
+  }
+  return path.join(ROOT, 'dist');
+}
+
 console.log('publish-webview');
 console.log(`  target : ${target}${DRY ? '   (dry run)' : ''}`);
 
 let actions = 0;
-if (!flag('--skip-app')) actions += copyDir(path.join(ROOT, 'dist', 'spa'), www, 'app ') ? 1 : 0;
+if (!flag('--skip-app')) actions += copyDir(appBuildDir(), www, 'app ') ? 1 : 0;
 if (!flag('--skip-docs')) actions += copyDir(path.join(ROOT, 'dist', 'docs'), docs, 'docs') ? 1 : 0;
 
 if (!flag('--skip-chm')) {

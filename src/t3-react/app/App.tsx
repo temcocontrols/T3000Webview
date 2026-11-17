@@ -13,6 +13,7 @@ import { NotificationProvider } from '../shared/components/NotificationCenter';
 import { CsvOperationsProvider } from '../shared/context/CsvOperationsContext';
 import { MainLayout } from '../layout/MainLayout';
 import { MinimalLayout } from '../layout/MinimalLayout';
+import { ReportLayout } from '../layout/ReportLayout';
 import { DesignerLayout } from '../layout/DesignerLayout';
 import { DesignerRouteFallback } from '../features/designer/pages/DesignerRouteFallback';
 import { useDeviceTreeStore } from '../features/devices/store/deviceTreeStore';
@@ -139,6 +140,12 @@ import { LegacyDesignerRedirect } from './router/LegacyDesignerRedirect';
 const DocumentationPage = React.lazy(() =>
   import('../features/documentation/pages/DocumentationPage').then((m) => ({ default: m.DocumentationPage }))
 );
+const ReportPage = React.lazy(() =>
+  import('../features/report/pages/ReportPage').then((m) => ({ default: m.ReportPage }))
+);
+const ReportHistoryPage = React.lazy(() =>
+  import('../features/report/pages/ReportHistoryPage').then((m) => ({ default: m.ReportHistoryPage }))
+);
 const FluentUIV9Page = React.lazy(() =>
   import('../features/developer/pages/FluentUIV9Page').then((m) => ({ default: m.FluentUIV9Page }))
 );
@@ -244,6 +251,35 @@ export const App: React.FC = () => {
               <ErrorBoundary>
                 <HashRouter>
                   <Routes>
+                    {/* Report an Issue — its own shell. The Report menu in the header drives the
+                        page, so this page must render under a layout that has the menu bar. */}
+                    <Route
+                      path="/t3000/report"
+                      element={
+                        <ProtectedRoute>
+                          <ReportLayout />
+                        </ProtectedRoute>
+                      }
+                    >
+                      <Route
+                        index
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <ReportPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route
+                        path="history"
+                        element={
+                          <React.Suspense fallback={<div>Loading...</div>}>
+                            <ReportHistoryPage />
+                          </React.Suspense>
+                        }
+                      />
+                      <Route path="*" element={<Navigate to="/t3000/report" replace />} />
+                    </Route>
+
                     {/* T3000 Routes - All protected with MainLayout wrapper */}
                     <Route
                       path="/t3000"

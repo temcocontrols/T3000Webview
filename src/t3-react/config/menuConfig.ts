@@ -5,6 +5,8 @@
 
 import type { MenuItem } from '@common/react/types/menu';
 import { MenuAction } from '@common/react/types/menu';
+import { runReportCommand } from '@t3-react/features/report/services/reportCommands';
+import { openReportHistory } from '@t3-react/features/report/services/reportRoutes';
 import { withDesignerPanelItems } from '@/t3-react/features/designer/panelMenu';
 // Pure module (types + path parsing + container ids only) — safe here: it pulls in no React component
 // and no engine code.
@@ -1437,6 +1439,32 @@ export const topMenuConfig: MenuItem[] = [
 ];
 
 /**
+ * The Report page keeps the application menu bar, but it has no document of its own — so the
+ * capture commands sit in this menu instead of a toolbar. The command items go through
+ * `runReportCommand`, which is a no-op while the report page is not mounted; `History…` navigates
+ * instead, so it works from anywhere.
+ */
+const reportMenu: MenuItem = {
+  id: 'report',
+  label: 'Report',
+  type: 'submenu',
+  icon: 'Bug',
+  children: [
+    { id: 'report-capture', label: 'Capture the T3000 window', type: 'item', icon: 'Image', action: () => runReportCommand('capture') },
+    { id: 'report-div-1', type: 'divider' },
+    { id: 'report-check', label: 'Check the documentation first', type: 'item', icon: 'DocumentText', action: () => runReportCommand('check') },
+    { id: 'report-draft', label: 'Draft the report with AI', type: 'item', icon: 'Lightbulb', action: () => runReportCommand('draft') },
+    { id: 'report-div-2', type: 'divider' },
+    { id: 'report-history', label: 'History…', type: 'item', icon: 'History', action: () => openReportHistory() },
+    { id: 'report-div-3', type: 'divider' },
+    { id: 'report-clear', label: 'Remove all screenshots', type: 'item', icon: 'Delete', action: () => runReportCommand('clearShots') },
+    { id: 'report-details', label: 'Show or hide the details panel', type: 'item', icon: 'Info', action: () => runReportCommand('toggleDetails') },
+    { id: 'report-div-4', type: 'divider' },
+    { id: 'report-ai-settings', label: 'AI settings…', type: 'item', icon: 'Settings', action: () => runReportCommand('aiSettings') },
+  ],
+};
+
+/**
  * Alias for compatibility
  */
 export const menuConfig = topMenuConfig;
@@ -1461,6 +1489,8 @@ export function getMenusForPath(pathname: string): MenuItem[] {
   if (pathname.startsWith('/t3000/hvac-designer')) return hvacMenuConfig;
   if (pathname.startsWith('/t3000/eez')) return eezMenuConfig;
   if (pathname.startsWith('/t3000/tstat10-simulator')) return simulatorMenuConfig;
+  // The report page keeps the normal menus and gains its own at the end.
+  if (pathname.startsWith('/t3000/report')) return [...topMenuConfig, reportMenu];
   return topMenuConfig;
 }
 

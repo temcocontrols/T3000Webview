@@ -65,10 +65,25 @@ export function useHelpMenu() {
     }
   };
 
+  /**
+   * Handle Report an Issue action
+   */
+  const handleReportIssue = async () => {
+    try {
+      setLoading(true);
+      await HelpMenuService.showReportIssue();
+    } catch (error) {
+      console.error('Failed to open the report page:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     handlers: {
       handleContents,
+      handleReportIssue,
       handleVersionHistory,
       handleAboutSoftware,
       handleCheckUpdates,

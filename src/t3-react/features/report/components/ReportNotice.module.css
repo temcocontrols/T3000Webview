@@ -1,0 +1,84 @@
+/**
+ * Message block styles. Height is content + padding, nothing else — no grid, no min-height.
+ */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.info {
+  background: var(--colorNeutralBackground2);
+}
+
+.warning {
+  background: var(--colorPaletteYellowBackground1, #fff9f5);
+  border-color: var(--colorPaletteDarkOrangeBorder1, #f4bfab);
+}
+
+.error {
+  background: var(--colorPaletteRedBackground1, #fdf3f4);
+  border-color: var(--colorPaletteRedBorder1, #eeacb2);
+}
+
+.success {
+  background: var(--colorPaletteGreenBackground1, #f1faf1);
+  border-color: var(--colorPaletteGreenBorder1, #9fd89f);
+}
+
+/* Used for the "here is something you can do" hints — brand-tinted so it reads as an
+   invitation rather than a warning. */
+.brand {
+  background: var(--colorBrandBackground2, #eef6fc);
+  border-color: var(--colorBrandStroke2, #b4d6fa);
+}
+
+.icon {
+  font-size: 16px;
+  line-height: 1.5;
+  flex-shrink: 0;
+  color: var(--colorNeutralForeground3);
+}
+
+.warning .icon {
+  color: var(--colorPaletteDarkOrangeForeground1, #c2670a);
+}
+
+.error .icon {
+  color: var(--colorPaletteRedForeground1, #c42b1c);
+}
+
+.success .icon {
+  color: var(--colorPaletteGreenForeground1, #107c10);
+}
+
+.brand .icon {
+  color: var(--colorBrandForeground1, #0078d4);
+}
+
+.content {
+  min-width: 0;
+  flex: 1;
+}
+
+.action {
+  flex-shrink: 0;
+  align-self: center;
+  margin-left: 4px;
+}
+
+.title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.text {
+  color: var(--colorNeutralForeground2);
+}

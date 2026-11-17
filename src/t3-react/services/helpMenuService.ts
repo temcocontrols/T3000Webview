@@ -3,13 +3,28 @@
  * Handles operations from the Help menu
  */
 
+/** The app uses a HashRouter, so navigating means changing the hash. */
+function navigate(path: string): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.location.hash = `#${path}`;
+}
+
 /**
  * Show help contents/documentation
- * Opens the main help documentation
+ * Opens the documentation already shipped with the app
  */
 export async function showContents(): Promise<void> {
-  // TODO: Implement help contents logic
-  // This should open the help documentation window or navigate to help page
+  navigate('/t3000/documentation');
+}
+
+/**
+ * Report an issue
+ * Opens the screenshot / self-check / report flow
+ */
+export async function showReportIssue(): Promise<void> {
+  navigate('/t3000/report');
 }
 
 /**
@@ -44,6 +59,7 @@ export async function checkForUpdates(): Promise<void> {
  */
 export const HelpMenuService = {
   showContents,
+  showReportIssue,
   showVersionHistory,
   showAboutSoftware,
   checkForUpdates,
