@@ -604,7 +604,7 @@ const helpMenu: MenuItem = {
   children: [
     {
       id: 'help-documentation',
-      label: 'Documentation',
+      label: 'New T3000 Help',
       type: 'item',
       action: MenuAction.OpenDocumentation,
       shortcut: 'F1',

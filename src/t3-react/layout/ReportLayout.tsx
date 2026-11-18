@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { Header } from './Header';
 import { StatusBar } from './StatusBar';
@@ -39,13 +39,18 @@ const useStyles = makeStyles({
 export const ReportLayout: React.FC = () => {
   const styles = useStyles();
   const { pathname } = useLocation();
-  // History has its own toolbar; the capture commands do not apply there.
-  const showCommandBar = !pathname.includes('/t3000/report/history');
+  // `?embed=1`: the C++ host opens this page in its own window and wants the report row only, with
+  // no File / Tools / View menu bar above it. The status bar stays - the device state is context.
+  const [searchParams] = useSearchParams();
+  const embedded = searchParams.get('embed') === '1';
+  // History has its own toolbar; the capture commands do not apply there. Embedded, the row stays so
+  // the window never loses its History / back navigation.
+  const showCommandBar = embedded || !pathname.includes('/t3000/report/history');
 
   return (
     <ReportCommandsProvider>
       <div className={styles.container}>
-        <Header showToolbar={false} />
+        {embedded ? null : <Header showToolbar={false} />}
         {showCommandBar ? <ReportCommandBar /> : null}
         <div className={styles.content}>
           <Outlet />

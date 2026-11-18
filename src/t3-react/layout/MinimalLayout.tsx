@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useSearchParams } from 'react-router-dom';
 import { makeStyles } from '@fluentui/react-components';
 import { Header } from './Header';
 import { GlobalMessageBar } from '../shared/components/GlobalMessageBar';
@@ -48,13 +48,17 @@ export const MinimalLayout: React.FC = () => {
   const styles = useStyles();
   const globalMessage = useUIStore((state) => state.globalMessage);
   const dismissGlobalMessage = useUIStore((state) => state.dismissGlobalMessage);
+  // `?embed=1`: opened by the C++ host in its own window (New T3000 Help), where the application
+  // menu bar would be a dead end - keep the page only.
+  const [searchParams] = useSearchParams();
+  const embedded = searchParams.get('embed') === '1';
 
   return (
     <div className={styles.container}>
       <style>{menuZIndexFix}</style>
       {/* Top area with header and global message */}
       <div className={styles.topArea}>
-        <Header showToolbar={false} />
+        {embedded ? null : <Header showToolbar={false} />}
         {globalMessage && (
           <GlobalMessageBar
             message={globalMessage.message}

@@ -3,6 +3,8 @@
  * Handles operations from the Help menu
  */
 
+import { reportFormHref } from '../features/report/services/reportRoutes';
+
 /** The app uses a HashRouter, so navigating means changing the hash. */
 function navigate(path: string): void {
   if (typeof window === 'undefined') {
@@ -21,10 +23,11 @@ export async function showContents(): Promise<void> {
 
 /**
  * Report an issue
- * Opens the screenshot / self-check / report flow
+ * Opens the screenshot / self-check / report flow. The hash helper keeps the `embed` flag, so the
+ * same call works from a T3000 window that was opened without the application menu.
  */
 export async function showReportIssue(): Promise<void> {
-  navigate('/t3000/report');
+  window.location.hash = reportFormHref();
 }
 
 /**
