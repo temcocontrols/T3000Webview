@@ -121,6 +121,9 @@ export interface T3000Context {
   panel: number;
   device_serial?: number;
   log_lines: number;
+  /** PNG the host took when the menu opened this window, and its bytes as a `data:` URL. */
+  pending_shot?: string;
+  pending_shot_data?: string;
 }
 
 export interface CaptureResult {

@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { Badge, Button, Tooltip } from '@fluentui/react-components';
 import {
   CameraRegular,
@@ -17,16 +18,21 @@ import {
   EditRegular,
   ErrorCircleRegular,
   GlobeRegular,
+  HistoryRegular,
   InfoRegular,
 } from '@fluentui/react-icons';
 
 import { useReportCommands } from '../services/reportCommands';
+import { openReportHistory } from '../services/reportRoutes';
 import styles from './ReportCommandBar.module.css';
 
 type CommandName = 'capture' | 'copyShot' | 'check' | 'draft' | 'clearShots' | 'toggleDetails';
 
 export const ReportCommandBar: React.FC = () => {
   const { state, handlers } = useReportCommands();
+  const { pathname } = useLocation();
+  // History keeps its own "Back to the report" link, so the button that leads there has no twin here.
+  const onHistoryPage = pathname.includes('/t3000/report/history');
 
   const run = (command: CommandName) => {
     handlers.current?.[command]();
@@ -74,7 +80,7 @@ export const ReportCommandBar: React.FC = () => {
           disabled={state.busy}
           title="Check the documentation and the built-in rules before filing"
         >
-          <span className={styles.label}>Check first</span>
+          <span className={styles.label}>Self check</span>
         </Button>
 
         <Button
@@ -103,6 +109,17 @@ export const ReportCommandBar: React.FC = () => {
       </div>
 
       <div className={styles.right}>
+        {onHistoryPage ? null : (
+          <Button
+            appearance="subtle"
+            size="small"
+            icon={<HistoryRegular />}
+            onClick={openReportHistory}
+            title="Every report saved on this machine, and how each one was sent"
+          >
+            <span className={styles.label}>History</span>
+          </Button>
+        )}
         <Tooltip
           content={state.detailsOpen ? 'Hide the details panel' : 'Show the details panel'}
           relationship="label"

@@ -14,6 +14,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -54,7 +55,7 @@ import reportApi from '../services/reportApi';
 import { draftWithAi } from '../services/aiDraft';
 import { useReportCommands } from '../services/reportCommands';
 import { ReportNotice } from '../components/ReportNotice';
-import { REPORT_HISTORY_HASH } from '../services/reportRoutes';
+import { reportHistoryHref } from '../services/reportRoutes';
 import { SettingsDrawer } from '../../ai-chat/components/SettingsDrawer';
 import type { AiProviderSettings } from '../../ai-chat/components/SettingsDrawer';
 import {
@@ -236,7 +237,13 @@ export const ReportPage: React.FC = () => {
   const [searched, setSearched] = useState(0);
   const [checking, setChecking] = useState(false);
 
-  const [shots, setShots] = useState<Shot[]>([]);
+  // T3000 shoots the app window before it opens this page and hands the picture over in the
+  // `REPORT_CONTEXT` answer (path + bytes). `?shot=` stays supported for older hosts.
+  const [searchParams] = useSearchParams();
+  const hostShot = searchParams.get('shot');
+  const [shots, setShots] = useState<Shot[]>(() =>
+    hostShot ? [{ path: hostShot, width: 0, height: 0 }] : []
+  );
   const [failedShots, setFailedShots] = useState<string[]>([]);
   const [previewShot, setPreviewShot] = useState<{ shot: Shot; label: string } | null>(null);
   const [capturing, setCapturing] = useState(false);
@@ -285,6 +292,16 @@ export const ReportPage: React.FC = () => {
     setLogText(logs.text);
     setLogSaved(logs.saved);
     setContextReady(true);
+
+    // The host shoots the app window before it opens this page; start the report with that picture
+    // attached (the bytes come with it, so the card cannot fail to load).
+    if (host?.pending_shot) {
+      const shotPath = host.pending_shot;
+      const shotData = host.pending_shot_data;
+      setShots((prev) =>
+        prev.length > 0 ? prev : [{ path: shotPath, dataUrl: shotData, width: 0, height: 0 }]
+      );
+    }
   }, []);
 
   const loadReports = useCallback(async () => {
@@ -1188,7 +1205,7 @@ export const ReportPage: React.FC = () => {
           <div className={styles.sideTitleRow}>
             <span className={styles.sideTitle}>My reports</span>
             {reports.length > HISTORY_PREVIEW ? (
-              <Link href={REPORT_HISTORY_HASH} className={styles.sideLink}>
+              <Link href={reportHistoryHref()} className={styles.sideLink}>
                 Show all {reports.length}
               </Link>
             ) : null}

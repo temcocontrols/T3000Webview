@@ -137,6 +137,8 @@ export async function captureScreen(whole = true): Promise<CaptureResult> {
         path: res.path ?? '',
         width: res.width ?? 0,
         height: res.height ?? 0,
+        // The host sends the PNG bytes along with the path, so the card renders without a second request.
+        dataUrl: res.dataUrl,
         error: res.error,
       };
     } catch (error) {

@@ -30,7 +30,7 @@ import {
 
 import reportApi from '../services/reportApi';
 import type { StoredReport } from '../types';
-import { openReportForm } from '../services/reportRoutes';
+import { openReportForm, reportFormHref } from '../services/reportRoutes';
 import styles from './ReportHistoryPage.module.css';
 
 /** `2026-11-17T15:04:22+08:00` → `2026-11-17 15:04`. */
@@ -172,7 +172,7 @@ export const ReportHistoryPage: React.FC = () => {
             {reports.length === 0
               ? 'Every report keeps a local copy here, even when sending fails. '
               : 'Nothing matches that filter. '}
-            <Link href="#/t3000/report">Write a report</Link>
+            <Link href={reportFormHref()}>Write a report</Link>
           </div>
         ) : (
           <ul className={styles.list}>
