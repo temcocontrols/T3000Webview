@@ -113,6 +113,23 @@ Measured on a 1-device LAN (`cargo test --test lan_scan test_real_full_scan -- -
 | UDP, broadcast blocked (sweep fallback) | ~2750 ms | ~1260 ms |
 | Full scan (`scan_all`) | ~12.9 s | ~7.9 s |
 
+### Detached deep pass (`deep: true`)
+
+`POST /api/t3_device/devices/scan-refresh` accepts `deep: true`: the UDP pass
+runs and is merged, the response returns immediately with
+`"deep_scan": "running"`, and `scan_deep()` (serial COM + TCP sub-ports, ~8 s)
+continues in a detached task that upserts into DEVICES when it finishes.
+
+* Only one deep pass runs at a time (`DEEP_SCAN_RUNNING`); a second request is
+  ignored instead of fighting over the COM ports.
+* The detached pass **never marks devices offline** — it only sees serial and
+  sub-port devices, so that decision stays with the UDP pass (page load + the
+  5-minute timer).
+* `GET /api/t3_device/devices/deep-scan` → `{ running, started_at, found }`; the
+  UI polls it every 2 s and re-reads the device list when `running` goes false.
+* With `deep: false` (or `mode: "full"`) the old synchronous behaviour is kept
+  for callers that need the complete result in one response.
+
 ### Why the unicast sweep exists
 
 Broadcast is fragile in three common setups, and all three look identical in

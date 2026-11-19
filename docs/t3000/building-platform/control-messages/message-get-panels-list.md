@@ -176,7 +176,23 @@ TreePanel mount
   └─ fetchDevices()                 → authoritative read + tree rebuild after both
 ```
 
-* Page-load cost is `max(panel list, UDP scan)` (~0.7–1.3 s), not their sum.
+Toolbar ⟳ uses the same pair but adds `deep: true`:
+
+```
+handleRefresh
+  ├─ loadDevicesWithSync()                       ┐ concurrent
+  └─ scanForDevices({mode:'udp', deep:true})     ┘
+        └─ backend: UDP pass merged → response (≈0.7 s) + detached serial/sub-port pass
+              └─ GET /api/t3_device/devices/deep-scan polled every 2 s
+                    └─ fetchDevices() + "Deep scan finished — N device(s) added"
+```
+
+* Page-load cost is `max(panel list, UDP scan)` (~0.7–1.3 s), not their sum; the
+  first paint from the DB cache happens in milliseconds.
+* The button stops spinning as soon as the LAN devices are in — the ~8 s deep
+  pass no longer blocks the UI, it just appends later.
+* A cold start (empty DB) shows the spinner, not "No Devices Found", until the
+  first passes settle.
 * `g_bacnet_panel_info` behind action 4 is filled **only** by the C++ engine's own
   `0x64/0x65` scan, so an empty panel list and an empty scan share one root cause.
 * The panel list may **confirm** a device is online, but it never writes

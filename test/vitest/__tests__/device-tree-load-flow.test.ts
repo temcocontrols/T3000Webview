@@ -36,7 +36,18 @@ const backend = {
   ffiError: '' as string,
   panelListLatencyMs: 0,
   scanLatencyMs: 0,
-  calls: { devicesRead: 0, panelList: 0, panelCreate: 0, scan: 0 },
+  /** latency of a `mode: 'full'` scan (UDP + serial + TCP sub-port) */
+  fullScanLatencyMs: 0,
+  /** latency of one GET /api/t3_device/devices */
+  dbReadLatencyMs: 1,
+  calls: { devicesRead: 0, panelList: 0, panelCreate: 0, scan: 0, deepStatus: 0 },
+  /** the scan-refresh response reports a detached deep pass */
+  scanStartsDeep: false,
+  /** running-flags returned by successive status polls (shifted per call) */
+  deepStatusSequence: [] as boolean[],
+  deepFound: 0,
+  deepAddOnFinish: false,
+  deepStatusLatencyMs: 1,
   /** start/end of each pass, for overlap assertions */
   timing: { panelStart: 0, panelEnd: 0, scanStart: 0, scanEnd: 0 },
 };
@@ -64,13 +75,13 @@ vi.mock('@t3-react/services/deviceApi', () => ({
   default: {
     getAllDevices: vi.fn(async () => {
       backend.calls.devicesRead++;
-      await sleep(1);
+      await sleep(backend.dbReadLatencyMs);
       return { devices: backend.db.map((d) => ({ ...d })), total: backend.db.length, message: 'ok' };
     }),
-    scanAndRefreshDevices: vi.fn(async () => {
+    scanAndRefreshDevices: vi.fn(async (_timeout = 8, mode = 'udp') => {
       backend.calls.scan++;
       backend.timing.scanStart = performance.now();
-      await sleep(backend.scanLatencyMs);
+      await sleep(mode === 'full' ? backend.fullScanLatencyMs : backend.scanLatencyMs);
       if (backend.scanUpserts) {
         for (const d of backend.scanFinds) {
           if (!backend.db.some((x) => x.serialNumber === d.serialNumber)) backend.db.push({ ...d });
@@ -86,8 +97,22 @@ vi.mock('@t3-react/services/deviceApi', () => ({
         scanned: backend.scanFinds.length,
         udp_count: backend.scanFinds.length,
         mode: 'udp',
+        deep_scan: backend.scanStartsDeep ? 'running' : 'idle',
         message: 'scan',
       };
+    }),
+    getDeepScanStatus: vi.fn(async () => {
+      backend.calls.deepStatus++;
+      await sleep(backend.deepStatusLatencyMs);
+      const running = backend.deepStatusSequence.length > 0
+        ? backend.deepStatusSequence.shift()!
+        : false;
+      if (!running && backend.deepAddOnFinish) {
+        // The backend's detached task upserts before reporting "not running".
+        backend.db.push(deviceRow({ serialNumber: 9001, nameShowOnTree: 'SUB-1', productName: 'SUB-1' }));
+        backend.deepAddOnFinish = false;
+      }
+      return { running, found: backend.deepFound };
     }),
   },
 }));
@@ -175,7 +200,14 @@ beforeEach(() => {
   backend.ffiError = '';
   backend.panelListLatencyMs = 0;
   backend.scanLatencyMs = 0;
-  backend.calls = { devicesRead: 0, panelList: 0, panelCreate: 0, scan: 0 };
+  backend.fullScanLatencyMs = 0;
+  backend.dbReadLatencyMs = 1;
+  backend.calls = { devicesRead: 0, panelList: 0, panelCreate: 0, scan: 0, deepStatus: 0 };
+  backend.scanStartsDeep = false;
+  backend.deepStatusSequence = [];
+  backend.deepFound = 0;
+  backend.deepAddOnFinish = false;
+  backend.deepStatusLatencyMs = 1;
   backend.timing = { panelStart: 0, panelEnd: 0, scanStart: 0, scanEnd: 0 };
   // The store also posts the MCP current-device and probes points-count with raw
   // fetch(). Keep those off the real network so they cannot skew the timings.
@@ -283,6 +315,25 @@ describe('device tree load flow', { timeout: 20000 }, () => {
     expect(store.getState().treeData.length).toBeGreaterThan(0);
   });
 
+  it('polls the detached deep scan and repaints when it finishes', async () => {
+    backend.db = [];
+    backend.panels = [];
+    backend.scanFinds = [];
+    backend.scanStartsDeep = true;
+    backend.deepStatusSequence = [true, false]; // first poll: running, second: done
+    backend.deepFound = 1;
+    backend.deepAddOnFinish = true;
+    const { store, status } = await loadModules();
+
+    // Toolbar refresh: UDP pass + detached deep pass.
+    await store.getState().scanForDevices({ timeout: 8, mode: 'udp', deep: true, quiet: true });
+
+    // The store starts polling on its own; the deep device appears afterwards.
+    await vi.waitFor(() => expect(serials(store)).toContain(9001), { timeout: 8000 });
+    expect(backend.calls.deepStatus).toBeGreaterThanOrEqual(2);
+    expect(status.getState().message).toContain('Deep scan finished');
+  });
+
   it('surfaces an FFI failure in the status bar instead of showing nothing', async () => {
     backend.ffiError = 'T3000 panel data still initializing, retry shortly';
     const { store, status } = await loadModules();
@@ -293,5 +344,157 @@ describe('device tree load flow', { timeout: 20000 }, () => {
     expect(status.getState().message).toContain('T3000 panel list unavailable');
     expect(status.getState().message).toContain('T3000_PANELS_WARMUP');
     expect(status.getState().messageType).toBe('error');
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Page load / refresh timing
+//
+// Latencies are the values measured on real hardware (see lan-scanner.md):
+//   · UDP scan with a device answering the broadcast: 650 ms
+//   · full scan (UDP + serial COM + TCP sub-port):    7900 ms
+//   · action 4 panel list (1-5 panels):               150 ms
+//   · one POST /devices (SQLite upsert):               12 ms
+//   · one GET  /devices (SQLite read):                  8 ms
+//
+// The real-timer runs execute the model SCALE× faster so the suite stays fast;
+// reported numbers are the model values (scaled elapsed × SCALE).
+// ═════════════════════════════════════════════════════════════════════════════
+
+const MODEL = {
+  dbRead: 8,
+  ffiPanelList: 150,
+  panelUpsert: 12,
+  udpScan: 650,
+  fullScan: 7900, // serial + sub-port passes (now run detached)
+  deepScan: 7900,
+  deepPollMs: 2000, // the UI polls the deep-scan status every 2 s
+  reconcile: 8,
+};
+const SCALE = 3; // 3× faster than reality — keeps the suite quick without timer-granularity noise
+
+/** Analytic page-load timeline, in ms. */
+function pageLoadModel(panels: number) {
+  const panelList = MODEL.ffiPanelList + panels * MODEL.panelUpsert + MODEL.dbRead;
+  return {
+    firstPaint: MODEL.dbRead,
+    panelListReady: MODEL.dbRead + panelList,
+    scanReady: MODEL.dbRead + MODEL.udpScan,
+    concurrent: MODEL.dbRead + Math.max(panelList, MODEL.udpScan) + MODEL.reconcile,
+    sequential: MODEL.dbRead + panelList + MODEL.udpScan + MODEL.reconcile,
+  };
+}
+
+/** Analytic toolbar-refresh timeline with the detached deep pass, in ms. */
+function refreshModel(panels: number) {
+  const panelList = MODEL.ffiPanelList + panels * MODEL.panelUpsert + MODEL.dbRead;
+  return {
+    buttonIdleAt: panelList + MODEL.reconcile,
+    lanDevicesAt: Math.max(panelList, MODEL.udpScan) + MODEL.reconcile,
+    deepDevicesAt: MODEL.deepScan + MODEL.deepPollMs,
+    sequential: panelList + MODEL.fullScan + MODEL.reconcile,
+  };
+}
+
+describe('page load / refresh timing', () => {
+  it('prints the model timeline for 1, 3, 10 and 20 panels', () => {
+    const rows = [1, 3, 10, 20].map((panels) => {
+      const load = pageLoadModel(panels);
+      const refresh = refreshModel(panels);
+      return {
+        panels,
+        'first paint': load.firstPaint,
+        'panel list ready': load.panelListReady,
+        'page load: sequential': load.sequential,
+        'page load: concurrent': load.concurrent,
+        'saved': load.sequential - load.concurrent,
+        'refresh: button idle': refresh.buttonIdleAt,
+        'refresh: LAN devices': refresh.lanDevicesAt,
+        'refresh: deep devices': refresh.deepDevicesAt,
+        'refresh: old sequential': refresh.sequential,
+      };
+    });
+    // eslint-disable-next-line no-console
+    console.log('[timing model] ms', JSON.stringify(rows, null, 0));
+
+    // The tree is painted from the DB cache essentially immediately …
+    expect(pageLoadModel(3).firstPaint).toBeLessThanOrEqual(MODEL.dbRead + 1);
+    // … and concurrency can never be slower than the sequential flow.
+    for (const panels of [1, 3, 10, 20]) {
+      expect(pageLoadModel(panels).concurrent).toBeLessThanOrEqual(pageLoadModel(panels).sequential);
+    }
+  });
+
+  it('runs a real page load at 1/3 scale and matches the model', async () => {
+    const panels = 3;
+    backend.dbReadLatencyMs = MODEL.dbRead / SCALE;
+    backend.panelListLatencyMs = MODEL.ffiPanelList / SCALE;
+    backend.scanLatencyMs = MODEL.udpScan / SCALE;
+    backend.panels = Array.from({ length: panels }, (_, i) => ({
+      serial_number: 7000 + i,
+      panel_name: `AHU-${i + 1}`,
+      panel_number: i + 1,
+      pid: 19,
+      online_time: nowSecs(),
+    }));
+    backend.scanFinds = [deviceRow({ serialNumber: 7000, nameShowOnTree: 'AHU-1', productName: 'AHU-1' })];
+    const { store } = await loadModules();
+
+    const t0 = performance.now();
+    let firstPaintMs = -1;
+    await store.getState().fetchDevices();
+    firstPaintMs = performance.now() - t0;
+    await Promise.allSettled([
+      store.getState().loadDevicesWithSync({ skipInitialFetch: true, quiet: true }),
+      store.getState().scanForDevices({ timeout: 8, mode: 'udp', quiet: true }),
+    ]);
+    await store.getState().fetchDevices();
+    const scaledElapsed = performance.now() - t0;
+
+    const model = pageLoadModel(panels);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[timing] page load (${panels} panels), 1/${SCALE} scale: first paint ${firstPaintMs.toFixed(0)} ms, ` +
+        `complete ${scaledElapsed.toFixed(0)} ms (≈ ${(scaledElapsed * SCALE).toFixed(0)} ms real) — model ` +
+        `concurrent ${model.concurrent} ms, sequential ${model.sequential} ms`
+    );
+
+    // Concurrency must keep the measured total below the sequential model.
+    expect(scaledElapsed).toBeLessThan(model.sequential / SCALE);
+    expect(store.getState().treeData.length).toBeGreaterThan(0);
+  });
+
+  it('runs the (legacy, synchronous) full scan at 1/3 scale: button idle long before it ends', async () => {
+    const panels = 3;
+    backend.dbReadLatencyMs = MODEL.dbRead / SCALE;
+    backend.panelListLatencyMs = MODEL.ffiPanelList / SCALE;
+    backend.fullScanLatencyMs = MODEL.fullScan / SCALE;
+    backend.panels = Array.from({ length: panels }, (_, i) => ({
+      serial_number: 8000 + i,
+      panel_name: `AHU-${i + 1}`,
+      online_time: nowSecs(),
+    }));
+    const { store } = await loadModules();
+
+    // TreeToolbar.handleRefresh: start both, await only the panel list.
+    const t0 = performance.now();
+    const panelListDone = store.getState().loadDevicesWithSync({ skipInitialFetch: true, quiet: true });
+    const scanDone = store.getState().scanForDevices({ timeout: 8, mode: 'full', quiet: true });
+    await panelListDone;
+    await store.getState().fetchDevices();
+    const buttonIdleScaled = performance.now() - t0;
+    await scanDone;
+    const scanDoneScaled = performance.now() - t0;
+
+    const model = refreshModel(panels);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[timing] synchronous full scan (${panels} panels), 1/${SCALE} scale: ` +
+        `button idle ${buttonIdleScaled.toFixed(0)} ms, scan done ${scanDoneScaled.toFixed(0)} ms ` +
+        `(≈ ${(scanDoneScaled * SCALE).toFixed(0)} ms real) — model sequential ${model.sequential} ms`
+    );
+
+    expect(buttonIdleScaled).toBeLessThan(scanDoneScaled / 2);
+    expect(scanDoneScaled).toBeLessThan(model.sequential / SCALE);
   });
 });
