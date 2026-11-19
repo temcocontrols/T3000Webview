@@ -76,6 +76,16 @@ display REST API it exposes — is documented with the firmware:
 **Developer design docs** for this feature live in this folder:
 
 - [`device-firmware-lvgl-architecture.md`](device-firmware-lvgl-architecture.md)
+- [`firmware-developer-onboarding.md`](firmware-developer-onboarding.md) — **start here if you are
+  new to the ESP32 firmware**: architecture, boot flow, tasks, point database, build loops,
+  recipes and landmines
+- **Phase 2 — making the device draw the deployed JSON:**
+  - [`phase2-device-renderer-design.md`](phase2-device-renderer-design.md) — the design and the
+    payload contract
+  - [`phase2-firmware-implementation-guide.md`](phase2-firmware-implementation-guide.md) — how to
+    change `T3-programmable-controller-on-ESP32` (file-by-file, reference code, verification)
+  - [`phase2-host-implementation-guide.md`](phase2-host-implementation-guide.md) — the front-end
+    changes around it
 - [`import-from-device-design.md`](import-from-device-design.md)
 - [`device-interface-deployment-via-bacnet-design.md`](device-interface-deployment-via-bacnet-design.md)
 - [`lvgl-eez-project-json-format.md`](lvgl-eez-project-json-format.md)

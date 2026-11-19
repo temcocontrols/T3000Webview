@@ -4,6 +4,14 @@ items:
   href: README.md
 - name: "T3 Firmware — LVGL Display Architecture"
   href: device-firmware-lvgl-architecture.md
+- name: "Firmware Developer Onboarding"
+  href: firmware-developer-onboarding.md
+- name: "Phase 2 — Device-Side Dynamic UI Renderer (Design)"
+  href: phase2-device-renderer-design.md
+- name: "Phase 2 — Firmware Implementation Guide"
+  href: phase2-firmware-implementation-guide.md
+- name: "Phase 2 — Host Implementation Guide"
+  href: phase2-host-implementation-guide.md
 - name: "Deploy to Device — as built (REST)"
   href: device-interface-deployment-via-bacnet-design.md
 - name: "Import from Device — as built"

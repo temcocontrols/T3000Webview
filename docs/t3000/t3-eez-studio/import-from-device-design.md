@@ -81,6 +81,11 @@ deploy — see
   `localStorage["importedProjectPaths"]` for its badge.
 - A device that is offline cannot be imported: step 1 fails with the reachability error, and
   nothing beyond the (empty) project folder from step 0 is written.
+- **Step 3 is strict.** `device/info` reports all 13 canonical screen slots whether or not the
+  file exists, and `loadScreen()` throws on a 404, so one missing or truncated screen file aborts
+  the whole import. This is an implemented limitation, not a design intent — tolerating a 404 per
+  screen is item **F4** in
+  [phase2-device-renderer-design.md §6.2](phase2-device-renderer-design.md#62-what-must-change-design-only-in-this-phase).
 
 ---
 

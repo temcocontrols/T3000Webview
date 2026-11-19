@@ -917,6 +917,14 @@ Images are stored as **data URIs** with PNG base64 encoding:
 
 ## 11. Embedded Runtime Algorithm (Pseudocode)
 
+> **Scope note.** The pseudocode below is written against the **editor** format
+> (`LVGLLabelWidget`, `text`, `left`/`top`, `eventHandlers`) and is illustrative only. The device
+> never receives that format — it receives the flattened device JSON (`type: "Widget"`,
+> `sub_type`, `obj_text`, `x_pos`/`y_pos`, `events`). For the renderer that actually has to run on
+> the panel, with the real field set, the `align`+offset semantics, the style vocabulary and the
+> threading model, see
+> [phase2-device-renderer-design.md](phase2-device-renderer-design.md).
+
 ```c
 // ====== INITIALIZATION ======
 void eez_runtime_init(const char *json_string) {
