@@ -153,4 +153,10 @@ export interface ScanOptions {
    * Defaults to 'full'.
    */
   mode?: 'udp' | 'full';
+  /**
+   * Suppress the final status-bar summary so an orchestrator that runs
+   * several passes concurrently can report one coherent message.
+   * Warnings and errors are still shown.
+   */
+  quiet?: boolean;
 }

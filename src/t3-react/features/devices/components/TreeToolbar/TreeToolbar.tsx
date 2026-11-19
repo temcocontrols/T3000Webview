@@ -36,7 +36,7 @@ interface TreeToolbarProps {
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
-  const { expandAll, collapseAll, viewMode, setViewMode, scanForDevices, loadDevicesWithSync } = useDeviceTreeStore();
+  const { expandAll, collapseAll, viewMode, setViewMode, scanForDevices, loadDevicesWithSync, fetchDevices } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -45,14 +45,21 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
-      // Phase 1: refresh the device list from T3000 (FFI action 4). Fast — the
-      // tree updates as soon as it returns.
-      await loadDevicesWithSync({ skipInitialFetch: true });
+      // Both passes are independent sources, so they run concurrently and the
+      // slow one (full discovery: serial COM + TCP sub-port) no longer waits for
+      // the panel list. The panel list stays quiet so the scan's own summary is
+      // the one left in the status bar; warnings/errors still show.
+      setMessage('Refreshing device list — T3000 panel list + full scan…', 'info');
+      const panelListDone = loadDevicesWithSync({ skipInitialFetch: true, quiet: true });
+      const scanDone = scanForDevices({ timeout: 8, mode: 'full' });
 
-      // Phase 2: deep discovery (UDP + serial COM + TCP sub-port). This can take
-      // minutes on a machine with many COM ports, so it runs in the background —
-      // the status bar reports progress and the tree repaints when it finishes.
-      scanForDevices({ timeout: 8, mode: 'full' }).catch(() => {});
+      panelListDone
+        .then(() => setMessage('T3000 panel list received…', 'info'))
+        .catch(() => {});
+
+      await Promise.allSettled([panelListDone, scanDone]);
+      // One authoritative read after both writes landed.
+      await fetchDevices();
     } catch (err) {
       console.error('Failed to refresh devices:', err);
       setMessage('Failed to refresh device list. Please try again.', 'error');

@@ -57,13 +57,37 @@ export const TreePanel: React.FC = () => {
       // Prefetch the project point tree so switching views is instant (no loading flash)
       fetchProjectPointTree();
 
-      // Phase 1: ask T3000 which panels it knows about (FFI action 4, the
-      // "message action"). One fast call; updates names and online state.
-      await loadDevicesWithSync({ skipInitialFetch: true });
+      // Phase 1 + 2 run **concurrently**: the FFI panel list (action 4) and the
+      // UDP scan are independent sources, so the tree is ready after
+      // max(t_panels, t_scan) instead of their sum. Each pass reports the moment
+      // it lands; the final message and the authoritative DB re-read happen once
+      // both are done (see the merge in scanForDevices / loadDevicesWithSync).
+      const { setMessage } = useStatusBarStore.getState();
+      setMessage('Loading device list (T3000 panel list + network scan)...', 'info');
 
-      // Phase 2: fast UDP discovery (~1s). Serial/TCP sub-port probing only runs
-      // from the toolbar refresh, mirroring C++ _FreshTreeView vs Scan_Product.
-      scanForDevices({ timeout: 8, mode: 'udp' }).catch(() => {});
+      const panelListDone = loadDevicesWithSync({ skipInitialFetch: true, quiet: true });
+      const scanDone = scanForDevices({ timeout: 8, mode: 'udp', quiet: true });
+
+      panelListDone
+        .then(() => setMessage('T3000 panel list received...', 'info'))
+        .catch(() => {});
+      scanDone
+        .then(() => setMessage('Network scan finished...', 'info'))
+        .catch(() => {});
+
+      await Promise.allSettled([panelListDone, scanDone]);
+
+      // Reconcile with the DB — both passes wrote into it, so one read gives the
+      // merged, authoritative list (and rebuilds the tree).
+      await fetchDevices();
+
+      const { devices: finalDevices, deviceStatuses: finalStatuses } = useDeviceTreeStore.getState();
+      if (finalDevices.length > 0) {
+        const online = finalDevices.filter((d) => finalStatuses.get(d.serialNumber) === 'online').length;
+        setMessage(`Device list ready: ${finalDevices.length} device(s), ${online} online`, 'success');
+      }
+      // With zero devices the passes' own diagnostic warnings are the useful
+      // message, so leave them in place.
     };
 
     initializeDevices();
@@ -77,6 +101,11 @@ export const TreePanel: React.FC = () => {
     fetchDevices();
   };
 
+  // A background refresh (FFI panel list, UDP scan, 5-min timer) must never blank
+  // a tree we already painted from the DB cache. Only a first load with nothing
+  // to show gets the spinner; a populated tree stays on screen.
+  const isInitialLoading = isLoading && devices.length === 0;
+
   return (
     <div className={styles.container}>
       {/* Toolbar with actions */}
@@ -87,8 +116,8 @@ export const TreePanel: React.FC = () => {
 
       {/* Tree content area */}
       <div className={styles.treeContainer}>
-        {/* Loading state */}
-        {isLoading && (
+        {/* Loading state — first load only; a refresh keeps the tree visible */}
+        {isInitialLoading && (
           <div className={styles.loadingContainer}>
             <Spinner
               size="tiny"
@@ -99,8 +128,8 @@ export const TreePanel: React.FC = () => {
           </div>
         )}
 
-        {/* Error state */}
-        {!isLoading && error && (
+        {/* Error state — only when there is nothing on screen to keep */}
+        {!isInitialLoading && error && devices.length === 0 && (
           <div className={styles.errorContainer}>
             <div className={styles.errorTitle}>No devices to display</div>
             <div className={styles.errorMessage}>
@@ -117,7 +146,7 @@ export const TreePanel: React.FC = () => {
         )}
 
         {/* Empty state - no devices at all */}
-        {!isLoading && !error && devices.length === 0 && (
+        {!isInitialLoading && !error && devices.length === 0 && (
           <div className={styles.emptyContainer}>
             <div className={styles.emptyIconWrapper}>
               <ArrowRoutingRectangleMultiple24Regular className={styles.emptyIcon} fontSize={32} />
@@ -132,24 +161,23 @@ export const TreePanel: React.FC = () => {
           </div>
         )}
 
-        {/* No results state - filtered out */}
-        {!isLoading && !error && devices.length > 0 && treeData.length === 0 && (
+        {/* No results state - rows exist in the DB but none is displayable */}
+        {!isInitialLoading && devices.length > 0 && treeData.length === 0 && (
           <div className={styles.emptyContainer}>
             <div className={styles.emptyIconWrapper}>
               <ArrowRoutingRectangleMultiple24Regular className={styles.emptyIcon} fontSize={32} />
             </div>
-            <div className={styles.emptyTitle}>No Devices Found</div>
+            <div className={styles.emptyTitle}>No displayable devices</div>
             <div className={styles.emptyMessage}>
-              Click the{' '}
-              <span className={styles.inlineRefreshHint}>
-                <ArrowSyncRegular fontSize={14} /> 
-              </span>{' '}button above to load your devices from the network.
+              {devices.length} device(s) are known, but none has a usable panel name (they are
+              listed as "(Unknown)"), so the tree hides them. Rename the panels in T3000, or refresh
+              so the names are re-read.
             </div>
           </div>
         )}
 
-        {/* Tree with devices */}
-        {!isLoading && !error && treeData.length > 0 && (
+        {/* Tree with devices — stays visible during background refreshes */}
+        {!isInitialLoading && treeData.length > 0 && (
           <>
             {viewMode === 'equipment' ? <DeviceTree /> : <ProjectPointTree />}
           </>
