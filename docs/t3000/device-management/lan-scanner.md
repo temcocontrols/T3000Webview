@@ -25,7 +25,7 @@ api/src/lan_scan/
 ├── mod.rs          # Module entry, re-exports
 ├── types.rs        # DiscoveredDevice (20 fields), ScanResult, product_map (130+ entries)
 ├── protocol.rs     # Constants, build_scan_query(), parse_scan_response(), parse_sub_device_info()
-├── scanner.rs      # get_ip_mask_gateway(), scan_network(), scan_on_adapter(), bind_scan_port()
+├── scanner.rs      # get_ip_mask_gateway(), scan_network(), scan_on_adapter(), unicast_sweep()
 └── tests/lan_scan/ # 18 unit tests + 1 real-network test (ignored)
 ```
 
@@ -71,28 +71,110 @@ Offsets below are indices into the raw buffer.
 
 ```
 scan_network(timeout_secs)
-  ├─ get_local_ips() → enumerates local adapter IPs
-  │   └─ Windows: ipconfig /all parsing
+  ├─ get_ip_mask_gateway() → every IPv4 adapter (IP, mask, gateway)
+  │   └─ Windows: GetAdaptersInfo (loopback + APIPA skipped)
   │   └─ Fallback: connect UDP to 8.8.8.8
-  └─ For each adapter IP:
-      ├─ bind_scan_port(ip) → binds to ip:57619..57623
+  └─ For each adapter (all in parallel):
+      ├─ bind_scan_port(ip) → binds to ip:57619..57623 (ephemeral fallback)
       ├─ set_broadcast(true)
       ├─ send_to(255.255.255.255:1234, query)
-      └─ recv_loop(timeout):
-          ├─ 0x65 → parse_scan_response() → DiscoveredDevice
-          └─ 0x2F → parse_sub_device_info() → SubDeviceInfo
+      ├─ send_to(<subnet broadcast>:1234, query)   # e.g. 10.10.10.255
+      ├─ recv_loop: 0x65 → parse_scan_response(), 0x2F → sub-device info
+      │   ├─ re-broadcast every 250 ms **only while nothing has answered**
+      │   └─ at +600 ms with no reply → unicast sweep, inside the same listen
+      │       window: <subnet>.1 … <subnet>.254 (254 probes max)
+      └─ stop after 500 ms of silence, or at +1.2 s when nothing answers
   └─ Deduplicate by serial_number
+
+scan_all(timeout_secs)
+  ├─ serial pass starts first (thread per COM port, in parallel with UDP)
+  ├─ UDP pass (above)
+  └─ Modbus TCP sub-port pass, one thread per parent gateway
 ```
+
+### Timing
+
+Every wait ends as soon as the line goes quiet — the parameters below only
+bound the "nothing answered" case:
+
+| Constant | Value | Effect |
+|---|---|---|
+| `QUIET_WINDOW` | 500 ms | Silence after the last reply ends the adapter's scan |
+| `RESEND_INTERVAL` / `RESEND_PHASE` | 250 ms / 600 ms | Up to 3 broadcasts, but only until something answers |
+| `FIRST_REPLY_WAIT` | 1.2 s | Give-up point when nothing answers at all |
+| `SWEEP_AFTER` | 600 ms | Unicast sweep is fired inside the listen window (no extra wait) |
+| `TCP_TIMEOUT` (sub-port) | 500 ms | Was 1000 ms; a working gateway answers in tens of ms |
+
+Measured on a 1-device LAN (`cargo test --test lan_scan test_real_full_scan -- --ignored --nocapture`):
+
+| Pass | Before | After |
+|---|---|---|
+| UDP, device answers broadcast | ~1350 ms | ~650 ms |
+| UDP, broadcast blocked (sweep fallback) | ~2750 ms | ~1260 ms |
+| Full scan (`scan_all`) | ~12.9 s | ~7.9 s |
+
+### Why the unicast sweep exists
+
+Broadcast is fragile in three common setups, and all three look identical in
+the log — queries go out, zero packets come back:
+
+1. **Windows Firewall** treats the reply to a `255.255.255.255` query as
+   unsolicited inbound traffic: it does not match the outbound UDP state, so it
+   is dropped unless the executable has an inbound allow rule (the C++ T3000.exe
+   normally does; a freshly built Rust binary does not).
+2. **Managed switches / Wi-Fi APs** filter broadcast between client ports.
+3. **Multi-NIC hosts** (Hyper-V, WSL, VPN adapters) can route the limited
+   broadcast out an interface the devices never see.
+
+Devices answer a **unicast** `0x64` query exactly like a broadcast one, and the
+unicast reply *does* match the firewall's UDP state — so sweeping the adapter's
+own subnet recovers devices the broadcast phase cannot see. Only one /24 is
+swept (254 probes) even on a /16, because LAN devices almost always sit in the
+adapter's own /24. The sweep is sent from inside the listen loop, so it adds no
+wall-clock time of its own.
+
+### Serial pass
+
+* One **thread per COM port** (`ScanComThreadNoCritical` equivalent) — ports
+  are independent, so a 4-port machine costs one port's time instead of four.
+* Baud probing stops at the first rate that yields a device: one RS-485 bus
+  runs at exactly one baud rate, so the remaining 5 rates cannot hold anything
+  new.
+
+### TCP sub-port pass
+
+* One thread per parent gateway (unchanged).
+* A parent that does not answer the sub-port register write is **not a
+  programmable gateway** (e.g. an ESP32 T3 that only speaks the scan protocol);
+  the pass aborts after that first timeout instead of repeating it for all 15
+  (sub-port, baud) combinations.
+* Probing a sub-port stops at the first baud that yields a device.
+
+
+## Troubleshooting an empty device tree
+
+| Symptom in the log | Meaning | Fix |
+|---|---|---|
+| `sending query to 255.255.255.255:1234` then `0 packet(s)` | No replies reach the process | Check the firewall hint logged after the scan, and whether the devices are on the adapter's subnet |
+| `broadcast + unicast sweep found nothing` | Both phases silent | PC and devices on different subnets, or all inbound UDP blocked |
+| `serial COMx scan failed: ... Access is denied` | Another program (usually T3000.exe) owns the COM port | Close T3000.exe, or accept that the port cannot be scanned |
+| `serial COMx scan failed: ... semaphore timeout` | USB-serial driver did not answer | Unplug/replug the adapter |
+
 
 ## Key Differences from C++
 
 | Aspect | C++ | Rust |
 |---|---|---|
-| Adapter enum | `GetAdaptersInfo()` Win32 API | `ipconfig /all` string parsing |
-| Broadcast target | `255.255.255.255:1234` | Same Yes |
-| Bind port | `57619–57623` | Same Yes |
+| Adapter enum | `GetAdaptersInfo()` Win32 API | `GetAdaptersInfo()` Win32 API |
+| Broadcast target | `255.255.255.255:1234` | Same, plus the adapter's subnet broadcast |
+| Bind port | `57619–57623` | Same |
 | Socket model | Blocking `select()` + `recvfrom()` | Async Tokio `UdpSocket` |
 | Timeout | Fixed 8-second `select()` | Configurable via parameter |
+| Broadcast fallback | None | Unicast sweep of the adapter's /24 |
+| Resend | One send, 8 s window | Up to 3 sends, ends on first reply |
+| Serial ports | Thread per port | Thread per port (same) |
+| Baud probing | All 6 rates | Stops at the first rate with a device |
+| TCP sub-port | 15 combos, 3 s timeout | Aborts non-gateways, stops on first hit, 500 ms timeout |
 | Dedup | Tracks seen IPs in send buffer | `HashSet<u32>` after scan |
 
 ## Bugs Caught During Porting
@@ -124,6 +206,9 @@ cargo test --test lan_scan
 
 # Real network scan (requires T3000 hardware on LAN)
 cargo test --test lan_scan test_real_network_scan -- --ignored --nocapture
+
+# Real full-scan timing: UDP, serial and scan_all() in one run
+cargo test --test lan_scan test_real_full_scan -- --ignored --nocapture
 
 # From code
 use t3_webview_api::lan_scan::scanner;

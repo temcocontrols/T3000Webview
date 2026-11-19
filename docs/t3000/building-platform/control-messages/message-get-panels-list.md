@@ -162,6 +162,29 @@ onlinePanels.forEach(panel => {
 });
 ```
 
+## Device-tree refresh (panel list + scan run concurrently)
+
+The left device tree is fed by **two independent sources** that the UI runs at
+the same time, then merges by serial number:
+
+```
+TreePanel mount
+  ├─ fetchDevices()                 → GET /api/t3_device/devices   (DB cache, instant paint)
+  ├─ loadDevicesWithSync()          → POST /api/t3000/ffi/call {action:4}   ┐
+  │      └─ upsert each panel       → POST/PUT /api/t3_device/devices        │  concurrent
+  ├─ scanForDevices({mode:'udp'})   → POST /api/t3_device/devices/scan-refresh ┘
+  └─ fetchDevices()                 → authoritative read + tree rebuild after both
+```
+
+* Page-load cost is `max(panel list, UDP scan)` (~0.7–1.3 s), not their sum.
+* `g_bacnet_panel_info` behind action 4 is filled **only** by the C++ engine's own
+  `0x64/0x65` scan, so an empty panel list and an empty scan share one root cause.
+* The panel list may **confirm** a device is online, but it never writes
+  `is_online = 0`: only the discovery scan may mark a device offline, because
+  the backend debounces that after `OFFLINE_GRACE_SECS` (300 s).
+* The 5-minute background timer runs `fetchDevices()` **and** a quiet UDP scan —
+  a DB re-read alone cannot change an online status.
+
 ## See Also
 
 - [GET_PANEL_DATA](message-get-panel-data.md) - Load specific panel data
