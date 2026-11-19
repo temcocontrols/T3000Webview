@@ -26,9 +26,10 @@ const WRITE_SLAVE: u8 = 255;
 const FUNC_WRITE_SINGLE: u8 = 0x06;
 
 /// TCP connect/read timeout for probes. The C++ uses SO_RCVTIMEO=3000ms; we
-/// use 1s (T3 gateways respond in ms when a device is present, so this only
-/// shortens the "no device" case).
-const TCP_TIMEOUT: Duration = Duration::from_millis(1000);
+/// use 500ms — a working gateway answers a sub-port probe in tens of ms, so
+/// this only shortens the "no device behind this sub-port" case, which is
+/// 10 of the 15 probe combinations on a device with empty sub-ports.
+const TCP_TIMEOUT: Duration = Duration::from_millis(500);
 /// Max wait for a write echo — a real Modbus TCP gateway echoes a write within
 /// ms, so a gateway that doesn't echo is dead and is skipped fast.
 const WRITE_ECHO_TIMEOUT: Duration = Duration::from_millis(500);
@@ -94,7 +95,7 @@ pub fn scan_parent_sub_ports(
 
     let mut results = Vec::new();
     // C++ iterates sub_com in 0..3
-    for sub_com in 0u8..3 {
+    'sub_port: for sub_com in 0u8..3 {
         for &baud_idx in &SUB_BAUD_INDICES {
             // C++ `ScanTCPSubPortThreadNoCritical`: sub-port 1 (Zigbee) is only
             // probed when the parent reports hardware_info == 0x74, and its baud
@@ -105,8 +106,16 @@ pub fn scan_parent_sub_ports(
                 }
             }
             // Program the sub-port and baud rate (C++ `write_one_multy_thread`).
-            if write_reg(&mut stream, &mut trans_id, WRITE_SLAVE, SUB_PORT_REG, sub_com as u16).is_err() {
-                continue;
+            if let Err(e) = write_reg(&mut stream, &mut trans_id, WRITE_SLAVE, SUB_PORT_REG, sub_com as u16) {
+                // No echo means this controller is not a programmable sub-port
+                // gateway (an ESP32 T3 only answers the scan protocol). Every
+                // remaining (sub-port, baud) combination would hit the same
+                // timeout, so stop here instead of spending 15 of them.
+                tracing::info!(
+                    "[lan_scan] tcp-sub parent {}:{} (SN={}) is not a sub-port gateway ({}) — skipped",
+                    ip, port, parent.serial_number, e
+                );
+                break 'sub_port;
             }
             if write_reg(&mut stream, &mut trans_id, WRITE_SLAVE, SUB_BAUD_REG, baud_idx as u16).is_err() {
                 continue;
@@ -116,6 +125,7 @@ pub fn scan_parent_sub_ports(
             } else {
                 sub_baud_value(baud_idx)
             };
+            let before = results.len();
             let ids = scan_ids_over_tcp(&mut stream, 1, 254);
             for id in ids {
                 if let Some(mut dev) = read_device_info_tcp(&mut stream, &mut trans_id, id) {
@@ -138,6 +148,11 @@ pub fn scan_parent_sub_ports(
                         device: dev,
                     });
                 }
+            }
+            // One RS-485 bus runs at a single baud rate, so a sub-port that
+            // answered here cannot hold anything at another rate.
+            if results.len() > before {
+                break;
             }
         }
     }

@@ -329,9 +329,28 @@ pub fn scan_all_serial_ports(
     let mut port_open_failures = Vec::new();
     let warnings = Vec::new();
 
-    for port in &ports {
-        match scan_com_port(port, baudrates, dev_lo, dev_hi) {
-            Ok(mut found) => {
+    // One thread per port. Ports are independent (a device is on exactly one
+    // of them), and each probe is dominated by serial latency — running them
+    // concurrently turns `sum(ports)` into `max(ports)`, mirroring the C++
+    // `ScanComThreadNoCritical` thread-per-port model.
+    let handles: Vec<(String, std::thread::JoinHandle<(String, Result<Vec<SerialDeviceResult>, String>)>)> =
+        ports
+            .iter()
+            .map(|port| {
+                let port = port.clone();
+                let bauds = baudrates.to_vec();
+                let label = port.clone();
+                let handle = std::thread::spawn(move || {
+                    let result = scan_com_port(&port, &bauds, dev_lo, dev_hi);
+                    (port, result)
+                });
+                (label, handle)
+            })
+            .collect();
+    // Join in the original port order so the log/output stays deterministic.
+    for (port, handle) in handles {
+        match handle.join() {
+            Ok((_, Ok(mut found))) => {
                 let n = found.len();
                 for d in &found {
                     tracing::info!(
@@ -347,9 +366,13 @@ pub fn scan_all_serial_ports(
                 tracing::info!("[lan_scan] serial {} scan done: {} devices found", port, n);
                 devices.append(&mut found);
             }
-            Err(e) => {
+            Ok((_, Err(e))) => {
                 tracing::info!("[lan_scan] serial {} scan failed: {}", port, e);
                 port_open_failures.push(format!("{}: {}", port, e));
+            }
+            Err(_) => {
+                tracing::warn!("[lan_scan] serial {} scan panicked", port);
+                port_open_failures.push(format!("{}: scan thread panicked", port));
             }
         }
     }
@@ -397,6 +420,7 @@ pub fn scan_com_port(
 
         // Scan the Modbus ID range (binary-search style like the C++).
         let found_ids = scan_modbus_ids(&mut port_handle, dev_lo, dev_hi, baud);
+        let before = results.len();
         for id in found_ids {
             if let Some(dev) = read_device_info(&mut port_handle, id, port, baud) {
                 results.push(SerialDeviceResult {
@@ -406,6 +430,13 @@ pub fn scan_com_port(
                     mstp_detected,
                 });
             }
+        }
+
+        // A COM port is one RS-485 bus, and a bus runs at exactly one baud
+        // rate. Once devices answered here the remaining rates cannot hold
+        // anything new — probing them was ~5/6 of the per-port time.
+        if results.len() > before {
+            break;
         }
     }
     Ok(results)

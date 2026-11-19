@@ -574,6 +574,20 @@ impl T3DeviceService {
             }
             ScanMode::Full => {
                 let full = scanner::scan_all(timeout_secs).await;
+                // Failures such as a COM port held by another program or an
+                // adapter that could not bind are only actionable when they
+                // reach the log: a full scan used to drop them silently, which
+                // left an empty device tree with nothing to go on.
+                for warning in &full.warnings {
+                    tracing::warn!("[lan_scan] {}", warning);
+                }
+                tracing::info!(
+                    "[lan_scan] full scan: {} UDP, {} serial, {} TCP sub-port device(s) across {} adapter(s)",
+                    full.udp_count,
+                    full.serial_count,
+                    full.tcp_sub_count,
+                    full.adapters_scanned
+                );
                 ScanPass {
                     udp_count: full.udp_count,
                     serial_count: full.serial_count,
