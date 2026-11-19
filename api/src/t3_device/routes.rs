@@ -726,12 +726,19 @@ async fn get_devices_with_stats(
 /// `RefreshNetWorkDeviceListByUDPFunc` equivalent). `mode: "full"` (default)
 /// adds serial COM and Modbus TCP sub-port probing (the C++ `ScanAll` pass).
 /// Devices unseen for 5 minutes are marked offline.
+///
+/// `deep: true` keeps the response fast: the UDP pass runs and is merged, then
+/// serial COM + TCP sub-port probing continues in a detached task. Poll
+/// `GET /api/t3_device/devices/deep-scan` to know when it finished.
 #[derive(Deserialize)]
 struct ScanAndRefreshRequest {
     #[serde(default = "default_timeout")]
     timeout: u64,
     #[serde(default)]
     mode: ScanMode,
+    /// Run the slow passes (serial COM + TCP sub-ports) detached from the response.
+    #[serde(default)]
+    deep: bool,
 }
 
 fn default_timeout() -> u64 { 8 }
@@ -742,13 +749,21 @@ async fn scan_and_refresh_devices(
 ) -> Result<Json<Value>, StatusCode> {
     let db = get_t3_device_conn!(state);
 
-    match T3DeviceService::scan_and_refresh(&*db, body.timeout, body.mode).await {
+    let result = if body.deep {
+        T3DeviceService::scan_and_refresh_fast(&*db, body.timeout).await
+    } else {
+        T3DeviceService::scan_and_refresh(&*db, body.timeout, body.mode).await
+    };
+
+    match result {
         Ok(result) => {
+            let (deep_running, _, _) = T3DeviceService::deep_scan_status();
             tracing::info!(
-                "[lan_scan] HTTP response ({}): {} scanned, {} in DB",
+                "[lan_scan] HTTP response ({}): {} scanned, {} in DB{}",
                 result.mode,
                 result.scanned_count,
-                result.devices.len()
+                result.devices.len(),
+                if deep_running { ", deep scan running" } else { "" }
             );
             Ok(Json(json!({
                 "devices": result.devices,
@@ -759,6 +774,7 @@ async fn scan_and_refresh_devices(
                 "serial_count": result.serial_count,
                 "tcp_sub_count": result.tcp_sub_count,
                 "com_ports": result.com_ports,
+                "deep_scan": if deep_running { "running" } else { "idle" },
                 "message": format!("Scan ({}) found {} device(s) ({} UDP, {} serial, {} TCP sub-port), {} total in database",
                     result.mode, result.scanned_count, result.udp_count, result.serial_count, result.tcp_sub_count, result.devices.len())
             })))
@@ -768,6 +784,16 @@ async fn scan_and_refresh_devices(
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
+}
+
+/// Progress of the detached deep-discovery pass (serial COM + TCP sub-ports).
+async fn deep_scan_status() -> Json<Value> {
+    let (running, started_at, found) = T3DeviceService::deep_scan_status();
+    Json(json!({
+        "running": running,
+        "started_at": started_at,
+        "found": found,
+    }))
 }
 
 async fn create_device(
@@ -1925,6 +1951,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices", get(get_devices_with_stats))
         .route("/devices", post(create_device))
         .route("/devices/scan-refresh", post(scan_and_refresh_devices))
+        .route("/devices/deep-scan", get(deep_scan_status))
         .route("/devices", delete(delete_all_devices))  // DELETE all devices
         .route("/devices/:id", get(get_device_by_id))
         .route("/devices/:id", put(update_device))

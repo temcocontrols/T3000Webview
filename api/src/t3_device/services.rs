@@ -181,6 +181,23 @@ impl ScanMode {
 /// reply from greying out a live device.
 const OFFLINE_GRACE_SECS: i64 = 300;
 
+/// Set while the detached serial/sub-port pass is running (the COM ports cannot
+/// be probed twice at once).
+static DEEP_SCAN_RUNNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// When the current/last deep pass started (epoch seconds).
+static DEEP_SCAN_STARTED_AT: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+/// How many devices the last deep pass found.
+static DEEP_SCAN_FOUND: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// Clears `DEEP_SCAN_RUNNING` even if the task panics.
+struct DeepScanGuard;
+
+impl Drop for DeepScanGuard {
+    fn drop(&mut self) {
+        DEEP_SCAN_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
 /// Device list + per-pass counts, whatever combination of passes produced it.
 struct ScanPass {
     devices: Vec<crate::lan_scan::types::DiscoveredDevice>,
@@ -599,15 +616,127 @@ impl T3DeviceService {
             }
         };
 
-        Self::apply_scan_results(db, pass, mode).await
+        Self::apply_scan_results(db, pass, mode, true).await
     }
 
-    /// Upsert one scan pass into DEVICES and mark vanished devices offline
-    /// (after the grace period). Shared by the UDP and full scan paths.
+    /// Fast scan for the UI: the UDP pass runs synchronously (≈0.7 s) and the
+    /// slow passes (serial COM + Modbus TCP sub-ports, ≈6-8 s of hardware
+    /// latency) are handed to a detached task that upserts into the DB when it
+    /// finishes. The caller returns as soon as the LAN devices are in,
+    /// mirroring "the tree is ready, deep discovery keeps going".
+    pub async fn scan_and_refresh_fast(
+        db: &DatabaseConnection,
+        timeout_secs: u64,
+    ) -> Result<ScanAndRefreshResult, AppError> {
+        use crate::lan_scan::scanner;
+
+        let udp = scanner::scan_network(timeout_secs).await;
+        for warning in &udp.warnings {
+            tracing::warn!("[lan_scan] {}", warning);
+        }
+        tracing::info!(
+            "[lan_scan] udp scan: {} device(s) across {} adapter(s)",
+            udp.devices.len(),
+            udp.adapters_scanned
+        );
+
+        // Parents for the sub-port pass must come from the UDP result, so the
+        // deep task is handed the list we already have (no second UDP scan).
+        let parents: Vec<_> = udp
+            .devices
+            .iter()
+            .filter(|d| crate::lan_scan::tcp_sub::supports_sub_ports(d.product_id))
+            .cloned()
+            .collect();
+
+        let pass = ScanPass {
+            udp_count: udp.devices.len(),
+            devices: udp.devices,
+            serial_count: 0,
+            tcp_sub_count: 0,
+            com_ports: Vec::new(),
+            local_ips: udp.local_ips,
+        };
+
+        let result = Self::apply_scan_results(db, pass, ScanMode::Udp, true).await?;
+        Self::start_deep_scan(parents);
+        Ok(result)
+    }
+
+    /// Start the detached serial + TCP sub-port pass (no-op when one is already
+    /// running — the COM ports cannot be probed by two scans at once).
+    fn start_deep_scan(parents: Vec<crate::lan_scan::types::DiscoveredDevice>) {
+        if DEEP_SCAN_RUNNING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            tracing::info!("[lan_scan] deep scan already running — request ignored");
+            return;
+        }
+        DEEP_SCAN_STARTED_AT.store(chrono::Utc::now().timestamp(), std::sync::atomic::Ordering::SeqCst);
+
+        tokio::spawn(async move {
+            let guard = DeepScanGuard;
+            let deep = crate::lan_scan::scanner::scan_deep(parents).await;
+
+            let devices = deep.devices();
+            let com_ports = deep.com_ports();
+            DEEP_SCAN_FOUND.store(devices.len() as u32, std::sync::atomic::Ordering::SeqCst);
+
+            if devices.is_empty() {
+                tracing::info!("[lan_scan] deep scan found no serial/sub-port devices");
+                drop(guard);
+                return;
+            }
+
+            // Resolve the connection up front: `Box<dyn Error>` is not `Send`, so
+            // it must not be held across the awaits below.
+            let db = match crate::db_connection::establish_t3_device_connection().await {
+                Ok(db) => db,
+                Err(e) => {
+                    tracing::warn!("[lan_scan] deep scan could not open the device DB: {}", e);
+                    drop(guard);
+                    return;
+                }
+            };
+
+            let pass = ScanPass {
+                serial_count: deep.serial.devices.len(),
+                tcp_sub_count: deep.tcp_sub.len(),
+                com_ports,
+                udp_count: 0,
+                local_ips: Vec::new(),
+                devices,
+            };
+            // Upsert only — the UDP pass owns offline marking.
+            match Self::apply_scan_results(&db, pass, ScanMode::Full, false).await {
+                Ok(r) => tracing::info!(
+                    "[lan_scan] deep scan merged into DB: {} serial, {} TCP sub-port → {} device(s) known",
+                    r.serial_count, r.tcp_sub_count, r.devices.len()
+                ),
+                Err(e) => tracing::warn!("[lan_scan] deep scan DB upsert failed: {:?}", e),
+            }
+            drop(guard);
+        });
+    }
+
+    /// `(running, started_at_epoch_secs, found_last_time)` for the deep pass.
+    pub fn deep_scan_status() -> (bool, i64, u32) {
+        (
+            DEEP_SCAN_RUNNING.load(std::sync::atomic::Ordering::SeqCst),
+            DEEP_SCAN_STARTED_AT.load(std::sync::atomic::Ordering::SeqCst),
+            DEEP_SCAN_FOUND.load(std::sync::atomic::Ordering::SeqCst),
+        )
+    }
+
+    /// Upsert one scan pass into DEVICES and optionally mark vanished devices
+    /// offline (after the grace period).
+    ///
+    /// `mark_offline` is false for the detached deep pass: it only sees serial
+    /// and sub-port devices, so it must not declare the whole LAN offline. The
+    /// UDP pass (page load + 5-minute timer) owns that decision.
     async fn apply_scan_results(
         db: &DatabaseConnection,
         pass: ScanPass,
         mode: ScanMode,
+        mark_offline: bool,
     ) -> Result<ScanAndRefreshResult, AppError> {
         let now = chrono::Utc::now().to_rfc3339();
         // Local IPs used for scanning — the host PC IP recorded as pc_ip_address
@@ -693,7 +822,7 @@ impl T3DeviceService {
         // Mark vanished devices offline — but only after the grace period, so a
         // single missed reply (or a short UDP timeout) cannot grey out a device
         // that is actually alive. Mirrors the C++ `status_last_time` ring.
-        if !seen_serials.is_empty() {
+        if mark_offline && !seen_serials.is_empty() {
             let cutoff = chrono::Utc::now() - chrono::Duration::seconds(OFFLINE_GRACE_SECS);
             let mut to_flip: Vec<i32> = Vec::new();
 

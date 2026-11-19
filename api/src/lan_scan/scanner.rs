@@ -455,6 +455,84 @@ fn bind_scan_port(local_addr: Ipv4Addr) -> Result<UdpSocket, String> {
     UdpSocket::from_std(s).map_err(|e| format!("UdpSocket::from_std failed: {}", e))
 }
 
+/// Result of the slow passes (serial COM + Modbus TCP sub-ports), without the
+/// UDP pass. Used by `scan_all` and by the detached background discovery.
+#[derive(Debug, Clone)]
+pub struct DeepScanResult {
+    pub serial: super::serial::SerialScanResult,
+    pub tcp_sub: Vec<super::tcp_sub::TcpSubDeviceResult>,
+}
+
+impl DeepScanResult {
+    /// Merged device list of both passes, deduplicated by (serial, address).
+    pub fn devices(&self) -> Vec<DiscoveredDevice> {
+        let mut all: Vec<DiscoveredDevice> = self.serial.devices.iter().map(|s| s.device.clone()).collect();
+        all.extend(self.tcp_sub.iter().map(|t| t.device.clone()));
+        let mut seen: HashSet<(u32, String)> = HashSet::new();
+        all.into_iter()
+            .filter(|d| seen.insert((d.serial_number, d.ip_address.clone())))
+            .collect()
+    }
+
+    /// COM ports where a device answered.
+    pub fn com_ports(&self) -> Vec<String> {
+        self.serial.devices.iter().map(|d| d.com_port.clone()).collect()
+    }
+}
+
+/// Scan the Modbus TCP sub-ports of every parent gateway, concurrently.
+///
+/// Mirrors the C++ `ScanTCPSubPortThreadNoCritical`, which spawns one thread per
+/// parent — scanning parents one-at-a-time (each ~15 probes) is what made
+/// scan-refresh take minutes.
+async fn scan_tcp_sub_ports(parents: &[DiscoveredDevice]) -> Vec<super::tcp_sub::TcpSubDeviceResult> {
+    let mut tasks = tokio::task::JoinSet::new();
+    for parent in parents {
+        let parent = parent.clone();
+        tasks.spawn_blocking(move || match super::tcp_sub::scan_parent_sub_ports(&parent) {
+            Ok(found) => found,
+            Err(_) => Vec::new(),
+        });
+    }
+    let mut found_devices = Vec::new();
+    while let Some(joined) = tasks.join_next().await {
+        if let Ok(found) = joined {
+            found_devices.extend(found);
+        }
+    }
+    found_devices
+}
+
+/// Run only the slow passes: serial COM ports and the Modbus TCP sub-ports of
+/// `parents`. Takes ~6-8 s on hardware latency, so the UI refresh calls this in
+/// the background instead of blocking the HTTP response.
+pub async fn scan_deep(parents: Vec<DiscoveredDevice>) -> DeepScanResult {
+    // Serial probing and the sub-port probes are independent: start serial
+    // first (it is the slowest) and run the TCP probes while it is in flight.
+    let serial_task = tokio::task::spawn_blocking(|| {
+        super::serial::scan_all_serial_ports(None, 1, 254)
+    });
+
+    let tcp_sub = scan_tcp_sub_ports(&parents).await;
+
+    let serial = match serial_task.await {
+        Ok(s) => s,
+        Err(_) => super::serial::SerialScanResult {
+            devices: vec![],
+            port_open_failures: vec!["serial scan task panicked".into()],
+            warnings: vec![],
+        },
+    };
+
+    tracing::info!(
+        "[lan_scan] deep scan done: {} serial, {} TCP sub-port device(s)",
+        serial.devices.len(),
+        tcp_sub.len()
+    );
+
+    DeepScanResult { serial, tcp_sub }
+}
+
 /// Run a full device discovery pass mirroring the C++ `CTStatScanner::ScanAll()`:
 ///
 /// 1. UDP network scan (0x64/0x65 broadcast) — already-existing LAN discovery
@@ -463,10 +541,9 @@ fn bind_scan_port(local_addr: Ipv4Addr) -> Result<UdpSocket, String> {
 ///
 /// Returns the merged device list, plus per-scan metadata.
 pub async fn scan_all(timeout_secs: u64) -> FullScanResult {
-    // The serial COM pass does not depend on LAN discovery and is the slowest
-    // part of a full scan (every port × every baud rate), so it starts before
-    // the UDP pass instead of after it. Serial and UDP time now overlap instead
-    // of adding up.
+    // Serial does not depend on LAN discovery and is the slowest part of a full
+    // scan (every port × every baud rate), so it starts before the UDP pass
+    // instead of after it. Serial and UDP time then overlap instead of adding up.
     let serial_task = tokio::task::spawn_blocking(|| {
         super::serial::scan_all_serial_ports(None, 1, 254)
     });
@@ -483,26 +560,9 @@ pub async fn scan_all(timeout_secs: u64) -> FullScanResult {
         .cloned()
         .collect();
 
-    // Every parent's TCP sub-port scan runs concurrently. Mirrors the C++
-    // `ScanTCPSubPortThreadNoCritical`, which spawns one thread per parent —
-    // scanning parents one-at-a-time (each ~15 probes x 1.5s) is what made
-    // scan-refresh take minutes.
-    let mut tasks = tokio::task::JoinSet::new();
-    for parent in parents {
-        tasks.spawn_blocking(move || match super::tcp_sub::scan_parent_sub_ports(&parent) {
-            Ok(found) => found,
-            Err(_) => Vec::new(),
-        });
-    }
-
-    let mut tcp_devices: Vec<super::tcp_sub::TcpSubDeviceResult> = Vec::new();
-    while let Some(joined) = tasks.join_next().await {
-        if let Ok(found) = joined {
-            for d in found {
-                all.push(d.device.clone());
-                tcp_devices.push(d);
-            }
-        }
+    let tcp_devices = scan_tcp_sub_ports(&parents).await;
+    for d in &tcp_devices {
+        all.push(d.device.clone());
     }
 
     let serial_result = match serial_task.await {
