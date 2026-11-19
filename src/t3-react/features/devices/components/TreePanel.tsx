@@ -31,6 +31,10 @@ import styles from './TreePanel.module.css';
 export const TreePanel: React.FC = () => {
   const { viewMode, fetchDevices, loadDevicesWithSync, scanForDevices, fetchProjectPointTree, isLoading, error, devices, treeData } = useDeviceTreeStore();
   const [showFilter, setShowFilter] = React.useState(false);
+  // True while the first paint passes (panel list + UDP scan) are still running.
+  // A cold start must not flash "No Devices Found" at the user for ~200 ms
+  // before the first devices arrive.
+  const [bootstrapping, setBootstrapping] = React.useState(true);
   const hasInitialized = React.useRef(false);
 
   // Background services
@@ -51,43 +55,48 @@ export const TreePanel: React.FC = () => {
       }
       hasInitialized.current = true;
 
-      // Phase 0: paint the tree from the local DB cache — instant, no network.
-      await fetchDevices();
+      try {
+        // Phase 0: paint the tree from the local DB cache — instant, no network.
+        await fetchDevices();
 
-      // Prefetch the project point tree so switching views is instant (no loading flash)
-      fetchProjectPointTree();
+        // Prefetch the project point tree so switching views is instant (no loading flash)
+        fetchProjectPointTree();
 
-      // Phase 1 + 2 run **concurrently**: the FFI panel list (action 4) and the
-      // UDP scan are independent sources, so the tree is ready after
-      // max(t_panels, t_scan) instead of their sum. Each pass reports the moment
-      // it lands; the final message and the authoritative DB re-read happen once
-      // both are done (see the merge in scanForDevices / loadDevicesWithSync).
-      const { setMessage } = useStatusBarStore.getState();
-      setMessage('Loading device list (T3000 panel list + network scan)...', 'info');
+        // Phase 1 + 2 run **concurrently**: the FFI panel list (action 4) and the
+        // UDP scan are independent sources, so the tree is ready after
+        // max(t_panels, t_scan) instead of their sum. Each pass reports the moment
+        // it lands; the final message and the authoritative DB re-read happen once
+        // both are done (see the merge in scanForDevices / loadDevicesWithSync).
+        const { setMessage } = useStatusBarStore.getState();
+        setMessage('Loading device list (T3000 panel list + network scan)...', 'info');
 
-      const panelListDone = loadDevicesWithSync({ skipInitialFetch: true, quiet: true });
-      const scanDone = scanForDevices({ timeout: 8, mode: 'udp', quiet: true });
+        const panelListDone = loadDevicesWithSync({ skipInitialFetch: true, quiet: true });
+        const scanDone = scanForDevices({ timeout: 8, mode: 'udp', quiet: true });
 
-      panelListDone
-        .then(() => setMessage('T3000 panel list received...', 'info'))
-        .catch(() => {});
-      scanDone
-        .then(() => setMessage('Network scan finished...', 'info'))
-        .catch(() => {});
+        panelListDone
+          .then(() => setMessage('T3000 panel list received...', 'info'))
+          .catch(() => {});
+        scanDone
+          .then(() => setMessage('Network scan finished...', 'info'))
+          .catch(() => {});
 
-      await Promise.allSettled([panelListDone, scanDone]);
+        await Promise.allSettled([panelListDone, scanDone]);
 
-      // Reconcile with the DB — both passes wrote into it, so one read gives the
-      // merged, authoritative list (and rebuilds the tree).
-      await fetchDevices();
+        // Reconcile with the DB — both passes wrote into it, so one read gives the
+        // merged, authoritative list (and rebuilds the tree).
+        await fetchDevices();
 
-      const { devices: finalDevices, deviceStatuses: finalStatuses } = useDeviceTreeStore.getState();
-      if (finalDevices.length > 0) {
-        const online = finalDevices.filter((d) => finalStatuses.get(d.serialNumber) === 'online').length;
-        setMessage(`Device list ready: ${finalDevices.length} device(s), ${online} online`, 'success');
+        const { devices: finalDevices, deviceStatuses: finalStatuses } = useDeviceTreeStore.getState();
+        if (finalDevices.length > 0) {
+          const online = finalDevices.filter((d) => finalStatuses.get(d.serialNumber) === 'online').length;
+          setMessage(`Device list ready: ${finalDevices.length} device(s), ${online} online`, 'success');
+        }
+        // With zero devices the passes' own diagnostic warnings are the useful
+        // message, so leave them in place.
+      } finally {
+        // Cold start is over: from now on an empty list really means "no devices".
+        setBootstrapping(false);
       }
-      // With zero devices the passes' own diagnostic warnings are the useful
-      // message, so leave them in place.
     };
 
     initializeDevices();
@@ -105,6 +114,10 @@ export const TreePanel: React.FC = () => {
   // a tree we already painted from the DB cache. Only a first load with nothing
   // to show gets the spinner; a populated tree stays on screen.
   const isInitialLoading = isLoading && devices.length === 0;
+  // While the very first passes are still running, an empty list is "not known
+  // yet", not "no devices" — keep the spinner and suppress the empty/error states.
+  const bootstrappingEmpty = bootstrapping && devices.length === 0;
+  const showSpinner = isInitialLoading || bootstrappingEmpty;
 
   return (
     <div className={styles.container}>
@@ -117,7 +130,7 @@ export const TreePanel: React.FC = () => {
       {/* Tree content area */}
       <div className={styles.treeContainer}>
         {/* Loading state — first load only; a refresh keeps the tree visible */}
-        {isInitialLoading && (
+        {showSpinner && (
           <div className={styles.loadingContainer}>
             <Spinner
               size="tiny"
@@ -129,7 +142,7 @@ export const TreePanel: React.FC = () => {
         )}
 
         {/* Error state — only when there is nothing on screen to keep */}
-        {!isInitialLoading && error && devices.length === 0 && (
+        {!showSpinner && error && devices.length === 0 && (
           <div className={styles.errorContainer}>
             <div className={styles.errorTitle}>No devices to display</div>
             <div className={styles.errorMessage}>
@@ -146,7 +159,7 @@ export const TreePanel: React.FC = () => {
         )}
 
         {/* Empty state - no devices at all */}
-        {!isInitialLoading && !error && devices.length === 0 && (
+        {!showSpinner && !error && devices.length === 0 && (
           <div className={styles.emptyContainer}>
             <div className={styles.emptyIconWrapper}>
               <ArrowRoutingRectangleMultiple24Regular className={styles.emptyIcon} fontSize={32} />
@@ -162,7 +175,7 @@ export const TreePanel: React.FC = () => {
         )}
 
         {/* No results state - rows exist in the DB but none is displayable */}
-        {!isInitialLoading && devices.length > 0 && treeData.length === 0 && (
+        {!showSpinner && devices.length > 0 && treeData.length === 0 && (
           <div className={styles.emptyContainer}>
             <div className={styles.emptyIconWrapper}>
               <ArrowRoutingRectangleMultiple24Regular className={styles.emptyIcon} fontSize={32} />
@@ -177,7 +190,7 @@ export const TreePanel: React.FC = () => {
         )}
 
         {/* Tree with devices — stays visible during background refreshes */}
-        {!isInitialLoading && treeData.length > 0 && (
+        {!showSpinner && treeData.length > 0 && (
           <>
             {viewMode === 'equipment' ? <DeviceTree /> : <ProjectPointTree />}
           </>

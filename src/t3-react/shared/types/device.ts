@@ -135,6 +135,7 @@ export interface DevicesResponse {
   serial_count?: number;    // devices found on serial COM ports
   tcp_sub_count?: number;   // devices found via Modbus TCP sub-port gateways
   com_ports?: string[];     // COM ports where serial devices were found
+  deep_scan?: 'running' | 'idle'; // detached serial + sub-port pass
   message: string;
 }
 
@@ -153,6 +154,12 @@ export interface ScanOptions {
    * Defaults to 'full'.
    */
   mode?: 'udp' | 'full';
+  /**
+   * Keep the response fast: the UDP pass is merged immediately and the slow
+   * passes (serial COM + Modbus TCP sub-ports, ~8 s) continue in the backend.
+   * The store then polls the scan status and refreshes the tree when done.
+   */
+  deep?: boolean;
   /**
    * Suppress the final status-bar summary so an orchestrator that runs
    * several passes concurrently can report one coherent message.

@@ -95,6 +95,11 @@ interface DeviceTreeState {
   fetchDevices: () => Promise<void>;
   refreshDevices: () => Promise<void>;
   scanForDevices: (options?: ScanOptions) => Promise<void>;
+  /**
+   * Poll the backend until the detached deep scan (serial COM + TCP sub-ports)
+   * finishes, then re-read the device list and report what it added.
+   */
+  awaitDeepScan: (intervalMs?: number, maxWaitMs?: number) => Promise<void>;
   loadDevicesWithSync: (options?: { skipInitialFetch?: boolean; quiet?: boolean }) => Promise<void>;
   syncDatabaseWithCpp: () => Promise<void>; // Manual cleanup: sync DB with C++ side
   syncDevicePoints: (device: DeviceInfo) => Promise<void>;
@@ -349,7 +354,8 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             }
             const response = await DeviceApiService.scanAndRefreshDevices(
               options?.timeout ?? 8,
-              options?.mode ?? 'full'
+              options?.mode ?? 'full',
+              options?.deep ?? false
             );
 
             const cleanedDevices = response.devices
@@ -392,6 +398,15 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             if (!options?.quiet) {
               setMessage(`Scan complete — ${parts.join(', ')}`, 'success');
             }
+
+            // Serial + TCP sub-port probing runs detached in the backend; poll
+            // once it started so the tree picks up those devices when they land.
+            if (response.deep_scan === 'running') {
+              if (!options?.quiet) {
+                setMessage('Deep scan (serial + sub-ports) running in the background...', 'info');
+              }
+              void get().awaitDeepScan();
+            }
           } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);
             LogUtil.Error('[scanForDevices] Scan failed:', error);
@@ -404,6 +419,36 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         } finally {
           scanInFlight = null;
         }
+      },
+
+      // Poll the detached deep scan (serial COM + TCP sub-ports) until it
+      // finishes, then refresh the tree from the DB it wrote into.
+      awaitDeepScan: async (intervalMs = 2000, maxWaitMs = 120000) => {
+        const { setMessage } = useStatusBarStore.getState();
+        const started = Date.now();
+        while (Date.now() - started < maxWaitMs) {
+          await new Promise((resolve) => setTimeout(resolve, intervalMs));
+          let status: { running?: boolean; found?: number };
+          try {
+            status = await DeviceApiService.getDeepScanStatus();
+          } catch (error) {
+            // Endpoint unavailable or server restarted: stop polling quietly.
+            LogUtil.Error('[awaitDeepScan] status check failed:', error);
+            return;
+          }
+          if (status.running) continue;
+
+          await get().fetchDevices();
+          const found = status.found ?? 0;
+          setMessage(
+            found > 0
+              ? `Deep scan finished — ${found} serial/sub-port device(s) added`
+              : 'Deep scan finished — no serial/sub-port devices found',
+            found > 0 ? 'success' : 'info'
+          );
+          return;
+        }
+        LogUtil.Error('[awaitDeepScan] gave up waiting for the deep scan');
       },
 
       // Phase 1 of device loading: pull the device list from T3000 (FFI action 4

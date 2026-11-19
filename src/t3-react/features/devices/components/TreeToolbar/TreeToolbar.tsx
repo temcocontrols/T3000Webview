@@ -45,20 +45,16 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
-      // Both passes are independent sources, so they run concurrently and the
-      // slow one (full discovery: serial COM + TCP sub-port) no longer waits for
-      // the panel list. The panel list stays quiet so the scan's own summary is
-      // the one left in the status bar; warnings/errors still show.
-      setMessage('Refreshing device list — T3000 panel list + full scan…', 'info');
+      // Keep both passes in flight at once: the panel list refreshes names and
+      // online state, the scan discovers new devices. The deep pass (serial COM
+      // + TCP sub-ports, ~8 s) runs detached in the backend, so the button stops
+      // spinning as soon as the LAN devices are in — the store then polls the
+      // deep-scan status and repaints when those devices land.
       const panelListDone = loadDevicesWithSync({ skipInitialFetch: true, quiet: true });
-      const scanDone = scanForDevices({ timeout: 8, mode: 'full' });
+      void scanForDevices({ timeout: 8, mode: 'udp', deep: true }).catch(() => {});
 
-      panelListDone
-        .then(() => setMessage('T3000 panel list received…', 'info'))
-        .catch(() => {});
-
-      await Promise.allSettled([panelListDone, scanDone]);
-      // One authoritative read after both writes landed.
+      await panelListDone.catch(() => {});
+      // Authoritative read once the panel-list writes have landed.
       await fetchDevices();
     } catch (err) {
       console.error('Failed to refresh devices:', err);
