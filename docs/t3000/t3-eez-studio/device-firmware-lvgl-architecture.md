@@ -1,4 +1,4 @@
-> 1. [ ]  ***~~``~~***# T3 Firmware — LVGL Display Architecture
+# T3 Firmware — LVGL Display Architecture
 
 ## Part 1 — Current Firmware (SquareLine Studio)
 
@@ -463,7 +463,18 @@ action engine, JSON screen manager — was proposed but is **not present in the 
 appears nowhere in `main/` or `components/`, and `sub_type` is handled only as REST request
 payload. Treat any such description as a design proposal, not as behaviour.
 
+**The design that closes this gap is a three-document set:**
+
+| Document | Purpose |
+|---|---|
+| [phase2-device-renderer-design.md](phase2-device-renderer-design.md) | the contract the renderer must accept, threading, memory, fallback, test plan |
+| [phase2-firmware-implementation-guide.md](phase2-firmware-implementation-guide.md) | **how to change this firmware** — file-by-file, reference C for every module, the `lcd_task.c` integration, debug playbook, rollback |
+| [phase2-host-implementation-guide.md](phase2-host-implementation-guide.md) | the front-end changes that go with it (compatibility check, import tolerance, status read-back, contract tests) |
+
 For the device contract, use the firmware's own
-`components/temco_dynamic_display/DEVICE_REST_API_DISPLAY.md`; for the design rationale behind a
-dynamic renderer see
-[device-interface-deployment-via-bacnet-design.md](device-interface-deployment-via-bacnet-design.md).
+`components/temco_dynamic_display/DEVICE_REST_API_DISPLAY.md` — but note that its
+*"Screen JSON format (canonical)"* section does **not** describe what the firmware stores (real
+widgets are `{"type":"Widget","sub_type":…,"x_pos":…}` with `align` + offset semantics). The
+correct shape is in
+[phase2-device-renderer-design.md §3](phase2-device-renderer-design.md#3-ground-truth-the-payload-the-renderer-must-accept),
+and a proposed replacement for that section is in its Appendix C.

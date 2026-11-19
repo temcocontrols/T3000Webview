@@ -74,6 +74,28 @@ Device endpoints (all under `/api/eez-device`):
   `lvgl_version: "9.1.0"` as **hard-coded literals** — they are not read from the panel.
 - Images are stored as the **raw request body text** (base64 inside JSON), not decoded pixels.
 - There is no delete-screen endpoint — only images can be deleted.
+- **A successful deploy is persisted, not painted.** The device writes the JSON to SPIFFS and
+  returns `200`; nothing on the panel reads it. The renderer that closes this gap is designed in
+  [phase2-device-renderer-design.md](phase2-device-renderer-design.md).
+
+### Render after deploy (Phase 2)
+
+Once the device-side renderer lands, the request/response contract does **not** change, but its
+meaning sharpens:
+
+| Event | Meaning |
+|---|---|
+| `PUT /screens/:name` → `200` | the file is on flash **and** a rebuild has been queued |
+| the pixels change | asynchronously, on the next LCD-task iteration |
+| `GET /device/status` (new, additive) | `ui_mode`, `current_screen`, `build_ok`, `last_error` — the only reliable "did the panel take it?" signal |
+
+Clients must therefore never treat the `200` as proof that the panel re-drew. See
+[phase2-device-renderer-design.md §4.7](phase2-device-renderer-design.md#47-deploy--visible-change).
+
+The firmware change that creates this contract is specified in
+[phase2-firmware-implementation-guide.md §11](phase2-firmware-implementation-guide.md); the client
+side (status read-back, compatibility check, import tolerance) in
+[phase2-host-implementation-guide.md](phase2-host-implementation-guide.md).
 
 Legacy BACnet-style aliases exist on the device (`POST /screens/push/:panelId`,
 `POST /screens/pull/:panelId`) but the client does not use them.
