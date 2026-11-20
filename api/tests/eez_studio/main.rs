@@ -290,3 +290,68 @@ fn parse_screens_emits_one_screen_per_init_block() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// The mock device API must serve the firmware's canonical screens — the same
+/// JSON a real device serves from SPIFFS — not a re-derived approximation.
+/// This drives the real handler (`bacnet_api_mock::get_screens`), which the
+/// standalone `device_mock_server` example does NOT cover (it reads a fixture
+/// file instead).
+///
+/// Skips when the firmware checkout is not next to this repo (CI without it).
+#[tokio::test]
+async fn mock_get_screens_serves_firmware_defaults() {
+    use axum::extract::Query;
+    use t3_webview_api::eez_studio::bacnet_api_mock::{get_screens, ScreenQuery};
+
+    let resp = get_screens(Query(ScreenQuery {
+        serial_number: Some(1028),
+    }))
+    .await
+    .expect("get_screens failed");
+
+    let v = serde_json::to_value(&resp.0).expect("serialize");
+    let screens = v["screens"].as_array().expect("screens array");
+    if screens.is_empty() {
+        eprintln!("skipping: firmware checkout not found next to this repo");
+        return;
+    }
+
+    let names: Vec<&str> = screens
+        .iter()
+        .map(|s| s["name"].as_str().unwrap())
+        .collect();
+
+    // Same set and page order as the firmware's ui_init().
+    assert_eq!(names.len(), 13, "screen count: {:?}", names);
+    assert_eq!(names[0], "start_up_screen");
+    assert_eq!(names[1], "home_screen");
+    assert!(names.contains(&"wireguard_screen"));
+    assert!(names.contains(&"ddns_screen"));
+
+    // Canonical payload shape the frontend's firmware-loader consumes.
+    for s in screens {
+        let root = s["json"]["widgets"]
+            .as_object()
+            .unwrap_or_else(|| panic!("{}: widgets is not an object", s["name"]));
+        assert_eq!(root.len(), 1, "{}: one root widget", s["name"]);
+        let (_, root_w) = root.iter().next().unwrap();
+        assert_eq!(root_w["sub_type"], "screen", "{}: root is a screen", s["name"]);
+    }
+
+    // Widgets built through runtime helpers in C (ui_RemoteAccess.c) are present
+    // only in the canonical JSON — a C parse cannot see them.
+    let count_widgets = |name: &str| -> usize {
+        fn walk(v: &serde_json::Value) -> usize {
+            match v.get("children").and_then(|c| c.as_object()) {
+                Some(kids) => kids.values().map(|k| 1 + walk(k)).sum(),
+                None => 0,
+            }
+        }
+        let screen = screens.iter().find(|s| s["name"] == name).unwrap();
+        let root = screen["json"]["widgets"].as_object().unwrap();
+        root.values().map(walk).sum()
+    };
+    assert!(count_widgets("wireguard_screen") >= 10, "wireguard widgets");
+    assert!(count_widgets("ddns_screen") >= 5, "ddns widgets");
+    assert!(count_widgets("home_screen") >= 30, "home widgets");
+}

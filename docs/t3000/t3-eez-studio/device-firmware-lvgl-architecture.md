@@ -27,7 +27,7 @@
 │                      │ ui_ScheduleEdit*.c   │               │
 │                      │ ui_RemoteAccess.c    │               │
 │  ┌──────────────┐    │ ui_NetworkConfig.c   │               │
-│  │ my_touch_read│    │ ...12 screens total  │               │
+│  │ my_touch_read│    │ ...13 screens total  │               │
 │  │ → TouchGet   │    └──────────┬──────────┘               │
 │  │   Inputs()   │               │                            │
 │  └──────────────┘    ┌──────────▼──────────┐               │
@@ -213,7 +213,7 @@ target_sources(${COMPONENT_LIB} PRIVATE ${TEMCO_SCREEN_SOURCES})
 | `ui_HolidayCalenderScreen.c` | Holiday calendar  | 128   | Holiday date picker              |
 | `ui_RemoteAccess.c`          | Remote access     | 182   | WireGuard / DDNS entry           |
 
-**12 screens.** Also compiled from `TemcoScreen/`: `ui.c`, `ui_events.c` (214), `ui_helpers.c`
+**13 screens.** Also compiled from `TemcoScreen/`: `ui.c`, `ui_events.c` (214), `ui_helpers.c`
 (354), `ui_comp_hook.c`, `ui_font_Arial80.c` and 16 `ui_img_*.c` bitmap assets.
 Line counts are from the current `DynamicUI_Tstat11` branch.
 

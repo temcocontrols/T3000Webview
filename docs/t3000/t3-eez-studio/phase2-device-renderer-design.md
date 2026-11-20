@@ -638,7 +638,7 @@ the decoder off (`# CONFIG_LV_BIN_DECODER_RAM_LOAD`).
 
 Recommended checkpoint after **D3**: photograph the panel next to the browser WASM preview of the
 same screen. If they differ, fix the style applier before adding more widget types — otherwise the
-difference multiplies across 12 screens.
+difference multiplies across 13 screens.
 
 Every step above has a matching section in
 [phase2-firmware-implementation-guide.md](phase2-firmware-implementation-guide.md) with the

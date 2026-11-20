@@ -73,15 +73,32 @@ fn key(panel_id: i32, serial: i32) -> DeviceKey { (panel_id, serial) }
 /// Resolve the ESP32 firmware TemcoScreen directory relative to CWD.
 /// From the runtime dir (T3000 Output\Debug), firmware is at:
 ///   ..\..\..\T3-programmable-controller-on-ESP32\main\TemcoScreen
+/// Locate the ESP32 firmware checkout's `main/TemcoScreen` directory.
+///
+/// The firmware repo sits next to this one (`../T3-programmable-controller-on-ESP32`),
+/// but the server can be started from several places: `api/`, the repo root, or
+/// `api/target/debug`. So instead of a fixed `../../../` hop, walk up from the
+/// cwd and take the first ancestor that has the firmware checkout beside it.
+/// `T3_FIRMWARE_DIR` wins when set (full path to `main/TemcoScreen`).
 fn resolve_firmware_dir() -> Option<std::path::PathBuf> {
-    let path = std::env::current_dir()
-        .unwrap_or_default()
-        .join("..").join("..").join("..")
-        .join("T3-programmable-controller-on-ESP32")
-        .join("main").join("TemcoScreen");
-    if path.exists() {
-        return Some(path);
+    if let Ok(dir) = std::env::var("T3_FIRMWARE_DIR") {
+        let path = std::path::PathBuf::from(dir);
+        if path.join("ui.c").exists() {
+            return Some(path);
+        }
     }
+
+    let cwd = std::env::current_dir().ok()?;
+    for ancestor in cwd.ancestors() {
+        let path = ancestor
+            .join("T3-programmable-controller-on-ESP32")
+            .join("main")
+            .join("TemcoScreen");
+        if path.join("ui.c").exists() {
+            return Some(path);
+        }
+    }
+
     None
 }
 
