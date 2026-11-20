@@ -20,6 +20,13 @@
 //!   POST /api/eez-device/screens/pull/:panelId            — retrieve screens
 //!
 //! ## Switching to real device: change USE_MOCK in device-rest-client.ts
+//!
+//! Screens are seeded from the firmware repo's
+//! `components/temco_dynamic_display/DefaultScreens/*.json` — the exact files the
+//! device embeds into SPIFFS (see the firmware's root `CMakeLists.txt`) — so the
+//! mock serves the same widget trees a real device does. If that folder is not
+//! present (older firmware checkout), the mock falls back to parsing the
+//! generated `main/TemcoScreen/ui_*.c` files.
 
 use axum::{
     extract::{Path, Query},
@@ -30,7 +37,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Mutex;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 // ═══════════════════════════════════════════════════════════════════
 // Store
@@ -81,9 +88,22 @@ fn resolve_firmware_dir() -> Option<std::path::PathBuf> {
 /// Dynamically parse the ESP32 firmware C files into StoredScreen list.
 /// Called on every read request — no caching, always reflects latest firmware edits.
 /// Screens are sorted by `ui_init()` order (the natural device page sequence).
+///
+/// The firmware also ships the *canonical* default screens as JSON
+/// (`components/temco_dynamic_display/DefaultScreens/*.json`) — the exact bytes
+/// the device serves from its SPIFFS. When those exist they are used verbatim,
+/// so the mock mirrors the device pixel-for-pixel; otherwise we fall back to
+/// parsing the generated SquareLine C files.
 fn parse_firmware_screens() -> Result<Vec<StoredScreen>, String> {
     let dir = resolve_firmware_dir()
         .ok_or_else(|| "firmware TemcoScreen directory not found".to_string())?;
+
+    if let Some(screens) = load_canonical_screen_jsons(&dir) {
+        if !screens.is_empty() {
+            info!("parse_firmware_screens: {} canonical screen JSON(s) from the firmware defaults", screens.len());
+            return Ok(screens);
+        }
+    }
 
     let mut parsed = crate::eez_studio::parse_squareline::parse_screens(&dir)?;
 
@@ -111,6 +131,57 @@ fn parse_firmware_screens() -> Result<Vec<StoredScreen>, String> {
     }).collect())
 }
 
+/// Load `components/temco_dynamic_display/DefaultScreens/*.json` — the firmware's
+/// own default screen set, i.e. exactly what a factory-fresh device serves.
+///
+/// `temco_screen_dir` is `<repo>/main/TemcoScreen`, so the repo root is two
+/// levels up. Returns `None` when the folder is absent (older firmware
+/// checkouts), letting the caller fall back to C parsing.
+fn load_canonical_screen_jsons(temco_screen_dir: &std::path::Path) -> Option<Vec<StoredScreen>> {
+    let repo_root = temco_screen_dir.parent()?.parent()?;
+    let json_dir = repo_root.join("components").join("temco_dynamic_display").join("DefaultScreens");
+    if !json_dir.is_dir() {
+        return None;
+    }
+
+    let mut screens: Vec<StoredScreen> = Vec::new();
+    for entry in std::fs::read_dir(&json_dir).ok()? {
+        let Ok(entry) = entry else { continue };
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let Some(name) = path.file_stem().map(|s| s.to_string_lossy().to_string()) else {
+            continue;
+        };
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(e) => {
+                warn!("canonical screen {} is unreadable: {}", name, e);
+                continue;
+            }
+        };
+        let json: Value = match serde_json::from_str(&text) {
+            Ok(v) => v,
+            Err(e) => {
+                warn!("canonical screen {} is not valid JSON: {}", name, e);
+                continue;
+            }
+        };
+        screens.push(StoredScreen { name, json });
+    }
+
+    // Device page order comes from ui.c's `ui_<Screen>_screen_init()` calls.
+    let order = read_init_order(temco_screen_dir);
+    screens.sort_by_key(|s| {
+        order
+            .iter()
+            .position(|n| n == &s.name)
+            .unwrap_or(usize::MAX)
+    });
+    Some(screens)
+}
+
 /// Read the screen init order from `ui.c`'s `ui_init()` function.
 /// Returns screen names in firmware page sequence (e.g. start_up_screen first, home_screen second).
 fn read_init_order(dir: &std::path::Path) -> Vec<String> {
@@ -122,7 +193,7 @@ fn read_init_order(dir: &std::path::Path) -> Vec<String> {
             if let Some(start) = line.find("ui_") {
                 if let Some(end) = line[start..].find("_screen_init") {
                     let raw = &line[start + 3..start + end]; // skip "ui_"
-                    let name = screen_name_from_pascal(raw);
+                    let name = crate::eez_studio::parse_squareline::canonical_screen_name(raw);
                     if !name.is_empty() {
                         order.push(name);
                     }
@@ -131,21 +202,6 @@ fn read_init_order(dir: &std::path::Path) -> Vec<String> {
         }
     }
     order
-}
-
-/// Convert PascalCase screen name from firmware to snake_case (matching parse_squareline output).
-/// e.g. "StartUpScreen" → "start_up_screen", "HomeScreen" → "home_screen"
-fn screen_name_from_pascal(pascal: &str) -> String {
-    let mut result = String::new();
-    for (i, c) in pascal.chars().enumerate() {
-        if c.is_uppercase() {
-            if i > 0 { result.push('_'); }
-            result.push(c.to_ascii_lowercase());
-        } else {
-            result.push(c);
-        }
-    }
-    result
 }
 
 // ═══════════════════════════════════════════════════════════════════
