@@ -18,7 +18,7 @@
 //! ```
 
 use serde_json::{json, Value};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use tracing::info;
@@ -444,8 +444,13 @@ fn screen_name_from_file(path: &Path) -> String {
 
 pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
     let content = fs::read_to_string(file_path).map_err(|e| format!("{}: {}", file_path.display(), e))?;
-    let lines: Vec<&str> = content.lines().collect();
     let screen_name = screen_name_from_file(file_path);
+    parse_screen_content(&content, screen_name)
+}
+
+/// Parse one screen's C source (a whole file, or one block of a multi-screen file).
+fn parse_screen_content(content: &str, screen_name: String) -> Result<ParsedScreen, String> {
+    let lines: Vec<&str> = content.lines().collect();
 
     let mut widgets: Vec<FirmwareWidget> = Vec::new();
     let mut fonts = Vec::new();
@@ -1045,6 +1050,76 @@ pub fn parse_screen_file(file_path: &Path) -> Result<ParsedScreen, String> {
 
 // ── Parse all screens in a directory ─────────────────────────────────
 
+/// Convert a firmware screen symbol (e.g. `WireGuardScreen`) to the device's
+/// screen name (`wireguard_screen`, matching `DefaultScreens/<name>.json`).
+///
+/// SquareLine names screens after the file, but a hand-written C file can hold
+/// two screens (`ui_RemoteAccess.c` → `WireGuardScreen` + `DdnsScreen`) and the
+/// firmware's own screen names do not always follow the plain snake_case split.
+pub fn canonical_screen_name(pascal: &str) -> String {
+    match screen_name_from_str(pascal).as_str() {
+        // DefaultScreens/wireguard_screen.json (the device drops the extra word break).
+        "wire_guard_screen" => "wireguard_screen".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// Split one C source file into its per-screen blocks.
+///
+/// A SquareLine file holds exactly one screen, so `blocks` is empty and the
+/// caller parses the file as a whole (keeping the historical file-derived name).
+/// Hand-written files can declare several screens; each block starts at that
+/// screen's `lv_obj_t *ui_<Name>;` declaration (the first block keeps the file
+/// header and any shared helpers) and ends where the next one begins.
+///
+/// Returns `(canonical_screen_name, c_source)` pairs, in file order.
+pub fn split_screen_blocks(content: &str) -> Vec<(String, String)> {
+    let lines: Vec<&str> = content.lines().collect();
+
+    // `void ui_<Name>_screen_init(void)` is the authoritative screen marker.
+    let mut inits: Vec<(usize, String)> = Vec::new();
+    for (idx, line) in lines.iter().enumerate() {
+        let t = line.trim();
+        if let Some(rest) = t.strip_prefix("void ui_") {
+            if let Some(name) = rest.strip_suffix("_screen_init(void)") {
+                let name = name.trim();
+                if !name.is_empty() {
+                    inits.push((idx, name.to_string()));
+                }
+            }
+        }
+    }
+    if inits.len() <= 1 {
+        return Vec::new();
+    }
+
+    let starts: Vec<usize> = inits
+        .iter()
+        .enumerate()
+        .map(|(i, (init_line, name))| {
+            if i == 0 {
+                return 0; // keep includes + shared static helpers with the first screen
+            }
+            let decl = format!("lv_obj_t *ui_{};", name);
+            lines[..*init_line]
+                .iter()
+                .rposition(|l| l.trim() == decl)
+                .unwrap_or(*init_line)
+        })
+        .collect();
+
+    (0..inits.len())
+        .map(|i| {
+            let start = starts[i];
+            let end = starts.get(i + 1).copied().unwrap_or(lines.len());
+            (
+                canonical_screen_name(&inits[i].1),
+                lines[start..end].join("\n"),
+            )
+        })
+        .collect()
+}
+
 pub fn parse_screens(dir: &Path) -> Result<Vec<ParsedScreen>, String> {
     let mut screens = Vec::new();
 
@@ -1058,6 +1133,20 @@ pub fn parse_screens(dir: &Path) -> Result<Vec<ParsedScreen>, String> {
         if !name.starts_with("ui_") || !name.ends_with(".c") { continue; }
         if name.starts_with("ui_img_") || name.starts_with("ui_font_") { continue; }
         if name == "ui.c" || name == "ui_events.c" || name == "ui_helpers.c" || name == "ui_comp_hook.c" { continue; }
+
+        let content = fs::read_to_string(&path).map_err(|e| format!("{}: {}", path.display(), e))?;
+
+        // Hand-written files can hold several screens (e.g. ui_RemoteAccess.c
+        // carries both the WireGuard and the DDNS screen).
+        let blocks = split_screen_blocks(&content);
+        if blocks.len() > 1 {
+            for (screen_name, source) in blocks {
+                let screen = parse_screen_content(&source, screen_name)?;
+                info!("  {} → {}: {} widgets", name, screen.name, screen.widgets.len());
+                screens.push(screen);
+            }
+            continue;
+        }
 
         let screen = parse_screen_file(&path)?;
         info!("  {} → {}: {} widgets", name, screen.name, screen.widgets.len());
