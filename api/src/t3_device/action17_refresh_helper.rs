@@ -48,24 +48,9 @@ pub async fn lookup_action17_target(
     {
         Ok(Some(settings)) => match settings.object_instance.filter(|value| *value > 0) {
             Some(object_instance) => object_instance,
-            None => {
-                error!("Missing object_instance in protocol settings for serial: {}", serial);
-                return Err((
-                    StatusCode::CONFLICT,
-                    format!(
-                        "Device with serial {} is missing objectinstance required for Action 17",
-                        serial
-                    ),
-                ));
-            }
+            None => fallback_object_instance(&device, serial)?,
         },
-        Ok(None) => {
-            error!("Protocol settings not found for serial: {}", serial);
-            return Err((
-                StatusCode::NOT_FOUND,
-                format!("Protocol settings not found for serial {}", serial),
-            ));
-        }
+        Ok(None) => fallback_object_instance(&device, serial)?,
         Err(e) => {
             error!("Database error querying protocol settings {}: {:?}", serial, e);
             return Err((
@@ -76,4 +61,30 @@ pub async fn lookup_action17_target(
     };
 
     Ok((panel_id, object_instance))
+}
+
+/// Object instance from the DEVICES row when `PROTOCOL_SETTINGS` has none yet.
+///
+/// Serial (RS485) devices imported from T3000's building database carry their
+/// instance in `ALL_NODE.Object_Instance`. Without this fallback those devices
+/// could never be read (Action 17 would answer `CONFLICT`), because their
+/// protocol settings are only learned from a device round trip that needs the
+/// instance in the first place.
+fn fallback_object_instance(
+    device: &devices::Model,
+    serial: i32,
+) -> Result<i32, (StatusCode, String)> {
+    match device.object_instance.filter(|value| *value > 0) {
+        Some(object_instance) => Ok(object_instance),
+        None => {
+            error!("Missing object_instance for serial: {}", serial);
+            Err((
+                StatusCode::CONFLICT,
+                format!(
+                    "Device with serial {} is missing objectinstance required for Action 17",
+                    serial
+                ),
+            ))
+        }
+    }
 }

@@ -242,10 +242,46 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // Mirror T3000's own device tree (ALL_NODE) into the WebView DEVICES table.
+    // This is the only source that knows about RS485 devices (Tstat10/TSTAT7 on
+    // COM8) and idle configured devices, which never answer the UDP scan. It must
+    // run before the first page load so the tree is populated on the first paint.
+    let t_nodes = std::time::Instant::now();
+    match establish_t3_device_connection().await {
+        Ok(db) => {
+            let summary = crate::t3_device::services::T3DeviceService::import_t3000_devices(&db).await;
+            emit_service_log(
+                "info",
+                "T3_Webview_Initialize",
+                &format!(
+                    "T3000 device tree imported: {} device(s) ({} new, {} updated) from {}",
+                    summary.total,
+                    summary.inserted,
+                    summary.updated,
+                    summary.source.clone().unwrap_or_else(|| "n/a".into())
+                ),
+            )
+            .await;
+            if let Some((ref fh, ref db_log)) = flow_opt {
+                fh.step(db_log, "import_t3000_devices", "info", "lib",
+                        if summary.total > 0 { "ok" } else { "skip" },
+                        t_nodes.elapsed().as_millis() as i64,
+                        &format!("{} device(s) from ALL_NODE", summary.total), None).await;
+            }
+        }
+        Err(e) => {
+            emit_service_log(
+                "warn",
+                "T3_Webview_Initialize",
+                &format!("T3000 device tree import skipped: {}", e),
+            )
+            .await;
+        }
+    }
+
     // Initialize T3000 Main Service with dynamic sync interval from database
     let t_interval = std::time::Instant::now();
     let sync_interval_secs = load_ffi_sync_interval_from_db().await.unwrap_or(300); // Default 5 minutes
-
     emit_service_log(
         "info",
         "T3_Webview_Initialize",

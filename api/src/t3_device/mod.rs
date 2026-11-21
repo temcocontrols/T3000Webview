@@ -1,5 +1,7 @@
 pub mod routes;
 pub mod services;
+pub mod t3000_building_db;      // T3000 building DB (ALL_NODE) device import
+pub mod t3000_tree;             // T3000 in-memory tree via FFI export (no DB, no I/O)
 pub mod constants;              // ✅ T3000 Constants for TRENDLOG_DATA fields (DataSource, CreatedBy)
 pub mod points_service;         // ✅ T3000 Points Management Service (input, output, variable points)
 pub mod schedules_service;      // ✅ T3000 Schedules Management Service

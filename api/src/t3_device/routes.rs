@@ -796,6 +796,29 @@ async fn deep_scan_status() -> Json<Value> {
     }))
 }
 
+/// `GET /api/t3_device/devices/t3000-db` — what the WebView can see in T3000's
+/// own building database (`Database/Buildings/<b>/<b>.db` → `ALL_NODE`).
+///
+/// The FFI panel list (action 4) only carries devices the C++ engine discovered
+/// over UDP, so RS485 devices (Tstat10/TSTAT7 on a COM port) never appear there.
+/// This endpoint shows the source that does list them, which makes it easy to
+/// confirm the import works without digging through logs.
+async fn t3000_db_diagnostics() -> Json<Value> {
+    let dir = crate::t3_device::t3000_building_db::resolve_database_dir();
+
+    let (nodes, error) = match crate::t3_device::t3000_building_db::read_all_nodes().await {
+        Ok(nodes) => (nodes, Value::Null),
+        Err(e) => (Vec::new(), Value::String(e)),
+    };
+
+    Json(json!({
+        "database_dir": dir.as_ref().map(|d| d.display().to_string()),
+        "found": nodes.len(),
+        "devices": nodes,
+        "error": error,
+    }))
+}
+
 async fn create_device(
     State(state): State<T3AppState>,
     Json(payload): Json<CreateDeviceRequest>,
@@ -1952,6 +1975,7 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices", post(create_device))
         .route("/devices/scan-refresh", post(scan_and_refresh_devices))
         .route("/devices/deep-scan", get(deep_scan_status))
+        .route("/devices/t3000-db", get(t3000_db_diagnostics))
         .route("/devices", delete(delete_all_devices))  // DELETE all devices
         .route("/devices/:id", get(get_device_by_id))
         .route("/devices/:id", put(update_device))

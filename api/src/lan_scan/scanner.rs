@@ -507,10 +507,20 @@ async fn scan_tcp_sub_ports(parents: &[DiscoveredDevice]) -> Vec<super::tcp_sub:
 /// `parents`. Takes ~6-8 s on hardware latency, so the UI refresh calls this in
 /// the background instead of blocking the HTTP response.
 pub async fn scan_deep(parents: Vec<DiscoveredDevice>) -> DeepScanResult {
+    scan_deep_skipping(parents, &[]).await
+}
+
+/// `scan_deep`, skipping the serial ports T3000 owns (see
+/// `serial::scan_all_serial_ports_skipping`).
+pub async fn scan_deep_skipping(
+    parents: Vec<DiscoveredDevice>,
+    skip_ports: &[String],
+) -> DeepScanResult {
     // Serial probing and the sub-port probes are independent: start serial
     // first (it is the slowest) and run the TCP probes while it is in flight.
-    let serial_task = tokio::task::spawn_blocking(|| {
-        super::serial::scan_all_serial_ports(None, 1, 254)
+    let skip = skip_ports.to_vec();
+    let serial_task = tokio::task::spawn_blocking(move || {
+        super::serial::scan_all_serial_ports_skipping(None, 1, 254, &skip)
     });
 
     let tcp_sub = scan_tcp_sub_ports(&parents).await;
@@ -541,11 +551,17 @@ pub async fn scan_deep(parents: Vec<DiscoveredDevice>) -> DeepScanResult {
 ///
 /// Returns the merged device list, plus per-scan metadata.
 pub async fn scan_all(timeout_secs: u64) -> FullScanResult {
+    scan_all_skipping(timeout_secs, &[]).await
+}
+
+/// `scan_all`, skipping the serial ports T3000 owns.
+pub async fn scan_all_skipping(timeout_secs: u64, skip_ports: &[String]) -> FullScanResult {
     // Serial does not depend on LAN discovery and is the slowest part of a full
     // scan (every port × every baud rate), so it starts before the UDP pass
     // instead of after it. Serial and UDP time then overlap instead of adding up.
-    let serial_task = tokio::task::spawn_blocking(|| {
-        super::serial::scan_all_serial_ports(None, 1, 254)
+    let skip = skip_ports.to_vec();
+    let serial_task = tokio::task::spawn_blocking(move || {
+        super::serial::scan_all_serial_ports_skipping(None, 1, 254, &skip)
     });
 
     let udp = scan_network(timeout_secs).await;

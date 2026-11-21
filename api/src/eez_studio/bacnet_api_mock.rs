@@ -921,3 +921,382 @@ fn apply_delta(root: &mut Value, path: &str, new_value: &Value) -> Result<(), St
     }
     Ok(())
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Screen deploy transactions
+//
+// Mirrors the firmware's `/api/eez-device/deploy/*` + `storage/capacity` +
+// `device/status` surface (see docs/t3000/t3-eez-studio/screen-deploy-lifecycle-design.md)
+// so the all-or-nothing deploy path can be exercised without hardware.
+//
+// The mock keeps three things the real device keeps:
+//   ACTIVE    — the committed slot and revision (the atomic switch)
+//   COMMITTED — the files in the active slot
+//   TXN       — the staging area of the one open transaction
+////////////////////////////////////////////////////////////////////////////////
+
+const MOCK_TOTAL_BYTES: usize = 2 * 1024 * 1024;
+const MOCK_RESERVED_BYTES: usize = 64 * 1024;
+const MOCK_MAX_FILE_BYTES: usize = 256 * 1024;
+
+#[derive(Debug, Clone)]
+struct MockTxn {
+    id: String,
+    slot: char,
+    revision: i32,
+    start_screen: String,
+    /// "<area>/<name>" -> parsed JSON body
+    staged: BTreeMap<String, Value>,
+}
+
+lazy_static::lazy_static! {
+    static ref ACTIVE: Mutex<(char, i32)> = Mutex::new(('A', 0));
+    static ref COMMITTED: Mutex<BTreeMap<String, Value>> = Mutex::new(BTreeMap::new());
+    static ref TXN: Mutex<Option<MockTxn>> = Mutex::new(None);
+}
+
+type MockErr = (StatusCode, Json<Value>);
+
+fn mock_err(status: StatusCode, code: &str) -> MockErr {
+    (status, Json(serde_json::json!({ "error": code })))
+}
+
+fn other_slot(slot: char) -> char {
+    if slot == 'A' { 'B' } else { 'A' }
+}
+
+fn staged_bytes(files: &BTreeMap<String, Value>) -> usize {
+    files
+        .iter()
+        .map(|(k, v)| k.len() + serde_json::to_string(v).map(|s| s.len()).unwrap_or(0))
+        .sum()
+}
+
+fn used_bytes() -> usize {
+    let committed = COMMITTED.lock().unwrap();
+    let staged = TXN
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|t| staged_bytes(&t.staged))
+        .unwrap_or(0);
+    staged_bytes(&committed) + staged
+}
+
+/// Stable 64-char stand-in for the device's SHA-256 of the staged body.
+fn mock_digest(data: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut h1 = std::collections::hash_map::DefaultHasher::new();
+    data.hash(&mut h1);
+    let mut h2 = std::collections::hash_map::DefaultHasher::new();
+    (data.len(), data).hash(&mut h2);
+    let (a, b) = (h1.finish(), h2.finish());
+    format!("{:016x}{:016x}{:016x}{:016x}", a, b, !a, !b)
+}
+
+#[derive(Debug, Serialize)]
+pub struct CapacityResponse {
+    partition: &'static str,
+    total: usize,
+    used: usize,
+    free: usize,
+    slot_free: usize,
+    reserved: usize,
+    max_file: usize,
+    active_slot: String,
+    revision: i32,
+}
+
+/// `GET /api/eez-device/storage/capacity`
+pub async fn get_capacity() -> Json<CapacityResponse> {
+    let (active, revision) = *ACTIVE.lock().unwrap();
+    let used = used_bytes();
+    let free = MOCK_TOTAL_BYTES.saturating_sub(used);
+    Json(CapacityResponse {
+        partition: "screen_data",
+        total: MOCK_TOTAL_BYTES,
+        used,
+        free,
+        // the open transaction's slot is wiped before staging, so its bytes come back
+        slot_free: free,
+        reserved: MOCK_RESERVED_BYTES,
+        max_file: MOCK_MAX_FILE_BYTES,
+        active_slot: active.to_string(),
+        revision,
+    })
+}
+
+#[derive(Debug, Serialize)]
+pub struct MockStorageSummary {
+    total: usize,
+    used: usize,
+    free: usize,
+    reserved: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DeviceStatusResponse {
+    ui_mode: &'static str,
+    tier: i32,
+    slot: String,
+    revision: i32,
+    current_screen: String,
+    build_ok: bool,
+    last_error: String,
+    storage: MockStorageSummary,
+}
+
+/// `GET /api/eez-device/device/status`
+pub async fn get_deploy_status() -> Json<DeviceStatusResponse> {
+    let (active, revision) = *ACTIVE.lock().unwrap();
+    let used = used_bytes();
+    Json(DeviceStatusResponse {
+        // the mock has no renderer, so it reports the same state a firmware
+        // without one does
+        ui_mode: "compiled",
+        tier: 0,
+        slot: active.to_string(),
+        revision,
+        current_screen: String::new(),
+        build_ok: true,
+        last_error: String::new(),
+        storage: MockStorageSummary {
+            total: MOCK_TOTAL_BYTES,
+            used,
+            free: MOCK_TOTAL_BYTES.saturating_sub(used),
+            reserved: MOCK_RESERVED_BYTES,
+        },
+    })
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BeginDeployBody {
+    #[serde(default)]
+    revision: i32,
+    #[serde(default)]
+    start_screen: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BeginDeployResponse {
+    deploy_id: String,
+    slot: String,
+    revision: i32,
+    resume_from: Vec<String>,
+}
+
+/// `POST /api/eez-device/deploy/begin`
+pub async fn begin_deploy(
+    Json(body): Json<BeginDeployBody>,
+) -> Result<Json<BeginDeployResponse>, MockErr> {
+    let mut txn = TXN.lock().unwrap();
+    if txn.is_some() {
+        return Err(mock_err(StatusCode::CONFLICT, "deploy_in_progress"));
+    }
+
+    let (active, current_revision) = *ACTIVE.lock().unwrap();
+    if body.revision != 0 && body.revision <= current_revision {
+        return Err(mock_err(StatusCode::CONFLICT, "stale_revision"));
+    }
+    let revision = if body.revision > 0 { body.revision } else { current_revision + 1 };
+
+    let id = format!(
+        "{:016x}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    );
+    let slot = other_slot(active);
+    info!("begin_deploy {} -> slot {} revision {}", id, slot, revision);
+
+    *txn = Some(MockTxn {
+        id: id.clone(),
+        slot,
+        revision,
+        start_screen: body.start_screen.clone(),
+        staged: BTreeMap::new(),
+    });
+
+    Ok(Json(BeginDeployResponse {
+        deploy_id: id,
+        slot: slot.to_string(),
+        revision,
+        resume_from: vec![],
+    }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StageQuery {
+    path: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StageResponse {
+    path: String,
+    bytes: usize,
+    sha256: String,
+    staged: bool,
+}
+
+/// `PUT /api/eez-device/deploy/<id>/file?path=<area>/<name>`
+pub async fn stage_file(
+    Path(id): Path<String>,
+    Query(q): Query<StageQuery>,
+    body: String,
+) -> Result<Json<StageResponse>, MockErr> {
+    if body.len() > MOCK_MAX_FILE_BYTES {
+        return Err(mock_err(StatusCode::PAYLOAD_TOO_LARGE, "file_too_large"));
+    }
+    let value: Value = serde_json::from_str(&body)
+        .map_err(|_| mock_err(StatusCode::UNPROCESSABLE_ENTITY, "invalid_json"))?;
+
+    let path = q.path.trim_start_matches('/').to_string();
+    let (area, name) = path
+        .split_once('/')
+        .ok_or_else(|| mock_err(StatusCode::BAD_REQUEST, "bad_path"))?;
+    if area != "screens" && area != "images" {
+        return Err(mock_err(StatusCode::BAD_REQUEST, "bad_area"));
+    }
+    if name.is_empty() || name.contains('/') || name.contains("..") {
+        return Err(mock_err(StatusCode::BAD_REQUEST, "bad_name"));
+    }
+
+    let mut guard = TXN.lock().unwrap();
+    let txn = match guard.as_mut() {
+        Some(t) if t.id == id => t,
+        _ => return Err(mock_err(StatusCode::CONFLICT, "no_open_transaction")),
+    };
+
+    txn.staged.insert(path.clone(), value);
+    Ok(Json(StageResponse {
+        path,
+        bytes: body.len(),
+        sha256: mock_digest(&body),
+        staged: true,
+    }))
+}
+
+#[derive(Debug, Serialize)]
+pub struct CommitDeployResponse {
+    ok: bool,
+    revision: i32,
+    slot: String,
+    active_slot: String,
+    applied: bool,
+    screens: usize,
+    images: usize,
+}
+
+/// `POST /api/eez-device/deploy/<id>/commit`
+pub async fn commit_deploy(
+    Path(id): Path<String>,
+) -> Result<Json<CommitDeployResponse>, MockErr> {
+    let mut guard = TXN.lock().unwrap();
+    let txn = match guard.take() {
+        Some(t) if t.id == id => t,
+        Some(other) => {
+            *guard = Some(other);
+            return Err(mock_err(StatusCode::CONFLICT, "no_open_transaction"));
+        }
+        None => return Err(mock_err(StatusCode::CONFLICT, "no_open_transaction")),
+    };
+
+    // Same validation the device applies before the atomic switch.
+    let mut problems: Vec<Value> = Vec::new();
+    let mut screens = 0usize;
+    let mut images = 0usize;
+    for (path, value) in &txn.staged {
+        if path.starts_with("images/") {
+            images += 1;
+            continue;
+        }
+        screens += 1;
+        if !value.is_object() {
+            problems.push(serde_json::json!({ "path": path, "reason": "unparseable" }));
+            continue;
+        }
+        if let Some(Value::Array(bitmaps)) = value.get("bitmaps") {
+            for bm in bitmaps {
+                if let Some(name) = bm.as_str() {
+                    if !txn.staged.contains_key(&format!("images/{}", name)) {
+                        problems.push(serde_json::json!({
+                            "path": format!("images/{}", name),
+                            "reason": "missing"
+                        }));
+                    }
+                }
+            }
+        }
+    }
+    if screens == 0 {
+        problems.push(serde_json::json!({ "path": "screens/*", "reason": "empty" }));
+    }
+
+    if !problems.is_empty() {
+        warn!("commit {} rejected: {} problem(s)", id, problems.len());
+        // keep the transaction open so the client can fix and re-stage
+        *guard = Some(txn);
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(serde_json::json!({
+                "ok": false,
+                "error": "validation_failed",
+                "problems": problems
+            })),
+        ));
+    }
+
+    let (slot, revision) = (txn.slot, txn.revision);
+    *COMMITTED.lock().unwrap() = txn.staged.clone();
+    *ACTIVE.lock().unwrap() = (slot, revision);
+    *guard = None;
+    info!(
+        "commit {} -> slot {} revision {} ({} screens, {} images, start {:?})",
+        id, slot, revision, screens, images, txn.start_screen
+    );
+
+    Ok(Json(CommitDeployResponse {
+        ok: true,
+        revision,
+        slot: slot.to_string(),
+        active_slot: slot.to_string(),
+        applied: false,
+        screens,
+        images,
+    }))
+}
+
+/// `POST /api/eez-device/deploy/<id>/abort`
+pub async fn abort_deploy(Path(id): Path<String>) -> Json<Value> {
+    let mut guard = TXN.lock().unwrap();
+    let discarded = match guard.as_ref() {
+        Some(t) if t.id == id => true,
+        _ => false,
+    };
+    if discarded {
+        *guard = None;
+        warn!("abort {} — staging slot discarded", id);
+    }
+    Json(serde_json::json!({ "ok": true, "discarded": discarded }))
+}
+
+/// `GET /api/eez-device/deploy/<id>`
+pub async fn get_deploy(Path(id): Path<String>) -> Result<Json<Value>, MockErr> {
+    let guard = TXN.lock().unwrap();
+    match guard.as_ref() {
+        Some(t) if t.id == id => {
+            let (active, revision) = *ACTIVE.lock().unwrap();
+            Ok(Json(serde_json::json!({
+                "deploy_id": t.id,
+                "slot": t.slot.to_string(),
+                "revision": t.revision,
+                "active_slot": active.to_string(),
+                "active_revision": revision,
+                "staged": t.staged.keys().cloned().collect::<Vec<_>>(),
+            })))
+        }
+        _ => Err(mock_err(StatusCode::NOT_FOUND, "unknown_deploy_id")),
+    }
+}
