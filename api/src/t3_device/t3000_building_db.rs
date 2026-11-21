@@ -251,62 +251,85 @@ async fn count_nodes(conn: &DatabaseConnection) -> i64 {
     .unwrap_or(0)
 }
 
+/// `(Building_Path, is_default)` rows from the master database.
+///
+/// Retried like the main read: if T3000 is mid-write this must back off, not
+/// fall through to the heavier folder scan.
+async fn master_building_rows(database_dir: &Path) -> Vec<(String, bool)> {
+    let master = database_dir.join(MASTER_DB);
+    let rows = with_busy_retry("read Building", || async {
+        let conn = open_readonly(&sqlite_url(&master, true)).await?;
+        let rows = conn
+            .query_all(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT Building_Path, Default_SubBuilding FROM Building",
+            ))
+            .await
+            .map_err(|e| format!("{}: {}", master.display(), e))?;
+        Ok(rows)
+    })
+    .await
+    .unwrap_or_default();
+
+    rows.iter()
+        .filter_map(|row| {
+            let rel = row.try_get::<String>("", "Building_Path").ok()?;
+            let rel = rel.trim().replace('\\', "/");
+            if rel.is_empty() {
+                return None;
+            }
+            let is_default = row
+                .try_get::<String>("", "Default_SubBuilding")
+                .map(|v| {
+                    let v = v.trim().to_string();
+                    !v.is_empty() && v != "0"
+                })
+                .unwrap_or(false);
+            Some((rel, is_default))
+        })
+        .collect()
+}
+
 /// Resolve the building database from the master `Building` table, falling back
 /// to the `Buildings/*/*.db` folder when `Building_Path` is stale (T3000 renames
 /// the file on some upgrades).
 async fn resolve_building_db(database_dir: &Path) -> Result<PathBuf, String> {
-    let master = database_dir.join(MASTER_DB);
+    let root = runtime_root(database_dir);
+    let rows = master_building_rows(database_dir).await;
+
+    // Default building first, then the others.
+    let mut ordered: Vec<String> = Vec::new();
+    for want_default in [true, false] {
+        ordered.extend(
+            rows.iter()
+                .filter(|(_, is_default)| *is_default == want_default)
+                .map(|(rel, _)| rel.clone()),
+        );
+    }
+
     let mut candidates: Vec<PathBuf> = Vec::new();
-
-    if let Ok(conn) = open_readonly(&sqlite_url(&master, true)).await {
-        if let Ok(rows) = conn
-            .query_all(Statement::from_string(
-                DatabaseBackend::Sqlite,
-                "SELECT Main_BuildingName, Building_Name, Building_Path, Default_SubBuilding FROM Building",
-            ))
-            .await
-        {
-            let root = runtime_root(database_dir);
-            // Prefer the building marked as default, then any other building.
-            let mut ordered: Vec<String> = Vec::new();
-            for want_default in [true, false] {
-                for row in &rows {
-                    let is_default = row
-                        .try_get::<String>("", "Default_SubBuilding")
-                        .map(|v| v.trim() != "0" && !v.trim().is_empty())
-                        .unwrap_or(false);
-                    if is_default != want_default {
-                        continue;
-                    }
-                    if let Ok(rel) = row.try_get::<String>("", "Building_Path") {
-                        let rel = rel.trim().replace('\\', "/");
-                        if !rel.is_empty() {
-                            ordered.push(rel);
-                        }
-                    }
-                }
-            }
-
-            for rel in ordered {
-                let path = root.join(&rel);
-                if path.exists() {
-                    candidates.push(path.clone());
-                }
-                // Same building, different file extension.
-                for alt in ["db", "sqlite", "mdb"] {
-                    let alt = path.with_extension(alt);
-                    if alt.exists() && !candidates.contains(&alt) {
-                        candidates.push(alt);
-                    }
-                }
+    for rel in ordered {
+        let path = root.join(&rel);
+        if path.exists() {
+            candidates.push(path.clone());
+        }
+        // Same building, different file extension.
+        for alt in ["db", "sqlite", "mdb"] {
+            let alt = path.with_extension(alt);
+            if alt.exists() && !candidates.contains(&alt) {
+                candidates.push(alt);
             }
         }
     }
 
-    // Any building database that exists on disk, richest first: robust against a
-    // stale `Building_Path` and against installs that keep several buildings.
-    if let Some(best) = best_building_db_in_dir(database_dir).await {
-        candidates.push(best);
+    // Only when `Building_Path` did not yield a usable file (stale path, or no
+    // master row) fall back to scanning the folder. Doing it unconditionally
+    // would open every building database on every import — pointless extra
+    // contact with files T3000 owns.
+    if candidates.is_empty() {
+        if let Some(best) = best_building_db_in_dir(database_dir).await {
+            candidates.push(best);
+        }
     }
 
     candidates
