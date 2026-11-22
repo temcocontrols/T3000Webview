@@ -61,8 +61,25 @@ pub(crate) static MCP_CLIENT_MANAGER: once_cell::sync::Lazy<Arc<McpClientManager
 
 // ═══ Tool definitions (built-in + external) ═══
 
-fn get_all_tool_defs() -> Vec<ToolDef> {
-    let mut tools: Vec<ToolDef> = TOOLS
+/// Built-in tools plus external ones; built-ins win on a name clash and
+/// duplicates are dropped. Pure so it can be unit-tested.
+fn merge_tool_defs(mut tools: Vec<ToolDef>, external: Vec<ToolDef>) -> Vec<ToolDef> {
+    for ext in external {
+        if ext.name.is_empty() || tools.iter().any(|t| t.name == ext.name) {
+            continue;
+        }
+        tools.push(ext);
+    }
+    tools
+}
+
+/// Built-in T3000 tools plus the tools of every connected external MCP server.
+///
+/// External tools must be advertised here — the model can only call a tool it
+/// was told about, so previously an added MCP server was registered and callable
+/// in `try_call_external` but never actually reachable from a chat.
+async fn get_all_tool_defs() -> Vec<ToolDef> {
+    let tools: Vec<ToolDef> = TOOLS
         .iter()
         .map(|t| ToolDef {
             name: t.name.to_string(),
@@ -71,10 +88,7 @@ fn get_all_tool_defs() -> Vec<ToolDef> {
         })
         .collect();
 
-    // External tools are fetched synchronously from cache
-    // (they're updated on connect/disconnect)
-    // For now, built-in only — external merge happens at call time
-    tools
+    merge_tool_defs(tools, MCP_CLIENT_MANAGER.get_external_tools().await)
 }
 
 // ═══ POST /api/ai/chat ═══
@@ -143,7 +157,7 @@ async fn process_chat(
     tx: &tokio::sync::mpsc::UnboundedSender<Result<Event, Infallible>>,
 ) -> Result<(), AiError> {
     let provider = Arc::new(get_provider(&session.provider)?);
-    let tools = get_all_tool_defs();
+    let tools = get_all_tool_defs().await;
     info!("[AI] process_chat START: provider={} model={} endpoint={} tools={} session_msgs={}",
         session.provider, session.model, session.endpoint, tools.len(), session.messages.len());
 
@@ -745,6 +759,9 @@ pub async fn handle_add_mcp_server(
     // Always register in memory (mark as not connected if disabled)
     if config.enabled {
         if let Err(e) = MCP_CLIENT_MANAGER.add_server(config.clone()).await {
+            // add_server registers the client even on failure — roll it back so
+            // the reported error matches reality (nothing was added).
+            MCP_CLIENT_MANAGER.remove_server(&config_id).await;
             let msg = format!("{}", e);
             let friendly = if msg.contains("connect") || msg.contains("502") || msg.contains("refused") {
                 "Could not reach the MCP server. Check the URL and make sure the server is running."
@@ -799,6 +816,7 @@ pub async fn handle_test_mcp_server(
     Json(body): Json<Value>,
 ) -> impl IntoResponse {
     let url = body.get("url").and_then(|v| v.as_str()).unwrap_or("");
+    let api_key = body.get("api_key").and_then(|v| v.as_str()).unwrap_or("");
 
     if url.trim().is_empty() {
         return Json(json!({ "ok": false, "error": "Please enter a URL to test" })).into_response();
@@ -815,13 +833,20 @@ pub async fn handle_test_mcp_server(
             "clientInfo": { "name": "t3000", "version": "1.0" } }
     });
 
-    match client
-        .post(&format!("{}/message", url.trim_end_matches('/')))
+    let mut request = client
+        .post(super::mcp_client::rpc_url(url))
         .header("Content-Type", "application/json")
+        .header("Accept", "application/json, text/event-stream")
         .json(&body)
-        .timeout(std::time::Duration::from_secs(5))
-        .send()
-        .await
+        .timeout(std::time::Duration::from_secs(5));
+
+    // Servers behind auth otherwise always answer 401, which looked like a
+    // wrong URL.
+    if !api_key.trim().is_empty() {
+        request = request.bearer_auth(api_key.trim());
+    }
+
+    match request.send().await
     {
         Ok(res) if res.status().is_success() => {
             Json(json!({ "ok": true })).into_response()
@@ -864,13 +889,32 @@ pub async fn handle_activate_mcp_server(
 
     // Rebuild connections: remove all, re-add only enabled
     MCP_CLIENT_MANAGER.clear().await;
+    let mut failures: Vec<String> = Vec::new();
     for c in &configs {
         if c.enabled {
-            let _ = MCP_CLIENT_MANAGER.add_server(c.clone()).await;
+            if let Err(e) = MCP_CLIENT_MANAGER.add_server(c.clone()).await {
+                failures.push(format!("{}: {}", c.name, e));
+            }
         }
     }
 
-    Json(json!({ "ok": true })).into_response()
+    activation_response(&failures)
+}
+
+/// Shared result shape for the two activate endpoints: report an unreachable
+/// server instead of answering `ok` for a connection that never happened.
+fn activation_response(failures: &[String]) -> axum::response::Response {
+    if failures.is_empty() {
+        return Json(json!({ "ok": true })).into_response();
+    }
+    Json(json!({
+        "ok": false,
+        "error": format!(
+            "Could not connect to {}. Check the URL, the API key, and that the server is running.",
+            failures.join("; ")
+        )
+    }))
+    .into_response()
 }
 
 // ═══ POST /api/ai/activate-mcp-server ═══
@@ -896,15 +940,18 @@ pub async fn handle_activate_server_post(
     }
     let _ = super::session_store::save_mcp_servers(&configs);
     MCP_CLIENT_MANAGER.clear().await;
+    let mut failures: Vec<String> = Vec::new();
     for c in &configs {
         if c.enabled {
-            let _ = MCP_CLIENT_MANAGER.add_server(c.clone()).await;
+            if let Err(e) = MCP_CLIENT_MANAGER.add_server(c.clone()).await {
+                failures.push(format!("{}: {}", c.name, e));
+            }
         } else {
             let mut clients = MCP_CLIENT_MANAGER.clients.write().await;
             clients.push(McpClient::new(c.clone()));
         }
     }
-    Json(json!({"ok": true})).into_response()
+    activation_response(&failures)
 }
 
 /// Save a session with updated messages (used for partial save on stop/new-chat).
@@ -992,4 +1039,28 @@ pub fn ai_routes() -> Router<T3AppState> {
         .route("/api/ai/delete-session", post(handle_delete_session_post))
         .route("/api/ai/get-session", post(handle_get_session_post))
         .route("/api/ai/save-session", post(handle_save_session))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tool(name: &str) -> ToolDef {
+        ToolDef {
+            name: name.to_string(),
+            description: String::new(),
+            input_schema: serde_json::json!({}),
+        }
+    }
+
+    #[test]
+    fn external_tools_are_appended_and_builtins_win_on_clash() {
+        let merged = merge_tool_defs(
+            vec![tool("t3000_point_read"), tool("t3000_point_write")],
+            vec![tool("mock_echo"), tool("t3000_point_write"), tool("")],
+        );
+
+        let names: Vec<&str> = merged.iter().map(|t| t.name.as_str()).collect();
+        assert_eq!(names, vec!["t3000_point_read", "t3000_point_write", "mock_echo"]);
+    }
 }

@@ -32,7 +32,7 @@ interface Props {
   onAddServer: (name: string, url: string, apiKey?: string) => Promise<void>;
   onRemoveServer: (id: string) => void;
   onActivateServer: (id: string) => Promise<void>;
-  onTestServer: (url: string) => Promise<{ ok: boolean; error?: string }>;
+  onTestServer: (url: string, apiKey?: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 const TOOL_CATEGORIES = [
@@ -123,6 +123,7 @@ export const ToolsDrawer: React.FC<Props> = ({
   const [testResult, setTestResult] = useState<'idle' | 'ok' | 'fail'>('idle');
   const [testError, setTestError] = useState('');
   const [addError, setAddError] = useState('');
+  const [serverError, setServerError] = useState('');
 
   const filteredCategories = search
     ? TOOL_CATEGORIES
@@ -159,11 +160,20 @@ export const ToolsDrawer: React.FC<Props> = ({
   const handleTest = useCallback(async () => {
     setTesting(true);
     setTestResult('idle');
-    const r = await onTestServer(addUrl);
+    const r = await onTestServer(addUrl, addApiKey || undefined);
     setTestResult(r.ok ? 'ok' : 'fail');
     setTestError(r.error || '');
     setTesting(false);
-  }, [addUrl, onTestServer]);
+  }, [addUrl, addApiKey, onTestServer]);
+
+  const handleActivate = useCallback(async (id: string) => {
+    setServerError('');
+    try {
+      await onActivateServer(id);
+    } catch (e: any) {
+      setServerError(e?.message || 'Failed to activate the MCP server');
+    }
+  }, [onActivateServer]);
 
   return (
     <>
@@ -245,6 +255,11 @@ export const ToolsDrawer: React.FC<Props> = ({
               <span className={styles.drawerSectionCount}>{mcpServers.length}</span>
             </div>
 
+            {serverError && (
+              <div className={styles.drawerTestFail}>
+                <ErrorCircleRegular fontSize={14} /> {serverError}
+              </div>
+            )}
             {mcpServers.length === 0 ? (
               <p className={styles.drawerEmpty}>No external servers connected</p>
             ) : (
@@ -259,7 +274,7 @@ export const ToolsDrawer: React.FC<Props> = ({
                     <span className={styles.drawerServerName}>{srv.name}</span>
                     <button
                       className={`${styles.drawerServerBadge} ${srv.enabled ? styles.drawerServerBadgeOn : ''}`}
-                      onClick={() => onActivateServer(srv.id)}
+                      onClick={() => handleActivate(srv.id)}
                     >
                       {srv.enabled ? 'Active' : 'Inactive'}
                     </button>

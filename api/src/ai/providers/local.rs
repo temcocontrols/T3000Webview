@@ -333,3 +333,40 @@ fn flush_pre_tool_content(
 fn is_valid_tool_args(args: &str) -> bool {
     args.trim().is_empty() || serde_json::from_str::<Value>(args).is_ok()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A dead local model server must also report progress before failing.
+    #[tokio::test]
+    async fn unreachable_local_endpoint_emits_status_before_failing() {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
+        let started = std::time::Instant::now();
+
+        let result = LocalProvider
+            .stream_chat("http://127.0.0.1:1/v1", None, "local-x", &[], &[], &tx)
+            .await;
+
+        drop(tx);
+
+        let mut phases = Vec::new();
+        while let Some(event) = rx.recv().await {
+            if let StreamEvent::Status { phase, .. } = event {
+                phases.push(phase);
+            }
+        }
+
+        assert!(result.is_err(), "connection refused must surface as an error");
+        assert!(
+            phases.iter().any(|p| p == "connecting"),
+            "expected a connecting status, got {:?}",
+            phases
+        );
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(15),
+            "took {:?} — connect timeout is not applied",
+            started.elapsed()
+        );
+    }
+}

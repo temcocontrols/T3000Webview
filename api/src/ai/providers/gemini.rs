@@ -469,3 +469,46 @@ impl GeminiProvider {
     }
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A dead endpoint must fail fast and, crucially, report progress over the
+    /// stream — otherwise the UI sits on "Thinking…" for minutes.
+    #[tokio::test]
+    async fn unreachable_endpoint_emits_status_and_error_events_without_hanging() {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
+        let started = std::time::Instant::now();
+
+        // Port 1 on loopback refuses the connection immediately.
+        let result = GeminiProvider
+            .stream_chat("http://127.0.0.1:1/v1beta", Some("key"), "gemini-x", &[], &[], &tx)
+            .await;
+
+        drop(tx);
+
+        let mut phases = Vec::new();
+        let mut saw_error = false;
+        while let Some(event) = rx.recv().await {
+            match event {
+                StreamEvent::Status { phase, .. } => phases.push(phase),
+                StreamEvent::Error { .. } => saw_error = true,
+                _ => {}
+            }
+        }
+
+        assert!(result.is_ok(), "provider reports failures through events");
+        assert!(
+            phases.iter().any(|p| p == "connecting"),
+            "expected a connecting status, got {:?}",
+            phases
+        );
+        assert!(saw_error, "an error event must be emitted");
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(15),
+            "took {:?} — connect timeout is not applied",
+            started.elapsed()
+        );
+    }
+}

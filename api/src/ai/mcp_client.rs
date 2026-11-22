@@ -5,14 +5,79 @@
 //
 // Protocol: https://spec.modelcontextprotocol.io/
 
+use futures_util::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::RwLock;
 
 use super::providers::ToolDef;
 use super::types::AiError;
+
+/// Cap on the connection phase (DNS/TCP/TLS). Shared with the LLM providers so a
+/// blackholed host fails in seconds instead of burning the OS TCP timeout.
+const CONNECT_TIMEOUT: Duration = super::providers::CONNECT_TIMEOUT;
+/// `initialize` + `tools/list` must answer quickly — anything slower is a
+/// misconfigured URL rather than a slow tool.
+const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(15);
+/// Tool calls may legitimately take a while (windowing, DB work).
+const TOOL_TIMEOUT: Duration = Duration::from_secs(30);
+/// Hard cap on a JSON-RPC response body.
+const MAX_BODY_BYTES: usize = 1_000_000;
+
+/// JSON-RPC endpoint for a configured MCP server URL.
+///
+/// Streamable-HTTP servers (spec 2025-03-26, e.g. `http://host:9001/mcp`) accept
+/// JSON-RPC on the advertised URL itself, while the legacy HTTP+SSE transport
+/// posts to `<url>/message`. Appending `/message` unconditionally turned
+/// `…/mcp` into `…/mcp/message`, which 404s on every modern server.
+pub(crate) fn rpc_url(base: &str) -> String {
+    let base = base.trim_end_matches('/');
+    if base.ends_with("/message") || base.ends_with("/mcp") {
+        base.to_string()
+    } else {
+        format!("{}/message", base)
+    }
+}
+
+/// Read a response body with a hard size cap. `content_length()` is absent on
+/// chunked responses, so the old pre-parse check could be bypassed entirely.
+async fn read_body_limited(res: reqwest::Response, limit: usize) -> Result<String, AiError> {
+    let mut stream = res.bytes_stream();
+    let mut buf: Vec<u8> = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| AiError::Provider(format!("MCP read error: {}", e)))?;
+        if buf.len() + chunk.len() > limit {
+            return Err(AiError::Provider(format!(
+                "MCP response too large (max {} KB)",
+                limit / 1000
+            )));
+        }
+        buf.extend_from_slice(&chunk);
+    }
+    Ok(String::from_utf8_lossy(&buf).into_owned())
+}
+
+/// Parse a JSON-RPC reply that may be plain JSON or SSE-framed (`data: {...}`),
+/// which is what a Streamable-HTTP MCP server returns for a POST.
+fn parse_rpc_reply(text: &str) -> Result<Value, AiError> {
+    let trimmed = text.trim();
+    if let Ok(value) = serde_json::from_str::<Value>(trimmed) {
+        return Ok(value);
+    }
+    for line in trimmed.lines() {
+        if let Some(data) = line.trim().strip_prefix("data:") {
+            if let Ok(value) = serde_json::from_str::<Value>(data.trim()) {
+                return Ok(value);
+            }
+        }
+    }
+    Err(AiError::Provider(
+        "MCP response parse error: neither JSON nor SSE-framed JSON".to_string(),
+    ))
+}
 
 /// Configuration for an external MCP server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,15 +104,40 @@ impl McpClient {
             config,
             tools: vec![],
             connected: false,
-            client: Client::new(),
+            client: Client::builder()
+                .connect_timeout(CONNECT_TIMEOUT)
+                .timeout(TOOL_TIMEOUT)
+                .build()
+                .unwrap_or_default(),
         }
+    }
+
+    /// Build a JSON-RPC POST with the transport headers and optional API key.
+    fn post_rpc(&self, body: &Value, timeout: Duration) -> reqwest::RequestBuilder {
+        let mut request = self
+            .client
+            .post(rpc_url(&self.config.url))
+            .header("Content-Type", "application/json")
+            // Streamable HTTP servers require both media types on the request.
+            .header("Accept", "application/json, text/event-stream")
+            .json(body)
+            .timeout(timeout);
+
+        if let Some(key) = self
+            .config
+            .api_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|k| !k.is_empty())
+        {
+            request = request.bearer_auth(key);
+        }
+        request
     }
 
     /// Connect to the MCP server and discover tools.
     /// Sends initialize → tools/list requests via JSON-RPC over HTTP.
     pub async fn connect(&mut self) -> Result<(), AiError> {
-        let url = self.config.url.trim_end_matches('/');
-
         // Step 1: initialize
         let init_body = json!({
             "jsonrpc": "2.0",
@@ -61,10 +151,7 @@ impl McpClient {
         });
 
         let res = self
-            .client
-            .post(&format!("{}/message", url))
-            .header("Content-Type", "application/json")
-            .json(&init_body)
+            .post_rpc(&init_body, HANDSHAKE_TIMEOUT)
             .send()
             .await
             .map_err(|e| AiError::Provider(format!("MCP connect failed: {}", e)))?;
@@ -88,18 +175,12 @@ impl McpClient {
         });
 
         let res = self
-            .client
-            .post(&format!("{}/message", url))
-            .header("Content-Type", "application/json")
-            .json(&tools_body)
+            .post_rpc(&tools_body, HANDSHAKE_TIMEOUT)
             .send()
             .await
             .map_err(|e| AiError::Provider(format!("MCP tools/list failed: {}", e)))?;
 
-        let json: Value = res
-            .json()
-            .await
-            .map_err(|e| AiError::Provider(format!("MCP parse error: {}", e)))?;
+        let json = parse_rpc_reply(&read_body_limited(res, MAX_BODY_BYTES).await?)?;
 
         let tool_list = json
             .get("result")
@@ -128,8 +209,6 @@ impl McpClient {
         tool_name: &str,
         arguments: &Value,
     ) -> Result<Value, AiError> {
-        let url = self.config.url.trim_end_matches('/');
-
         let body = json!({
             "jsonrpc": "2.0",
             "id": 1,
@@ -141,11 +220,7 @@ impl McpClient {
         });
 
         let res = self
-            .client
-            .post(&format!("{}/message", url))
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .timeout(std::time::Duration::from_secs(30))
+            .post_rpc(&body, TOOL_TIMEOUT)
             .send()
             .await
             .map_err(|e| {
@@ -156,19 +231,7 @@ impl McpClient {
                 }
             })?;
 
-        // Validate response size before parsing (1MB limit)
-        if let Some(len) = res.content_length() {
-            if len > 1_000_000 {
-                return Err(AiError::Provider(format!(
-                    "MCP response too large: {} bytes (max 1MB)", len
-                )));
-            }
-        }
-
-        let json: Value = res
-            .json()
-            .await
-            .map_err(|e| AiError::Provider(format!("MCP response parse error: {}", e)))?;
+        let json = parse_rpc_reply(&read_body_limited(res, MAX_BODY_BYTES).await?)?;
 
         // Validate response has expected structure
         if let Some(err) = json.get("error") {
@@ -202,13 +265,16 @@ impl McpClientManager {
         }
     }
 
-    /// Add and connect a new MCP server. Does not fail if unreachable —
-    /// the server is registered and will be tried again on next startup.
+    /// Register a server and try to connect to it.
+    ///
+    /// The client is always registered (so it can be retried on the next
+    /// activation/startup), but the connect failure is returned so callers can
+    /// tell the user instead of silently pretending the server is usable.
     pub async fn add_server(&self, config: McpServerConfig) -> Result<(), AiError> {
         let mut client = McpClient::new(config.clone());
 
-        // Try connecting but don't fail — server may be offline
-        if let Err(e) = client.connect().await {
+        let connect_result = client.connect().await;
+        if let Err(e) = &connect_result {
             tracing::warn!("MCP server '{}' unreachable on add: {}", config.name, e);
         }
 
@@ -216,7 +282,8 @@ impl McpClientManager {
         // Replace existing with same ID if present
         clients.retain(|c| c.config.id != config.id);
         clients.push(client);
-        Ok(())
+
+        connect_result
     }
 
     /// Remove a server by ID.
@@ -241,6 +308,17 @@ impl McpClientManager {
             .collect()
     }
 
+    /// IDs of the servers that connected successfully.
+    pub async fn connected_ids(&self) -> Vec<String> {
+        self.clients
+            .read()
+            .await
+            .iter()
+            .filter(|c| c.connected)
+            .map(|c| c.config.id.clone())
+            .collect()
+    }
+
     /// Check if a tool name belongs to an external client and call it.
     pub async fn try_call_external(
         &self,
@@ -249,6 +327,10 @@ impl McpClientManager {
     ) -> Option<Result<Value, AiError>> {
         let clients = self.clients.read().await;
         for client in clients.iter() {
+            // Only route to servers that are actually active and connected.
+            if !client.config.enabled || !client.connected {
+                continue;
+            }
             if client.tools.iter().any(|t| t.name == tool_name) {
                 return Some(client.call_tool(tool_name, arguments).await);
             }
@@ -260,5 +342,160 @@ impl McpClientManager {
     pub async fn get_configs(&self) -> Vec<McpServerConfig> {
         let clients = self.clients.read().await;
         clients.iter().map(|c| c.config.clone()).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{routing::post, Json, Router};
+    use std::sync::{Arc, Mutex};
+
+    #[test]
+    fn rpc_url_honours_streamable_http_and_legacy_paths() {
+        // Streamable HTTP server: the URL is the JSON-RPC endpoint.
+        assert_eq!(rpc_url("http://h:1/mcp"), "http://h:1/mcp");
+        assert_eq!(rpc_url("http://h:1/mcp/"), "http://h:1/mcp");
+        // Legacy HTTP+SSE: already points at the message endpoint.
+        assert_eq!(rpc_url("http://h:1/message"), "http://h:1/message");
+        // Legacy SSE base URL still needs /message appended.
+        assert_eq!(rpc_url("http://h:1/sse"), "http://h:1/sse/message");
+    }
+
+    #[test]
+    fn parse_rpc_reply_accepts_json_and_sse_frames() {
+        let plain = parse_rpc_reply(r#"{"jsonrpc":"2.0","id":1,"result":{}}"#).unwrap();
+        assert_eq!(plain["id"], 1);
+
+        let sse = parse_rpc_reply(
+            "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[]}}\n\n",
+        )
+        .unwrap();
+        assert_eq!(sse["id"], 2);
+
+        assert!(parse_rpc_reply("definitely not json").is_err());
+    }
+
+    /// Records (authorization, accept) of every request the mock receives.
+    async fn spawn_mock_mcp() -> (String, Arc<Mutex<Vec<(String, String)>>>) {
+        let seen: Arc<Mutex<Vec<(String, String)>>> = Arc::new(Mutex::new(vec![]));
+        let seen_handler = seen.clone();
+        let app = Router::new().route(
+            "/mcp",
+            post(move |headers: axum::http::HeaderMap, body: String| {
+                let seen = seen_handler.clone();
+                async move {
+                    let auth = headers
+                        .get("authorization")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("")
+                        .to_string();
+                    let accept = headers
+                        .get("accept")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("")
+                        .to_string();
+                    seen.lock().unwrap().push((auth, accept));
+
+                    let request: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+                    let id = request["id"].clone();
+                    let payload = match request["method"].as_str().unwrap_or("") {
+                        "initialize" => json!({ "jsonrpc": "2.0", "id": id, "result": { "protocolVersion": "2024-11-05" } }),
+                        "tools/list" => json!({ "jsonrpc": "2.0", "id": id, "result": { "tools": [
+                            { "name": "mock_echo", "description": "Echo", "inputSchema": { "type": "object" } }
+                        ] } }),
+                        "tools/call" => json!({ "jsonrpc": "2.0", "id": id, "result": { "content": [ { "type": "text", "text": "pong" } ] } }),
+                        _ => json!({ "jsonrpc": "2.0", "id": id, "error": { "message": "unknown method" } }),
+                    };
+                    Json(payload)
+                }
+            }),
+        );
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        (format!("http://{}/mcp", addr), seen)
+    }
+
+    fn config(id: &str, url: String, api_key: Option<&str>) -> McpServerConfig {
+        McpServerConfig {
+            id: id.to_string(),
+            name: id.to_string(),
+            url,
+            api_key: api_key.map(|k| k.to_string()),
+            enabled: true,
+        }
+    }
+
+    #[tokio::test]
+    async fn connect_uses_the_advertised_endpoint_and_sends_the_api_key() {
+        let (url, seen) = spawn_mock_mcp().await;
+        let mut client = McpClient::new(config("mock", url, Some("secret")));
+
+        client.connect().await.expect("connect should succeed");
+        assert!(client.connected);
+        assert_eq!(client.tools.len(), 1);
+        assert_eq!(client.tools[0].name, "mock_echo");
+
+        let calls = seen.lock().unwrap().clone();
+        assert_eq!(calls.len(), 2, "initialize + tools/list");
+        assert!(
+            calls.iter().all(|(auth, _)| auth == "Bearer secret"),
+            "api_key must be sent: {:?}",
+            calls
+        );
+        assert!(calls.iter().all(|(_, accept)| accept.contains("text/event-stream")));
+    }
+
+    #[tokio::test]
+    async fn call_tool_returns_the_result_payload() {
+        let (url, _seen) = spawn_mock_mcp().await;
+        let mut client = McpClient::new(config("mock", url, None));
+        client.connect().await.expect("connect");
+
+        let result = client
+            .call_tool("mock_echo", &json!({ "text": "hi" }))
+            .await
+            .expect("tool call");
+        assert_eq!(result["content"][0]["text"], "pong");
+    }
+
+    #[tokio::test]
+    async fn unreachable_server_reports_an_error_but_stays_registered() {
+        let manager = McpClientManager::new();
+        // Port 1 on loopback refuses immediately.
+        let result = manager
+            .add_server(config("dead", "http://127.0.0.1:1/mcp".to_string(), None))
+            .await;
+
+        assert!(result.is_err(), "connect failure must be reported");
+        assert_eq!(manager.get_configs().await.len(), 1, "still registered");
+        assert!(manager.get_external_tools().await.is_empty(), "no tools advertised");
+        assert!(manager.try_call_external("mock_echo", &json!({})).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn oversized_bodies_are_rejected() {
+        let app = Router::new().route(
+            "/big",
+            post(|| async { "x".repeat(200) }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        let response = reqwest::Client::new()
+            .post(format!("http://{}/big", addr))
+            .send()
+            .await
+            .unwrap();
+
+        let error = read_body_limited(response, 50).await.unwrap_err();
+        assert!(error.to_string().contains("too large"), "got: {}", error);
     }
 }
