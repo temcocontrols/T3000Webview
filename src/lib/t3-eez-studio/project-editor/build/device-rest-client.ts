@@ -43,6 +43,71 @@ export interface DeployAllResponse {
     imagesFailed?: number;
 }
 
+/** Device capacity and free space — `GET /api/eez-device/storage/capacity`. */
+export interface DeviceCapacity {
+    partition: string;
+    total: number;
+    used: number;
+    free: number;
+    /** space the next deploy can use (the inactive slot is wiped when it opens) */
+    slot_free: number;
+    /** never allocated to a deploy */
+    reserved: number;
+    /** largest single file accepted */
+    max_file: number;
+    active_slot: "A" | "B";
+    revision: number;
+}
+
+/** `GET /api/eez-device/device/status` — what the panel is actually running. */
+export interface DeviceStatus {
+    ui_mode: "compiled" | "dynamic";
+    tier: number;
+    slot: "A" | "B";
+    revision: number;
+    current_screen: string;
+    build_ok: boolean;
+    last_error: string;
+    storage?: { total: number; used: number; free: number; reserved: number };
+}
+
+/** `POST /api/eez-device/deploy/begin` */
+export interface DeployBeginResponse {
+    deploy_id: string;
+    slot: "A" | "B";
+    revision: number;
+    resume_from: string[];
+}
+
+/** `PUT /api/eez-device/deploy/<id>/file` */
+export interface StagedFileResponse {
+    path: string;
+    bytes: number;
+    sha256: string;
+    staged: true;
+}
+
+/** `POST /api/eez-device/deploy/<id>/commit` */
+export interface DeployCommitResponse {
+    ok: boolean;
+    revision: number;
+    slot: "A" | "B";
+    active_slot: "A" | "B";
+    applied: boolean;
+    screens?: number;
+    images?: number;
+    error?: string;
+    problems?: { path: string; reason: string }[];
+}
+
+export type DeployPhase = "capacity" | "begin" | "stage" | "commit" | "verify" | "done";
+export interface DeployProgress {
+    phase: DeployPhase;
+    done: number;
+    total: number;
+    label: string;
+}
+
 /**
  * Device image JSON — same shape the device returns on image pull.
  * Generated at the front side from project bitmaps before deploy.
@@ -444,6 +509,212 @@ export class DeviceRestClient {
         const result = await this.restDeployAll(screens);
 
         return { ...result, imagesDeployed, imagesFailed };
+    }
+
+    // ── Transactional deploy (screen deploy lifecycle v2) ──────────────
+    //
+    // All-or-nothing deployment: capacity preflight, then begin → stage every
+    // file → commit. A failure before commit leaves the previous screen set
+    // active on the device. Contract:
+    // docs/t3000/t3-eez-studio/device-interface-deployment-via-bacnet-design.md
+
+    /** Free space and slot state, used as the pre-deploy gate. */
+    async getCapacity(): Promise<DeviceCapacity> {
+        const response = await fetch(restUrl("storage/capacity", this.deviceIp), {
+            signal: AbortSignal.timeout(DEPLOY_TIMEOUT_MS),
+        });
+        if (!response.ok) {
+            throw new Error(`Device returned ${response.status} for capacity`);
+        }
+        return response.json();
+    }
+
+    /** What the device is actually running: slot, revision, build state. */
+    async getStatus(): Promise<DeviceStatus> {
+        const response = await fetch(restUrl("device/status", this.deviceIp), {
+            signal: AbortSignal.timeout(DEPLOY_TIMEOUT_MS),
+        });
+        if (!response.ok) {
+            throw new Error(`Device returned ${response.status} for status`);
+        }
+        return response.json();
+    }
+
+    /** Opens a deploy transaction and reserves the inactive slot. */
+    async beginDeploy(
+        revision: number,
+        startScreen: string,
+        totals: { files: number; bytes: number }
+    ): Promise<DeployBeginResponse> {
+        const response = await fetch(restUrl("deploy/begin", this.deviceIp), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                schema: 1,
+                revision,
+                start_screen: startScreen,
+                files: totals.files,
+                bytes: totals.bytes,
+            }),
+            signal: AbortSignal.timeout(DEPLOY_TIMEOUT_MS),
+        });
+        if (!response.ok) {
+            const detail = await response.text().catch(() => "");
+            throw new Error(`begin failed: ${response.status} ${detail}`.trim());
+        }
+        return response.json();
+    }
+
+    /** Stages one file into the inactive slot. `relPath` is `screens/<name>` or `images/<name>`. */
+    async stageFile(
+        deployId: string,
+        relPath: string,
+        body: string
+    ): Promise<StagedFileResponse> {
+        const query = encodeURIComponent(relPath);
+        const response = await fetch(
+            restUrl(`deploy/${deployId}/file?path=${query}`, this.deviceIp),
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body,
+                signal: AbortSignal.timeout(DEPLOY_TIMEOUT_MS),
+            }
+        );
+        if (!response.ok) {
+            const detail = await response.text().catch(() => "");
+            throw new Error(`stage ${relPath} failed: ${response.status} ${detail}`.trim());
+        }
+        return response.json();
+    }
+
+    /** Validates the staged set and activates it with one record write. */
+    async commitDeploy(deployId: string): Promise<DeployCommitResponse> {
+        const response = await fetch(restUrl(`deploy/${deployId}/commit`, this.deviceIp), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+            signal: AbortSignal.timeout(DEPLOY_TIMEOUT_MS),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+            const problems = payload?.problems
+                ?.map((p: { path: string; reason: string }) => `${p.path}: ${p.reason}`)
+                .join("; ");
+            throw new Error(
+                `commit rejected${problems ? ` (${problems})` : ""}: ${response.status}`
+            );
+        }
+        return payload as DeployCommitResponse;
+    }
+
+    /** Discards the inactive slot. Best effort — never masks the original error. */
+    async abortDeploy(deployId: string): Promise<void> {
+        try {
+            await fetch(restUrl(`deploy/${deployId}/abort`, this.deviceIp), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: "{}",
+                signal: AbortSignal.timeout(DEPLOY_TIMEOUT_MS),
+            });
+        } catch {
+            /* the slot is discarded on the next begin anyway */
+        }
+    }
+
+    /**
+     * All-or-nothing deploy of a whole project.
+     *
+     * Throws if the set does not fit, if any file is rejected, or if commit
+     * fails; in every failure case the previously active screen set is
+     * untouched. Returns the commit response, which carries the new revision.
+     */
+    async deployTransactional(
+        projectJson: Record<string, unknown>,
+        revision: number,
+        startScreen: string,
+        onProgress?: (p: DeployProgress) => void
+    ): Promise<DeployCommitResponse> {
+        const images = this.extractDeviceImages(projectJson);
+        const deviceScreens = transformToDeviceJson(projectJson as any);
+        const screens = Object.entries(deviceScreens);
+
+        const imageBodies = images.map((img) => ({
+            path: `images/${img.name}`,
+            body: JSON.stringify({ name: img.name, data_base64: img.data_base64 }),
+        }));
+        const screenBodies = screens.map(([name, screen]) => ({
+            path: `screens/${name}`,
+            body: JSON.stringify(screen),
+        }));
+        const all = [...imageBodies, ...screenBodies];
+        const totalBytes = all.reduce((n, f) => n + f.body.length, 0);
+
+        /* The device stores each file as <area>/<name>.json and accepts only
+           [A-Za-z0-9_-], so fail before opening a transaction rather than
+           half-way through one. */
+        const nameRe = /^[A-Za-z0-9_-]{1,60}$/;
+        const badNames = all
+            .filter((f) => !nameRe.test(f.path.replace(/^(screens|images)\//, "")))
+            .map((f) => f.path);
+        if (badNames.length > 0) {
+            throw new Error(
+                `These names cannot be stored on the device (use letters, digits, "_" or "-", ` +
+                    `max 60): ${badNames.join(", ")}`
+            );
+        }
+
+        onProgress?.({ phase: "capacity", done: 0, total: all.length, label: "checking space" });
+        const cap = await this.getCapacity();
+        const usable = cap.slot_free - cap.reserved;
+        if (totalBytes > usable) {
+            throw new Error(
+                `Screen set needs ${totalBytes} B but the device has ${usable} B usable ` +
+                    `(free ${cap.free}, reserved ${cap.reserved})`
+            );
+        }
+
+        onProgress?.({
+            phase: "begin",
+            done: 0,
+            total: all.length,
+            label: `opening transaction for revision ${revision}`,
+        });
+        const begin = await this.beginDeploy(revision, startScreen, {
+            files: all.length,
+            bytes: totalBytes,
+        });
+
+        try {
+            let done = 0;
+            for (const file of all) {
+                await this.stageFile(begin.deploy_id, file.path, file.body);
+                done++;
+                onProgress?.({ phase: "stage", done, total: all.length, label: file.path });
+            }
+
+            onProgress?.({
+                phase: "commit",
+                done,
+                total: all.length,
+                label: "validating and activating",
+            });
+            const commit = await this.commitDeploy(begin.deploy_id);
+
+            /* 200 means persisted; the panel paints on the next LCD iteration.
+               `applied` is advisory and false until the renderer exists. */
+            onProgress?.({
+                phase: "verify",
+                done,
+                total: all.length,
+                label: `device now reports revision ${commit.revision}`,
+            });
+            onProgress?.({ phase: "done", done, total: all.length, label: "deployed" });
+            return commit;
+        } catch (err) {
+            await this.abortDeploy(begin.deploy_id);
+            throw err;
+        }
     }
 
     private async restDeployAll(

@@ -81,6 +81,8 @@ export interface DeployEezResult {
     imageCount?: number;
     manifestPath?: string;
     deployed?: number;
+    /** Screen-set revision the device activated (transactional deploys only). */
+    revision?: number;
     /** Ordered steps executed during this deploy (for the live UI + log history). */
     steps?: DeployStepInfo[];
 }
@@ -189,6 +191,113 @@ async function readImportStagingImageSignature(baseFolder: string, name: string)
     } catch {
         return null;
     }
+}
+
+type EmitStep = (
+    id: string,
+    label: string,
+    detail?: string,
+    status?: DeployStepInfo["status"],
+    error?: string
+) => void;
+
+interface TransactionalOutcome {
+    deployed: number;
+    imagesDeployed: number;
+    ok: boolean;
+    message: string;
+    revision: number;
+    slot: string;
+}
+
+/**
+ * Deploy the whole set as one transaction: stage every image and screen into
+ * the inactive slot, then activate it with a single commit record write.
+ *
+ * The previously active slot keeps serving until that commit succeeds, so a
+ * failure at any point (no space, corrupt file, dropped connection) leaves the
+ * device on its previous revision instead of a half-written screen set. The
+ * new slot starts empty, so screens deleted from the project disappear here
+ * too — something the per-file push never did.
+ *
+ * Returns null when the firmware has no transaction API (older build), letting
+ * the caller fall back to per-file pushes.
+ */
+async function tryTransactionalDeploy(
+    project: any,
+    startScreen: string,
+    counts: { screens: number; images: number },
+    emitStep: EmitStep
+): Promise<TransactionalOutcome | null> {
+    let status;
+    try {
+        status = await deviceClient.getStatus();
+    } catch (e: any) {
+        if (/\b404\b/.test(String(e?.message || ""))) {
+            return null;
+        }
+        throw e;
+    }
+
+    const revision = (status.revision ?? 0) + 1;
+    emitStep(
+        "txn-begin",
+        "Opened deploy transaction",
+        `revision ${revision} · device on slot ${status.slot} at revision ${status.revision}`
+    );
+
+    let lastMark = -1;
+    const commit = await deviceClient.deployTransactional(project, revision, startScreen, (p) => {
+        if (p.phase !== "stage") {
+            return;
+        }
+        const pct = p.total > 0 ? Math.floor((p.done / p.total) * 100) : 100;
+        const mark = Math.floor(pct / 25);
+        if (mark === lastMark && p.done !== p.total) {
+            return;
+        }
+        lastMark = mark;
+        emitStep(
+            "txn-stage",
+            "Staged files into the inactive slot",
+            `${p.done}/${p.total} files · ${p.label}`
+        );
+    });
+
+    if (commit.ok !== true || commit.revision !== revision) {
+        emitStep(
+            "txn-commit",
+            "Activated the new revision",
+            undefined,
+            "error",
+            commit.error || `device reports revision ${commit.revision}, expected ${revision}`
+        );
+        return {
+            deployed: 0,
+            imagesDeployed: 0,
+            ok: false,
+            message: `Deploy not confirmed by device (revision ${commit.revision})`,
+            revision,
+            slot: commit.active_slot,
+        };
+    }
+
+    emitStep(
+        "txn-commit",
+        "Activated the new revision",
+        `revision ${commit.revision} · slot ${commit.active_slot}`
+    );
+    return {
+        deployed: counts.screens,
+        imagesDeployed: counts.images,
+        ok: true,
+        message:
+            `Deployed ${counts.screens} screen${counts.screens === 1 ? "" : "s"} ` +
+            `+ ${counts.images} image${counts.images === 1 ? "" : "s"} as revision ${commit.revision} ` +
+            `(slot ${commit.active_slot})`,
+        revision: commit.revision,
+        slot: commit.active_slot,
+    };
 }
 
 /**
@@ -408,6 +517,7 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     let pushMessage = "";
     let deployed = 0;
     let imagesDeployed = 0;
+    let deployedRevision: number | undefined;
     const deployedScreens: string[] = [];
 
     if (!hasChanges) {
@@ -430,7 +540,26 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
                 `${ip} (SN ${device.serialNumber})`
             );
 
-            if (needsFullDeploy) {
+            // Preferred path: one all-or-nothing transaction. The full set is
+            // staged into the inactive slot and activated by a single commit,
+            // so nothing on the device changes unless every file staged.
+            const txn = await tryTransactionalDeploy(
+                project,
+                screenNames[0] || "",
+                { screens: count, images: images.length },
+                emitStep
+            );
+
+            if (txn) {
+                deployed = txn.deployed;
+                imagesDeployed = txn.imagesDeployed;
+                deployedRevision = txn.revision;
+                pushOk = txn.ok;
+                pushMessage = txn.message;
+                if (txn.ok) {
+                    deployedScreens.push(...screenNames);
+                }
+            } else if (needsFullDeploy) {
                 // First deploy, or everything changed → one full push
                 // (images first, then all screens).
                 const result = await deviceClient.deployAllScreens(project);
@@ -528,6 +657,8 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
                     panelId: device.panelId,
                     screenCount: count,
                     imageCount: images.length,
+                    /** Active screen-set revision on the device (transactional deploys). */
+                    revision: deployedRevision,
                     screens: screenNames,
                     images: images.map((i) => ({
                         name: i.name,
@@ -626,6 +757,7 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         imageCount: images.length,
         manifestPath,
         deployed,
+        revision: deployedRevision,
         steps,
     };
 }
