@@ -1,6 +1,8 @@
-# T3 Firmware — LVGL Display Architecture
+# Device display architecture
 
-## Part 1 — Current Firmware (SquareLine Studio)
+**Applies to:** shipped code in `T3-programmable-controller-on-ESP32`.
+
+## Compiled UI (current)
 
 **Branch:** `DynamicUI_Tstat11`
 **Tool:** SquareLine Studio 1.6.0
@@ -42,7 +44,7 @@
 
 ---
 
-## 1. How Screens Are Created (SquareLine Studio)
+## 1. How compiled screens are generated
 
 SquareLine Studio generates static C code. Each screen is a function that calls `lv_obj_create()` etc.:
 
@@ -219,7 +221,7 @@ Line counts are from the current `DynamicUI_Tstat11` branch.
 
 ---
 
-## Part 2 — EEZ Studio Project Flow (Web ↔ Device)
+## Dynamic screens (EEZ project flow)
 
 > **How to read this part.** **[2.1 Two JSON Formats](#2-1-two-json-formats)** through
 > **[2.6 Full Round-Trip Flow](#2-6-full-round-trip-flow)** describe the web ↔ device flow;

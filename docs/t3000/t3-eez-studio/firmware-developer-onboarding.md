@@ -1,11 +1,13 @@
-# Firmware Developer Onboarding — T3-programmable-controller-on-ESP32
+# Firmware onboarding — T3-programmable-controller-on-ESP32
+
+**Applies to:** shipped code in the application repository.
 
 > **Audience.** A developer who has *not* written this firmware before (front-end, tools, or a new
 > firmware hire) and needs to make a safe, correct change. Everything here was read out of the code,
 > not from the README — file and line references are live as of branch `CB-Tstate-11`.
 >
 > **Repository:** `temcocontrols/T3-programmable-controller-on-ESP32`
-> **Target document:** Phase 2 — making the device draw deployed JSON. See
+> **Target document:** the renderer — making the device draw deployed JSON. See
 > [phase2-firmware-implementation-guide.md](phase2-firmware-implementation-guide.md).
 
 ---
@@ -22,7 +24,7 @@
 8. [A learning path](#8-a-learning-path)
 9. [Recipes](#9-recipes)
 10. [Landmines verified in the code](#10-landmines-verified-in-the-code)
-11. [How this connects to Phase 2](#11-how-this-connects-to-phase-2)
+11. [How this connects to the renderer](#11-how-this-connects-to-phase-2)
 
 ---
 
@@ -250,7 +252,7 @@ sub-minute feedback loop in the repository, and the right place to test new logi
 Pick a pure function (`conver_by_unit_10v`, `crc16`, `timegm`, `swap_word`) and add a Unity test in
 `Unit_Test/`. No hardware, no protocol risk, and it teaches the mock surface you will need later.
 
-### Exercise B — Phase 2 steps D1–D3 (low risk)
+### Exercise B — the renderer steps D1–D3 (low risk)
 
 Add `dynamic_display_storage_init()`, then `dynui_init()` plus the label/panel factory, following
 [phase2-firmware-implementation-guide.md](phase2-firmware-implementation-guide.md). Touches no
@@ -284,7 +286,7 @@ SquareLine export → `main/TemcoScreen/` (picked up automatically by
 
 ### "Add a dynamic screen"
 
-Deploy its JSON — no firmware change (once Phase 2 lands).
+Deploy its JSON — no firmware change (once the renderer lands).
 
 ### "Understand a protocol failure"
 
@@ -310,13 +312,13 @@ Modbus: `main/modbus.c` `check_whether_modbus_slave()` → `crc16()` → `get_re
 
 ---
 
-## 11. How this connects to Phase 2
+## 11. How this connects to the renderer
 
-Phase 2 needs exactly **one** new architectural thing here: a build/rebuild path that runs **inside
+the renderer needs exactly **one** new architectural thing here: a build/rebuild path that runs **inside
 `Lcd_Task`**, reads SPIFFS and creates LVGL objects — plus a queue so the HTTP task can signal it.
 Everything else already exists:
 
-| Phase 2 needs | Already in this repo |
+| the renderer needs | Already in this repo |
 |---|---|
 | Storage + seeded defaults | `components/temco_dynamic_display` + `screen_data` partition |
 | JSON parser | cJSON (the `json` component) |

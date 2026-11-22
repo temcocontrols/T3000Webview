@@ -1,4 +1,6 @@
-# .EEZ-Project JSON Format — Design Document
+# `.eez-project` — source format reference
+
+**Applies to:** the editor-side project file. The exporter reads it; the device never sees it. The device document is [../bacnet-api/screen-json.md](../bacnet-api/screen-json.md).
 
 ## Overview
 

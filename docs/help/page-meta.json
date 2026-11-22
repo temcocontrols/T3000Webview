@@ -1701,8 +1701,8 @@
     "t": "Message: GETPanelData"
   },
   "t3000/building-platform/control-messages/message-get-panels-list": {
-    "updated": "2026-10-08",
-    "sha": "e5e2834e",
+    "updated": "2026-11-19",
+    "sha": "fe3719cf",
     "owner": "docs",
     "stale": false,
     "t": "Message: GETPanelsList"
@@ -1834,8 +1834,8 @@
     "t": "Device Troubleshooting"
   },
   "t3000/device-management/lan-scanner": {
-    "updated": "2026-10-08",
-    "sha": "9a82f3ed",
+    "updated": "2026-11-19",
+    "sha": "fe3719cf",
     "owner": "docs",
     "stale": false,
     "t": "LAN Scanner — UDP Device Discovery"
@@ -2093,36 +2093,43 @@
     "t": "T3000 Center DB Configuration"
   },
   "t3000/t3-eez-studio/README": {
-    "updated": "2026-10-08",
-    "sha": "24a42da2",
+    "updated": "2026-11-19",
+    "sha": "daf3faec",
     "owner": "docs",
     "stale": false,
     "t": "Design Studio (Tstat11)"
   },
   "t3000/t3-eez-studio/device-firmware-lvgl-architecture": {
-    "updated": "2026-09-11",
-    "sha": "0849eff3",
+    "updated": "2026-11-20",
+    "sha": "22c48954",
     "owner": "docs",
     "stale": false,
     "t": "T3 Firmware — LVGL Display Architecture"
   },
   "t3000/t3-eez-studio/device-interface-deployment-via-bacnet-design": {
-    "updated": "2026-10-08",
-    "sha": "24a42da2",
+    "updated": "2026-11-19",
+    "sha": "df9accd4",
     "owner": "docs",
     "stale": false,
     "t": "Deploy to Device — as built (REST)"
   },
+  "t3000/t3-eez-studio/firmware-developer-onboarding": {
+    "updated": "2026-11-19",
+    "sha": "49f0e1d1",
+    "owner": "docs",
+    "stale": false,
+    "t": "Firmware Developer Onboarding — T3-programmable-controller-on-ESP32"
+  },
   "t3000/t3-eez-studio/import-from-device-design": {
-    "updated": "2026-10-08",
-    "sha": "24a42da2",
+    "updated": "2026-11-19",
+    "sha": "daf3faec",
     "owner": "docs",
     "stale": false,
     "t": "Import from Device — as built"
   },
   "t3000/t3-eez-studio/lvgl-eez-project-json-format": {
-    "updated": "2026-10-08",
-    "sha": "24a42da2",
+    "updated": "2026-11-19",
+    "sha": "daf3faec",
     "owner": "docs",
     "stale": false,
     "t": ".EEZ-Project JSON Format — Design Document"
@@ -2168,6 +2175,34 @@
     "owner": "docs",
     "stale": false,
     "t": "06 — Reference & FAQ"
+  },
+  "t3000/t3-eez-studio/phase2-device-renderer-design": {
+    "updated": "2026-11-20",
+    "sha": "22c48954",
+    "owner": "docs",
+    "stale": false,
+    "t": "Phase 2 — Device-Side Dynamic UI Renderer (Design)"
+  },
+  "t3000/t3-eez-studio/phase2-firmware-implementation-guide": {
+    "updated": "2026-11-20",
+    "sha": "22c48954",
+    "owner": "docs",
+    "stale": false,
+    "t": "Phase 2 — Firmware Implementation Guide (T3-programmable-controller-on-ESP32)"
+  },
+  "t3000/t3-eez-studio/phase2-host-implementation-guide": {
+    "updated": "2026-11-19",
+    "sha": "15b6f78c",
+    "owner": "docs",
+    "stale": false,
+    "t": "Phase 2 — Host Implementation Guide (T3000 WebView / Design Studio)"
+  },
+  "t3000/t3-eez-studio/screen-deploy-lifecycle-design": {
+    "updated": null,
+    "sha": null,
+    "owner": "docs",
+    "stale": false,
+    "t": "Screen deploy lifecycle — transactions, versions, recovery (design)"
   },
   "t3000/t3-eez-studio/static-resource-copy-build": {
     "updated": "2026-10-08",

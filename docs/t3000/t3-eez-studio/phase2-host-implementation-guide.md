@@ -1,6 +1,8 @@
-# Phase 2 — Host Implementation Guide (T3000 WebView / Design Studio)
+# Host implementation — reference
 
-> **What this is.** The front-end half of Phase 2: the changes that make the browser side
+**Applies to:** shipped code for the exporter, REST client and Design Hub surfaces; the transaction client (`begin` / `stage` / `commit`) is specified, not implemented.
+
+> **What this is.** The front-end half of the renderer: the changes that make the browser side
 > *correct and honest* about a device that renders JSON. It does **not** contain a renderer — the
 > editor already renders `.eez-project` with the LVGL WASM runtime, and that does not change.
 >
@@ -26,7 +28,7 @@
 | Tests | **Yes** — export contract snapshot + compat checker unit tests |
 
 Everything below is additive. Nothing removes an existing code path, so a device without the
-Phase 2 firmware behaves exactly as today.
+the renderer firmware behaves exactly as today.
 
 ---
 
@@ -39,9 +41,9 @@ and reusable from the Design Hub, the editor toolbar, and a future CLI.
 
 ```ts
 /**
- * device-compat.ts — what the Phase 2 device renderer can and cannot draw.
+ * device-compat.ts — what the renderer device renderer can and cannot draw.
  *
- * Phase 2 renders literal text only and implements exactly two actions
+ * renders literal text only and implements exactly two actions
  * (screen_change, flag_modify). Anything else must be surfaced to the user
  * BEFORE the deploy, not discovered afterwards on a dark panel.
  */
@@ -66,14 +68,14 @@ export interface CompatReport {
     ok: boolean;
 }
 
-/** sub_types the Phase 2 device renderer implements. */
+/** sub_types the renderer device renderer implements. */
 const RENDERABLE = new Set([
     "screen", "panel", "label", "textarea", "button", "imagebutton",
     "image", "switch", "checkbox", "dropdown", "roller",
     "arc", "bar", "slider", "calendar", "keyboard",
 ]);
 
-/** sub_types the exporter can emit but the renderer cannot draw yet. */
+/** sub_types the exporter can emit but cannot draw yet. */
 const KNOWN_UNSUPPORTED = new Set(["user_widget"]);
 
 const ACTIONS = new Set(["screen_change", "flag_modify"]);
@@ -153,7 +155,7 @@ function walkWidgets(
 }
 
 /**
- * Check every exported screen against what the Phase 2 device can render.
+ * Check every exported screen against what the renderer device can render.
  * Defensive: malformed input yields no findings rather than throwing.
  */
 export function checkDeviceCompatibility(
@@ -306,7 +308,7 @@ import { checkDeviceCompatibility } from "project-editor/build/device-compat";
 
 // … after: const screens = transformToDeviceJson(project);
 
-// 1b. Phase 2 compatibility check — errors block, warnings do not.
+// 1b. the renderer compatibility check — errors block, warnings do not.
 const compat = checkDeviceCompatibility(screens);
 if (compat.findings.length > 0) {
     const errorText = compat.findings
@@ -339,7 +341,7 @@ drawer shows. Optionally add the raw report for the UI:
 ```ts
 export interface DeployEezResult {
     // …
-    /** Phase 2 compatibility findings (warnings even when the deploy proceeds). */
+    /** the renderer compatibility findings (warnings even when the deploy proceeds). */
     compatibility?: CompatReport;
 }
 ```
@@ -424,7 +426,7 @@ design" into a concrete `ui_mode` / `last_error` string.
 ### 4.1 `getDeviceStatus()`
 
 ```ts
-/** Renderer / UI state reported by the device (Phase 2 firmware). */
+/** Renderer / UI state reported by the device (the renderer firmware). */
 export interface DeviceStatus {
     ui_mode: "dynamic" | "compiled" | string;
     current_screen: string;
@@ -621,10 +623,10 @@ replacement text is Appendix C of the design document.
 |---|---|---|
 | H1 | `device-compat.ts` | `npx vitest run …/device-compat.test.ts` |
 | H2 | export contract test | `npx vitest run …/firmware-export.contract.test.ts` |
-| H3 | `getDeviceStatus()` + `loadScreenOrNull()` | type-check + manual `curl` on a Phase 2 board |
+| H3 | `getDeviceStatus()` + `loadScreenOrNull()` | type-check + manual `curl` on a the renderer board |
 | H4 | import 404 tolerance | import from a board with one screen file deleted |
 | H5 | compat check inside `deployEezProject()` | deploy a project with an expression → see the warning |
-| H6 | drawer findings panel + verify step | deploy to a Phase 2 board → "Device reports the design is live" |
+| H6 | drawer findings panel + verify step | deploy to a the renderer board → "Device reports the design is live" |
 
 H1/H2 are pure and can land before any firmware exists. H3–H6 degrade gracefully on today's
 firmware (no `/device/status` → `skipped` step; no 404s → tolerance never fires).

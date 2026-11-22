@@ -3,6 +3,14 @@
 Pure Rust async port of the C++ `RefreshNetWorkDeviceListByUDPFunc()`
 from `T3000-Source/T3000/global_function.cpp:9796`.
 
+> **The LAN scan is not the primary device source.** Devices on an RS485 bus
+> (a `Tstat10`/`TSTAT7` on COM8, the usual "Local View" install) never answer
+> a UDP query, and the C++ `GET_PANELS_LIST` bridge (FFI action 4) only reports
+> `g_bacnet_panel_info`, which is filled exclusively from UDP replies. Those
+> devices come from T3000's own database (`Database/Buildings/<b>/<b>.db` →
+> `ALL_NODE`), read read-only with a ~11 ms lock window. The scan then
+> *enriches* that list with IPs and liveness for network devices.
+
 ## Protocol Overview
 
 T3000 devices listen on **UDP port 1234** for a broadcast query and
@@ -170,12 +178,185 @@ wall-clock time of its own.
 
 ## Troubleshooting an empty device tree
 
+Before blaming the scan, check which source should have produced the devices:
+
+```bash
+curl http://localhost:9103/api/t3_device/devices/t3000-db   # what T3000 knows
+curl http://localhost:9103/api/t3_device/devices            # what the tree reads
+```
+
 | Symptom in the log | Meaning | Fix |
 |---|---|---|
-| `sending query to 255.255.255.255:1234` then `0 packet(s)` | No replies reach the process | Check the firewall hint logged after the scan, and whether the devices are on the adapter's subnet |
+| `[t3000_db] imported N device(s) from T3000` then devices in the tree | Working: the list came from T3000's database | — |
+| `[t3000_db] device import skipped: T3000 database folder ... not found` | The process cannot see `<T3000>/Database/T3000.db` | Start the service from the T3000 runtime folder, or set `TEMCO_T3000_PATH` |
+| `sending query to 255.255.255.255:1234` then `0 packet(s)` | No UDP replies reach the process | Check the firewall hint logged after the scan, and whether the devices are on the adapter's subnet |
 | `broadcast + unicast sweep found nothing` | Both phases silent | PC and devices on different subnets, or all inbound UDP blocked |
-| `serial COMx scan failed: ... Access is denied` | Another program (usually T3000.exe) owns the COM port | Close T3000.exe, or accept that the port cannot be scanned |
+| `serial COMx scan failed: ... Access is denied` | Another program (usually T3000.exe) owns the COM port | **Expected** when T3000 is running — never open it from the WebView; T3000 routes those devices |
 | `serial COMx scan failed: ... semaphore timeout` | USB-serial driver did not answer | Unplug/replug the adapter |
+
+## T3000 device sources — preferred order
+
+The WebView takes T3000's device list from the first source that answers:
+
+| # | Source | Cost / risk | Status |
+|---|---|---|---|
+| 1 | **T3000's building database** (`ALL_NODE`) — T3000 writes *every* discovery there (UDP, RS485, MSTP, third-party BACnet/IP, remote, virtual, manual) | read-only read, ~11 ms shared lock, no writer impact (measured) | **default** |
+| 2 | FFI `BacnetWebView_GetTreeDevices` — T3000's in-memory tree (`m_product`), adds live status | memory copy only | only if a future T3000.exe exports it; skipped automatically otherwise |
+| 3 | LAN scan (UDP + serial + TCP sub-port) | 0.65 s … 7.9 s | always runs, adds devices before T3000 stores them |
+
+Because source 1 already contains the output of **all six** T3000 scan passes,
+porting `ScanBacnetMSTPDevice`, `ScanRemoteIPDevice` and
+`ScanThirdPartyBACnetDevice` to Rust would add nothing:
+
+| T3000 pass | Port to Rust? | Why |
+|---|---|---|
+| `ScanNetworkDevice` (UDP 0x64/0x65) | already have | also catches brand-new IP devices before T3000 stores them |
+| `ScanComDevice` (RS485 Modbus) | have it | blocked while T3000 owns the port; results come from its DB |
+| `ScanTCPtoRS485SubPort` | already have | finds devices behind a gateway early |
+| `ScanBacnetMSTPDevice` | **no** | needs the COM port → same `Access is denied` |
+| `ScanRemoteIPDevice` | **no** | needs the user's remote-site config; result already in DB |
+| `ScanThirdPartyBACnetDevice` | **no** | BACnet/IP Who-Is with `Sleep(10000)` per adapter; result already in DB |
+| `CombineScanResult` + conflict resolution | not needed | upsert dedupes by serial |
+
+Instead, the detached deep pass **re-reads T3000's list when it finishes**, so a
+T3000 scan that ran meanwhile is merged without any extra scanner in Rust.
+
+## T3000 device database (ALL_NODE) — default source
+
+T3000's own tree is built from a SQLite database next to its executable, not
+from a network scan (`MainFrm.cpp` — `select * from ALL_NODE`):
+
+```
+<runtime>/Database/T3000.db                            Building (Protocal, Com_Port, Building_Path)
+<runtime>/Database/Buildings/<b>/<b>.db                ALL_NODE  ← one row per device
+```
+
+`api/src/t3_device/t3000_building_db.rs` reads it read-only (`mode=ro`, WAL
+sharing) and upserts into the WebView `DEVICES` table:
+
+| ALL_NODE column | DEVICES column | Notes |
+|---|---|---|
+| `Serial_ID` | `SerialNumber` (PK) | rows without a positive serial are skipped |
+| `Panal_Number` | `PanelId`, `Panel_Number` | required by FFI action 17 |
+| `Object_Instance` | `object_instance` | fallback for action 17 when `PROTOCOL_SETTINGS` is empty |
+| `Parent_SerialNum` | `parent_serial_number` | non-zero → sub-device in the tree |
+| `Product_name` | `Product_Name`, `Show_Label_Name` | tree label |
+| `Product_class_ID` / `Product_ID` | same | icon + product mapping |
+| `NetworkCard_Address` (else `Bautrate` when it looks like an IP) | `ip_address` | `Bautrate` holds the *baud rate* on RS485 devices |
+| `Bautrate` (9600…115200) | `Bautrate` | |
+| `Com_Port` | `port` | |
+| `Protocol` | `subnet_protocol` | 0 Modbus 485, 1 Modbus TCP, 2 BACnet MSTP, 3 BACnet IP, 5 Auto |
+| `Background_imgID` | `connection_type` | doubles as "Sub Device RS485" / "Modbus_and_Bacnet" in T3000's schema |
+| `Online_Status` | `is_online` — **only when `1`** | See the warning below: this column is not live status |
+| `Background_imgID` | `connection_type` | doubles as "Sub Device RS485" / "Modbus_and_Bacnet" in T3000's schema |
+
+> **`Online_Status` is not live status.** It is written in bulk only in
+> `CMainFrame::OnDestroy` ("so the next open shows the state from the last
+> close"), plus a few per-protocol-group updates in the tree-refresh loop that
+> do not cover every protocol. Measured on a running T3000: **35 of 38 rows read
+> `0` while its own tree showed those devices green** (e.g. `Tstat10-99`,
+> protocol 10/BACnet-MSTP). So the importer trusts a `1` and treats `0` as
+> *unknown* — it never marks a device offline from this column. Liveness stays
+> with the UDP scan (IP devices) and the FFI panel list.
+
+Imported rows are refreshed on every service start and on every
+`POST /api/t3_device/devices/scan-refresh`. `last_checked` is stamped only for
+devices reported `Online_Status = 1`, which keeps them inside the LAN scan's
+5-minute grace window instead of being greyed out.
+
+**The COM port is never opened by the WebView.** T3000 owns it for the whole
+session; a second opener gets `Access is denied`. Reads and writes for those
+devices go through T3000 over FFI (action 17 needs `panelId`,
+`serialNumber` and `objectinstance` only).
+
+### Locking: is reading T3000's database safe?
+
+Measured, not assumed:
+
+| Fact | Evidence |
+|---|---|
+| Journal mode is `delete` (rollback journal), so a reader *can* block a writer | `PRAGMA journal_mode` on the live files → `delete` |
+| A reader that keeps a transaction open **does** block T3000 | measured: writer fails with `database is locked` after 1166 ms |
+| The importer does **not** do that | `tests/t3000_db::reading_never_blocks_the_t3000_writer`: 84 reads vs 94 concurrent writes → **0 write failures**, max write latency **22.8 ms** |
+| Lock window per read | `examples/measure_t3000_db_read` on the real DB: median **11.3 ms**, p95 16.8 ms (38 devices) |
+
+Guarantees in `t3000_building_db`:
+
+* `mode=ro` — the process *cannot* write, even by accident;
+* `PRAGMA query_only = 1` — second line of defence;
+* `busy_timeout = 750 ms` on **our** side (T3000 uses 60 s), so a collision makes
+  us back off and retry, never the reverse;
+* one short `SELECT` per attempt, connection dropped immediately — the shared
+  lock lives for a single small statement, not for the process lifetime;
+* 4 attempts with backoff; a non-busy error (missing file, hot journal after a
+  T3000 crash) is reported and the import is skipped — nothing is forced.
+
+T3000 writes to its building database roughly every 8 s (the `while(1)`
+tree-refresh loop in `_FreshTreeView`), so a collision window of ~17 ms means
+~0.2 % of imports overlap, and then T3000 just waits a few milliseconds out of
+its 60 s budget.
+
+### How T3000 itself discovers devices
+
+T3000 never relies on a single scan. `ALL_NODE` is the authoritative tree, and
+four things write to it:
+
+| Source | Code | Writes to ALL_NODE |
+|---|---|---|
+| **Scan All** (Tools → Scan Device) | `MainFrm.cpp:3910 OnScanDevice` → `Scan_Product()` → `CTStatScanner::ScanAll()` (`TStatScanner.cpp:4192`) | `SendScanEndMsg()` → `CombineScanResult()` + conflict resolution → `AddNewTStatToDB()` / `AddNewNetToDB()`; the MSTP thread also upserts directly |
+| **BACnet/IP I-Am** | `MainFrm.cpp:6788` | auto-insert (product_class 254, `PROTOCOL_THIRD_PARTY_BAC_BIP`) |
+| **Manual add dialogs** | `AllNodesDiaolg.cpp`, `ARDDlg.cpp`, `BacnetAddRemoteDevice.cpp`, `BacnetAddVirtualDevice.cpp`, `ConnectRemoteServer.cpp` | insert |
+| **Scan result review** | `ScanDlg.cpp:1794/1865 WriteOneDevInfoToDB`, `TStatScanner.cpp:3508 WriteOneNetInfoToDB` | insert |
+
+Crucially, `CTStatScanner::ScanAll()` runs **inside T3000** and starts with:
+
+```cpp
+SetCommunicationType(0);   // serial mode
+close_com();               // ← releases the COM handle T3000's polling loop holds
+```
+
+so its serial probe (`ScanComDevice`, `ScanComThreadNoCritical`) can actually
+open COM8. It then runs, in threads: `ScanDetectComData`, `ScanComDevice`,
+`ScanNetworkDevice` (UDP 0x64/0x65), `ScanBacnetMSTPDevice`,
+`ScanRemoteIPDevice`, `ScanTCPtoRS485SubPort`, `ScanThirdPartyBACnetDevice`.
+`g_bPauseMultiRead` is set while it runs so polling does not fight the scan.
+
+Out-of-process this is impossible: the port is held, so the Rust serial pass
+can only ever return `Access is denied`. Therefore:
+
+* the WebView **uses** the result (`ALL_NODE`) instead of duplicating the scan;
+* the serial pass skips the ports T3000 is configured to use
+  (`Building.Com_Port`) — it still probes other, free ports, which keeps the
+  standalone (no T3000) case working;
+* the UDP pass stays, because it is additive and works concurrently.
+
+### Not yet covered by the Rust scan
+
+| C++ `ScanAll` step | Rust | Note |
+|---|---|---|
+| `ScanNetworkDevice` (UDP 0x64/0x65) | `scanner::scan_network` | equivalent |
+| `ScanComDevice` (RS485 Modbus) | `serial::scan_all_serial_ports` | only works when T3000 is not running |
+| `ScanTCPtoRS485SubPort` | `scanner::scan_tcp_sub_ports` | equivalent (500 ms timeout) |
+| `ScanBacnetMSTPDevice` | — | missing |
+| `ScanRemoteIPDevice` | — | missing |
+| `ScanThirdPartyBACnetDevice` | — | missing (T3000 auto-inserts on I-Am) |
+| `CombineScanResult` + conflict resolution | — | missing (dedupe by serial happens on upsert instead) |
+
+These three are deliberately **not** ported: with T3000 running they are its
+job, and without T3000 they are rare (MSTP/remote/third-party imports).
+
+### Proposed FFI contract (when T3000-Source can change)
+
+Reading `ALL_NODE` works today with no C++ change, but it couples the WebView
+to T3000's schema. Two messages would make the contract explicit:
+
+| Action | Name | Returns |
+|---|---|---|
+| `23` | `GET_ALL_NODES` | `{ action: "GET_ALL_NODES_RES", data: [ { serial_number, panel_number, object_instance, parent_serial_number, product_name, product_class_id, product_id, screen_name, ip_address, com_port, protocol, online_status, connection_type } ] }` — the same rows the tree uses |
+| `24` | `TRIGGER_SCAN` | starts `CTStatScanner::ScanAll()` in a worker thread (the `OnScanDevice` path without the dialog) and answers `{ status: "started" }`; the WebView then polls `GET_ALL_NODES` |
+
+With those, `t3000_building_db` becomes a fallback instead of the primary path,
+and "Scan" in the WebView would really run T3000's scan — including RS485.
 
 
 ## Key Differences from C++

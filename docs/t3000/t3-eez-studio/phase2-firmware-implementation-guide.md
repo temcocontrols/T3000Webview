@@ -1,4 +1,6 @@
-# Phase 2 — Firmware Implementation Guide (T3-programmable-controller-on-ESP32)
+# Device renderer — implementation guide
+
+**Applies to:** specification — the code described here does not exist in the firmware yet.
 
 > **What this is.** The step-by-step change list for
 > `temcocontrols/T3-programmable-controller-on-ESP32` that makes the panel **draw the JSON it
