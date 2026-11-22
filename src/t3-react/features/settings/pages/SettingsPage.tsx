@@ -856,7 +856,10 @@ export const SettingsPage: React.FC = () => {
 
       if (!settings) {
         // No cached data - fetch from device
-        const result = await SettingsRefreshApi.refreshFromDevice(serial);
+        const result = await SettingsRefreshApi.refreshFromDevice(serial, {
+          panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+          objectInstance: selectedDevice.objectInstance,
+        });
 
         if (!result.success || !result.data) {
           throw new Error(result.message || 'Failed to refresh settings from device');
@@ -1002,7 +1005,7 @@ export const SettingsPage: React.FC = () => {
     clearSettings(); // drop the previous device's values immediately
 
     try {
-      const result = await SettingsRefreshApi.refreshFromDevice(selectedDevice.serialNumber);
+      const result = await SettingsRefreshApi.refreshFromDevice(selectedDevice.serialNumber, { panelId: selectedDevice.panelNumber ?? selectedDevice.panelId, objectInstance: selectedDevice.objectInstance });
 
       if (!result.success) {
         throw new Error(result.message);

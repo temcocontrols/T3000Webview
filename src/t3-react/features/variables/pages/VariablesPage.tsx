@@ -298,6 +298,8 @@ const VariablesPageDesktop: React.FC = () => {
         const result = await PanelDataRefreshService.refreshFromDevice({
           serialNumber: selectedDevice.serialNumber,
           type: 'variable',
+          panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+          objectInstance: selectedDevice.objectInstance,
           onLoadingChange: (l) => { if (l) setMessage(`Loading variables from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info'); }
         });
         setMessage(`\u2713 Synced ${result.itemCount} variables from ${selectedDevice.nameShowOnTree}`, 'success');
@@ -333,6 +335,8 @@ const VariablesPageDesktop: React.FC = () => {
       const result = await PanelDataRefreshService.refreshFromDevice({
         serialNumber: selectedDevice.serialNumber,
         type: 'variable',
+        panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+        objectInstance: selectedDevice.objectInstance,
         onLoadingChange: (loading) => {
           if (loading) {
             setMessage('Loading data from device (Action 17)...', 'info');

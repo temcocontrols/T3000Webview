@@ -498,14 +498,17 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           if (response && response.data && response.data.data) {
             const panels = response.data.data;
 
-            // An empty array means the C++ engine knows no devices at all —
-            // `g_bacnet_panel_info` is only filled by its own 0x64/0x65 scan, so
-            // this is the same root cause as an empty network scan. Saving zero
-            // panels would otherwise report "failed to save any to database".
+            // An empty array means the C++ engine's UDP discovery knows nothing.
+            // That is expected on an RS485 install: `g_bacnet_panel_info` is
+            // filled only from 0x64/0x65 replies, so Tstat10/TSTAT7 devices on a
+            // COM port never appear here. They are imported from T3000's own
+            // building database instead (`ALL_NODE`), which is why the tree can
+            // still be populated. Saving zero panels would otherwise report
+            // "failed to save any to database".
             if (Array.isArray(panels) && panels.length === 0) {
               setMessage(
-                'T3000 returned an empty panel list — the engine heard no devices (same UDP discovery as the network scan)',
-                'warning'
+                'T3000 UDP panel list is empty — serial (RS485) devices come from the T3000 database',
+                'info'
               );
               await transport.disconnect();
               return;
@@ -690,8 +693,8 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           } else {
             console.warn('[loadDevicesWithSync] No panel list in response:', response);
             setMessage(
-              'T3000 returned an empty panel list — the engine heard no devices (same UDP discovery as the network scan)',
-              'warning'
+              'T3000 UDP panel list is empty — serial (RS485) devices come from the T3000 database',
+              'info'
             );
           }
 

@@ -217,6 +217,8 @@ const InputsPageDesktop: React.FC = () => {
         const result = await PanelDataRefreshService.refreshFromDevice({
           serialNumber: selectedDevice.serialNumber,
           type: 'input',
+          panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+          objectInstance: selectedDevice.objectInstance,
           onLoadingChange: (loading) => {
             if (loading) {
               setMessage(`Loading inputs from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
@@ -267,6 +269,8 @@ const InputsPageDesktop: React.FC = () => {
       const result = await PanelDataRefreshService.refreshFromDevice({
         serialNumber: selectedDevice.serialNumber,
         type: 'input',
+        panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+        objectInstance: selectedDevice.objectInstance,
         onLoadingChange: (loading) => {
           if (loading) {
             setMessage('Loading data from device (Action 17)...', 'info');
