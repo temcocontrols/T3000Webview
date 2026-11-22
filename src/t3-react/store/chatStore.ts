@@ -12,6 +12,8 @@ interface ChatStore {
   streamingSteps: ThinkingStep[];
   streamingBlocks: MessageBlock[];
   activeToolCalls: Record<string, ToolCallRecord>;
+  /** Latest progress message from the backend (SSE `status` event). */
+  streamingStatus: { phase: string; message: string } | null;
   previousPageHash: string | null;
 
   setMessages: (messages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
@@ -21,6 +23,7 @@ interface ChatStore {
   setStreamingSteps: (steps: ThinkingStep[]) => void;
   setStreamingBlocks: (blocks: MessageBlock[]) => void;
   setActiveToolCalls: (fn: (prev: Record<string, ToolCallRecord>) => Record<string, ToolCallRecord>) => void;
+  setStreamingStatus: (status: { phase: string; message: string } | null) => void;
   setPreviousPageHash: (hash: string | null) => void;
   reset: () => void;
 }
@@ -33,6 +36,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   streamingSteps: [],
   streamingBlocks: [],
   activeToolCalls: {},
+  streamingStatus: null,
   previousPageHash: null,
 
   setMessages: (v) => set((s) => ({ messages: typeof v === 'function' ? v(s.messages) : v })),
@@ -42,6 +46,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   setStreamingSteps: (steps) => set({ streamingSteps: steps }),
   setStreamingBlocks: (blocks) => set({ streamingBlocks: blocks }),
   setActiveToolCalls: (fn) => set((s) => ({ activeToolCalls: fn(s.activeToolCalls) })),
+  setStreamingStatus: (status) => set({ streamingStatus: status }),
   setPreviousPageHash: (hash) => set({ previousPageHash: hash }),
-  reset: () => set({ messages: [], sessionId: null, isStreaming: false, streamingText: '', streamingSteps: [], streamingBlocks: [], activeToolCalls: {}, previousPageHash: null }),
+  reset: () => set({ messages: [], sessionId: null, isStreaming: false, streamingText: '', streamingSteps: [], streamingBlocks: [], activeToolCalls: {}, streamingStatus: null, previousPageHash: null }),
 }));

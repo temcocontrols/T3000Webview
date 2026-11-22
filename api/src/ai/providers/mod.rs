@@ -15,6 +15,22 @@ pub mod local;
 pub mod anthropic;
 pub mod gemini;
 
+/// Cap on the connection phase (DNS + TCP + TLS) for every provider.
+///
+/// Without it a blackholed endpoint silently burns the OS TCP timeout
+/// (~170 s on Windows) per attempt, and the UI shows "Thinking…" for minutes
+/// before any error appears.
+pub const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+
+/// Hard cap on obtaining the response *headers* for a cloud endpoint. The body
+/// stream is not covered, so long generations are unaffected.
+pub const SEND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(25);
+
+/// Same cap for a local model server, but generous: llama.cpp / Ollama only
+/// send headers after prompt processing, which is slow on CPU with a long
+/// context. A dead local port still fails instantly (connection refused).
+pub const LOCAL_SEND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+
 /// Canonical tool definition (matches MCP ToolDef schema).
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ToolDef {

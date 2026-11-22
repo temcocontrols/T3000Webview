@@ -71,6 +71,7 @@ impl LlmProvider for LocalProvider {
         // (tools count already in request log above)
 
         let client = Client::builder()
+            .connect_timeout(super::CONNECT_TIMEOUT)
             .timeout(std::time::Duration::from_secs(300))
             .http1_only()
             .user_agent("T3000-MCP/1.0")
@@ -88,10 +89,37 @@ impl LlmProvider for LocalProvider {
             }
         }
 
-        let response = req_builder
-            .send()
-            .await
-            .map_err(|e| AiError::Provider(format!("Failed to connect: {}", e)))?;
+        // Report progress so a slow/blocked model server never looks like a hang.
+        let _ = tx.send(StreamEvent::Status {
+            phase: "connecting".to_string(),
+            message: "Contacting the local model server…".to_string(),
+        });
+
+        // A local server only sends headers after prompt processing, which can
+        // be slow on CPU — hence the (much) more generous header cap than the
+        // cloud providers. A dead port still fails instantly.
+        let response = match tokio::time::timeout(super::LOCAL_SEND_TIMEOUT, req_builder.send()).await {
+            Ok(result) => result.map_err(|e| AiError::Provider(format!("Failed to connect: {}", e)))?,
+            Err(_) => {
+                let _ = tx.send(StreamEvent::Status {
+                    phase: "timeout".to_string(),
+                    message: format!(
+                        "No response from the local model server after {}s — it may be overloaded or unreachable",
+                        super::LOCAL_SEND_TIMEOUT.as_secs()
+                    ),
+                });
+                return Err(AiError::Provider(format!(
+                    "Timed out waiting {}s for the local model server at {}",
+                    super::LOCAL_SEND_TIMEOUT.as_secs(),
+                    endpoint
+                )));
+            }
+        };
+
+        let _ = tx.send(StreamEvent::Status {
+            phase: "waiting".to_string(),
+            message: "Connected — waiting for the model to answer…".to_string(),
+        });
 
         let status = response.status();
         tracing::info!("[Local] Response: {}", status);

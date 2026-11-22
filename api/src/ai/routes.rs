@@ -221,6 +221,20 @@ async fn process_chat(
 
         // Spawn the provider call — it streams events into inner_tx
         info!("[AI] Iteration {}: calling LLM provider...", iteration + 1);
+
+        // Keep the UI informed. Without a status event the frontend can only
+        // show a static "Thinking…" while the provider is contacted.
+        let iteration_status = if iteration == 0 {
+            format!("Sending request to {} ({})…", session.provider, session.model)
+        } else {
+            format!("Continuing after tool results (step {})…", iteration + 1)
+        };
+        if let Ok(status_json) = serde_json::to_string(&StreamEvent::Status {
+            phase: "thinking".to_string(),
+            message: iteration_status,
+        }) {
+            let _ = tx.send(Ok(Event::default().data(status_json)));
+        }
         let llm_start = std::time::Instant::now();
         let provider_tx = inner_tx.clone();
         let provider_handle = {

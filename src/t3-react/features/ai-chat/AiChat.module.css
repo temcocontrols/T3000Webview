@@ -1033,6 +1033,26 @@
   animation: spin 1.2s linear infinite;
 }
 
+/* ── Progress line under "Thinking…" (backend `status` events) ── */
+.thinkingStatus {
+  font-size: 12px;
+  color: var(--colorNeutralForeground3, #666);
+  padding: 0 16px 4px 24px;
+  opacity: 0.9;
+}
+
+/* ── Shown when nothing has arrived for a while ── */
+.thinkingSlowHint {
+  /* Full content width, with the same gutter as the message bubbles. */
+  margin: 4px 16px 8px 24px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--colorPaletteDarkOrangeForeground2, #8a5d00);
+  background-color: var(--colorPaletteDarkYellowBackground2, #fff4ce);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
 /* ── Thinking section (collapsible reasoning) ── */
 .thinkingSection {
   margin: 6px 0 10px 0;
