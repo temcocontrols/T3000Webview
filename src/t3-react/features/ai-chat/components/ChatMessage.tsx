@@ -19,6 +19,7 @@ import {
   DismissCircleFilled,
 } from '@fluentui/react-icons';
 import styles from '../AiChat.module.css';
+import { isSystemErrorNotice, isSystemWarningNotice } from '../systemMessage';
 import type {
   ChatMessage as ChatMessageType,
   ToolCallRecord,
@@ -225,13 +226,8 @@ export const ChatMessage: React.FC<Props> = ({ message, isStreaming }) => {
 
   // System message
   if (message.role === 'system') {
-    const isError =
-      message.content.startsWith('Error:') ||
-      message.content.startsWith('The LLM server returned HTTP') ||
-      message.content.startsWith('Could not reach the LLM server') ||
-      message.content.startsWith('The LLM request failed on the server side') ||
-      message.content.startsWith('No response received from the LLM server');
-    const isWarning = message.content.startsWith('Unable to complete your request');
+    const isError = isSystemErrorNotice(message.content);
+    const isWarning = isSystemWarningNotice(message.content);
     if (isWarning) {
       const nl = message.content.indexOf('\n');
       const title = nl > -1 ? message.content.slice(0, nl) : message.content;

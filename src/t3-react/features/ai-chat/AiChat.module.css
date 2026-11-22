@@ -1435,7 +1435,8 @@
 /* ── System message ── */
 .systemMessage {
   text-align: left;
-  padding: 6px 16px;
+  /* Same gutter as .messageWrapper so system notices line up with content. */
+  padding: 6px 16px 6px 24px;
   color: var(--colorNeutralForeground4, #b0b0b0);
   font-size: 11px;
   font-style: italic;
@@ -1451,6 +1452,8 @@
   padding: 8px 14px 8px 40px;
   margin: 4px 24px 8px 24px;
   position: relative;
+  /* Long URLs in "Details:" must not overflow the box. */
+  word-break: break-word;
 }
 .systemError::before {
   content: '\2716';
