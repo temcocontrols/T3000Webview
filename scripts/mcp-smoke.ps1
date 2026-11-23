@@ -225,6 +225,13 @@ if ($RealData) {
 
     $serial = if ($SerialNumber) { [int]$SerialNumber } elseif ($devices.Count -gt 0) { [int]$devices[0].serial } else { $null }
 
+    # Prefer an online device that actually has inputs — otherwise the point read
+    # cannot return a value and the check is meaningless.
+    $target = $devices | Where-Object { $_.is_online -and $_.input_count -gt 0 } | Select-Object -First 1
+    if (-not $target) { $target = $devices | Where-Object { $_.input_count -gt 0 } | Select-Object -First 1 }
+    if (-not $target -and $devices.Count -gt 0) { $target = $devices[0] }
+    if (-not $SerialNumber -and $target) { $serial = [int]$target.serial }
+
     # Points for that device
     if ($serial) {
         $ptCall = Invoke-McpPost -Body (New-RpcRequest 'tools/call' @{ name = 't3000_device_get_points'; arguments = @{ serial_number = $serial } })
@@ -234,21 +241,25 @@ if ($RealData) {
         Write-Result ('tools/call t3000_device_get_points ' + $serial) $ok ("total=" + $ptPayload.total)
 
         # Read the first input point that has a value (read-only)
-        $readOk = $false
-        for ($i = 1; $i -le 8 -and -not $readOk; $i++) {
-            $rdCall = Invoke-McpPost -Body (New-RpcRequest 'tools/call' @{
-                name = 't3000_point_read'
-                arguments = @{ serial_number = $serial; point_type = 'INPUT'; point_index = $i }
-            })
-            $rdJson = $rdCall.Body | ConvertFrom-Json
-            $rdPayload = $rdJson.result.content[0].text | ConvertFrom-Json
-            if ($null -ne $rdPayload.value -or $rdPayload.label) {
-                $readOk = $true
-                Write-Result ('tools/call t3000_point_read INPUT ' + $i) $true ("label='" + $rdPayload.label + "' value=" + $rdPayload.value + " " + $rdPayload.engineering_units)
+        if (-not $target.is_online) {
+            Write-Host ("  SKIP  {0,-42} {1}" -f "tools/call t3000_point_read $serial", "device $serial is offline — no live value to read") -ForegroundColor Yellow
+        } else {
+            $readOk = $false
+            for ($i = 1; $i -le 8 -and -not $readOk; $i++) {
+                $rdCall = Invoke-McpPost -Body (New-RpcRequest 'tools/call' @{
+                    name = 't3000_point_read'
+                    arguments = @{ serial_number = $serial; point_type = 'INPUT'; point_index = $i }
+                })
+                $rdJson = $rdCall.Body | ConvertFrom-Json
+                $rdPayload = $rdJson.result.content[0].text | ConvertFrom-Json
+                if ($null -ne $rdPayload.value -or $rdPayload.label) {
+                    $readOk = $true
+                    Write-Result ('tools/call t3000_point_read INPUT ' + $i) $true ("label='" + $rdPayload.label + "' value=" + $rdPayload.value + " " + $rdPayload.engineering_units)
+                }
             }
-        }
-        if (-not $readOk) {
-            Write-Result ('tools/call t3000_point_read ' + $serial + ' INPUT 1..8') $false 'no input point returned a value'
+            if (-not $readOk) {
+                Write-Result ('tools/call t3000_point_read ' + $serial + ' INPUT 1..8') $false 'no input point returned a value'
+            }
         }
     }
 
