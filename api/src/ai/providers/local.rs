@@ -70,11 +70,19 @@ impl LlmProvider for LocalProvider {
         }
         // (tools count already in request log above)
 
-        let client = Client::builder()
+        // A LAN/loopback model server must be reached directly: the machine's
+        // system proxy (corporate proxy, VPN/accelerator) cannot serve a private
+        // address and answers 502 Bad Gateway with an empty body. Public
+        // endpoints keep using the proxy, so proxy setups are unaffected.
+        let mut client_builder = Client::builder()
             .connect_timeout(super::CONNECT_TIMEOUT)
             .timeout(std::time::Duration::from_secs(300))
             .http1_only()
-            .user_agent("T3000-MCP/1.0")
+            .user_agent("T3000-MCP/1.0");
+        if super::is_local_endpoint(&url) {
+            client_builder = client_builder.no_proxy();
+        }
+        let client = client_builder
             .build()
             .map_err(|e| AiError::Provider(format!("Failed to build HTTP client: {}", e)))?;
 

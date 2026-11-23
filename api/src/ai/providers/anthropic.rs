@@ -125,9 +125,15 @@ impl LlmProvider for AnthropicProvider {
             body["tools"] = json!(tools_json);
         }
 
-        let client = Client::builder()
+        let mut client_builder = Client::builder()
             .connect_timeout(super::CONNECT_TIMEOUT)
-            .timeout(std::time::Duration::from_secs(300))
+            .timeout(std::time::Duration::from_secs(300));
+        // A LAN/loopback gateway must be reached directly — the machine's proxy
+        // answers 502 for private addresses. Public endpoints keep the proxy.
+        if super::is_local_endpoint(endpoint) {
+            client_builder = client_builder.no_proxy();
+        }
+        let client = client_builder
             .build()
             .map_err(|e| AiError::Provider(format!("Failed to build HTTP client: {}", e)))?;
 

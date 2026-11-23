@@ -128,7 +128,7 @@ impl LlmProvider for GeminiProvider {
             body["tools"] = json!([{ "functionDeclarations": function_declarations }]);
         }
 
-        let client = Self::http_client()?;
+        let client = Self::http_client(base)?;
 
         let mut final_text = String::new();
         let mut had_tool_calls = false;
@@ -206,10 +206,16 @@ impl GeminiProvider {
     /// Hard cap on obtaining the response headers (body streaming not covered).
     const SEND_TIMEOUT: std::time::Duration = super::SEND_TIMEOUT;
 
-    fn http_client() -> Result<Client, AiError> {
-        Client::builder()
+    fn http_client(endpoint: &str) -> Result<Client, AiError> {
+        let mut builder = Client::builder()
             .connect_timeout(Self::CONNECT_TIMEOUT)
-            .timeout(std::time::Duration::from_secs(300))
+            .timeout(std::time::Duration::from_secs(300));
+        // A LAN/loopback gateway must be reached directly — the machine's proxy
+        // answers 502 for private addresses. Public endpoints keep the proxy.
+        if super::is_local_endpoint(endpoint) {
+            builder = builder.no_proxy();
+        }
+        builder
             .build()
             .map_err(|e| AiError::Provider(format!("Failed to build HTTP client: {}", e)))
     }

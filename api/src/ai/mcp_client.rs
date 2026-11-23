@@ -100,15 +100,19 @@ pub struct McpClient {
 
 impl McpClient {
     pub fn new(config: McpServerConfig) -> Self {
+        // A LAN/loopback MCP server must be reached directly — the machine's
+        // proxy answers 502 for private addresses. Remote servers keep the proxy.
+        let mut builder = Client::builder()
+            .connect_timeout(CONNECT_TIMEOUT)
+            .timeout(TOOL_TIMEOUT);
+        if super::providers::is_local_endpoint(&config.url) {
+            builder = builder.no_proxy();
+        }
         Self {
             config,
             tools: vec![],
             connected: false,
-            client: Client::builder()
-                .connect_timeout(CONNECT_TIMEOUT)
-                .timeout(TOOL_TIMEOUT)
-                .build()
-                .unwrap_or_default(),
+            client: builder.build().unwrap_or_default(),
         }
     }
 
@@ -489,7 +493,10 @@ mod tests {
             axum::serve(listener, app).await.unwrap();
         });
 
-        let response = reqwest::Client::new()
+        let response = reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap()
             .post(format!("http://{}/big", addr))
             .send()
             .await

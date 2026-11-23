@@ -825,7 +825,13 @@ pub async fn handle_test_mcp_server(
         return Json(json!({ "ok": false, "error": "URL must start with http:// or https://" })).into_response();
     }
 
-    let client = reqwest::Client::new();
+    // A LAN/loopback MCP server must be reached directly — the machine's proxy
+    // answers 502 for private addresses.
+    let mut client_builder = reqwest::Client::builder();
+    if super::providers::is_local_endpoint(url) {
+        client_builder = client_builder.no_proxy();
+    }
+    let client = client_builder.build().unwrap_or_default();
 
     let body = json!({
         "jsonrpc": "2.0", "id": 1, "method": "initialize",
