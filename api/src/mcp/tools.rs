@@ -278,7 +278,7 @@ lazy_static::lazy_static! {
                 },
                 "point_index": {
                     "type": "integer",
-                    "description": "Zero-based point index"
+                    "description": "1-based point index (matches UI display, e.g. in1=1)"
                 }
             },
             "required": ["serial_number", "point_type", "point_index"]
@@ -379,7 +379,7 @@ lazy_static::lazy_static! {
                 },
                 "point_index": {
                     "type": "integer",
-                    "description": "Zero-based point index"
+                    "description": "1-based point index (matches UI display, e.g. out1=1)"
                 },
                 "value": {
                     "description": "Value to write (number, boolean, or string)"

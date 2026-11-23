@@ -350,10 +350,51 @@ async fn test_device_get_returns_device() {
                     result.get("found").and_then(|v| v.as_bool()) == Some(true),
                     "device should be found"
                 );
-                assert!(result.get("device").is_some(), "should include the device record");
+                let device = result.get("device").expect("should include the device record");
+                // device_get now returns the same snake_case shape as
+                // t3000_device_list, so the two can be compared directly.
+                assert_eq!(
+                    device.get("serial").and_then(|v| v.as_i64()),
+                    Some(s),
+                    "returned device must be the one that was asked for: {}",
+                    device
+                );
+                if let Some(entry) = list
+                    .get("devices")
+                    .and_then(|v| v.as_array())
+                    .and_then(|arr| arr.iter().find(|d| d.get("serial").and_then(|v| v.as_i64()) == Some(s)))
+                {
+                    assert_eq!(
+                        device, entry,
+                        "device_get must return exactly the device_list entry for serial {}",
+                        s
+                    );
+                }
+                // The full SeaORM record is still available under `raw`.
+                assert!(
+                    result.get("raw").and_then(|v| v.get("serialNumber")).is_some(),
+                    "raw record should still expose the entity fields"
+                );
+                println!("device_get: serial {} -> {:?}", s, device.get("name").and_then(|v| v.as_str()));
             }
             None => println!("device_get_returns_device: no devices in DB, skipping body check"),
         }
+    })
+    .await;
+}
+
+/// An unknown serial must fail with a clear message, not an empty success.
+#[tokio::test]
+async fn test_device_get_unknown_serial_errors() {
+    common::with_db_or_skip("device_get_unknown_serial_errors", |db| async move {
+        let error = common::execute_tool("t3000_device_get", &json!({"serial_number": 987654321}), &db)
+            .await
+            .expect_err("unknown serials must fail");
+        assert!(
+            error.contains("not found"),
+            "expected a 'not found' error, got: {}",
+            error
+        );
     })
     .await;
 }

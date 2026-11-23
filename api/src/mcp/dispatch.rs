@@ -602,6 +602,132 @@ fn get_nav_pages() -> Vec<NavPage> {
     ]
 }
 
+/// Compact device record shared by `t3000_device_list` and `t3000_device_get`
+/// so both return an identical snake_case shape (`serial`, `name`, `is_online`).
+fn device_summary(
+    device: &crate::t3_device::services::DeviceWithStats,
+    refreshed: bool,
+) -> Value {
+    json!({
+        "serial": device.device.serial_number,
+        "name": device.device.product_name,
+        "device_type": device.device.product_id,
+        "input_count": device.input_count,
+        "output_count": device.output_count,
+        "variable_count": device.variable_count,
+        "total_points": device.total_points,
+        "building": device.device.building_name,
+        "floor": device.device.floor_name,
+        "room": device.device.room_name,
+        "is_online": device.device.is_online,
+        "last_checked": device.device.last_checked,
+        "refreshed": refreshed,
+    })
+}
+
+// ═══ Point value / unit normalisation ═══
+//
+// T3000 stores analog values ×1000 and keeps unit/range as numeric codes (the
+// UI shows `fValue / 1000` and maps the codes to text). Tables ported from
+// src/t3-react/features/inputs/data/rangeData.ts — keep the two in sync.
+
+/// The device stores fValue as value × 1000.
+const VALUE_SCALE: f64 = 1000.0;
+
+/// Stored `fValue` ("23900") -> engineering value (23.9), rounded to 2 decimals.
+fn scaled_value(raw: Option<&str>) -> Option<f64> {
+    raw.and_then(|v| v.trim().parse::<f64>().ok())
+        .map(|v| (v / VALUE_SCALE * 100.0).round() / 100.0)
+}
+
+/// Input range/unit text for a range or units code.
+/// `digital: true` selects the digital (binary) table, false the analog one.
+fn input_range_text(code: i64, digital: bool) -> Option<(&'static str, &'static str)> {
+    let analog: Option<(&'static str, &'static str)> = match code {
+        0 => Some(("Unused", "")),
+        1 => Some(("Y3K -40 to 150", "Deg.C")),
+        2 => Some(("Y3K -40 to 300", "Deg.F")),
+        3 => Some(("10K Type2", "Deg.C")),
+        4 => Some(("10K Type2", "Deg.F")),
+        5 => Some(("G3K -40 to 120", "Deg.C")),
+        6 => Some(("G3K -40 to 250", "Deg.F")),
+        7 => Some(("10K Type3", "Deg.C")),
+        8 => Some(("10K Type3", "Deg.F")),
+        9 => Some(("PT 1K -200 to 300", "Deg.C")),
+        10 => Some(("PT 1K -200 to 570", "Deg.F")),
+        11 => Some(("0.0 to 5.0", "Volts")),
+        12 => Some(("0.0 to 100", "Amps")),
+        13 => Some(("4 to 20", "ma")),
+        14 => Some(("4 to 20", "psi")),
+        15 => Some(("Pulse Count (Slow 1Hz)", "counts")),
+        16 => Some(("0 to 100", "%")),
+        17 => Some(("0 to 100", "%")),
+        18 => Some(("0 to 100", "%")),
+        19 => Some(("0.0 to 10.0", "Volts")),
+        20 => Some(("Table 1", "Custom")),
+        21 => Some(("Table 2", "Custom")),
+        22 => Some(("Table 3", "Custom")),
+        23 => Some(("Table 4", "Custom")),
+        24 => Some(("Table 5", "Custom")),
+        25 => Some(("Pulse Count (Fast 100Hz)", "counts")),
+        26 => Some(("Frequency", "Hz")),
+        27 => Some(("Humidity %", "%")),
+        28 => Some(("CO2 PPM", "PPM")),
+        29 => Some(("Revolutions Per Minute", "RPM")),
+        30 => Some(("TVOC PPB", "PPB")),
+        31 => Some(("ug/m3", "ug/m3")),
+        32 => Some(("#/cm3", "#/cm3")),
+        33 => Some(("dB", "dB")),
+        34 => Some(("Lux", "Lux")),
+        _ => None,
+    };
+
+    let digital_table: Option<(&'static str, &'static str)> = match code {
+        0 => Some(("Unused", "")),
+        1 => Some(("Off/On", "")),
+        2 => Some(("Close/Open", "")),
+        3 => Some(("Stop/Start", "")),
+        4 => Some(("Disable/Enable", "")),
+        5 => Some(("Normal/Alarm", "")),
+        6 => Some(("Normal/High", "")),
+        7 => Some(("Normal/Low", "")),
+        8 => Some(("No/Yes", "")),
+        9 => Some(("Cool/Heat", "")),
+        10 => Some(("Unoccupy/Occupy", "")),
+        11 => Some(("Low/High", "")),
+        12 => Some(("On/Off", "")),
+        13 => Some(("Open/Close", "")),
+        14 => Some(("Start/Stop", "")),
+        15 => Some(("Enable/Disable", "")),
+        16 => Some(("Alarm/Normal", "")),
+        17 => Some(("High/Normal", "")),
+        18 => Some(("Low/Normal", "")),
+        19 => Some(("Yes/No", "")),
+        20 => Some(("Heat/Cool", "")),
+        21 => Some(("Occupy/Unoccupy", "")),
+        22 => Some(("High/Low", "")),
+        23 => Some(("Custom Digital 1", "")),
+        24 => Some(("Custom Digital 2", "")),
+        25 => Some(("Custom Digital 3", "")),
+        26 => Some(("Custom Digital 4", "")),
+        27 => Some(("Custom Digital 5", "")),
+        28 => Some(("Custom Digital 6", "")),
+        29 => Some(("Custom Digital 7", "")),
+        30 => Some(("Custom Digital 8", "")),
+        _ => None,
+    };
+
+    if digital { digital_table } else { analog }
+}
+
+/// Text for a code, falling back to the numeric code so nothing is lost.
+fn input_range_field(code: Option<i64>, digital: bool) -> Value {
+    match code.and_then(|c| input_range_text(c, digital)) {
+        Some((label, unit)) => json!({ "range": label, "units": unit }),
+        None => json!({ "range": Value::Null, "units": Value::Null }),
+    }
+}
+
 pub async fn execute_tool(
     name: &str,
     args: &Value,
@@ -942,23 +1068,7 @@ pub async fn execute_tool(
                         true
                     }
                 })
-                .map(|d| {
-                    json!({
-                        "serial": d.device.serial_number,
-                        "name": d.device.product_name,
-                        "device_type": d.device.product_id,
-                        "input_count": d.input_count,
-                        "output_count": d.output_count,
-                        "variable_count": d.variable_count,
-                        "total_points": d.total_points,
-                        "building": d.device.building_name,
-                        "floor": d.device.floor_name,
-                        "room": d.device.room_name,
-                        "is_online": d.device.is_online,
-                        "last_checked": d.device.last_checked,
-                        "refreshed": refresh,
-                    })
-                })
+                .map(|d| device_summary(d, refresh))
                 .collect();
 
             serde_json::to_string_pretty(&json!({
@@ -1075,16 +1185,38 @@ pub async fn execute_tool(
                     let tags = tag_map.get(&key).cloned().unwrap_or_default();
                     let brick_class = brick_map.get(&key).cloned();
                     let meta = meta_map.get(&key);
+                    // Tag entries store the 0-based DB index; every tool reports
+                    // 1-based indexes so results can be fed back into point_read.
+                    let display_index = match entry.point_index.parse::<i32>() {
+                        Ok(n) => json!(n + 1),
+                        Err(_) => json!(entry.point_index),
+                    };
+                    let digital = meta.and_then(|m| m.digital_analog.as_deref())
+                        .map(|v| v.trim() == "0")
+                        .unwrap_or(false);
+                    let mapped = if entry.point_type == "INPUT" {
+                        input_range_field(
+                            meta.and_then(|m| m.range_field.as_deref()).and_then(|v| v.trim().parse::<i64>().ok()),
+                            digital,
+                        )
+                    } else {
+                        json!({ "range": Value::Null, "units": Value::Null })
+                    };
                     results.push(json!({
                         "point_type": entry.point_type,
-                        "point_index": entry.point_index,
+                        "point_index": display_index,
                         "point_id": entry.point_id,
-                        "label": meta.and_then(|m| m.label.clone()),
-                        "engineering_units": meta.and_then(|m| m.engineering_units.clone()),
-                        "range_field": meta.and_then(|m| m.range_field.clone()),
+                        "label": meta.and_then(|m| m.description.clone()).filter(|v| !v.is_empty())
+                            .or_else(|| meta.and_then(|m| m.label.clone())),
+                        "short_label": meta.and_then(|m| m.label.clone()),
+                        "value": scaled_value(meta.and_then(|m| m.current_value.as_deref())),
+                        "raw_value": meta.and_then(|m| m.current_value.clone()),
+                        "units": mapped["units"],
+                        "range": mapped["range"],
+                        "units_code": meta.and_then(|m| m.engineering_units.clone()),
+                        "range_code": meta.and_then(|m| m.range_field.clone()),
+                        "digital": digital,
                         "digital_analog": meta.and_then(|m| m.digital_analog.clone()),
-                        "description": meta.and_then(|m| m.description.clone()),
-                        "current_value": meta.and_then(|m| m.current_value.clone()),
                         "haystack_tags": tags,
                         "brick_class": brick_class,
                     }));
@@ -1175,17 +1307,33 @@ pub async fn execute_tool(
                 point_index
             );
 
+            // `point_index` arrives 1-based (UI convention) while the DB columns
+            // are 0-based: echo the caller's value so responses can be fed back
+            // into any point tool unchanged.
+            let digital = digital_analog.as_deref().map(|v| v.trim() == "0").unwrap_or(false);
+            let mapped = if point_type == "INPUT" {
+                input_range_field(range_field.as_deref().and_then(|v| v.trim().parse::<i64>().ok()), digital)
+            } else {
+                json!({ "range": Value::Null, "units": Value::Null })
+            };
+            let value = scaled_value(current_value.as_deref());
             serde_json::to_string_pretty(&json!({
                 "serial_number": serial,
                 "point_type": point_type,
-                "point_index": point_index,
+                "point_index": point_index + 1,
                 "point_id": point_id,
-                "label": label,
-                "engineering_units": units,
-                "range_field": range_field,
-                "digital_analog": digital_analog,
-                "description": description,
+                "label": description.clone().filter(|v| !v.is_empty()).or(label.clone()),
+                "short_label": label,
+                "full_label": description,
+                "value": value,
                 "current_value": current_value,
+                "current_value_num": value,
+                "units": mapped["units"],
+                "range": mapped["range"],
+                "units_code": units,
+                "range_code": range_field,
+                "digital": digital,
+                "digital_analog": digital_analog,
                 "haystack_tags": tags,
                 "brick_class": brick_class,
             }))
@@ -1219,10 +1367,25 @@ pub async fn execute_tool(
                 .await
                 .map_err(|e| format!("Search failed: {}", e))?;
 
-            let results: Vec<&ts::PointTagEntry> = entries.iter().take(limit).collect();
+            // Tag entries carry the 0-based DB index as a string; expose 1-based
+            // numbers like every other tool so a hit can be fed straight into
+            // t3000_point_read.
+            let results: Vec<Value> = entries
+                .iter()
+                .take(limit)
+                .map(|entry| {
+                    let mut value = serde_json::to_value(entry).unwrap_or(Value::Null);
+                    if let Ok(index) = entry.point_index.parse::<i32>() {
+                        value["point_index"] = json!(index + 1);
+                    }
+                    value
+                })
+                .collect();
             serde_json::to_string_pretty(&json!({
+                // `total` = every match (before the limit), `returned` = rows below.
                 "results": results,
-                "total": entries.len()
+                "total": entries.len(),
+                "returned": results.len()
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }
@@ -1257,11 +1420,11 @@ pub async fn execute_tool(
                 if tag_entries.is_empty() { continue; }
 
                 let pt_sql = format!(
-                    "SELECT 'INPUT' as point_type, Input_Index as point_index, Label, Units, Full_Label, fValue \
+                    "SELECT 'INPUT' as point_type, Input_Index as point_index, Label, Units, Full_Label, fValue, Range_Field, Digital_Analog \
                      FROM INPUTS WHERE SerialNumber = {0} \
-                     UNION ALL SELECT 'OUTPUT', Output_Index, Label, Units, Full_Label, fValue \
+                     UNION ALL SELECT 'OUTPUT', Output_Index, Label, Units, Full_Label, fValue, Range_Field, Digital_Analog \
                      FROM OUTPUTS WHERE SerialNumber = {0} \
-                     UNION ALL SELECT 'VARIABLE', Variable_Index, Label, Units, Full_Label, fValue \
+                     UNION ALL SELECT 'VARIABLE', Variable_Index, Label, Units, Full_Label, fValue, Range_Field, Digital_Analog \
                      FROM VARIABLES WHERE SerialNumber = {0}", sn
                 );
                 let pt_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &pt_sql)).await.unwrap_or_default();
@@ -1278,6 +1441,10 @@ pub async fn execute_tool(
                     let units: String = row.try_get("", "Units").unwrap_or_default();
                     let desc: String = row.try_get("", "Full_Label").unwrap_or_default();
                     let fval: String = row.try_get("", "fValue").unwrap_or_default();
+                    let range_code: String = row.try_get("", "Range_Field").unwrap_or_default();
+                    let digital: bool = row.try_get::<String>("", "Digital_Analog")
+                        .map(|v| v.trim() == "0")
+                        .unwrap_or(false);
 
                     let key = format!("{}:{}", pt, idx);
                     let tags = tag_map.get(&key).cloned().unwrap_or_default();
@@ -1296,21 +1463,43 @@ pub async fn execute_tool(
                         for t in &tags { if t.to_lowercase().contains(w) { score += 2; } }
                     }
                     if score > 0 {
-                        let display_val: Option<f64> = if pt == "INPUT" && !fval.is_empty() {
-                            fval.parse::<f64>().ok().map(|v| v / 1000.0)
-                        } else { fval.parse::<f64>().ok() };
+                        let mapped = if pt == "INPUT" {
+                            input_range_field(range_code.trim().parse::<i64>().ok(), digital)
+                        } else {
+                            json!({ "range": Value::Null, "units": Value::Null })
+                        };
+                        let display_val = scaled_value(Some(fval.as_str()));
+                        // `idx` is the 0-based DB index (string); report 1-based
+                        // so the hit can be passed straight to t3000_point_read.
+                        let display_index = match idx.parse::<i32>() {
+                            Ok(n) => json!(n + 1),
+                            Err(_) => json!(idx.clone()),
+                        };
                         scored.push((score, json!({
-                            "serial_number": sn, "point_type": pt, "point_index": idx,
-                            "label": label, "description": desc, "units": units,
-                            "current_value": display_val, "haystack_tags": tags,
+                            "serial_number": sn, "point_type": pt, "point_index": display_index,
+                            "label": if desc.is_empty() { label.clone() } else { desc },
+                            "short_label": label,
+                            "units": mapped["units"],
+                            "range": mapped["range"],
+                            "units_code": units,
+                            "range_code": range_code,
+                            "current_value": display_val,
+                            "haystack_tags": tags,
                             "score": score
                         })));
                     }
                 }
             }
             scored.sort_by(|a, b| b.0.cmp(&a.0));
+            let total = scored.len();
             let results: Vec<Value> = scored.into_iter().take(limit).map(|(_, v)| v).collect();
-            serde_json::to_string_pretty(&json!({"results": results, "total": results.len()}))
+            serde_json::to_string_pretty(&json!({
+                // Same contract as t3000_metadata_search: total = all matches
+                // before the limit, returned = rows actually included.
+                "results": results,
+                "total": total,
+                "returned": results.len()
+            }))
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
@@ -1326,19 +1515,17 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
                 .ok_or_else(|| "point_index required".to_string())?;
 
-            let (table, label_col, value_col, units_col) = match point_type {
-                "INPUT" => ("INPUTS", "Label", "fValue", "Units"),
-                "OUTPUT" => ("OUTPUTS", "Label", "fValue", "Units"),
-                "VARIABLE" => ("VARIABLES", "Label", "fValue", "Units"),
+            let (table, idx_col) = match point_type {
+                "INPUT" => ("INPUTS", "Input_Index"),
+                "OUTPUT" => ("OUTPUTS", "Output_Index"),
+                "VARIABLE" => ("VARIABLES", "Variable_Index"),
                 _ => return Err(format!("Invalid point_type: {}", point_type)),
-            };
-            let idx_col = match point_type {
-                "INPUT" => "Input_Index", "OUTPUT" => "Output_Index", _ => "Variable_Index"
             };
 
             let sql = format!(
-                "SELECT {}, {}, {} FROM {} WHERE SerialNumber = {} AND {} = '{}'",
-                label_col, value_col, units_col, table, serial, idx_col, point_index
+                "SELECT Label, Full_Label, fValue, Units, Range_Field, Digital_Analog \
+                 FROM {} WHERE SerialNumber = {} AND {} = '{}'",
+                table, serial, idx_col, point_index
             );
             let rows = db
                 .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
@@ -1346,18 +1533,36 @@ pub async fn execute_tool(
                 .map_err(|e| format!("Query failed: {}", e))?;
 
             if let Some(row) = rows.first() {
-                let label: Option<String> = row.try_get("", label_col).ok();
-                let fvalue: Option<String> = row.try_get("", value_col).ok();
-                let units: Option<String> = row.try_get("", units_col).ok();
-                let value: Option<f64> = fvalue.as_ref().and_then(|v| v.parse::<f64>().ok());
+                let label: Option<String> = row.try_get("", "Label").ok();
+                let full_label: Option<String> = row.try_get("", "Full_Label").ok();
+                let fvalue: Option<String> = row.try_get("", "fValue").ok();
+                let units_code: Option<String> = row.try_get("", "Units").ok();
+                let range_code: Option<String> = row.try_get("", "Range_Field").ok();
+                let digital: bool = row.try_get::<String>("", "Digital_Analog")
+                    .map(|v| v.trim() == "0")
+                    .unwrap_or(false);
+
+                // Only inputs have the authoritative code table; for outputs and
+                // variables the raw codes are still returned.
+                let mapped = if point_type == "INPUT" {
+                    input_range_field(range_code.as_deref().and_then(|v| v.trim().parse::<i64>().ok()), digital)
+                } else {
+                    json!({ "range": Value::Null, "units": Value::Null })
+                };
 
                 Ok(json!({
                     "serial_number": serial,
                     "point_type": point_type,
-                    "point_index": point_index,
-                    "label": label,
-                    "value": value,
-                    "engineering_units": units,
+                    "point_index": point_index + 1,
+                    "label": full_label.clone().filter(|v| !v.is_empty()).or(label.clone()),
+                    "short_label": label,
+                    "value": scaled_value(fvalue.as_deref()),
+                    "raw_value": fvalue,
+                    "units": mapped["units"],
+                    "range": mapped["range"],
+                    "units_code": units_code,
+                    "range_code": range_code,
+                    "digital": digital,
                     "timestamp": Utc::now().to_rfc3339(),
                 }).to_string())
             } else {
@@ -1456,7 +1661,8 @@ pub async fn execute_tool(
                         "INPUT" => "Input_Index", "OUTPUT" => "Output_Index", _ => "Variable_Index"
                     };
                     let sql = format!(
-                        "SELECT {}, {}, {} FROM {} WHERE SerialNumber = {} AND {} = '{}'",
+                        "SELECT {}, {}, {}, Full_Label, Range_Field, Digital_Analog FROM {} \
+                         WHERE SerialNumber = {} AND {} = '{}'",
                         label_col, value_col, units_col, table, sn, idx_col, idx
                     );
                     if let Ok(rows) = db
@@ -1465,16 +1671,32 @@ pub async fn execute_tool(
                     {
                         if let Some(row) = rows.first() {
                             let label: Option<String> = row.try_get("", label_col).ok();
+                            let full_label: Option<String> = row.try_get("", "Full_Label").ok();
                             let fvalue: Option<String> = row.try_get("", value_col).ok();
                             let units: Option<String> = row.try_get("", units_col).ok();
-                            let val: Option<f64> = fvalue.as_ref().and_then(|v| v.parse::<f64>().ok());
+                            let range_code: Option<String> = row.try_get("", "Range_Field").ok();
+                            let digital = row.try_get::<String>("", "Digital_Analog")
+                                .map(|v| v.trim() == "0")
+                                .unwrap_or(false);
+                            let mapped = if pt == "INPUT" {
+                                input_range_field(range_code.as_deref().and_then(|v| v.trim().parse::<i64>().ok()), digital)
+                            } else {
+                                json!({ "range": Value::Null, "units": Value::Null })
+                            };
+                            let val = scaled_value(fvalue.as_deref());
                             results.push(json!({
                                 "serial_number": sn,
                                 "point_type": pt,
-                                "point_index": idx,
-                                "label": label,
+                                "point_index": idx + 1,
+                                "label": full_label.clone().filter(|v| !v.is_empty()).or(label.clone()),
+                                "short_label": label,
                                 "value": val,
-                                "engineering_units": units,
+                                "raw_value": fvalue,
+                                "units": mapped["units"],
+                                "range": mapped["range"],
+                                "units_code": units,
+                                "range_code": range_code,
+                                "digital": digital,
                             }));
                         }
                     }
@@ -1562,10 +1784,7 @@ pub async fn execute_tool(
                             let da: Option<String> = row.try_get("", "Digital_Analog").ok();
                             let desc: Option<String> = row.try_get("", "Full_Label").ok();
                             let fval: Option<String> = row.try_get("", "fValue").ok();
-                            let display_val = fval.as_ref().and_then(|v| {
-                                if pt_str == "INPUT" { v.parse::<f64>().ok().map(|x| x / 1000.0) }
-                                else { v.parse::<f64>().ok() }
-                            });
+                            let display_val = scaled_value(fval.as_deref());
 
                             // Get tags
                             let sn_filter = vec![sn];
@@ -1584,10 +1803,20 @@ pub async fn execute_tool(
                             let bc = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &bc_sql)).await
                                 .ok().and_then(|r| r.first().and_then(|r2| r2.try_get::<String>("", "brick_class").ok()));
 
+                            let digital = da.as_deref().map(|v| v.trim() == "0").unwrap_or(false);
+                            let mapped = if pt_str == "INPUT" {
+                                input_range_field(range.as_deref().and_then(|v| v.trim().parse::<i64>().ok()), digital)
+                            } else {
+                                json!({ "range": Value::Null, "units": Value::Null })
+                            };
                             results.push(json!({
-                                "serial_number": sn, "point_type": pt_str, "point_index": idx,
-                                "label": label, "engineering_units": units, "range_field": range,
-                                "digital_analog": da, "description": desc, "current_value": display_val,
+                                "serial_number": sn, "point_type": pt_str, "point_index": idx + 1,
+                                "label": desc.clone().filter(|d| !d.is_empty()).or_else(|| label.clone()),
+                                "short_label": label,
+                                "value": display_val, "raw_value": fval,
+                                "units": mapped["units"], "range": mapped["range"],
+                                "units_code": units, "range_code": range,
+                                "digital": digital, "digital_analog": da,
                                 "haystack_tags": tags, "brick_class": bc,
                             }));
                         }
@@ -2073,7 +2302,7 @@ pub async fn execute_tool(
                     "error": "No trendlog found for this point",
                     "serial_number": serial,
                     "point_type": point_type,
-                    "point_index": point_index,
+                    "point_index": point_index + 1,
                 }).to_string());
             }
 
@@ -2455,17 +2684,24 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
 
-            match T3DeviceService::get_device_by_id(db, serial).await {
-                Ok(Some(device)) => {
-                    let value = serde_json::to_value(&device)
-                        .map_err(|e| format!("Serialize error: {}", e))?;
+            let devices = T3DeviceService::get_all_devices_with_stats(db)
+                .await
+                .map_err(|e| format!("Failed to query device: {}", e))?;
+
+            match devices.iter().find(|d| d.device.serial_number == serial) {
+                Some(device) => {
+                    // `device` mirrors a t3000_device_list entry exactly; `raw`
+                    // keeps the full SeaORM record (camelCase) for callers that
+                    // need fields the summary does not expose.
+                    let raw = serde_json::to_value(&device.device)
+                        .unwrap_or(Value::Null);
                     Ok(json!({
-                        "device": value,
-                        "found": true
+                        "found": true,
+                        "device": device_summary(device, false),
+                        "raw": raw
                     }).to_string())
                 }
-                Ok(None) => Err(format!("Device with serial_number {} not found", serial)),
-                Err(e) => Err(format!("Failed to query device: {}", e)),
+                None => Err(format!("Device with serial_number {} not found", serial)),
             }
         }
 
