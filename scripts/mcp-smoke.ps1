@@ -30,11 +30,20 @@
 
 .EXAMPLE
     .\scripts\mcp-smoke.ps1 -BaseUrl http://192.168.1.50:9103
+
+.EXAMPLE
+    .\scripts\mcp-smoke.ps1 -RealData
+    Also calls the read-only tools (device_list, device_get_points, point_read,
+    building_summary) and prints the real device/point values they return.
 #>
 [CmdletBinding()]
 param(
     [string]$BaseUrl = 'http://127.0.0.1:9103',
-    [switch]$SkipSessionDelete
+    [switch]$SkipSessionDelete,
+    # Real-data checks: call the read-only tools and show what they return.
+    [switch]$RealData,
+    # Device used by the real-data checks (default: first device from t3000_device_list).
+    [int]$SerialNumber = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -97,11 +106,19 @@ Write-Host "T3000 MCP smoke test -> $BaseUrl" -ForegroundColor Cyan
 Write-Host ("-" * 78)
 
 # ── 0. Server reachable ────────────────────────────────────────────────────────
-try {
-    $health = Invoke-WebRequest -Uri "$BaseUrl/health" -TimeoutSec 5 -UseBasicParsing
-    Write-Result 'GET /health' $true ("HTTP " + [int]$health.StatusCode)
-} catch {
-    Write-Result 'GET /health' $false $_.Exception.Message
+$healthUrl = $null
+foreach ($candidate in @("$BaseUrl/api/health", "$BaseUrl/health")) {
+    try {
+        $health = Invoke-WebRequest -Uri $candidate -TimeoutSec 5 -UseBasicParsing
+        $healthUrl = $candidate
+        Write-Result 'GET health' $true ("$candidate -> HTTP " + [int]$health.StatusCode)
+        break
+    } catch {
+        $lastHealthError = $_.Exception.Message
+    }
+}
+if (-not $healthUrl) {
+    Write-Result 'GET health' $false $lastHealthError
     Write-Host ""
     Write-Host "T3000's webview API is not answering. Start T3000 first, then re-run." -ForegroundColor Yellow
     exit 1
@@ -186,6 +203,61 @@ try {
     Write-Result 'GET /api/mcp/current-device' $ok ("ui_device=" + $devJson.ui_device + " chat_device=" + $devJson.chat_device)
 } catch {
     Write-Result 'GET /api/mcp/current-device' $false $_.Exception.Message
+}
+
+# ── 9b. Real data (optional, -RealData) ──────────────────────────────────────
+if ($RealData) {
+    Write-Host "  ----  real data through the tools  ----" -ForegroundColor DarkCyan
+
+    # Device list — must return the devices T3000 knows about
+    $devices = $null
+    $devCall = Invoke-McpPost -Body (New-RpcRequest 'tools/call' @{ name = 't3000_device_list'; arguments = @{} })
+    $devJson = $devCall.Body | ConvertFrom-Json
+    $devPayload = $devJson.result.content[0].text | ConvertFrom-Json
+    $devices = @($devPayload.devices)
+    $ok = ($devJson.result.isError -ne $true) -and ($devices.Count -gt 0)
+    Write-Result 'tools/call t3000_device_list' $ok ("$($devices.Count) device(s)")
+    if ($ok) {
+        foreach ($d in $devices) {
+            Write-Host ("        serial={0,-8} name={1,-14} io={2}/{3} online={4}" -f $d.serial, $d.name, $d.input_count, $d.output_count, $d.is_online) -ForegroundColor DarkGray
+        }
+    }
+
+    $serial = if ($SerialNumber) { [int]$SerialNumber } elseif ($devices.Count -gt 0) { [int]$devices[0].serial } else { $null }
+
+    # Points for that device
+    if ($serial) {
+        $ptCall = Invoke-McpPost -Body (New-RpcRequest 'tools/call' @{ name = 't3000_device_get_points'; arguments = @{ serial_number = $serial } })
+        $ptJson = $ptCall.Body | ConvertFrom-Json
+        $ptPayload = $ptJson.result.content[0].text | ConvertFrom-Json
+        $ok = ($ptJson.result.isError -ne $true) -and ($null -ne $ptPayload.total)
+        Write-Result ('tools/call t3000_device_get_points ' + $serial) $ok ("total=" + $ptPayload.total)
+
+        # Read the first input point that has a value (read-only)
+        $readOk = $false
+        for ($i = 1; $i -le 8 -and -not $readOk; $i++) {
+            $rdCall = Invoke-McpPost -Body (New-RpcRequest 'tools/call' @{
+                name = 't3000_point_read'
+                arguments = @{ serial_number = $serial; point_type = 'INPUT'; point_index = $i }
+            })
+            $rdJson = $rdCall.Body | ConvertFrom-Json
+            $rdPayload = $rdJson.result.content[0].text | ConvertFrom-Json
+            if ($null -ne $rdPayload.value -or $rdPayload.label) {
+                $readOk = $true
+                Write-Result ('tools/call t3000_point_read INPUT ' + $i) $true ("label='" + $rdPayload.label + "' value=" + $rdPayload.value + " " + $rdPayload.engineering_units)
+            }
+        }
+        if (-not $readOk) {
+            Write-Result ('tools/call t3000_point_read ' + $serial + ' INPUT 1..8') $false 'no input point returned a value'
+        }
+    }
+
+    # Building summary
+    $sumCall = Invoke-McpPost -Body (New-RpcRequest 'tools/call' @{ name = 't3000_building_summary'; arguments = @{} })
+    $sumJson = $sumCall.Body | ConvertFrom-Json
+    $sumText = [string]$sumJson.result.content[0].text
+    $ok = ($sumJson.result.isError -ne $true)
+    Write-Result 'tools/call t3000_building_summary' $ok ($sumText.Substring(0, [Math]::Min(80, $sumText.Length)) -replace "`r?`n", ' ')
 }
 
 # ── 10. DELETE session ────────────────────────────────────────────────────────
