@@ -90,7 +90,7 @@ Ask Claude any of these:
 | *List the Haystack auto-tagging rules* | `t3000_haystack_list_rules` |
 | *Show me the input points for device T3-NB-ESP* | `t3000_device_get_points` |
 
-See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-examples) for all 44 tools with prompt text.
+See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-examples) for prompt examples across the tool categories.
 
 ---
 
@@ -111,11 +111,13 @@ See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-ex
 | `npx` not found | Install Node.js from <a href="https://nodejs.org/" target="_blank">nodejs.org</a> |
 | Connection refused | Ensure T3000 API is running on port 9103 |
 | Tools not appearing | Check Claude logs: `Help` → `View Logs` |
-| 44 tools expected | Verify you see all 11 categories: Haystack, Core, Data, Operational, Analytics, Rules, Alarms, Device Ops, Settings, Control Logic, Documentation |
+| 74 tools expected | Verify you see the categories: Haystack, Core, Data, Operational, Analytics, Tasks, Memory, Navigation, Rules, Alarms, Device Ops, Settings, Control Logic, Documentation, Reports |
 
 ---
 
-## Available Tools (44)
+## Available Tools (74)
+
+`tools/list` returns all 74 tools. The groups below cover the most-used ones.
 
 | Category | Tools |
 |---|---|

@@ -1,7 +1,12 @@
 // MCP (Model Context Protocol) Server — Streamable HTTP transport
-// Exposes 50+ tools for LLM agents via POST /api/mcp (JSON-RPC 2.0)
+// Exposes 74 tools for LLM agents via POST /api/mcp (JSON-RPC 2.0)
 // SSE server→client streaming via GET /api/mcp
 // Session termination via DELETE /api/mcp
+// Current-device context via POST/GET /api/mcp/current-device
+//
+// JSON-RPC methods: initialize, ping, tools/list, tools/call
+//   (notifications such as notifications/initialized → 202 Accepted)
+// Tests: cargo test --test mcp_test   (transport, dispatcher wiring, tools)
 //
 // Protocol spec: https://spec.modelcontextprotocol.io/
 // Transport spec: Streamable HTTP
@@ -20,11 +25,13 @@
 //   Rules (2):      rule_toggle, rule_create
 //   Alarms (3):     alarm_list, alarm_acknowledge, trendlog_query
 //   Docs (2):       doc_list, doc_read
-//   Docs (2):       doc_list, doc_read
 //   Report (3):     report_self_check, report_docs_search, report_docs_page
 //                   (local rule table + offline documentation, for Help → Report an Issue)
 //   Device (12):    trendlog_list, trendlog_export, device_refresh, schedule_list, settings_read, settings_write, device_control,
 //                   program_list, program_read, pid_list, holiday_list, building_summary
+//
+// The category list above is a summary; `tools/list` (and `TOOLS` in tools.rs)
+// is authoritative, and tests/mcp/tool_definitions.rs locks the exact count.
 
 pub mod types;
 pub mod storage;

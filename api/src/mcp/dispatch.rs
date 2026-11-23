@@ -21,6 +21,9 @@ use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHis
 pub(crate) async fn handle_request(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnection) -> JsonRpcResponse {
     match req.method.as_str() {
         "initialize" => handle_initialize(req),
+        // Protocol-level keepalive (MCP spec: servers MUST answer `ping` with {}).
+        "ping" => handle_ping(req),
+        // Legacy alias kept for clients that used the tool name as a method.
         "t3000_ping" => handle_ping(req),
         "tools/list" => handle_tools_list(req),
         "tools/call" => handle_tools_call(req, db).await,

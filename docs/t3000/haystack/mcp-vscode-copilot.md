@@ -67,7 +67,7 @@ Open Copilot Chat and test any tool:
 | *List the Haystack auto-tagging rules* | `t3000_haystack_list_rules` |
 | *Show me the input points for device T3-NB-ESP* | `t3000_device_get_points` |
 
-See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-examples) for all 44 tools with prompt text.
+See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-examples) for prompt examples across the tool categories.
 
 ---
 
@@ -75,14 +75,16 @@ See the full [MCP API examples](/#/t3000/documentation/t3000/haystack/mcp-api-ex
 
 | Issue | Fix |
 |---|---|
-| 44 tools not appearing | Reload VS Code window (`Ctrl+Shift+P` → Reload Window) |
+| Tools not appearing | Reload VS Code window (`Ctrl+Shift+P` → Reload Window) |
 | Connection refused | Ensure T3000 API is running on port 9103 |
 | Config not picked up | Verify file is at `.vscode/mcp.json` (not `mcpServers`) |
 | Tools list but calls fail | Check T3000 API logs for errors |
 
 ---
 
-## Available Tools (44)
+## Available Tools (74)
+
+`tools/list` returns all 74 tools. The groups below cover the most-used ones.
 
 | Category | Tools |
 |---|---|

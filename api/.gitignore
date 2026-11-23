@@ -3,3 +3,6 @@
 
 # Runtime logs
 T3WebLog/
+
+# Runtime state written by `cargo test` (MCP tests record the device they use)
+ResourceFile/

@@ -3,7 +3,7 @@
 use axum::{
     extract::State,
     http::{StatusCode, HeaderMap},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{delete, get, post},
     Json, Router,
 };
@@ -134,7 +134,7 @@ pub async fn mcp_post_handler(
     State(state): State<T3AppState>,
     headers: HeaderMap,
     Json(body): Json<Value>,
-) -> Result<impl IntoResponse, (StatusCode, Json<Value>)> {
+) -> Result<Response, (StatusCode, Json<Value>)> {
     let db = get_db(&state).await?;
     let sessions = get_session_store(&state);
 
@@ -187,14 +187,11 @@ pub async fn mcp_post_handler(
                 session.initialized = true;
             }
         }
-        let mut response_headers = HeaderMap::new();
-        response_headers.insert(
-            "mcp-session-id",
-            axum::http::HeaderValue::from_str(&session_id).unwrap_or(
-                axum::http::HeaderValue::from_static("unknown")
-            ),
-        );
-        return Ok((response_headers, Json(json!({}))));
+        // Transport spec: a notification (no `id`) is acknowledged with
+        // 202 Accepted and an empty body — never with a JSON-RPC response.
+        let mut res = StatusCode::ACCEPTED.into_response();
+        set_session_header(res.headers_mut(), &session_id);
+        return Ok(res);
     }
 
     if req.method == "initialize" {
@@ -206,21 +203,25 @@ pub async fn mcp_post_handler(
 
     let resp = crate::mcp::dispatch::handle_request(&req, &db).await;
 
-    let mut response_headers = HeaderMap::new();
-    response_headers.insert(
-        "mcp-session-id",
-        axum::http::HeaderValue::from_str(&session_id).unwrap_or(
-            axum::http::HeaderValue::from_static("unknown")
-        ),
-    );
-
     let body = Json(serde_json::to_value(&resp).unwrap_or(json!({
         "jsonrpc": "2.0",
         "id": null,
         "error": { "code": -32603, "message": "Internal error" }
     })));
+    let mut res = body.into_response();
+    set_session_header(res.headers_mut(), &session_id);
 
-    Ok((response_headers, body))
+    Ok(res)
+}
+
+/// Attach the `Mcp-Session-Id` every response must carry so the client can
+/// continue (or re-initialize) its session.
+fn set_session_header(headers: &mut HeaderMap, session_id: &str) {
+    headers.insert(
+        "mcp-session-id",
+        axum::http::HeaderValue::from_str(session_id)
+            .unwrap_or(axum::http::HeaderValue::from_static("unknown")),
+    );
 }
 
 // ═══ GET /api/mcp — SSE ═══

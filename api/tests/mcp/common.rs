@@ -27,7 +27,7 @@ fn runtime_db_path() -> &'static Option<String> {
 
 // ═══ Tool list access ═══
 
-/// Get all 58 MCP tool definitions from the library.
+/// Get every MCP tool definition (74 today).
 pub fn all_tools() -> &'static [t3_webview_api::mcp::ToolDef] {
     &t3_webview_api::mcp::TOOLS
 }

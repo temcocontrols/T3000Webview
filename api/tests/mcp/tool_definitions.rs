@@ -10,13 +10,18 @@ fn all_tools() -> &'static [t3_webview_api::mcp::ToolDef] {
 
 // ═══ Count ═══
 
+/// Locked tool count — every advertised tool is also asserted to be wired into
+/// the dispatcher by `tests/mcp/dispatch_coverage.rs`.
+const EXPECTED_TOOL_COUNT: usize = 74;
+
 #[test]
-fn test_tool_count_is_70() {
+fn test_tool_count_is_74() {
     let count = all_tools().len();
     assert_eq!(
-        count, 70,
-        "Expected 70 MCP tools, found {}. If you added/removed tools, update this test.",
-        count
+        count, EXPECTED_TOOL_COUNT,
+        "Expected {} MCP tools, found {}. If you added/removed tools, update this test \
+         (and make sure the new tool has a dispatcher arm).",
+        EXPECTED_TOOL_COUNT, count
     );
 }
 
