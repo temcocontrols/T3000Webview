@@ -96,8 +96,7 @@ pub fn is_ok_result(v: &Value) -> bool {
 // ═══ DB helpers ═══
 
 /// Returns Some(db) if the runtime DB is available for testing, or None.
-pub async fn get_test_db() -> Option<sea_orm::DatabaseConnection> {
-    let path = runtime_db_path().as_ref()?;
+pub async fn get_test_db() -> Option<sea_orm::DatabaseConnection> {    let path = runtime_db_path().as_ref()?;
     let url = format!("sqlite://{}", path);
     let mut opt = sea_orm::ConnectOptions::new(&url);
     opt.max_connections(2)
@@ -111,6 +110,13 @@ pub async fn get_test_db() -> Option<sea_orm::DatabaseConnection> {
 /// Check whether DB-dependent tests should run.
 pub fn db_tests_enabled() -> bool {
     runtime_db_path().is_some()
+}
+
+/// Fresh in-memory database — hermetic, never touches T3000's data files.
+pub async fn memory_db() -> Option<sea_orm::DatabaseConnection> {
+    let mut opt = sea_orm::ConnectOptions::new("sqlite::memory:");
+    opt.max_connections(1).min_connections(1).sqlx_logging(false);
+    sea_orm::Database::connect(opt).await.ok()
 }
 
 // ═══ Tool execution helper ═══

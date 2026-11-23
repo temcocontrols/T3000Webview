@@ -44,9 +44,7 @@ const SIDE_EFFECT_TOOLS: &[&str] = &[
 /// In-memory database — the wiring check does not care whether the queries
 /// succeed, only that the dispatcher recognises the tool name.
 async fn memory_db() -> Option<sea_orm::DatabaseConnection> {
-    let mut opt = sea_orm::ConnectOptions::new("sqlite::memory:");
-    opt.max_connections(1).min_connections(1).sqlx_logging(false);
-    sea_orm::Database::connect(opt).await.ok()
+    common::memory_db().await
 }
 
 // ═══ Every advertised tool is dispatched ═══
@@ -54,7 +52,7 @@ async fn memory_db() -> Option<sea_orm::DatabaseConnection> {
 #[tokio::test]
 async fn every_advertised_tool_reaches_the_dispatcher() {
     let Some(db) = memory_db().await else {
-        println!("⚠️  SKIP every_advertised_tool_reaches_the_dispatcher — no in-memory DB");
+        println!("SKIP every_advertised_tool_reaches_the_dispatcher — no in-memory DB");
         return;
     };
 

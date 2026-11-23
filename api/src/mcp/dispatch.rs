@@ -7,10 +7,10 @@ use uuid::Uuid;
 use tracing::{info, error};
 use std::collections::HashMap;
 
-use crate::mcp::types::{JsonRpcRequest, JsonRpcResponse, JsonRpcError};
+use crate::mcp::types::{JsonRpcRequest, JsonRpcResponse, JsonRpcError, ToolDef};
 use crate::mcp::tools::TOOLS;
 use crate::mcp::storage::*;
-use crate::mcp::server::{mcp_log, track_current_device, SERVER_NAME, SERVER_VERSION, PROTOCOL_VERSION};
+use crate::mcp::server::{mcp_log, track_current_device, uptime_secs, SERVER_NAME, SERVER_VERSION, PROTOCOL_VERSION};
 use crate::haystack::auto_tagging_service as ats;
 use crate::haystack::tags_service as ts;
 use crate::t3_device::services::T3DeviceService;
@@ -54,10 +54,107 @@ fn handle_initialize(req: &JsonRpcRequest) -> JsonRpcResponse {
                 "tools": {
                     "listChanged": true
                 }
-            }
+            },
+            "instructions": INITIALIZE_INSTRUCTIONS
         })),
         error: None,
     }
+}
+
+/// Shown to the client after `initialize` — models pick tools more reliably when
+/// they know where to start and which calls need confirmation.
+const INITIALIZE_INSTRUCTIONS: &str = "T3000 building automation server. Start with t3000_device_list to discover devices, then t3000_device_get_points or t3000_point_read with a serial_number. Writes (t3000_point_write, t3000_settings_write, t3000_device_control, deletes) require confirm: true. Haystack tagging lives under t3000_haystack_*; fault detection under t3000_fdd_*.";
+
+/// MCP tool annotations (protocol 2025-03-26). Derived from the schema so it can
+/// never drift: a tool that asks for `confirm` mutates state and is destructive.
+fn tool_annotations(tool: &ToolDef) -> Value {
+    let requires_confirm = tool
+        .input_schema
+        .get("properties")
+        .and_then(|props| props.get("confirm"))
+        .is_some();
+    let mutating = requires_confirm || MUTATING_TOOLS.contains(&tool.name);
+    let destructive = requires_confirm
+        || tool.name.ends_with("_delete")
+        || tool.name.ends_with("_save")
+        || tool.name.ends_with("_import");
+
+    json!({
+        "readOnlyHint": !mutating,
+        "destructiveHint": destructive,
+        "idempotentHint": !mutating,
+        "openWorldHint": false
+    })
+}
+
+/// Tools that change state but do not take a `confirm` flag.
+const MUTATING_TOOLS: &[&str] = &[
+    "t3000_rule_create",
+    "t3000_rule_toggle",
+    "t3000_task_create",
+    "t3000_task_update",
+    "t3000_task_delete",
+    "t3000_memory_save",
+    "t3000_memory_delete",
+    "t3000_alarm_acknowledge",
+    "t3000_set_chat_device",
+    "t3000_scan_network",
+    "t3000_scan_all",
+    "t3000_device_refresh",
+    "t3000_haystack_auto_tag",
+];
+
+/// Closest real tool names for a misspelled/unknown one — LLMs guess names often,
+/// and suggesting the right ones avoids a pointless retry loop.
+fn suggest_tool_names(query: &str, limit: usize) -> Vec<&'static str> {
+    let query = query.trim().trim_start_matches("t3000_").to_ascii_lowercase();
+    if query.is_empty() {
+        return Vec::new();
+    }
+
+    let mut scored: Vec<(usize, &'static str)> = TOOLS
+        .iter()
+        .filter_map(|tool| {
+            let name = tool.name.trim_start_matches("t3000_").to_ascii_lowercase();
+            let score = if name == query {
+                0
+            } else if name.contains(&query) || query.contains(&name) {
+                1 + name.len().abs_diff(query.len())
+            } else {
+                let distance = levenshtein(&name, &query);
+                if distance > 3 { return None; }
+                10 + distance
+            };
+            Some((score, tool.name))
+        })
+        .collect();
+
+    scored.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(b.1)));
+    scored.into_iter().take(limit).map(|(_, name)| name).collect()
+}
+
+/// Small capped Levenshtein distance (only used for name suggestions).
+fn levenshtein(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    if a.is_empty() { return b.len(); }
+    if b.is_empty() { return a.len(); }
+
+    let mut previous: Vec<usize> = (0..=b.len()).collect();
+    let mut current = vec![0usize; b.len() + 1];
+
+    for (i, ca) in a.iter().enumerate() {
+        current[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let cost = if ca == cb { 0 } else { 1 };
+            current[j + 1] = (previous[j + 1] + 1)
+                .min(current[j] + 1)
+                .min(previous[j] + cost);
+        }
+        std::mem::swap(&mut previous, &mut current);
+    }
+
+    previous[b.len()]
 }
 
 fn handle_ping(req: &JsonRpcRequest) -> JsonRpcResponse {
@@ -78,7 +175,8 @@ fn handle_tools_list(req: &JsonRpcRequest) -> JsonRpcResponse {
                 "name": t.name,
                 "title": t.title,
                 "description": t.description,
-                "inputSchema": t.input_schema
+                "inputSchema": t.input_schema,
+                "annotations": tool_annotations(t)
             })
         })
         .collect();
@@ -693,12 +791,47 @@ pub async fn execute_tool(
         // ═══ v4: Core / Generic ═══ 
 
         "t3000_ping" => {
+            let deep = args.get("deep").and_then(|v| v.as_bool()).unwrap_or(false);
             let now = Utc::now().to_rfc3339();
-            Ok(json!({
-                "status": "ok",
-                "timestamp": now,
-                "server": SERVER_NAME
-            }).to_string())
+
+            if !deep {
+                Ok(json!({
+                    "status": "ok",
+                    "timestamp": now,
+                    "server": SERVER_NAME
+                }).to_string())
+            } else {
+                let db_ok = db
+                    .query_one(sea_orm::Statement::from_string(
+                        sea_orm::DatabaseBackend::Sqlite,
+                        "SELECT 1 AS ok".to_string(),
+                    ))
+                    .await
+                    .is_ok();
+
+                let device_count = if db_ok {
+                    db.query_one(sea_orm::Statement::from_string(
+                        sea_orm::DatabaseBackend::Sqlite,
+                        "SELECT COUNT(*) AS c FROM DEVICES".to_string(),
+                    ))
+                    .await
+                    .ok()
+                    .flatten()
+                    .and_then(|row| row.try_get::<i64>("", "c").ok())
+                } else {
+                    None
+                };
+
+                Ok(json!({
+                    "status": if db_ok { "ok" } else { "degraded" },
+                    "timestamp": now,
+                    "server": SERVER_NAME,
+                    "deep": true,
+                    "database": if db_ok { "ok" } else { "unavailable" },
+                    "device_count": device_count,
+                    "uptime_secs": uptime_secs()
+                }).to_string())
+            }
         }
 
         "t3000_get_version" => {
@@ -711,18 +844,32 @@ pub async fn execute_tool(
         }
 
         "t3000_describe_tool" => {
-            let tool_name = args.get("tool_name").and_then(|v| v.as_str()).unwrap_or("");
-            match TOOLS.iter().find(|t| t.name == tool_name) {
-                Some(tool) => {
-                    serde_json::to_string_pretty(&json!({
-                        "name": tool.name,
-                        "title": tool.title,
-                        "description": tool.description,
-                        "inputSchema": tool.input_schema
-                    }))
-                    .map_err(|e| format!("Serialize error: {}", e))
+            let tool_name = args.get("tool_name").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+
+            if tool_name.is_empty() {
+                Err("tool_name is required (for example \"t3000_device_list\"). Call tools/list to see every tool.".to_string())
+            } else {
+                match TOOLS.iter().find(|t| t.name == tool_name) {
+                    Some(tool) => {
+                        serde_json::to_string_pretty(&json!({
+                            "name": tool.name,
+                            "title": tool.title,
+                            "description": tool.description,
+                            "inputSchema": tool.input_schema,
+                            "annotations": tool_annotations(tool)
+                        }))
+                        .map_err(|e| format!("Serialize error: {}", e))
+                    }
+                    None => {
+                        let suggestions = suggest_tool_names(&tool_name, 3);
+                        let hint = if suggestions.is_empty() {
+                            String::new()
+                        } else {
+                            format!(". Did you mean: {}?", suggestions.join(", "))
+                        };
+                        Err(format!("Tool not found: {}{}", tool_name, hint))
+                    }
                 }
-                None => Err(format!("Tool not found: {}", tool_name)),
             }
         }
 

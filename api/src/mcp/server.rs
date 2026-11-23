@@ -26,9 +26,25 @@ pub(crate) fn mcp_log(msg: &str) {
 
 // ═══ Server Constants ═══
 
-pub(crate) const SERVER_NAME: &str = "T3000 Haystack MCP";
-pub(crate) const SERVER_VERSION: &str = "1.0.0";
+/// Display name advertised to MCP clients (`initialize.serverInfo.name`,
+/// `t3000_ping.server`, `t3000_get_version.name`). The server covers the whole
+/// T3000 surface — devices, points, Haystack, FDD — so the name is not
+/// Haystack-specific.
+pub const SERVER_NAME: &str = "T3000 MCP Server";
+/// API version reported to MCP clients (`initialize.serverInfo.version` and
+/// `t3000_get_version`). Maintained **by hand** — bump it when the MCP API
+/// changes (1.0.1, 1.1.0, ...). It is intentionally independent of the Rust
+/// crate version in `Cargo.toml`.
+pub const SERVER_VERSION: &str = "1.0.0";
 pub(crate) const PROTOCOL_VERSION: &str = "2025-03-26";
+
+/// Process start reference for the `t3000_ping` deep probe (set at startup).
+static STARTED_AT: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+/// Seconds since the MCP server was initialised.
+pub(crate) fn uptime_secs() -> u64 {
+    STARTED_AT.get_or_init(std::time::Instant::now).elapsed().as_secs()
+}
 
 /// Helper to get DB from T3AppState
 pub(crate) async fn get_db(state: &T3AppState) -> Result<sea_orm::DatabaseConnection, (StatusCode, Json<Value>)> {
@@ -65,6 +81,7 @@ pub(crate) async fn track_current_device(args: &Value) {
 
 /// Create MCP routes for the Axum router
 pub fn create_mcp_routes() -> Router<T3AppState> {
+    STARTED_AT.get_or_init(std::time::Instant::now);
     Router::new()
         .route("/api/mcp", post(mcp_post_handler))
         .route("/api/mcp", get(mcp_sse_handler))

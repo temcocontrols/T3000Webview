@@ -128,10 +128,12 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_ping",
         title: "Ping Server",
-        description: "Health check. Returns server status and timestamp.",
+        description: "Health check. Returns server status and timestamp. Use deep=true to also probe the database and report the device count and uptime.",
         input_schema: json!({
             "type": "object",
-            "properties": {}
+            "properties": {
+                "deep": { "type": "boolean", "description": "Optional: probe the database and report device_count and uptime_secs" }
+            }
         }),
     },
     ToolDef {

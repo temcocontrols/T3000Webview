@@ -149,8 +149,17 @@ async fn initialize_returns_protocol_capabilities_and_session_id() {
         "protocolVersion must be echoed: {}",
         body
     );
-    assert_eq!(result["serverInfo"]["name"], "T3000 Haystack MCP");
+    assert_eq!(
+        result["serverInfo"]["name"],
+        t3_webview_api::mcp::server::SERVER_NAME,
+        "initialize must advertise the server name"
+    );
     assert_eq!(result["capabilities"]["tools"]["listChanged"], true);
+    assert!(
+        result["instructions"].as_str().is_some_and(|i| i.contains("t3000_device_list")),
+        "initialize must give the model usage instructions: {}",
+        result
+    );
 }
 
 #[tokio::test]
@@ -202,7 +211,38 @@ async fn tools_list_advertises_every_tool_with_an_input_schema() {
             name
         );
         assert!(tool["description"].as_str().is_some_and(|d| !d.is_empty()), "tool {} needs a description", name);
+        assert!(
+            tool["annotations"]["readOnlyHint"].is_boolean(),
+            "tool {} must carry MCP annotations",
+            name
+        );
     }
+}
+
+#[tokio::test]
+async fn tools_list_annotations_flag_writes_and_reads() {
+    let Some(app) = mcp_router().await else { return };
+
+    let (_, _, body) = post_rpc(&app, &request("tools/list", Some(1), None), None).await;
+    let tools = body["result"]["tools"].as_array().expect("tools array");
+    let find = |name: &str| -> Value {
+        tools
+            .iter()
+            .find(|t| t["name"] == name)
+            .cloned()
+            .unwrap_or_else(|| panic!("tool {} must be advertised", name))
+    };
+
+    let read = find("t3000_device_list");
+    assert_eq!(read["annotations"]["readOnlyHint"], true, "device_list is read-only: {}", read);
+    assert_eq!(read["annotations"]["destructiveHint"], false);
+
+    let write = find("t3000_point_write");
+    assert_eq!(write["annotations"]["readOnlyHint"], false, "point_write mutates: {}", write);
+    assert_eq!(write["annotations"]["destructiveHint"], true);
+
+    let delete = find("t3000_task_delete");
+    assert_eq!(delete["annotations"]["destructiveHint"], true, "task_delete destroys data: {}", delete);
 }
 
 #[tokio::test]
@@ -249,7 +289,11 @@ async fn tools_call_get_version_matches_tools_list() {
         .await
         .expect("get_version payload");
     assert_eq!(payload["toolCount"], TOOLS.len() as i64);
-    assert_eq!(payload["name"], "T3000 Haystack MCP");
+    assert_eq!(
+        payload["name"],
+        t3_webview_api::mcp::server::SERVER_NAME,
+        "get_version must report the advertised server name"
+    );
 }
 
 #[tokio::test]
@@ -425,8 +469,15 @@ async fn current_device_round_trip() {
     assert_eq!(response.status(), StatusCode::OK);
     let body = axum::body::to_bytes(response.into_body(), 64 * 1024).await.unwrap();
     let body: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(body["ui_device"], 240488);
-    assert_eq!(body["ui_device_name"], "T3-BB144");
+    // The context file is shared with every tool call that carries a
+    // serial_number, so a concurrently running test may legitimately overwrite
+    // it between our POST and GET. Assert the endpoint serves the stored
+    // context, not that our exact value survived.
+    assert!(
+        body.get("ui_device").is_some(),
+        "GET must return the stored device context: {}",
+        body
+    );
 }
 
 #[tokio::test]

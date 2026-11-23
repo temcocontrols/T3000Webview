@@ -16,6 +16,8 @@
 
 use serde_json::{json, Value};
 
+use crate::mcp::common;
+
 // ═══ Helpers ═══
 
 /// Load the t3_webview_api library (Windows only)
@@ -38,29 +40,239 @@ fn call_tool(name: &str, args: Value) -> Result<Value, String> {
 
 // ═══ Core Tools ═══
 
-#[test]
-fn test_ping_returns_ok() {
-    // t3000_ping — no params, returns { status: "ok", timestamp, server }
-    // Expected: JSON object with status="ok"
+/// t3000_ping — no params, returns `{ status: "ok", timestamp, server }`.
+#[tokio::test]
+async fn test_ping_returns_ok() {
+    let Some(db) = common::memory_db().await else {
+        println!("SKIP test_ping_returns_ok — no in-memory DB");
+        return;
+    };
+
+    let raw = t3_webview_api::mcp::execute_tool("t3000_ping", &json!({}), &db)
+        .await
+        .expect("t3000_ping must succeed");
+    let payload: Value = serde_json::from_str(&raw).expect("ping payload must be JSON");
+
+    assert_eq!(payload["status"], "ok", "got: {}", payload);
+    assert_eq!(
+        payload["server"],
+        t3_webview_api::mcp::server::SERVER_NAME,
+        "ping must report the advertised server name: {}",
+        payload
+    );
+
+    let timestamp = payload["timestamp"].as_str().expect("timestamp must be a string");
+    assert!(
+        chrono::DateTime::parse_from_rfc3339(timestamp).is_ok(),
+        "timestamp must be RFC3339, got: {}",
+        timestamp
+    );
 }
 
-#[test]
-fn test_get_version_returns_info() {
-    // t3000_get_version — no params
-    // Expected: { name, version, protocolVersion, toolCount }
+/// t3000_get_version — no params, returns `{ name, version, protocolVersion, toolCount }`.
+#[tokio::test]
+async fn test_get_version_returns_info() {
+    let Some(db) = common::memory_db().await else {
+        println!("SKIP test_get_version_returns_info — no in-memory DB");
+        return;
+    };
+
+    let raw = t3_webview_api::mcp::execute_tool("t3000_get_version", &json!({}), &db)
+        .await
+        .expect("t3000_get_version must succeed");
+    let payload: Value = serde_json::from_str(&raw).expect("version payload must be JSON");
+
+    assert_eq!(
+        payload["name"],
+        t3_webview_api::mcp::server::SERVER_NAME,
+        "version payload must report the advertised server name: {}",
+        payload
+    );
+    assert!(
+        payload["version"].as_str().is_some_and(|v| !v.is_empty()),
+        "version must be reported: {}",
+        payload
+    );
+    assert!(
+        payload["protocolVersion"].as_str().is_some_and(|v| v.starts_with("20")),
+        "protocolVersion must look like a date version: {}",
+        payload
+    );
+    assert_eq!(
+        payload["toolCount"],
+        common::all_tools().len() as i64,
+        "toolCount must match the advertised catalogue"
+    );
 }
 
-#[test]
-fn test_describe_tool_requires_name() {
-    // t3000_describe_tool — requires tool_name
-    // Missing param: returns error
-    // Valid param: returns { name, title, description, inputSchema }
+/// The version reported is the hand-maintained MCP **API version** (not the
+/// crate version) and must stay in semver shape so clients can compare it.
+#[tokio::test]
+async fn test_get_version_reports_the_api_version() {
+    let Some(db) = common::memory_db().await else {
+        println!("SKIP test_get_version_reports_the_api_version — no in-memory DB");
+        return;
+    };
+
+    let raw = t3_webview_api::mcp::execute_tool("t3000_get_version", &json!({}), &db)
+        .await
+        .expect("t3000_get_version must succeed");
+    let payload: Value = serde_json::from_str(&raw).expect("version payload must be JSON");
+
+    assert_eq!(
+        payload["version"],
+        t3_webview_api::mcp::server::SERVER_VERSION,
+        "version must match the declared MCP API version, got: {}",
+        payload
+    );
+
+    let version = payload["version"].as_str().expect("version must be a string");
+    let parts: Vec<&str> = version.split('.').collect();
+    assert_eq!(parts.len(), 3, "version must be semver-like, got: {}", version);
+    assert!(
+        parts.iter().all(|p| p.parse::<u32>().is_ok()),
+        "version must be numeric semver, got: {}",
+        version
+    );
 }
 
-#[test]
-fn test_describe_tool_unknown_returns_error() {
-    // t3000_describe_tool with unknown tool name
-    // Expected: error "Tool not found: unknown_tool"
+/// t3000_describe_tool — `tool_name` is required; an empty name is reported as
+/// a clear invalid-argument error instead of "Tool not found: ".
+#[tokio::test]
+async fn test_describe_tool_requires_name() {
+    let Some(db) = common::memory_db().await else {
+        println!("SKIP test_describe_tool_requires_name — no in-memory DB");
+        return;
+    };
+
+    let error = t3_webview_api::mcp::execute_tool("t3000_describe_tool", &json!({}), &db)
+        .await
+        .expect_err("describing without a tool name must fail");
+    assert!(
+        error.contains("tool_name is required"),
+        "expected a 'tool_name is required' error, got: {}",
+        error
+    );
+}
+
+/// An unknown tool name suggests the closest real tools (LLMs guess names).
+#[tokio::test]
+async fn test_describe_tool_suggests_close_names() {
+    let Some(db) = common::memory_db().await else {
+        println!("SKIP test_describe_tool_suggests_close_names — no in-memory DB");
+        return;
+    };
+
+    let error = t3_webview_api::mcp::execute_tool(
+        "t3000_describe_tool",
+        &json!({ "tool_name": "t3000_device_lst" }),
+        &db,
+    )
+    .await
+    .expect_err("misspelled tool names must fail");
+    assert!(error.starts_with("Tool not found: t3000_device_lst"), "got: {}", error);
+    assert!(error.contains("Did you mean:"), "expected suggestions, got: {}", error);
+    assert!(
+        error.contains("t3000_device_list"),
+        "expected the real tool to be suggested, got: {}",
+        error
+    );
+}
+
+/// t3000_describe_tool with a valid name returns the full definition.
+#[tokio::test]
+async fn test_describe_tool_returns_schema() {
+    let Some(db) = common::memory_db().await else {
+        println!("SKIP test_describe_tool_returns_schema — no in-memory DB");
+        return;
+    };
+
+    let raw = t3_webview_api::mcp::execute_tool(
+        "t3000_describe_tool",
+        &json!({ "tool_name": "t3000_device_list" }),
+        &db,
+    )
+    .await
+    .expect("describing a known tool must succeed");
+    let described: Value = serde_json::from_str(&raw).expect("description must be JSON");
+
+    assert_eq!(described["name"], "t3000_device_list");
+    assert!(described["title"].as_str().is_some_and(|t| !t.is_empty()), "got: {}", described);
+    assert!(
+        described["description"].as_str().is_some_and(|d| !d.is_empty()),
+        "got: {}",
+        described
+    );
+    assert_eq!(described["inputSchema"]["type"], "object");
+    assert!(
+        described["inputSchema"]["properties"].is_object(),
+        "inputSchema must carry properties: {}",
+        described
+    );
+    assert_eq!(
+        described["annotations"]["readOnlyHint"], true,
+        "lists are read-only: {}",
+        described
+    );
+    assert!(described["annotations"]["destructiveHint"].is_boolean());
+}
+
+/// t3000_ping with deep=true probes the backend instead of answering statically.
+#[tokio::test]
+async fn test_ping_deep_reports_backend() {
+    let Some(db) = common::memory_db().await else {
+        println!("SKIP test_ping_deep_reports_backend — no in-memory DB");
+        return;
+    };
+
+    let raw = t3_webview_api::mcp::execute_tool("t3000_ping", &json!({ "deep": true }), &db)
+        .await
+        .expect("deep ping must succeed");
+    let payload: Value = serde_json::from_str(&raw).expect("ping payload must be JSON");
+
+    assert_eq!(payload["deep"], true, "got: {}", payload);
+    assert_eq!(payload["database"], "ok", "in-memory DB must respond: {}", payload);
+    assert_eq!(payload["status"], "ok");
+    assert!(
+        payload["uptime_secs"].as_u64().is_some(),
+        "uptime_secs must be reported: {}",
+        payload
+    );
+}
+
+/// The shallow ping stays cheap and keeps its original shape.
+#[tokio::test]
+async fn test_ping_shallow_has_no_backend_fields() {
+    let Some(db) = common::memory_db().await else {
+        println!("SKIP test_ping_shallow_has_no_backend_fields — no in-memory DB");
+        return;
+    };
+
+    let raw = t3_webview_api::mcp::execute_tool("t3000_ping", &json!({}), &db)
+        .await
+        .expect("ping must succeed");
+    let payload: Value = serde_json::from_str(&raw).expect("ping payload must be JSON");
+
+    assert_eq!(payload["status"], "ok");
+    assert!(payload.get("deep").is_none(), "shallow ping must not probe: {}", payload);
+    assert!(payload.get("device_count").is_none(), "shallow ping must stay cheap: {}", payload);
+}
+
+#[tokio::test]
+async fn test_describe_tool_unknown_returns_error() {
+    let Some(db) = common::memory_db().await else {
+        println!("SKIP test_describe_tool_unknown_returns_error — no in-memory DB");
+        return;
+    };
+
+    let error = t3_webview_api::mcp::execute_tool(
+        "t3000_describe_tool",
+        &json!({ "tool_name": "t3000_unknown_tool" }),
+        &db,
+    )
+    .await
+    .expect_err("unknown tool names must fail");
+    assert_eq!(error, "Tool not found: t3000_unknown_tool");
 }
 
 // ═══ Navigation Tools ═══
