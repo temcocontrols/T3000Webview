@@ -3851,32 +3851,48 @@ pub async fn execute_tool(
         // ═══ v5: Task Management ═══ 
 
         "t3000_task_create" => {
-            let title = args.get("title").and_then(|v| v.as_str())
-                .ok_or_else(|| "title required".to_string())?;
+            let title = args.get("title").and_then(|v| v.as_str()).map(str::trim)
+                .filter(|t| !t.is_empty())
+                .ok_or_else(|| "title required (must not be empty)".to_string())?;
             let description = args.get("description").and_then(|v| v.as_str()).unwrap_or("");
             let sn = args.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
-            let priority = args.get("priority").and_then(|v| v.as_str()).unwrap_or("normal");
+            // The schema documents low|normal|high|critical; anything else used to be
+            // stored verbatim and echoed back to the caller.
+            let priority = args.get("priority").and_then(|v| v.as_str())
+                .unwrap_or("normal")
+                .trim()
+                .to_ascii_lowercase();
+            if !matches!(priority.as_str(), "low" | "normal" | "high" | "critical") {
+                return Err(format!(
+                    "Invalid priority '{}'. Use low, normal, high or critical",
+                    priority
+                ));
+            }
 
             let task_id = Uuid::new_v4().to_string();
             let now = Utc::now().to_rfc3339();
 
-            let mut tasks = load_tasks().await?;
-            tasks.push(json!({
-                "id": task_id,
+            let task_id_out = update_tasks(|tasks| {
+                tasks.push(json!({
+                    "id": task_id,
+                    "title": title,
+                    "description": description,
+                    "status": "pending",
+                    "priority": priority,
+                    "serial_number": sn,
+                    "created_at": now,
+                    "updated_at": now,
+                }));
+                Ok(task_id.clone())
+            })
+            .await?;
+
+            serde_json::to_string_pretty(&json!({
+                "task_id": task_id_out,
                 "title": title,
-                "description": description,
                 "status": "pending",
                 "priority": priority,
                 "serial_number": sn,
-                "created_at": now,
-                "updated_at": now,
-            }));
-            save_tasks(&tasks).await?;
-
-            serde_json::to_string_pretty(&json!({
-                "task_id": task_id,
-                "title": title,
-                "status": "pending",
                 "created_at": now,
             }))
             .map_err(|e| format!("Serialize error: {}", e))
@@ -3915,33 +3931,37 @@ pub async fn execute_tool(
             let new_desc = args.get("description").and_then(|v| v.as_str());
             let new_priority = args.get("priority").and_then(|v| v.as_str());
 
-            let mut tasks = load_tasks().await?;
-            let mut found = false;
-            let mut updated = json!({});
             let now = Utc::now().to_rfc3339();
 
-            for task in tasks.iter_mut() {
-                if task.get("id").and_then(|v| v.as_str()) == Some(task_id) {
-                    if let Some(s) = new_status {
-                        let valid = ["pending", "in_progress", "completed"];
-                        if !valid.contains(&s) {
-                            return Err(format!("Invalid status: {}. Must be: {}", s, valid.join(", ")));
+            let updated = update_tasks(|tasks| {
+                for task in tasks.iter_mut() {
+                    if task.get("id").and_then(|v| v.as_str()) == Some(task_id) {
+                        if let Some(s) = new_status {
+                            let valid = ["pending", "in_progress", "completed"];
+                            if !valid.contains(&s) {
+                                return Err(format!("Invalid status: {}. Must be: {}", s, valid.join(", ")));
+                            }
+                            task["status"] = json!(s);
                         }
-                        task["status"] = json!(s);
+                        if let Some(t) = new_title { task["title"] = json!(t); }
+                        if let Some(d) = new_desc { task["description"] = json!(d); }
+                        if let Some(p) = new_priority {
+                            let p = p.trim().to_ascii_lowercase();
+                            if !matches!(p.as_str(), "low" | "normal" | "high" | "critical") {
+                                return Err(format!(
+                                    "Invalid priority: {}. Must be: low, normal, high, critical",
+                                    p
+                                ));
+                            }
+                            task["priority"] = json!(p);
+                        }
+                        task["updated_at"] = json!(now);
+                        return Ok(task.clone());
                     }
-                    if let Some(t) = new_title { task["title"] = json!(t); }
-                    if let Some(d) = new_desc { task["description"] = json!(d); }
-                    if let Some(p) = new_priority { task["priority"] = json!(p); }
-                    task["updated_at"] = json!(now);
-                    updated = task.clone();
-                    found = true;
-                    break;
                 }
-            }
-            if !found {
-                return Err(format!("Task not found: {}", task_id));
-            }
-            save_tasks(&tasks).await?;
+                Err(format!("Task not found: {}", task_id))
+            })
+            .await?;
 
             serde_json::to_string_pretty(&json!({
                 "task": updated,
@@ -3954,13 +3974,15 @@ pub async fn execute_tool(
             let task_id = args.get("task_id").and_then(|v| v.as_str())
                 .ok_or_else(|| "task_id required".to_string())?;
 
-            let mut tasks = load_tasks().await?;
-            let len_before = tasks.len();
-            tasks.retain(|t| t.get("id").and_then(|v| v.as_str()) != Some(task_id));
-            if tasks.len() == len_before {
-                return Err(format!("Task not found: {}", task_id));
-            }
-            save_tasks(&tasks).await?;
+            update_tasks(|tasks| {
+                let len_before = tasks.len();
+                tasks.retain(|t| t.get("id").and_then(|v| v.as_str()) != Some(task_id));
+                if tasks.len() == len_before {
+                    return Err(format!("Task not found: {}", task_id));
+                }
+                Ok(())
+            })
+            .await?;
 
             Ok(json!({
                 "deleted": true,
@@ -3979,25 +4001,28 @@ pub async fn execute_tool(
             let category = args.get("category").and_then(|v| v.as_str()).unwrap_or("general");
 
             let now = Utc::now().to_rfc3339();
-            let mut memories = load_memories().await?;
 
-            // Upsert: replace existing entry with same key, or append
-            memories.retain(|m| m.get("key").and_then(|v| v.as_str()) != Some(key));
-            memories.push(json!({
-                "key": key,
-                "content": content,
-                "category": category,
-                "created_at": now,
-                "updated_at": now,
-            }));
-            save_memories(&memories).await?;
+            // Upsert inside the lock: a read-modify-write here would drop a
+            // concurrent save (same failure mode as the device context file).
+            let total = update_memories(|memories| {
+                memories.retain(|m| m.get("key").and_then(|v| v.as_str()) != Some(key));
+                memories.push(json!({
+                    "key": key,
+                    "content": content,
+                    "category": category,
+                    "created_at": now,
+                    "updated_at": now,
+                }));
+                Ok(memories.len())
+            })
+            .await?;
 
             serde_json::to_string_pretty(&json!({
                 "saved": true,
                 "key": key,
                 "category": category,
                 "timestamp": now,
-                "total_memories": memories.len(),
+                "total_memories": total,
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }
@@ -4033,13 +4058,15 @@ pub async fn execute_tool(
             let key = args.get("key").and_then(|v| v.as_str())
                 .ok_or_else(|| "key required".to_string())?;
 
-            let mut memories = load_memories().await?;
-            let len_before = memories.len();
-            memories.retain(|m| m.get("key").and_then(|v| v.as_str()) != Some(key));
-            if memories.len() == len_before {
-                return Err(format!("Memory not found: {}", key));
-            }
-            save_memories(&memories).await?;
+            update_memories(|memories| {
+                let len_before = memories.len();
+                memories.retain(|m| m.get("key").and_then(|v| v.as_str()) != Some(key));
+                if memories.len() == len_before {
+                    return Err(format!("Memory not found: {}", key));
+                }
+                Ok(())
+            })
+            .await?;
 
             Ok(json!({
                 "deleted": true,

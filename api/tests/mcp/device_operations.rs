@@ -185,82 +185,178 @@ async fn test_settings_read_by_category() {
     }).await;
 }
 
+// ═══ Device-scoped lists: counts must match the database ═══
+
+/// Serial that has the most rows in `table`, plus that row count.
+async fn busiest_device(db: &DatabaseConnection, table: &str) -> Option<(i64, usize)> {
+    let sql = format!(
+        "SELECT SerialNumber, COUNT(*) AS n FROM {} GROUP BY SerialNumber ORDER BY n DESC LIMIT 1",
+        table
+    );
+    let rows = db
+        .query_all(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
+        .await
+        .ok()?;
+    let row = rows.first()?;
+    Some((
+        row.try_get::<i32>("", "SerialNumber").ok()? as i64,
+        row.try_get::<i32>("", "n").ok()? as usize,
+    ))
+}
+
+async fn assert_list_matches_db(db: &DatabaseConnection, tool: &str, table: &str, key: &str) {
+    let (serial, expected) = match busiest_device(db, table).await {
+        Some(pair) => pair,
+        None => {
+            println!("{} has no rows — skipping {}", table, tool);
+            return;
+        }
+    };
+    let result = common::execute_tool_json(tool, &json!({"serial_number": serial}), db)
+        .await
+        .unwrap_or_else(|e| panic!("{} should succeed: {}", tool, e));
+
+    let items = result.get(key).and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    assert_eq!(items.len(), expected,
+        "{} for device {} must return the {} rows stored in {}", tool, serial, expected, table);
+    assert_eq!(common::get_i64(&result, "total").unwrap_or(-1) as usize, expected,
+        "{} total must match the row count", tool);
+}
+
 #[tokio::test]
 async fn test_program_list_returns_data() {
     common::with_db_or_skip("program_list_returns_data", |db| async move {
-        let result = common::execute_tool_json(
-            "t3000_program_list",
-            &json!({"serial_number": 444}),
-            &db,
-        ).await.expect("should succeed");
-        assert!(result.get("programs").is_some(), "should have programs array");
-        assert!(result.get("total").is_some(), "should have total");
-    }).await;
+        assert_list_matches_db(&db, "t3000_program_list", "PROGRAMS", "programs").await;
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn test_pid_list_returns_data() {
     common::with_db_or_skip("pid_list_returns_data", |db| async move {
-        let result = common::execute_tool_json(
-            "t3000_pid_list",
-            &json!({"serial_number": 444}),
-            &db,
-        ).await.expect("should succeed");
-        // PID list may be empty; verify shape
-        assert!(result.get("pids").is_some() || result.get("loops").is_some() || result.get("total").is_some(),
-            "should return PID data (may be empty)");
-        assert!(result.get("total").is_some(), "should have total");
-    }).await;
+        assert_list_matches_db(&db, "t3000_pid_list", "PID_TABLE", "pid_loops").await;
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn test_holiday_list_returns_data() {
     common::with_db_or_skip("holiday_list_returns_data", |db| async move {
-        let result = common::execute_tool_json(
-            "t3000_holiday_list",
-            &json!({"serial_number": 444}),
-            &db,
-        ).await.expect("should succeed");
-        assert!(result.get("holidays").is_some(), "should have holidays array");
-        assert!(result.get("total").is_some(), "should have total");
-    }).await;
-}
-
-#[tokio::test]
-async fn test_building_summary_returns_overview() {
-    common::with_db_or_skip("building_summary_returns_overview", |db| async move {
-        let result = common::execute_tool_json("t3000_building_summary", &json!({}), &db)
-            .await
-            .expect("should succeed");
-        // Should return building summary with some numeric fields
-        assert!(!result.as_object().map_or(true, |o| o.is_empty()),
-            "building_summary should return data");
-    }).await;
-}
-
-#[tokio::test]
-async fn test_users_list_returns_data() {
-    common::with_db_or_skip("users_list_returns_data", |db| async move {
-        let result = common::execute_tool_json(
-            "t3000_users_list",
-            &json!({"serial_number": 444}),
-            &db,
-        ).await.expect("should succeed");
-        assert!(result.get("users").is_some(), "should have users array");
-        assert!(result.get("total").is_some(), "should have total");
-    }).await;
+        assert_list_matches_db(&db, "t3000_holiday_list", "HOLIDAYS", "holidays").await;
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn test_graphics_list_returns_data() {
     common::with_db_or_skip("graphics_list_returns_data", |db| async move {
+        assert_list_matches_db(&db, "t3000_graphics_list", "GRAPHICS", "graphics").await;
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn test_program_read_returns_the_stored_program() {
+    common::with_db_or_skip("program_read_returns_stored_program", |db| async move {
+        let (serial, _) = match busiest_device(&db, "PROGRAMS").await {
+            Some(pair) => pair,
+            None => return,
+        };
+
+        let rows = db
+            .query_all(Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                format!(
+                    "SELECT Program_ID, Program_Label, COALESCE(LENGTH(Program_List), 0) AS len
+                     FROM PROGRAMS WHERE SerialNumber = {} LIMIT 1",
+                    serial
+                ),
+            ))
+            .await
+            .expect("program query should succeed");
+        let row = rows.first().expect("a program row is needed");
+        let program_id: String = row.try_get("", "Program_ID").unwrap();
+        let label: String = row.try_get("", "Program_Label").unwrap_or_default();
+        let source_len: i64 = row.try_get("", "len").unwrap_or(0);
+
         let result = common::execute_tool_json(
-            "t3000_graphics_list",
-            &json!({"serial_number": 444}),
+            "t3000_program_read",
+            &json!({"serial_number": serial, "program_id": program_id}),
+            &db,
+        )
+        .await
+        .expect("program_read should succeed");
+
+        assert_eq!(common::get_str(&result, "program_id"), Some(program_id.as_str()));
+        assert_eq!(common::get_str(&result, "label"), Some(label.as_str()),
+            "the label must come from the DB");
+        assert_eq!(common::get_i64(&result, "source_length").unwrap_or(-1), source_len,
+            "source_length must match the stored Program_List length");
+        assert_eq!(common::get_str(&result, "source").unwrap_or("x").len() as i64, source_len,
+            "source must be the stored program text");
+
+        let err = common::execute_tool_json(
+            "t3000_program_read",
+            &json!({"serial_number": serial, "program_id": "PRG_NOT_THERE"}),
+            &db,
+        )
+        .await
+        .expect_err("an unknown program must be an error");
+        assert!(err.contains("PRG_NOT_THERE"), "got: {}", err);
+    })
+    .await;
+}
+
+/// `SELECT COUNT(*) AS n ...` helper.
+async fn count_rows(db: &DatabaseConnection, sql: &str) -> i64 {
+    let rows = db
+        .query_all(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, sql))
+        .await
+        .expect("count query should succeed");
+    rows.first().and_then(|r| r.try_get::<i32>("", "n").ok()).unwrap_or(-1) as i64
+}
+
+#[tokio::test]
+async fn test_building_summary_matches_the_database() {
+    common::with_db_or_skip("building_summary_matches_db", |db| async move {
+        let result = common::execute_tool_json("t3000_building_summary", &json!({}), &db)
+            .await
+            .expect("should succeed");
+
+        let devices = count_rows(&db, "SELECT COUNT(*) AS n FROM DEVICES").await;
+        let online = count_rows(&db, "SELECT COUNT(*) AS n FROM DEVICES WHERE is_online = 1").await;
+        let programs = count_rows(&db, "SELECT COUNT(*) AS n FROM PROGRAMS").await;
+        let pids = count_rows(&db, "SELECT COUNT(*) AS n FROM PID_TABLE").await;
+        let schedules = count_rows(&db, "SELECT COUNT(*) AS n FROM SCHEDULES").await;
+        let trendlogs = count_rows(&db, "SELECT COUNT(*) AS n FROM TRENDLOGS").await;
+
+        assert_eq!(common::get_i64(&result, "device_count").unwrap_or(-1), devices,
+            "device_count must match DEVICES");
+        assert_eq!(common::array_len(&result, "devices") as i64, devices,
+            "the devices array must list every device");
+        assert_eq!(common::get_i64(&result, "online_devices").unwrap_or(-1), online,
+            "online_devices must match the is_online flags");
+        assert_eq!(common::get_i64(&result, "offline_devices").unwrap_or(-1), devices - online,
+            "offline_devices must be the remainder");
+        assert_eq!(common::get_i64(&result, "total_programs").unwrap_or(-1), programs);
+        assert_eq!(common::get_i64(&result, "total_pid_loops").unwrap_or(-1), pids);
+        assert_eq!(common::get_i64(&result, "total_schedules").unwrap_or(-1), schedules);
+        assert_eq!(common::get_i64(&result, "total_trendlogs").unwrap_or(-1), trendlogs);
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn test_users_list_returns_data() {
+    common::with_db_or_skip("users_list_returns_data", |db| async move {
+        let serial = common::pick_device_with_inputs(&db).await.map(|(s, _)| s).unwrap_or(0);
+        let result = common::execute_tool_json(
+            "t3000_users_list",
+            &json!({"serial_number": serial}),
             &db,
         ).await.expect("should succeed");
-        assert!(result.get("graphics").is_some(), "should have graphics array");
-        assert!(result.get("total").is_some(), "should have total");
+        assert_eq!(common::array_len(&result, "users"), common::get_i64(&result, "total").unwrap_or(-1) as usize,
+            "total must match the users array: {}", result);
     }).await;
 }
 
@@ -276,35 +372,6 @@ async fn test_device_refresh_handles_call() {
         match result {
             Ok(s) => assert!(!s.is_empty()),
             Err(e) => println!("device_refresh returned error (may be expected without FFI): {}", e),
-        }
-    }).await;
-}
-
-#[tokio::test]
-async fn test_program_read_returns_source() {
-    common::with_db_or_skip("program_read_returns_source", |db| async move {
-        // First get a program list to find a program_id
-        let list = common::execute_tool_json(
-            "t3000_program_list",
-            &json!({"serial_number": 444}),
-            &db,
-        ).await.expect("program_list should succeed");
-        let programs = list.get("programs").and_then(|v| v.as_array());
-        if let Some(progs) = programs {
-            if let Some(first) = progs.first() {
-                let prog_id = common::get_str(first, "program_id")
-                    .or_else(|| common::get_str(first, "ProgramID"))
-                    .or_else(|| common::get_i64(first, "program_id").map(|_| "0"))
-                    .or_else(|| common::get_i64(first, "id").map(|_| "0"));
-                if let Some(id) = prog_id {
-                    let result = common::execute_tool(
-                        "t3000_program_read",
-                        &json!({"serial_number": 444, "program_id": id}),
-                        &db,
-                    ).await;
-                    assert!(result.is_ok(), "program_read should succeed: {:?}", result.err());
-                }
-            }
         }
     }).await;
 }

@@ -104,7 +104,20 @@ pub async fn get_test_db() -> Option<sea_orm::DatabaseConnection> {    let path 
         .connect_timeout(std::time::Duration::from_secs(5))
         .acquire_timeout(std::time::Duration::from_secs(5))
         .sqlx_logging(false);
-    sea_orm::Database::connect(opt).await.ok()
+    let db = sea_orm::Database::connect(opt).await.ok()?;
+
+    // T3000.exe holds the same file while it runs, so a write can collide with
+    // its lock. Without a busy timeout SQLite fails immediately ("database is
+    // locked") and the test flakes; with one it waits its turn.
+    use sea_orm::ConnectionTrait;
+    let _ = db
+        .execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "PRAGMA busy_timeout = 15000",
+        ))
+        .await;
+
+    Some(db)
 }
 
 /// Check whether DB-dependent tests should run.

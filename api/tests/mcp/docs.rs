@@ -67,3 +67,88 @@ fn test_doc_read_path_is_string() {
         .and_then(|v| v.as_str());
     assert_eq!(path_type, Some("string"), "path must be string type");
 }
+
+// ═══ Live calls (the doc server must be running) ═══
+
+#[tokio::test]
+async fn test_doc_list_returns_sections() {
+    common::with_db_or_skip("doc_list_returns_sections", |db| async move {
+        let result = match common::execute_tool_json("t3000_doc_list", &serde_json::json!({}), &db).await {
+            Ok(result) => result,
+            Err(e) => {
+                println!("doc server unavailable — skipping: {}", e);
+                return;
+            }
+        };
+
+        let sections = result.get("sections").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+        assert!(!sections.is_empty(), "doc_list must return sections: {}", result);
+        assert_eq!(common::get_i64(&result, "total_sections").unwrap_or(-1) as usize, sections.len(),
+            "total_sections must match the sections array");
+
+        let mut items = 0;
+        for section in &sections {
+            assert!(common::get_str(section, "section").map(|s| !s.is_empty()).unwrap_or(false),
+                "every section needs a name: {}", section);
+            let entries = section.get("items").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+            assert_eq!(section.get("count").and_then(|v| v.as_i64()).unwrap_or(-1) as usize, entries.len(),
+                "section count must match its items: {}", section);
+            for item in &entries {
+                assert!(common::get_str(item, "path").map(|p| !p.is_empty()).unwrap_or(false),
+                    "every doc entry needs a path: {}", item);
+                assert!(common::get_str(item, "title").map(|t| !t.is_empty()).unwrap_or(false),
+                    "every doc entry needs a title: {}", item);
+                items += 1;
+            }
+        }
+        assert!(items > 0, "the doc index must list at least one page");
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn test_doc_read_returns_the_page_named_by_doc_list() {
+    common::with_db_or_skip("doc_read_returns_page", |db| async move {
+        let index = match common::execute_tool_json("t3000_doc_list", &serde_json::json!({}), &db).await {
+            Ok(result) => result,
+            Err(e) => {
+                println!("doc server unavailable — skipping: {}", e);
+                return;
+            }
+        };
+
+        // Read the first page the index advertises — that is the contract.
+        let path = index["sections"]
+            .as_array()
+            .and_then(|s| s.first())
+            .and_then(|s| s.get("items"))
+            .and_then(|i| i.as_array())
+            .and_then(|i| i.first())
+            .and_then(|i| common::get_str(i, "path"))
+            .expect("the index must advertise a page")
+            .to_string();
+
+        let result = common::execute_tool_json(
+            "t3000_doc_read",
+            &serde_json::json!({"path": path}),
+            &db,
+        )
+        .await
+        .expect("reading a page from the index must succeed");
+
+        let content = common::get_str(&result, "content").unwrap_or_default();
+        assert!(content.len() > 100,
+            "doc_read for '{}' returned no usable content: {}", path, result);
+
+        // An unknown page must be an error, not an empty document.
+        let err = common::execute_tool_json(
+            "t3000_doc_read",
+            &serde_json::json!({"path": "definitely-not-a-page"}),
+            &db,
+        )
+        .await
+        .expect_err("an unknown doc path must be an error");
+        assert!(err.to_lowercase().contains("not found"), "got: {}", err);
+    })
+    .await;
+}

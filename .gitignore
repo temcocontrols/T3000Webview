@@ -70,6 +70,10 @@ yarn-error.log*
 
 /api/log
 
+# MCP runtime state (tasks / memory / device context) written by the agent tools
+# and by test runs — never committed
+/api/data/
+
 # --- docs platform ---------------------------------------------------------
 # site build output (published at /docs/ by the API, never committed)
 /dist
