@@ -146,6 +146,14 @@ fn test_action17_points_are_one_based_and_scaled() {
     assert_eq!(points[0]["label"], "TEMP");
     assert_eq!(points[1]["index"], 6);
     assert_eq!(points[1]["value"], 12.34, "string values from the C++ must scale too");
+
+    // An unused point stores -1; the scaled value must be a plain 0.0, not -0.0.
+    let unused = t3_webview_api::mcp::action17_points(
+        r#"{"data":{"device_data":[{"index":0,"label":"","value":-1}]}}"#,
+    );
+    let value = unused[0]["value"].as_f64().expect("value present");
+    assert_eq!(value, 0.0);
+    assert!(!value.is_sign_negative(), "an unused point must not report -0.0");
 }
 
 #[tokio::test]
@@ -228,6 +236,70 @@ async fn test_persist_action17_points_updates_and_keeps_missing_fields() {
     assert_eq!(range, "3");
     assert_eq!(auto_manual, "1");
     assert_eq!(sign, "7", "a field the device did not report keeps its stored value");
+}
+
+/// Action 17 must never be given a panel id the C++ will reject. Device 1028's
+/// `DEVICES.Panel_Number` became `1025` after a T3000 restart (a real panel index
+/// is 1..254), so the lookup must either resolve the live panel or refuse.
+#[tokio::test]
+async fn test_action17_target_never_returns_an_invalid_panel() {
+    let Some(db) = common::get_test_db().await else {
+        println!("SKIP test_action17_target_never_returns_an_invalid_panel — runtime DB not available");
+        return;
+    };
+
+    for serial in [1028, 4211, 11111] {
+        match t3_webview_api::t3_device::action17_refresh_helper::lookup_action17_target(&db, serial).await {
+            Ok((panel, object_instance)) => {
+                assert!(
+                    (1..254).contains(&panel),
+                    "serial {} got panel {} which the C++ would reject",
+                    serial,
+                    panel
+                );
+                assert!(object_instance > 0, "serial {} needs an object instance", serial);
+            }
+            Err((_status, message)) => {
+                assert!(
+                    message.contains("not a T3000 panel index")
+                        || message.contains("not found")
+                        || message.contains("missing"),
+                    "serial {}: unexpected error wording: {}",
+                    serial,
+                    message
+                );
+            }
+        }
+    }
+}
+
+/// The refresh routes require `{ success, items }`, but the C++ answers
+/// `{ data: { device_data: [...] } }` and never sets `success` — before this
+/// normalisation every successful read came back as "Unknown error from device".
+#[test]
+fn test_action17_response_is_normalised_for_refresh_routes() {
+    use t3_webview_api::t3_device::action17_refresh_helper::normalise_action17_response;
+
+    let ok = normalise_action17_response(json!({
+        "data": { "device_data": [ {"index": 0, "value": 1}, {"index": 1, "value": 2} ] }
+    }));
+    assert_eq!(ok["success"], true, "a response without `error` is a success: {}", ok);
+    assert_eq!(ok["items"].as_array().map(|a| a.len()), Some(2), "device_data becomes items: {}", ok);
+
+    let per_panel = normalise_action17_response(json!({
+        "data": [ {"device_data": [{"index": 0}]}, {"device_data": [{"index": 1}, {"index": 2}]} ]
+    }));
+    assert_eq!(per_panel["success"], true);
+    assert_eq!(per_panel["items"].as_array().map(|a| a.len()), Some(3), "{}", per_panel);
+
+    let rejected = normalise_action17_response(json!({ "error": "Panel is invalid ." }));
+    assert_eq!(rejected["success"], false, "{}", rejected);
+    assert_eq!(rejected["message"], "Panel is invalid .");
+
+    // An older/scalar response that already carries the legacy shape is untouched.
+    let legacy = normalise_action17_response(json!({ "success": false, "message": "nope", "items": [] }));
+    assert_eq!(legacy["success"], false);
+    assert_eq!(legacy["message"], "nope");
 }
 
 // ═══ Live scans (explicit: --ignored) ═══

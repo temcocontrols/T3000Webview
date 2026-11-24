@@ -13,7 +13,7 @@ use tracing::{error, info};
 
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::variable_points;
-use crate::t3_device::action17_refresh_helper::lookup_action17_target;
+use crate::t3_device::action17_refresh_helper::{lookup_action17_target, normalise_action17_response, save_action17_rows};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use crate::server_db::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
 use sea_orm::*;
@@ -106,9 +106,15 @@ pub async fn refresh_variables(
         "entryType": BAC_VAR,  // 2 = VARIABLE
     });
 
-    // Add entryIndex only if specified (omit for refresh all)
-    if let Some(idx) = payload.index {
-        refresh_json["entryIndex"] = json!(idx);
+    // A single entry uses `entryIndex`; a full refresh needs the range, because
+    // the C++ reads `entryIndexStart..=entryIndexEnd` (both default to 0, which
+    // would read only the first point). 63 is clamped to the real item count.
+    match payload.index {
+        Some(idx) => refresh_json["entryIndex"] = json!(idx),
+        None => {
+            refresh_json["entryIndexStart"] = json!(0);
+            refresh_json["entryIndexEnd"] = json!(63);
+        }
     }
 
     // Call FFI function
@@ -116,7 +122,7 @@ pub async fn refresh_variables(
         Ok(response) => {
             // Parse C++ response
             let response_json: Value = match serde_json::from_str(&response) {
-                Ok(json) => json,
+                Ok(json) => normalise_action17_response(json),
                 Err(e) => {
                     error!("❌ Failed to parse C++ response: {}", e);
                     return Err((
@@ -209,8 +215,14 @@ pub async fn save_refreshed_variables(
         }
     };
 
-    // Save items to database
-    let saved_count = match save_variables_to_db(&db_connection, serial, &payload.items).await {
+    // Save items to database. Action 17 rows (`index`, `description`, …) and the
+    // legacy `variableIndex` shape are both accepted.
+    let (action_rows, legacy_rows): (Vec<Value>, Vec<Value>) = payload
+        .items
+        .iter()
+        .cloned()
+        .partition(|item| item.get("index").is_some() && item.get("variableIndex").is_none());
+    let saved_count = match save_variables_to_db(&db_connection, serial, &legacy_rows).await {
         Ok(count) => count,
         Err(e) => {
             error!("❌ Failed to save variables to database: {}", e);
@@ -218,6 +230,20 @@ pub async fn save_refreshed_variables(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to save to database: {}", e),
             ));
+        }
+    };
+    let saved_count = if action_rows.is_empty() {
+        saved_count
+    } else {
+        match save_action17_rows(&db_connection, serial, "VARIABLE", &action_rows).await {
+            Ok(count) => saved_count + count as i32,
+            Err(e) => {
+                error!("❌ Failed to save refreshed variables: {}", e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to save to database: {}", e),
+                ));
+            }
         }
     };
 

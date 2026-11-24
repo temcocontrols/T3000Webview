@@ -143,6 +143,20 @@ pub async fn execute_tool_json(
 
 // ═══ Helper: run test only when DB is available ═══
 
+/// First device in the runtime DB that actually has stored input points.
+/// Returns `(serial, input_count)`.
+pub async fn pick_device_with_inputs(db: &sea_orm::DatabaseConnection) -> Option<(i64, i64)> {
+    let list = execute_tool_json("t3000_device_list", &serde_json::json!({}), db).await.ok()?;
+    list.get("devices")?.as_array()?.iter().find_map(|device| {
+        let inputs = device.get("input_count")?.as_i64()?;
+        if inputs > 0 {
+            Some((device.get("serial")?.as_i64()?, inputs))
+        } else {
+            None
+        }
+    })
+}
+
 /// Run an async test function only if the runtime DB is available.
 pub async fn with_db_or_skip<F, Fut>(test_name: &str, f: F)
 where

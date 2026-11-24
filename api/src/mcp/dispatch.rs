@@ -676,70 +676,20 @@ pub async fn persist_action17_points(
     serial: i32,
     point_type: &str,
     response: &str,
-) -> Result<usize, String> {    use sea_orm::{DatabaseBackend, Statement, Value as SqlValue};
-
-    let (table, index_column, data_type) = match point_type {
-        "INPUT" => ("INPUTS", "Input_Index", "INPUTS"),
-        "OUTPUT" => ("OUTPUTS", "Output_Index", "OUTPUTS"),
-        _ => ("VARIABLES", "Variable_Index", "VARIABLES"),
-    };
-
-    // Every column is TEXT in the device schema; COALESCE keeps what is stored
-    // when the device omits a field (outputs carry no `unit`, for example).
-    let sql = format!(
-        "UPDATE {} SET
-            Full_Label = COALESCE(?, Full_Label),
-            Label = COALESCE(?, Label),
-            fValue = COALESCE(?, fValue),
-            Units = COALESCE(?, Units),
-            Range_Field = COALESCE(?, Range_Field),
-            Auto_Manual = COALESCE(?, Auto_Manual),
-            Control = COALESCE(?, Control),
-            Digital_Analog = COALESCE(?, Digital_Analog),
-            Filter_Field = COALESCE(?, Filter_Field),
-            Calibration_Sign = COALESCE(?, Calibration_Sign),
-            Panel = COALESCE(?, Panel)
-        WHERE SerialNumber = ? AND {} = ?",
-        table, index_column
-    );
-
-    let mut updated = 0usize;
-    for point in action17_rows(response) {
-        let Some(index) = point.get("index").and_then(|v| v.as_i64()) else {
-            continue;
-        };
-        // Inputs report the range twice (`range` and `unit`); outputs only `range`.
-        let units = point.get("unit").or_else(|| point.get("range"));
-        let params = vec![
-            json_scalar_text(point.get("description")),
-            json_scalar_text(point.get("label")),
-            json_scalar_text(point.get("value")),
-            json_scalar_text(units),
-            json_scalar_text(point.get("range")),
-            json_scalar_text(point.get("auto_manual")),
-            json_scalar_text(point.get("control")),
-            json_scalar_text(point.get("digital_analog")),
-            json_scalar_text(point.get("filter")),
-            json_scalar_text(point.get("calibration_sign")),
-            json_scalar_text(point.get("pid")),
-        ]
-        .into_iter()
-        .map(|v| v.map(SqlValue::from).unwrap_or(SqlValue::String(None)))
-        .chain(vec![
-            SqlValue::from(serial),
-            SqlValue::from(index.to_string()),
-        ])
-        .collect::<Vec<_>>();
-
-        let result = db
-            .execute(Statement::from_sql_and_values(DatabaseBackend::Sqlite, &sql, params))
-            .await
-            .map_err(|e| format!("Failed to save {} points: {}", point_type, e))?;
-        updated += result.rows_affected() as usize;
-    }
+) -> Result<usize, String> {
+    let rows = action17_rows(response);
+    let updated = crate::t3_device::action17_refresh_helper::save_action17_rows(
+        db, serial, point_type, &rows,
+    )
+    .await?;
 
     if updated > 0 {
         use crate::server_db::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
+        let data_type = match point_type {
+            "INPUT" => "INPUTS",
+            "OUTPUT" => "OUTPUTS",
+            _ => "VARIABLES",
+        };
         // "UI_REFRESH" is the method the pages already react to, and it is what a
         // manual refresh from the UI records — the MCP refresh is the same thing.
         let request = InsertSyncMetadataRequest {
@@ -758,7 +708,6 @@ pub async fn persist_action17_points(
 
     Ok(updated)
 }
-
 /// C++ reports failures as `{ "error": "..." }` (see `WrapErrorMessage`), and
 /// leaves `data.device_data` empty — without this check a rejected request
 /// looks exactly like a refresh that found nothing.
@@ -789,6 +738,57 @@ fn action17_warmup(response: &str) -> bool {
         .map(|v| v.get("code").and_then(|c| c.as_str()) == Some("T3000_WARMUP"))
         .unwrap_or(false)
 }
+
+/// Call Action 17 (GET_WEBVIEW_LIST), transparently retrying the C++ warm-up
+/// guard, and return the raw response.
+///
+/// The C++ read blocks for as long as the device takes, and an unreachable
+/// device makes it block for minutes (64 points × per-block timeouts), so the
+/// call is bounded — a caller must get an answer it can act on.
+async fn call_action17(
+    panel_id: i32,
+    serial: i32,
+    object_instance: i32,
+    entry_type: i32,
+) -> Result<String, String> {
+    use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
+
+    const ACTION17_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+
+    let request = json!({
+        "action": 17,
+        "panelId": panel_id,
+        "serialNumber": serial,
+        "objectinstance": object_instance,
+        "entryType": entry_type,
+        "entryIndexStart": 0,
+        "entryIndexEnd": 63,
+    })
+    .to_string();
+
+    let service = T3000FfiApiService::new();
+    for attempt in 0..3 {
+        let response = tokio::time::timeout(ACTION17_TIMEOUT, service.call_ffi(&request))
+            .await
+            .map_err(|_| {
+                format!(
+                    "Action 17 did not answer within {}s — the device may be offline or unreachable",
+                    ACTION17_TIMEOUT.as_secs()
+                )
+            })?
+            .map_err(|e| format!("Action 17 FFI call failed: {}", e))?;
+        if action17_warmup(&response) && attempt < 2 {
+            info!("[MCP] device_refresh: waiting for the T3000 warm-up guard (attempt {})", attempt + 1);
+            tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+            continue;
+        }
+        return Ok(response);
+    }
+    Err("T3000 is still initialising, please retry shortly".to_string())
+}
+
+/// Call Action 17 (GET_WEBVIEW_LIST), transparently retrying the C++ warm-up
+/// guard, and return the raw response.
 
 /// Compact device record shared by `t3000_device_list` and `t3000_device_get`
 /// so both return an identical snake_case shape (`serial`, `name`, `is_online`).
@@ -826,6 +826,8 @@ const VALUE_SCALE: f64 = 1000.0;
 fn scaled_value(raw: Option<&str>) -> Option<f64> {
     raw.and_then(|v| v.trim().parse::<f64>().ok())
         .map(|v| (v / VALUE_SCALE * 100.0).round() / 100.0)
+        // An unused point stores -1, which rounds to -0.0; report plain 0.0.
+        .map(|v| if v == 0.0 { 0.0 } else { v })
 }
 
 /// Input range/unit text for a range or units code.
@@ -1712,9 +1714,16 @@ pub async fn execute_tool(
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type = args.get("point_type").and_then(|v| v.as_str())
                 .ok_or_else(|| "point_type required".to_string())?;
-            let point_index: i32 = args.get("point_index")
-                .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
+            let one_based_index: i32 = args.get("point_index")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;
+            if !(1..=64).contains(&one_based_index) {
+                return Err(format!(
+                    "point_index is 1-based (1..64, matching the UI: IN1 = 1); got {}",
+                    one_based_index
+                ));
+            }
+            let point_index = one_based_index - 1;
 
             let (table, idx_col) = match point_type {
                 "INPUT" => ("INPUTS", "Input_Index"),
@@ -1754,7 +1763,7 @@ pub async fn execute_tool(
                 Ok(json!({
                     "serial_number": serial,
                     "point_type": point_type,
-                    "point_index": point_index + 1,
+                    "point_index": one_based_index,
                     "label": full_label.clone().filter(|v| !v.is_empty()).or(label.clone()),
                     "short_label": label,
                     "value": scaled_value(fvalue.as_deref()),
@@ -1767,7 +1776,12 @@ pub async fn execute_tool(
                     "timestamp": Utc::now().to_rfc3339(),
                 }).to_string())
             } else {
-                Ok(json!({"error": "Point not found"}).to_string())
+                // An error, not a payload: a caller must not mistake a missing
+                // point for a successful read.
+                Err(format!(
+                    "No {} {} stored for device {} (run t3000_device_refresh to load it from the device)",
+                    point_type, one_based_index, serial
+                ))
             }
         }
 
@@ -1847,16 +1861,34 @@ pub async fn execute_tool(
                 .unwrap_or_default();
 
             let mut results: Vec<Value> = Vec::new();
+            let mut errors: Vec<Value> = Vec::new();
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let pt = point.get("point_type").and_then(|v| v.as_str());
-                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32 - 1);
-                if let (Some(sn), Some(pt), Some(idx)) = (sn, pt, idx) {
+                let one_based_index = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
+
+                // One bad entry must not sink the batch, but it must be reported
+                // instead of silently shrinking `results`.
+                let (Some(sn), Some(pt), Some(one_based_index)) = (sn, pt, one_based_index) else {
+                    errors.push(json!({ "point": point, "error": "serial_number, point_type and point_index are required" }));
+                    continue;
+                };
+                if !matches!(pt, "INPUT" | "OUTPUT" | "VARIABLE") {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                        "error": format!("Invalid point_type: {}", pt) }));
+                    continue;
+                }
+                if !(1..=64).contains(&one_based_index) {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                        "error": "point_index is 1-based (1..64, matching the UI: IN1 = 1)" }));
+                    continue;
+                }
+                let idx = one_based_index - 1;
+                {
                     let (table, label_col, value_col, units_col) = match pt {
                         "INPUT" => ("INPUTS", "Label", "fValue", "Units"),
                         "OUTPUT" => ("OUTPUTS", "Label", "fValue", "Units"),
-                        "VARIABLE" => ("VARIABLES", "Label", "fValue", "Units"),
-                        _ => continue,
+                        _ => ("VARIABLES", "Label", "fValue", "Units"),
                     };
                     let idx_col = match pt {
                         "INPUT" => "Input_Index", "OUTPUT" => "Output_Index", _ => "Variable_Index"
@@ -1888,7 +1920,7 @@ pub async fn execute_tool(
                             results.push(json!({
                                 "serial_number": sn,
                                 "point_type": pt,
-                                "point_index": idx + 1,
+                                "point_index": one_based_index,
                                 "label": full_label.clone().filter(|v| !v.is_empty()).or(label.clone()),
                                 "short_label": label,
                                 "value": val,
@@ -1899,13 +1931,20 @@ pub async fn execute_tool(
                                 "range_code": range_code,
                                 "digital": digital,
                             }));
+                        } else {
+                            errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                                "error": format!("No {} {} stored for device {} (run t3000_device_refresh to load it from the device)", pt, one_based_index, sn) }));
                         }
+                    } else {
+                        errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                            "error": "Query failed" }));
                     }
                 }
             }
 
             Ok(json!({
                 "results": results,
+                "errors": errors,
                 "requested": points.len(),
                 "returned": results.len(),
                 "timestamp": Utc::now().to_rfc3339(),
@@ -2668,8 +2707,7 @@ pub async fn execute_tool(
         }
 
         "t3000_device_refresh" => {
-            use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
-            use crate::t3_device::action17_refresh_helper::lookup_action17_target;
+            use crate::t3_device::action17_refresh_helper::{live_panel_for, lookup_action17_target};
 
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
@@ -2692,85 +2730,121 @@ pub async fn execute_tool(
                 },
             };
 
-            let (panel_id, object_instance) = lookup_action17_target(db, serial).await
-                .map_err(|e| format!("Cannot refresh device {}: {}. This may be expected for devices without BACnet/MSTP protocol settings configured.", serial, e.1))?;
+            // The DB may hold a panel id the C++ cannot use (see `live_panel_for`);
+            // when that happens — or when the C++ itself disagrees — fall back to
+            // the live panel list.
+            let mut notes: Vec<String> = Vec::new();
+            let mut resolved_live = false;
+            let (mut panel_id, mut object_instance) = match lookup_action17_target(db, serial).await {
+                Ok(target) => target,
+                Err(e) => match live_panel_for(serial).await {
+                    Some((panel, object_instance)) => {
+                        resolved_live = true;
+                        notes.push(format!("panel id taken from T3000's live panel list: {}", panel));
+                        (panel, object_instance.unwrap_or(0))
+                    }
+                    None => {
+                        return Err(format!(
+                            "Cannot refresh device {}: {}. This may be expected for devices without BACnet/MSTP protocol settings configured.",
+                            serial, e.1
+                        ))
+                    }
+                },
+            };
+            if !resolved_live && !(1..254).contains(&panel_id) {
+                match live_panel_for(serial).await {
+                    Some((panel, live_instance)) => {
+                        resolved_live = true;
+                        notes.push(format!(
+                            "panel id {} is not a T3000 panel index; using {} from the live panel list",
+                            panel_id, panel
+                        ));
+                        panel_id = panel;
+                        if let Some(instance) = live_instance {
+                            object_instance = instance;
+                        }
+                    }
+                    None => {
+                        return Err(format!(
+                            "Cannot refresh device {}: the stored panel id {} is not a T3000 panel index and the device is not in T3000's live panel list — open the device in T3000 once, then retry",
+                            serial, panel_id
+                        ))
+                    }
+                }
+            }
 
             let mut refreshed = 0usize;
             let mut persisted = 0usize;
             let mut points_by_type = serde_json::Map::new();
             let mut points = serde_json::Map::new();
             let mut errors: Vec<String> = Vec::new();
-            // A device that answers nothing (offline, wrong instance) returns an
-            // empty list, not an FFI error — reporting it as "refreshed" would lie.
-            let mut notes: Vec<String> = Vec::new();
 
             for pt in &point_types {
                 let entry_type: i32 = match *pt {
                     "INPUT" => 1, "OUTPUT" => 0, _ => 2,
                 };
-                // `objectinstance` is lower case on purpose: that is the key the
-                // C++ reads (BacnetWebView.cpp, GET_WEBVIEW_LIST), and a missing
-                // one is rejected as "The objectinstance does not match the panel".
-                // entryIndexEnd = 63 covers every point slot; the C++ clamps it to
-                // the real item count.
-                let ffi_json = json!({
-                    "action": 17,
-                    "panelId": panel_id,
-                    "serialNumber": serial,
-                    "objectinstance": object_instance,
-                    "entryType": entry_type,
-                    "entryIndexStart": 0,
-                    "entryIndexEnd": 63,
-                });
-                info!("[MCP] device_refresh: Action 17 for {} (entryType={})", pt, entry_type);
+                info!("[MCP] device_refresh: Action 17 for {} (entryType={}, panel={}, oi={})",
+                    pt, entry_type, panel_id, object_instance);
                 mcp_log(&format!("Action 17 refresh: serial={} type={}", serial, pt));
-                let ffi_service = T3000FfiApiService::new();
 
-                // The first Action 17 after T3000 loads is refused by the warm-up
-                // guard; one automatic retry keeps that transient state out of the
-                // caller's way.
-                let mut attempt = 0;
-                let outcome = loop {
-                    let result = ffi_service.call_ffi(&ffi_json.to_string()).await;
-                    let warming_up = matches!(&result, Ok(resp) if action17_warmup(resp));
-                    if warming_up && attempt == 0 {
-                        attempt += 1;
-                        info!("[MCP] device_refresh: {} waiting for the T3000 warm-up guard", pt);
-                        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
-                        continue;
-                    }
-                    break result;
-                };
-
-                match outcome {
-                    Ok(resp) => {
-                        if let Some(err) = action17_error(&resp) {
-                            error!("[MCP] device_refresh: {} rejected: {}", pt, err);
-                            points_by_type.insert(pt.to_lowercase(), json!(0));
-                            errors.push(format!("{}: {}", pt, err));
-                            continue;
-                        }
-                        let rows = action17_points(&resp);
-                        points_by_type.insert(pt.to_lowercase(), json!(rows.len()));
-                        refreshed += rows.len();
-                        if rows.is_empty() {
-                            notes.push(format!("{}: device returned no points", pt));
-                        }
-                        match persist_action17_points(db, serial, pt, &resp).await {
-                            Ok(saved) => persisted += saved,
-                            Err(e) => {
-                                error!("[MCP] device_refresh: {} save failed: {}", pt, e);
-                                errors.push(format!("{}: {} (values were read but not saved)", pt, e));
-                            }
-                        }
-                        points.insert(pt.to_lowercase(), json!(rows));
-                    }
+                let mut response = match call_action17(panel_id, serial, object_instance, entry_type).await {
+                    Ok(response) => response,
                     Err(e) => {
                         error!("[MCP] device_refresh: {} refresh failed: {}", pt, e);
                         points_by_type.insert(pt.to_lowercase(), json!(0));
                         errors.push(format!("{}: {}", pt, e));
+                        continue;
+                    }
+                };
+
+                // "The serial number/objectinstance does not match the panel" means
+                // the DB panel id points at a different panel in the C++, so take
+                // the panel from the live list and retry once.
+                if let Some(err) = action17_error(&response) {
+                    if !resolved_live && err.contains("does not match the panel") {
+                        if let Some((panel, live_instance)) = live_panel_for(serial).await {
+                            resolved_live = true;
+                            notes.push(format!(
+                                "panel id {} was rejected ({}); retried with panel {} and object instance {} from the live panel list",
+                                panel_id, err, panel, live_instance.unwrap_or(object_instance)
+                            ));
+                            panel_id = panel;
+                            if let Some(instance) = live_instance {
+                                object_instance = instance;
+                            }
+                            response = match call_action17(panel_id, serial, object_instance, entry_type).await {
+                                Ok(response) => response,
+                                Err(e) => {
+                                    errors.push(format!("{}: {}", pt, e));
+                                    points_by_type.insert(pt.to_lowercase(), json!(0));
+                                    continue;
+                                }
+                            };
+                        }
                     }
                 }
+
+                if let Some(err) = action17_error(&response) {
+                    error!("[MCP] device_refresh: {} rejected: {}", pt, err);
+                    points_by_type.insert(pt.to_lowercase(), json!(0));
+                    errors.push(format!("{}: {}", pt, err));
+                    continue;
+                }
+
+                let rows = action17_points(&response);
+                points_by_type.insert(pt.to_lowercase(), json!(rows.len()));
+                refreshed += rows.len();
+                if rows.is_empty() {
+                    notes.push(format!("{}: device returned no points", pt));
+                }
+                match persist_action17_points(db, serial, pt, &response).await {
+                    Ok(saved) => persisted += saved,
+                    Err(e) => {
+                        error!("[MCP] device_refresh: {} save failed: {}", pt, e);
+                        errors.push(format!("{}: {} (values were read but not saved)", pt, e));
+                    }
+                }
+                points.insert(pt.to_lowercase(), json!(rows));
             }
 
             let refreshed_ok = errors.is_empty() && refreshed > 0;

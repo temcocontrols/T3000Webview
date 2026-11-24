@@ -342,7 +342,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_point_read",
         title: "Read Point Value",
-        description: "Read the current value of a single point from the database (last synced value).",
+        description: "Read the current value of a single point from the database (last synced value; use t3000_device_refresh to pull fresh values from the device first). Returns the full label, short label, scaled value plus raw value, units/range text and codes, and whether the point is digital.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -356,7 +356,7 @@ lazy_static::lazy_static! {
                 },
                 "point_index": {
                     "type": "integer",
-                    "description": "1-based point index (matches UI display, e.g. out1=1)"
+                    "description": "1-based point index, 1..64 (matches UI display, e.g. IN1 = 1, out1 = 1)"
                 }
             },
             "required": ["serial_number", "point_type", "point_index"]
@@ -705,7 +705,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_device_refresh",
         title: "Refresh Device Data",
-        description: "Read the live point values of a device with FFI Action 17 (GET_WEBVIEW_LIST) — the same blocking device read T3000 performs when you open a device's inputs/outputs, so it works without loading the device in the UI first. Saves what it reads into the device database (so t3000_point_read and open pages see it immediately) and returns the values: 1-based index, scaled value, raw value and label, plus per-type counts. Optionally filter by point type.",
+        description: "Read the live point values of a device with FFI Action 17 (GET_WEBVIEW_LIST) — the same blocking device read T3000 performs when you open a device's inputs/outputs. The panel is resolved from T3000's live device list, so a stale panel id in the local database does not block it. Saves what it reads into the device database (so t3000_point_read and open pages see it immediately) and returns the values: 1-based index, scaled value, raw value and label, plus per-type counts. Optionally filter by point type.",
         input_schema: json!({
             "type": "object",
             "properties": {

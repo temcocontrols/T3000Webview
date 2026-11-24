@@ -102,15 +102,7 @@ fn test_point_batch_metadata_requires_points() {
 /// First device that actually has inputs — keeps the assertions below
 /// meaningful instead of passing on a device that no longer exists.
 async fn pick_device_with_inputs(db: &sea_orm::DatabaseConnection) -> Option<(i64, i64)> {
-    let list = common::execute_tool_json("t3000_device_list", &json!({}), db).await.ok()?;
-    list.get("devices")?.as_array()?.iter().find_map(|device| {
-        let inputs = device.get("input_count")?.as_i64()?;
-        if inputs > 0 {
-            Some((device.get("serial")?.as_i64()?, inputs))
-        } else {
-            None
-        }
-    })
+    common::pick_device_with_inputs(db).await
 }
 
 #[tokio::test]
