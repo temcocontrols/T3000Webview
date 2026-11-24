@@ -602,17 +602,14 @@ fn get_nav_pages() -> Vec<NavPage> {
     ]
 }
 
-/// Points of an FFI Action 17 (GET_WEBVIEW_LIST) response, flattened over the two
-/// shapes the C++ has been seen to send: `{ data: { device_data: [...] } }` and
-/// `{ data: [ { device_data: [...] }, ... ] }` (one entry per panel).
-///
-/// Indices are echoed 1-based (like every other point tool) and `value` is scaled
-/// the way the UI shows it, because the device reports `value × 1000`.
-pub fn action17_points(response: &str) -> Vec<Value> {
+/// RAW `device_data` rows of an FFI Action 17 (GET_WEBVIEW_LIST) response,
+/// flattened over the two shapes the C++ has been seen to send:
+/// `{ data: { device_data: [...] } }` and `{ data: [ { device_data: [...] }, ... ] }`.
+fn action17_rows(response: &str) -> Vec<Value> {
     let Ok(value) = serde_json::from_str::<Value>(response) else {
         return Vec::new();
     };
-    let rows: Vec<Value> = match value.get("data") {
+    match value.get("data") {
         Some(Value::Object(_)) => value
             .get("data")
             .and_then(|d| d.get("device_data"))
@@ -629,21 +626,26 @@ pub fn action17_points(response: &str) -> Vec<Value> {
             })
             .collect(),
         _ => Vec::new(),
-    };
+    }
+}
 
-    rows.iter()
+/// Points of an FFI Action 17 response. Indices are echoed 1-based (like every
+/// other point tool) and `value` is scaled the way the UI shows it, because the
+/// device reports `value × 1000`.
+pub fn action17_points(response: &str) -> Vec<Value> {
+    action17_rows(response)
+        .iter()
         .map(|p| {
-            let raw_value = p.get("value").and_then(|v| {
-                v.as_str()
-                    .map(str::to_string)
-                    .or_else(|| v.as_i64().map(|n| n.to_string()))
-                    .or_else(|| v.as_f64().map(|f| f.to_string()))
-            });
+            let raw_value = json_scalar_text(p.get("value"));
             json!({
                 "index": p.get("index").and_then(|v| v.as_i64()).map(|i| i + 1),
                 "id": p.get("id").cloned().unwrap_or(Value::Null),
                 "type": p.get("type").cloned().unwrap_or(Value::Null),
-                "label": p.get("label").cloned().unwrap_or(Value::Null),
+                "label": p
+                    .get("label")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim())
+                    .unwrap_or_default(),
                 "value": scaled_value(raw_value.as_deref()),
                 "raw_value": raw_value,
             })
@@ -654,6 +656,107 @@ pub fn action17_points(response: &str) -> Vec<Value> {
 /// Count the points in an FFI Action 17 response.
 pub fn count_action17_points(response: &str) -> usize {
     action17_points(response).len()
+}
+
+/// JSON number/string/bool as the TEXT the device tables store.
+fn json_scalar_text(value: Option<&Value>) -> Option<String> {
+    match value? {
+        Value::String(s) => Some(s.trim().to_string()),
+        Value::Number(n) => Some(n.to_string()),
+        Value::Bool(b) => Some(if *b { "1" } else { "0" }.to_string()),
+        _ => None,
+    }
+}
+
+/// Write the points an Action 17 response returned into the device table, the
+/// same way T3000's UI refresh does, then flag a UI_REFRESH sync so open pages
+/// reload. Fields the device did not report keep their stored value.
+pub async fn persist_action17_points(
+    db: &sea_orm::DatabaseConnection,
+    serial: i32,
+    point_type: &str,
+    response: &str,
+) -> Result<usize, String> {    use sea_orm::{DatabaseBackend, Statement, Value as SqlValue};
+
+    let (table, index_column, data_type) = match point_type {
+        "INPUT" => ("INPUTS", "Input_Index", "INPUTS"),
+        "OUTPUT" => ("OUTPUTS", "Output_Index", "OUTPUTS"),
+        _ => ("VARIABLES", "Variable_Index", "VARIABLES"),
+    };
+
+    // Every column is TEXT in the device schema; COALESCE keeps what is stored
+    // when the device omits a field (outputs carry no `unit`, for example).
+    let sql = format!(
+        "UPDATE {} SET
+            Full_Label = COALESCE(?, Full_Label),
+            Label = COALESCE(?, Label),
+            fValue = COALESCE(?, fValue),
+            Units = COALESCE(?, Units),
+            Range_Field = COALESCE(?, Range_Field),
+            Auto_Manual = COALESCE(?, Auto_Manual),
+            Control = COALESCE(?, Control),
+            Digital_Analog = COALESCE(?, Digital_Analog),
+            Filter_Field = COALESCE(?, Filter_Field),
+            Calibration_Sign = COALESCE(?, Calibration_Sign),
+            Panel = COALESCE(?, Panel)
+        WHERE SerialNumber = ? AND {} = ?",
+        table, index_column
+    );
+
+    let mut updated = 0usize;
+    for point in action17_rows(response) {
+        let Some(index) = point.get("index").and_then(|v| v.as_i64()) else {
+            continue;
+        };
+        // Inputs report the range twice (`range` and `unit`); outputs only `range`.
+        let units = point.get("unit").or_else(|| point.get("range"));
+        let params = vec![
+            json_scalar_text(point.get("description")),
+            json_scalar_text(point.get("label")),
+            json_scalar_text(point.get("value")),
+            json_scalar_text(units),
+            json_scalar_text(point.get("range")),
+            json_scalar_text(point.get("auto_manual")),
+            json_scalar_text(point.get("control")),
+            json_scalar_text(point.get("digital_analog")),
+            json_scalar_text(point.get("filter")),
+            json_scalar_text(point.get("calibration_sign")),
+            json_scalar_text(point.get("pid")),
+        ]
+        .into_iter()
+        .map(|v| v.map(SqlValue::from).unwrap_or(SqlValue::String(None)))
+        .chain(vec![
+            SqlValue::from(serial),
+            SqlValue::from(index.to_string()),
+        ])
+        .collect::<Vec<_>>();
+
+        let result = db
+            .execute(Statement::from_sql_and_values(DatabaseBackend::Sqlite, &sql, params))
+            .await
+            .map_err(|e| format!("Failed to save {} points: {}", point_type, e))?;
+        updated += result.rows_affected() as usize;
+    }
+
+    if updated > 0 {
+        use crate::server_db::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
+        // "UI_REFRESH" is the method the pages already react to, and it is what a
+        // manual refresh from the UI records — the MCP refresh is the same thing.
+        let request = InsertSyncMetadataRequest {
+            data_type: data_type.to_string(),
+            serial_number: serial.to_string(),
+            panel_id: None,
+            records_synced: updated as i32,
+            sync_method: "UI_REFRESH".to_string(),
+            success: true,
+            error_message: None,
+        };
+        if let Err(e) = DataSyncMetadataService::insert_sync_metadata(db, request).await {
+            tracing::warn!("[MCP] device_refresh: {} sync metadata failed: {}", point_type, e);
+        }
+    }
+
+    Ok(updated)
 }
 
 /// C++ reports failures as `{ "error": "..." }` (see `WrapErrorMessage`), and
@@ -677,6 +780,14 @@ fn action17_error(response: &str) -> Option<String> {
         );
     }
     None
+}
+
+/// The C++ refuses Action 17 during the first seconds after load and answers
+/// with `code: T3000_WARMUP` — a retry, not an error.
+fn action17_warmup(response: &str) -> bool {
+    serde_json::from_str::<Value>(response)
+        .map(|v| v.get("code").and_then(|c| c.as_str()) == Some("T3000_WARMUP"))
+        .unwrap_or(false)
 }
 
 /// Compact device record shared by `t3000_device_list` and `t3000_device_get`
@@ -2585,6 +2696,7 @@ pub async fn execute_tool(
                 .map_err(|e| format!("Cannot refresh device {}: {}. This may be expected for devices without BACnet/MSTP protocol settings configured.", serial, e.1))?;
 
             let mut refreshed = 0usize;
+            let mut persisted = 0usize;
             let mut points_by_type = serde_json::Map::new();
             let mut points = serde_json::Map::new();
             let mut errors: Vec<String> = Vec::new();
@@ -2613,7 +2725,24 @@ pub async fn execute_tool(
                 info!("[MCP] device_refresh: Action 17 for {} (entryType={})", pt, entry_type);
                 mcp_log(&format!("Action 17 refresh: serial={} type={}", serial, pt));
                 let ffi_service = T3000FfiApiService::new();
-                match ffi_service.call_ffi(&ffi_json.to_string()).await {
+
+                // The first Action 17 after T3000 loads is refused by the warm-up
+                // guard; one automatic retry keeps that transient state out of the
+                // caller's way.
+                let mut attempt = 0;
+                let outcome = loop {
+                    let result = ffi_service.call_ffi(&ffi_json.to_string()).await;
+                    let warming_up = matches!(&result, Ok(resp) if action17_warmup(resp));
+                    if warming_up && attempt == 0 {
+                        attempt += 1;
+                        info!("[MCP] device_refresh: {} waiting for the T3000 warm-up guard", pt);
+                        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+                        continue;
+                    }
+                    break result;
+                };
+
+                match outcome {
                     Ok(resp) => {
                         if let Some(err) = action17_error(&resp) {
                             error!("[MCP] device_refresh: {} rejected: {}", pt, err);
@@ -2626,6 +2755,13 @@ pub async fn execute_tool(
                         refreshed += rows.len();
                         if rows.is_empty() {
                             notes.push(format!("{}: device returned no points", pt));
+                        }
+                        match persist_action17_points(db, serial, pt, &resp).await {
+                            Ok(saved) => persisted += saved,
+                            Err(e) => {
+                                error!("[MCP] device_refresh: {} save failed: {}", pt, e);
+                                errors.push(format!("{}: {} (values were read but not saved)", pt, e));
+                            }
                         }
                         points.insert(pt.to_lowercase(), json!(rows));
                     }
@@ -2648,6 +2784,7 @@ pub async fn execute_tool(
             Ok(json!({
                 "refreshed": refreshed_ok,
                 "points_updated": refreshed,
+                "points_saved": persisted,
                 "points_by_type": points_by_type,
                 "points": points,
                 "panel_id": panel_id,

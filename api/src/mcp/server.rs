@@ -80,8 +80,13 @@ pub(crate) async fn track_current_device(args: &Value) {
         // are read by `t3000_device_current` / GET /api/mcp/current-device.
         // Rewriting the file wholesale erased them on every tool call.
         let _ = update_device_context(|state| {
-            state["last_tool_device"] = json!(sn);
-            state["updated_at"] = json!(Utc::now().to_rfc3339());
+            if let Some(object) = state.as_object_mut() {
+                // Older builds stored this tool's serial as `serial`, which reads
+                // like a current-device answer; `last_tool_device` replaces it.
+                object.remove("serial");
+                object.insert("last_tool_device".to_string(), json!(sn));
+                object.insert("updated_at".to_string(), json!(Utc::now().to_rfc3339()));
+            }
         })
         .await;
     }

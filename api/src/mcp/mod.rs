@@ -41,6 +41,6 @@ pub mod dispatch;
 
 // Re-export commonly used items for convenience
 pub use server::{create_mcp_routes, mcp_post_handler, mcp_sse_handler, mcp_delete_handler};
-pub use dispatch::{execute_tool, action17_points, count_action17_points};
+pub use dispatch::{execute_tool, action17_points, count_action17_points, persist_action17_points};
 pub use tools::TOOLS;
 pub use types::ToolDef;

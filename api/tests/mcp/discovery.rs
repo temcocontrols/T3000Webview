@@ -168,6 +168,68 @@ async fn test_device_refresh_rejects_unknown_point_type() {
     );
 }
 
+// ═══ Action 17 response → device table ═══
+
+/// A refresh must land in the device table, and must never blank a stored field
+/// the device did not report (outputs carry no `unit`).
+#[tokio::test]
+async fn test_persist_action17_points_updates_and_keeps_missing_fields() {
+    use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+
+    let Some(db) = common::memory_db().await else { return };
+
+    let create = "CREATE TABLE INPUTS (
+        SerialNumber INTEGER, InputId TEXT, Input_Index TEXT, Panel TEXT,
+        Full_Label TEXT, Auto_Manual TEXT, fValue TEXT, Units TEXT,
+        Range_Field TEXT, Calibration TEXT, Sign TEXT, Filter_Field TEXT,
+        Status TEXT, Digital_Analog TEXT, Label TEXT, Type_Field TEXT,
+        Calibration_H TEXT, Calibration_L TEXT, Calibration_Sign TEXT, Control TEXT)";
+    db.execute(Statement::from_string(DatabaseBackend::Sqlite, create)).await.unwrap();
+    db.execute(Statement::from_string(DatabaseBackend::Sqlite,
+        "INSERT INTO INPUTS (SerialNumber, InputId, Input_Index, Panel, Full_Label, Label, fValue, \
+         Units, Range_Field, Digital_Analog, Sign, Control) \
+         VALUES (1028, 'IN1', '0', '1', 'OLD LABEL', 'OLD', '23900', '3', '3', '1', '7', '1')"))
+        .await.unwrap();
+
+    // `unit` wins over `range` for the Units column, as the C++ reports both.
+    let response = r#"{"data":{"device_data":[{
+        "pid":1,"type":"INPUT","index":0,"id":"IN1",
+        "description":"TEMPERATURE ","label":"TEMP  ","value":20800,
+        "unit":27,"range":3,"auto_manual":1,"control":1,"digital_analog":1
+    }]}}"#;
+
+    let saved = t3_webview_api::mcp::persist_action17_points(&db, 1028, "INPUT", response)
+        .await
+        .expect("persist must succeed");
+    assert_eq!(saved, 1, "one row must be updated");
+
+    let row = db
+        .query_one(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "SELECT Full_Label, Label, fValue, Units, Range_Field, Auto_Manual, \
+             Digital_Analog, Sign, Panel FROM INPUTS WHERE SerialNumber = 1028 AND Input_Index = '0'",
+        ))
+        .await
+        .unwrap()
+        .expect("row must still exist");
+
+    let full: String = row.try_get("", "Full_Label").unwrap();
+    let label: String = row.try_get("", "Label").unwrap();
+    let value: String = row.try_get("", "fValue").unwrap();
+    let units: String = row.try_get("", "Units").unwrap();
+    let range: String = row.try_get("", "Range_Field").unwrap();
+    let auto_manual: String = row.try_get("", "Auto_Manual").unwrap();
+    let sign: String = row.try_get("", "Sign").unwrap();
+
+    assert_eq!(full, "TEMPERATURE", "description is stored trimmed");
+    assert_eq!(label, "TEMP");
+    assert_eq!(value, "20800", "the raw ×1000 value is stored, not the scaled one");
+    assert_eq!(units, "27", "`unit` feeds Units");
+    assert_eq!(range, "3");
+    assert_eq!(auto_manual, "1");
+    assert_eq!(sign, "7", "a field the device did not report keeps its stored value");
+}
+
 // ═══ Live scans (explicit: --ignored) ═══
 
 #[tokio::test]

@@ -120,7 +120,7 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
 |---|---|---|---|
 | 28 | `t3000_trendlog_list` | `serial_number: int` | `[{ log_id, point_type, point_index, label, interval }]` |
 | 29 | `t3000_trendlog_export` | `serial_number: int`, `format?: string` | `{ filename, data, format }` |
-| 30 | `t3000_device_refresh` | `serial_number: int`, `point_type?: INPUT\|OUTPUT\|VARIABLE` | `{ refreshed, points_updated, points_by_type, points, panel_id, object_instance, errors, notes }` |
+| 30 | `t3000_device_refresh` | `serial_number: int`, `point_type?: INPUT\|OUTPUT\|VARIABLE` | `{ refreshed, points_updated, points_saved, points_by_type, points, panel_id, object_instance, errors, notes }` |
 | 31 | `t3000_schedule_list` | `serial_number: int` | `[{ schedule_id, name, days, periods }]` |
 
 ### 3.9 Settings — 3 tools (new)

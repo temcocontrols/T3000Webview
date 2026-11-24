@@ -705,7 +705,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_device_refresh",
         title: "Refresh Device Data",
-        description: "Read the live point values of a device with FFI Action 17 (GET_WEBVIEW_LIST). This is the same blocking device read T3000 performs when you open the device's inputs/outputs, so it works without loading the device in the UI first. Returns the values it read (index is 1-based, value is scaled like the UI shows it) plus per-type counts. T3000 writes these values into its own database on its normal sync cycle; use t3000_point_read for what is already stored.",
+        description: "Read the live point values of a device with FFI Action 17 (GET_WEBVIEW_LIST) — the same blocking device read T3000 performs when you open a device's inputs/outputs, so it works without loading the device in the UI first. Saves what it reads into the device database (so t3000_point_read and open pages see it immediately) and returns the values: 1-based index, scaled value, raw value and label, plus per-type counts. Optionally filter by point type.",
         input_schema: json!({
             "type": "object",
             "properties": {

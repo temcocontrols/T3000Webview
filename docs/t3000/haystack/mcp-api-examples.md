@@ -526,7 +526,7 @@ Export all historical data from a trendlog in one call. Queries every point in t
 
 ### `t3000_device_refresh` — Force refresh from hardware
 
-Read point data directly from the physical device via the C++ FFI layer (Action 17, the same blocking read T3000 performs when you open a device's inputs/outputs). It returns the values it read — 1-based `index`, `id`, `label`, `value` scaled the way the UI shows it, plus `raw_value` — together with per-type counts. T3000 writes those values into its own database on its normal sync cycle; use `t3000_point_read` for what is already stored. Optionally filter by point type to read only inputs, outputs, or variables.
+Read point data directly from the physical device via the C++ FFI layer (Action 17 — the same blocking read T3000 performs when you open a device's inputs/outputs) and save it into the device database, so `t3000_point_read` and open pages show it immediately. The response returns what was read — 1-based `index`, `id`, `label`, `value` scaled the way the UI shows it, plus `raw_value` — with `points_saved`, per-type counts and any `errors` the device reported. Optionally filter by point type to read only inputs, outputs, or variables.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
