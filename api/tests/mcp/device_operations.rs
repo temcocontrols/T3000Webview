@@ -5,6 +5,7 @@
 //! These 14 tools cover device configuration, control logic, and system overview.
 //! All require a live database connection.
 
+use sea_orm::{ConnectionTrait, DatabaseConnection, Statement};
 use serde_json::json;
 use crate::mcp::common;
 
@@ -436,6 +437,238 @@ async fn test_device_delete_requires_confirmation() {
             Ok(_) => panic!("device_delete without confirm must be rejected"),
             Err(e) => assert!(e.contains("confirm"), "error should mention confirm: {}", e),
         }
+    })
+    .await;
+}
+
+/// An unknown serial must be a clean "not found" — never a half-run delete.
+#[tokio::test]
+async fn test_device_delete_unknown_serial_is_not_found() {
+    common::with_db_or_skip("device_delete_unknown_serial", |db| async move {
+        let err = common::execute_tool(
+            "t3000_device_delete",
+            &json!({"serial_number": 987654, "confirm": true}),
+            &db,
+        )
+        .await
+        .expect_err("deleting a device that does not exist must fail");
+        assert!(
+            err.to_lowercase().contains("not found") || err.to_lowercase().contains("locked"),
+            "the error should explain the failure: {}", err
+        );
+    })
+    .await;
+}
+
+// ═══ t3000_settings_write / settings_read round trip ═══
+
+#[tokio::test]
+async fn test_settings_write_rejects_unknown_device_and_field() {
+    common::with_db_or_skip("settings_write_rejects_bad_input", |db| async move {
+        let err = common::execute_tool(
+            "t3000_settings_write",
+            &json!({"serial_number": 987654, "category": "network",
+                    "fields": {"IP_Address": "1.2.3.4"}, "confirm": true}),
+            &db,
+        )
+        .await
+        .expect_err("writing settings for an unknown device must fail");
+        assert!(err.to_lowercase().contains("not found"), "got: {}", err);
+
+        let serial = common::pick_device_with_inputs(&db).await
+            .map(|(s, _)| s)
+            .expect("a device with points is needed");
+
+        let err = common::execute_tool(
+            "t3000_settings_write",
+            &json!({"serial_number": serial, "category": "network",
+                    "fields": {"Nonsense_Field": 1}, "confirm": true}),
+            &db,
+        )
+        .await
+        .expect_err("an unknown field must be rejected");
+        assert!(err.contains("not allowed"), "got: {}", err);
+
+        let err = common::execute_tool(
+            "t3000_settings_write",
+            &json!({"serial_number": serial, "category": "nonsense",
+                    "fields": {"IP_Address": "1.2.3.4"}, "confirm": true}),
+            &db,
+        )
+        .await
+        .expect_err("an unknown category must be rejected");
+        assert!(err.to_lowercase().contains("unknown category"), "got: {}", err);
+
+        let err = common::execute_tool(
+            "t3000_settings_write",
+            &json!({"serial_number": serial, "category": "network",
+                    "fields": {"IP_Address": "1.2.3.4"}}),
+            &db,
+        )
+        .await
+        .expect_err("settings_write must require confirm");
+        assert!(err.to_lowercase().contains("confirm"), "got: {}", err);
+    })
+    .await;
+}
+
+/// Writes a temporary network settings row, reads it back (numeric columns
+/// included) and removes it again.
+#[tokio::test]
+async fn test_settings_write_then_read_round_trip() {
+    common::with_db_or_skip("settings_write_read_round_trip", |db| async move {
+        let rows = db
+            .query_all(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                "SELECT SerialNumber FROM DEVICES
+                 WHERE SerialNumber NOT IN (SELECT SerialNumber FROM NETWORK_SETTINGS)
+                 ORDER BY SerialNumber LIMIT 1",
+            ))
+            .await
+            .expect("device query should succeed");
+        let serial = match rows.first().and_then(|r| r.try_get::<i32>("", "SerialNumber").ok()) {
+            Some(serial) => serial as i64,
+            None => {
+                println!("every device already has a NETWORK_SETTINGS row — skipping");
+                return;
+            }
+        };
+
+        common::execute_tool_json(
+            "t3000_settings_write",
+            &json!({"serial_number": serial, "category": "network",
+                    "fields": {"IP_Address": "10.11.12.13", "TCP_Type": 2},
+                    "confirm": true}),
+            &db,
+        )
+        .await
+        .expect("settings_write should succeed for a real device");
+
+        let read = common::execute_tool_json(
+            "t3000_settings_read",
+            &json!({"serial_number": serial, "category": "network"}),
+            &db,
+        )
+        .await
+        .expect("settings_read should succeed");
+
+        let network = read.get("network").expect("network category must be present");
+        assert_eq!(common::get_str(network, "IP_Address"), Some("10.11.12.13"),
+            "the written value must be read back: {}", network);
+        // TCP_Type is numeric in the table and used to be dropped from the response.
+        assert!(network.get("TCP_Type").map(|v| !v.is_null()).unwrap_or(false),
+            "numeric settings columns must be returned: {}", network);
+
+        let cleanup = format!("DELETE FROM NETWORK_SETTINGS WHERE SerialNumber = {}", serial);
+        let _ = db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &cleanup)).await;
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn test_settings_read_explains_missing_data() {
+    common::with_db_or_skip("settings_read_explains_missing", |db| async move {
+        let rows = db
+            .query_all(Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                "SELECT SerialNumber FROM DEVICES
+                 WHERE SerialNumber NOT IN (SELECT SerialNumber FROM NETWORK_SETTINGS)
+                 ORDER BY SerialNumber LIMIT 1",
+            ))
+            .await
+            .expect("device query should succeed");
+        let serial = match rows.first().and_then(|r| r.try_get::<i32>("", "SerialNumber").ok()) {
+            Some(serial) => serial as i64,
+            None => return,
+        };
+
+        let read = common::execute_tool_json(
+            "t3000_settings_read",
+            &json!({"serial_number": serial}),
+            &db,
+        )
+        .await
+        .expect("settings_read should succeed");
+
+        assert!(common::get_str(&read, "note").is_some(),
+            "a device with no synced settings must say so instead of returning all nulls: {}", read);
+    })
+    .await;
+}
+
+// ═══ t3000_device_control ═══
+
+/// Only the rejection paths: a real reboot must never be sent by a test.
+#[tokio::test]
+async fn test_device_control_rejects_unknown_device_and_command() {
+    common::with_db_or_skip("device_control_rejects", |db| async move {
+        let err = common::execute_tool(
+            "t3000_device_control",
+            &json!({"serial_number": 987654, "command": "reboot", "confirm": true}),
+            &db,
+        )
+        .await
+        .expect_err("a command for a device that does not exist must fail, not report success");
+        assert!(err.to_lowercase().contains("not found"), "got: {}", err);
+
+        let serial = common::pick_device_with_inputs(&db).await
+            .map(|(s, _)| s)
+            .expect("a device with points is needed");
+
+        let err = common::execute_tool(
+            "t3000_device_control",
+            &json!({"serial_number": serial, "command": "nonsense", "confirm": true}),
+            &db,
+        )
+        .await
+        .expect_err("an unknown command must be rejected");
+        assert!(err.contains("Unknown command"), "got: {}", err);
+
+        let err = common::execute_tool(
+            "t3000_device_control",
+            &json!({"serial_number": serial, "command": "reboot"}),
+            &db,
+        )
+        .await
+        .expect_err("device_control must require confirm");
+        assert!(err.to_lowercase().contains("confirm"), "got: {}", err);
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn test_schedule_list_matches_the_database() {
+    common::with_db_or_skip("schedule_list_matches_db", |db| async move {
+        let rows = db
+            .query_all(Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                "SELECT SerialNumber, COUNT(*) AS n FROM SCHEDULES
+                 GROUP BY SerialNumber ORDER BY n DESC LIMIT 1",
+            ))
+            .await
+            .expect("schedule query should succeed");
+        let row = match rows.first() {
+            Some(row) => row,
+            None => {
+                println!("no schedules in this DB — skipping");
+                return;
+            }
+        };
+        let serial = row.try_get::<i32>("", "SerialNumber").unwrap() as i64;
+        let expected = row.try_get::<i32>("", "n").unwrap() as usize;
+
+        let result = common::execute_tool_json(
+            "t3000_schedule_list",
+            &json!({"serial_number": serial}),
+            &db,
+        )
+        .await
+        .expect("should succeed");
+
+        assert_eq!(common::array_len(&result, "schedules"), expected,
+            "device {} has {} schedules in the DB", serial, expected);
+        assert_eq!(common::get_i64(&result, "total").unwrap_or(-1) as usize, expected,
+            "total must match the schedules array");
     })
     .await;
 }

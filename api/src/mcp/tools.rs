@@ -619,7 +619,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_trendlog_query",
         title: "Query Trend Log",
-        description: "Query historical trend data for a point over a time range.",
+        description: "Query historical trend data for one point over a time range. point_index is 1-based (1..64) and only that point's samples are returned. Fails when the point is not logged or has no recorded history.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -759,7 +759,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_settings_write",
         title: "Update Device Settings",
-        description: "Update device settings. Supports network (ip_address, subnet, gateway, tcp_type), communication (com0/1/2_config, com_baudrate0/1/2), time (time_zone, enable_sntp, sntp_server, flag_time_sync_pc), and email (smtp_server, smtp_port, email_address, etc.). Writes to database and syncs to device via FFI.",
+        description: "Update device settings in the webview database. Supports network (ip_address, subnet, gateway, tcp_type), communication (com0/1/2_config, com_baudrate0/1/2), time (time_zone, enable_sntp, sntp_server, flag_time_sync_pc), and email (smtp_server, smtp_port, email_address, etc.). The device must already exist; values are validated against the category's allowed fields. This writes the database row only — it does not push to the controller.",
         input_schema: json!({
             "type": "object",
             "properties": {

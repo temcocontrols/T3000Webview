@@ -826,6 +826,43 @@ fn action17_warmup(response: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Resolve the identity a point has inside the trendlog history store.
+///
+/// `TRENDLOG_INPUTS` lists the configured points with a **0-based**
+/// `Point_Index`, while `TRENDLOG_DATA` — the parent of every
+/// `TRENDLOG_DATA_DETAIL` sample — holds the canonical `PointId` (`IN1`,
+/// `OUT12`, `VAR3`) with a **1-based** `PointIndex`. `get_trendlog_history`
+/// filters on `PointId` + `PointType`, so a synthesised `dev<serial>.in<idx>`
+/// never matches and the history comes back empty.
+///
+/// Returns `(point_id, point_index, panel_id)`.
+async fn trendlog_point_identity(
+    db: &sea_orm::DatabaseConnection,
+    serial: i32,
+    point_type: &str,
+    point_index_1based: i32,
+) -> Option<(String, i32, i32)> {
+    let sql = format!(
+        "SELECT PointId, CAST(PointIndex AS INTEGER) AS idx, PanelId
+         FROM TRENDLOG_DATA
+         WHERE SerialNumber = {} AND PointType = '{}' AND CAST(PointIndex AS INTEGER) = {}
+         LIMIT 1",
+        serial,
+        point_type.replace('\'', "''"),
+        point_index_1based
+    );
+    let rows = db
+        .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
+        .await
+        .ok()?;
+    let row = rows.first()?;
+    Some((
+        row.try_get::<String>("", "PointId").ok()?,
+        row.try_get::<i32>("", "idx").unwrap_or(point_index_1based),
+        row.try_get::<i32>("", "PanelId").unwrap_or(0),
+    ))
+}
+
 /// Call Action 17 (GET_WEBVIEW_LIST), transparently retrying the C++ warm-up
 /// guard, and return the raw response.
 ///
@@ -2638,6 +2675,7 @@ pub async fn execute_tool(
                         "source": r.try_get::<String>("", "source").ok(),
                         "acknowledged": r.try_get::<String>("", "acknowledged").ok(),
                         "time_stamp": r.try_get::<String>("", "time_stamp").ok(),
+                        "description": r.try_get::<String>("", "description").ok(),
                     })
                 })
                 .collect();
@@ -2657,17 +2695,28 @@ pub async fn execute_tool(
                 .ok_or_else(|| "alarm_id required".to_string())?;
 
             let now = Utc::now().to_rfc3339();
-            let sql = format!(
-                "UPDATE ALARMS SET Acknowledged = '1' WHERE SerialNumber = {} AND Alarm_ID = '{}'",
-                serial, alarm_id
-            );
-            db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
+            // Alarm_ID comes from the caller, so it must be bound rather than
+            // interpolated: `X' OR '1'='1` would acknowledge every alarm.
+            let result = db
+                .execute(sea_orm::Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    "UPDATE ALARMS SET Acknowledged = '1' WHERE SerialNumber = ? AND Alarm_ID = ?",
+                    vec![serial.into(), alarm_id.into()],
+                ))
                 .await
                 .map_err(|e| format!("Acknowledge failed: {}", e))?;
+
+            if result.rows_affected() == 0 {
+                return Err(format!(
+                    "Alarm '{}' not found on device {}. Use t3000_alarm_list to see the current alarms.",
+                    alarm_id, serial
+                ));
+            }
 
             Ok(json!({
                 "success": true,
                 "alarm_id": alarm_id,
+                "acknowledged": true,
                 "acknowledged_at": now,
             }).to_string())
         }
@@ -2678,9 +2727,17 @@ pub async fn execute_tool(
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type = args.get("point_type").and_then(|v| v.as_str())
                 .ok_or_else(|| "point_type required".to_string())?;
-            let point_index: i32 = args.get("point_index")
-                .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
+            let point_index_1based: i32 = args.get("point_index")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;
+            if !(1..=64).contains(&point_index_1based) {
+                return Err(format!(
+                    "point_index is 1-based (1..64), got {}",
+                    point_index_1based
+                ));
+            }
+            // TRENDLOG_INPUTS stores point indexes 0-based.
+            let point_index = point_index_1based - 1;
             let start = args.get("start").and_then(|v| v.as_str()).map(String::from)
                 .ok_or_else(|| "start time required".to_string())?;
             let end = args.get("end").and_then(|v| v.as_str()).map(String::from);
@@ -2698,16 +2755,31 @@ pub async fn execute_tool(
                 .map_err(|e| format!("Trendlog lookup failed: {}", e))?;
 
             if tl_rows.is_empty() {
-                return Ok(json!({
-                    "error": "No trendlog found for this point",
-                    "serial_number": serial,
-                    "point_type": point_type,
-                    "point_index": point_index + 1,
-                }).to_string());
+                return Err(format!(
+                    "No trendlog is logging {} {} on device {}. Use t3000_trendlog_list to see the trendlogs, or t3000_trendlog_query on a logged point.",
+                    point_type, point_index_1based, serial
+                ));
             }
 
             let trendlog_id: String = tl_rows[0].try_get("", "Trendlog_ID").unwrap_or_default();
             let panel_id: i32 = tl_rows[0].try_get::<i32>("", "PanelId").unwrap_or(0);
+
+            // Only the requested point may come back: without this filter the
+            // service returns every point in the trendlog.
+            let specific_points = match trendlog_point_identity(db, serial, point_type, point_index_1based).await {
+                Some((point_id, idx, panel)) => Some(vec![SpecificPoint {
+                    point_id,
+                    point_type: point_type.to_string(),
+                    point_index: idx,
+                    panel_id: panel,
+                }]),
+                None => {
+                    return Err(format!(
+                        "No trendlog history is recorded for {} {} on device {} (nothing in TRENDLOG_DATA).",
+                        point_type, point_index_1based, serial
+                    ))
+                }
+            };
 
             let request = TrendlogHistoryRequest {
                 serial_number: serial,
@@ -2717,7 +2789,7 @@ pub async fn execute_tool(
                 end_time: end,
                 limit: Some(limit),
                 point_types: None,
-                specific_points: None,
+                specific_points,
             };
 
             let result = T3TrendlogDataService::get_trendlog_history(db, request)
@@ -2794,22 +2866,39 @@ pub async fn execute_tool(
             let pt_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &pts_sql)).await
                 .map_err(|e| format!("Point lookup failed: {}", e))?;
 
-            let specific_points: Vec<SpecificPoint> = pt_rows.iter()
-                .filter_map(|r| {
+            let specific_points: Vec<SpecificPoint> = {
+                let mut points = Vec::new();
+                let mut without_history = 0usize;
+                for r in &pt_rows {
                     let pt: String = r.try_get("", "Point_Type").unwrap_or_default();
-                    let idx: i32 = r.try_get("", "Point_Index").unwrap_or(0);
-                    let pt_abbr = match pt.as_str() { "INPUT" => "in", "OUTPUT" => "out", _ => "var" };
-                    Some(SpecificPoint {
-                        point_id: format!("dev{}.{}{}", serial, pt_abbr, idx),
-                        point_type: pt,
-                        point_index: idx,
-                        panel_id,
-                    })
-                })
-                .collect();
+                    let idx0: i32 = r.try_get("", "Point_Index").unwrap_or(0);
+                    // TRENDLOG_INPUTS is 0-based; TRENDLOG_DATA.PointIndex is 1-based.
+                    match trendlog_point_identity(db, serial, &pt, idx0 + 1).await {
+                        Some((point_id, idx, panel)) => points.push(SpecificPoint {
+                            point_id,
+                            point_type: pt,
+                            point_index: idx,
+                            panel_id: panel,
+                        }),
+                        None => without_history += 1,
+                    }
+                }
+                if without_history > 0 {
+                    info!(
+                        "[MCP] trendlog_export: {} of the configured points have no recorded history yet",
+                        without_history
+                    );
+                }
+                points
+            };
 
             if specific_points.is_empty() {
-                return Ok(json!({"error": "No points found in trendlog", "trendlog_id": trendlog_id}).to_string());
+                return Err(format!(
+                    "Trendlog '{}' on device {} has no recorded history yet ({} configured point(s) have nothing in TRENDLOG_DATA).",
+                    trendlog_id,
+                    serial,
+                    pt_rows.len()
+                ));
             }
 
             let point_count = specific_points.len();
@@ -2836,16 +2925,29 @@ pub async fn execute_tool(
                     let data = result.get("data").and_then(|d| d.as_array()).cloned().unwrap_or_default();
                     let mut csv = String::from("timestamp,point_type,point_index,point_id,value,units,range,digital_analog\n");
                     for row in &data {
-                        let ts = row.get("logging_time_fmt").or_else(|| row.get("logging_time"))
+                        // History rows carry `time`/`timestamp` and a numeric `value`;
+                        // reading only `logging_time_fmt` + a string `value` produced
+                        // rows with an empty timestamp and an empty value column.
+                        let ts = row.get("time").or_else(|| row.get("timestamp"))
+                            .or_else(|| row.get("logging_time_fmt"))
                             .and_then(|v| v.as_str()).unwrap_or("");
                         let pt = row.get("point_type").and_then(|v| v.as_str()).unwrap_or("");
                         let idx = row.get("point_index").and_then(|v| v.as_i64()).map(|n| n.to_string()).unwrap_or_default();
                         let pid = row.get("point_id").and_then(|v| v.as_str()).unwrap_or("");
-                        let val = row.get("value").and_then(|v| v.as_str()).unwrap_or("");
+                        let val = match row.get("value") {
+                            Some(Value::Number(n)) => n.to_string(),
+                            Some(Value::String(s)) => s.clone(),
+                            _ => row.get("raw_value").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                        };
                         let units = row.get("units").and_then(|v| v.as_str()).unwrap_or("");
-                        let range = row.get("range_field").and_then(|v| v.as_str()).unwrap_or("");
-                        let da = row.get("digital_analog").and_then(|v| v.as_str()).unwrap_or("");
-                        csv.push_str(&format!("{},{},{},{},{},{},{},{}\n",
+                        let range = row.get("range").or_else(|| row.get("range_field"))
+                            .and_then(|v| v.as_str()).unwrap_or("");
+                        let da = row.get("digital_analog").and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                            .or_else(|| row.get("is_analog").and_then(|v| v.as_bool())
+                                .map(|analog| if analog { "1".to_string() } else { "0".to_string() }))
+                            .unwrap_or_default();
+                        csv.push_str(&format!("{},{},{},{},\"{}\",\"{}\",\"{}\",{}\n",
                             ts, pt, idx, pid, val, units, range, da));
                     }
                     Ok(json!({
@@ -2855,14 +2957,23 @@ pub async fn execute_tool(
                         "total_points": point_count,
                     }).to_string())
                 }
-                _ => {
+                "json" => {
+                    // Same shape as the csv branch so a client can read
+                    // `total_rows`/`total_points` without knowing the format.
+                    let row_count = result
+                        .get("data")
+                        .and_then(|d| d.as_array())
+                        .map(|a| a.len())
+                        .unwrap_or(0);
                     serde_json::to_string_pretty(&json!({
                         "format": "json",
                         "data": result,
+                        "total_rows": row_count,
                         "total_points": point_count,
                     }))
                     .map_err(|e| format!("Serialize error: {}", e))
                 }
+                _ => Err(format!("Unknown export format: {}. Use csv or json", format)),
             }
         }
 
@@ -3089,9 +3200,18 @@ pub async fn execute_tool(
                 let row = &rows[0];
                 let mut obj = serde_json::Map::new();
                 for col in columns {
-                    if let Ok(v) = row.try_get::<String>("", col) {
-                        obj.insert(col.to_string(), json!(v));
-                    }
+                    // Settings columns mix TEXT and INTEGER; reading everything as a
+                    // string silently dropped the numeric ones.
+                    let value = if let Ok(v) = row.try_get::<String>("", col) {
+                        json!(v)
+                    } else if let Ok(v) = row.try_get::<i64>("", col) {
+                        json!(v)
+                    } else if let Ok(v) = row.try_get::<f64>("", col) {
+                        json!(v)
+                    } else {
+                        Value::Null
+                    };
+                    obj.insert(col.to_string(), value);
                 }
                 Ok(json!(obj))
             }
@@ -3109,16 +3229,32 @@ pub async fn execute_tool(
 
             if let Some(cat) = category {
                 if let Some((key, table, cols)) = cats.iter().find(|(k, _, _)| *k == cat) {
-                    let data = read_table(db, serial, table, cols).await.unwrap_or(json!(null));
+                    let data = read_table(db, serial, table, cols).await?;
                     result.as_object_mut().unwrap().insert(key.to_string(), data);
                 } else {
                     return Err(format!("Unknown category: {}. Valid: network, communication, time, protocol, dyndns, hardware, features, email", cat));
                 }
             } else {
                 for (key, table, cols) in &cats {
-                    let data = read_table(db, serial, table, cols).await.unwrap_or(json!(null));
+                    let data = read_table(db, serial, table, cols).await?;
                     result.as_object_mut().unwrap().insert(key.to_string(), data);
                 }
+            }
+
+            // Every category null means nothing has been synced for this device yet —
+            // say so instead of leaving the caller to guess.
+            let any_data = result
+                .as_object()
+                .map(|o| o.iter().any(|(k, v)| k != "serial_number" && !v.is_null()))
+                .unwrap_or(false);
+            if !any_data {
+                result
+                    .as_object_mut()
+                    .unwrap()
+                    .insert("note".to_string(), json!(format!(
+                        "No settings have been synced for device {} yet. Refresh the device in T3000 (or use t3000_device_refresh) to populate them.",
+                        serial
+                    )));
             }
 
             serde_json::to_string_pretty(&result)
@@ -3146,6 +3282,22 @@ pub async fn execute_tool(
                 "email" => ("EMAIL_ALARMS", &["SMTP_Type", "SMTP_IP", "SMTP_Domain", "SMTP_Port", "Email_Address", "User_Name", "Password", "Secure_Connection_Type", "To1_Addr", "To2_Addr"]),
                 _ => return Err(format!("Unknown category: {}. Valid: network, communication, time, email", category)),
             };
+
+            // Writing settings for a serial that does not exist would create orphan
+            // rows no device will ever read.
+            let known = db
+                .query_all(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    format!("SELECT SerialNumber FROM DEVICES WHERE SerialNumber = {}", serial),
+                ))
+                .await
+                .map_err(|e| format!("Device lookup failed: {}", e))?;
+            if known.is_empty() {
+                return Err(format!(
+                    "Device with serial_number {} not found. Use t3000_device_list to see the devices.",
+                    serial
+                ));
+            }
 
             // Check record exists
             let check_sql = format!("SELECT SerialNumber FROM {} WHERE SerialNumber = {}", table, serial);
@@ -3239,6 +3391,7 @@ pub async fn execute_tool(
         }
 
         "t3000_device_control" => {
+            use crate::t3_device::action17_refresh_helper::live_panel_for;
             use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
 
             let serial: i32 = args.get("serial_number")
@@ -3252,50 +3405,62 @@ pub async fn execute_tool(
                 return Err("device_control requires confirm: true for safety".to_string());
             }
 
-            match command {
-                "reboot" => {
-                    // Reboot: write 99 to reset_default field via Action 16 entryType 198
-                    let ffi_json = json!({
-                        "action": 16,
-                        "panelId": 1,
-                        "serialNumber": serial,
-                        "entryType": 198,
-                        "entryIndex": 43, // reset_default offset
-                        "value": 99.0,
-                        "label": "", "description": "", "range": 0,
-                        "auto_manual": 0, "filter": 0, "digital_analog": 0,
-                        "calibration_sign": 0, "calibration_h": 0, "calibration_l": 0,
-                        "control": 0, "decom": 0,
-                    });
-                    info!("[MCP] device_control: reboot serial={}", serial);
-                    mcp_log(&format!("device_control: reboot serial={}", serial));
-                    let ffi_service = T3000FfiApiService::new();
-                    ffi_service.call_ffi(&ffi_json.to_string()).await
-                        .map_err(|e| format!("Reboot failed: {}", e))?;
-                    Ok(json!({"success": true, "command": "reboot", "timestamp": Utc::now().to_rfc3339()}).to_string())
-                }
-                "reset_defaults" => {
-                    let ffi_json = json!({
-                        "action": 16,
-                        "panelId": 1,
-                        "serialNumber": serial,
-                        "entryType": 198,
-                        "entryIndex": 43,
-                        "value": 88.0,
-                        "label": "", "description": "", "range": 0,
-                        "auto_manual": 0, "filter": 0, "digital_analog": 0,
-                        "calibration_sign": 0, "calibration_h": 0, "calibration_l": 0,
-                        "control": 0, "decom": 0,
-                    });
-                    info!("[MCP] device_control: reset_defaults serial={}", serial);
-                    mcp_log(&format!("device_control: reset_defaults serial={}", serial));
-                    let ffi_service = T3000FfiApiService::new();
-                    ffi_service.call_ffi(&ffi_json.to_string()).await
-                        .map_err(|e| format!("Reset failed: {}", e))?;
-                    Ok(json!({"success": true, "command": "reset_defaults", "timestamp": Utc::now().to_rfc3339()}).to_string())
-                }
-                _ => Err(format!("Unknown command: {}. Valid: reboot, reset_defaults", command)),
+            // The value written selects the action (99 = reboot, 88 = factory reset).
+            let reset_value = match command {
+                "reboot" => 99.0,
+                "reset_defaults" => 88.0,
+                _ => return Err(format!("Unknown command: {}. Valid: reboot, reset_defaults", command)),
+            };
+
+            let known = db
+                .query_all(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    format!("SELECT SerialNumber FROM DEVICES WHERE SerialNumber = {}", serial),
+                ))
+                .await
+                .map_err(|e| format!("Device lookup failed: {}", e))?;
+            if known.is_empty() {
+                return Err(format!(
+                    "Device with serial_number {} not found. Use t3000_device_list to see the devices.",
+                    serial
+                ));
             }
+
+            // Action 16 writes into g_*_data[panel] *before* it validates the serial,
+            // so a wrong panel corrupts T3000's cache — resolve the live panel.
+            let panel_id = live_panel_for(serial).await.map(|(panel, _)| panel).unwrap_or(1);
+
+            let ffi_json = json!({
+                "action": 16,
+                "panelId": panel_id,
+                "serialNumber": serial,
+                "entryType": 198,
+                "entryIndex": 43, // reset_default offset
+                "value": reset_value,
+                "label": "", "description": "", "range": 0,
+                "auto_manual": 0, "filter": 0, "digital_analog": 0,
+                "calibration_sign": 0, "calibration_h": 0, "calibration_l": 0,
+                "control": 0, "decom": 0,
+            });
+            info!("[MCP] device_control: {} serial={} panel={}", command, serial, panel_id);
+            mcp_log(&format!("device_control: {} serial={} panel={}", command, serial, panel_id));
+
+            let ffi_service = T3000FfiApiService::new();
+            let response = ffi_service.call_ffi(&ffi_json.to_string()).await
+                .map_err(|e| format!("{} failed: {}", command, e))?;
+
+            // A rejected command used to be reported as success.
+            if let Some(error) = ffi_response_error(&response) {
+                return Err(format!("Device {} did not accept '{}': {}", serial, command, error));
+            }
+
+            Ok(json!({
+                "success": true,
+                "command": command,
+                "serial_number": serial,
+                "panel_id": panel_id,
+                "timestamp": Utc::now().to_rfc3339()
+            }).to_string())
         }
 
         // ═══ v4: Control Logic ═══ 
