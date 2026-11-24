@@ -602,6 +602,83 @@ fn get_nav_pages() -> Vec<NavPage> {
     ]
 }
 
+/// Points of an FFI Action 17 (GET_WEBVIEW_LIST) response, flattened over the two
+/// shapes the C++ has been seen to send: `{ data: { device_data: [...] } }` and
+/// `{ data: [ { device_data: [...] }, ... ] }` (one entry per panel).
+///
+/// Indices are echoed 1-based (like every other point tool) and `value` is scaled
+/// the way the UI shows it, because the device reports `value × 1000`.
+pub fn action17_points(response: &str) -> Vec<Value> {
+    let Ok(value) = serde_json::from_str::<Value>(response) else {
+        return Vec::new();
+    };
+    let rows: Vec<Value> = match value.get("data") {
+        Some(Value::Object(_)) => value
+            .get("data")
+            .and_then(|d| d.get("device_data"))
+            .and_then(|dd| dd.as_array())
+            .cloned()
+            .unwrap_or_default(),
+        Some(Value::Array(panels)) => panels
+            .iter()
+            .flat_map(|p| {
+                p.get("device_data")
+                    .and_then(|dd| dd.as_array())
+                    .cloned()
+                    .unwrap_or_default()
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+
+    rows.iter()
+        .map(|p| {
+            let raw_value = p.get("value").and_then(|v| {
+                v.as_str()
+                    .map(str::to_string)
+                    .or_else(|| v.as_i64().map(|n| n.to_string()))
+                    .or_else(|| v.as_f64().map(|f| f.to_string()))
+            });
+            json!({
+                "index": p.get("index").and_then(|v| v.as_i64()).map(|i| i + 1),
+                "id": p.get("id").cloned().unwrap_or(Value::Null),
+                "type": p.get("type").cloned().unwrap_or(Value::Null),
+                "label": p.get("label").cloned().unwrap_or(Value::Null),
+                "value": scaled_value(raw_value.as_deref()),
+                "raw_value": raw_value,
+            })
+        })
+        .collect()
+}
+
+/// Count the points in an FFI Action 17 response.
+pub fn count_action17_points(response: &str) -> usize {
+    action17_points(response).len()
+}
+
+/// C++ reports failures as `{ "error": "..." }` (see `WrapErrorMessage`), and
+/// leaves `data.device_data` empty — without this check a rejected request
+/// looks exactly like a refresh that found nothing.
+fn action17_error(response: &str) -> Option<String> {
+    let value = serde_json::from_str::<Value>(response).ok()?;
+    if let Some(err) = value.get("error").and_then(|v| v.as_str()) {
+        if !err.trim().is_empty() {
+            return Some(err.trim().to_string());
+        }
+    }
+    let success = value.get("success").and_then(|v| v.as_bool());
+    if success == Some(false) {
+        return Some(
+            value
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("device refresh was rejected")
+                .to_string(),
+        );
+    }
+    None
+}
+
 /// Compact device record shared by `t3000_device_list` and `t3000_device_get`
 /// so both return an identical snake_case shape (`serial`, `name`, `is_online`).
 fn device_summary(
@@ -1007,12 +1084,20 @@ pub async fn execute_tool(
                 .unwrap_or(8)
                 .clamp(3, 30);
             let result = crate::lan_scan::scanner::scan_network(timeout_secs).await;
+            let mut notes: Vec<String> = Vec::new();
+            if result.devices.is_empty() {
+                notes.push(format!(
+                    "no device answered the UDP broadcast or the unicast sweep from {} — confirm the PC and the devices share a subnet, and that inbound UDP 57619-57623 is allowed for T3000.exe in Windows Firewall",
+                    if result.local_ips.is_empty() { "no local adapter".to_string() } else { result.local_ips.join(", ") }
+                ));
+            }
             serde_json::to_string_pretty(&json!({
                 "devices": result.devices,
                 "total": result.devices.len(),
                 "adapters_scanned": result.adapters_scanned,
                 "local_ips": result.local_ips,
                 "warnings": result.warnings,
+                "notes": notes,
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }
@@ -1023,6 +1108,10 @@ pub async fn execute_tool(
                 .unwrap_or(8)
                 .clamp(3, 30);
             let result = crate::lan_scan::scanner::scan_all(timeout_secs).await;
+            let mut notes: Vec<String> = Vec::new();
+            if result.devices.is_empty() {
+                notes.push("no device answered on UDP, serial COM ports, or TCP sub-ports — a serial device needs a free COM port (a port owned by another program reports 'Access is denied')".to_string());
+            }
             serde_json::to_string_pretty(&json!({
                 "devices": result.devices,
                 "total": result.devices.len(),
@@ -1033,6 +1122,7 @@ pub async fn execute_tool(
                 "adapters_scanned": result.adapters_scanned,
                 "local_ips": result.local_ips,
                 "warnings": result.warnings,
+                "notes": notes,
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }
@@ -2475,47 +2565,98 @@ pub async fn execute_tool(
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type_filter = args.get("point_type").and_then(|v| v.as_str());
 
+            // Accept lower case too; an unknown value must not silently mean "all".
+            // Validated before the DB lookup so a typo is never reported as a
+            // device/protocol-settings problem.
+            let point_types: Vec<&str> = match point_type_filter.map(|s| s.trim().to_ascii_uppercase()) {
+                None => vec!["INPUT", "OUTPUT", "VARIABLE"],
+                Some(t) => match t.as_str() {
+                    "INPUT" => vec!["INPUT"],
+                    "OUTPUT" => vec!["OUTPUT"],
+                    "VARIABLE" => vec!["VARIABLE"],
+                    other => return Err(format!(
+                        "Invalid point_type '{}'. Use INPUT, OUTPUT or VARIABLE (omit for all three).",
+                        other
+                    )),
+                },
+            };
+
             let (panel_id, object_instance) = lookup_action17_target(db, serial).await
                 .map_err(|e| format!("Cannot refresh device {}: {}. This may be expected for devices without BACnet/MSTP protocol settings configured.", serial, e.1))?;
 
-            let mut refreshed = 0;
-            let point_types = match point_type_filter {
-                Some("INPUT") => vec!["INPUT"],
-                Some("OUTPUT") => vec!["OUTPUT"],
-                Some("VARIABLE") => vec!["VARIABLE"],
-                _ => vec!["INPUT", "OUTPUT", "VARIABLE"],
-            };
+            let mut refreshed = 0usize;
+            let mut points_by_type = serde_json::Map::new();
+            let mut points = serde_json::Map::new();
+            let mut errors: Vec<String> = Vec::new();
+            // A device that answers nothing (offline, wrong instance) returns an
+            // empty list, not an FFI error — reporting it as "refreshed" would lie.
+            let mut notes: Vec<String> = Vec::new();
 
             for pt in &point_types {
                 let entry_type: i32 = match *pt {
                     "INPUT" => 1, "OUTPUT" => 0, _ => 2,
                 };
+                // `objectinstance` is lower case on purpose: that is the key the
+                // C++ reads (BacnetWebView.cpp, GET_WEBVIEW_LIST), and a missing
+                // one is rejected as "The objectinstance does not match the panel".
+                // entryIndexEnd = 63 covers every point slot; the C++ clamps it to
+                // the real item count.
                 let ffi_json = json!({
                     "action": 17,
                     "panelId": panel_id,
                     "serialNumber": serial,
+                    "objectinstance": object_instance,
                     "entryType": entry_type,
-                    "objectInstance": object_instance,
+                    "entryIndexStart": 0,
+                    "entryIndexEnd": 63,
                 });
                 info!("[MCP] device_refresh: Action 17 for {} (entryType={})", pt, entry_type);
                 mcp_log(&format!("Action 17 refresh: serial={} type={}", serial, pt));
                 let ffi_service = T3000FfiApiService::new();
                 match ffi_service.call_ffi(&ffi_json.to_string()).await {
                     Ok(resp) => {
-                        // Count points refreshed from response
-                        if let Ok(v) = serde_json::from_str::<Value>(&resp) {
-                            if let Some(arr) = v.get("data").and_then(|d| d.get("device_data")).and_then(|dd| dd.as_array()) {
-                                refreshed += arr.len();
-                            }
+                        if let Some(err) = action17_error(&resp) {
+                            error!("[MCP] device_refresh: {} rejected: {}", pt, err);
+                            points_by_type.insert(pt.to_lowercase(), json!(0));
+                            errors.push(format!("{}: {}", pt, err));
+                            continue;
                         }
+                        let rows = action17_points(&resp);
+                        points_by_type.insert(pt.to_lowercase(), json!(rows.len()));
+                        refreshed += rows.len();
+                        if rows.is_empty() {
+                            notes.push(format!("{}: device returned no points", pt));
+                        }
+                        points.insert(pt.to_lowercase(), json!(rows));
                     }
                     Err(e) => {
                         error!("[MCP] device_refresh: {} refresh failed: {}", pt, e);
+                        points_by_type.insert(pt.to_lowercase(), json!(0));
+                        errors.push(format!("{}: {}", pt, e));
                     }
                 }
             }
 
-            Ok(json!({ "refreshed": true, "points_updated": refreshed, "timestamp": Utc::now().to_rfc3339() }).to_string())
+            let refreshed_ok = errors.is_empty() && refreshed > 0;
+            if errors.is_empty() && refreshed == 0 {
+                notes.push(format!(
+                    "device {} answered Action 17 but returned no points — confirm it is online and that panel {} / object instance {} are correct",
+                    serial, panel_id, object_instance
+                ));
+            }
+
+            Ok(json!({
+                "refreshed": refreshed_ok,
+                "points_updated": refreshed,
+                "points_by_type": points_by_type,
+                "points": points,
+                "panel_id": panel_id,
+                "object_instance": object_instance,
+                "errors": errors,
+                "notes": notes,
+                "timestamp": Utc::now().to_rfc3339(),
+            })
+            .to_string())
         }
 
         "t3000_schedule_list" => {
@@ -3784,12 +3925,6 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
 
-            let state_file = current_device_file();
-            let mut existing = if state_file.exists() {
-                load_json_file(&state_file).await.unwrap_or(json!({}))
-            } else {
-                json!({})
-            };
             // Look up device name
             let dev_name = if let Ok(rows) = db.query_all(
                 sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
@@ -3797,12 +3932,14 @@ pub async fn execute_tool(
             ).await {
                 rows.first().and_then(|r| r.try_get::<String>("", "Product_Name").ok())
             } else { None };
-            existing["chat_device"] = json!(serial);
-            existing["chat_device_name"] = json!(dev_name);
-            existing["confirmed_at"] = json!(Utc::now().to_rfc3339());
-            existing["updated_at"] = json!(Utc::now().to_rfc3339());
-            save_json_file(&state_file, &existing).await
-                .map_err(|e| format!("Failed to save: {}", e))?;
+            crate::mcp::storage::update_device_context(|existing| {
+                existing["chat_device"] = json!(serial);
+                existing["chat_device_name"] = json!(dev_name);
+                existing["confirmed_at"] = json!(Utc::now().to_rfc3339());
+                existing["updated_at"] = json!(Utc::now().to_rfc3339());
+            })
+            .await
+            .map_err(|e| format!("Failed to save: {}", e))?;
 
             info!("[MCP] chat_device set to serial={} name={:?}", serial, dev_name);
             mcp_log(&format!("chat_device confirmed: serial={}", serial));

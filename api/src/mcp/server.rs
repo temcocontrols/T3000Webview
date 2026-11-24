@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use crate::app_state::T3AppState;
 use crate::mcp::types::{JsonRpcRequest, McpSession, SessionStore};
-use crate::mcp::storage::{current_device_file, load_json_file, save_json_file};
+use crate::mcp::storage::{current_device_file, load_json_file, update_device_context};
 
 // ═══ MCP API Logger ═══
 
@@ -75,7 +75,15 @@ pub(crate) async fn track_current_device(args: &Value) {
                 .and_then(|v| v.as_i64())
         });
     if let Some(sn) = serial {
-        let _ = save_json_file(&current_device_file(), &json!({"serial": sn, "updated_at": Utc::now().to_rfc3339()})).await;
+        // Merge instead of overwrite: `ui_device` (set by the UI tree) and
+        // `chat_device` (set by t3000_set_chat_device) live in the same file and
+        // are read by `t3000_device_current` / GET /api/mcp/current-device.
+        // Rewriting the file wholesale erased them on every tool call.
+        let _ = update_device_context(|state| {
+            state["last_tool_device"] = json!(sn);
+            state["updated_at"] = json!(Utc::now().to_rfc3339());
+        })
+        .await;
     }
 }
 
@@ -99,25 +107,22 @@ async fn set_current_device_handler(
 
     match serial {
         Some(s) => {
-            let state_file = current_device_file();
-            let mut existing = if state_file.exists() {
-                load_json_file(&state_file).await.unwrap_or(json!({}))
-            } else {
-                json!({})
-            };
             let dev_name = body.get("device_name").and_then(|v| v.as_str()).map(|s| s.to_string());
-            existing["ui_device"] = json!(s);
-            existing["ui_device_name"] = json!(dev_name);
-            existing["updated_at"] = json!(Utc::now().to_rfc3339());
-            if existing.get("chat_device").is_none() {
-                existing["chat_device"] = json!(null);
-                existing["chat_device_name"] = json!(null);
-                existing["confirmed_at"] = json!(null);
-            }
-            match save_json_file(&state_file, &existing).await {
-                Ok(()) => {
+            let result = update_device_context(|state| {
+                state["ui_device"] = json!(s);
+                state["ui_device_name"] = json!(dev_name);
+                state["updated_at"] = json!(Utc::now().to_rfc3339());
+                if state.get("chat_device").is_none() {
+                    state["chat_device"] = json!(null);
+                    state["chat_device_name"] = json!(null);
+                    state["confirmed_at"] = json!(null);
+                }
+            })
+            .await;
+            match result {
+                Ok(state) => {
                     info!("[MCP] ui_device set to serial={} name={:?}", s, dev_name);
-                    Json(json!({"ok": true, "ui_device": s, "ui_device_name": dev_name, "chat_device": existing["chat_device"]})).into_response()
+                    Json(json!({"ok": true, "ui_device": s, "ui_device_name": dev_name, "chat_device": state["chat_device"]})).into_response()
                 }
                 Err(e) => {
                     error!("[MCP] Failed to save device: {}", e);

@@ -33,6 +33,38 @@ pub async fn save_json_file(path: &PathBuf, data: &Value) -> Result<(), String> 
     Ok(())
 }
 
+// ── Device context (single shared JSON object) ──
+
+/// Serializes read-modify-write cycles on the device-context file.
+///
+/// Three independent writers update the same object: `POST
+/// /api/mcp/current-device` (UI selection), `t3000_set_chat_device` (user
+/// confirmation), and every tool call that carries a `serial_number`. Without a
+/// lock a writer that read the file before another write landed saves a stale
+/// copy and silently drops the other's key.
+static DEVICE_CONTEXT_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// Read the device context, apply `mutate`, and write it back — atomically with
+/// respect to other `update_device_context` callers. Returns the stored object.
+pub async fn update_device_context<F>(mutate: F) -> Result<Value, String>
+where
+    F: FnOnce(&mut Value),
+{
+    let _guard = DEVICE_CONTEXT_LOCK.lock().await;
+    let path = current_device_file();
+    let mut state = if path.exists() {
+        load_json_file(&path).await.unwrap_or_else(|_| json!({}))
+    } else {
+        json!({})
+    };
+    if !state.is_object() {
+        state = json!({});
+    }
+    mutate(&mut state);
+    save_json_file(&path, &state).await?;
+    Ok(state)
+}
+
 // ── Task helpers ──
 
 pub async fn load_tasks() -> Result<Vec<Value>, String> {

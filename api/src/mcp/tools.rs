@@ -178,13 +178,13 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_scan_all",
         title: "Full Device Scan (UDP + Serial COM + Modbus TCP)",
-        description: "Run a full T3000 device discovery pass mirroring the C++ ScanAll(): 1) UDP broadcast scan (0x64/0x65) for LAN devices, 2) serial COM/USB Modbus RTU scan of all COM ports (including USB virtual COM ports) for RS485/serial devices, 3) Modbus TCP sub-port scan for devices behind Minipanel/CM5 down-expansion gateways. Returns merged devices with counts per scan method and the COM ports where serial devices were found. Takes 10–30 seconds.",
+        description: "Run a full T3000 device discovery pass mirroring the C++ ScanAll(): 1) UDP broadcast scan (0x64/0x65) for LAN devices, 2) serial COM/USB Modbus RTU scan of all COM ports (including USB virtual COM ports) for RS485/serial devices, 3) Modbus TCP sub-port scan for devices behind Minipanel/CM5 down-expansion gateways. Returns merged devices with counts per scan method and the COM ports where serial devices were found. timeout_seconds bounds only the UDP wait; the serial and TCP sub-port phases then run to completion, so a call can take up to ~30 s when a device is found. It may also update the device table with newly discovered panels.",
         input_schema: json!({
             "type": "object",
             "properties": {
                 "timeout_seconds": {
                     "type": "integer",
-                    "description": "Seconds to wait for UDP responses (default: 8, range: 3–30)"
+                    "description": "Seconds to wait for UDP responses (default: 8, range: 3–30); the serial and TCP phases are not bounded by it"
                 }
             }
         }),
@@ -705,7 +705,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_device_refresh",
         title: "Refresh Device Data",
-        description: "Force-refresh point data from the physical device via FFI Action 17 (GET_WEBVIEW_LIST). Updates the database with current values from the hardware. Optionally filter by point type.",
+        description: "Read the live point values of a device with FFI Action 17 (GET_WEBVIEW_LIST). This is the same blocking device read T3000 performs when you open the device's inputs/outputs, so it works without loading the device in the UI first. Returns the values it read (index is 1-based, value is scaled like the UI shows it) plus per-type counts. T3000 writes these values into its own database on its normal sync cycle; use t3000_point_read for what is already stored.",
         input_schema: json!({
             "type": "object",
             "properties": {

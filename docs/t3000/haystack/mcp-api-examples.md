@@ -230,7 +230,7 @@ Query one device by serial number and return its full record: serial, name, prod
 
 ### `t3000_scan_network` — Scan network for T3000 devices
 
-Scan the local network for T3000 devices via UDP broadcast (0x64/0x65 protocol). Returns discovered devices with serial numbers, IP addresses, product types, firmware versions, panel names, and subnet info. Takes 5–10 seconds. Use this to discover new or replacement devices on the network.
+Scan the local network for T3000 devices via UDP broadcast (0x64/0x65 protocol). Returns discovered devices with serial numbers, IP addresses, product types, firmware versions, panel names, and subnet info, plus `adapters_scanned`, the `local_ips` used and a `notes` entry explaining an empty result. `timeout_seconds` (default 8) is a cap: the wait ends 500 ms after the last reply, or after ~1.2 s when nothing answers. Use this to discover new or replacement devices on the network.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 
@@ -526,7 +526,7 @@ Export all historical data from a trendlog in one call. Queries every point in t
 
 ### `t3000_device_refresh` — Force refresh from hardware
 
-Refresh point data directly from the physical device via the C++ FFI layer (Action 17). Updates the database with the latest values from the hardware. Optionally filter by point type to refresh only inputs, outputs, or variables.
+Read point data directly from the physical device via the C++ FFI layer (Action 17, the same blocking read T3000 performs when you open a device's inputs/outputs). It returns the values it read — 1-based `index`, `id`, `label`, `value` scaled the way the UI shows it, plus `raw_value` — together with per-type counts. T3000 writes those values into its own database on its normal sync cycle; use `t3000_point_read` for what is already stored. Optionally filter by point type to read only inputs, outputs, or variables.
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
 

@@ -411,6 +411,11 @@ struct ContextFileGuard {
     previous: Option<String>,
 }
 
+/// The context file is one shared file on disk, so the tests that save/restore
+/// it must not overlap — otherwise one test's cleanup deletes it while another
+/// is still asserting.
+static CONTEXT_FILE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 impl ContextFileGuard {
     fn new() -> Self {
         let path = device_context_path();
@@ -443,6 +448,7 @@ impl Drop for ContextFileGuard {
 #[tokio::test]
 async fn current_device_round_trip() {
     let Some(app) = mcp_router().await else { return };
+    let _lock = CONTEXT_FILE_LOCK.lock().await;
     let _guard = ContextFileGuard::new();
 
     let response = send(
@@ -469,13 +475,60 @@ async fn current_device_round_trip() {
     assert_eq!(response.status(), StatusCode::OK);
     let body = axum::body::to_bytes(response.into_body(), 64 * 1024).await.unwrap();
     let body: Value = serde_json::from_slice(&body).unwrap();
-    // The context file is shared with every tool call that carries a
-    // serial_number, so a concurrently running test may legitimately overwrite
-    // it between our POST and GET. Assert the endpoint serves the stored
-    // context, not that our exact value survived.
+    assert_eq!(
+        body["ui_device"], 240488,
+        "GET must serve the device the UI selected: {}",
+        body
+    );
+}
+
+/// Regression: `execute_tool` used to rewrite the context file wholesale, so any
+/// tool call carrying a serial_number erased `ui_device` (and `chat_device`) and
+/// `t3000_device_current` fell back to "no device selected".
+#[tokio::test]
+async fn current_device_survives_tool_calls_for_another_device() {
+    use crate::mcp::common;
+
+    let Some(app) = mcp_router().await else { return };
+    let Some(db) = common::memory_db().await else { return };
+    let _lock = CONTEXT_FILE_LOCK.lock().await;
+    let _guard = ContextFileGuard::new();
+
+    let response = send(
+        &app,
+        Request::builder()
+            .method("POST")
+            .uri("/api/mcp/current-device")
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(json!({"serial_number": 240488, "device_name": "T3-BB144"}).to_string()))
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // A tool call for a different device (the result is irrelevant here).
+    let _ = t3_webview_api::mcp::execute_tool(
+        "t3000_point_read",
+        &json!({ "serial_number": 1028, "point_index": 1 }),
+        &db,
+    )
+    .await;
+
+    let response = send(
+        &app,
+        Request::builder().method("GET").uri("/api/mcp/current-device").body(Body::empty()).unwrap(),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), 64 * 1024).await.unwrap();
+    let body: Value = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(body["ui_device"], 240488, "the UI selection must survive tool calls: {}", body);
+    // `last_tool_device` is written by every concurrent tool call, so assert the
+    // key is used at all rather than which serial won the race.
     assert!(
-        body.get("ui_device").is_some(),
-        "GET must return the stored device context: {}",
+        body.get("last_tool_device").and_then(|v| v.as_i64()).is_some(),
+        "the tool's device must be tracked under its own key: {}",
         body
     );
 }

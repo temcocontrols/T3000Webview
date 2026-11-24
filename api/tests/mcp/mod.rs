@@ -7,6 +7,7 @@
 pub mod common;
 pub mod tool_definitions;
 pub mod dispatch_coverage;
+pub mod discovery;
 pub mod transport;
 pub mod core;
 pub mod navigation;
