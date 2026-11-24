@@ -100,19 +100,39 @@ pub async fn list_tags(
                 (SELECT COUNT(*) FROM haystack_point_tags WHERE tag_name = t.tag_name) as usage_count
          FROM haystack_tags t WHERE 1=1",
     );
-    if let Some(cat) = filter {
-        if !cat.is_empty() {
-            sql.push_str(&format!(" AND t.category = '{}'", cat));
+    // `filter` used to be an exact category match, so asking for "temp" returned
+    // nothing even though a `temp` tag exists. It is now a case-insensitive
+    // substring match over the tag name and its category.
+    let mut filter_value: Option<String> = None;
+    if let Some(raw) = filter {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            sql.push_str(
+                " AND (LOWER(t.tag_name) LIKE ? OR LOWER(t.category) LIKE ?)",
+            );
+            let pattern = format!("%{}%", trimmed.to_lowercase());
+            filter_value = Some(pattern);
         }
     }
     sql.push_str(" ORDER BY t.category, t.tag_name");
 
-    let rows = db
-        .query_all(Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            &sql,
-        ))
-        .await?;
+    let rows = match filter_value {
+        Some(pattern) => {
+            db.query_all(Statement::from_sql_and_values(
+                sea_orm::DatabaseBackend::Sqlite,
+                &sql,
+                vec![pattern.clone().into(), pattern.into()],
+            ))
+            .await?
+        }
+        None => {
+            db.query_all(Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                &sql,
+            ))
+            .await?
+        }
+    };
 
     let mut tags: Vec<TagDefinition> = Vec::new();
     for row in &rows {

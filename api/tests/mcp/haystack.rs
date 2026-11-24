@@ -4,6 +4,7 @@
 //! These 7 tools require a live database connection with Haystack tag data.
 //! Uses the T3000 runtime database at the configured path.
 
+use sea_orm::{ConnectionTrait, Statement};
 use serde_json::json;
 use crate::mcp::common;
 
@@ -103,6 +104,78 @@ async fn test_list_tags_filter_by_category() {
         // Filtering should return a subset (may be 0 if no haystack-category tags)
         // Just verify the call succeeded and returned the right shape
         assert!(result.get("tags").is_some());
+    }).await;
+}
+
+/// Regression: `filter` was an exact category match, so `filter:"temp"` returned
+/// nothing even though the `temp` tag exists.
+#[tokio::test]
+async fn test_list_tags_filter_matches_tag_names() {
+    common::with_db_or_skip("list_tags_filter_matches_names", |db| async move {
+        let rows = db
+            .query_all(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                "SELECT tag_name FROM HAYSTACK_TAGS WHERE LOWER(tag_name) LIKE '%temp%' LIMIT 1",
+            ))
+            .await
+            .expect("tag query should succeed");
+        let needle: String = match rows.first().and_then(|r| r.try_get::<String>("", "tag_name").ok()) {
+            Some(name) => name,
+            None => {
+                println!("no tag matches 'temp' in this DB — skipping");
+                return;
+            }
+        };
+
+        let result = common::execute_tool_json(
+            "t3000_haystack_list_tags",
+            &json!({"filter": "TEMP"}),
+            &db,
+        )
+        .await
+        .expect("list_tags with a filter should succeed");
+
+        let names: Vec<&str> = result["tags"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|t| common::get_str(t, "tag_name")).collect())
+            .unwrap_or_default();
+        assert!(!names.is_empty(),
+            "filtering by 'TEMP' (case-insensitive) must match the '{}' tag: {}", needle, result);
+        assert!(names.iter().any(|n| n.to_lowercase().contains("temp")),
+            "every match should contain the filter text: {:?}", names);
+    }).await;
+}
+
+/// `serial_numbers` is required — an empty list used to mean "every device".
+#[tokio::test]
+async fn test_get_point_tags_requires_serials() {
+    common::with_db_or_skip("get_point_tags_requires_serials", |db| async move {
+        let err = common::execute_tool_json("t3000_haystack_get_point_tags", &json!({}), &db)
+            .await
+            .expect_err("omitting serial_numbers must be an error, not 'all devices'");
+        assert!(err.contains("serial_numbers"), "got: {}", err);
+    }).await;
+}
+
+/// `tags` is required — an empty filter used to return every tagged point.
+#[tokio::test]
+async fn test_search_points_requires_tags() {
+    common::with_db_or_skip("search_points_requires_tags", |db| async move {
+        let err = common::execute_tool_json("t3000_haystack_search_points", &json!({}), &db)
+            .await
+            .expect_err("omitting tags must be an error, not 'no filter'");
+        assert!(err.contains("tags"), "got: {}", err);
+    }).await;
+}
+
+/// `serial_numbers` is required for the brick-class lookup too.
+#[tokio::test]
+async fn test_get_brick_class_requires_serials() {
+    common::with_db_or_skip("get_brick_class_requires_serials", |db| async move {
+        let err = common::execute_tool_json("t3000_haystack_get_brick_class", &json!({}), &db)
+            .await
+            .expect_err("omitting serial_numbers must be an error");
+        assert!(err.contains("serial_numbers"), "got: {}", err);
     }).await;
 }
 

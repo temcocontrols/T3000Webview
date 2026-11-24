@@ -986,6 +986,11 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_array())
                 .map(|a| a.iter().filter_map(|v| v.as_i64().map(|n| n as i32)).collect())
                 .unwrap_or_default();
+            // Empty used to mean "every device", which is the opposite of what a
+            // caller who forgot the argument expects.
+            if serial_numbers.is_empty() {
+                return Err("serial_numbers is required — pass at least one device serial".to_string());
+            }
             let point_type = args.get("point_type").and_then(|v| v.as_str());
 
             let entries = ts::get_point_tags(db, &serial_numbers, point_type)
@@ -1005,6 +1010,10 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_array())
                 .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
                 .unwrap_or_default();
+            // An empty filter used to match every tagged point instead of failing.
+            if tags.is_empty() {
+                return Err("tags is required — pass at least one tag name, e.g. [\"sensor\"]".to_string());
+            }
             let device_serials: Option<Vec<i32>> = args
                 .get("serial_numbers")
                 .and_then(|v| v.as_array())
@@ -1040,7 +1049,7 @@ pub async fn execute_tool(
                 .unwrap_or_default();
 
             if serial_numbers.is_empty() {
-                return Ok(json!({"error": "No serial numbers provided"}).to_string());
+                return Err("serial_numbers is required — pass at least one device serial".to_string());
             }
 
             let (count, _matches) = ats::run_auto_tagging(db, &serial_numbers, None).await?;
@@ -1088,6 +1097,9 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_array())
                 .map(|a| a.iter().filter_map(|v| v.as_i64().map(|n| n as i32)).collect())
                 .unwrap_or_default();
+            if serial_numbers.is_empty() {
+                return Err("serial_numbers is required — pass at least one device serial".to_string());
+            }
 
             // Query brick_class marker rows
             let sn_list = serial_numbers
@@ -4138,6 +4150,22 @@ pub async fn execute_tool(
             }
             let rule_id = args.get("rule_id").and_then(|v| v.as_str())
                 .ok_or_else(|| "rule_id required".to_string())?.to_string();
+            // rule_id is UNIQUE; say so instead of surfacing the raw SQLite error.
+            if let Ok(existing) = db
+                .query_all(sea_orm::Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    "SELECT rule_id FROM FDD_RULES WHERE rule_id = ?",
+                    vec![rule_id.clone().into()],
+                ))
+                .await
+            {
+                if !existing.is_empty() {
+                    return Err(format!(
+                        "Duplicate rule_id: an FDD rule '{}' already exists. Use t3000_fdd_rule_update to change it, or pick another id.",
+                        rule_id
+                    ));
+                }
+            }
             let rule = crate::fdd::rules::Rule {
                 rule_id: rule_id.clone(),
                 rule_name: args.get("rule_name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
@@ -4488,13 +4516,23 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
 
-            // Look up device name
-            let dev_name = if let Ok(rows) = db.query_all(
-                sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
-                    &format!("SELECT Product_Name FROM DEVICES WHERE SerialNumber = {}", serial))
-            ).await {
-                rows.first().and_then(|r| r.try_get::<String>("", "Product_Name").ok())
-            } else { None };
+            // Look up device name. An unknown serial used to be stored as the "chat
+            // device" with a null name, so every later call failed confusingly.
+            let dev_name = db
+                .query_all(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    format!("SELECT Product_Name FROM DEVICES WHERE SerialNumber = {}", serial),
+                ))
+                .await
+                .map_err(|e| format!("Device lookup failed: {}", e))?
+                .first()
+                .and_then(|r| r.try_get::<String>("", "Product_Name").ok())
+                .ok_or_else(|| {
+                    format!(
+                        "Device with serial_number {} not found. Use t3000_device_list to see the devices.",
+                        serial
+                    )
+                })?;
             crate::mcp::storage::update_device_context(|existing| {
                 existing["chat_device"] = json!(serial);
                 existing["chat_device_name"] = json!(dev_name);
@@ -4527,6 +4565,14 @@ pub async fn execute_tool(
                 "matched": !suggestions.is_empty(),
                 "suggestions": suggestions,
                 "documents_searched": documents_searched,
+                // `matched` only means "we have a suggestion"; it does not mean the
+                // docs cover it. With no docs on disk the check is inconclusive.
+                "documented": !suggestions.is_empty() && documents_searched > 0,
+                "note": if documents_searched == 0 {
+                    Value::String("No documentation was available to search, so this check only returns built-in suggestions.".to_string())
+                } else {
+                    Value::Null
+                },
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }
@@ -4540,10 +4586,22 @@ pub async fn execute_tool(
                 .unwrap_or(5)
                 .clamp(1, 25) as usize;
             let results = crate::support::docs_index::search(query, limit);
+            let total_docs = crate::support::docs_index::count();
+            // Zero documents means the markdown was not found next to the app, which
+            // is different from "this is not documented" — say which one it is.
+            let note = if total_docs == 0 {
+                Value::String(format!(
+                    "No documentation is available on disk (looked for a 'docs' folder with a 't3000' subfolder, starting at {}). Set T3000_DOCS_ROOT to point at the markdown source.",
+                    std::env::current_dir().map(|p| p.display().to_string()).unwrap_or_else(|_| "?".to_string())
+                ))
+            } else {
+                Value::Null
+            };
             serde_json::to_string_pretty(&json!({
                 "query": query,
                 "results": results,
-                "total_docs": crate::support::docs_index::count(),
+                "total_docs": total_docs,
+                "note": note,
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }

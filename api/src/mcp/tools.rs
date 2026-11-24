@@ -16,7 +16,7 @@ lazy_static::lazy_static! {
             "properties": {
                 "filter": {
                     "type": "string",
-                    "description": "Optional category filter (haystack, brick, custom)"
+                    "description": "Optional case-insensitive substring match on the tag name or its category (e.g. \"temp\" matches the `temp` tag, \"custom\" matches the custom category)"
                 }
             }
         }),

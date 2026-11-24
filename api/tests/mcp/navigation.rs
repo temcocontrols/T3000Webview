@@ -149,3 +149,21 @@ fn test_set_chat_device_requires_serial_number() {
     assert!(required.contains(&"serial_number"),
         "set_chat_device must require 'serial_number'");
 }
+
+/// Regression: an unknown serial was stored as the "chat device" with a null name,
+/// so every later tool call failed confusingly.
+#[tokio::test]
+async fn test_set_chat_device_rejects_unknown_device() {
+    common::with_db_or_skip("set_chat_device_unknown", |db| async move {
+        let err = common::execute_tool_json(
+            "t3000_set_chat_device",
+            &serde_json::json!({"serial_number": 987654}),
+            &db,
+        )
+        .await
+        .expect_err("confirming a device that does not exist must fail");
+        assert!(err.to_lowercase().contains("not found"), "got: {}", err);
+        assert!(err.contains("987654"), "the error should name the serial: {}", err);
+    })
+    .await;
+}
