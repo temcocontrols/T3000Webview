@@ -224,7 +224,209 @@ async fn test_point_read_batch_returns_values() {
     }).await;
 }
 
-/// A bad entry must be reported per point instead of silently shrinking `results`.
+/// A failed device write must not touch the database — the DB must never claim a
+/// value the device rejected. Outside T3000.exe the FFI call fails, which is
+/// exactly the case this pins down.
+#[tokio::test]
+async fn test_point_write_failure_leaves_db_untouched() {
+    common::with_db_or_skip("point_write_failure_leaves_db_untouched", |db| async move {
+        use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+
+        let Some((serial, _)) = common::pick_device_with_inputs(&db).await else {
+            println!("SKIP point_write_failure_leaves_db_untouched — no device with inputs");
+            return;
+        };
+
+        let before = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                format!("SELECT fValue FROM INPUTS WHERE SerialNumber = {} AND Input_Index = '0'", serial),
+            ))
+            .await
+            .unwrap()
+            .and_then(|row| row.try_get::<String>("", "fValue").ok());
+
+        let error = common::execute_tool(
+            "t3000_point_write",
+            &json!({"serial_number": serial, "point_type": "INPUT", "point_index": 1,
+                    "field": "value", "value": 12.34}),
+            &db,
+        ).await.expect_err("the FFI call cannot succeed in the test process");
+        assert!(
+            error.contains("Device write failed") || error.contains("rejected") || error.contains("panel"),
+            "unexpected write error: {}", error
+        );
+
+        let after = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                format!("SELECT fValue FROM INPUTS WHERE SerialNumber = {} AND Input_Index = '0'", serial),
+            ))
+            .await
+            .unwrap()
+            .and_then(|row| row.try_get::<String>("", "fValue").ok());
+        assert_eq!(before, after, "a failed write must not change the stored value");
+    }).await;
+}
+
+#[tokio::test]
+async fn test_point_write_validates_arguments() {
+    common::with_db_or_skip("point_write_validates_arguments", |db| async move {
+        for bad in [0, -3, 65] {
+            let error = common::execute_tool(
+                "t3000_point_write",
+                &json!({"serial_number": 1028, "point_type": "INPUT", "point_index": bad, "value": 1, "confirm": true}),
+                &db,
+            ).await.expect_err(&format!("point_index {} must be rejected", bad));
+            assert!(error.contains("1-based") && error.contains("1..64"), "got: {}", error);
+        }
+
+        let error = common::execute_tool(
+            "t3000_point_write",
+            &json!({"serial_number": 1028, "point_type": "OUTPUT", "point_index": 1, "value": 1}),
+            &db,
+        ).await.expect_err("OUTPUT writes need confirm");
+        assert!(error.contains("confirm"), "got: {}", error);
+
+        let error = common::execute_tool(
+            "t3000_point_write",
+            &json!({"serial_number": 1028, "point_type": "INPUT", "point_index": 1, "field": "bogus", "value": 1}),
+            &db,
+        ).await.expect_err("unknown field must be rejected");
+        assert!(error.contains("Invalid field"), "got: {}", error);
+    }).await;
+}
+
+#[tokio::test]
+async fn test_point_write_rejects_wrong_table_range_codes() {
+    common::with_db_or_skip("point_write_rejects_wrong_table_range_codes", |db| async move {
+        // 45 is outside every analog table (inputs stop at 39, variables at 33), so
+        // it must be refused rather than showing a label from the wrong table.
+        let error = common::execute_tool(
+            "t3000_point_write",
+            &json!({"serial_number": 1028, "point_type": "INPUT", "point_index": 1,
+                    "field": "range", "value": 45}),
+            &db,
+        ).await.expect_err("45 is not an input analog code");
+        assert!(error.contains("not a valid INPUT analog code"), "got: {}", error);
+
+        // Outputs allow 0–8 (analog) or 0–30/101–104 (digital), so 68 must be
+        // refused in either table.
+        let error = common::execute_tool(
+            "t3000_point_write",
+            &json!({"serial_number": 1028, "point_type": "OUTPUT", "point_index": 1,
+                    "field": "range", "value": 68, "confirm": true}),
+            &db,
+        ).await.expect_err("68 is not an output range code");
+        assert!(
+            error.contains("is not a valid OUTPUT") && error.contains("code"),
+            "got: {}", error
+        );
+
+        // 32 *is* a valid variable analog code (VAR21 is an analog variable), so
+        // validation must not reject it — the write itself cannot reach the device
+        // in the test process.
+        match common::execute_tool(
+            "t3000_point_write",
+            &json!({"serial_number": 1028, "point_type": "VARIABLE", "point_index": 21,
+                    "field": "range", "value": 32, "confirm": true}),
+            &db,
+        ).await {
+            Ok(_) => {}
+            Err(e) => assert!(!e.contains("not a valid"), "32 is valid for variables: {}", e),
+        }
+
+        let error = common::execute_tool(
+            "t3000_point_write",
+            &json!({"serial_number": 1028, "point_type": "VARIABLE", "point_index": 60,
+                    "field": "digital_analog", "value": 5, "confirm": true}),
+            &db,
+        ).await.expect_err("digital_analog is 0 or 1 only");
+        assert!(error.contains("0 (digital) or 1 (analog)"), "got: {}", error);
+
+        let error = common::execute_tool(
+            "t3000_point_write",
+            &json!({"serial_number": 1028, "point_type": "INPUT", "point_index": 1,
+                    "field": "units", "value": 3}),
+            &db,
+        ).await.expect_err("units is derived, not writable");
+        assert!(error.contains("field 'range' instead of 'units'"), "got: {}", error);
+    }).await;
+}
+
+#[tokio::test]
+async fn test_point_write_batch_reports_per_point_errors() {
+    common::with_db_or_skip("point_write_batch_reports_per_point_errors", |db| async move {
+        let error = common::execute_tool(
+            "t3000_point_write_batch",
+            &json!({"points": [{"serial_number": 1028, "point_type": "OUTPUT", "point_index": 1, "value": 1}]}),
+            &db,
+        ).await.expect_err("batch write needs confirm");
+        assert!(error.contains("confirm"), "got: {}", error);
+
+        let result = common::execute_tool_json(
+            "t3000_point_write_batch",
+            &json!({"confirm": true, "points": [
+                {"serial_number": 1028, "point_type": "OUTPUT", "point_index": 0, "value": 1},
+                {"serial_number": 1028, "point_type": "BOGUS", "point_index": 1, "value": 1},
+                {"serial_number": 1028, "point_type": "OUTPUT", "point_index": 1}
+            ]}),
+            &db,
+        ).await.expect("a batch with bad entries still answers");
+
+        assert_eq!(common::get_i64(&result, "count"), Some(0), "{}", result);
+        let errors = result.get("errors").and_then(|v| v.as_array()).expect("errors array");
+        assert_eq!(errors.len(), 3, "each bad entry must be explained: {}", result);
+        let text = serde_json::to_string(errors).unwrap();
+        assert!(text.contains("1-based"), "{}", text);
+        assert!(text.contains("Invalid point_type"), "{}", text);
+        assert!(text.contains("required"), "{}", text);
+    }).await;
+}
+
+#[tokio::test]
+async fn test_point_batch_metadata_reports_per_point_errors() {
+    common::with_db_or_skip("point_batch_metadata_reports_per_point_errors", |db| async move {
+        let Some((serial, _)) = common::pick_device_with_inputs(&db).await else {
+            println!("SKIP point_batch_metadata_reports_per_point_errors — no device with inputs");
+            return;
+        };
+
+        let result = common::execute_tool_json(
+            "t3000_point_batch_metadata",
+            &json!({"points": [
+                {"serial_number": serial, "point_type": "INPUT", "point_index": 1},
+                {"serial_number": serial, "point_type": "INPUT", "point_index": 0},
+                {"serial_number": 987654321, "point_type": "INPUT", "point_index": 1}
+            ]}),
+            &db,
+        ).await.expect("metadata batch answers");
+
+        assert_eq!(common::get_i64(&result, "requested"), Some(3), "{}", result);
+        assert_eq!(common::array_len(&result, "results"), 1, "only the valid point: {}", result);
+        let errors = result.get("errors").and_then(|v| v.as_array()).expect("errors array");
+        assert_eq!(errors.len(), 2, "{}", result);
+        let text = serde_json::to_string(errors).unwrap();
+        assert!(text.contains("1-based"), "{}", text);
+        assert!(text.contains("No INPUT 1 stored for device 987654321"), "{}", text);
+
+        // The metadata of the valid point must match point_read's view of it.
+        let read = common::execute_tool_json(
+            "t3000_point_read",
+            &json!({"serial_number": serial, "point_type": "INPUT", "point_index": 1}),
+            &db,
+        ).await.expect("point_read works");
+        let meta = &result["results"][0];
+        assert_eq!(meta["point_index"], read["point_index"]);
+        assert_eq!(meta["label"], read["label"]);
+        assert_eq!(meta["value"], read["value"]);
+        assert_eq!(meta["units"], read["units"]);
+        assert_eq!(meta["range"], read["range"]);
+        assert!(meta.get("haystack_tags").is_some(), "metadata includes tags: {}", meta);
+    }).await;
+}
+
+
 #[tokio::test]
 async fn test_point_read_batch_reports_per_point_errors() {
     common::with_db_or_skip("point_read_batch_reports_per_point_errors", |db| async move {
@@ -261,23 +463,17 @@ async fn test_point_read_batch_reports_per_point_errors() {
 #[tokio::test]
 async fn test_point_write_requires_confirm() {
     common::with_db_or_skip("point_write_requires_confirm", |db| async move {
-        // Write without confirm should fail or be blocked
-        let raw = common::execute_tool(
+        // A valid 1-based index, so the answer is about the safety gate only.
+        let error = common::execute_tool(
             "t3000_point_write",
-            &json!({"serial_number": 444, "point_type": "OUTPUT", "point_index": 0, "value": 50.0, "confirm": false}),
+            &json!({"serial_number": 444, "point_type": "OUTPUT", "point_index": 1, "value": 50.0, "confirm": false}),
             &db,
-        ).await;
-        match raw {
-            Ok(s) => {
-                // If it succeeds, it might have returned a warning — either way handled properly
-                let _v: Value = serde_json::from_str(&s).unwrap_or_default();
-            }
-            Err(e) => {
-                // Error about confirm is expected
-                assert!(e.to_lowercase().contains("confirm") || e.to_lowercase().contains("safety"),
-                    "error should mention confirm: {}", e);
-            }
-        }
+        ).await.expect_err("an OUTPUT write without confirm must be refused");
+        assert!(
+            error.to_lowercase().contains("confirm") || error.to_lowercase().contains("safety"),
+            "error should mention confirm: {}",
+            error
+        );
     }).await;
 }
 

@@ -38,6 +38,7 @@ pub mod storage;
 pub mod server;
 pub mod tools;
 pub mod dispatch;
+pub mod range_tables;
 
 // Re-export commonly used items for convenience
 pub use server::{create_mcp_routes, mcp_post_handler, mcp_sse_handler, mcp_delete_handler};

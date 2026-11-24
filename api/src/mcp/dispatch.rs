@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use crate::mcp::types::{JsonRpcRequest, JsonRpcResponse, JsonRpcError, ToolDef};
 use crate::mcp::tools::TOOLS;
 use crate::mcp::storage::*;
+use crate::mcp::range_tables;
 use crate::mcp::server::{mcp_log, track_current_device, uptime_secs, SERVER_NAME, SERVER_VERSION, PROTOCOL_VERSION};
 use crate::haystack::auto_tagging_service as ats;
 use crate::haystack::tags_service as ts;
@@ -287,20 +288,78 @@ async fn point_write_ffi(
     let cur_control: String = row.try_get::<String>("", "Control").unwrap_or_else(|_| "0".into());
     let cur_panel: String = row.try_get::<String>("", "Panel").unwrap_or_default();
 
-    // Step 2: Get panel_id — prefer point's Panel, then DEVICES.Panel_Number, then 1
-    let panel_id: i32 = if !cur_panel.is_empty() {
-        cur_panel.parse::<i32>().unwrap_or(1)
+    // Step 2: the panel the C++ itself holds. A stale DB panel id is worse than
+    // useless here: UPDATE_WEBVIEW_LIST writes into `g_*_data[panel]` *before* it
+    // checks the serial, so a wrong panel corrupts T3000's cache and the write is
+    // rejected. Ask T3000 first, then fall back to the stored value.
+    let stored_panel: Option<i32> = if !cur_panel.trim().is_empty() {
+        cur_panel.trim().parse::<i32>().ok()
     } else {
-        let dev_sql = format!("SELECT Panel_Number FROM DEVICES WHERE SerialNumber = {}", serial);
-        let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dev_sql)).await
-            .map_err(|e| format!("Device lookup failed: {}", e))?;
-        dev_rows.first().and_then(|r| r.try_get::<i32>("", "Panel_Number").ok()).unwrap_or(1)
+        None
+    };
+    let panel_id = match crate::t3_device::action17_refresh_helper::live_panel_for(serial).await {
+        Some((panel, _)) => panel,
+        None => match stored_panel {
+            Some(panel) if (1..254).contains(&panel) => panel,
+            _ => {
+                let dev_sql = format!("SELECT Panel_Number FROM DEVICES WHERE SerialNumber = {}", serial);
+                let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dev_sql)).await
+                    .map_err(|e| format!("Device lookup failed: {}", e))?;
+                match dev_rows.first().and_then(|r| r.try_get::<i32>("", "Panel_Number").ok()) {
+                    Some(panel) if (1..254).contains(&panel) => panel,
+                    _ => return Err(format!(
+                        "Cannot write to device {}: no usable panel id (device is not in T3000's live panel list)",
+                        serial
+                    )),
+                }
+            }
+        },
     };
     info!("[MCP] point_write_ffi: panel_id={}, merging field='{}' val='{}'", panel_id, target_field, new_value_str);
 
     // Step 3: Merge — DB stores fValue as raw integer (×1000), FFI expects display value (/1000)
     let pf32 = |s: &str| s.parse::<f32>().unwrap_or(0.0);
     let pi32 = |s: &str| s.parse::<i32>().unwrap_or(0);
+
+    // A code that does not exist in this point type's table (analog vs digital)
+    // silently turns into a wrong label — a variable wrote as "ºF" showing
+    // "Heat/Cool" is code 9 (Couple/Heat) landing in the digital table. Refuse it
+    // instead, and say which table the value belongs to.
+    let cur_digital = cur_digital_analog.trim() == "0";
+    match target_field {
+        "range" => {
+            let code = new_value_str.trim().parse::<i64>().map_err(|_| {
+                format!("range must be a numeric code, got '{}'", new_value_str)
+            })?;
+            if !crate::mcp::range_tables::is_valid_range_code(point_type, code, cur_digital) {
+                let table = if cur_digital { "digital" } else { "analog" };
+                return Err(format!(
+                    "Range code {} is not a valid {} {} code. Use t3000_point_read to see the current range/units, or pick a code from the {} table.",
+                    code,
+                    point_type,
+                    table,
+                    table
+                ));
+            }
+        }
+        "digital_analog" => {
+            let mode = new_value_str.trim();
+            if mode != "0" && mode != "1" {
+                return Err(format!("digital_analog must be 0 (digital) or 1 (analog), got '{}'", mode));
+            }
+            let as_digital = mode == "0";
+            let current_range = pi32(&cur_range) as i64;
+            if !crate::mcp::range_tables::is_valid_range_code(point_type, current_range, as_digital) {
+                return Err(format!(
+                    "Range code {} is not valid as a {} point, so switching to {} would show a wrong label. Write a valid range for that mode first (e.g. 1 = Off/On for digital).",
+                    current_range,
+                    if as_digital { "digital" } else { "analog" },
+                    if as_digital { "digital_analog=0" } else { "digital_analog=1" }
+                ));
+            }
+        }
+        _ => {}
+    }
     let cur_fvalue_display = pf32(&cur_fvalue) / 1000.0; // DB raw → display (e.g., 72500 → 72.5)
     let (ffi_value, ffi_label, ffi_description, ffi_range, ffi_auto_manual, ffi_digital_analog) = match target_field {
         "label" => (cur_fvalue_display, new_value_str.to_string(), cur_full_label, pi32(&cur_range), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
@@ -325,10 +384,27 @@ async fn point_write_ffi(
     mcp_log(&format!("FFI Action 16: {}", ffi_str));
     info!("[MCP] point_write_ffi: calling C++ FFI Action 16...");
 
-    // Step 5: Call FFI
+    // Step 5: Call FFI and honour what the device said. A rejected write must not
+    // be reported as success, and the DB must not claim a value the device kept.
+    // The call is bounded: an unreachable device makes the C++ block for minutes
+    // and holds the shared FFI lock, which would stall every other tool.
+    const WRITE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
     let ffi_service = T3000FfiApiService::new();
-    ffi_service.call_ffi(&ffi_str).await
+    let response = tokio::time::timeout(WRITE_TIMEOUT, ffi_service.call_ffi(&ffi_str))
+        .await
+        .map_err(|_| format!(
+            "Device write did not answer within {}s — the device may be offline or unreachable",
+            WRITE_TIMEOUT.as_secs()
+        ))?
         .map_err(|e| format!("Device write failed (FFI error): {}", e))?;
+    if let Some(error) = ffi_response_error(&response) {
+        return Err(format!(
+            "Device rejected the write to {} {}: {}",
+            point_type,
+            point_index + 1,
+            error
+        ));
+    }
 
     // Step 6: Update DB — fValue is stored as raw int (×1000), other fields as-is
     let (db_col, db_val) = match target_field {
@@ -339,10 +415,21 @@ async fn point_write_ffi(
         "digital_analog" => ("Digital_Analog", new_value_str.to_string()),
         _ => ("fValue", (pf32(new_value_str) * 1000.0).to_string()), // scale: display → DB raw
     };
-    let update_sql = format!("UPDATE {} SET {} = '{}' WHERE SerialNumber = {} AND {} = '{}'",
-        table, db_col, db_val, serial, idx_col, point_index);
-    db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &update_sql)).await
-        .map_err(|e| format!("DB update failed (device was updated): {}", e))?;
+    // Parameterised: a label with an apostrophe must not break the statement.
+    let update_sql = format!(
+        "UPDATE {} SET {} = ? WHERE SerialNumber = ? AND {} = ?",
+        table, db_col, idx_col
+    );
+    db.execute(sea_orm::Statement::from_sql_and_values(
+        sea_orm::DatabaseBackend::Sqlite,
+        &update_sql,
+        vec![
+            db_val.into(),
+            serial.into(),
+            point_index.to_string().into(),
+        ],
+    )).await
+    .map_err(|e| format!("DB update failed (device was updated): {}", e))?;
 
     info!("[MCP] point_write OK: dev={} {}[{}] field={} val={}", serial, point_type, point_index, target_field, new_value_str);
     mcp_log(&format!("OK: dev={} {}[{}] field={} val={}", serial, point_type, point_index, target_field, new_value_str));
@@ -709,9 +796,9 @@ pub async fn persist_action17_points(
     Ok(updated)
 }
 /// C++ reports failures as `{ "error": "..." }` (see `WrapErrorMessage`), and
-/// leaves `data.device_data` empty — without this check a rejected request
-/// looks exactly like a refresh that found nothing.
-fn action17_error(response: &str) -> Option<String> {
+/// leaves the payload empty — without this check a rejected request looks
+/// exactly like a call that found nothing.
+fn ffi_response_error(response: &str) -> Option<String> {
     let value = serde_json::from_str::<Value>(response).ok()?;
     if let Some(err) = value.get("error").and_then(|v| v.as_str()) {
         if !err.trim().is_empty() {
@@ -724,7 +811,7 @@ fn action17_error(response: &str) -> Option<String> {
             value
                 .get("message")
                 .and_then(|v| v.as_str())
-                .unwrap_or("device refresh was rejected")
+                .unwrap_or("the device rejected the request")
                 .to_string(),
         );
     }
@@ -828,94 +915,6 @@ fn scaled_value(raw: Option<&str>) -> Option<f64> {
         .map(|v| (v / VALUE_SCALE * 100.0).round() / 100.0)
         // An unused point stores -1, which rounds to -0.0; report plain 0.0.
         .map(|v| if v == 0.0 { 0.0 } else { v })
-}
-
-/// Input range/unit text for a range or units code.
-/// `digital: true` selects the digital (binary) table, false the analog one.
-fn input_range_text(code: i64, digital: bool) -> Option<(&'static str, &'static str)> {
-    let analog: Option<(&'static str, &'static str)> = match code {
-        0 => Some(("Unused", "")),
-        1 => Some(("Y3K -40 to 150", "Deg.C")),
-        2 => Some(("Y3K -40 to 300", "Deg.F")),
-        3 => Some(("10K Type2", "Deg.C")),
-        4 => Some(("10K Type2", "Deg.F")),
-        5 => Some(("G3K -40 to 120", "Deg.C")),
-        6 => Some(("G3K -40 to 250", "Deg.F")),
-        7 => Some(("10K Type3", "Deg.C")),
-        8 => Some(("10K Type3", "Deg.F")),
-        9 => Some(("PT 1K -200 to 300", "Deg.C")),
-        10 => Some(("PT 1K -200 to 570", "Deg.F")),
-        11 => Some(("0.0 to 5.0", "Volts")),
-        12 => Some(("0.0 to 100", "Amps")),
-        13 => Some(("4 to 20", "ma")),
-        14 => Some(("4 to 20", "psi")),
-        15 => Some(("Pulse Count (Slow 1Hz)", "counts")),
-        16 => Some(("0 to 100", "%")),
-        17 => Some(("0 to 100", "%")),
-        18 => Some(("0 to 100", "%")),
-        19 => Some(("0.0 to 10.0", "Volts")),
-        20 => Some(("Table 1", "Custom")),
-        21 => Some(("Table 2", "Custom")),
-        22 => Some(("Table 3", "Custom")),
-        23 => Some(("Table 4", "Custom")),
-        24 => Some(("Table 5", "Custom")),
-        25 => Some(("Pulse Count (Fast 100Hz)", "counts")),
-        26 => Some(("Frequency", "Hz")),
-        27 => Some(("Humidity %", "%")),
-        28 => Some(("CO2 PPM", "PPM")),
-        29 => Some(("Revolutions Per Minute", "RPM")),
-        30 => Some(("TVOC PPB", "PPB")),
-        31 => Some(("ug/m3", "ug/m3")),
-        32 => Some(("#/cm3", "#/cm3")),
-        33 => Some(("dB", "dB")),
-        34 => Some(("Lux", "Lux")),
-        _ => None,
-    };
-
-    let digital_table: Option<(&'static str, &'static str)> = match code {
-        0 => Some(("Unused", "")),
-        1 => Some(("Off/On", "")),
-        2 => Some(("Close/Open", "")),
-        3 => Some(("Stop/Start", "")),
-        4 => Some(("Disable/Enable", "")),
-        5 => Some(("Normal/Alarm", "")),
-        6 => Some(("Normal/High", "")),
-        7 => Some(("Normal/Low", "")),
-        8 => Some(("No/Yes", "")),
-        9 => Some(("Cool/Heat", "")),
-        10 => Some(("Unoccupy/Occupy", "")),
-        11 => Some(("Low/High", "")),
-        12 => Some(("On/Off", "")),
-        13 => Some(("Open/Close", "")),
-        14 => Some(("Start/Stop", "")),
-        15 => Some(("Enable/Disable", "")),
-        16 => Some(("Alarm/Normal", "")),
-        17 => Some(("High/Normal", "")),
-        18 => Some(("Low/Normal", "")),
-        19 => Some(("Yes/No", "")),
-        20 => Some(("Heat/Cool", "")),
-        21 => Some(("Occupy/Unoccupy", "")),
-        22 => Some(("High/Low", "")),
-        23 => Some(("Custom Digital 1", "")),
-        24 => Some(("Custom Digital 2", "")),
-        25 => Some(("Custom Digital 3", "")),
-        26 => Some(("Custom Digital 4", "")),
-        27 => Some(("Custom Digital 5", "")),
-        28 => Some(("Custom Digital 6", "")),
-        29 => Some(("Custom Digital 7", "")),
-        30 => Some(("Custom Digital 8", "")),
-        _ => None,
-    };
-
-    if digital { digital_table } else { analog }
-}
-
-/// Text for a code, falling back to the numeric code so nothing is lost.
-fn input_range_field(code: Option<i64>, digital: bool) -> Value {
-    match code.and_then(|c| input_range_text(c, digital)) {
-        Some((label, unit)) => json!({ "range": label, "units": unit }),
-        None => json!({ "range": Value::Null, "units": Value::Null }),
-    }
 }
 
 pub async fn execute_tool(
@@ -1397,14 +1396,11 @@ pub async fn execute_tool(
                     let digital = meta.and_then(|m| m.digital_analog.as_deref())
                         .map(|v| v.trim() == "0")
                         .unwrap_or(false);
-                    let mapped = if entry.point_type == "INPUT" {
-                        input_range_field(
-                            meta.and_then(|m| m.range_field.as_deref()).and_then(|v| v.trim().parse::<i64>().ok()),
-                            digital,
-                        )
-                    } else {
-                        json!({ "range": Value::Null, "units": Value::Null })
-                    };
+                    let mapped = range_tables::range_field(
+                        &entry.point_type,
+                        meta.and_then(|m| m.range_field.as_deref()).and_then(|v| v.trim().parse::<i64>().ok()),
+                        digital,
+                    );
                     results.push(json!({
                         "point_type": entry.point_type,
                         "point_index": display_index,
@@ -1514,11 +1510,11 @@ pub async fn execute_tool(
             // are 0-based: echo the caller's value so responses can be fed back
             // into any point tool unchanged.
             let digital = digital_analog.as_deref().map(|v| v.trim() == "0").unwrap_or(false);
-            let mapped = if point_type == "INPUT" {
-                input_range_field(range_field.as_deref().and_then(|v| v.trim().parse::<i64>().ok()), digital)
-            } else {
-                json!({ "range": Value::Null, "units": Value::Null })
-            };
+            let mapped = range_tables::range_field(
+                point_type,
+                range_field.as_deref().and_then(|v| v.trim().parse::<i64>().ok()),
+                digital,
+            );
             let value = scaled_value(current_value.as_deref());
             serde_json::to_string_pretty(&json!({
                 "serial_number": serial,
@@ -1666,11 +1662,11 @@ pub async fn execute_tool(
                         for t in &tags { if t.to_lowercase().contains(w) { score += 2; } }
                     }
                     if score > 0 {
-                        let mapped = if pt == "INPUT" {
-                            input_range_field(range_code.trim().parse::<i64>().ok(), digital)
-                        } else {
-                            json!({ "range": Value::Null, "units": Value::Null })
-                        };
+                        let mapped = range_tables::range_field(
+                            &pt,
+                            range_code.trim().parse::<i64>().ok(),
+                            digital,
+                        );
                         let display_val = scaled_value(Some(fval.as_str()));
                         // `idx` is the 0-based DB index (string); report 1-based
                         // so the hit can be passed straight to t3000_point_read.
@@ -1752,13 +1748,11 @@ pub async fn execute_tool(
                     .map(|v| v.trim() == "0")
                     .unwrap_or(false);
 
-                // Only inputs have the authoritative code table; for outputs and
-                // variables the raw codes are still returned.
-                let mapped = if point_type == "INPUT" {
-                    input_range_field(range_code.as_deref().and_then(|v| v.trim().parse::<i64>().ok()), digital)
-                } else {
-                    json!({ "range": Value::Null, "units": Value::Null })
-                };
+                let mapped = range_tables::range_field(
+                    point_type,
+                    range_code.as_deref().and_then(|v| v.trim().parse::<i64>().ok()),
+                    digital,
+                );
 
                 Ok(json!({
                     "serial_number": serial,
@@ -1791,13 +1785,25 @@ pub async fn execute_tool(
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type = args.get("point_type").and_then(|v| v.as_str())
                 .ok_or_else(|| "point_type required".to_string())?;
-            let point_index: i32 = args.get("point_index")
-                .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
+            let one_based_index: i32 = args.get("point_index")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;
+            if !(1..=64).contains(&one_based_index) {
+                return Err(format!(
+                    "point_index is 1-based (1..64, matching the UI: IN1 = 1); got {}",
+                    one_based_index
+                ));
+            }
+            let point_index = one_based_index - 1;
             let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
             let field = args.get("field").and_then(|v| v.as_str()).unwrap_or("value");
 
             let valid_fields = ["value", "label", "description", "range", "auto_manual", "digital_analog"];
+            if field == "units" {
+                return Err(
+                    "T3000 derives units from the range code — write field 'range' instead of 'units'".to_string(),
+                );
+            }
             if !valid_fields.contains(&field) {
                 return Err(format!("Invalid field '{}'. Valid fields: {}", field, valid_fields.join(", ")));
             }
@@ -1911,11 +1917,11 @@ pub async fn execute_tool(
                             let digital = row.try_get::<String>("", "Digital_Analog")
                                 .map(|v| v.trim() == "0")
                                 .unwrap_or(false);
-                            let mapped = if pt == "INPUT" {
-                                input_range_field(range_code.as_deref().and_then(|v| v.trim().parse::<i64>().ok()), digital)
-                            } else {
-                                json!({ "range": Value::Null, "units": Value::Null })
-                            };
+                            let mapped = range_tables::range_field(
+                                pt,
+                                range_code.as_deref().and_then(|v| v.trim().parse::<i64>().ok()),
+                                digital,
+                            );
                             let val = scaled_value(fvalue.as_deref());
                             results.push(json!({
                                 "serial_number": sn,
@@ -1963,24 +1969,43 @@ pub async fn execute_tool(
             }
 
             let mut updated = 0;
-            let mut errors: Vec<String> = Vec::new();
+            let mut errors: Vec<Value> = Vec::new();
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let pt = point.get("point_type").and_then(|v| v.as_str());
-                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32 - 1);
+                let one_based_index = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let val = point.get("value");
                 let field = point.get("field").and_then(|v| v.as_str()).unwrap_or("value");
-                if let (Some(sn), Some(pt), Some(idx), Some(val)) = (sn, pt, idx, val) {
-                    let value_str = match val {
-                        Value::Number(n) => n.to_string(),
-                        Value::Bool(b) => (if *b { "1" } else { "0" }).to_string(),
-                        Value::String(s) => s.clone(),
-                        _ => continue,
-                    };
-                    match point_write_ffi(db, sn, pt, idx, field, &value_str).await {
-                        Ok(_) => updated += 1,
-                        Err(e) => errors.push(format!("dev{} {}[{}]: {}", sn, pt, idx, e)),
+
+                // A bad entry must be explained, not silently skipped.
+                let (Some(sn), Some(pt), Some(one_based_index), Some(val)) = (sn, pt, one_based_index, val) else {
+                    errors.push(json!({ "point": point, "error": "serial_number, point_type, point_index and value are required" }));
+                    continue;
+                };
+                if !matches!(pt, "INPUT" | "OUTPUT" | "VARIABLE") {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                        "error": format!("Invalid point_type: {}", pt) }));
+                    continue;
+                }
+                if !(1..=64).contains(&one_based_index) {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                        "error": "point_index is 1-based (1..64, matching the UI: IN1 = 1)" }));
+                    continue;
+                }
+                let value_str = match val {
+                    Value::Number(n) => n.to_string(),
+                    Value::Bool(b) => (if *b { "1" } else { "0" }).to_string(),
+                    Value::String(s) => s.clone(),
+                    _ => {
+                        errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                            "error": "value must be number, boolean, or string" }));
+                        continue;
                     }
+                };
+                match point_write_ffi(db, sn, pt, one_based_index - 1, field, &value_str).await {
+                    Ok(_) => updated += 1,
+                    Err(e) => errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                        "field": field, "error": e })),
                 }
             }
 
@@ -2000,16 +2025,31 @@ pub async fn execute_tool(
                 .unwrap_or_default();
 
             let mut results: Vec<Value> = Vec::new();
+            let mut errors: Vec<Value> = Vec::new();
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let pt = point.get("point_type").and_then(|v| v.as_str());
-                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32 - 1);
-                if let (Some(sn), Some(pt_str), Some(idx)) = (sn, pt, idx) {
+                let one_based_index = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
+                let (Some(sn), Some(pt_str), Some(one_based_index)) = (sn, pt, one_based_index) else {
+                    errors.push(json!({ "point": point, "error": "serial_number, point_type and point_index are required" }));
+                    continue;
+                };
+                if !matches!(pt_str, "INPUT" | "OUTPUT" | "VARIABLE") {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt_str, "point_index": one_based_index,
+                        "error": format!("Invalid point_type: {}", pt_str) }));
+                    continue;
+                }
+                if !(1..=64).contains(&one_based_index) {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt_str, "point_index": one_based_index,
+                        "error": "point_index is 1-based (1..64, matching the UI: IN1 = 1)" }));
+                    continue;
+                }
+                let idx = one_based_index - 1;
+                {
                     let (table, idx_col) = match pt_str {
                         "INPUT" => ("INPUTS", "Input_Index"),
                         "OUTPUT" => ("OUTPUTS", "Output_Index"),
-                        "VARIABLE" => ("VARIABLES", "Variable_Index"),
-                        _ => continue,
+                        _ => ("VARIABLES", "Variable_Index"),
                     };
                     let sql = format!(
                         "SELECT Label, Units, Range_Field, Digital_Analog, Full_Label, fValue
@@ -2044,13 +2084,13 @@ pub async fn execute_tool(
                                 .ok().and_then(|r| r.first().and_then(|r2| r2.try_get::<String>("", "brick_class").ok()));
 
                             let digital = da.as_deref().map(|v| v.trim() == "0").unwrap_or(false);
-                            let mapped = if pt_str == "INPUT" {
-                                input_range_field(range.as_deref().and_then(|v| v.trim().parse::<i64>().ok()), digital)
-                            } else {
-                                json!({ "range": Value::Null, "units": Value::Null })
-                            };
+                            let mapped = range_tables::range_field(
+                                pt_str,
+                                range.as_deref().and_then(|v| v.trim().parse::<i64>().ok()),
+                                digital,
+                            );
                             results.push(json!({
-                                "serial_number": sn, "point_type": pt_str, "point_index": idx + 1,
+                                "serial_number": sn, "point_type": pt_str, "point_index": one_based_index,
                                 "label": desc.clone().filter(|d| !d.is_empty()).or_else(|| label.clone()),
                                 "short_label": label,
                                 "value": display_val, "raw_value": fval,
@@ -2059,13 +2099,20 @@ pub async fn execute_tool(
                                 "digital": digital, "digital_analog": da,
                                 "haystack_tags": tags, "brick_class": bc,
                             }));
+                        } else {
+                            errors.push(json!({ "serial_number": sn, "point_type": pt_str, "point_index": one_based_index,
+                                "error": format!("No {} {} stored for device {} (run t3000_device_refresh to load it from the device)", pt_str, one_based_index, sn) }));
                         }
+                    } else {
+                        errors.push(json!({ "serial_number": sn, "point_type": pt_str, "point_index": one_based_index,
+                            "error": "Query failed" }));
                     }
                 }
             }
 
             serde_json::to_string_pretty(&json!({
-                "results": results, "requested": points.len(), "returned": results.len(),
+                "results": results, "errors": errors,
+                "requested": points.len(), "returned": results.len(),
                 "timestamp": Utc::now().to_rfc3339(),
             }))
             .map_err(|e| format!("Serialize error: {}", e))
@@ -2800,7 +2847,7 @@ pub async fn execute_tool(
                 // "The serial number/objectinstance does not match the panel" means
                 // the DB panel id points at a different panel in the C++, so take
                 // the panel from the live list and retry once.
-                if let Some(err) = action17_error(&response) {
+                if let Some(err) = ffi_response_error(&response) {
                     if !resolved_live && err.contains("does not match the panel") {
                         if let Some((panel, live_instance)) = live_panel_for(serial).await {
                             resolved_live = true;
@@ -2824,7 +2871,7 @@ pub async fn execute_tool(
                     }
                 }
 
-                if let Some(err) = action17_error(&response) {
+                if let Some(err) = ffi_response_error(&response) {
                     error!("[MCP] device_refresh: {} rejected: {}", pt, err);
                     points_by_type.insert(pt.to_lowercase(), json!(0));
                     errors.push(format!("{}: {}", pt, err));

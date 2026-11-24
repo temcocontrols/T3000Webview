@@ -34,8 +34,11 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 }) => {
   const [selectedRange, setSelectedRange] = useState<number>(currentRange);
   const [manualInput, setManualInput] = useState<string>(currentRange.toString());
+  // Analog (1–33) and digital (1–30) codes overlap, so the mode cannot be derived
+  // from the number — it comes from the section the user picked.
+  const [mode, setMode] = useState<number>(digitalAnalog);
 
-  const handleSave = () => { onSave(selectedRange, getDigitalAnalogForValue(selectedRange)); onClose(); };
+  const handleSave = () => { onSave(selectedRange, mode); onClose(); };
 
   const handleCancel = () => {
     setSelectedRange(currentRange);
@@ -55,13 +58,14 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
     if (isOpen) {
       setSelectedRange(currentRange);
       setManualInput(currentRange.toString());
+      setMode(digitalAnalog);
     }
-  }, [isOpen, currentRange]);
+  }, [isOpen, currentRange, digitalAnalog]);
 
-  // Variable analog: 31-68; digital: 1-30, 101-104
-  const isAnalogValue = (v: number) => v >= 31 && v <= 68;
-  const getDigitalAnalogForValue = (v: number): number => isAnalogValue(v) ? 1 : 0;
-  const currentRangeLabel = getRangeLabel(selectedRange, getDigitalAnalogForValue(selectedRange));
+  // Analog units are the firmware's 0-based indices 1..33 (`1 = °C`); digital
+  // states are 1..30 and the MSV codes 101..104. The number alone is ambiguous,
+  // so the label shown follows the mode the user is editing.
+  const currentRangeLabel = getRangeLabel(selectedRange, mode);
 
   const handleRadioChange = (_: React.ChangeEvent<HTMLInputElement>, data: { value: string }) => {
     const num = parseInt(data.value);
@@ -69,12 +73,22 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
     setManualInput(num.toString());
   };
 
-  // 31-68 (analog) don't overlap with 1-30 (digital) — no prefix trick needed
-  const radioGroupValue = selectedRange.toString();
+  const handleDigitalChange = (ev: React.FormEvent<HTMLDivElement>, data: { value: string }) => {
+    setMode(0);
+    handleRadioChange(ev as unknown as React.ChangeEvent<HTMLInputElement>, data);
+  };
+
+  const handleAnalogChange = (ev: React.FormEvent<HTMLDivElement>, data: { value: string }) => {
+    setMode(1);
+    handleRadioChange(ev as unknown as React.ChangeEvent<HTMLInputElement>, data);
+  };
+
+  const digitalGroupValue = mode === 0 ? selectedRange.toString() : '';
+  const analogGroupValue = mode === 1 ? selectedRange.toString() : '';
 
   // Split analog into two columns
-  const analogLeft  = VARIABLE_ANALOG_RANGES.filter(r => r.value >= 31 && r.value <= 50);
-  const analogRight = VARIABLE_ANALOG_RANGES.filter(r => r.value >= 51 && r.value <= 68);
+  const analogLeft  = VARIABLE_ANALOG_RANGES.filter(r => r.value >= 1 && r.value <= 17);
+  const analogRight = VARIABLE_ANALOG_RANGES.filter(r => r.value >= 18 && r.value <= 33);
 
   return (
     <Drawer
@@ -114,7 +128,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
               <span className={styles.dividerText}>Default</span>
             </div>
             <div className={styles.defaultSection}>
-              <RadioGroup value={radioGroupValue} onChange={handleRadioChange}>
+              <RadioGroup value={selectedRange === 0 ? '0' : ''} onChange={handleDigitalChange}>
                 <Radio value="0" label="0. Unused" />
               </RadioGroup>
             </div>
@@ -142,11 +156,12 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
           </div>
         </div>
 
-        {/* Digital + Variable Analog in one shared RadioGroup */}
+        {/* Digital states (mode 0) and variable analog units (mode 1) are separate
+            radio groups: the same code numbers exist in both tables. */}
         <div className={styles.sectionDivider}>
           <span className={styles.dividerText}>Digital</span>
         </div>
-        <RadioGroup value={radioGroupValue} onChange={handleRadioChange}>
+        <RadioGroup value={digitalGroupValue} onChange={handleDigitalChange}>
           <div className={styles.mainContent}>
             <div className={styles.digitalSection}>
               {/* Left: standard digital 1-22 */}
@@ -176,27 +191,33 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                   ))}
                 </div>
               </div>
-              {/* Right: Multi State */}
+              {/* Right: Multi State — the state names live in the device's own MSV
+                 objects, so they are only shown here (no editor yet). */}
               <div className={styles.column}>
                 <div className={styles.sectionHeader}>
                   <Text weight="semibold" size={300} className={styles.sectionTitle}>Multi State</Text>
-                  <Button appearance="primary" className={styles.editButton}>Edit</Button>
                 </div>
                 <div className={styles.rangeGroup}>
                   {[101,102,103,104].map(v => (
                     <div key={v} className={styles.rangeOption}>
-                      <Radio value={v.toString()} label="" />
+                      <Radio value={v.toString()} label={`${v}. ${getRangeLabel(v, 0)}`} />
                     </div>
                   ))}
                 </div>
+                <Text size={100} className={styles.inputLabelHeader}>
+                  State names come from the device&apos;s MSV objects; editing them needs a
+                  T3000 FFI action that does not exist yet.
+                </Text>
               </div>
             </div>
           </div>
+        </RadioGroup>
 
-          {/* Variable Analog Units */}
-          <div className={styles.sectionDivider}>
-            <span className={styles.dividerText}>Variable Analog Units</span>
-          </div>
+        {/* Variable Analog Units — its own group: these codes set mode 1 */}
+        <div className={styles.sectionDivider}>
+          <span className={styles.dividerText}>Variable Analog Units</span>
+        </div>
+        <RadioGroup value={analogGroupValue} onChange={handleAnalogChange}>
           <div className={styles.analogSection}>
             <div className={styles.analogColumns} style={{ gridTemplateColumns: '1fr 1fr' }}>
               <div className={styles.column}>

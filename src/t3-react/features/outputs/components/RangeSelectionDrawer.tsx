@@ -38,9 +38,12 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
 }) => {
   const [selectedRange, setSelectedRange] = useState<number>(currentRange);
   const [manualInput, setManualInput] = useState<string>(currentRange.toString());
+  // Analog (1-8) and digital (1-30) codes overlap, so the mode cannot be derived
+  // from the number — it comes from the section the user picked.
+  const [mode, setMode] = useState<number>(digitalAnalog);
 
   const handleSave = () => {
-    onSave(selectedRange, getDigitalAnalogForValue(selectedRange));
+    onSave(selectedRange, mode);
     onClose();
   };
 
@@ -63,21 +66,32 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
     if (isOpen) {
       setSelectedRange(currentRange);
       setManualInput(currentRange.toString());
+      setMode(digitalAnalog);
     }
-  }, [isOpen, currentRange]);
+  }, [isOpen, currentRange, digitalAnalog]);
 
-  // Determine the type based on selected value
-  const getDigitalAnalogForValue = (value: number): number => {
-    // Digital: 1-30 standard/custom, 101-104 MSV
-    if ((value >= 1 && value <= 30) || (value >= 101 && value <= 104)) {
-      return 0; // BAC_UNITS_DIGITAL
-    }
-    // Analog: 31-38 (C++ native output analog indices)
-    return 1; // BAC_UNITS_ANALOG
+  const handleRangeChange = (value: number) => {
+    setSelectedRange(value);
+    setManualInput(value.toString());
   };
 
-  // Get current range label with correct type
-  const currentRangeLabel = getRangeLabel(selectedRange, getDigitalAnalogForValue(selectedRange));
+  const handleDigitalChange = (_: unknown, data: { value: string }) => {
+    setMode(0);
+    handleRangeChange(Number(data.value));
+  };
+
+  const handleAnalogChange = (_: unknown, data: { value: string }) => {
+    setMode(1);
+    handleRangeChange(Number(data.value));
+  };
+
+  // Output analog ranges are the firmware's 0-based indices 1..8; digital states
+  // are 1..30 plus the MSV codes 101..104. The number alone is ambiguous, so the
+  // label follows the mode the user is editing.
+  const currentRangeLabel = getRangeLabel(selectedRange, mode);
+
+  const digitalGroupValue = mode === 0 ? selectedRange.toString() : '';
+  const analogGroupValue = mode === 1 ? selectedRange.toString() : '';
 
   return (
     <Drawer
@@ -121,8 +135,8 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
             </div>
             <div className={styles.defaultSection}>
               <RadioGroup
-                value={selectedRange.toString()}
-                onChange={(_, data) => setSelectedRange(Number(data.value))}
+                value={selectedRange === 0 ? '0' : ''}
+                onChange={handleDigitalChange}
               >
                 <Radio value="0" label="0. Unused" />
               </RadioGroup>
@@ -167,8 +181,8 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
         </div>
 
         <RadioGroup
-          value={selectedRange.toString()}
-          onChange={(_, data) => setSelectedRange(Number(data.value))}
+          value={digitalGroupValue}
+          onChange={handleDigitalChange}
         >
         {/* Main content: 3-column layout for Digital section */}
         <div className={styles.mainContent}>
@@ -230,31 +244,25 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Right column: Multi State section (placeholder for consistency) */}
+              {/* Right column: Multi State — the state names live in the device's
+                  own MSV objects, so they are only shown here (no editor yet). */}
               <div className={styles.column}>
                 <div className={styles.sectionHeader}>
                   <Text weight="semibold" size={300} className={styles.sectionTitle}>
                     Multi State
                   </Text>
-                  <Button appearance="primary" className={styles.editButton}>
-                    Edit
-                  </Button>
                 </div>
                 <div className={styles.rangeGroup}>
-                  {/* Placeholder for multi-state values */}
-                  <div className={styles.rangeOption}>
-                    <Radio value="100" label="" />
-                  </div>
-                  <div className={styles.rangeOption}>
-                    <Radio value="101" label="" />
-                  </div>
-                  <div className={styles.rangeOption}>
-                    <Radio value="102" label="" />
-                  </div>
-                  <div className={styles.rangeOption}>
-                    <Radio value="103" label="" />
-                  </div>
+                  {[101, 102, 103, 104].map(v => (
+                    <div key={v} className={styles.rangeOption}>
+                      <Radio value={v.toString()} label={`${v}. ${getRangeLabel(v, 0)}`} />
+                    </div>
+                  ))}
                 </div>
+                <Text size={100}>
+                  State names come from the device&apos;s MSV objects; editing them needs a
+                  T3000 FFI action that does not exist yet.
+                </Text>
               </div>
             </div>
 
@@ -267,8 +275,8 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
         </div>
 
         <RadioGroup
-          value={selectedRange.toString()}
-          onChange={(_, data) => setSelectedRange(Number(data.value))}
+          value={analogGroupValue}
+          onChange={handleAnalogChange}
         >
         {/* Output Analog Units section - 3 columns layout matching inputs pattern */}
         <div className={styles.analogSection}>
@@ -281,7 +289,7 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </Text>
               </div>
               <div className={styles.rangeGroup}>
-                {OUTPUT_ANALOG_RANGES.filter(r => r.value >= 31 && r.value <= 38).map((range) => (
+                {OUTPUT_ANALOG_RANGES.filter(r => r.value >= 1 && r.value <= 8).map((range) => (
                   <div key={range.value} className={styles.rangeOption}>
                     <Radio
                       value={range.value.toString()}
