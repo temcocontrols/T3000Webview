@@ -497,7 +497,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_haystack_export",
         title: "Export Semantic Model",
-        description: "Export the full semantic model for devices. Supports haystack-json (Project Haystack), brick-ttl (Turtle RDF), brick-jsonld (JSON-LD), and csv-flat (flat table of all points with values, units, tags, brick class).",
+        description: "Export the full semantic model for devices. Supports haystack-json (Project Haystack), brick-ttl (Turtle RDF), brick-jsonld (JSON-LD), and csv-flat (flat table of all points with values, units text, tags, brick class). serial_numbers is required and every serial must be a known device.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -517,8 +517,8 @@ lazy_static::lazy_static! {
     // ═══ v4: Rules Management ═══ 
     ToolDef {
         name: "t3000_rule_toggle",
-        title: "Toggle Rule",
-        description: "Enable or disable an auto-tagging rule by ID.",
+        title: "Enable/Disable Rule",
+        description: "Set an auto-tagging rule's enabled state. This sets the state you pass in (it does not flip): calling it twice with enabled:false leaves the rule disabled.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -537,7 +537,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_rule_create",
         title: "Create Rule",
-        description: "Create a new auto-tagging rule with a regex pattern and target tags.",
+        description: "Create a new auto-tagging rule from a regex pattern plus the tags or Brick class it assigns. Requires haystack_tags for category 'haystack' and brick_class for category 'brick'; rule_name must be unique; pattern must be a valid regex.",
         input_schema: json!({
             "type": "object",
             "properties": {

@@ -2176,7 +2176,8 @@ pub async fn execute_tool(
             }
 
             // Rule 3: air tag without disambiguator
-            let air_sql = "SELECT pt1.serial_number, pt1.point_type, pt1.point_index, pt1.point_id
+            let mut air_sql = String::from(
+                "SELECT pt1.serial_number, pt1.point_type, pt1.point_index, pt1.point_id
                 FROM HAYSTACK_POINT_TAGS pt1
                 WHERE pt1.tag_name = 'air'
                 AND NOT EXISTS (
@@ -2185,8 +2186,16 @@ pub async fn execute_tool(
                     AND pt2.point_type = pt1.point_type
                     AND pt2.point_index = pt1.point_index
                     AND pt2.tag_name IN ('temp', 'humidity', 'pressure', 'flow', 'quality')
-                )";
-            if let Ok(rows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, air_sql)).await {
+                )"
+            );
+            // The serial filter has to apply here too, otherwise a single-device
+            // validation reports warnings from every other device.
+            if let Some(ref sf) = sn_filter {
+                if !sf.is_empty() {
+                    air_sql.push_str(&format!(" AND pt1.serial_number IN ({})", sf));
+                }
+            }
+            if let Ok(rows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &air_sql)).await {
                 for row in &rows {
                     warnings.push(json!({
                         "point_id": row.try_get::<String>("", "point_id").unwrap_or_default(),
@@ -2215,10 +2224,36 @@ pub async fn execute_tool(
             let format = args.get("format").and_then(|v| v.as_str()).unwrap_or("haystack-json");
 
             if serials.is_empty() {
-                return Ok(json!({"error": "No serial numbers provided"}).to_string());
+                return Err("serial_numbers is required — pass at least one device serial (see t3000_device_list)".to_string());
             }
 
             let sn_list = serials.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(",");
+
+            // A wrong/unknown serial used to return an empty document, which reads as
+            // "this device has no data" instead of "that device does not exist".
+            let known_sql = format!(
+                "SELECT SerialNumber FROM DEVICES WHERE SerialNumber IN ({})",
+                sn_list
+            );
+            let known_rows = db
+                .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &known_sql))
+                .await
+                .map_err(|e| format!("Device lookup failed: {}", e))?;
+            let known: Vec<i32> = known_rows
+                .iter()
+                .filter_map(|r| r.try_get::<i32>("", "SerialNumber").ok())
+                .collect();
+            let unknown: Vec<String> = serials
+                .iter()
+                .filter(|s| !known.contains(s))
+                .map(|s| s.to_string())
+                .collect();
+            if !unknown.is_empty() {
+                return Err(format!(
+                    "Unknown device serial(s): {}. Use t3000_device_list to see the available serials.",
+                    unknown.join(", ")
+                ));
+            }
 
             let sql = format!(
                 "SELECT pt.serial_number, pt.point_type, pt.point_index, pt.point_id, pt.tag_name,
@@ -2301,6 +2336,11 @@ pub async fn execute_tool(
                         "format": "brick-ttl",
                         "content": ttl,
                         "entity_count": brick_classes.len(),
+                        "warning": if brick_classes.is_empty() && !rows.is_empty() {
+                            Value::String("No Brick classes are assigned for these devices, so the TTL body is empty. Assign classes with t3000_haystack_auto_tag or a category='brick' rule.".to_string())
+                        } else {
+                            Value::Null
+                        },
                     }).to_string())
                 }
 
@@ -2326,6 +2366,7 @@ pub async fn execute_tool(
                     }
 
                     serde_json::to_string_pretty(&json!({
+                        "format": "brick-jsonld",
                         "@context": {
                             "brick": "https://brickschema.org/schema/Brick#",
                             "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
@@ -2334,6 +2375,11 @@ pub async fn execute_tool(
                         },
                         "@graph": graph,
                         "entity_count": brick_classes.len(),
+                        "warning": if brick_classes.is_empty() && !rows.is_empty() {
+                            Value::String("No Brick classes are assigned for these devices, so @graph is empty. Assign classes with t3000_haystack_auto_tag or a category='brick' rule.".to_string())
+                        } else {
+                            Value::Null
+                        },
                     }))
                     .map_err(|e| format!("Serialize error: {}", e))
                 }
@@ -2394,19 +2440,35 @@ pub async fn execute_tool(
                         }
                     }
 
-                    let mut csv = String::from("serial_number,point_type,point_index,label,description,value,units,range,digital_analog,tags,brick_class\n");
+                    let mut csv = String::from("serial_number,point_type,point_index,label,description,value,units,range,digital_analog,tags,brick_class,range_code,units_code\n");
                     for row in &all_rows {
                         let key = format!("{}:{}:{}", row.sn, row.pt, row.idx);
                         let tags = point_tags.get(&key).map(|t| t.join("; ")).unwrap_or_default();
                         let bc = point_brick.get(&key).map(|s| s.as_str()).unwrap_or("");
-                        let display_val: String = if row.pt == "INPUT" && !row.fval.is_empty() {
-                            row.fval.parse::<f64>().map(|v| format!("{:.3}", v / 1000.0)).unwrap_or(row.fval.clone())
-                        } else { row.fval.clone() };
+                        // fValue is stored x1000 for every point type — dividing only
+                        // the INPUT rows mixed two scales in one column.
+                        let display_val: String = row.fval
+                            .parse::<f64>()
+                            .map(|v| format!("{:.3}", v / 1000.0))
+                            .unwrap_or_else(|_| row.fval.clone());
+                        let digital = row.da.trim() == "0";
+                        let range_code: Option<i64> = row.range.trim().parse().ok();
+                        let units_code: Option<i64> = row.units.trim().parse().ok();
+                        // Emit the human text (as t3000_point_read does) next to the raw
+                        // codes — a bare code in a column called "units" is not a unit.
+                        let range_text = range_code
+                            .and_then(|c| range_tables::range_text(&row.pt, c, digital))
+                            .map(|(range, _)| range)
+                            .unwrap_or("");
+                        let units_text = units_code
+                            .and_then(|c| range_tables::range_text(&row.pt, c, digital))
+                            .map(|(_, units)| units)
+                            .unwrap_or("");
                         let escaped_label = row.label.replace('"', "\"\"");
                         let escaped_desc = row.desc.replace('"', "\"\"");
-                        csv.push_str(&format!("{},{},{},\"{}\",\"{}\",{},{},{},{},{},{}\n",
+                        csv.push_str(&format!("{},{},{},\"{}\",\"{}\",{},\"{}\",\"{}\",{},{},{},{},{}\n",
                             row.sn, row.pt, row.idx, escaped_label, escaped_desc, display_val,
-                            row.units, row.range, row.da, tags, bc));
+                            units_text, range_text, row.da, tags, bc, row.range, row.units));
                     }
 
                     Ok(json!({
@@ -2426,8 +2488,13 @@ pub async fn execute_tool(
             let rule_id: i64 = args.get("rule_id")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| "rule_id required".to_string())?;
+            // `enabled` is required and must be honoured as a value: flipping the
+            // stored flag would re-enable a rule when the client disables it twice.
+            let enabled = args.get("enabled")
+                .and_then(|v| v.as_bool())
+                .ok_or_else(|| "enabled required: true to enable, false to disable".to_string())?;
 
-            let result = ats::toggle_rule(db, rule_id).await?;
+            let result = ats::set_rule_enabled(db, rule_id, enabled).await?;
 
             Ok(json!({
                 "rule_id": rule_id,
@@ -2437,19 +2504,63 @@ pub async fn execute_tool(
 
         "t3000_rule_create" => {
             let rule_name = args.get("rule_name")
-                .and_then(|v| v.as_str()).map(String::from)
+                .and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(String::from)
                 .ok_or_else(|| "rule_name required".to_string())?;
             let pattern = args.get("pattern")
-                .and_then(|v| v.as_str()).map(String::from)
+                .and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(String::from)
                 .ok_or_else(|| "pattern required".to_string())?;
             let category = args.get("category")
-                .and_then(|v| v.as_str()).map(String::from)
+                .and_then(|v| v.as_str()).map(str::trim).map(String::from)
                 .ok_or_else(|| "category required".to_string())?;
+
+            // The table has CHECK(category IN ('haystack','brick','range')).
+            if !matches!(category.as_str(), "haystack" | "brick" | "range") {
+                return Err(format!(
+                    "Invalid category '{}'. Use 'haystack' (assign tags), 'brick' (assign a Brick class) or 'range'.",
+                    category
+                ));
+            }
+            // An invalid regex would be stored and then break auto-tagging later.
+            if let Err(e) = regex::Regex::new(&pattern) {
+                return Err(format!("Invalid regex pattern '{}': {}", pattern, e));
+            }
 
             let haystack_tags = args.get("haystack_tags").and_then(|v| v.as_str()).map(String::from);
             let brick_class = args.get("brick_class").and_then(|v| v.as_str()).map(String::from);
             let units = args.get("units").and_then(|v| v.as_str()).map(String::from);
             let object_types = args.get("object_types").and_then(|v| v.as_str()).map(String::from);
+            let priority = args.get("priority").and_then(|v| v.as_i64()).map(|p| p as i32);
+
+            // A rule that assigns nothing can never do anything — reject it early.
+            let has_tags = haystack_tags.as_deref().map(|t| !t.trim().is_empty()).unwrap_or(false);
+            let has_brick = brick_class.as_deref().map(|b| !b.trim().is_empty()).unwrap_or(false);
+            if category == "haystack" && !has_tags {
+                return Err("haystack rules need haystack_tags, e.g. 'temp, sensor, point'".to_string());
+            }
+            if category == "brick" && !has_brick {
+                return Err("brick rules need brick_class, e.g. 'Temperature_Sensor'".to_string());
+            }
+            if !has_tags && !has_brick {
+                return Err("Provide haystack_tags and/or brick_class — the rule would assign nothing".to_string());
+            }
+
+            // rule_name is UNIQUE in the table; report it in words instead of
+            // leaking "UNIQUE constraint failed".
+            let dup_sql = format!(
+                "SELECT id FROM HAYSTACK_AUTO_TAGGING_RULES WHERE rule_name = '{}'",
+                rule_name.replace('\'', "''")
+            );
+            let existing = db
+                .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dup_sql))
+                .await
+                .map_err(|e| format!("Rule name lookup failed: {}", e))?;
+            if let Some(row) = existing.first() {
+                let id: i64 = row.try_get("", "id").unwrap_or(0);
+                return Err(format!(
+                    "Duplicate rule_name: a rule named '{}' already exists (id {}). Use t3000_rule_toggle to change its state, or pick another name.",
+                    rule_name, id
+                ));
+            }
 
             let req = ats::CreateRuleRequest {
                 rule_name,
@@ -2461,6 +2572,7 @@ pub async fn execute_tool(
                 brick_class,
                 haystack_kind: None,
                 haystack_unit: None,
+                priority,
             };
 
             let rule_id = ats::create_rule(db, &req).await?;
@@ -2470,6 +2582,7 @@ pub async fn execute_tool(
                 "rule_name": req.rule_name,
                 "pattern": req.pattern,
                 "category": req.category,
+                "priority": req.priority.unwrap_or(0),
                 "enabled": true,
             }).to_string())
         }

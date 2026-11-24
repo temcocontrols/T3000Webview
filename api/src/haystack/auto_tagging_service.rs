@@ -76,6 +76,7 @@ pub struct CreateRuleRequest {
     pub brick_class: Option<String>,
     pub haystack_kind: Option<String>,
     pub haystack_unit: Option<String>,
+    pub priority: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -129,8 +130,8 @@ pub async fn list_rules(db: &impl ConnectionTrait) -> Result<Vec<AutoTaggingRule
 
 pub async fn create_rule(db: &impl ConnectionTrait, req: &CreateRuleRequest) -> Result<i64, String> {
     let sql = format!(
-        "INSERT INTO HAYSTACK_AUTO_TAGGING_RULES (rule_name, category, pattern, units, object_types, haystack_tags, brick_class, haystack_kind, haystack_unit)
-         VALUES ('{}', '{}', '{}', {}, {}, {}, {}, {}, {})",
+        "INSERT INTO HAYSTACK_AUTO_TAGGING_RULES (rule_name, category, pattern, units, object_types, haystack_tags, brick_class, haystack_kind, haystack_unit, priority)
+         VALUES ('{}', '{}', '{}', {}, {}, {}, {}, {}, {}, {})",
         req.rule_name.replace('\'', "''"),
         req.category.replace('\'', "''"),
         req.pattern.replace('\'', "''"),
@@ -140,22 +141,27 @@ pub async fn create_rule(db: &impl ConnectionTrait, req: &CreateRuleRequest) -> 
         opt_str(&req.brick_class),
         opt_str(&req.haystack_kind),
         opt_str(&req.haystack_unit),
+        req.priority.unwrap_or(0),
     );
 
     db.execute(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
         .await
         .map_err(|e| format!("Failed to create rule: {}", e))?;
 
-    // Get the last inserted id
+    // Read the id back by the UNIQUE name. `last_insert_rowid()` is per connection,
+    // so on a pooled database it can answer for a different connection and return 0.
+    let id_sql = format!(
+        "SELECT id FROM HAYSTACK_AUTO_TAGGING_RULES WHERE rule_name = '{}'",
+        req.rule_name.replace('\'', "''")
+    );
     let row = db
-        .query_one(Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            "SELECT last_insert_rowid() as id",
-        ))
+        .query_one(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &id_sql))
         .await
-        .map_err(|e| format!("Failed to get id: {}", e))?;
+        .map_err(|e| format!("Failed to read the new rule id: {}", e))?
+        .ok_or_else(|| "Failed to read the new rule id: rule is not in the table".to_string())?;
 
-    Ok(row.and_then(|r| r.try_get::<i64>("", "id").ok()).unwrap_or(0))
+    row.try_get::<i64>("", "id")
+        .map_err(|e| format!("Failed to read the new rule id: {}", e))
 }
 
 pub async fn update_rule(db: &impl ConnectionTrait, id: i64, req: &UpdateRuleRequest) -> Result<(), String> {
@@ -193,9 +199,10 @@ pub async fn toggle_rule(db: &impl ConnectionTrait, id: i64) -> Result<bool, Str
             vec![id.into()],
         ))
         .await
-        .map_err(|e| format!("Query failed: {}", e))?;
+        .map_err(|e| format!("Query failed: {}", e))?
+        .ok_or_else(|| format!("Rule {} not found", id))?;
 
-    let current = row.and_then(|r| r.try_get::<i32>("", "enabled").ok()).unwrap_or(1);
+    let current = row.try_get::<i32>("", "enabled").unwrap_or(1);
     let new_val = if current != 0 { 0 } else { 1 };
 
     db.execute(Statement::from_sql_and_values(
@@ -207,6 +214,34 @@ pub async fn toggle_rule(db: &impl ConnectionTrait, id: i64) -> Result<bool, Str
     .map_err(|e| format!("Failed to toggle rule: {}", e))?;
 
     Ok(new_val != 0)
+}
+
+/// Set a rule's `enabled` flag to an explicit value.
+///
+/// `toggle_rule` flips whatever is stored, so a client asking twice for the same
+/// state ("disable this rule") would silently re-enable it. The MCP tool takes an
+/// explicit `enabled`, so it must set rather than flip.
+pub async fn set_rule_enabled(
+    db: &impl ConnectionTrait,
+    id: i64,
+    enabled: bool,
+) -> Result<bool, String> {
+    let value: i32 = if enabled { 1 } else { 0 };
+
+    let result = db
+        .execute(Statement::from_sql_and_values(
+            sea_orm::DatabaseBackend::Sqlite,
+            "UPDATE HAYSTACK_AUTO_TAGGING_RULES SET enabled = ?, updated_at = datetime('now') WHERE id = ?",
+            vec![value.into(), id.into()],
+        ))
+        .await
+        .map_err(|e| format!("Failed to update rule {}: {}", id, e))?;
+
+    if result.rows_affected() == 0 {
+        return Err(format!("Rule {} not found", id));
+    }
+
+    Ok(enabled)
 }
 
 pub async fn delete_rule(db: &impl ConnectionTrait, id: i64, force: bool) -> Result<(), String> {
