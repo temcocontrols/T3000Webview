@@ -186,3 +186,27 @@ tempjson[...]["label"]       = (char*)EXPR.label;
 // AFTER
 tempjson[...]["description"] = DeviceStrForJson(EXPR.description, sizeof(EXPR.description));
 tempjson[...]["label"]       = DeviceStrForJson(EXPR.label,       sizeof(EXPR.label));
+
+
+// 2026-11-25
+
+RE: [Temco Controls Forum] [T3000 Software] T3000 Webview Debugging
+
+=> 
+
+Add a front-end–only update feature. Update just the T3000 web UI, so front-end features and bug fixes no longer have to ship with a T3000 release. Keeping them separate makes updates easy and removes the wait for main T3000 releases. Requires a new pipeline and a small feature on the T3000 side.
+
+
+// 
+
+Add Grok support for the AI Assistant.
+
+
+
+
+
+
+
+
+
+
