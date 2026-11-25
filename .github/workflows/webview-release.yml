@@ -143,8 +143,9 @@ jobs:
           submodules: recursive
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.95.0
           targets: i686-pc-windows-msvc
 
       - name: Cache cargo registry
@@ -153,7 +154,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('api/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-1.95.0-${{ hashFiles('api/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Build webview api

@@ -43,8 +43,9 @@ jobs:
           submodules: recursive
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.95.0
           targets: i686-pc-windows-msvc
 
       - name: Build webview api
