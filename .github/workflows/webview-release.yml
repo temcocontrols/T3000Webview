@@ -1,0 +1,320 @@
+name: Webview release
+
+# Front-end release channel for T3000 Webview.
+#
+# Produces ONE downloadable package per release and attaches it to a GitHub
+# Release. Nothing here installs anything or touches a T3000 installation - it
+# only builds and publishes artifacts:
+#
+#   T3000-Webview-<version>.zip
+#   └── <version>/
+#         www/                  the web app (dist/ of the Quasar build)
+#         t3_webview_api.dll    the 32-bit Rust API
+#         t3_webview_api.dll.lib
+#         t3_webview_api.dll.exp
+#         version.json          version + git sha + build time
+#         sha256sums.txt
+#
+# The zip is also kept as a workflow artifact, and `latest.json` (a separate
+# release asset) describes the newest build so a future updater can find it.
+#
+# Releases are cut from a tag on main, so every package maps to a commit.
+
+on:
+  push:
+    tags: ['webview-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, e.g. 26.1125.02'
+        required: true
+      notes:
+        description: 'Release notes (markdown)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── 1. Guard: version + "must come from main" ───────────────────────────────
+  guard:
+    name: Guard
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      git_sha: ${{ steps.v.outputs.git_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            V="${{ github.event.inputs.version }}"
+          else
+            V="${GITHUB_REF_NAME#webview-v}"
+          fi
+          if ! printf '%s' "$V" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::version '$V' is not YY.MMDD.NN (e.g. 26.1125.02)"
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "git_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "release version: $V"
+
+      - name: Release must come from main
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+              echo "::error::dispatch a release from main (current ref: $GITHUB_REF)"
+              exit 1
+            fi
+          else
+            git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+              echo "::error::tag $GITHUB_REF_NAME is not on main — merge first, then tag"
+              exit 1
+            fi
+          fi
+
+      - name: package.json version should match the tag
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          norm() { printf '%s' "$1" | awk -F. '{printf "%d.%d.%d", $1, $2, $3}'; }
+          if [ "$(norm "$PKG")" != "$(norm "${{ steps.v.outputs.version }}")" ]; then
+            echo "::warning::package.json is $PKG but the release is ${{ steps.v.outputs.version }} — bump package.json so the two stay in step"
+          fi
+
+  # ── 2. Web app (same build as build.yml) ────────────────────────────────────
+  ui:
+    name: Build UI
+    needs: guard
+    runs-on: ubuntu-latest
+    environment: build
+    env:
+      API_URL: ${{ secrets.API_URL }}
+      API_WS_URL: ${{ secrets.API_WS_URL }}
+      LOCAL_API_URL: ${{ vars.LOCAL_API_URL }}
+      LOCAL_API_SECRET_KEY: ${{ secrets.LOCAL_API_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Verify the build produced an app
+        run: test -f dist/index.html
+
+      - name: Upload www
+        uses: actions/upload-artifact@v4
+        with:
+          name: webview-www
+          path: dist
+          if-no-files-found: error
+
+  # ── 3. Rust API, 32-bit (same build as build.yml) ───────────────────────────
+  api:
+    name: Build API
+    needs: guard
+    runs-on: windows-latest
+    environment: build
+    env:
+      API_URL: ${{ secrets.API_URL }}
+      API_WS_URL: ${{ secrets.API_WS_URL }}
+      LOCAL_API_URL: ${{ vars.LOCAL_API_URL }}
+      LOCAL_API_SECRET_KEY: ${{ secrets.LOCAL_API_SECRET_KEY }}
+      API_SECRET_KEY: ${{ secrets.LOCAL_API_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: i686-pc-windows-msvc
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('api/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build webview api
+        working-directory: api
+        run: cargo build --target i686-pc-windows-msvc --release
+
+      - name: Check the staged T3Web resources
+        id: t3web
+        shell: pwsh
+        run: |
+          $p = "api/target/i686-pc-windows-msvc/release/ResourceFile/webview/t3web"
+          if (Test-Path "$p/t3-eez") {
+            $n = (Get-ChildItem $p -Recurse -File | Measure-Object).Count
+            Write-Host "T3Web staged: $n files"
+            "found=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+            Write-Warning "T3Web resources were not staged (sibling repos missing) - the package will not include T3Web/"
+            "found=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          }
+
+      - name: Upload T3Web
+        if: steps.t3web.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: webview-t3web
+          path: api/target/i686-pc-windows-msvc/release/ResourceFile/webview/t3web
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: webview-api
+          if-no-files-found: error
+          path: |
+            api/target/i686-pc-windows-msvc/release/t3_webview_api.dll
+            api/target/i686-pc-windows-msvc/release/t3_webview_api.dll.lib
+            api/target/i686-pc-windows-msvc/release/t3_webview_api.dll.exp
+
+  # ── 4. Assemble the package ─────────────────────────────────────────────────
+  package:
+    name: Package
+    needs: [guard, ui, api]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: webview-www
+          path: .pkg/www
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: webview-api
+          path: .pkg/api
+
+      - name: Download T3Web (optional)
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: webview-t3web
+          path: .pkg/t3web
+
+      - name: Assemble <version>/ layout
+        env:
+          VERSION: ${{ needs.guard.outputs.version }}
+          GIT_SHA: ${{ needs.guard.outputs.git_sha }}
+        run: |
+          set -eu
+          OUT="out/$VERSION"
+          mkdir -p "$OUT"
+          cp -r .pkg/www "$OUT/www"
+          cp .pkg/api/t3_webview_api.dll "$OUT/"
+          cp .pkg/api/t3_webview_api.dll.lib "$OUT/"
+          cp .pkg/api/t3_webview_api.dll.exp "$OUT/"
+
+          # eez-studio runtime assets -> ResourceFile\webview\t3web
+          if [ -d .pkg/t3web/t3-eez ]; then
+            cp -r .pkg/t3web "$OUT/T3Web"
+            echo "T3Web: $(find "$OUT/T3Web" -type f | wc -l) files"
+          else
+            echo "::warning::T3Web resources are not in this build — the zip will not contain T3Web/"
+          fi
+
+          node -e '
+            const fs = require("fs");
+            const [out, version, sha, kinds] = process.argv.slice(1);
+            const meta = {
+              version,
+              gitSha: sha,
+              buildTime: new Date().toISOString(),
+              kinds: JSON.parse(kinds),
+            };
+            const json = JSON.stringify(meta, null, 2) + "\n";
+            fs.writeFileSync(`${out}/version.json`, json);
+            // The running app can report its own version from /version.json
+            fs.writeFileSync(`${out}/www/version.json`, json);
+          ' "$OUT" "$VERSION" "$GIT_SHA" "$([ -d .pkg/t3web/t3-eez ] && echo '["ui","api","t3web"]' || echo '["ui","api"]')"
+
+          ( cd "$OUT" && find . -type f -exec sha256sum {} + | sort -k2 > sha256sums.txt )
+          ( cd out && zip -qr "../T3000-Webview-$VERSION.zip" "$VERSION" )
+
+          ZIP_SHA=$(sha256sum "T3000-Webview-$VERSION.zip" | cut -d' ' -f1)
+          ZIP_SIZE=$(du -h "T3000-Webview-$VERSION.zip" | cut -f1)
+
+          # Release metadata for the future "Update Front End" button.
+          node -e '
+            const fs = require("fs");
+            const [version, sha, size] = process.argv.slice(1);
+            fs.writeFileSync("latest.json", JSON.stringify({
+              version,
+              url: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/webview-v${version}/T3000-Webview-${version}.zip`,
+              sha256: sha,
+              size,
+              publishedAt: new Date().toISOString(),
+              kinds: ["ui", "api"],
+            }, null, 2) + "\n");
+          ' "$VERSION" "$ZIP_SHA" "$ZIP_SIZE"
+
+          {
+            echo "### T3000 Webview $VERSION"
+            echo ""
+            echo "| file | value |"
+            echo "|---|---|"
+            echo "| T3000-Webview-$VERSION.zip | $ZIP_SIZE |"
+            echo "| sha256 | \`$ZIP_SHA\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: webview-package
+          if-no-files-found: error
+          path: |
+            T3000-Webview-*.zip
+            latest.json
+
+  # ── 5. Publish ──────────────────────────────────────────────────────────────
+  publish:
+    name: Publish
+    needs: [guard, package]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: webview-package
+          path: pkg
+
+      - name: Attach to the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: webview-v${{ needs.guard.outputs.version }}
+          name: T3000 Webview ${{ needs.guard.outputs.version }}
+          body: |
+            Front-end release `${{ needs.guard.outputs.version }}`
+
+            Download **T3000-Webview-${{ needs.guard.outputs.version }}.zip** below.
+
+            `latest.json` describes this build (version, sha256, download URL).
+
+            ${{ github.event.inputs.notes }}
+          files: |
+            pkg/T3000-Webview-*.zip
+            pkg/latest.json
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false

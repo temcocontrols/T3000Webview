@@ -14,15 +14,35 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
       - name: Run client tests
         run: |
-          npm install
+          npm ci
           npm run test:unit
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: i686-pc-windows-msvc
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('api/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      # The DLL is what actually ships; a broken cdylib must fail here, not at release time.
+      - name: Build the 32-bit release DLL
+        run: |
+          cd api
+          cargo build --release --target i686-pc-windows-msvc
 
       - name: Run webview api tests
         run: |
