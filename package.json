@@ -39,7 +39,8 @@
     "test": "echo \"See package.json => scripts for available tests.\" && exit 0",
     "test:unit:ui": "vitest --ui",
     "test:unit": "vitest",
-    "test:unit:ci": "vitest run"
+    "test:unit:ci": "vitest run",
+    "check:import-paths": "node scripts/check-import-paths.mjs"
   },
   "dependencies": {
     "@emotion/css": "^11.13.5",

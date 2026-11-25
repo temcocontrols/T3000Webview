@@ -19,6 +19,9 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Check import paths match on-disk case
+        run: npm run check:import-paths
+
       - name: Run client tests
         run: |
           npm ci

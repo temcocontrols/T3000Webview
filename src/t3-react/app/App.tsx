@@ -48,7 +48,7 @@ const HolidaysPage = React.lazy(() =>
   import('../features/schedules/pages/HolidaysPage').then((m) => ({ default: m.HolidaysPage }))
 );
 const TrendLogsPage = React.lazy(() =>
-  import('../features/trendlogs/pages/TrendLogsPage').then((m) => ({ default: m.TrendLogsPage }))
+  import('../features/trendlogs/pages/TrendlogsPage').then((m) => ({ default: m.TrendLogsPage }))
 );
 const TrendPolicyPage = React.lazy(() =>
   import('../features/trendlogs/pages/TrendPolicyPage').then((m) => ({ default: m.TrendPolicyPage }))
