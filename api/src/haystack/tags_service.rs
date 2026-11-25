@@ -30,9 +30,18 @@ pub struct TagTreeNode {
 pub struct PointTagEntry {
     pub serial_number: i32,
     pub point_type: String,
+    /// Point index as stored in the tag tables (0-based).
     pub point_index: String,
+    /// Same point as `t3000_point_read` / `t3000_point_write` expect (1-based).
+    /// Without it an AI reading a tag gets index 0 for IN1 and writes one point off.
+    pub point_index_1based: i32,
     pub point_id: String,
     pub tag_name: String,
+}
+
+/// Tag rows store 0-based indexes; every MCP point tool counts from 1.
+fn one_based_index(stored: &str) -> i32 {
+    stored.trim().parse::<i32>().map(|i| i + 1).unwrap_or(0)
 }
 
 #[derive(Debug, Deserialize)]
@@ -100,19 +109,39 @@ pub async fn list_tags(
                 (SELECT COUNT(*) FROM haystack_point_tags WHERE tag_name = t.tag_name) as usage_count
          FROM haystack_tags t WHERE 1=1",
     );
-    if let Some(cat) = filter {
-        if !cat.is_empty() {
-            sql.push_str(&format!(" AND t.category = '{}'", cat));
+    // `filter` used to be an exact category match, so asking for "temp" returned
+    // nothing even though a `temp` tag exists. It is now a case-insensitive
+    // substring match over the tag name and its category.
+    let mut filter_value: Option<String> = None;
+    if let Some(raw) = filter {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            sql.push_str(
+                " AND (LOWER(t.tag_name) LIKE ? OR LOWER(t.category) LIKE ?)",
+            );
+            let pattern = format!("%{}%", trimmed.to_lowercase());
+            filter_value = Some(pattern);
         }
     }
     sql.push_str(" ORDER BY t.category, t.tag_name");
 
-    let rows = db
-        .query_all(Statement::from_string(
-            sea_orm::DatabaseBackend::Sqlite,
-            &sql,
-        ))
-        .await?;
+    let rows = match filter_value {
+        Some(pattern) => {
+            db.query_all(Statement::from_sql_and_values(
+                sea_orm::DatabaseBackend::Sqlite,
+                &sql,
+                vec![pattern.clone().into(), pattern.into()],
+            ))
+            .await?
+        }
+        None => {
+            db.query_all(Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                &sql,
+            ))
+            .await?
+        }
+    };
 
     let mut tags: Vec<TagDefinition> = Vec::new();
     for row in &rows {
@@ -407,10 +436,12 @@ pub async fn get_point_tags(
     Ok(rows
         .iter()
         .filter_map(|r| {
+            let stored_index: String = r.try_get("", "point_index").ok()?;
             Some(PointTagEntry {
                 serial_number: r.try_get("", "serial_number").ok()?,
                 point_type: r.try_get("", "point_type").ok()?,
-                point_index: r.try_get("", "point_index").ok()?,
+                point_index: stored_index.clone(),
+                point_index_1based: one_based_index(&stored_index),
                 point_id: r.try_get("", "point_id").ok()?,
                 tag_name: r.try_get("", "tag_name").ok()?,
             })
@@ -572,10 +603,12 @@ pub async fn search_points(
     Ok(rows
         .iter()
         .filter_map(|r| {
+            let stored_index: String = r.try_get("", "point_index").ok()?;
             Some(PointTagEntry {
                 serial_number: r.try_get("", "serial_number").ok()?,
                 point_type: r.try_get("", "point_type").ok()?,
-                point_index: r.try_get("", "point_index").ok()?,
+                point_index: stored_index.clone(),
+                point_index_1based: one_based_index(&stored_index),
                 point_id: r.try_get("", "point_id").ok()?,
                 tag_name: r.try_get("", "tag_name").ok()?,
             })

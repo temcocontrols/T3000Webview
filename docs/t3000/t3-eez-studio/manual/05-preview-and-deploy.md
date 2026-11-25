@@ -90,6 +90,13 @@ Either entry point runs the **same** deploy pipeline.
 
 ### 4. What a deploy actually does
 
+> **What a failed deploy leaves behind.** A deploy writes images first, then screens, one file
+> at a time. If it stops part-way, the files already written stay written and the rest keep their
+> earlier content, so the device can end up showing a mixture of old and new screens. Nothing on
+> the device records that this happened. The all-or-nothing deploy is specified in
+> [../screen-deploy-lifecycle-design.md](../screen-deploy-lifecycle-design.md) and is not
+> implemented yet.
+
 The deploy is **incremental**: after the first time, only what changed is sent to the device.
 
 | Step | What happens |

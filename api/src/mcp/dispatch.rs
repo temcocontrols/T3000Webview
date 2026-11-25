@@ -7,10 +7,11 @@ use uuid::Uuid;
 use tracing::{info, error};
 use std::collections::HashMap;
 
-use crate::mcp::types::{JsonRpcRequest, JsonRpcResponse, JsonRpcError};
+use crate::mcp::types::{JsonRpcRequest, JsonRpcResponse, JsonRpcError, ToolDef};
 use crate::mcp::tools::TOOLS;
 use crate::mcp::storage::*;
-use crate::mcp::server::{mcp_log, track_current_device, SERVER_NAME, SERVER_VERSION, PROTOCOL_VERSION};
+use crate::mcp::range_tables;
+use crate::mcp::server::{mcp_log, track_current_device, uptime_secs, SERVER_NAME, SERVER_VERSION, PROTOCOL_VERSION};
 use crate::haystack::auto_tagging_service as ats;
 use crate::haystack::tags_service as ts;
 use crate::t3_device::services::T3DeviceService;
@@ -21,6 +22,9 @@ use crate::t3_device::trendlog_data_service::{T3TrendlogDataService, TrendlogHis
 pub(crate) async fn handle_request(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnection) -> JsonRpcResponse {
     match req.method.as_str() {
         "initialize" => handle_initialize(req),
+        // Protocol-level keepalive (MCP spec: servers MUST answer `ping` with {}).
+        "ping" => handle_ping(req),
+        // Legacy alias kept for clients that used the tool name as a method.
         "t3000_ping" => handle_ping(req),
         "tools/list" => handle_tools_list(req),
         "tools/call" => handle_tools_call(req, db).await,
@@ -51,10 +55,107 @@ fn handle_initialize(req: &JsonRpcRequest) -> JsonRpcResponse {
                 "tools": {
                     "listChanged": true
                 }
-            }
+            },
+            "instructions": INITIALIZE_INSTRUCTIONS
         })),
         error: None,
     }
+}
+
+/// Shown to the client after `initialize` — models pick tools more reliably when
+/// they know where to start and which calls need confirmation.
+const INITIALIZE_INSTRUCTIONS: &str = "T3000 building automation server. Start with t3000_device_list to discover devices, then t3000_device_get_points or t3000_point_read with a serial_number. Writes (t3000_point_write, t3000_settings_write, t3000_device_control, deletes) require confirm: true. Haystack tagging lives under t3000_haystack_*; fault detection under t3000_fdd_*.";
+
+/// MCP tool annotations (protocol 2025-03-26). Derived from the schema so it can
+/// never drift: a tool that asks for `confirm` mutates state and is destructive.
+fn tool_annotations(tool: &ToolDef) -> Value {
+    let requires_confirm = tool
+        .input_schema
+        .get("properties")
+        .and_then(|props| props.get("confirm"))
+        .is_some();
+    let mutating = requires_confirm || MUTATING_TOOLS.contains(&tool.name);
+    let destructive = requires_confirm
+        || tool.name.ends_with("_delete")
+        || tool.name.ends_with("_save")
+        || tool.name.ends_with("_import");
+
+    json!({
+        "readOnlyHint": !mutating,
+        "destructiveHint": destructive,
+        "idempotentHint": !mutating,
+        "openWorldHint": false
+    })
+}
+
+/// Tools that change state but do not take a `confirm` flag.
+const MUTATING_TOOLS: &[&str] = &[
+    "t3000_rule_create",
+    "t3000_rule_toggle",
+    "t3000_task_create",
+    "t3000_task_update",
+    "t3000_task_delete",
+    "t3000_memory_save",
+    "t3000_memory_delete",
+    "t3000_alarm_acknowledge",
+    "t3000_set_chat_device",
+    "t3000_scan_network",
+    "t3000_scan_all",
+    "t3000_device_refresh",
+    "t3000_haystack_auto_tag",
+];
+
+/// Closest real tool names for a misspelled/unknown one — LLMs guess names often,
+/// and suggesting the right ones avoids a pointless retry loop.
+fn suggest_tool_names(query: &str, limit: usize) -> Vec<&'static str> {
+    let query = query.trim().trim_start_matches("t3000_").to_ascii_lowercase();
+    if query.is_empty() {
+        return Vec::new();
+    }
+
+    let mut scored: Vec<(usize, &'static str)> = TOOLS
+        .iter()
+        .filter_map(|tool| {
+            let name = tool.name.trim_start_matches("t3000_").to_ascii_lowercase();
+            let score = if name == query {
+                0
+            } else if name.contains(&query) || query.contains(&name) {
+                1 + name.len().abs_diff(query.len())
+            } else {
+                let distance = levenshtein(&name, &query);
+                if distance > 3 { return None; }
+                10 + distance
+            };
+            Some((score, tool.name))
+        })
+        .collect();
+
+    scored.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(b.1)));
+    scored.into_iter().take(limit).map(|(_, name)| name).collect()
+}
+
+/// Small capped Levenshtein distance (only used for name suggestions).
+fn levenshtein(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    if a.is_empty() { return b.len(); }
+    if b.is_empty() { return a.len(); }
+
+    let mut previous: Vec<usize> = (0..=b.len()).collect();
+    let mut current = vec![0usize; b.len() + 1];
+
+    for (i, ca) in a.iter().enumerate() {
+        current[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let cost = if ca == cb { 0 } else { 1 };
+            current[j + 1] = (previous[j + 1] + 1)
+                .min(current[j] + 1)
+                .min(previous[j] + cost);
+        }
+        std::mem::swap(&mut previous, &mut current);
+    }
+
+    previous[b.len()]
 }
 
 fn handle_ping(req: &JsonRpcRequest) -> JsonRpcResponse {
@@ -75,7 +176,8 @@ fn handle_tools_list(req: &JsonRpcRequest) -> JsonRpcResponse {
                 "name": t.name,
                 "title": t.title,
                 "description": t.description,
-                "inputSchema": t.input_schema
+                "inputSchema": t.input_schema,
+                "annotations": tool_annotations(t)
             })
         })
         .collect();
@@ -140,6 +242,17 @@ async fn handle_tools_call(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnectio
 
 // ═══ Point Write via FFI (Action 16) ═══ 
 
+/// Every point tool names its types the same way, but clients type "variable",
+/// "vars" or "INPUTS". Normalise once so a spelling variant is never a hard error.
+fn normalize_point_type(value: &str) -> Option<&'static str> {
+    match value.trim().to_ascii_uppercase().as_str() {
+        "INPUT" | "INPUTS" | "IN" => Some("INPUT"),
+        "OUTPUT" | "OUTPUTS" | "OUT" => Some("OUTPUT"),
+        "VARIABLE" | "VARIABLES" | "VAR" | "VARS" => Some("VARIABLE"),
+        _ => None,
+    }
+}
+
 async fn point_write_ffi(
     db: &sea_orm::DatabaseConnection,
     serial: i32,
@@ -149,6 +262,10 @@ async fn point_write_ffi(
     new_value_str: &str,
 ) -> Result<String, String> {
     use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
+
+    let point_type = normalize_point_type(point_type).ok_or_else(|| {
+        format!("Invalid point_type: {}. Use INPUT, OUTPUT or VARIABLE", point_type)
+    })?;
 
     let (table, idx_col) = match point_type {
         "INPUT" => ("INPUTS", "Input_Index"),
@@ -186,20 +303,78 @@ async fn point_write_ffi(
     let cur_control: String = row.try_get::<String>("", "Control").unwrap_or_else(|_| "0".into());
     let cur_panel: String = row.try_get::<String>("", "Panel").unwrap_or_default();
 
-    // Step 2: Get panel_id — prefer point's Panel, then DEVICES.Panel_Number, then 1
-    let panel_id: i32 = if !cur_panel.is_empty() {
-        cur_panel.parse::<i32>().unwrap_or(1)
+    // Step 2: the panel the C++ itself holds. A stale DB panel id is worse than
+    // useless here: UPDATE_WEBVIEW_LIST writes into `g_*_data[panel]` *before* it
+    // checks the serial, so a wrong panel corrupts T3000's cache and the write is
+    // rejected. Ask T3000 first, then fall back to the stored value.
+    let stored_panel: Option<i32> = if !cur_panel.trim().is_empty() {
+        cur_panel.trim().parse::<i32>().ok()
     } else {
-        let dev_sql = format!("SELECT Panel_Number FROM DEVICES WHERE SerialNumber = {}", serial);
-        let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dev_sql)).await
-            .map_err(|e| format!("Device lookup failed: {}", e))?;
-        dev_rows.first().and_then(|r| r.try_get::<i32>("", "Panel_Number").ok()).unwrap_or(1)
+        None
+    };
+    let panel_id = match crate::t3_device::action17_refresh_helper::live_panel_for(serial).await {
+        Some((panel, _)) => panel,
+        None => match stored_panel {
+            Some(panel) if (1..254).contains(&panel) => panel,
+            _ => {
+                let dev_sql = format!("SELECT Panel_Number FROM DEVICES WHERE SerialNumber = {}", serial);
+                let dev_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dev_sql)).await
+                    .map_err(|e| format!("Device lookup failed: {}", e))?;
+                match dev_rows.first().and_then(|r| r.try_get::<i32>("", "Panel_Number").ok()) {
+                    Some(panel) if (1..254).contains(&panel) => panel,
+                    _ => return Err(format!(
+                        "Cannot write to device {}: no usable panel id (device is not in T3000's live panel list)",
+                        serial
+                    )),
+                }
+            }
+        },
     };
     info!("[MCP] point_write_ffi: panel_id={}, merging field='{}' val='{}'", panel_id, target_field, new_value_str);
 
     // Step 3: Merge — DB stores fValue as raw integer (×1000), FFI expects display value (/1000)
     let pf32 = |s: &str| s.parse::<f32>().unwrap_or(0.0);
     let pi32 = |s: &str| s.parse::<i32>().unwrap_or(0);
+
+    // A code that does not exist in this point type's table (analog vs digital)
+    // silently turns into a wrong label — a variable wrote as "ºF" showing
+    // "Heat/Cool" is code 9 (Couple/Heat) landing in the digital table. Refuse it
+    // instead, and say which table the value belongs to.
+    let cur_digital = cur_digital_analog.trim() == "0";
+    match target_field {
+        "range" => {
+            let code = new_value_str.trim().parse::<i64>().map_err(|_| {
+                format!("range must be a numeric code, got '{}'", new_value_str)
+            })?;
+            if !crate::mcp::range_tables::is_valid_range_code(point_type, code, cur_digital) {
+                let table = if cur_digital { "digital" } else { "analog" };
+                return Err(format!(
+                    "Range code {} is not a valid {} {} code. Use t3000_point_read to see the current range/units, or pick a code from the {} table.",
+                    code,
+                    point_type,
+                    table,
+                    table
+                ));
+            }
+        }
+        "digital_analog" => {
+            let mode = new_value_str.trim();
+            if mode != "0" && mode != "1" {
+                return Err(format!("digital_analog must be 0 (digital) or 1 (analog), got '{}'", mode));
+            }
+            let as_digital = mode == "0";
+            let current_range = pi32(&cur_range) as i64;
+            if !crate::mcp::range_tables::is_valid_range_code(point_type, current_range, as_digital) {
+                return Err(format!(
+                    "Range code {} is not valid as a {} point, so switching to {} would show a wrong label. Write a valid range for that mode first (e.g. 1 = Off/On for digital).",
+                    current_range,
+                    if as_digital { "digital" } else { "analog" },
+                    if as_digital { "digital_analog=0" } else { "digital_analog=1" }
+                ));
+            }
+        }
+        _ => {}
+    }
     let cur_fvalue_display = pf32(&cur_fvalue) / 1000.0; // DB raw → display (e.g., 72500 → 72.5)
     let (ffi_value, ffi_label, ffi_description, ffi_range, ffi_auto_manual, ffi_digital_analog) = match target_field {
         "label" => (cur_fvalue_display, new_value_str.to_string(), cur_full_label, pi32(&cur_range), pi32(&cur_auto_manual), pi32(&cur_digital_analog)),
@@ -224,10 +399,27 @@ async fn point_write_ffi(
     mcp_log(&format!("FFI Action 16: {}", ffi_str));
     info!("[MCP] point_write_ffi: calling C++ FFI Action 16...");
 
-    // Step 5: Call FFI
+    // Step 5: Call FFI and honour what the device said. A rejected write must not
+    // be reported as success, and the DB must not claim a value the device kept.
+    // The call is bounded: an unreachable device makes the C++ block for minutes
+    // and holds the shared FFI lock, which would stall every other tool.
+    const WRITE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
     let ffi_service = T3000FfiApiService::new();
-    ffi_service.call_ffi(&ffi_str).await
+    let response = tokio::time::timeout(WRITE_TIMEOUT, ffi_service.call_ffi(&ffi_str))
+        .await
+        .map_err(|_| format!(
+            "Device write did not answer within {}s — the device may be offline or unreachable",
+            WRITE_TIMEOUT.as_secs()
+        ))?
         .map_err(|e| format!("Device write failed (FFI error): {}", e))?;
+    if let Some(error) = ffi_response_error(&response) {
+        return Err(format!(
+            "Device rejected the write to {} {}: {}",
+            point_type,
+            point_index + 1,
+            error
+        ));
+    }
 
     // Step 6: Update DB — fValue is stored as raw int (×1000), other fields as-is
     let (db_col, db_val) = match target_field {
@@ -238,10 +430,21 @@ async fn point_write_ffi(
         "digital_analog" => ("Digital_Analog", new_value_str.to_string()),
         _ => ("fValue", (pf32(new_value_str) * 1000.0).to_string()), // scale: display → DB raw
     };
-    let update_sql = format!("UPDATE {} SET {} = '{}' WHERE SerialNumber = {} AND {} = '{}'",
-        table, db_col, db_val, serial, idx_col, point_index);
-    db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &update_sql)).await
-        .map_err(|e| format!("DB update failed (device was updated): {}", e))?;
+    // Parameterised: a label with an apostrophe must not break the statement.
+    let update_sql = format!(
+        "UPDATE {} SET {} = ? WHERE SerialNumber = ? AND {} = ?",
+        table, db_col, idx_col
+    );
+    db.execute(sea_orm::Statement::from_sql_and_values(
+        sea_orm::DatabaseBackend::Sqlite,
+        &update_sql,
+        vec![
+            db_val.into(),
+            serial.into(),
+            point_index.to_string().into(),
+        ],
+    )).await
+    .map_err(|e| format!("DB update failed (device was updated): {}", e))?;
 
     info!("[MCP] point_write OK: dev={} {}[{}] field={} val={}", serial, point_type, point_index, target_field, new_value_str);
     mcp_log(&format!("OK: dev={} {}[{}] field={} val={}", serial, point_type, point_index, target_field, new_value_str));
@@ -501,6 +704,271 @@ fn get_nav_pages() -> Vec<NavPage> {
     ]
 }
 
+/// RAW `device_data` rows of an FFI Action 17 (GET_WEBVIEW_LIST) response,
+/// flattened over the two shapes the C++ has been seen to send:
+/// `{ data: { device_data: [...] } }` and `{ data: [ { device_data: [...] }, ... ] }`.
+fn action17_rows(response: &str) -> Vec<Value> {
+    let Ok(value) = serde_json::from_str::<Value>(response) else {
+        return Vec::new();
+    };
+    match value.get("data") {
+        Some(Value::Object(_)) => value
+            .get("data")
+            .and_then(|d| d.get("device_data"))
+            .and_then(|dd| dd.as_array())
+            .cloned()
+            .unwrap_or_default(),
+        Some(Value::Array(panels)) => panels
+            .iter()
+            .flat_map(|p| {
+                p.get("device_data")
+                    .and_then(|dd| dd.as_array())
+                    .cloned()
+                    .unwrap_or_default()
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Points of an FFI Action 17 response. Indices are echoed 1-based (like every
+/// other point tool) and `value` is scaled the way the UI shows it, because the
+/// device reports `value × 1000`.
+pub fn action17_points(response: &str) -> Vec<Value> {
+    action17_rows(response)
+        .iter()
+        .map(|p| {
+            let raw_value = json_scalar_text(p.get("value"));
+            json!({
+                "index": p.get("index").and_then(|v| v.as_i64()).map(|i| i + 1),
+                "id": p.get("id").cloned().unwrap_or(Value::Null),
+                "type": p.get("type").cloned().unwrap_or(Value::Null),
+                "label": p
+                    .get("label")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim())
+                    .unwrap_or_default(),
+                "value": scaled_value(raw_value.as_deref()),
+                "raw_value": raw_value,
+            })
+        })
+        .collect()
+}
+
+/// Count the points in an FFI Action 17 response.
+pub fn count_action17_points(response: &str) -> usize {
+    action17_points(response).len()
+}
+
+/// JSON number/string/bool as the TEXT the device tables store.
+fn json_scalar_text(value: Option<&Value>) -> Option<String> {
+    match value? {
+        Value::String(s) => Some(s.trim().to_string()),
+        Value::Number(n) => Some(n.to_string()),
+        Value::Bool(b) => Some(if *b { "1" } else { "0" }.to_string()),
+        _ => None,
+    }
+}
+
+/// Write the points an Action 17 response returned into the device table, the
+/// same way T3000's UI refresh does, then flag a UI_REFRESH sync so open pages
+/// reload. Fields the device did not report keep their stored value.
+pub async fn persist_action17_points(
+    db: &sea_orm::DatabaseConnection,
+    serial: i32,
+    point_type: &str,
+    response: &str,
+) -> Result<usize, String> {
+    let rows = action17_rows(response);
+    let updated = crate::t3_device::action17_refresh_helper::save_action17_rows(
+        db, serial, point_type, &rows,
+    )
+    .await?;
+
+    if updated > 0 {
+        use crate::server_db::data_sync_service::{DataSyncMetadataService, InsertSyncMetadataRequest};
+        let data_type = match point_type {
+            "INPUT" => "INPUTS",
+            "OUTPUT" => "OUTPUTS",
+            _ => "VARIABLES",
+        };
+        // "UI_REFRESH" is the method the pages already react to, and it is what a
+        // manual refresh from the UI records — the MCP refresh is the same thing.
+        let request = InsertSyncMetadataRequest {
+            data_type: data_type.to_string(),
+            serial_number: serial.to_string(),
+            panel_id: None,
+            records_synced: updated as i32,
+            sync_method: "UI_REFRESH".to_string(),
+            success: true,
+            error_message: None,
+        };
+        if let Err(e) = DataSyncMetadataService::insert_sync_metadata(db, request).await {
+            tracing::warn!("[MCP] device_refresh: {} sync metadata failed: {}", point_type, e);
+        }
+    }
+
+    Ok(updated)
+}
+/// C++ reports failures as `{ "error": "..." }` (see `WrapErrorMessage`), and
+/// leaves the payload empty — without this check a rejected request looks
+/// exactly like a call that found nothing.
+fn ffi_response_error(response: &str) -> Option<String> {
+    let value = serde_json::from_str::<Value>(response).ok()?;
+    if let Some(err) = value.get("error").and_then(|v| v.as_str()) {
+        if !err.trim().is_empty() {
+            return Some(err.trim().to_string());
+        }
+    }
+    let success = value.get("success").and_then(|v| v.as_bool());
+    if success == Some(false) {
+        return Some(
+            value
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("the device rejected the request")
+                .to_string(),
+        );
+    }
+    None
+}
+
+/// The C++ refuses Action 17 during the first seconds after load and answers
+/// with `code: T3000_WARMUP` — a retry, not an error.
+fn action17_warmup(response: &str) -> bool {
+    serde_json::from_str::<Value>(response)
+        .map(|v| v.get("code").and_then(|c| c.as_str()) == Some("T3000_WARMUP"))
+        .unwrap_or(false)
+}
+
+/// Resolve the identity a point has inside the trendlog history store.
+///
+/// `TRENDLOG_INPUTS` lists the configured points with a **0-based**
+/// `Point_Index`, while `TRENDLOG_DATA` — the parent of every
+/// `TRENDLOG_DATA_DETAIL` sample — holds the canonical `PointId` (`IN1`,
+/// `OUT12`, `VAR3`) with a **1-based** `PointIndex`. `get_trendlog_history`
+/// filters on `PointId` + `PointType`, so a synthesised `dev<serial>.in<idx>`
+/// never matches and the history comes back empty.
+///
+/// Returns `(point_id, point_index, panel_id)`.
+async fn trendlog_point_identity(
+    db: &sea_orm::DatabaseConnection,
+    serial: i32,
+    point_type: &str,
+    point_index_1based: i32,
+) -> Option<(String, i32, i32)> {
+    let sql = format!(
+        "SELECT PointId, CAST(PointIndex AS INTEGER) AS idx, PanelId
+         FROM TRENDLOG_DATA
+         WHERE SerialNumber = {} AND PointType = '{}' AND CAST(PointIndex AS INTEGER) = {}
+         LIMIT 1",
+        serial,
+        point_type.replace('\'', "''"),
+        point_index_1based
+    );
+    let rows = db
+        .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
+        .await
+        .ok()?;
+    let row = rows.first()?;
+    Some((
+        row.try_get::<String>("", "PointId").ok()?,
+        row.try_get::<i32>("", "idx").unwrap_or(point_index_1based),
+        row.try_get::<i32>("", "PanelId").unwrap_or(0),
+    ))
+}
+
+/// Call Action 17 (GET_WEBVIEW_LIST), transparently retrying the C++ warm-up
+/// guard, and return the raw response.
+///
+/// The C++ read blocks for as long as the device takes, and an unreachable
+/// device makes it block for minutes (64 points × per-block timeouts), so the
+/// call is bounded — a caller must get an answer it can act on.
+async fn call_action17(
+    panel_id: i32,
+    serial: i32,
+    object_instance: i32,
+    entry_type: i32,
+) -> Result<String, String> {
+    use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
+
+    const ACTION17_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+
+    let request = json!({
+        "action": 17,
+        "panelId": panel_id,
+        "serialNumber": serial,
+        "objectinstance": object_instance,
+        "entryType": entry_type,
+        "entryIndexStart": 0,
+        "entryIndexEnd": 63,
+    })
+    .to_string();
+
+    let service = T3000FfiApiService::new();
+    for attempt in 0..3 {
+        let response = tokio::time::timeout(ACTION17_TIMEOUT, service.call_ffi(&request))
+            .await
+            .map_err(|_| {
+                format!(
+                    "Action 17 did not answer within {}s — the device may be offline or unreachable",
+                    ACTION17_TIMEOUT.as_secs()
+                )
+            })?
+            .map_err(|e| format!("Action 17 FFI call failed: {}", e))?;
+        if action17_warmup(&response) && attempt < 2 {
+            info!("[MCP] device_refresh: waiting for the T3000 warm-up guard (attempt {})", attempt + 1);
+            tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+            continue;
+        }
+        return Ok(response);
+    }
+    Err("T3000 is still initialising, please retry shortly".to_string())
+}
+
+/// Call Action 17 (GET_WEBVIEW_LIST), transparently retrying the C++ warm-up
+/// guard, and return the raw response.
+
+/// Compact device record shared by `t3000_device_list` and `t3000_device_get`
+/// so both return an identical snake_case shape (`serial`, `name`, `is_online`).
+fn device_summary(
+    device: &crate::t3_device::services::DeviceWithStats,
+    refreshed: bool,
+) -> Value {
+    json!({
+        "serial": device.device.serial_number,
+        "name": device.device.product_name,
+        "device_type": device.device.product_id,
+        "input_count": device.input_count,
+        "output_count": device.output_count,
+        "variable_count": device.variable_count,
+        "total_points": device.total_points,
+        "building": device.device.building_name,
+        "floor": device.device.floor_name,
+        "room": device.device.room_name,
+        "is_online": device.device.is_online,
+        "last_checked": device.device.last_checked,
+        "refreshed": refreshed,
+    })
+}
+
+// ═══ Point value / unit normalisation ═══
+//
+// T3000 stores analog values ×1000 and keeps unit/range as numeric codes (the
+// UI shows `fValue / 1000` and maps the codes to text). Tables ported from
+// src/t3-react/features/inputs/data/rangeData.ts — keep the two in sync.
+
+/// The device stores fValue as value × 1000.
+const VALUE_SCALE: f64 = 1000.0;
+
+/// Stored `fValue` ("23900") -> engineering value (23.9), rounded to 2 decimals.
+fn scaled_value(raw: Option<&str>) -> Option<f64> {
+    raw.and_then(|v| v.trim().parse::<f64>().ok())
+        .map(|v| (v / VALUE_SCALE * 100.0).round() / 100.0)
+        // An unused point stores -1, which rounds to -0.0; report plain 0.0.
+        .map(|v| if v == 0.0 { 0.0 } else { v })
+}
+
 pub async fn execute_tool(
     name: &str,
     args: &Value,
@@ -533,7 +1001,12 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_array())
                 .map(|a| a.iter().filter_map(|v| v.as_i64().map(|n| n as i32)).collect())
                 .unwrap_or_default();
-            let point_type = args.get("point_type").and_then(|v| v.as_str());
+            // Empty used to mean "every device", which is the opposite of what a
+            // caller who forgot the argument expects.
+            if serial_numbers.is_empty() {
+                return Err("serial_numbers is required — pass at least one device serial".to_string());
+            }
+            let point_type = args.get("point_type").and_then(|v| v.as_str()).and_then(normalize_point_type);
 
             let entries = ts::get_point_tags(db, &serial_numbers, point_type)
                 .await
@@ -552,6 +1025,10 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_array())
                 .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
                 .unwrap_or_default();
+            // An empty filter used to match every tagged point instead of failing.
+            if tags.is_empty() {
+                return Err("tags is required — pass at least one tag name, e.g. [\"sensor\"]".to_string());
+            }
             let device_serials: Option<Vec<i32>> = args
                 .get("serial_numbers")
                 .and_then(|v| v.as_array())
@@ -587,7 +1064,7 @@ pub async fn execute_tool(
                 .unwrap_or_default();
 
             if serial_numbers.is_empty() {
-                return Ok(json!({"error": "No serial numbers provided"}).to_string());
+                return Err("serial_numbers is required — pass at least one device serial".to_string());
             }
 
             let (count, _matches) = ats::run_auto_tagging(db, &serial_numbers, None).await?;
@@ -635,6 +1112,9 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_array())
                 .map(|a| a.iter().filter_map(|v| v.as_i64().map(|n| n as i32)).collect())
                 .unwrap_or_default();
+            if serial_numbers.is_empty() {
+                return Err("serial_numbers is required — pass at least one device serial".to_string());
+            }
 
             // Query brick_class marker rows
             let sn_list = serial_numbers
@@ -690,12 +1170,47 @@ pub async fn execute_tool(
         // ═══ v4: Core / Generic ═══ 
 
         "t3000_ping" => {
+            let deep = args.get("deep").and_then(|v| v.as_bool()).unwrap_or(false);
             let now = Utc::now().to_rfc3339();
-            Ok(json!({
-                "status": "ok",
-                "timestamp": now,
-                "server": SERVER_NAME
-            }).to_string())
+
+            if !deep {
+                Ok(json!({
+                    "status": "ok",
+                    "timestamp": now,
+                    "server": SERVER_NAME
+                }).to_string())
+            } else {
+                let db_ok = db
+                    .query_one(sea_orm::Statement::from_string(
+                        sea_orm::DatabaseBackend::Sqlite,
+                        "SELECT 1 AS ok".to_string(),
+                    ))
+                    .await
+                    .is_ok();
+
+                let device_count = if db_ok {
+                    db.query_one(sea_orm::Statement::from_string(
+                        sea_orm::DatabaseBackend::Sqlite,
+                        "SELECT COUNT(*) AS c FROM DEVICES".to_string(),
+                    ))
+                    .await
+                    .ok()
+                    .flatten()
+                    .and_then(|row| row.try_get::<i64>("", "c").ok())
+                } else {
+                    None
+                };
+
+                Ok(json!({
+                    "status": if db_ok { "ok" } else { "degraded" },
+                    "timestamp": now,
+                    "server": SERVER_NAME,
+                    "deep": true,
+                    "database": if db_ok { "ok" } else { "unavailable" },
+                    "device_count": device_count,
+                    "uptime_secs": uptime_secs()
+                }).to_string())
+            }
         }
 
         "t3000_get_version" => {
@@ -708,18 +1223,32 @@ pub async fn execute_tool(
         }
 
         "t3000_describe_tool" => {
-            let tool_name = args.get("tool_name").and_then(|v| v.as_str()).unwrap_or("");
-            match TOOLS.iter().find(|t| t.name == tool_name) {
-                Some(tool) => {
-                    serde_json::to_string_pretty(&json!({
-                        "name": tool.name,
-                        "title": tool.title,
-                        "description": tool.description,
-                        "inputSchema": tool.input_schema
-                    }))
-                    .map_err(|e| format!("Serialize error: {}", e))
+            let tool_name = args.get("tool_name").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+
+            if tool_name.is_empty() {
+                Err("tool_name is required (for example \"t3000_device_list\"). Call tools/list to see every tool.".to_string())
+            } else {
+                match TOOLS.iter().find(|t| t.name == tool_name) {
+                    Some(tool) => {
+                        serde_json::to_string_pretty(&json!({
+                            "name": tool.name,
+                            "title": tool.title,
+                            "description": tool.description,
+                            "inputSchema": tool.input_schema,
+                            "annotations": tool_annotations(tool)
+                        }))
+                        .map_err(|e| format!("Serialize error: {}", e))
+                    }
+                    None => {
+                        let suggestions = suggest_tool_names(&tool_name, 3);
+                        let hint = if suggestions.is_empty() {
+                            String::new()
+                        } else {
+                            format!(". Did you mean: {}?", suggestions.join(", "))
+                        };
+                        Err(format!("Tool not found: {}{}", tool_name, hint))
+                    }
                 }
-                None => Err(format!("Tool not found: {}", tool_name)),
             }
         }
 
@@ -731,12 +1260,20 @@ pub async fn execute_tool(
                 .unwrap_or(8)
                 .clamp(3, 30);
             let result = crate::lan_scan::scanner::scan_network(timeout_secs).await;
+            let mut notes: Vec<String> = Vec::new();
+            if result.devices.is_empty() {
+                notes.push(format!(
+                    "no device answered the UDP broadcast or the unicast sweep from {} — confirm the PC and the devices share a subnet, and that inbound UDP 57619-57623 is allowed for T3000.exe in Windows Firewall",
+                    if result.local_ips.is_empty() { "no local adapter".to_string() } else { result.local_ips.join(", ") }
+                ));
+            }
             serde_json::to_string_pretty(&json!({
                 "devices": result.devices,
                 "total": result.devices.len(),
                 "adapters_scanned": result.adapters_scanned,
                 "local_ips": result.local_ips,
                 "warnings": result.warnings,
+                "notes": notes,
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }
@@ -747,6 +1284,10 @@ pub async fn execute_tool(
                 .unwrap_or(8)
                 .clamp(3, 30);
             let result = crate::lan_scan::scanner::scan_all(timeout_secs).await;
+            let mut notes: Vec<String> = Vec::new();
+            if result.devices.is_empty() {
+                notes.push("no device answered on UDP, serial COM ports, or TCP sub-ports — a serial device needs a free COM port (a port owned by another program reports 'Access is denied')".to_string());
+            }
             serde_json::to_string_pretty(&json!({
                 "devices": result.devices,
                 "total": result.devices.len(),
@@ -757,6 +1298,7 @@ pub async fn execute_tool(
                 "adapters_scanned": result.adapters_scanned,
                 "local_ips": result.local_ips,
                 "warnings": result.warnings,
+                "notes": notes,
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }
@@ -792,23 +1334,7 @@ pub async fn execute_tool(
                         true
                     }
                 })
-                .map(|d| {
-                    json!({
-                        "serial": d.device.serial_number,
-                        "name": d.device.product_name,
-                        "device_type": d.device.product_id,
-                        "input_count": d.input_count,
-                        "output_count": d.output_count,
-                        "variable_count": d.variable_count,
-                        "total_points": d.total_points,
-                        "building": d.device.building_name,
-                        "floor": d.device.floor_name,
-                        "room": d.device.room_name,
-                        "is_online": d.device.is_online,
-                        "last_checked": d.device.last_checked,
-                        "refreshed": refresh,
-                    })
-                })
+                .map(|d| device_summary(d, refresh))
                 .collect();
 
             serde_json::to_string_pretty(&json!({
@@ -823,7 +1349,7 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64())
                 .map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
-            let point_type_filter = args.get("point_type").and_then(|v| v.as_str());
+            let point_type_filter = args.get("point_type").and_then(|v| v.as_str()).and_then(normalize_point_type);
 
             let mut results: Vec<Value> = Vec::new();
 
@@ -925,16 +1451,35 @@ pub async fn execute_tool(
                     let tags = tag_map.get(&key).cloned().unwrap_or_default();
                     let brick_class = brick_map.get(&key).cloned();
                     let meta = meta_map.get(&key);
+                    // Tag entries store the 0-based DB index; every tool reports
+                    // 1-based indexes so results can be fed back into point_read.
+                    let display_index = match entry.point_index.parse::<i32>() {
+                        Ok(n) => json!(n + 1),
+                        Err(_) => json!(entry.point_index),
+                    };
+                    let digital = meta.and_then(|m| m.digital_analog.as_deref())
+                        .map(|v| v.trim() == "0")
+                        .unwrap_or(false);
+                    let mapped = range_tables::range_field(
+                        &entry.point_type,
+                        meta.and_then(|m| m.range_field.as_deref()).and_then(|v| v.trim().parse::<i64>().ok()),
+                        digital,
+                    );
                     results.push(json!({
                         "point_type": entry.point_type,
-                        "point_index": entry.point_index,
+                        "point_index": display_index,
                         "point_id": entry.point_id,
-                        "label": meta.and_then(|m| m.label.clone()),
-                        "engineering_units": meta.and_then(|m| m.engineering_units.clone()),
-                        "range_field": meta.and_then(|m| m.range_field.clone()),
+                        "label": meta.and_then(|m| m.description.clone()).filter(|v| !v.is_empty())
+                            .or_else(|| meta.and_then(|m| m.label.clone())),
+                        "short_label": meta.and_then(|m| m.label.clone()),
+                        "value": scaled_value(meta.and_then(|m| m.current_value.as_deref())),
+                        "raw_value": meta.and_then(|m| m.current_value.clone()),
+                        "units": mapped["units"],
+                        "range": mapped["range"],
+                        "units_code": meta.and_then(|m| m.engineering_units.clone()),
+                        "range_code": meta.and_then(|m| m.range_field.clone()),
+                        "digital": digital,
                         "digital_analog": meta.and_then(|m| m.digital_analog.clone()),
-                        "description": meta.and_then(|m| m.description.clone()),
-                        "current_value": meta.and_then(|m| m.current_value.clone()),
                         "haystack_tags": tags,
                         "brick_class": brick_class,
                     }));
@@ -953,7 +1498,8 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type = args.get("point_type").and_then(|v| v.as_str())
-                .ok_or_else(|| "point_type required".to_string())?;
+                .and_then(normalize_point_type)
+                .ok_or_else(|| "point_type required (INPUT, OUTPUT or VARIABLE)".to_string())?;
             let point_index: i32 = args.get("point_index")
                 .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
                 .ok_or_else(|| "point_index required".to_string())?;
@@ -1025,17 +1571,33 @@ pub async fn execute_tool(
                 point_index
             );
 
+            // `point_index` arrives 1-based (UI convention) while the DB columns
+            // are 0-based: echo the caller's value so responses can be fed back
+            // into any point tool unchanged.
+            let digital = digital_analog.as_deref().map(|v| v.trim() == "0").unwrap_or(false);
+            let mapped = range_tables::range_field(
+                point_type,
+                range_field.as_deref().and_then(|v| v.trim().parse::<i64>().ok()),
+                digital,
+            );
+            let value = scaled_value(current_value.as_deref());
             serde_json::to_string_pretty(&json!({
                 "serial_number": serial,
                 "point_type": point_type,
-                "point_index": point_index,
+                "point_index": point_index + 1,
                 "point_id": point_id,
-                "label": label,
-                "engineering_units": units,
-                "range_field": range_field,
-                "digital_analog": digital_analog,
-                "description": description,
+                "label": description.clone().filter(|v| !v.is_empty()).or(label.clone()),
+                "short_label": label,
+                "full_label": description,
+                "value": value,
                 "current_value": current_value,
+                "current_value_num": value,
+                "units": mapped["units"],
+                "range": mapped["range"],
+                "units_code": units,
+                "range_code": range_field,
+                "digital": digital,
+                "digital_analog": digital_analog,
                 "haystack_tags": tags,
                 "brick_class": brick_class,
             }))
@@ -1069,10 +1631,25 @@ pub async fn execute_tool(
                 .await
                 .map_err(|e| format!("Search failed: {}", e))?;
 
-            let results: Vec<&ts::PointTagEntry> = entries.iter().take(limit).collect();
+            // Tag entries carry the 0-based DB index as a string; expose 1-based
+            // numbers like every other tool so a hit can be fed straight into
+            // t3000_point_read.
+            let results: Vec<Value> = entries
+                .iter()
+                .take(limit)
+                .map(|entry| {
+                    let mut value = serde_json::to_value(entry).unwrap_or(Value::Null);
+                    if let Ok(index) = entry.point_index.parse::<i32>() {
+                        value["point_index"] = json!(index + 1);
+                    }
+                    value
+                })
+                .collect();
             serde_json::to_string_pretty(&json!({
+                // `total` = every match (before the limit), `returned` = rows below.
                 "results": results,
-                "total": entries.len()
+                "total": entries.len(),
+                "returned": results.len()
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }
@@ -1107,11 +1684,11 @@ pub async fn execute_tool(
                 if tag_entries.is_empty() { continue; }
 
                 let pt_sql = format!(
-                    "SELECT 'INPUT' as point_type, Input_Index as point_index, Label, Units, Full_Label, fValue \
+                    "SELECT 'INPUT' as point_type, Input_Index as point_index, Label, Units, Full_Label, fValue, Range_Field, Digital_Analog \
                      FROM INPUTS WHERE SerialNumber = {0} \
-                     UNION ALL SELECT 'OUTPUT', Output_Index, Label, Units, Full_Label, fValue \
+                     UNION ALL SELECT 'OUTPUT', Output_Index, Label, Units, Full_Label, fValue, Range_Field, Digital_Analog \
                      FROM OUTPUTS WHERE SerialNumber = {0} \
-                     UNION ALL SELECT 'VARIABLE', Variable_Index, Label, Units, Full_Label, fValue \
+                     UNION ALL SELECT 'VARIABLE', Variable_Index, Label, Units, Full_Label, fValue, Range_Field, Digital_Analog \
                      FROM VARIABLES WHERE SerialNumber = {0}", sn
                 );
                 let pt_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &pt_sql)).await.unwrap_or_default();
@@ -1128,6 +1705,10 @@ pub async fn execute_tool(
                     let units: String = row.try_get("", "Units").unwrap_or_default();
                     let desc: String = row.try_get("", "Full_Label").unwrap_or_default();
                     let fval: String = row.try_get("", "fValue").unwrap_or_default();
+                    let range_code: String = row.try_get("", "Range_Field").unwrap_or_default();
+                    let digital: bool = row.try_get::<String>("", "Digital_Analog")
+                        .map(|v| v.trim() == "0")
+                        .unwrap_or(false);
 
                     let key = format!("{}:{}", pt, idx);
                     let tags = tag_map.get(&key).cloned().unwrap_or_default();
@@ -1146,21 +1727,43 @@ pub async fn execute_tool(
                         for t in &tags { if t.to_lowercase().contains(w) { score += 2; } }
                     }
                     if score > 0 {
-                        let display_val: Option<f64> = if pt == "INPUT" && !fval.is_empty() {
-                            fval.parse::<f64>().ok().map(|v| v / 1000.0)
-                        } else { fval.parse::<f64>().ok() };
+                        let mapped = range_tables::range_field(
+                            &pt,
+                            range_code.trim().parse::<i64>().ok(),
+                            digital,
+                        );
+                        let display_val = scaled_value(Some(fval.as_str()));
+                        // `idx` is the 0-based DB index (string); report 1-based
+                        // so the hit can be passed straight to t3000_point_read.
+                        let display_index = match idx.parse::<i32>() {
+                            Ok(n) => json!(n + 1),
+                            Err(_) => json!(idx.clone()),
+                        };
                         scored.push((score, json!({
-                            "serial_number": sn, "point_type": pt, "point_index": idx,
-                            "label": label, "description": desc, "units": units,
-                            "current_value": display_val, "haystack_tags": tags,
+                            "serial_number": sn, "point_type": pt, "point_index": display_index,
+                            "label": if desc.is_empty() { label.clone() } else { desc },
+                            "short_label": label,
+                            "units": mapped["units"],
+                            "range": mapped["range"],
+                            "units_code": units,
+                            "range_code": range_code,
+                            "current_value": display_val,
+                            "haystack_tags": tags,
                             "score": score
                         })));
                     }
                 }
             }
             scored.sort_by(|a, b| b.0.cmp(&a.0));
+            let total = scored.len();
             let results: Vec<Value> = scored.into_iter().take(limit).map(|(_, v)| v).collect();
-            serde_json::to_string_pretty(&json!({"results": results, "total": results.len()}))
+            serde_json::to_string_pretty(&json!({
+                // Same contract as t3000_metadata_search: total = all matches
+                // before the limit, returned = rows actually included.
+                "results": results,
+                "total": total,
+                "returned": results.len()
+            }))
                 .map_err(|e| format!("Serialize error: {}", e))
         }
 
@@ -1171,24 +1774,30 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type = args.get("point_type").and_then(|v| v.as_str())
-                .ok_or_else(|| "point_type required".to_string())?;
-            let point_index: i32 = args.get("point_index")
-                .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
+                .and_then(normalize_point_type)
+                .ok_or_else(|| "point_type required (INPUT, OUTPUT or VARIABLE)".to_string())?;
+            let one_based_index: i32 = args.get("point_index")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;
+            if !(1..=64).contains(&one_based_index) {
+                return Err(format!(
+                    "point_index is 1-based (1..64, matching the UI: IN1 = 1); got {}",
+                    one_based_index
+                ));
+            }
+            let point_index = one_based_index - 1;
 
-            let (table, label_col, value_col, units_col) = match point_type {
-                "INPUT" => ("INPUTS", "Label", "fValue", "Units"),
-                "OUTPUT" => ("OUTPUTS", "Label", "fValue", "Units"),
-                "VARIABLE" => ("VARIABLES", "Label", "fValue", "Units"),
+            let (table, idx_col) = match point_type {
+                "INPUT" => ("INPUTS", "Input_Index"),
+                "OUTPUT" => ("OUTPUTS", "Output_Index"),
+                "VARIABLE" => ("VARIABLES", "Variable_Index"),
                 _ => return Err(format!("Invalid point_type: {}", point_type)),
-            };
-            let idx_col = match point_type {
-                "INPUT" => "Input_Index", "OUTPUT" => "Output_Index", _ => "Variable_Index"
             };
 
             let sql = format!(
-                "SELECT {}, {}, {} FROM {} WHERE SerialNumber = {} AND {} = '{}'",
-                label_col, value_col, units_col, table, serial, idx_col, point_index
+                "SELECT Label, Full_Label, fValue, Units, Range_Field, Digital_Analog \
+                 FROM {} WHERE SerialNumber = {} AND {} = '{}'",
+                table, serial, idx_col, point_index
             );
             let rows = db
                 .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
@@ -1196,22 +1805,43 @@ pub async fn execute_tool(
                 .map_err(|e| format!("Query failed: {}", e))?;
 
             if let Some(row) = rows.first() {
-                let label: Option<String> = row.try_get("", label_col).ok();
-                let fvalue: Option<String> = row.try_get("", value_col).ok();
-                let units: Option<String> = row.try_get("", units_col).ok();
-                let value: Option<f64> = fvalue.as_ref().and_then(|v| v.parse::<f64>().ok());
+                let label: Option<String> = row.try_get("", "Label").ok();
+                let full_label: Option<String> = row.try_get("", "Full_Label").ok();
+                let fvalue: Option<String> = row.try_get("", "fValue").ok();
+                let units_code: Option<String> = row.try_get("", "Units").ok();
+                let range_code: Option<String> = row.try_get("", "Range_Field").ok();
+                let digital: bool = row.try_get::<String>("", "Digital_Analog")
+                    .map(|v| v.trim() == "0")
+                    .unwrap_or(false);
+
+                let mapped = range_tables::range_field(
+                    point_type,
+                    range_code.as_deref().and_then(|v| v.trim().parse::<i64>().ok()),
+                    digital,
+                );
 
                 Ok(json!({
                     "serial_number": serial,
                     "point_type": point_type,
-                    "point_index": point_index,
-                    "label": label,
-                    "value": value,
-                    "engineering_units": units,
+                    "point_index": one_based_index,
+                    "label": full_label.clone().filter(|v| !v.is_empty()).or(label.clone()),
+                    "short_label": label,
+                    "value": scaled_value(fvalue.as_deref()),
+                    "raw_value": fvalue,
+                    "units": mapped["units"],
+                    "range": mapped["range"],
+                    "units_code": units_code,
+                    "range_code": range_code,
+                    "digital": digital,
                     "timestamp": Utc::now().to_rfc3339(),
                 }).to_string())
             } else {
-                Ok(json!({"error": "Point not found"}).to_string())
+                // An error, not a payload: a caller must not mistake a missing
+                // point for a successful read.
+                Err(format!(
+                    "No {} {} stored for device {} (run t3000_device_refresh to load it from the device)",
+                    point_type, one_based_index, serial
+                ))
             }
         }
 
@@ -1220,14 +1850,27 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type = args.get("point_type").and_then(|v| v.as_str())
-                .ok_or_else(|| "point_type required".to_string())?;
-            let point_index: i32 = args.get("point_index")
-                .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
+                .and_then(normalize_point_type)
+                .ok_or_else(|| "point_type required (INPUT, OUTPUT or VARIABLE)".to_string())?;
+            let one_based_index: i32 = args.get("point_index")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;
+            if !(1..=64).contains(&one_based_index) {
+                return Err(format!(
+                    "point_index is 1-based (1..64, matching the UI: IN1 = 1); got {}",
+                    one_based_index
+                ));
+            }
+            let point_index = one_based_index - 1;
             let confirm = args.get("confirm").and_then(|v| v.as_bool()).unwrap_or(false);
             let field = args.get("field").and_then(|v| v.as_str()).unwrap_or("value");
 
             let valid_fields = ["value", "label", "description", "range", "auto_manual", "digital_analog"];
+            if field == "units" {
+                return Err(
+                    "T3000 derives units from the range code — write field 'range' instead of 'units'".to_string(),
+                );
+            }
             if !valid_fields.contains(&field) {
                 return Err(format!("Invalid field '{}'. Valid fields: {}", field, valid_fields.join(", ")));
             }
@@ -1291,22 +1934,51 @@ pub async fn execute_tool(
                 .unwrap_or_default();
 
             let mut results: Vec<Value> = Vec::new();
+            let mut errors: Vec<Value> = Vec::new();
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
-                let pt = point.get("point_type").and_then(|v| v.as_str());
-                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32 - 1);
-                if let (Some(sn), Some(pt), Some(idx)) = (sn, pt, idx) {
+                let pt_raw = point.get("point_type").and_then(|v| v.as_str());
+                let pt = pt_raw.and_then(normalize_point_type);
+                let one_based_index = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
+
+                // One bad entry must not sink the batch, but it must be reported
+                // instead of silently shrinking `results`.
+                let (Some(sn), Some(one_based_index)) = (sn, one_based_index) else {
+                    errors.push(json!({ "point": point, "error": "serial_number and point_index are required" }));
+                    continue;
+                };
+                let Some(pt) = pt else {
+                    // A misspelt type must say so instead of claiming it is missing.
+                    let error = match pt_raw {
+                        Some(raw) => format!("Invalid point_type: {} (use INPUT, OUTPUT or VARIABLE)", raw),
+                        None => "point_type is required".to_string(),
+                    };
+                    errors.push(json!({ "serial_number": sn, "point_index": one_based_index, "error": error }));
+                    continue;
+                };
+                if !matches!(pt, "INPUT" | "OUTPUT" | "VARIABLE") {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                        "error": format!("Invalid point_type: {}", pt) }));
+                    continue;
+                }
+                if !(1..=64).contains(&one_based_index) {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                        "error": "point_index is 1-based (1..64, matching the UI: IN1 = 1)" }));
+                    continue;
+                }
+                let idx = one_based_index - 1;
+                {
                     let (table, label_col, value_col, units_col) = match pt {
                         "INPUT" => ("INPUTS", "Label", "fValue", "Units"),
                         "OUTPUT" => ("OUTPUTS", "Label", "fValue", "Units"),
-                        "VARIABLE" => ("VARIABLES", "Label", "fValue", "Units"),
-                        _ => continue,
+                        _ => ("VARIABLES", "Label", "fValue", "Units"),
                     };
                     let idx_col = match pt {
                         "INPUT" => "Input_Index", "OUTPUT" => "Output_Index", _ => "Variable_Index"
                     };
                     let sql = format!(
-                        "SELECT {}, {}, {} FROM {} WHERE SerialNumber = {} AND {} = '{}'",
+                        "SELECT {}, {}, {}, Full_Label, Range_Field, Digital_Analog FROM {} \
+                         WHERE SerialNumber = {} AND {} = '{}'",
                         label_col, value_col, units_col, table, sn, idx_col, idx
                     );
                     if let Ok(rows) = db
@@ -1315,24 +1987,47 @@ pub async fn execute_tool(
                     {
                         if let Some(row) = rows.first() {
                             let label: Option<String> = row.try_get("", label_col).ok();
+                            let full_label: Option<String> = row.try_get("", "Full_Label").ok();
                             let fvalue: Option<String> = row.try_get("", value_col).ok();
                             let units: Option<String> = row.try_get("", units_col).ok();
-                            let val: Option<f64> = fvalue.as_ref().and_then(|v| v.parse::<f64>().ok());
+                            let range_code: Option<String> = row.try_get("", "Range_Field").ok();
+                            let digital = row.try_get::<String>("", "Digital_Analog")
+                                .map(|v| v.trim() == "0")
+                                .unwrap_or(false);
+                            let mapped = range_tables::range_field(
+                                pt,
+                                range_code.as_deref().and_then(|v| v.trim().parse::<i64>().ok()),
+                                digital,
+                            );
+                            let val = scaled_value(fvalue.as_deref());
                             results.push(json!({
                                 "serial_number": sn,
                                 "point_type": pt,
-                                "point_index": idx,
-                                "label": label,
+                                "point_index": one_based_index,
+                                "label": full_label.clone().filter(|v| !v.is_empty()).or(label.clone()),
+                                "short_label": label,
                                 "value": val,
-                                "engineering_units": units,
+                                "raw_value": fvalue,
+                                "units": mapped["units"],
+                                "range": mapped["range"],
+                                "units_code": units,
+                                "range_code": range_code,
+                                "digital": digital,
                             }));
+                        } else {
+                            errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                                "error": format!("No {} {} stored for device {} (run t3000_device_refresh to load it from the device)", pt, one_based_index, sn) }));
                         }
+                    } else {
+                        errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                            "error": "Query failed" }));
                     }
                 }
             }
 
             Ok(json!({
                 "results": results,
+                "errors": errors,
                 "requested": points.len(),
                 "returned": results.len(),
                 "timestamp": Utc::now().to_rfc3339(),
@@ -1351,24 +2046,52 @@ pub async fn execute_tool(
             }
 
             let mut updated = 0;
-            let mut errors: Vec<String> = Vec::new();
+            let mut errors: Vec<Value> = Vec::new();
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
-                let pt = point.get("point_type").and_then(|v| v.as_str());
-                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32 - 1);
+                let pt_raw = point.get("point_type").and_then(|v| v.as_str());
+                let pt = pt_raw.and_then(normalize_point_type);
+                let one_based_index = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let val = point.get("value");
                 let field = point.get("field").and_then(|v| v.as_str()).unwrap_or("value");
-                if let (Some(sn), Some(pt), Some(idx), Some(val)) = (sn, pt, idx, val) {
-                    let value_str = match val {
-                        Value::Number(n) => n.to_string(),
-                        Value::Bool(b) => (if *b { "1" } else { "0" }).to_string(),
-                        Value::String(s) => s.clone(),
-                        _ => continue,
+
+                // A bad entry must be explained, not silently skipped.
+                let (Some(sn), Some(one_based_index), Some(val)) = (sn, one_based_index, val) else {
+                    errors.push(json!({ "point": point, "error": "serial_number, point_index and value are required" }));
+                    continue;
+                };
+                let Some(pt) = pt else {
+                    let error = match pt_raw {
+                        Some(raw) => format!("Invalid point_type: {} (use INPUT, OUTPUT or VARIABLE)", raw),
+                        None => "point_type is required".to_string(),
                     };
-                    match point_write_ffi(db, sn, pt, idx, field, &value_str).await {
-                        Ok(_) => updated += 1,
-                        Err(e) => errors.push(format!("dev{} {}[{}]: {}", sn, pt, idx, e)),
+                    errors.push(json!({ "serial_number": sn, "point_index": one_based_index, "error": error }));
+                    continue;
+                };
+                if !matches!(pt, "INPUT" | "OUTPUT" | "VARIABLE") {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                        "error": format!("Invalid point_type: {}", pt) }));
+                    continue;
+                }
+                if !(1..=64).contains(&one_based_index) {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                        "error": "point_index is 1-based (1..64, matching the UI: IN1 = 1)" }));
+                    continue;
+                }
+                let value_str = match val {
+                    Value::Number(n) => n.to_string(),
+                    Value::Bool(b) => (if *b { "1" } else { "0" }).to_string(),
+                    Value::String(s) => s.clone(),
+                    _ => {
+                        errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                            "error": "value must be number, boolean, or string" }));
+                        continue;
                     }
+                };
+                match point_write_ffi(db, sn, pt, one_based_index - 1, field, &value_str).await {
+                    Ok(_) => updated += 1,
+                    Err(e) => errors.push(json!({ "serial_number": sn, "point_type": pt, "point_index": one_based_index,
+                        "field": field, "error": e })),
                 }
             }
 
@@ -1388,16 +2111,40 @@ pub async fn execute_tool(
                 .unwrap_or_default();
 
             let mut results: Vec<Value> = Vec::new();
+            let mut errors: Vec<Value> = Vec::new();
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
-                let pt = point.get("point_type").and_then(|v| v.as_str());
-                let idx = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32 - 1);
-                if let (Some(sn), Some(pt_str), Some(idx)) = (sn, pt, idx) {
+                let pt_raw = point.get("point_type").and_then(|v| v.as_str());
+                let pt = pt_raw.and_then(normalize_point_type);
+                let one_based_index = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
+                let (Some(sn), Some(one_based_index)) = (sn, one_based_index) else {
+                    errors.push(json!({ "point": point, "error": "serial_number and point_index are required" }));
+                    continue;
+                };
+                let Some(pt_str) = pt else {
+                    let error = match pt_raw {
+                        Some(raw) => format!("Invalid point_type: {} (use INPUT, OUTPUT or VARIABLE)", raw),
+                        None => "point_type is required".to_string(),
+                    };
+                    errors.push(json!({ "serial_number": sn, "point_index": one_based_index, "error": error }));
+                    continue;
+                };
+                if !matches!(pt_str, "INPUT" | "OUTPUT" | "VARIABLE") {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt_str, "point_index": one_based_index,
+                        "error": format!("Invalid point_type: {}", pt_str) }));
+                    continue;
+                }
+                if !(1..=64).contains(&one_based_index) {
+                    errors.push(json!({ "serial_number": sn, "point_type": pt_str, "point_index": one_based_index,
+                        "error": "point_index is 1-based (1..64, matching the UI: IN1 = 1)" }));
+                    continue;
+                }
+                let idx = one_based_index - 1;
+                {
                     let (table, idx_col) = match pt_str {
                         "INPUT" => ("INPUTS", "Input_Index"),
                         "OUTPUT" => ("OUTPUTS", "Output_Index"),
-                        "VARIABLE" => ("VARIABLES", "Variable_Index"),
-                        _ => continue,
+                        _ => ("VARIABLES", "Variable_Index"),
                     };
                     let sql = format!(
                         "SELECT Label, Units, Range_Field, Digital_Analog, Full_Label, fValue
@@ -1412,10 +2159,7 @@ pub async fn execute_tool(
                             let da: Option<String> = row.try_get("", "Digital_Analog").ok();
                             let desc: Option<String> = row.try_get("", "Full_Label").ok();
                             let fval: Option<String> = row.try_get("", "fValue").ok();
-                            let display_val = fval.as_ref().and_then(|v| {
-                                if pt_str == "INPUT" { v.parse::<f64>().ok().map(|x| x / 1000.0) }
-                                else { v.parse::<f64>().ok() }
-                            });
+                            let display_val = scaled_value(fval.as_deref());
 
                             // Get tags
                             let sn_filter = vec![sn];
@@ -1434,19 +2178,36 @@ pub async fn execute_tool(
                             let bc = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &bc_sql)).await
                                 .ok().and_then(|r| r.first().and_then(|r2| r2.try_get::<String>("", "brick_class").ok()));
 
+                            let digital = da.as_deref().map(|v| v.trim() == "0").unwrap_or(false);
+                            let mapped = range_tables::range_field(
+                                pt_str,
+                                range.as_deref().and_then(|v| v.trim().parse::<i64>().ok()),
+                                digital,
+                            );
                             results.push(json!({
-                                "serial_number": sn, "point_type": pt_str, "point_index": idx,
-                                "label": label, "engineering_units": units, "range_field": range,
-                                "digital_analog": da, "description": desc, "current_value": display_val,
+                                "serial_number": sn, "point_type": pt_str, "point_index": one_based_index,
+                                "label": desc.clone().filter(|d| !d.is_empty()).or_else(|| label.clone()),
+                                "short_label": label,
+                                "value": display_val, "raw_value": fval,
+                                "units": mapped["units"], "range": mapped["range"],
+                                "units_code": units, "range_code": range,
+                                "digital": digital, "digital_analog": da,
                                 "haystack_tags": tags, "brick_class": bc,
                             }));
+                        } else {
+                            errors.push(json!({ "serial_number": sn, "point_type": pt_str, "point_index": one_based_index,
+                                "error": format!("No {} {} stored for device {} (run t3000_device_refresh to load it from the device)", pt_str, one_based_index, sn) }));
                         }
+                    } else {
+                        errors.push(json!({ "serial_number": sn, "point_type": pt_str, "point_index": one_based_index,
+                            "error": "Query failed" }));
                     }
                 }
             }
 
             serde_json::to_string_pretty(&json!({
-                "results": results, "requested": points.len(), "returned": results.len(),
+                "results": results, "errors": errors,
+                "requested": points.len(), "returned": results.len(),
                 "timestamp": Utc::now().to_rfc3339(),
             }))
             .map_err(|e| format!("Serialize error: {}", e))
@@ -1510,7 +2271,8 @@ pub async fn execute_tool(
             }
 
             // Rule 3: air tag without disambiguator
-            let air_sql = "SELECT pt1.serial_number, pt1.point_type, pt1.point_index, pt1.point_id
+            let mut air_sql = String::from(
+                "SELECT pt1.serial_number, pt1.point_type, pt1.point_index, pt1.point_id
                 FROM HAYSTACK_POINT_TAGS pt1
                 WHERE pt1.tag_name = 'air'
                 AND NOT EXISTS (
@@ -1519,8 +2281,16 @@ pub async fn execute_tool(
                     AND pt2.point_type = pt1.point_type
                     AND pt2.point_index = pt1.point_index
                     AND pt2.tag_name IN ('temp', 'humidity', 'pressure', 'flow', 'quality')
-                )";
-            if let Ok(rows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, air_sql)).await {
+                )"
+            );
+            // The serial filter has to apply here too, otherwise a single-device
+            // validation reports warnings from every other device.
+            if let Some(ref sf) = sn_filter {
+                if !sf.is_empty() {
+                    air_sql.push_str(&format!(" AND pt1.serial_number IN ({})", sf));
+                }
+            }
+            if let Ok(rows) = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &air_sql)).await {
                 for row in &rows {
                     warnings.push(json!({
                         "point_id": row.try_get::<String>("", "point_id").unwrap_or_default(),
@@ -1549,10 +2319,36 @@ pub async fn execute_tool(
             let format = args.get("format").and_then(|v| v.as_str()).unwrap_or("haystack-json");
 
             if serials.is_empty() {
-                return Ok(json!({"error": "No serial numbers provided"}).to_string());
+                return Err("serial_numbers is required — pass at least one device serial (see t3000_device_list)".to_string());
             }
 
             let sn_list = serials.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(",");
+
+            // A wrong/unknown serial used to return an empty document, which reads as
+            // "this device has no data" instead of "that device does not exist".
+            let known_sql = format!(
+                "SELECT SerialNumber FROM DEVICES WHERE SerialNumber IN ({})",
+                sn_list
+            );
+            let known_rows = db
+                .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &known_sql))
+                .await
+                .map_err(|e| format!("Device lookup failed: {}", e))?;
+            let known: Vec<i32> = known_rows
+                .iter()
+                .filter_map(|r| r.try_get::<i32>("", "SerialNumber").ok())
+                .collect();
+            let unknown: Vec<String> = serials
+                .iter()
+                .filter(|s| !known.contains(s))
+                .map(|s| s.to_string())
+                .collect();
+            if !unknown.is_empty() {
+                return Err(format!(
+                    "Unknown device serial(s): {}. Use t3000_device_list to see the available serials.",
+                    unknown.join(", ")
+                ));
+            }
 
             let sql = format!(
                 "SELECT pt.serial_number, pt.point_type, pt.point_index, pt.point_id, pt.tag_name,
@@ -1635,6 +2431,11 @@ pub async fn execute_tool(
                         "format": "brick-ttl",
                         "content": ttl,
                         "entity_count": brick_classes.len(),
+                        "warning": if brick_classes.is_empty() && !rows.is_empty() {
+                            Value::String("No Brick classes are assigned for these devices, so the TTL body is empty. Assign classes with t3000_haystack_auto_tag or a category='brick' rule.".to_string())
+                        } else {
+                            Value::Null
+                        },
                     }).to_string())
                 }
 
@@ -1660,6 +2461,7 @@ pub async fn execute_tool(
                     }
 
                     serde_json::to_string_pretty(&json!({
+                        "format": "brick-jsonld",
                         "@context": {
                             "brick": "https://brickschema.org/schema/Brick#",
                             "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
@@ -1668,6 +2470,11 @@ pub async fn execute_tool(
                         },
                         "@graph": graph,
                         "entity_count": brick_classes.len(),
+                        "warning": if brick_classes.is_empty() && !rows.is_empty() {
+                            Value::String("No Brick classes are assigned for these devices, so @graph is empty. Assign classes with t3000_haystack_auto_tag or a category='brick' rule.".to_string())
+                        } else {
+                            Value::Null
+                        },
                     }))
                     .map_err(|e| format!("Serialize error: {}", e))
                 }
@@ -1728,19 +2535,35 @@ pub async fn execute_tool(
                         }
                     }
 
-                    let mut csv = String::from("serial_number,point_type,point_index,label,description,value,units,range,digital_analog,tags,brick_class\n");
+                    let mut csv = String::from("serial_number,point_type,point_index,label,description,value,units,range,digital_analog,tags,brick_class,range_code,units_code\n");
                     for row in &all_rows {
                         let key = format!("{}:{}:{}", row.sn, row.pt, row.idx);
                         let tags = point_tags.get(&key).map(|t| t.join("; ")).unwrap_or_default();
                         let bc = point_brick.get(&key).map(|s| s.as_str()).unwrap_or("");
-                        let display_val: String = if row.pt == "INPUT" && !row.fval.is_empty() {
-                            row.fval.parse::<f64>().map(|v| format!("{:.3}", v / 1000.0)).unwrap_or(row.fval.clone())
-                        } else { row.fval.clone() };
+                        // fValue is stored x1000 for every point type — dividing only
+                        // the INPUT rows mixed two scales in one column.
+                        let display_val: String = row.fval
+                            .parse::<f64>()
+                            .map(|v| format!("{:.3}", v / 1000.0))
+                            .unwrap_or_else(|_| row.fval.clone());
+                        let digital = row.da.trim() == "0";
+                        let range_code: Option<i64> = row.range.trim().parse().ok();
+                        let units_code: Option<i64> = row.units.trim().parse().ok();
+                        // Emit the human text (as t3000_point_read does) next to the raw
+                        // codes — a bare code in a column called "units" is not a unit.
+                        let range_text = range_code
+                            .and_then(|c| range_tables::range_text(&row.pt, c, digital))
+                            .map(|(range, _)| range)
+                            .unwrap_or("");
+                        let units_text = units_code
+                            .and_then(|c| range_tables::range_text(&row.pt, c, digital))
+                            .map(|(_, units)| units)
+                            .unwrap_or("");
                         let escaped_label = row.label.replace('"', "\"\"");
                         let escaped_desc = row.desc.replace('"', "\"\"");
-                        csv.push_str(&format!("{},{},{},\"{}\",\"{}\",{},{},{},{},{},{}\n",
+                        csv.push_str(&format!("{},{},{},\"{}\",\"{}\",{},\"{}\",\"{}\",{},{},{},{},{}\n",
                             row.sn, row.pt, row.idx, escaped_label, escaped_desc, display_val,
-                            row.units, row.range, row.da, tags, bc));
+                            units_text, range_text, row.da, tags, bc, row.range, row.units));
                     }
 
                     Ok(json!({
@@ -1760,8 +2583,13 @@ pub async fn execute_tool(
             let rule_id: i64 = args.get("rule_id")
                 .and_then(|v| v.as_i64())
                 .ok_or_else(|| "rule_id required".to_string())?;
+            // `enabled` is required and must be honoured as a value: flipping the
+            // stored flag would re-enable a rule when the client disables it twice.
+            let enabled = args.get("enabled")
+                .and_then(|v| v.as_bool())
+                .ok_or_else(|| "enabled required: true to enable, false to disable".to_string())?;
 
-            let result = ats::toggle_rule(db, rule_id).await?;
+            let result = ats::set_rule_enabled(db, rule_id, enabled).await?;
 
             Ok(json!({
                 "rule_id": rule_id,
@@ -1771,19 +2599,63 @@ pub async fn execute_tool(
 
         "t3000_rule_create" => {
             let rule_name = args.get("rule_name")
-                .and_then(|v| v.as_str()).map(String::from)
+                .and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(String::from)
                 .ok_or_else(|| "rule_name required".to_string())?;
             let pattern = args.get("pattern")
-                .and_then(|v| v.as_str()).map(String::from)
+                .and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(String::from)
                 .ok_or_else(|| "pattern required".to_string())?;
             let category = args.get("category")
-                .and_then(|v| v.as_str()).map(String::from)
+                .and_then(|v| v.as_str()).map(str::trim).map(String::from)
                 .ok_or_else(|| "category required".to_string())?;
+
+            // The table has CHECK(category IN ('haystack','brick','range')).
+            if !matches!(category.as_str(), "haystack" | "brick" | "range") {
+                return Err(format!(
+                    "Invalid category '{}'. Use 'haystack' (assign tags), 'brick' (assign a Brick class) or 'range'.",
+                    category
+                ));
+            }
+            // An invalid regex would be stored and then break auto-tagging later.
+            if let Err(e) = regex::Regex::new(&pattern) {
+                return Err(format!("Invalid regex pattern '{}': {}", pattern, e));
+            }
 
             let haystack_tags = args.get("haystack_tags").and_then(|v| v.as_str()).map(String::from);
             let brick_class = args.get("brick_class").and_then(|v| v.as_str()).map(String::from);
             let units = args.get("units").and_then(|v| v.as_str()).map(String::from);
             let object_types = args.get("object_types").and_then(|v| v.as_str()).map(String::from);
+            let priority = args.get("priority").and_then(|v| v.as_i64()).map(|p| p as i32);
+
+            // A rule that assigns nothing can never do anything — reject it early.
+            let has_tags = haystack_tags.as_deref().map(|t| !t.trim().is_empty()).unwrap_or(false);
+            let has_brick = brick_class.as_deref().map(|b| !b.trim().is_empty()).unwrap_or(false);
+            if category == "haystack" && !has_tags {
+                return Err("haystack rules need haystack_tags, e.g. 'temp, sensor, point'".to_string());
+            }
+            if category == "brick" && !has_brick {
+                return Err("brick rules need brick_class, e.g. 'Temperature_Sensor'".to_string());
+            }
+            if !has_tags && !has_brick {
+                return Err("Provide haystack_tags and/or brick_class — the rule would assign nothing".to_string());
+            }
+
+            // rule_name is UNIQUE in the table; report it in words instead of
+            // leaking "UNIQUE constraint failed".
+            let dup_sql = format!(
+                "SELECT id FROM HAYSTACK_AUTO_TAGGING_RULES WHERE rule_name = '{}'",
+                rule_name.replace('\'', "''")
+            );
+            let existing = db
+                .query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &dup_sql))
+                .await
+                .map_err(|e| format!("Rule name lookup failed: {}", e))?;
+            if let Some(row) = existing.first() {
+                let id: i64 = row.try_get("", "id").unwrap_or(0);
+                return Err(format!(
+                    "Duplicate rule_name: a rule named '{}' already exists (id {}). Use t3000_rule_toggle to change its state, or pick another name.",
+                    rule_name, id
+                ));
+            }
 
             let req = ats::CreateRuleRequest {
                 rule_name,
@@ -1795,6 +2667,7 @@ pub async fn execute_tool(
                 brick_class,
                 haystack_kind: None,
                 haystack_unit: None,
+                priority,
             };
 
             let rule_id = ats::create_rule(db, &req).await?;
@@ -1804,6 +2677,7 @@ pub async fn execute_tool(
                 "rule_name": req.rule_name,
                 "pattern": req.pattern,
                 "category": req.category,
+                "priority": req.priority.unwrap_or(0),
                 "enabled": true,
             }).to_string())
         }
@@ -1859,6 +2733,7 @@ pub async fn execute_tool(
                         "source": r.try_get::<String>("", "source").ok(),
                         "acknowledged": r.try_get::<String>("", "acknowledged").ok(),
                         "time_stamp": r.try_get::<String>("", "time_stamp").ok(),
+                        "description": r.try_get::<String>("", "description").ok(),
                     })
                 })
                 .collect();
@@ -1878,17 +2753,28 @@ pub async fn execute_tool(
                 .ok_or_else(|| "alarm_id required".to_string())?;
 
             let now = Utc::now().to_rfc3339();
-            let sql = format!(
-                "UPDATE ALARMS SET Acknowledged = '1' WHERE SerialNumber = {} AND Alarm_ID = '{}'",
-                serial, alarm_id
-            );
-            db.execute(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
+            // Alarm_ID comes from the caller, so it must be bound rather than
+            // interpolated: `X' OR '1'='1` would acknowledge every alarm.
+            let result = db
+                .execute(sea_orm::Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    "UPDATE ALARMS SET Acknowledged = '1' WHERE SerialNumber = ? AND Alarm_ID = ?",
+                    vec![serial.into(), alarm_id.into()],
+                ))
                 .await
                 .map_err(|e| format!("Acknowledge failed: {}", e))?;
+
+            if result.rows_affected() == 0 {
+                return Err(format!(
+                    "Alarm '{}' not found on device {}. Use t3000_alarm_list to see the current alarms.",
+                    alarm_id, serial
+                ));
+            }
 
             Ok(json!({
                 "success": true,
                 "alarm_id": alarm_id,
+                "acknowledged": true,
                 "acknowledged_at": now,
             }).to_string())
         }
@@ -1897,11 +2783,22 @@ pub async fn execute_tool(
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
+            // Trendlogs can cover types outside the three point tables, so an
+            // unknown value is passed through (and simply finds no data).
             let point_type = args.get("point_type").and_then(|v| v.as_str())
-                .ok_or_else(|| "point_type required".to_string())?;
-            let point_index: i32 = args.get("point_index")
-                .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
+                .map(|raw| normalize_point_type(raw).unwrap_or(raw))
+                .ok_or_else(|| "point_type required (INPUT, OUTPUT or VARIABLE)".to_string())?;
+            let point_index_1based: i32 = args.get("point_index")
+                .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;
+            if !(1..=64).contains(&point_index_1based) {
+                return Err(format!(
+                    "point_index is 1-based (1..64), got {}",
+                    point_index_1based
+                ));
+            }
+            // TRENDLOG_INPUTS stores point indexes 0-based.
+            let point_index = point_index_1based - 1;
             let start = args.get("start").and_then(|v| v.as_str()).map(String::from)
                 .ok_or_else(|| "start time required".to_string())?;
             let end = args.get("end").and_then(|v| v.as_str()).map(String::from);
@@ -1919,16 +2816,31 @@ pub async fn execute_tool(
                 .map_err(|e| format!("Trendlog lookup failed: {}", e))?;
 
             if tl_rows.is_empty() {
-                return Ok(json!({
-                    "error": "No trendlog found for this point",
-                    "serial_number": serial,
-                    "point_type": point_type,
-                    "point_index": point_index,
-                }).to_string());
+                return Err(format!(
+                    "No trendlog is logging {} {} on device {}. Use t3000_trendlog_list to see the trendlogs, or t3000_trendlog_query on a logged point.",
+                    point_type, point_index_1based, serial
+                ));
             }
 
             let trendlog_id: String = tl_rows[0].try_get("", "Trendlog_ID").unwrap_or_default();
             let panel_id: i32 = tl_rows[0].try_get::<i32>("", "PanelId").unwrap_or(0);
+
+            // Only the requested point may come back: without this filter the
+            // service returns every point in the trendlog.
+            let specific_points = match trendlog_point_identity(db, serial, point_type, point_index_1based).await {
+                Some((point_id, idx, panel)) => Some(vec![SpecificPoint {
+                    point_id,
+                    point_type: point_type.to_string(),
+                    point_index: idx,
+                    panel_id: panel,
+                }]),
+                None => {
+                    return Err(format!(
+                        "No trendlog history is recorded for {} {} on device {} (nothing in TRENDLOG_DATA).",
+                        point_type, point_index_1based, serial
+                    ))
+                }
+            };
 
             let request = TrendlogHistoryRequest {
                 serial_number: serial,
@@ -1938,7 +2850,7 @@ pub async fn execute_tool(
                 end_time: end,
                 limit: Some(limit),
                 point_types: None,
-                specific_points: None,
+                specific_points,
             };
 
             let result = T3TrendlogDataService::get_trendlog_history(db, request)
@@ -2015,22 +2927,39 @@ pub async fn execute_tool(
             let pt_rows = db.query_all(sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &pts_sql)).await
                 .map_err(|e| format!("Point lookup failed: {}", e))?;
 
-            let specific_points: Vec<SpecificPoint> = pt_rows.iter()
-                .filter_map(|r| {
+            let specific_points: Vec<SpecificPoint> = {
+                let mut points = Vec::new();
+                let mut without_history = 0usize;
+                for r in &pt_rows {
                     let pt: String = r.try_get("", "Point_Type").unwrap_or_default();
-                    let idx: i32 = r.try_get("", "Point_Index").unwrap_or(0);
-                    let pt_abbr = match pt.as_str() { "INPUT" => "in", "OUTPUT" => "out", _ => "var" };
-                    Some(SpecificPoint {
-                        point_id: format!("dev{}.{}{}", serial, pt_abbr, idx),
-                        point_type: pt,
-                        point_index: idx,
-                        panel_id,
-                    })
-                })
-                .collect();
+                    let idx0: i32 = r.try_get("", "Point_Index").unwrap_or(0);
+                    // TRENDLOG_INPUTS is 0-based; TRENDLOG_DATA.PointIndex is 1-based.
+                    match trendlog_point_identity(db, serial, &pt, idx0 + 1).await {
+                        Some((point_id, idx, panel)) => points.push(SpecificPoint {
+                            point_id,
+                            point_type: pt,
+                            point_index: idx,
+                            panel_id: panel,
+                        }),
+                        None => without_history += 1,
+                    }
+                }
+                if without_history > 0 {
+                    info!(
+                        "[MCP] trendlog_export: {} of the configured points have no recorded history yet",
+                        without_history
+                    );
+                }
+                points
+            };
 
             if specific_points.is_empty() {
-                return Ok(json!({"error": "No points found in trendlog", "trendlog_id": trendlog_id}).to_string());
+                return Err(format!(
+                    "Trendlog '{}' on device {} has no recorded history yet ({} configured point(s) have nothing in TRENDLOG_DATA).",
+                    trendlog_id,
+                    serial,
+                    pt_rows.len()
+                ));
             }
 
             let point_count = specific_points.len();
@@ -2057,16 +2986,29 @@ pub async fn execute_tool(
                     let data = result.get("data").and_then(|d| d.as_array()).cloned().unwrap_or_default();
                     let mut csv = String::from("timestamp,point_type,point_index,point_id,value,units,range,digital_analog\n");
                     for row in &data {
-                        let ts = row.get("logging_time_fmt").or_else(|| row.get("logging_time"))
+                        // History rows carry `time`/`timestamp` and a numeric `value`;
+                        // reading only `logging_time_fmt` + a string `value` produced
+                        // rows with an empty timestamp and an empty value column.
+                        let ts = row.get("time").or_else(|| row.get("timestamp"))
+                            .or_else(|| row.get("logging_time_fmt"))
                             .and_then(|v| v.as_str()).unwrap_or("");
                         let pt = row.get("point_type").and_then(|v| v.as_str()).unwrap_or("");
                         let idx = row.get("point_index").and_then(|v| v.as_i64()).map(|n| n.to_string()).unwrap_or_default();
                         let pid = row.get("point_id").and_then(|v| v.as_str()).unwrap_or("");
-                        let val = row.get("value").and_then(|v| v.as_str()).unwrap_or("");
+                        let val = match row.get("value") {
+                            Some(Value::Number(n)) => n.to_string(),
+                            Some(Value::String(s)) => s.clone(),
+                            _ => row.get("raw_value").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                        };
                         let units = row.get("units").and_then(|v| v.as_str()).unwrap_or("");
-                        let range = row.get("range_field").and_then(|v| v.as_str()).unwrap_or("");
-                        let da = row.get("digital_analog").and_then(|v| v.as_str()).unwrap_or("");
-                        csv.push_str(&format!("{},{},{},{},{},{},{},{}\n",
+                        let range = row.get("range").or_else(|| row.get("range_field"))
+                            .and_then(|v| v.as_str()).unwrap_or("");
+                        let da = row.get("digital_analog").and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                            .or_else(|| row.get("is_analog").and_then(|v| v.as_bool())
+                                .map(|analog| if analog { "1".to_string() } else { "0".to_string() }))
+                            .unwrap_or_default();
+                        csv.push_str(&format!("{},{},{},{},\"{}\",\"{}\",\"{}\",{}\n",
                             ts, pt, idx, pid, val, units, range, da));
                     }
                     Ok(json!({
@@ -2076,67 +3018,188 @@ pub async fn execute_tool(
                         "total_points": point_count,
                     }).to_string())
                 }
-                _ => {
+                "json" => {
+                    // Same shape as the csv branch so a client can read
+                    // `total_rows`/`total_points` without knowing the format.
+                    let row_count = result
+                        .get("data")
+                        .and_then(|d| d.as_array())
+                        .map(|a| a.len())
+                        .unwrap_or(0);
                     serde_json::to_string_pretty(&json!({
                         "format": "json",
                         "data": result,
+                        "total_rows": row_count,
                         "total_points": point_count,
                     }))
                     .map_err(|e| format!("Serialize error: {}", e))
                 }
+                _ => Err(format!("Unknown export format: {}. Use csv or json", format)),
             }
         }
 
         "t3000_device_refresh" => {
-            use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
-            use crate::t3_device::action17_refresh_helper::lookup_action17_target;
+            use crate::t3_device::action17_refresh_helper::{live_panel_for, lookup_action17_target};
 
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type_filter = args.get("point_type").and_then(|v| v.as_str());
 
-            let (panel_id, object_instance) = lookup_action17_target(db, serial).await
-                .map_err(|e| format!("Cannot refresh device {}: {}. This may be expected for devices without BACnet/MSTP protocol settings configured.", serial, e.1))?;
-
-            let mut refreshed = 0;
-            let point_types = match point_type_filter {
-                Some("INPUT") => vec!["INPUT"],
-                Some("OUTPUT") => vec!["OUTPUT"],
-                Some("VARIABLE") => vec!["VARIABLE"],
-                _ => vec!["INPUT", "OUTPUT", "VARIABLE"],
+            // Accept lower case too; an unknown value must not silently mean "all".
+            // Validated before the DB lookup so a typo is never reported as a
+            // device/protocol-settings problem.
+            let point_types: Vec<&str> = match point_type_filter.map(|s| s.trim().to_ascii_uppercase()) {
+                None => vec!["INPUT", "OUTPUT", "VARIABLE"],
+                Some(t) => match t.as_str() {
+                    "INPUT" => vec!["INPUT"],
+                    "OUTPUT" => vec!["OUTPUT"],
+                    "VARIABLE" => vec!["VARIABLE"],
+                    other => return Err(format!(
+                        "Invalid point_type '{}'. Use INPUT, OUTPUT or VARIABLE (omit for all three).",
+                        other
+                    )),
+                },
             };
+
+            // The DB may hold a panel id the C++ cannot use (see `live_panel_for`);
+            // when that happens — or when the C++ itself disagrees — fall back to
+            // the live panel list.
+            let mut notes: Vec<String> = Vec::new();
+            let mut resolved_live = false;
+            let (mut panel_id, mut object_instance) = match lookup_action17_target(db, serial).await {
+                Ok(target) => target,
+                Err(e) => match live_panel_for(serial).await {
+                    Some((panel, object_instance)) => {
+                        resolved_live = true;
+                        notes.push(format!("panel id taken from T3000's live panel list: {}", panel));
+                        (panel, object_instance.unwrap_or(0))
+                    }
+                    None => {
+                        return Err(format!(
+                            "Cannot refresh device {}: {}. This may be expected for devices without BACnet/MSTP protocol settings configured.",
+                            serial, e.1
+                        ))
+                    }
+                },
+            };
+            if !resolved_live && !(1..254).contains(&panel_id) {
+                match live_panel_for(serial).await {
+                    Some((panel, live_instance)) => {
+                        resolved_live = true;
+                        notes.push(format!(
+                            "panel id {} is not a T3000 panel index; using {} from the live panel list",
+                            panel_id, panel
+                        ));
+                        panel_id = panel;
+                        if let Some(instance) = live_instance {
+                            object_instance = instance;
+                        }
+                    }
+                    None => {
+                        return Err(format!(
+                            "Cannot refresh device {}: the stored panel id {} is not a T3000 panel index and the device is not in T3000's live panel list — open the device in T3000 once, then retry",
+                            serial, panel_id
+                        ))
+                    }
+                }
+            }
+
+            let mut refreshed = 0usize;
+            let mut persisted = 0usize;
+            let mut points_by_type = serde_json::Map::new();
+            let mut points = serde_json::Map::new();
+            let mut errors: Vec<String> = Vec::new();
 
             for pt in &point_types {
                 let entry_type: i32 = match *pt {
                     "INPUT" => 1, "OUTPUT" => 0, _ => 2,
                 };
-                let ffi_json = json!({
-                    "action": 17,
-                    "panelId": panel_id,
-                    "serialNumber": serial,
-                    "entryType": entry_type,
-                    "objectInstance": object_instance,
-                });
-                info!("[MCP] device_refresh: Action 17 for {} (entryType={})", pt, entry_type);
+                info!("[MCP] device_refresh: Action 17 for {} (entryType={}, panel={}, oi={})",
+                    pt, entry_type, panel_id, object_instance);
                 mcp_log(&format!("Action 17 refresh: serial={} type={}", serial, pt));
-                let ffi_service = T3000FfiApiService::new();
-                match ffi_service.call_ffi(&ffi_json.to_string()).await {
-                    Ok(resp) => {
-                        // Count points refreshed from response
-                        if let Ok(v) = serde_json::from_str::<Value>(&resp) {
-                            if let Some(arr) = v.get("data").and_then(|d| d.get("device_data")).and_then(|dd| dd.as_array()) {
-                                refreshed += arr.len();
-                            }
-                        }
-                    }
+
+                let mut response = match call_action17(panel_id, serial, object_instance, entry_type).await {
+                    Ok(response) => response,
                     Err(e) => {
                         error!("[MCP] device_refresh: {} refresh failed: {}", pt, e);
+                        points_by_type.insert(pt.to_lowercase(), json!(0));
+                        errors.push(format!("{}: {}", pt, e));
+                        continue;
+                    }
+                };
+
+                // "The serial number/objectinstance does not match the panel" means
+                // the DB panel id points at a different panel in the C++, so take
+                // the panel from the live list and retry once.
+                if let Some(err) = ffi_response_error(&response) {
+                    if !resolved_live && err.contains("does not match the panel") {
+                        if let Some((panel, live_instance)) = live_panel_for(serial).await {
+                            resolved_live = true;
+                            notes.push(format!(
+                                "panel id {} was rejected ({}); retried with panel {} and object instance {} from the live panel list",
+                                panel_id, err, panel, live_instance.unwrap_or(object_instance)
+                            ));
+                            panel_id = panel;
+                            if let Some(instance) = live_instance {
+                                object_instance = instance;
+                            }
+                            response = match call_action17(panel_id, serial, object_instance, entry_type).await {
+                                Ok(response) => response,
+                                Err(e) => {
+                                    errors.push(format!("{}: {}", pt, e));
+                                    points_by_type.insert(pt.to_lowercase(), json!(0));
+                                    continue;
+                                }
+                            };
+                        }
                     }
                 }
+
+                if let Some(err) = ffi_response_error(&response) {
+                    error!("[MCP] device_refresh: {} rejected: {}", pt, err);
+                    points_by_type.insert(pt.to_lowercase(), json!(0));
+                    errors.push(format!("{}: {}", pt, err));
+                    continue;
+                }
+
+                let rows = action17_points(&response);
+                points_by_type.insert(pt.to_lowercase(), json!(rows.len()));
+                refreshed += rows.len();
+                if rows.is_empty() {
+                    notes.push(format!("{}: device returned no points", pt));
+                }
+                match persist_action17_points(db, serial, pt, &response).await {
+                    Ok(saved) => persisted += saved,
+                    Err(e) => {
+                        error!("[MCP] device_refresh: {} save failed: {}", pt, e);
+                        errors.push(format!("{}: {} (values were read but not saved)", pt, e));
+                    }
+                }
+                points.insert(pt.to_lowercase(), json!(rows));
             }
 
-            Ok(json!({ "refreshed": true, "points_updated": refreshed, "timestamp": Utc::now().to_rfc3339() }).to_string())
+            let refreshed_ok = errors.is_empty() && refreshed > 0;
+            if errors.is_empty() && refreshed == 0 {
+                notes.push(format!(
+                    "device {} answered Action 17 but returned no points — confirm it is online and that panel {} / object instance {} are correct",
+                    serial, panel_id, object_instance
+                ));
+            }
+
+            Ok(json!({
+                "refreshed": refreshed_ok,
+                "points_updated": refreshed,
+                "points_saved": persisted,
+                "points_by_type": points_by_type,
+                "points": points,
+                "panel_id": panel_id,
+                "object_instance": object_instance,
+                "errors": errors,
+                "notes": notes,
+                "timestamp": Utc::now().to_rfc3339(),
+            })
+            .to_string())
         }
 
         "t3000_schedule_list" => {
@@ -2198,9 +3261,18 @@ pub async fn execute_tool(
                 let row = &rows[0];
                 let mut obj = serde_json::Map::new();
                 for col in columns {
-                    if let Ok(v) = row.try_get::<String>("", col) {
-                        obj.insert(col.to_string(), json!(v));
-                    }
+                    // Settings columns mix TEXT and INTEGER; reading everything as a
+                    // string silently dropped the numeric ones.
+                    let value = if let Ok(v) = row.try_get::<String>("", col) {
+                        json!(v)
+                    } else if let Ok(v) = row.try_get::<i64>("", col) {
+                        json!(v)
+                    } else if let Ok(v) = row.try_get::<f64>("", col) {
+                        json!(v)
+                    } else {
+                        Value::Null
+                    };
+                    obj.insert(col.to_string(), value);
                 }
                 Ok(json!(obj))
             }
@@ -2218,16 +3290,32 @@ pub async fn execute_tool(
 
             if let Some(cat) = category {
                 if let Some((key, table, cols)) = cats.iter().find(|(k, _, _)| *k == cat) {
-                    let data = read_table(db, serial, table, cols).await.unwrap_or(json!(null));
+                    let data = read_table(db, serial, table, cols).await?;
                     result.as_object_mut().unwrap().insert(key.to_string(), data);
                 } else {
                     return Err(format!("Unknown category: {}. Valid: network, communication, time, protocol, dyndns, hardware, features, email", cat));
                 }
             } else {
                 for (key, table, cols) in &cats {
-                    let data = read_table(db, serial, table, cols).await.unwrap_or(json!(null));
+                    let data = read_table(db, serial, table, cols).await?;
                     result.as_object_mut().unwrap().insert(key.to_string(), data);
                 }
+            }
+
+            // Every category null means nothing has been synced for this device yet —
+            // say so instead of leaving the caller to guess.
+            let any_data = result
+                .as_object()
+                .map(|o| o.iter().any(|(k, v)| k != "serial_number" && !v.is_null()))
+                .unwrap_or(false);
+            if !any_data {
+                result
+                    .as_object_mut()
+                    .unwrap()
+                    .insert("note".to_string(), json!(format!(
+                        "No settings have been synced for device {} yet. Refresh the device in T3000 (or use t3000_device_refresh) to populate them.",
+                        serial
+                    )));
             }
 
             serde_json::to_string_pretty(&result)
@@ -2255,6 +3343,22 @@ pub async fn execute_tool(
                 "email" => ("EMAIL_ALARMS", &["SMTP_Type", "SMTP_IP", "SMTP_Domain", "SMTP_Port", "Email_Address", "User_Name", "Password", "Secure_Connection_Type", "To1_Addr", "To2_Addr"]),
                 _ => return Err(format!("Unknown category: {}. Valid: network, communication, time, email", category)),
             };
+
+            // Writing settings for a serial that does not exist would create orphan
+            // rows no device will ever read.
+            let known = db
+                .query_all(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    format!("SELECT SerialNumber FROM DEVICES WHERE SerialNumber = {}", serial),
+                ))
+                .await
+                .map_err(|e| format!("Device lookup failed: {}", e))?;
+            if known.is_empty() {
+                return Err(format!(
+                    "Device with serial_number {} not found. Use t3000_device_list to see the devices.",
+                    serial
+                ));
+            }
 
             // Check record exists
             let check_sql = format!("SELECT SerialNumber FROM {} WHERE SerialNumber = {}", table, serial);
@@ -2305,17 +3409,24 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
 
-            match T3DeviceService::get_device_by_id(db, serial).await {
-                Ok(Some(device)) => {
-                    let value = serde_json::to_value(&device)
-                        .map_err(|e| format!("Serialize error: {}", e))?;
+            let devices = T3DeviceService::get_all_devices_with_stats(db)
+                .await
+                .map_err(|e| format!("Failed to query device: {}", e))?;
+
+            match devices.iter().find(|d| d.device.serial_number == serial) {
+                Some(device) => {
+                    // `device` mirrors a t3000_device_list entry exactly; `raw`
+                    // keeps the full SeaORM record (camelCase) for callers that
+                    // need fields the summary does not expose.
+                    let raw = serde_json::to_value(&device.device)
+                        .unwrap_or(Value::Null);
                     Ok(json!({
-                        "device": value,
-                        "found": true
+                        "found": true,
+                        "device": device_summary(device, false),
+                        "raw": raw
                     }).to_string())
                 }
-                Ok(None) => Err(format!("Device with serial_number {} not found", serial)),
-                Err(e) => Err(format!("Failed to query device: {}", e)),
+                None => Err(format!("Device with serial_number {} not found", serial)),
             }
         }
 
@@ -2341,6 +3452,7 @@ pub async fn execute_tool(
         }
 
         "t3000_device_control" => {
+            use crate::t3_device::action17_refresh_helper::live_panel_for;
             use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
 
             let serial: i32 = args.get("serial_number")
@@ -2354,50 +3466,62 @@ pub async fn execute_tool(
                 return Err("device_control requires confirm: true for safety".to_string());
             }
 
-            match command {
-                "reboot" => {
-                    // Reboot: write 99 to reset_default field via Action 16 entryType 198
-                    let ffi_json = json!({
-                        "action": 16,
-                        "panelId": 1,
-                        "serialNumber": serial,
-                        "entryType": 198,
-                        "entryIndex": 43, // reset_default offset
-                        "value": 99.0,
-                        "label": "", "description": "", "range": 0,
-                        "auto_manual": 0, "filter": 0, "digital_analog": 0,
-                        "calibration_sign": 0, "calibration_h": 0, "calibration_l": 0,
-                        "control": 0, "decom": 0,
-                    });
-                    info!("[MCP] device_control: reboot serial={}", serial);
-                    mcp_log(&format!("device_control: reboot serial={}", serial));
-                    let ffi_service = T3000FfiApiService::new();
-                    ffi_service.call_ffi(&ffi_json.to_string()).await
-                        .map_err(|e| format!("Reboot failed: {}", e))?;
-                    Ok(json!({"success": true, "command": "reboot", "timestamp": Utc::now().to_rfc3339()}).to_string())
-                }
-                "reset_defaults" => {
-                    let ffi_json = json!({
-                        "action": 16,
-                        "panelId": 1,
-                        "serialNumber": serial,
-                        "entryType": 198,
-                        "entryIndex": 43,
-                        "value": 88.0,
-                        "label": "", "description": "", "range": 0,
-                        "auto_manual": 0, "filter": 0, "digital_analog": 0,
-                        "calibration_sign": 0, "calibration_h": 0, "calibration_l": 0,
-                        "control": 0, "decom": 0,
-                    });
-                    info!("[MCP] device_control: reset_defaults serial={}", serial);
-                    mcp_log(&format!("device_control: reset_defaults serial={}", serial));
-                    let ffi_service = T3000FfiApiService::new();
-                    ffi_service.call_ffi(&ffi_json.to_string()).await
-                        .map_err(|e| format!("Reset failed: {}", e))?;
-                    Ok(json!({"success": true, "command": "reset_defaults", "timestamp": Utc::now().to_rfc3339()}).to_string())
-                }
-                _ => Err(format!("Unknown command: {}. Valid: reboot, reset_defaults", command)),
+            // The value written selects the action (99 = reboot, 88 = factory reset).
+            let reset_value = match command {
+                "reboot" => 99.0,
+                "reset_defaults" => 88.0,
+                _ => return Err(format!("Unknown command: {}. Valid: reboot, reset_defaults", command)),
+            };
+
+            let known = db
+                .query_all(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    format!("SELECT SerialNumber FROM DEVICES WHERE SerialNumber = {}", serial),
+                ))
+                .await
+                .map_err(|e| format!("Device lookup failed: {}", e))?;
+            if known.is_empty() {
+                return Err(format!(
+                    "Device with serial_number {} not found. Use t3000_device_list to see the devices.",
+                    serial
+                ));
             }
+
+            // Action 16 writes into g_*_data[panel] *before* it validates the serial,
+            // so a wrong panel corrupts T3000's cache — resolve the live panel.
+            let panel_id = live_panel_for(serial).await.map(|(panel, _)| panel).unwrap_or(1);
+
+            let ffi_json = json!({
+                "action": 16,
+                "panelId": panel_id,
+                "serialNumber": serial,
+                "entryType": 198,
+                "entryIndex": 43, // reset_default offset
+                "value": reset_value,
+                "label": "", "description": "", "range": 0,
+                "auto_manual": 0, "filter": 0, "digital_analog": 0,
+                "calibration_sign": 0, "calibration_h": 0, "calibration_l": 0,
+                "control": 0, "decom": 0,
+            });
+            info!("[MCP] device_control: {} serial={} panel={}", command, serial, panel_id);
+            mcp_log(&format!("device_control: {} serial={} panel={}", command, serial, panel_id));
+
+            let ffi_service = T3000FfiApiService::new();
+            let response = ffi_service.call_ffi(&ffi_json.to_string()).await
+                .map_err(|e| format!("{} failed: {}", command, e))?;
+
+            // A rejected command used to be reported as success.
+            if let Some(error) = ffi_response_error(&response) {
+                return Err(format!("Device {} did not accept '{}': {}", serial, command, error));
+            }
+
+            Ok(json!({
+                "success": true,
+                "command": command,
+                "serial_number": serial,
+                "panel_id": panel_id,
+                "timestamp": Utc::now().to_rfc3339()
+            }).to_string())
         }
 
         // ═══ v4: Control Logic ═══ 
@@ -2788,32 +3912,48 @@ pub async fn execute_tool(
         // ═══ v5: Task Management ═══ 
 
         "t3000_task_create" => {
-            let title = args.get("title").and_then(|v| v.as_str())
-                .ok_or_else(|| "title required".to_string())?;
+            let title = args.get("title").and_then(|v| v.as_str()).map(str::trim)
+                .filter(|t| !t.is_empty())
+                .ok_or_else(|| "title required (must not be empty)".to_string())?;
             let description = args.get("description").and_then(|v| v.as_str()).unwrap_or("");
             let sn = args.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
-            let priority = args.get("priority").and_then(|v| v.as_str()).unwrap_or("normal");
+            // The schema documents low|normal|high|critical; anything else used to be
+            // stored verbatim and echoed back to the caller.
+            let priority = args.get("priority").and_then(|v| v.as_str())
+                .unwrap_or("normal")
+                .trim()
+                .to_ascii_lowercase();
+            if !matches!(priority.as_str(), "low" | "normal" | "high" | "critical") {
+                return Err(format!(
+                    "Invalid priority '{}'. Use low, normal, high or critical",
+                    priority
+                ));
+            }
 
             let task_id = Uuid::new_v4().to_string();
             let now = Utc::now().to_rfc3339();
 
-            let mut tasks = load_tasks().await?;
-            tasks.push(json!({
-                "id": task_id,
+            let task_id_out = update_tasks(|tasks| {
+                tasks.push(json!({
+                    "id": task_id,
+                    "title": title,
+                    "description": description,
+                    "status": "pending",
+                    "priority": priority,
+                    "serial_number": sn,
+                    "created_at": now,
+                    "updated_at": now,
+                }));
+                Ok(task_id.clone())
+            })
+            .await?;
+
+            serde_json::to_string_pretty(&json!({
+                "task_id": task_id_out,
                 "title": title,
-                "description": description,
                 "status": "pending",
                 "priority": priority,
                 "serial_number": sn,
-                "created_at": now,
-                "updated_at": now,
-            }));
-            save_tasks(&tasks).await?;
-
-            serde_json::to_string_pretty(&json!({
-                "task_id": task_id,
-                "title": title,
-                "status": "pending",
                 "created_at": now,
             }))
             .map_err(|e| format!("Serialize error: {}", e))
@@ -2852,33 +3992,37 @@ pub async fn execute_tool(
             let new_desc = args.get("description").and_then(|v| v.as_str());
             let new_priority = args.get("priority").and_then(|v| v.as_str());
 
-            let mut tasks = load_tasks().await?;
-            let mut found = false;
-            let mut updated = json!({});
             let now = Utc::now().to_rfc3339();
 
-            for task in tasks.iter_mut() {
-                if task.get("id").and_then(|v| v.as_str()) == Some(task_id) {
-                    if let Some(s) = new_status {
-                        let valid = ["pending", "in_progress", "completed"];
-                        if !valid.contains(&s) {
-                            return Err(format!("Invalid status: {}. Must be: {}", s, valid.join(", ")));
+            let updated = update_tasks(|tasks| {
+                for task in tasks.iter_mut() {
+                    if task.get("id").and_then(|v| v.as_str()) == Some(task_id) {
+                        if let Some(s) = new_status {
+                            let valid = ["pending", "in_progress", "completed"];
+                            if !valid.contains(&s) {
+                                return Err(format!("Invalid status: {}. Must be: {}", s, valid.join(", ")));
+                            }
+                            task["status"] = json!(s);
                         }
-                        task["status"] = json!(s);
+                        if let Some(t) = new_title { task["title"] = json!(t); }
+                        if let Some(d) = new_desc { task["description"] = json!(d); }
+                        if let Some(p) = new_priority {
+                            let p = p.trim().to_ascii_lowercase();
+                            if !matches!(p.as_str(), "low" | "normal" | "high" | "critical") {
+                                return Err(format!(
+                                    "Invalid priority: {}. Must be: low, normal, high, critical",
+                                    p
+                                ));
+                            }
+                            task["priority"] = json!(p);
+                        }
+                        task["updated_at"] = json!(now);
+                        return Ok(task.clone());
                     }
-                    if let Some(t) = new_title { task["title"] = json!(t); }
-                    if let Some(d) = new_desc { task["description"] = json!(d); }
-                    if let Some(p) = new_priority { task["priority"] = json!(p); }
-                    task["updated_at"] = json!(now);
-                    updated = task.clone();
-                    found = true;
-                    break;
                 }
-            }
-            if !found {
-                return Err(format!("Task not found: {}", task_id));
-            }
-            save_tasks(&tasks).await?;
+                Err(format!("Task not found: {}", task_id))
+            })
+            .await?;
 
             serde_json::to_string_pretty(&json!({
                 "task": updated,
@@ -2891,13 +4035,15 @@ pub async fn execute_tool(
             let task_id = args.get("task_id").and_then(|v| v.as_str())
                 .ok_or_else(|| "task_id required".to_string())?;
 
-            let mut tasks = load_tasks().await?;
-            let len_before = tasks.len();
-            tasks.retain(|t| t.get("id").and_then(|v| v.as_str()) != Some(task_id));
-            if tasks.len() == len_before {
-                return Err(format!("Task not found: {}", task_id));
-            }
-            save_tasks(&tasks).await?;
+            update_tasks(|tasks| {
+                let len_before = tasks.len();
+                tasks.retain(|t| t.get("id").and_then(|v| v.as_str()) != Some(task_id));
+                if tasks.len() == len_before {
+                    return Err(format!("Task not found: {}", task_id));
+                }
+                Ok(())
+            })
+            .await?;
 
             Ok(json!({
                 "deleted": true,
@@ -2916,25 +4062,28 @@ pub async fn execute_tool(
             let category = args.get("category").and_then(|v| v.as_str()).unwrap_or("general");
 
             let now = Utc::now().to_rfc3339();
-            let mut memories = load_memories().await?;
 
-            // Upsert: replace existing entry with same key, or append
-            memories.retain(|m| m.get("key").and_then(|v| v.as_str()) != Some(key));
-            memories.push(json!({
-                "key": key,
-                "content": content,
-                "category": category,
-                "created_at": now,
-                "updated_at": now,
-            }));
-            save_memories(&memories).await?;
+            // Upsert inside the lock: a read-modify-write here would drop a
+            // concurrent save (same failure mode as the device context file).
+            let total = update_memories(|memories| {
+                memories.retain(|m| m.get("key").and_then(|v| v.as_str()) != Some(key));
+                memories.push(json!({
+                    "key": key,
+                    "content": content,
+                    "category": category,
+                    "created_at": now,
+                    "updated_at": now,
+                }));
+                Ok(memories.len())
+            })
+            .await?;
 
             serde_json::to_string_pretty(&json!({
                 "saved": true,
                 "key": key,
                 "category": category,
                 "timestamp": now,
-                "total_memories": memories.len(),
+                "total_memories": total,
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }
@@ -2970,13 +4119,15 @@ pub async fn execute_tool(
             let key = args.get("key").and_then(|v| v.as_str())
                 .ok_or_else(|| "key required".to_string())?;
 
-            let mut memories = load_memories().await?;
-            let len_before = memories.len();
-            memories.retain(|m| m.get("key").and_then(|v| v.as_str()) != Some(key));
-            if memories.len() == len_before {
-                return Err(format!("Memory not found: {}", key));
-            }
-            save_memories(&memories).await?;
+            update_memories(|memories| {
+                let len_before = memories.len();
+                memories.retain(|m| m.get("key").and_then(|v| v.as_str()) != Some(key));
+                if memories.len() == len_before {
+                    return Err(format!("Memory not found: {}", key));
+                }
+                Ok(())
+            })
+            .await?;
 
             Ok(json!({
                 "deleted": true,
@@ -3048,6 +4199,22 @@ pub async fn execute_tool(
             }
             let rule_id = args.get("rule_id").and_then(|v| v.as_str())
                 .ok_or_else(|| "rule_id required".to_string())?.to_string();
+            // rule_id is UNIQUE; say so instead of surfacing the raw SQLite error.
+            if let Ok(existing) = db
+                .query_all(sea_orm::Statement::from_sql_and_values(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    "SELECT rule_id FROM FDD_RULES WHERE rule_id = ?",
+                    vec![rule_id.clone().into()],
+                ))
+                .await
+            {
+                if !existing.is_empty() {
+                    return Err(format!(
+                        "Duplicate rule_id: an FDD rule '{}' already exists. Use t3000_fdd_rule_update to change it, or pick another id.",
+                        rule_id
+                    ));
+                }
+            }
             let rule = crate::fdd::rules::Rule {
                 rule_id: rule_id.clone(),
                 rule_name: args.get("rule_name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
@@ -3398,25 +4565,31 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
 
-            let state_file = current_device_file();
-            let mut existing = if state_file.exists() {
-                load_json_file(&state_file).await.unwrap_or(json!({}))
-            } else {
-                json!({})
-            };
-            // Look up device name
-            let dev_name = if let Ok(rows) = db.query_all(
-                sea_orm::Statement::from_string(sea_orm::DatabaseBackend::Sqlite,
-                    &format!("SELECT Product_Name FROM DEVICES WHERE SerialNumber = {}", serial))
-            ).await {
-                rows.first().and_then(|r| r.try_get::<String>("", "Product_Name").ok())
-            } else { None };
-            existing["chat_device"] = json!(serial);
-            existing["chat_device_name"] = json!(dev_name);
-            existing["confirmed_at"] = json!(Utc::now().to_rfc3339());
-            existing["updated_at"] = json!(Utc::now().to_rfc3339());
-            save_json_file(&state_file, &existing).await
-                .map_err(|e| format!("Failed to save: {}", e))?;
+            // Look up device name. An unknown serial used to be stored as the "chat
+            // device" with a null name, so every later call failed confusingly.
+            let dev_name = db
+                .query_all(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Sqlite,
+                    format!("SELECT Product_Name FROM DEVICES WHERE SerialNumber = {}", serial),
+                ))
+                .await
+                .map_err(|e| format!("Device lookup failed: {}", e))?
+                .first()
+                .and_then(|r| r.try_get::<String>("", "Product_Name").ok())
+                .ok_or_else(|| {
+                    format!(
+                        "Device with serial_number {} not found. Use t3000_device_list to see the devices.",
+                        serial
+                    )
+                })?;
+            crate::mcp::storage::update_device_context(|existing| {
+                existing["chat_device"] = json!(serial);
+                existing["chat_device_name"] = json!(dev_name);
+                existing["confirmed_at"] = json!(Utc::now().to_rfc3339());
+                existing["updated_at"] = json!(Utc::now().to_rfc3339());
+            })
+            .await
+            .map_err(|e| format!("Failed to save: {}", e))?;
 
             info!("[MCP] chat_device set to serial={} name={:?}", serial, dev_name);
             mcp_log(&format!("chat_device confirmed: serial={}", serial));
@@ -3441,6 +4614,14 @@ pub async fn execute_tool(
                 "matched": !suggestions.is_empty(),
                 "suggestions": suggestions,
                 "documents_searched": documents_searched,
+                // `matched` only means "we have a suggestion"; it does not mean the
+                // docs cover it. With no docs on disk the check is inconclusive.
+                "documented": !suggestions.is_empty() && documents_searched > 0,
+                "note": if documents_searched == 0 {
+                    Value::String("No documentation was available to search, so this check only returns built-in suggestions.".to_string())
+                } else {
+                    Value::Null
+                },
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }
@@ -3454,10 +4635,22 @@ pub async fn execute_tool(
                 .unwrap_or(5)
                 .clamp(1, 25) as usize;
             let results = crate::support::docs_index::search(query, limit);
+            let total_docs = crate::support::docs_index::count();
+            // Zero documents means the markdown was not found next to the app, which
+            // is different from "this is not documented" — say which one it is.
+            let note = if total_docs == 0 {
+                Value::String(format!(
+                    "No documentation is available on disk (looked for a 'docs' folder with a 't3000' subfolder, starting at {}). Set T3000_DOCS_ROOT to point at the markdown source.",
+                    std::env::current_dir().map(|p| p.display().to_string()).unwrap_or_else(|_| "?".to_string())
+                ))
+            } else {
+                Value::Null
+            };
             serde_json::to_string_pretty(&json!({
                 "query": query,
                 "results": results,
-                "total_docs": crate::support::docs_index::count(),
+                "total_docs": total_docs,
+                "note": note,
             }))
             .map_err(|e| format!("Serialize error: {}", e))
         }

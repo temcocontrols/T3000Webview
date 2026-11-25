@@ -22,6 +22,16 @@ export interface RefreshOptions {
   serialNumber: number;
   type: PointType;
   index?: number;
+  /**
+   * Panel id and BACnet object instance of the device.
+   *
+   * Pass both whenever the caller knows them (the selected device in the tree
+   * always does). Without them the transport falls back to `GET_PANELS_LIST`
+   * (action 4), which only lists devices that answered the UDP scan — empty on
+   * an RS485 install even though action 17 can read those devices fine.
+   */
+  panelId?: number;
+  objectInstance?: number;
   onLoadingChange?: (loading: boolean) => void;
 }
 
@@ -31,6 +41,23 @@ export interface RefreshResult {
   itemCount: number;
   savedCount: number;
   timestamp: string;
+}
+
+/** Backend error text returned when the device's panel data has not been loaded in T3000 yet. */
+const SERIAL_MISMATCH_ERROR = 'serial number does not match the panel';
+
+const SERIAL_MISMATCH_HINT =
+  " T3000 hasn't loaded this device yet — double-click the device in the T3000 device tree to open it, then try again.";
+
+/**
+ * Append the recovery hint to the serial/panel mismatch error so users know
+ * they must open the device in T3000 first (that is what loads the panel data
+ * Action 17 needs). All other error messages are returned unchanged.
+ */
+function withSerialMismatchHint(message: string): string {
+  if (!message.toLowerCase().includes(SERIAL_MISMATCH_ERROR)) return message;
+  if (message.includes('double-click')) return message;
+  return `${message}${SERIAL_MISMATCH_HINT}`;
 }
 
 /**
@@ -51,6 +78,10 @@ export class PanelDataRefreshService {
    */
   static async refreshFromDevice(options: RefreshOptions): Promise<RefreshResult> {
     const { serialNumber, type, index, onLoadingChange } = options;
+    const target =
+      options.panelId && options.objectInstance
+        ? { panelId: options.panelId, objectInstance: options.objectInstance }
+        : undefined;
     const timestamp = new Date().toISOString();
 
     try {
@@ -86,23 +117,23 @@ export class PanelDataRefreshService {
       let response;
       if (index !== undefined) {
         // Single item refresh
-        response = await transport.refreshDeviceRecords(serialNumber, entryType, index, index);
+        response = await transport.refreshDeviceRecords(serialNumber, entryType, index, index, target);
       } else {
         // All items refresh - refreshDeviceRecords will set correct start/end indexes
-        response = await transport.refreshDeviceRecords(serialNumber, entryType);
+        response = await transport.refreshDeviceRecords(serialNumber, entryType, 0, -1, target);
       }
 
       // C++ can occasionally return transient serial/panel mismatch even with correct payload.
       // Refresh panel list and retry once before failing.
       if (response?.success === false) {
         const errMsg = String(response?.data?.error || response?.error || response?.message || '');
-        if (errMsg.toLowerCase().includes('serial number does not match the panel')) {
+        if (errMsg.toLowerCase().includes(SERIAL_MISMATCH_ERROR)) {
           LogUtil.Warn('[PanelDataRefreshService] Serial/panel mismatch from C++; refreshing panel list and retrying once...');
           await transport.getDeviceList();
           if (index !== undefined) {
-            response = await transport.refreshDeviceRecords(serialNumber, entryType, index, index);
+            response = await transport.refreshDeviceRecords(serialNumber, entryType, index, index, target);
           } else {
-            response = await transport.refreshDeviceRecords(serialNumber, entryType);
+            response = await transport.refreshDeviceRecords(serialNumber, entryType, 0, -1, target);
           }
         }
       }
@@ -127,7 +158,7 @@ export class PanelDataRefreshService {
       // If C++ reports an error (e.g. serial/panel mismatch), do not treat it as "no items".
       if (response.success === false) {
         const errorFromCpp = response.data?.error || response.error || response.message || 'Device refresh failed';
-        throw new Error(String(errorFromCpp));
+        throw new Error(withSerialMismatchHint(String(errorFromCpp)));
       }
 
       // Debug: Log the response structure

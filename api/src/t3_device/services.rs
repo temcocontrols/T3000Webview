@@ -181,6 +181,23 @@ impl ScanMode {
 /// reply from greying out a live device.
 const OFFLINE_GRACE_SECS: i64 = 300;
 
+/// Set while the detached serial/sub-port pass is running (the COM ports cannot
+/// be probed twice at once).
+static DEEP_SCAN_RUNNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// When the current/last deep pass started (epoch seconds).
+static DEEP_SCAN_STARTED_AT: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+/// How many devices the last deep pass found.
+static DEEP_SCAN_FOUND: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// Clears `DEEP_SCAN_RUNNING` even if the task panics.
+struct DeepScanGuard;
+
+impl Drop for DeepScanGuard {
+    fn drop(&mut self) {
+        DEEP_SCAN_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
 /// Device list + per-pass counts, whatever combination of passes produced it.
 struct ScanPass {
     devices: Vec<crate::lan_scan::types::DiscoveredDevice>,
@@ -552,6 +569,14 @@ impl T3DeviceService {
     ) -> Result<ScanAndRefreshResult, AppError> {
         use crate::lan_scan::scanner;
 
+        // T3000's own device list comes first: it is the only source that knows
+        // about RS485 devices (Tstat10/TSTAT7 on COM8) and idle configured
+        // devices, which the UDP scan can never see.
+        Self::import_t3000_devices(db).await;
+
+        // Ports T3000 holds are not probeable and its own scan covers them.
+        let skip_ports = crate::t3_device::t3000_building_db::t3000_serial_ports().await;
+
         let pass = match mode {
             ScanMode::Udp => {
                 let udp = scanner::scan_network(timeout_secs).await;
@@ -573,7 +598,21 @@ impl T3DeviceService {
                 }
             }
             ScanMode::Full => {
-                let full = scanner::scan_all(timeout_secs).await;
+                let full = scanner::scan_all_skipping(timeout_secs, &skip_ports).await;
+                // Failures such as a COM port held by another program or an
+                // adapter that could not bind are only actionable when they
+                // reach the log: a full scan used to drop them silently, which
+                // left an empty device tree with nothing to go on.
+                for warning in &full.warnings {
+                    tracing::warn!("[lan_scan] {}", warning);
+                }
+                tracing::info!(
+                    "[lan_scan] full scan: {} UDP, {} serial, {} TCP sub-port device(s) across {} adapter(s)",
+                    full.udp_count,
+                    full.serial_count,
+                    full.tcp_sub_count,
+                    full.adapters_scanned
+                );
                 ScanPass {
                     udp_count: full.udp_count,
                     serial_count: full.serial_count,
@@ -585,15 +624,199 @@ impl T3DeviceService {
             }
         };
 
-        Self::apply_scan_results(db, pass, mode).await
+        Self::apply_scan_results(db, pass, mode, true).await
     }
 
-    /// Upsert one scan pass into DEVICES and mark vanished devices offline
-    /// (after the grace period). Shared by the UDP and full scan paths.
+    /// Fast scan for the UI: the UDP pass runs synchronously (≈0.7 s) and the
+    /// slow passes (serial COM + Modbus TCP sub-ports, ≈6-8 s of hardware
+    /// latency) are handed to a detached task that upserts into the DB when it
+    /// finishes. The caller returns as soon as the LAN devices are in,
+    /// mirroring "the tree is ready, deep discovery keeps going".
+    pub async fn scan_and_refresh_fast(
+        db: &DatabaseConnection,
+        timeout_secs: u64,
+    ) -> Result<ScanAndRefreshResult, AppError> {
+        use crate::lan_scan::scanner;
+
+        // See `scan_and_refresh`: RS485/serial devices only exist in T3000's
+        // building database, never in a UDP reply.
+        Self::import_t3000_devices(db).await;
+
+        // Ports T3000 holds are not probeable and its own scan covers them.
+        let skip_ports = crate::t3_device::t3000_building_db::t3000_serial_ports().await;
+
+        let udp = scanner::scan_network(timeout_secs).await;
+        for warning in &udp.warnings {
+            tracing::warn!("[lan_scan] {}", warning);
+        }
+        tracing::info!(
+            "[lan_scan] udp scan: {} device(s) across {} adapter(s)",
+            udp.devices.len(),
+            udp.adapters_scanned
+        );
+
+        // Parents for the sub-port pass must come from the UDP result, so the
+        // deep task is handed the list we already have (no second UDP scan).
+        let parents: Vec<_> = udp
+            .devices
+            .iter()
+            .filter(|d| crate::lan_scan::tcp_sub::supports_sub_ports(d.product_id))
+            .cloned()
+            .collect();
+
+        let pass = ScanPass {
+            udp_count: udp.devices.len(),
+            devices: udp.devices,
+            serial_count: 0,
+            tcp_sub_count: 0,
+            com_ports: Vec::new(),
+            local_ips: udp.local_ips,
+        };
+
+        let result = Self::apply_scan_results(db, pass, ScanMode::Udp, true).await?;
+        Self::start_deep_scan(parents, skip_ports);
+        Ok(result)
+    }
+
+    /// Start the detached serial + TCP sub-port pass (no-op when one is already
+    /// running — the COM ports cannot be probed by two scans at once).
+    fn start_deep_scan(
+        parents: Vec<crate::lan_scan::types::DiscoveredDevice>,
+        skip_ports: Vec<String>,
+    ) {
+        if DEEP_SCAN_RUNNING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            tracing::info!("[lan_scan] deep scan already running — request ignored");
+            return;
+        }
+        DEEP_SCAN_STARTED_AT.store(chrono::Utc::now().timestamp(), std::sync::atomic::Ordering::SeqCst);
+
+        tokio::spawn(async move {
+            let guard = DeepScanGuard;
+            let deep = crate::lan_scan::scanner::scan_deep_skipping(parents, &skip_ports).await;
+
+            let devices = deep.devices();
+            let com_ports = deep.com_ports();
+            DEEP_SCAN_FOUND.store(devices.len() as u32, std::sync::atomic::Ordering::SeqCst);
+
+            // Resolve the connection up front: `Box<dyn Error>` is not `Send`, so
+            // it must not be held across the awaits below.
+            let db = match crate::db_connection::establish_t3_device_connection().await {
+                Ok(db) => db,
+                Err(e) => {
+                    tracing::warn!("[lan_scan] deep scan could not open the device DB: {}", e);
+                    drop(guard);
+                    return;
+                }
+            };
+
+            if devices.is_empty() {
+                tracing::info!("[lan_scan] deep scan found no serial/sub-port devices");
+            } else {
+                let pass = ScanPass {
+                    serial_count: deep.serial.devices.len(),
+                    tcp_sub_count: deep.tcp_sub.len(),
+                    com_ports,
+                    udp_count: 0,
+                    local_ips: Vec::new(),
+                    devices,
+                };
+                // Upsert only — the UDP pass owns offline marking.
+                match Self::apply_scan_results(&db, pass, ScanMode::Full, false).await {
+                    Ok(r) => tracing::info!(
+                        "[lan_scan] deep scan merged into DB: {} serial, {} TCP sub-port → {} device(s) known",
+                        r.serial_count, r.tcp_sub_count, r.devices.len()
+                    ),
+                    Err(e) => tracing::warn!("[lan_scan] deep scan DB upsert failed: {:?}", e),
+                }
+            }
+
+            // The deep pass takes seconds, which is long enough for T3000's own
+            // scan (background refresh or Tools → Scan Device) to record new
+            // devices in its database. Re-reading it here is what "combine
+            // T3000's scan with ours" means, and it stands in for porting
+            // T3000's MSTP / remote-IP / third-party BACnet passes.
+            Self::import_t3000_devices(&db).await;
+            drop(guard);
+        });
+    }
+
+    /// `(running, started_at_epoch_secs, found_last_time)` for the deep pass.
+    pub fn deep_scan_status() -> (bool, i64, u32) {
+        (
+            DEEP_SCAN_RUNNING.load(std::sync::atomic::Ordering::SeqCst),
+            DEEP_SCAN_STARTED_AT.load(std::sync::atomic::Ordering::SeqCst),
+            DEEP_SCAN_FOUND.load(std::sync::atomic::Ordering::SeqCst),
+        )
+    }
+
+    /// Mirror T3000's own device list into `DEVICES`.
+    ///
+    /// Sources, in order:
+    ///
+    /// 1. **T3000's in-memory tree** over the `BacnetWebView_GetTreeDevices`
+    ///    export — no database file, no device I/O, live status. Only available
+    ///    once T3000.exe exports it; until then this returns `Ok(None)` and is
+    ///    skipped automatically.
+    /// 2. **T3000's building database** (`ALL_NODE`) — the default source today.
+    ///    T3000 writes every discovery into it (UDP, RS485, MSTP, third-party
+    ///    BACnet/IP, remote, virtual, manual), so it is the complete list no
+    ///    matter where or how T3000 scanned. Read read-only with a short lock
+    ///    window; disable with `T3WEB_IMPORT_T3000_DB=0`.
+    ///
+    /// Errors are swallowed (logged): a missing export or unreadable database
+    /// must never break the LAN-scan path, which still works on its own.
+    pub async fn import_t3000_devices(
+        db: &DatabaseConnection,
+    ) -> crate::t3_device::t3000_building_db::ImportSummary {
+        use crate::t3_device::t3000_building_db as building_db;
+
+        // 1. If a future T3000.exe exposes the in-memory tree, prefer it: it
+        //    needs no file access at all and carries live status.
+        match crate::t3_device::t3000_tree::fetch_tree_devices().await {
+            Ok(Some(nodes)) if !nodes.is_empty() => {
+                return building_db::import_nodes(
+                    db,
+                    &nodes,
+                    Some("T3000 memory (BacnetWebView_GetTreeDevices)".to_string()),
+                )
+                .await;
+            }
+            Ok(Some(_)) => {
+                tracing::info!("[t3000_tree] T3000 reported an empty device tree");
+                return Default::default();
+            }
+            Ok(None) => {
+                tracing::debug!(
+                    "[t3000_tree] {} not exported by this T3000.exe — using its database",
+                    crate::t3_device::t3000_tree::TREE_DEVICES_EXPORT
+                );
+            }
+            Err(e) => tracing::warn!(
+                "[t3000_tree] {} failed: {}",
+                crate::t3_device::t3000_tree::TREE_DEVICES_EXPORT,
+                e
+            ),
+        }
+
+        // 2. Default: T3000's building database (read-only, short lock window).
+        if std::env::var("T3WEB_IMPORT_T3000_DB").ok().as_deref() == Some("0") {
+            tracing::debug!("[t3000_db] import disabled by T3WEB_IMPORT_T3000_DB=0");
+            return Default::default();
+        }
+        building_db::import_devices(db).await
+    }
+
+    /// Upsert one scan pass into DEVICES and optionally mark vanished devices
+    /// offline (after the grace period).
+    ///
+    /// `mark_offline` is false for the detached deep pass: it only sees serial
+    /// and sub-port devices, so it must not declare the whole LAN offline. The
+    /// UDP pass (page load + 5-minute timer) owns that decision.
     async fn apply_scan_results(
         db: &DatabaseConnection,
         pass: ScanPass,
         mode: ScanMode,
+        mark_offline: bool,
     ) -> Result<ScanAndRefreshResult, AppError> {
         let now = chrono::Utc::now().to_rfc3339();
         // Local IPs used for scanning — the host PC IP recorded as pc_ip_address
@@ -679,7 +902,7 @@ impl T3DeviceService {
         // Mark vanished devices offline — but only after the grace period, so a
         // single missed reply (or a short UDP timeout) cannot grey out a device
         // that is actually alive. Mirrors the C++ `status_last_time` ring.
-        if !seen_serials.is_empty() {
+        if mark_offline && !seen_serials.is_empty() {
             let cutoff = chrono::Utc::now() - chrono::Duration::seconds(OFFLINE_GRACE_SECS);
             let mut to_flip: Vec<i32> = Vec::new();
 

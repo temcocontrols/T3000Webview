@@ -136,6 +136,28 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   } = useAiChatStream(aiSettings, refreshSessions);
 
   const streamingBlocks = useChatStore((s) => s.streamingBlocks);
+  const streamingStatus = useChatStore((s) => s.streamingStatus);
+  // The provider only reports `waiting` once the server has accepted the request
+  // and the socket is open — from then on silence means "model is thinking".
+  const awaitingModel = streamingStatus?.phase === 'waiting';
+
+  // Elapsed-time counter while a turn is in flight. The backend reports status
+  // events, but if the endpoint is blackholed even those can take seconds — the
+  // counter makes sure the UI never looks frozen.
+  const [elapsedSec, setElapsedSec] = useState(0);
+  useEffect(() => {
+    if (!isStreaming) {
+      setElapsedSec(0);
+      return;
+    }
+    const started = Date.now();
+    setElapsedSec(0);
+    const id = window.setInterval(
+      () => setElapsedSec(Math.floor((Date.now() - started) / 1000)),
+      1000,
+    );
+    return () => window.clearInterval(id);
+  }, [isStreaming]);
 
   // Sync backend session ID to history sidebar
   const prevStreamingRef = useRef(isStreaming);
@@ -355,7 +377,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
                 </div>
                 <div className={styles.thinkingIndicator}>
                   <ArrowSyncRegular style={{ fontSize: 14 }} />
-                  <span>Thinking&hellip;</span>
+                  <span>
+                    Thinking&hellip;{elapsedSec > 0 ? ` ${elapsedSec}s` : ''}
+                  </span>
                 </div>
               </div>
             )}
@@ -375,6 +399,33 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
                   isStreaming
                 />
               </>
+            )}
+
+            {/* Progress / slow-endpoint feedback — visible whether or not steps exist */}
+            {isStreaming && streamingStatus && (
+              <div className={styles.thinkingStatus}>{streamingStatus.message}</div>
+            )}
+            {/*
+              Two different situations, two different messages: once the server has
+              answered (`phase: waiting`) silence means the model is still working —
+              normal for a CPU-hosted model with a large prompt. Only while we are
+              still dialing does 20 s of silence point at an unreachable endpoint.
+            */}
+            {isStreaming && elapsedSec >= (awaitingModel ? 60 : 20) && (
+              <div className={styles.thinkingSlowHint}>
+                {awaitingModel ? (
+                  <>
+                    The model is still working on your request &mdash; a large prompt can
+                    take a few minutes on a CPU-hosted model. Press Stop to cancel.
+                  </>
+                ) : (
+                  <>
+                    Still waiting for the AI endpoint &mdash; it may be unreachable. Check
+                    your internet connection, proxy or VPN, or switch the provider to
+                    &ldquo;Local&rdquo; in Settings. You can also press Stop.
+                  </>
+                )}
+              </div>
             )}
 
             <div ref={messagesEndRef} />

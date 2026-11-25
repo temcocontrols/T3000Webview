@@ -310,31 +310,25 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Right column: Multi State section */}
+              {/* Right column: Multi State — the state names live in the device's
+                  own MSV objects, so they are only shown here (no editor yet). */}
               <div className={styles.column}>
                 <div className={styles.sectionHeader}>
                   <Text weight="semibold" size={300} className={styles.sectionTitle}>
                     Multi State
                   </Text>
-                  <Button appearance="primary" className={styles.editButton}>
-                    Edit
-                  </Button>
                 </div>
                 <div className={styles.rangeGroup}>
-                  {/* Placeholder for multi-state values */}
-                  <div className={styles.rangeOption}>
-                    <Radio value="100" label="" />
-                  </div>
-                  <div className={styles.rangeOption}>
-                    <Radio value="101" label="" />
-                  </div>
-                  <div className={styles.rangeOption}>
-                    <Radio value="102" label="" />
-                  </div>
-                  <div className={styles.rangeOption}>
-                    <Radio value="103" label="" />
-                  </div>
+                  {[101, 102, 103, 104].map(v => (
+                    <div key={v} className={styles.rangeOption}>
+                      <Radio value={v.toString()} label={`${v}. ${getRangeLabel(v, 0)}`} />
+                    </div>
+                  ))}
                 </div>
+                <Text size={100}>
+                  State names come from the device&apos;s MSV objects; editing them needs a
+                  T3000 FFI action that does not exist yet.
+                </Text>
               </div>
             </div>
 

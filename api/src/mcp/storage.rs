@@ -33,6 +33,38 @@ pub async fn save_json_file(path: &PathBuf, data: &Value) -> Result<(), String> 
     Ok(())
 }
 
+// ── Device context (single shared JSON object) ──
+
+/// Serializes read-modify-write cycles on the device-context file.
+///
+/// Three independent writers update the same object: `POST
+/// /api/mcp/current-device` (UI selection), `t3000_set_chat_device` (user
+/// confirmation), and every tool call that carries a `serial_number`. Without a
+/// lock a writer that read the file before another write landed saves a stale
+/// copy and silently drops the other's key.
+static DEVICE_CONTEXT_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// Read the device context, apply `mutate`, and write it back — atomically with
+/// respect to other `update_device_context` callers. Returns the stored object.
+pub async fn update_device_context<F>(mutate: F) -> Result<Value, String>
+where
+    F: FnOnce(&mut Value),
+{
+    let _guard = DEVICE_CONTEXT_LOCK.lock().await;
+    let path = current_device_file();
+    let mut state = if path.exists() {
+        load_json_file(&path).await.unwrap_or_else(|_| json!({}))
+    } else {
+        json!({})
+    };
+    if !state.is_object() {
+        state = json!({});
+    }
+    mutate(&mut state);
+    save_json_file(&path, &state).await?;
+    Ok(state)
+}
+
 // ── Task helpers ──
 
 pub async fn load_tasks() -> Result<Vec<Value>, String> {
@@ -44,6 +76,27 @@ pub async fn save_tasks(tasks: &[Value]) -> Result<(), String> {
     save_json_file(&tasks_file(), &json!(tasks)).await
 }
 
+/// Serializes read-modify-write cycles on the task list.
+///
+/// `task_create`, `task_update` and `task_delete` each load the whole file,
+/// mutate one entry and write it back. Without a lock, a create that read the
+/// file before another writer's save silently drops that write, and a delete can
+/// report "not found" for a task that exists.
+static TASKS_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// Read the task list, apply `mutate`, and write it back atomically with respect
+/// to other `update_tasks` callers. Returning `Err` from `mutate` skips the write.
+pub async fn update_tasks<F, T>(mutate: F) -> Result<T, String>
+where
+    F: FnOnce(&mut Vec<Value>) -> Result<T, String>,
+{
+    let _guard = TASKS_LOCK.lock().await;
+    let mut tasks = load_tasks().await?;
+    let out = mutate(&mut tasks)?;
+    save_tasks(&tasks).await?;
+    Ok(out)
+}
+
 // ── Memory helpers ──
 
 pub async fn load_memories() -> Result<Vec<Value>, String> {
@@ -53,4 +106,21 @@ pub async fn load_memories() -> Result<Vec<Value>, String> {
 
 pub async fn save_memories(memories: &[Value]) -> Result<(), String> {
     save_json_file(&memory_file(), &json!(memories)).await
+}
+
+/// Serializes read-modify-write cycles on the memory list (same reasoning as
+/// [`update_tasks`]).
+static MEMORY_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// Read the memory list, apply `mutate`, and write it back atomically. Returning
+/// `Err` from `mutate` skips the write.
+pub async fn update_memories<F, T>(mutate: F) -> Result<T, String>
+where
+    F: FnOnce(&mut Vec<Value>) -> Result<T, String>,
+{
+    let _guard = MEMORY_LOCK.lock().await;
+    let mut memories = load_memories().await?;
+    let out = mutate(&mut memories)?;
+    save_memories(&memories).await?;
+    Ok(out)
 }

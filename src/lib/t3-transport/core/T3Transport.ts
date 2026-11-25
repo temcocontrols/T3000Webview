@@ -19,6 +19,18 @@ import { WebSocketTransport } from '../transports/WebSocketTransport';
 import { WebViewTransport } from '../transports/WebViewTransport';
 import { FFITransport } from '../transports/FFITransport';
 
+/**
+ * Identifiers action 17 (`GET_WEBVIEW_LIST`) needs.
+ *
+ * The device tree already holds both, so callers should pass them instead of
+ * letting the transport ask `GET_PANELS_LIST` (action 4) — that list is filled
+ * only from UDP replies and is empty on an RS485 install.
+ */
+export interface Action17Target {
+  panelId: number;
+  objectInstance: number;
+}
+
 export class T3Transport {
   private transport?: ITransport;
   private config: Partial<TransportConfig>;
@@ -241,33 +253,23 @@ export class T3Transport {
    * @param startIndex - Start index (default 0)
    * @param endIndex - End index (default -1 for all items)
    */
+  /**
+   * Refresh point data from device using GET_WEBVIEW_LIST (Action 17)
+   *
+   * `target` carries `panelId` + `objectInstance`. Pass it whenever the caller
+   * already knows them (the device tree always does) — that avoids a round trip
+   * through action 4, which only reports devices that answered the UDP scan and
+   * is therefore empty on an RS485 install. Only when it is omitted does this
+   * fall back to looking the device up in the panel list.
+   */
   async refreshDeviceRecords(
     serialNumber: number,
     entryType: number,
     startIndex: number = 0,
-    endIndex: number = -1
+    endIndex: number = -1,
+    target?: Action17Target
   ): Promise<WebViewResponse> {
-    // Get device info (panelId and objectInstance) from device list
-    const deviceListResponse = await this.getDeviceList();
-
-    // Handle the response - data might be directly an array or nested
-    const deviceList = Array.isArray(deviceListResponse.data)
-      ? deviceListResponse.data
-      : (deviceListResponse.data?.data && Array.isArray(deviceListResponse.data.data))
-        ? deviceListResponse.data.data
-        : [];
-
-    if (!Array.isArray(deviceList) || deviceList.length === 0) {
-      throw new Error(`No devices found. Response data is not an array or is empty.`);
-    }
-
-    // Response uses snake_case: serial_number, panel_number, object_instance
-    const device = deviceList.find((d: any) => d.serial_number === serialNumber);
-
-    if (!device) {
-      throw new Error(`Device with serial number ${serialNumber} not found in device list`);
-    }
-
+    const resolved = await this.resolveAction17Target(serialNumber, target);
     // Set default end index based on type if not provided
     // From global_define.h in T3000-Source
     if (endIndex === -1) {
@@ -318,13 +320,68 @@ export class T3Transport {
     }
 
     return this.send(WebViewMessageType.GET_WEBVIEW_LIST, {
-      panelId: device.panel_number,
+      panelId: resolved.panelId,
       serialNumber,
       entryType,
       entryIndexStart: startIndex,
       entryIndexEnd: endIndex,
-      objectinstance: device.object_instance
+      objectinstance: resolved.objectInstance
     });
+  }
+
+  /**
+   * Resolve `panelId` + `objectInstance` for an action-17 request.
+   *
+   * Uses the caller-supplied target when it is usable, so the call does not
+   * depend on `GET_PANELS_LIST` (action 4). Action 4 reads
+   * `g_bacnet_panel_info`, which the C++ engine fills only from UDP `0x65`
+   * replies and only for top-level devices — so on an RS485 install (Tstat10 /
+   * TSTAT7 on a COM port) it returns nothing, even though action 17 can read
+   * those devices perfectly. The tree rows already carry the triple, so callers
+   * pass it and this never has to ask action 4.
+   */
+  private async resolveAction17Target(
+    serialNumber: number,
+    target?: Action17Target
+  ): Promise<Action17Target> {
+    if (
+      target &&
+      typeof target.panelId === 'number' &&
+      target.panelId > 0 &&
+      target.panelId < 255 &&
+      typeof target.objectInstance === 'number' &&
+      target.objectInstance > 0
+    ) {
+      return target;
+    }
+
+    // Fallback: legacy lookup through the panel list (action 4).
+    const deviceListResponse = await this.getDeviceList();
+
+    // Handle the response - data might be directly an array or nested
+    const deviceList = Array.isArray(deviceListResponse.data)
+      ? deviceListResponse.data
+      : (deviceListResponse.data?.data && Array.isArray(deviceListResponse.data.data))
+        ? deviceListResponse.data.data
+        : [];
+
+    if (!Array.isArray(deviceList) || deviceList.length === 0) {
+      throw new Error(
+        `No devices found in the T3000 panel list (action 4). Pass panelId/objectInstance from the device record instead.`
+      );
+    }
+
+    // Response uses snake_case: serial_number, panel_number, object_instance
+    const device = deviceList.find((d: any) => d.serial_number === serialNumber);
+
+    if (!device) {
+      throw new Error(`Device with serial number ${serialNumber} not found in device list`);
+    }
+
+    return {
+      panelId: device.panel_number,
+      objectInstance: device.object_instance
+    };
   }
 
   /**
@@ -334,35 +391,18 @@ export class T3Transport {
    * @param serialNumber - Device serial number
    * @returns WebViewResponse with settings data
    */
-  async getDeviceSettings(serialNumber: number): Promise<WebViewResponse> {
-    // Get device info (panelId and objectInstance) from device list
-    const deviceListResponse = await this.getDeviceList();
-
-    const deviceList = Array.isArray(deviceListResponse.data)
-      ? deviceListResponse.data
-      : (deviceListResponse.data?.data && Array.isArray(deviceListResponse.data.data))
-        ? deviceListResponse.data.data
-        : [];
-
-    if (!Array.isArray(deviceList) || deviceList.length === 0) {
-      throw new Error(`No devices found. Response data is not an array or is empty.`);
-    }
-
-    const device = deviceList.find((d: any) => d.serial_number === serialNumber);
-
-    if (!device) {
-      throw new Error(`Device with serial number ${serialNumber} not found in device list`);
-    }
+  async getDeviceSettings(serialNumber: number, target?: Action17Target): Promise<WebViewResponse> {
+    const resolved = await this.resolveAction17Target(serialNumber, target);
 
     // Call Action 17 (GET_WEBVIEW_LIST) with entryType=98 (READ_SETTING_COMMAND)
     // Returns single Str_Setting_Info structure (400 bytes), not an array
     return this.send(WebViewMessageType.GET_WEBVIEW_LIST, {
-      panelId: device.panel_number,
+      panelId: resolved.panelId,
       serialNumber,
       entryType: 98,  // READ_SETTING_COMMAND
       entryIndexStart: 0,
       entryIndexEnd: 0,
-      objectinstance: device.object_instance
+      objectinstance: resolved.objectInstance
     });
   }
 
@@ -371,31 +411,16 @@ export class T3Transport {
    * Reads entire Str_MISC structure (400 bytes) from device.
    * Health counters are at bytes 147-188 of the returned All[] array.
    */
-  async getDeviceMisc(serialNumber: number): Promise<WebViewResponse> {
-    const deviceListResponse = await this.getDeviceList();
-
-    const deviceList = Array.isArray(deviceListResponse.data)
-      ? deviceListResponse.data
-      : (deviceListResponse.data?.data && Array.isArray(deviceListResponse.data.data))
-        ? deviceListResponse.data.data
-        : [];
-
-    if (!Array.isArray(deviceList) || deviceList.length === 0) {
-      throw new Error(`No devices found.`);
-    }
-
-    const device = deviceList.find((d: any) => d.serial_number === serialNumber);
-    if (!device) {
-      throw new Error(`Device with serial number ${serialNumber} not found in device list`);
-    }
+  async getDeviceMisc(serialNumber: number, target?: Action17Target): Promise<WebViewResponse> {
+    const resolved = await this.resolveAction17Target(serialNumber, target);
 
     return this.send(WebViewMessageType.GET_WEBVIEW_LIST, {
-      panelId: device.panel_number,
+      panelId: resolved.panelId,
       serialNumber,
       entryType: 96,  // READ_MISC
       entryIndexStart: 0,
       entryIndexEnd: 0,
-      objectinstance: device.object_instance
+      objectinstance: resolved.objectInstance
     });
   }
 

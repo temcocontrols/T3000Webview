@@ -125,8 +125,15 @@ impl LlmProvider for AnthropicProvider {
             body["tools"] = json!(tools_json);
         }
 
-        let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(300))
+        let mut client_builder = Client::builder()
+            .connect_timeout(super::CONNECT_TIMEOUT)
+            .timeout(std::time::Duration::from_secs(300));
+        // A LAN/loopback gateway must be reached directly — the machine's proxy
+        // answers 502 for private addresses. Public endpoints keep the proxy.
+        if super::is_local_endpoint(endpoint) {
+            client_builder = client_builder.no_proxy();
+        }
+        let client = client_builder
             .build()
             .map_err(|e| AiError::Provider(format!("Failed to build HTTP client: {}", e)))?;
 
@@ -137,20 +144,30 @@ impl LlmProvider for AnthropicProvider {
         let mut last_err: Option<AiError> = None;
 
         for attempt in 0..attempts {
-            match client
+            // Report progress so a blocked endpoint never looks like a hang.
+            let _ = tx.send(StreamEvent::Status {
+                phase: "connecting".to_string(),
+                message: if attempt == 0 {
+                    "Contacting the AI provider…".to_string()
+                } else {
+                    format!("Retrying connection (attempt {}/{})…", attempt + 1, attempts)
+                },
+            });
+
+            let send = client
                 .post(&url)
                 .header("Content-Type", "application/json")
                 .header("x-api-key", key)
                 .header("anthropic-version", "2023-06-01")
                 .json(&body)
-                .send()
-                .await
-            {
-                Ok(r) => {
+                .send();
+
+            match tokio::time::timeout(super::SEND_TIMEOUT, send).await {
+                Ok(Ok(r)) => {
                     response = Some(r);
                     break;
                 }
-                Err(e) => {
+                Ok(Err(e)) => {
                     tracing::warn!(
                         "[Anthropic] connect attempt {}/{} failed for {}: {}",
                         attempt + 1,
@@ -158,12 +175,44 @@ impl LlmProvider for AnthropicProvider {
                         url,
                         e
                     );
+                    let _ = tx.send(StreamEvent::Status {
+                        phase: "retrying".to_string(),
+                        message: format!(
+                            "Connection failed: {}{}",
+                            e,
+                            if attempt + 1 < attempts { " — retrying…" } else { "" }
+                        ),
+                    });
                     last_err = Some(AiError::Provider(format!(
                         "Failed to connect to Anthropic: {}",
                         e
                     )));
                     if attempt + 1 < attempts {
                         // Single retry — wait 500ms before it.
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    }
+                }
+                Err(_) => {
+                    tracing::warn!(
+                        "[Anthropic] connect attempt {}/{} timed out after {:?} for {}",
+                        attempt + 1,
+                        attempts,
+                        super::SEND_TIMEOUT,
+                        url
+                    );
+                    let _ = tx.send(StreamEvent::Status {
+                        phase: "timeout".to_string(),
+                        message: format!(
+                            "No response from the AI endpoint after {}s — it may be unreachable{}",
+                            super::SEND_TIMEOUT.as_secs(),
+                            if attempt + 1 < attempts { " — retrying…" } else { "" }
+                        ),
+                    });
+                    last_err = Some(AiError::Provider(format!(
+                        "Timed out connecting to Anthropic after {}s — the endpoint is unreachable (check internet / proxy / VPN).",
+                        super::SEND_TIMEOUT.as_secs()
+                    )));
+                    if attempt + 1 < attempts {
                         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                     }
                 }
@@ -175,6 +224,10 @@ impl LlmProvider for AnthropicProvider {
                 AiError::Provider("Failed to connect to Anthropic".to_string())
             })
         })?;
+        let _ = tx.send(StreamEvent::Status {
+            phase: "waiting".to_string(),
+            message: "Connected — waiting for the model to answer…".to_string(),
+        });
 
         let status = response.status();
         if !status.is_success() {

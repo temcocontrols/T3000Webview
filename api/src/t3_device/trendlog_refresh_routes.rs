@@ -13,7 +13,7 @@ use tracing::{error, info, warn};
 
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::{devices, trendlogs, trendlog_inputs, input_points, output_points, variable_points};
-use crate::t3_device::action17_refresh_helper::lookup_action17_target;
+use crate::t3_device::action17_refresh_helper::{lookup_action17_target, normalise_action17_response};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
@@ -138,7 +138,7 @@ pub async fn refresh_trendlogs(
     match call_refresh_ffi(WebViewMessageType::GET_WEBVIEW_LIST as i32, refresh_json).await {
         Ok(response) => {
             let response_json: Value = match serde_json::from_str(&response) {
-                Ok(json) => json,
+                Ok(json) => normalise_action17_response(json),
                 Err(e) => {
                     error!("❌ Failed to parse C++ response: {}", e);
                     if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {

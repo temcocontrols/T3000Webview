@@ -27,7 +27,7 @@ fn runtime_db_path() -> &'static Option<String> {
 
 // ═══ Tool list access ═══
 
-/// Get all 58 MCP tool definitions from the library.
+/// Get every MCP tool definition (74 today).
 pub fn all_tools() -> &'static [t3_webview_api::mcp::ToolDef] {
     &t3_webview_api::mcp::TOOLS
 }
@@ -96,8 +96,7 @@ pub fn is_ok_result(v: &Value) -> bool {
 // ═══ DB helpers ═══
 
 /// Returns Some(db) if the runtime DB is available for testing, or None.
-pub async fn get_test_db() -> Option<sea_orm::DatabaseConnection> {
-    let path = runtime_db_path().as_ref()?;
+pub async fn get_test_db() -> Option<sea_orm::DatabaseConnection> {    let path = runtime_db_path().as_ref()?;
     let url = format!("sqlite://{}", path);
     let mut opt = sea_orm::ConnectOptions::new(&url);
     opt.max_connections(2)
@@ -105,12 +104,32 @@ pub async fn get_test_db() -> Option<sea_orm::DatabaseConnection> {
         .connect_timeout(std::time::Duration::from_secs(5))
         .acquire_timeout(std::time::Duration::from_secs(5))
         .sqlx_logging(false);
-    sea_orm::Database::connect(opt).await.ok()
+    let db = sea_orm::Database::connect(opt).await.ok()?;
+
+    // T3000.exe holds the same file while it runs, so a write can collide with
+    // its lock. Without a busy timeout SQLite fails immediately ("database is
+    // locked") and the test flakes; with one it waits its turn.
+    use sea_orm::ConnectionTrait;
+    let _ = db
+        .execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "PRAGMA busy_timeout = 15000",
+        ))
+        .await;
+
+    Some(db)
 }
 
 /// Check whether DB-dependent tests should run.
 pub fn db_tests_enabled() -> bool {
     runtime_db_path().is_some()
+}
+
+/// Fresh in-memory database — hermetic, never touches T3000's data files.
+pub async fn memory_db() -> Option<sea_orm::DatabaseConnection> {
+    let mut opt = sea_orm::ConnectOptions::new("sqlite::memory:");
+    opt.max_connections(1).min_connections(1).sqlx_logging(false);
+    sea_orm::Database::connect(opt).await.ok()
 }
 
 // ═══ Tool execution helper ═══
@@ -136,6 +155,20 @@ pub async fn execute_tool_json(
 }
 
 // ═══ Helper: run test only when DB is available ═══
+
+/// First device in the runtime DB that actually has stored input points.
+/// Returns `(serial, input_count)`.
+pub async fn pick_device_with_inputs(db: &sea_orm::DatabaseConnection) -> Option<(i64, i64)> {
+    let list = execute_tool_json("t3000_device_list", &serde_json::json!({}), db).await.ok()?;
+    list.get("devices")?.as_array()?.iter().find_map(|device| {
+        let inputs = device.get("input_count")?.as_i64()?;
+        if inputs > 0 {
+            Some((device.get("serial")?.as_i64()?, inputs))
+        } else {
+            None
+        }
+    })
+}
 
 /// Run an async test function only if the runtime DB is available.
 pub async fn with_db_or_skip<F, Fut>(test_name: &str, f: F)

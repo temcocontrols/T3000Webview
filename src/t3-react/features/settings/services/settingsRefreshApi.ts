@@ -152,9 +152,15 @@ export class SettingsRefreshApi {
    * from device and parse into typed JavaScript object
    *
    * @param serialNumber - Device serial number
+   * @param target - Optional panelId/objectInstance from the device record; when
+   *                 supplied the call does not depend on the UDP panel list
+   *                 (action 4), which is empty on an RS485 install.
    * @returns Refresh result with parsed settings data
    */
-  static async refreshFromDevice(serialNumber: number): Promise<RefreshResult> {
+  static async refreshFromDevice(
+    serialNumber: number,
+    target?: { panelId?: number; objectInstance?: number }
+  ): Promise<RefreshResult> {
     const timestamp = new Date().toISOString();
 
     try {
@@ -166,7 +172,11 @@ export class SettingsRefreshApi {
       await transport.connect('ffi');
       let resp: any;
       try {
-        resp = await transport.getDeviceSettings(serialNumber);
+        const resolved =
+          target?.panelId && target?.objectInstance
+            ? { panelId: target.panelId, objectInstance: target.objectInstance }
+            : undefined;
+        resp = await transport.getDeviceSettings(serialNumber, resolved);
       } finally {
         await transport.disconnect();
       }

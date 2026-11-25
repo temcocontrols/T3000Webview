@@ -19,7 +19,7 @@ interface UseMcpServersReturn {
   addServer: (name: string, url: string, apiKey?: string) => Promise<void>;
   removeServer: (id: string) => Promise<void>;
   activateServer: (id: string) => Promise<void>;
-  testServer: (url: string) => Promise<{ ok: boolean; error?: string }>;
+  testServer: (url: string, apiKey?: string) => Promise<{ ok: boolean; error?: string }>;
   refresh: () => Promise<void>;
 }
 
@@ -70,22 +70,27 @@ export function useMcpServers(): UseMcpServersReturn {
   }, []);
 
   const activateServer = useCallback(async (id: string) => {
-    await fetch(`${API_BASE_URL}/api/ai/activate-mcp-server`, {
+    const res = await fetch(`${API_BASE_URL}/api/ai/activate-mcp-server`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
+    const body = await res.json().catch(() => null);
+    // Re-sync first so the badge shows the real state (e.g. still Inactive).
     await refresh();
+    if (body && body.ok === false) {
+      throw new Error(body.error || 'Failed to activate the MCP server');
+    }
   }, [refresh]);
 
-  const testServer = useCallback(async (url: string) => {
+  const testServer = useCallback(async (url: string, apiKey?: string) => {
     const res = await fetch(`${API_BASE_URL}/api/ai/mcp-servers/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url, api_key: apiKey || '' }),
     });
-    const data = await res.json();
-    return { ok: data.ok, error: data.error };
+    const data = await res.json().catch(() => ({ ok: false, error: 'Invalid server response' }));
+    return { ok: !!data.ok, error: data.error };
   }, []);
 
   return { servers, loading, addServer, removeServer, activateServer, testServer, refresh };

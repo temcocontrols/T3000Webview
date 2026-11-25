@@ -52,6 +52,64 @@ pub enum RustError {
     Error = 1,
 }
 
+/// T3000.exe is a 32-bit process with ~2 GB of address space and every thread
+/// reserves 2 MB of stack. Tokio's default blocking pool grows to 512 threads, so a
+/// burst of device calls could reserve ~1 GB — after which thread creation and large
+/// allocations fail and the host aborts. Keep the pool small; extra work queues.
+fn build_runtime() -> std::io::Result<tokio::runtime::Runtime> {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .max_blocking_threads(24)
+        .build()
+}
+
+/// Append a diagnostic line straight to the API log — unconditionally, because a
+/// crash must never be gated on the debug flag.
+fn log_crash_line(message: &str) {
+    use std::io::Write;
+    let line = format!(
+        "{}  ERROR t3_webview_api: {}\n",
+        chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.6fZ"),
+        message
+    );
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(crate::server::DEBUG_LOG_NAME)
+    {
+        let _ = file.write_all(line.as_bytes());
+    }
+    eprintln!("{}", line.trim_end());
+}
+
+/// Record panics in the log file. T3000.exe has no console, so without this a panic
+/// that reaches an FFI boundary looks like "the application just disappeared".
+fn install_panic_hook() {
+    static INSTALLED: std::sync::Once = std::sync::Once::new();
+    INSTALLED.call_once(|| {
+        let previous_hook = panic::take_hook();
+        panic::set_hook(Box::new(move |info| {
+            let payload = info
+                .payload()
+                .downcast_ref::<&str>()
+                .map(|s| s.to_string())
+                .or_else(|| info.payload().downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "<non-string panic payload>".to_string());
+            let location = info
+                .location()
+                .map(|l| format!("{}:{}", l.file(), l.line()))
+                .unwrap_or_else(|| "unknown location".to_string());
+            log_crash_line(&format!(
+                "[PANIC] {} at {}\n{}",
+                payload,
+                location,
+                std::backtrace::Backtrace::force_capture()
+            ));
+            previous_hook(info);
+        }));
+    });
+}
+
 // Externally callable function to shut down the server for using from C++.
 #[no_mangle]
 pub extern "C" fn shutdown_server() {
@@ -69,10 +127,11 @@ pub extern "C" fn shutdown_server() {
 // Externally callable function to run the server for using from C++, returning a RustError.
 #[no_mangle]
 pub extern "C" fn run_server() -> RustError {
+    install_panic_hook();
     // Use panic::catch_unwind to catch any panic and prevent it from unwinding across FFI boundaries.
     let result = panic::catch_unwind(|| {
         // Create a new Tokio runtime for asynchronous operations.
-        let runtime = match tokio::runtime::Runtime::new() {
+        let runtime = match build_runtime() {
             Ok(rt) => rt,                      // Successfully created the runtime.
             Err(_) => return RustError::Error, // Failed to create the runtime.
         };
@@ -242,10 +301,46 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // Mirror T3000's own device tree (ALL_NODE) into the WebView DEVICES table.
+    // This is the only source that knows about RS485 devices (Tstat10/TSTAT7 on
+    // COM8) and idle configured devices, which never answer the UDP scan. It must
+    // run before the first page load so the tree is populated on the first paint.
+    let t_nodes = std::time::Instant::now();
+    match establish_t3_device_connection().await {
+        Ok(db) => {
+            let summary = crate::t3_device::services::T3DeviceService::import_t3000_devices(&db).await;
+            emit_service_log(
+                "info",
+                "T3_Webview_Initialize",
+                &format!(
+                    "T3000 device tree imported: {} device(s) ({} new, {} updated) from {}",
+                    summary.total,
+                    summary.inserted,
+                    summary.updated,
+                    summary.source.clone().unwrap_or_else(|| "n/a".into())
+                ),
+            )
+            .await;
+            if let Some((ref fh, ref db_log)) = flow_opt {
+                fh.step(db_log, "import_t3000_devices", "info", "lib",
+                        if summary.total > 0 { "ok" } else { "skip" },
+                        t_nodes.elapsed().as_millis() as i64,
+                        &format!("{} device(s) from ALL_NODE", summary.total), None).await;
+            }
+        }
+        Err(e) => {
+            emit_service_log(
+                "warn",
+                "T3_Webview_Initialize",
+                &format!("T3000 device tree import skipped: {}", e),
+            )
+            .await;
+        }
+    }
+
     // Initialize T3000 Main Service with dynamic sync interval from database
     let t_interval = std::time::Instant::now();
     let sync_interval_secs = load_ffi_sync_interval_from_db().await.unwrap_or(300); // Default 5 minutes
-
     emit_service_log(
         "info",
         "T3_Webview_Initialize",
@@ -504,8 +599,9 @@ pub async fn start_all_services_t3_migrations_only() -> Result<(), Box<dyn std::
 /// Abstracted T3000 server startup for DLL entry point
 #[no_mangle]
 pub extern "C" fn run_t3_server() -> RustError {
+    install_panic_hook();
     let result = panic::catch_unwind(|| {
-        let runtime = match tokio::runtime::Runtime::new() {
+        let runtime = match build_runtime() {
             Ok(rt) => rt,
             Err(_) => return RustError::Error,
         };

@@ -1,6 +1,8 @@
-# T3 Firmware — LVGL Display Architecture
+# Device display architecture
 
-## Part 1 — Current Firmware (SquareLine Studio)
+**Applies to:** shipped code in `T3-programmable-controller-on-ESP32`.
+
+## Compiled UI (current)
 
 **Branch:** `DynamicUI_Tstat11`
 **Tool:** SquareLine Studio 1.6.0
@@ -27,7 +29,7 @@
 │                      │ ui_ScheduleEdit*.c   │               │
 │                      │ ui_RemoteAccess.c    │               │
 │  ┌──────────────┐    │ ui_NetworkConfig.c   │               │
-│  │ my_touch_read│    │ ...12 screens total  │               │
+│  │ my_touch_read│    │ ...13 screens total  │               │
 │  │ → TouchGet   │    └──────────┬──────────┘               │
 │  │   Inputs()   │               │                            │
 │  └──────────────┘    ┌──────────▼──────────┐               │
@@ -42,7 +44,7 @@
 
 ---
 
-## 1. How Screens Are Created (SquareLine Studio)
+## 1. How compiled screens are generated
 
 SquareLine Studio generates static C code. Each screen is a function that calls `lv_obj_create()` etc.:
 
@@ -213,13 +215,13 @@ target_sources(${COMPONENT_LIB} PRIVATE ${TEMCO_SCREEN_SOURCES})
 | `ui_HolidayCalenderScreen.c` | Holiday calendar  | 128   | Holiday date picker              |
 | `ui_RemoteAccess.c`          | Remote access     | 182   | WireGuard / DDNS entry           |
 
-**12 screens.** Also compiled from `TemcoScreen/`: `ui.c`, `ui_events.c` (214), `ui_helpers.c`
+**13 screens.** Also compiled from `TemcoScreen/`: `ui.c`, `ui_events.c` (214), `ui_helpers.c`
 (354), `ui_comp_hook.c`, `ui_font_Arial80.c` and 16 `ui_img_*.c` bitmap assets.
 Line counts are from the current `DynamicUI_Tstat11` branch.
 
 ---
 
-## Part 2 — EEZ Studio Project Flow (Web ↔ Device)
+## Dynamic screens (EEZ project flow)
 
 > **How to read this part.** **[2.1 Two JSON Formats](#2-1-two-json-formats)** through
 > **[2.6 Full Round-Trip Flow](#2-6-full-round-trip-flow)** describe the web ↔ device flow;

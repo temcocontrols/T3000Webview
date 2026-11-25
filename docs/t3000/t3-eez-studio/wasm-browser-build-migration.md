@@ -1,4 +1,6 @@
-# LVGL WASM Browser Build Migration
+# Browser build reference
+
+**Applies to:** the shipped WASM editor build — toolchain, patches and loading path.
 
 **Project:** T3000 Webview — EEZ Studio Migration (Electron → Browser)  
 **Branch:** WASM runtime for LVGL project editor
@@ -258,21 +260,6 @@ Ensures Vite dev server serves `.wasm` files with correct MIME type for `WebAsse
 3. `WebAssembly.instantiateStreaming(fetch(wasmPath))` loads `eez_runtime.wasm`
 4. Worker communicates with main thread via `postMessage` (action-based protocol)
 5. Flow runtime executes dashboard logic in the worker, sends rendering commands to main thread
-
----
-
-## Path Rename: `t3-eez-studio` → `eez-studio-wasm`
-
-All WASM-related URLs were renamed to match the Rust-side naming:
-
-| File | Change |
-|------|--------|
-| `lvgl-versions.ts` (line 199) | Hardcoded v8.4.0 path |
-| `lvgl-versions.ts` (line 613) | Dynamic URL construction |
-| `wasm-worker.ts` (lines 51, 82, 85) | `wasmPath`, `__dirname`, script `src` |
-| `quasar.config.js` (line 231) | Vite proxy entry |
-| `api/build.rs` (3 calls) | `copy_selected_files` dest_rel → `"eez-studio-wasm"` |
-| `api/src/server.rs` (lines 131, 254) | `ServeDir` path + `.nest("/eez-studio-wasm", ...)` |
 
 ---
 

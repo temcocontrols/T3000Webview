@@ -298,6 +298,8 @@ const VariablesPageDesktop: React.FC = () => {
         const result = await PanelDataRefreshService.refreshFromDevice({
           serialNumber: selectedDevice.serialNumber,
           type: 'variable',
+          panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+          objectInstance: selectedDevice.objectInstance,
           onLoadingChange: (l) => { if (l) setMessage(`Loading variables from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info'); }
         });
         setMessage(`\u2713 Synced ${result.itemCount} variables from ${selectedDevice.nameShowOnTree}`, 'success');
@@ -333,6 +335,8 @@ const VariablesPageDesktop: React.FC = () => {
       const result = await PanelDataRefreshService.refreshFromDevice({
         serialNumber: selectedDevice.serialNumber,
         type: 'variable',
+        panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+        objectInstance: selectedDevice.objectInstance,
         onLoadingChange: (loading) => {
           if (loading) {
             setMessage('Loading data from device (Action 17)...', 'info');
@@ -391,8 +395,11 @@ const VariablesPageDesktop: React.FC = () => {
       { header: 'Label', accessor: v => v.label },
       { header: 'Auto/Manual', accessor: v => v.autoManual },
       { header: 'Value', accessor: v => v.fValue },
+      // The unit text is derived from Range + Digital/Analog, so both raw inputs
+      // must travel with the file or the round trip cannot reproduce it.
       { header: 'Units', accessor: v => v.units },
       { header: 'Range', accessor: v => v.rangeField },
+      { header: 'Digital/Analog', accessor: v => v.digitalAnalog },
       { header: 'Calibration', accessor: v => v.calibration },
       { header: 'Sign', accessor: v => v.sign },
       { header: 'Filter', accessor: v => v.filterField },
@@ -413,13 +420,34 @@ const VariablesPageDesktop: React.FC = () => {
       { header: 'Value', accessor: v => v.fValue, setter: (v, val) => { v.fValue = val; } },
       { header: 'Units', accessor: v => v.units, setter: (v, val) => { v.units = val; } },
       { header: 'Range', accessor: v => v.rangeField, setter: (v, val) => { v.rangeField = val; } },
+      // Without this column an analog range code is read from the digital table
+      // after the round trip (ºF showing as Heat/Cool, Close/Open, …).
+      { header: 'Digital/Analog', accessor: v => v.digitalAnalog, setter: (v, val) => { v.digitalAnalog = val; } },
       { header: 'Calibration', accessor: v => v.calibration, setter: (v, val) => { v.calibration = val; } },
       { header: 'Sign', accessor: v => v.sign, setter: (v, val) => { v.sign = val; } },
       { header: 'Filter', accessor: v => v.filterField, setter: (v, val) => { v.filterField = val; } },
       { header: 'Status', accessor: v => v.status, setter: (v, val) => { v.status = val; } },
     ];
     const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as VariablePoint));
-    setVariables(imported);
+    // Files exported before the Digital/Analog column existed carry no mode. Variable
+    // analog unit codes (1–33, e.g. 1 = °C) overlap the digital states (1–30), so the
+    // code alone is ambiguous: keep the point's current mode when the code could come
+    // from either table, and only infer analog for codes the digital table cannot hold.
+    const existingMode = new Map<string, string>();
+    for (const v of variables) {
+      existingMode.set(`${v.panel}|${v.variableId}`, String(v.digitalAnalog ?? '').trim());
+    }
+    const normalised = imported.map(variable => {
+      const mode = String(variable.digitalAnalog ?? '').trim();
+      if (mode === '0' || mode === '1') return variable;
+      const code = parseInt(String(variable.rangeField ?? '0'), 10) || 0;
+      const previous = existingMode.get(`${variable.panel}|${variable.variableId}`);
+      if (code >= 1 && code <= 30 && (previous === '0' || previous === '1')) {
+        return { ...variable, digitalAnalog: previous };
+      }
+      return { ...variable, digitalAnalog: code >= 1 && code <= 33 ? '1' : '0' };
+    });
+    setVariables(normalised);
   };
 
   // Register CSV export/import handlers with global context (Tools menu)
@@ -764,15 +792,21 @@ const VariablesPageDesktop: React.FC = () => {
 
       const result = await response.json();
 
-      // Update local state optimistically
+      // Update local state optimistically (compare as text — the API returns the
+      // index as a string and a type mismatch left the row un-updated) …
       setVariables(prevVariables =>
         prevVariables.map(variable =>
           variable.serialNumber === selectedVariableForRange.serialNumber &&
-            variable.variableIndex === selectedVariableForRange.variableIndex
+            String(variable.variableIndex) === String(selectedVariableForRange.variableIndex)
             ? { ...variable, rangeField: newRange.toString(), digitalAnalog: newDigitalAnalog.toString() }
             : variable
         )
       );
+
+      // … then take the stored values as the truth. The device may clamp or reject
+      // a code, and a stale guess is what made the units column look wrong until
+      // the tab was switched.
+      await fetchVariablesRef.current();
     } catch (error) {
       LogUtil.Error('Failed to update Range/Units:', error);
       setMessage(`Failed to update Range/Units: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');

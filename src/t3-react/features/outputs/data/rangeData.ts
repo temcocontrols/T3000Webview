@@ -11,19 +11,20 @@ export interface RangeOption {
 }
 
 /**
- * Output Analog Units — C++ native indices 31–38
+ * Output Analog Units — the firmware's 0-based indices 0..8
+ * (`Output_Analog_Units_Array`, e.g. 1 = 0.0 -> 10 Volts)
  * Used when output digital_analog === BAC_UNITS_ANALOG (1)
  */
 export const OUTPUT_ANALOG_RANGES: RangeOption[] = [
-  { value: 0, label: 'Unused', category: 'General' },
-  { value: 31, label: '0.0 -> 10 Volts', category: 'Voltage' },
-  { value: 32, label: '0.0 -> 100 %Open', category: 'Percentage' },
-  { value: 33, label: '0.0 -> 20 psi', category: 'Pressure' },
-  { value: 34, label: '0.0 -> 100 % (0-10V)', category: 'Percentage' },
-  { value: 35, label: '0.0 -> 100 %Cls', category: 'Percentage' },
-  { value: 36, label: '0.0 -> 20 ma', category: 'Current' },
-  { value: 37, label: '0.0 -> 100 PWM', category: 'PWM' },
-  { value: 38, label: '0.0 -> 100 % (2-10V)', category: 'Percentage' },
+  { value: 0, label: 'Unused' },
+  { value: 1, label: '0.0 -> 10   Volts' },
+  { value: 2, label: '0.0 -> 100  %Open' },
+  { value: 3, label: '4   -> 20   psi' },
+  { value: 4, label: '0.0 -> 100  %' },
+  { value: 5, label: '0.0 -> 100  %Cls' },
+  { value: 6, label: '4   -> 20   ma' },
+  { value: 7, label: '0.0 -> 100  PWM' },
+  { value: 8, label: '2   -> 10   Volts' },
 ];
 
 /**

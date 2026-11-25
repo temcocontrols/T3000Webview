@@ -67,6 +67,8 @@ interface StreamEvent {
     message?: string;
     steps?: number;
     duration_ms?: number;
+    /** Present on `status` events — coarse progress phase. */
+    phase?: string;
   };
 }
 
@@ -198,8 +200,9 @@ function buildServerErrorNotice(errorMsg: string, endpoint: string): string {
   // Connection-level failures (refused, timeout, DNS, unreachable, ...)
   if (/connect|refused|timeout|timed out|dns|unreachable|no route|econnrefused|econnreset|failed to/i.test(stripped)) {
     return (
-      `Could not reach the LLM server at ${endpointLabel} — it may be down or unreachable.\n` +
-      `Please check that the server is running before continuing, then try again.\n\n` +
+      `Could not reach the LLM endpoint ${endpointLabel} — it may be down, or this machine has no route to it.\n` +
+      `If the endpoint is a cloud provider (e.g. Gemini), check the internet connection, proxy, VPN or firewall.\n` +
+      `You can also switch the provider to "Local" in Settings to work offline, then try again.\n\n` +
       `Endpoint: ${endpointLabel}\n` +
       `Details: ${stripped}`
     );
@@ -234,6 +237,7 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
   const storeSetStreamingSteps = useChatStore((s) => s.setStreamingSteps);
   const storeSetStreamingBlocks = useChatStore((s) => s.setStreamingBlocks);
   const storeSetActiveToolCalls = useChatStore((s) => s.setActiveToolCalls);
+  const storeSetStreamingStatus = useChatStore((s) => s.setStreamingStatus);
   const storeReset = useChatStore((s) => s.reset);
 
   const settingsRef = useRef<AiProviderSettings>(settings);
@@ -244,7 +248,8 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
   const abort = useCallback(() => {
     abortRef.current?.abort();
     storeSetIsStreaming(false);
-  }, [storeSetIsStreaming]);
+    storeSetStreamingStatus(null);
+  }, [storeSetIsStreaming, storeSetStreamingStatus]);
 
   // Save current partial session to backend
   const saveCurrentToBackend = useCallback(async () => {
@@ -421,11 +426,13 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
                 currentOutput += chunk;
                 assistantContent += chunk;
                 storeSetStreamingText(assistantContent);
+                storeSetStreamingStatus(null);
                 pushBlocks();
                 break;
               }
               case 'thinking_delta': {
                 const chunk = event.data?.content || '';
+                storeSetStreamingStatus(null);
                 if (currentBlockType !== 'thinking') {
                   flushBlock();
                   currentBlockType = 'thinking';
@@ -516,6 +523,19 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
                 }
                 storeSetStreamingSteps([...steps]);
                 pushBlocks();
+                break;
+              }
+              case 'status': {
+                // Progress ping (connecting / retrying / waiting for model).
+                // Rendered under the "Thinking…" indicator so a slow or
+                // unreachable endpoint is never mistaken for a hang.
+                const statusMsg = event.data?.message;
+                if (statusMsg) {
+                  storeSetStreamingStatus({
+                    phase: event.data?.phase || 'status',
+                    message: statusMsg,
+                  });
+                }
                 break;
               }
               case 'done': {
@@ -610,10 +630,11 @@ export function useAiChatStream(settings: AiProviderSettings, onSaved?: () => vo
         storeSetIsStreaming(false);
         storeSetStreamingText('');
         storeSetStreamingSteps([]);
+        storeSetStreamingStatus(null);
         abortRef.current = null;
       }
     },
-    [storeSetMessages, storeSetIsStreaming, storeSetStreamingText, storeSetStreamingSteps, storeSetActiveToolCalls, storeSetSessionId],
+    [storeSetMessages, storeSetIsStreaming, storeSetStreamingText, storeSetStreamingSteps, storeSetStreamingStatus, storeSetActiveToolCalls, storeSetSessionId],
   );
 
   return {

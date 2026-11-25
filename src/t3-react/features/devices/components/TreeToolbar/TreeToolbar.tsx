@@ -36,7 +36,7 @@ interface TreeToolbarProps {
  * TreeToolbar Component
  */
 export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFilter }) => {
-  const { expandAll, collapseAll, viewMode, setViewMode, scanForDevices, loadDevicesWithSync } = useDeviceTreeStore();
+  const { expandAll, collapseAll, viewMode, setViewMode, scanForDevices, loadDevicesWithSync, fetchDevices } = useDeviceTreeStore();
   const setMessage = useStatusBarStore((state) => state.setMessage);
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -45,14 +45,17 @@ export const TreeToolbar: React.FC<TreeToolbarProps> = ({ showFilter, onToggleFi
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
-      // Phase 1: refresh the device list from T3000 (FFI action 4). Fast — the
-      // tree updates as soon as it returns.
-      await loadDevicesWithSync({ skipInitialFetch: true });
+      // Keep both passes in flight at once: the panel list refreshes names and
+      // online state, the scan discovers new devices. The deep pass (serial COM
+      // + TCP sub-ports, ~8 s) runs detached in the backend, so the button stops
+      // spinning as soon as the LAN devices are in — the store then polls the
+      // deep-scan status and repaints when those devices land.
+      const panelListDone = loadDevicesWithSync({ skipInitialFetch: true, quiet: true });
+      void scanForDevices({ timeout: 8, mode: 'udp', deep: true }).catch(() => {});
 
-      // Phase 2: deep discovery (UDP + serial COM + TCP sub-port). This can take
-      // minutes on a machine with many COM ports, so it runs in the background —
-      // the status bar reports progress and the tree repaints when it finishes.
-      scanForDevices({ timeout: 8, mode: 'full' }).catch(() => {});
+      await panelListDone.catch(() => {});
+      // Authoritative read once the panel-list writes have landed.
+      await fetchDevices();
     } catch (err) {
       console.error('Failed to refresh devices:', err);
       setMessage('Failed to refresh device list. Please try again.', 'error');

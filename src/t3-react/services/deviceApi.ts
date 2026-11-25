@@ -203,13 +203,14 @@ export class DeviceApiService {
    */
   static async scanAndRefreshDevices(
     timeout: number = 8,
-    mode: 'udp' | 'full' = 'full'
+    mode: 'udp' | 'full' = 'full',
+    deep: boolean = false
   ): Promise<DevicesResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/devices/scan-refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timeout, mode }),
+        body: JSON.stringify({ timeout, mode, deep }),
       });
       if (!response.ok) {
         const errorText = await response.text();
@@ -223,6 +224,21 @@ export class DeviceApiService {
     } catch (error) {
       throw error;
     }
+  }
+
+  /**
+   * Progress of the detached deep-discovery pass (serial COM + TCP sub-ports).
+   *
+   * Started by `scanAndRefreshDevices(timeout, mode, /* deep *\/ true)`; the
+   * backend merges results into the DEVICES table when the pass finishes, so the
+   * UI only needs to re-read the list once `running` turns false.
+   */
+  static async getDeepScanStatus(): Promise<{ running: boolean; started_at?: number; found?: number }> {
+    const response = await fetch(`${this.baseUrl}/devices/deep-scan`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    return response.json();
   }
 
   /**

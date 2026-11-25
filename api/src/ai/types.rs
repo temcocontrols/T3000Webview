@@ -103,6 +103,13 @@ pub enum StreamEvent {
     /// The result of a locally-executed tool.
     #[serde(rename = "tool_result")]
     ToolResult { id: String, result: String },
+    /// Progress update while the request is still in flight — not an error.
+    ///
+    /// Without these the UI can only show a static "Thinking…" for as long as
+    /// the provider takes to answer, which on an unreachable endpoint looks
+    /// like a hang.
+    #[serde(rename = "status")]
+    Status { phase: String, message: String },
     /// The turn is complete.
     #[serde(rename = "done")]
     Done {

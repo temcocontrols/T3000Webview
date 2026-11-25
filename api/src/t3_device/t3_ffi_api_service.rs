@@ -209,6 +209,65 @@ pub fn ffi_call_lock_timeout(timeout_secs: u64) -> Option<std::sync::MutexGuard<
     }
 }
 
+/// One reusable FFI message buffer. Every call is serialized by `ffi_call_lock()`,
+/// so a single buffer is safe — and it stops the DLL from allocating (and aborting
+/// on) a fresh 10 MB block per call inside a 32-bit host.
+fn ffi_buffer() -> &'static Mutex<Vec<u8>> {
+    static FFI_BUFFER: OnceLock<Mutex<Vec<u8>>> = OnceLock::new();
+    FFI_BUFFER.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+/// Caps how many FFI calls may hold a blocking thread at once. Each one keeps its
+/// thread while it waits for the global FFI lock; uncapped, that queue grew to
+/// hundreds of threads (2 MB of reserved stack each) inside the 32-bit T3000 host.
+fn ffi_inflight() -> &'static tokio::sync::Semaphore {
+    static FFI_INFLIGHT: OnceLock<tokio::sync::Semaphore> = OnceLock::new();
+    FFI_INFLIGHT.get_or_init(|| tokio::sync::Semaphore::new(4))
+}
+
+/// Private bytes of the host process, in MB. T3000.exe is 32-bit: once the ~2 GB
+/// address space is used up (or too fragmented for a 10 MB block) an allocation
+/// failure aborts the whole application, so the number matters when diagnosing.
+fn process_memory_mb() -> Option<u64> {
+    #[repr(C)]
+    struct ProcessMemoryCounters {
+        cb: u32,
+        page_fault_count: u32,
+        peak_working_set_size: usize,
+        working_set_size: usize,
+        quota_peak_paged_pool_usage: usize,
+        quota_paged_pool_usage: usize,
+        quota_peak_non_paged_pool_usage: usize,
+        quota_non_paged_pool_usage: usize,
+        pagefile_usage: usize,
+        peak_pagefile_usage: usize,
+    }
+
+    extern "system" {
+        fn GetCurrentProcess() -> isize;
+        fn K32GetProcessMemoryInfo(handle: isize, counters: *mut ProcessMemoryCounters, cb: u32) -> i32;
+    }
+
+    let mut counters = ProcessMemoryCounters {
+        cb: std::mem::size_of::<ProcessMemoryCounters>() as u32,
+        page_fault_count: 0,
+        peak_working_set_size: 0,
+        working_set_size: 0,
+        quota_peak_paged_pool_usage: 0,
+        quota_paged_pool_usage: 0,
+        quota_peak_non_paged_pool_usage: 0,
+        quota_non_paged_pool_usage: 0,
+        pagefile_usage: 0,
+        peak_pagefile_usage: 0,
+    };
+    let ok = unsafe { K32GetProcessMemoryInfo(GetCurrentProcess(), &mut counters, counters.cb) };
+    if ok == 0 {
+        None
+    } else {
+        Some(counters.pagefile_usage as u64 / (1024 * 1024))
+    }
+}
+
 /// Simple FFI API Service - middleware only
 pub struct T3000FfiApiService {
     pub max_buffer_size: usize,
@@ -305,12 +364,43 @@ impl T3000FfiApiService {
             }
         };
 
-        api_logger.info(&format!("📡 FFI Call - Final Action: {}, Calling C++ now...", action));
+        // tracing (not ServiceLogger: its info()/warn()/error() drop the future and
+        // never write) so the number is actually in the log when a call fails.
+        tracing::info!(
+            "[FFI] action {} -> calling C++ (host private bytes: {} MB)",
+            action,
+            process_memory_mb().map(|m| m.to_string()).unwrap_or_else(|| "?".to_string())
+        );
         let max_buffer_size = self.max_buffer_size;
         let message_owned = message.to_string();
 
+        // Waiting for the FFI lock inside `spawn_blocking` parks a whole thread per
+        // caller. Under normal UI load that piled up hundreds of threads, and in a
+        // 32-bit host the reserved stacks alone exhausted the address space (thread
+        // creation then failed with "Not enough memory resources"). Queue here
+        // instead — an async semaphore wait costs no thread.
+        let permit = match tokio::time::timeout(
+            Duration::from_secs(120),
+            ffi_inflight().acquire(),
+        )
+        .await
+        {
+            Ok(Ok(permit)) => permit,
+            Ok(Err(_)) => {
+                return Err(Error::ServerError("FFI queue is closed".to_string()));
+            }
+            Err(_) => {
+                return Err(Error::ServerError(
+                    "Timed out after 120s waiting for a free FFI slot — a device call is stuck"
+                        .to_string(),
+                ));
+            }
+        };
+
         // Run heavy FFI work on blocking pool so request handling threads stay responsive.
-        let ffi_result = tokio::task::spawn_blocking(move || {
+        let spawned = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            tokio::task::spawn_blocking(move || {
+            let _permit = permit;
             let _guard = ffi_call_lock_timeout(60)
                 .ok_or_else(|| Error::ServerError("FFI lock timed out — prior C++ call may be stuck".to_string()))?;
 
@@ -342,17 +432,36 @@ impl T3000FfiApiService {
                 }
 
                 if let Some(func) = BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN {
-                    // Allocate buffer large enough for both input and output
-                    let mut buffer: Vec<u8> = vec![0; max_buffer_size];
                     let input_bytes = message_owned.as_bytes();
 
                     if input_bytes.len() >= max_buffer_size {
                         return Err(Error::ServerError("Input message too large for buffer".to_string()));
                     }
 
+                    // Reuse one buffer and grow it fallibly. `vec![0; 10 MB]` on every
+                    // call fails hard when the 32-bit host is low on memory
+                    // (handle_alloc_error → __fastfail → T3000.exe disappears with no
+                    // error), so reserve first and report a tool error instead.
+                    let shared = ffi_buffer();
+                    let mut buf_guard = shared.lock().unwrap_or_else(|e| e.into_inner());
+                    let buffer: &mut Vec<u8> = &mut buf_guard;
+                    if buffer.len() < max_buffer_size {
+                        if buffer.try_reserve_exact(max_buffer_size - buffer.len()).is_err() {
+                            return Err(Error::ServerError(format!(
+                                "Not enough memory for the {} MB FFI buffer (host private bytes: {} MB). \
+                                 T3000.exe is a 32-bit process — restart T3000 and retry",
+                                max_buffer_size / (1024 * 1024),
+                                process_memory_mb().map(|m| m.to_string()).unwrap_or_else(|| "?".to_string())
+                            )));
+                        }
+                        buffer.resize(max_buffer_size, 0);
+                    }
+                    // The reply is read as a C string, so the tail must stay zeroed
+                    // (a reused buffer still holds the previous, longer reply).
+                    buffer.fill(0);
+
                     // Copy input message into buffer
                     buffer[..input_bytes.len()].copy_from_slice(input_bytes);
-                    buffer[input_bytes.len()] = 0; // Null terminate
 
                     // Call FFI - buffer contains input, will be modified to contain output
                     let result = func(
@@ -386,9 +495,23 @@ impl T3000FfiApiService {
                     Err(Error::ServerError("FFI function not loaded".to_string()))
                 }
             }
-        })
-        .await
-        .map_err(|e| Error::ServerError(format!("FFI blocking task join error: {}", e)))?;
+            })
+        }));
+
+        // A failed thread spawn (32-bit address space exhausted) used to panic the
+        // request task and close the connection with no answer at all.
+        let handle = match spawned {
+            Ok(handle) => handle,
+            Err(_) => {
+                return Err(Error::ServerError(
+                    "Could not start a worker thread — T3000 is low on memory. Restart T3000 and retry"
+                        .to_string(),
+                ));
+            }
+        };
+        let ffi_result = handle
+            .await
+            .map_err(|e| Error::ServerError(format!("FFI blocking task join error: {}", e)))?;
 
         let (code, null_pos, response) = ffi_result?;
         if code == 0 {

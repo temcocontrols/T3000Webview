@@ -95,7 +95,12 @@ interface DeviceTreeState {
   fetchDevices: () => Promise<void>;
   refreshDevices: () => Promise<void>;
   scanForDevices: (options?: ScanOptions) => Promise<void>;
-  loadDevicesWithSync: (options?: { skipInitialFetch?: boolean }) => Promise<void>;
+  /**
+   * Poll the backend until the detached deep scan (serial COM + TCP sub-ports)
+   * finishes, then re-read the device list and report what it added.
+   */
+  awaitDeepScan: (intervalMs?: number, maxWaitMs?: number) => Promise<void>;
+  loadDevicesWithSync: (options?: { skipInitialFetch?: boolean; quiet?: boolean }) => Promise<void>;
   syncDatabaseWithCpp: () => Promise<void>; // Manual cleanup: sync DB with C++ side
   syncDevicePoints: (device: DeviceInfo) => Promise<void>;
   checkIfDeviceNeedsSync: (serialNumber: number) => Promise<boolean>;
@@ -339,15 +344,18 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         scanInFlight = (async () => {
           const { setMessage } = useStatusBarStore.getState();
           try {
-            setMessage(
-              options?.mode === 'udp'
-                ? 'Scanning the network (UDP) for T3000 devices...'
-                : 'Scanning network + serial (COM) ports for T3000 devices...',
-              'info'
-            );
+            if (!options?.quiet) {
+              setMessage(
+                options?.mode === 'udp'
+                  ? 'Scanning the network (UDP) for T3000 devices...'
+                  : 'Scanning network + serial (COM) ports for T3000 devices...',
+                'info'
+              );
+            }
             const response = await DeviceApiService.scanAndRefreshDevices(
               options?.timeout ?? 8,
-              options?.mode ?? 'full'
+              options?.mode ?? 'full',
+              options?.deep ?? false
             );
 
             const cleanedDevices = response.devices
@@ -364,18 +372,45 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               }
             });
 
-            // Keep ALL devices in the store — buildTreeStructure splits online (top)
-            // and offline (collapsible group at bottom).
-            set({ devices: cleanedDevices, deviceStatuses: newStatuses, lastSyncTime: new Date() });
+            // Merge instead of replace: the FFI panel-list sync can run
+            // concurrently, and its devices may have been written after this
+            // scan response was built. The scan's own record wins for a serial
+            // it returned (fresher status), everything else is preserved.
+            // Keep ALL devices in the store — buildTreeStructure splits online
+            // (top) and offline (collapsible group at bottom).
+            const mergedDevices = new Map<number, DeviceInfo>();
+            get().devices.forEach((d) => mergedDevices.set(d.serialNumber, d));
+            cleanedDevices.forEach((d) => mergedDevices.set(d.serialNumber, d));
+            const mergedStatuses = new Map(get().deviceStatuses);
+            newStatuses.forEach((status, serial) => mergedStatuses.set(serial, status));
+
+            set({
+              devices: Array.from(mergedDevices.values()),
+              deviceStatuses: mergedStatuses,
+              lastSyncTime: new Date(),
+            });
             get().buildTreeStructure();
             const scannedCount = response.scanned ?? 0;
             const parts: string[] = [`${scannedCount} device(s) found`];
             if (response.serial_count) parts.push(`${response.serial_count} serial`);
             if (response.udp_count) parts.push(`${response.udp_count} UDP`);
             if (response.tcp_sub_count) parts.push(`${response.tcp_sub_count} TCP sub-port`);
-            setMessage(`Scan complete — ${parts.join(', ')}`, 'success');
+            if (!options?.quiet) {
+              setMessage(`Scan complete — ${parts.join(', ')}`, 'success');
+            }
+
+            // Serial + TCP sub-port probing runs detached in the backend; poll
+            // once it started so the tree picks up those devices when they land.
+            if (response.deep_scan === 'running') {
+              if (!options?.quiet) {
+                setMessage('Deep scan (serial + sub-ports) running in the background...', 'info');
+              }
+              void get().awaitDeepScan();
+            }
           } catch (error) {
-            setMessage('Network scan failed', 'warning');
+            const reason = error instanceof Error ? error.message : String(error);
+            LogUtil.Error('[scanForDevices] Scan failed:', error);
+            setMessage(`Network scan failed — ${reason}`, 'warning');
           }
         })();
 
@@ -386,17 +421,49 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         }
       },
 
+      // Poll the detached deep scan (serial COM + TCP sub-ports) until it
+      // finishes, then refresh the tree from the DB it wrote into.
+      awaitDeepScan: async (intervalMs = 2000, maxWaitMs = 120000) => {
+        const { setMessage } = useStatusBarStore.getState();
+        const started = Date.now();
+        while (Date.now() - started < maxWaitMs) {
+          await new Promise((resolve) => setTimeout(resolve, intervalMs));
+          let status: { running?: boolean; found?: number };
+          try {
+            status = await DeviceApiService.getDeepScanStatus();
+          } catch (error) {
+            // Endpoint unavailable or server restarted: stop polling quietly.
+            LogUtil.Error('[awaitDeepScan] status check failed:', error);
+            return;
+          }
+          if (status.running) continue;
+
+          await get().fetchDevices();
+          const found = status.found ?? 0;
+          setMessage(
+            found > 0
+              ? `Deep scan finished — ${found} serial/sub-port device(s) added`
+              : 'Deep scan finished — no serial/sub-port devices found',
+            found > 0 ? 'success' : 'info'
+          );
+          return;
+        }
+        LogUtil.Error('[awaitDeepScan] gave up waiting for the deep scan');
+      },
+
       // Phase 1 of device loading: pull the device list from T3000 (FFI action 4
       // "message action") and mirror it into the DB. Fast, no network probing —
       // the slow discovery is a separate step (scanForDevices).
       loadDevicesWithSync: async (options) => {
         const { setMessage } = useStatusBarStore.getState();
         const skipInitialFetch = Boolean(options?.skipInitialFetch);
+        // Suppress only the success summaries; warnings/errors still surface.
+        const quiet = Boolean(options?.quiet);
 
         try {
           // Step 1: Optional load from DB (instant)
           if (!skipInitialFetch) {
-            setMessage('Loading devices from database...', 'info');
+            if (!quiet) setMessage('Loading devices from database...', 'info');
             await get().fetchDevices();
 
             const { devices } = get();
@@ -406,7 +473,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           }
 
           // Step 2: Sync device list with T3000
-          setMessage('Syncing device list with T3000...', 'info');
+          if (!quiet) setMessage('Syncing device list with T3000...', 'info');
 
           // Initialize T3Transport with FFI
           const transport = new T3Transport({
@@ -417,14 +484,50 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           // Call action 4: GET_PANELS_LIST
           const response = await transport.getDeviceList();
 
+          // Surface FFI failures instead of silently doing nothing: the C++
+          // returns `{error: "MFC application not initialized"}` (code -2) or a
+          // T3000_PANELS_WARMUP guard, and both used to end up as a vague
+          // "No devices found in T3000".
+          if (!response?.success) {
+            const cpp = (response?.data ?? {}) as { error?: string; code?: string };
+            const reason = cpp.error || response?.error || response?.message || 'unknown FFI error';
+            throw new Error(`T3000 panel list unavailable: ${reason}${cpp.code ? ` (${cpp.code})` : ''}`);
+          }
+
           // Check if response has data
           if (response && response.data && response.data.data) {
             const panels = response.data.data;
 
+            // An empty array means the C++ engine's UDP discovery knows nothing.
+            // That is expected on an RS485 install: `g_bacnet_panel_info` is
+            // filled only from 0x64/0x65 replies, so Tstat10/TSTAT7 devices on a
+            // COM port never appear here. They are imported from T3000's own
+            // building database instead (`ALL_NODE`), which is why the tree can
+            // still be populated. Saving zero panels would otherwise report
+            // "failed to save any to database".
+            if (Array.isArray(panels) && panels.length === 0) {
+              setMessage(
+                'T3000 UDP panel list is empty — serial (RS485) devices come from the T3000 database',
+                'info'
+              );
+              await transport.disconnect();
+              return;
+            }
 
-            // Log detailed panel information for debugging
-            panels.forEach((_panel: any, _idx: number) => {
-            });
+            // Mirrors OFFLINE_GRACE_SECS in the backend: a panel is only "online"
+            // when the C++ engine heard from it recently. Forcing is_online = 1
+            // here made stale panels look live forever and defeated the debounced
+            // offline marking of the scan path.
+            const OFFLINE_GRACE_SECS = 300;
+            const nowSecs = Date.now() / 1000;
+            const panelOnlineState = (panel: any): { isOnline: 1 | 0; lastChecked?: string } => {
+              const onlineTime = Number(panel.online_time ?? 0);
+              if (!Number.isFinite(onlineTime) || onlineTime <= 0) return { isOnline: 0 };
+              return {
+                isOnline: nowSecs - onlineTime <= OFFLINE_GRACE_SECS ? 1 : 0,
+                lastChecked: new Date(onlineTime * 1000).toISOString(),
+              };
+            };
 
             // Filter out unknown devices before processing
             const _knownPanels = panels.filter((_panel: any) => {
@@ -442,6 +545,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               for (const panel of panels) {
                 let serialNumber: number | undefined;
                 let deviceData: any = undefined;
+                let onlineState: { isOnline: 1 | 0; lastChecked?: string } = { isOnline: 0 };
                 try {
                   serialNumber = panel.serial_number || panel.serialNumber;
 
@@ -450,6 +554,7 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                   const rawPanelName = panel.panel_name || panel.panelName;
                   const panelName = cleanDeviceName(rawPanelName, '');
                   const panelNumber = panel.panel_number || panel.Panel_Number;
+                  onlineState = panelOnlineState(panel);
 
                   deviceData = {
                     SerialNumber: serialNumber,
@@ -459,8 +564,8 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                     MainBuilding_Name: 'Default_Building',
                     Building_Name: 'Local View',
                     show_label_name: panelName,
-                    is_online: 1,
-                    last_checked: new Date().toISOString(),
+                    is_online: onlineState.isOnline,
+                    ...(onlineState.lastChecked ? { last_checked: onlineState.lastChecked } : {}),
                     // Don't set description - let backend handle it or leave null
                   };
 
@@ -473,12 +578,33 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
                   savedCount++;
                 } catch (error: any) {
                   // Create may fail if device already exists �?try update to at least refresh online status
-                  if (serialNumber && (error?.message || '').toLowerCase().includes('duplicate') || String(error).includes('already exists')) {
+                  const isDuplicate =
+                    serialNumber !== undefined &&
+                    /duplicate|already exists/i.test(`${error?.message ?? ''} ${String(error)}`);
+                  if (isDuplicate) {
                     try {
+                      // The panel list may *confirm* a device is online, but only
+                      // the discovery scan may declare one offline (the backend
+                      // debounces that after OFFLINE_GRACE_SECS). Writing
+                      // `is_online: 0` here would race with a concurrently
+                      // running scan and flip a device the scan just found.
+                      const onlineFields: Record<string, unknown> = onlineState.isOnline === 1
+                        ? {
+                            is_online: 1,
+                            ...(onlineState.lastChecked ? { last_checked: onlineState.lastChecked } : {}),
+                          }
+                        : {};
+                      // Nothing to update when the panel list cannot confirm the
+                      // device is online — skip the request instead of writing an
+                      // empty body.
+                      if (Object.keys(onlineFields).length === 0) {
+                        savedCount++;
+                        continue;
+                      }
                       await fetch(`${API_BASE_URL}/api/t3_device/devices/${serialNumber}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ is_online: 1, last_checked: new Date().toISOString() }),
+                        body: JSON.stringify(onlineFields),
                       });
                       savedCount++;
                       continue;
@@ -498,7 +624,9 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
 
             // Show detailed statistics
             if (savedCount > 0) {
-              setMessage(`Found ${panels.length} device(s), saved ${savedCount} successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`, savedCount === panels.length ? 'success' : 'warning');
+              if (!quiet) {
+                setMessage(`Found ${panels.length} device(s), saved ${savedCount} successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`, savedCount === panels.length ? 'success' : 'warning');
+              }
             } else {
               setMessage(`Found ${panels.length} device(s) but failed to save any to database`, 'error');
             }
@@ -528,7 +656,9 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             if (onlineList.length > 0) summaryParts.push(`${onlineList.length} online (${onlineList.map(d => d.nameShowOnTree).join(', ')})`);
             if (offlineList.length > 0) summaryParts.push(`${offlineList.length} offline (${offlineList.map(d => d.nameShowOnTree).join(', ')})`);
             if (hiddenDevs.length > 0) summaryParts.push(`${hiddenDevs.length} unknown (${hiddenDevs.map(d => `SN${d.serialNumber}`).join(', ')})`);
-            setMessage(summaryParts.join(' | '), offlineList.length > 0 ? 'warning' : 'success');
+            if (!quiet) {
+              setMessage(summaryParts.join(' | '), offlineList.length > 0 ? 'warning' : 'success');
+            }
 
             if (updatedDevices.length > 0) {
               // Keep the current selection if it is still a valid, addressable
@@ -561,8 +691,11 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               }
             }
           } else {
-            console.warn('[loadDevicesWithSync] No data in response:', response);
-            setMessage('No devices found in T3000', 'warning');
+            console.warn('[loadDevicesWithSync] No panel list in response:', response);
+            setMessage(
+              'T3000 UDP panel list is empty — serial (RS485) devices come from the T3000 database',
+              'info'
+            );
           }
 
           await transport.disconnect();

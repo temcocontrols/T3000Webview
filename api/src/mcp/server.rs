@@ -3,7 +3,7 @@
 use axum::{
     extract::State,
     http::{StatusCode, HeaderMap},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{delete, get, post},
     Json, Router,
 };
@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use crate::app_state::T3AppState;
 use crate::mcp::types::{JsonRpcRequest, McpSession, SessionStore};
-use crate::mcp::storage::{current_device_file, load_json_file, save_json_file};
+use crate::mcp::storage::{current_device_file, load_json_file, update_device_context};
 
 // ═══ MCP API Logger ═══
 
@@ -26,9 +26,25 @@ pub(crate) fn mcp_log(msg: &str) {
 
 // ═══ Server Constants ═══
 
-pub(crate) const SERVER_NAME: &str = "T3000 Haystack MCP";
-pub(crate) const SERVER_VERSION: &str = "1.0.0";
+/// Display name advertised to MCP clients (`initialize.serverInfo.name`,
+/// `t3000_ping.server`, `t3000_get_version.name`). The server covers the whole
+/// T3000 surface — devices, points, Haystack, FDD — so the name is not
+/// Haystack-specific.
+pub const SERVER_NAME: &str = "T3000 MCP Server";
+/// API version reported to MCP clients (`initialize.serverInfo.version` and
+/// `t3000_get_version`). Maintained **by hand** — bump it when the MCP API
+/// changes (1.0.1, 1.1.0, ...). It is intentionally independent of the Rust
+/// crate version in `Cargo.toml`.
+pub const SERVER_VERSION: &str = "1.0.0";
 pub(crate) const PROTOCOL_VERSION: &str = "2025-03-26";
+
+/// Process start reference for the `t3000_ping` deep probe (set at startup).
+static STARTED_AT: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+/// Seconds since the MCP server was initialised.
+pub(crate) fn uptime_secs() -> u64 {
+    STARTED_AT.get_or_init(std::time::Instant::now).elapsed().as_secs()
+}
 
 /// Helper to get DB from T3AppState
 pub(crate) async fn get_db(state: &T3AppState) -> Result<sea_orm::DatabaseConnection, (StatusCode, Json<Value>)> {
@@ -59,12 +75,26 @@ pub(crate) async fn track_current_device(args: &Value) {
                 .and_then(|v| v.as_i64())
         });
     if let Some(sn) = serial {
-        let _ = save_json_file(&current_device_file(), &json!({"serial": sn, "updated_at": Utc::now().to_rfc3339()})).await;
+        // Merge instead of overwrite: `ui_device` (set by the UI tree) and
+        // `chat_device` (set by t3000_set_chat_device) live in the same file and
+        // are read by `t3000_device_current` / GET /api/mcp/current-device.
+        // Rewriting the file wholesale erased them on every tool call.
+        let _ = update_device_context(|state| {
+            if let Some(object) = state.as_object_mut() {
+                // Older builds stored this tool's serial as `serial`, which reads
+                // like a current-device answer; `last_tool_device` replaces it.
+                object.remove("serial");
+                object.insert("last_tool_device".to_string(), json!(sn));
+                object.insert("updated_at".to_string(), json!(Utc::now().to_rfc3339()));
+            }
+        })
+        .await;
     }
 }
 
 /// Create MCP routes for the Axum router
 pub fn create_mcp_routes() -> Router<T3AppState> {
+    STARTED_AT.get_or_init(std::time::Instant::now);
     Router::new()
         .route("/api/mcp", post(mcp_post_handler))
         .route("/api/mcp", get(mcp_sse_handler))
@@ -82,25 +112,22 @@ async fn set_current_device_handler(
 
     match serial {
         Some(s) => {
-            let state_file = current_device_file();
-            let mut existing = if state_file.exists() {
-                load_json_file(&state_file).await.unwrap_or(json!({}))
-            } else {
-                json!({})
-            };
             let dev_name = body.get("device_name").and_then(|v| v.as_str()).map(|s| s.to_string());
-            existing["ui_device"] = json!(s);
-            existing["ui_device_name"] = json!(dev_name);
-            existing["updated_at"] = json!(Utc::now().to_rfc3339());
-            if existing.get("chat_device").is_none() {
-                existing["chat_device"] = json!(null);
-                existing["chat_device_name"] = json!(null);
-                existing["confirmed_at"] = json!(null);
-            }
-            match save_json_file(&state_file, &existing).await {
-                Ok(()) => {
+            let result = update_device_context(|state| {
+                state["ui_device"] = json!(s);
+                state["ui_device_name"] = json!(dev_name);
+                state["updated_at"] = json!(Utc::now().to_rfc3339());
+                if state.get("chat_device").is_none() {
+                    state["chat_device"] = json!(null);
+                    state["chat_device_name"] = json!(null);
+                    state["confirmed_at"] = json!(null);
+                }
+            })
+            .await;
+            match result {
+                Ok(state) => {
                     info!("[MCP] ui_device set to serial={} name={:?}", s, dev_name);
-                    Json(json!({"ok": true, "ui_device": s, "ui_device_name": dev_name, "chat_device": existing["chat_device"]})).into_response()
+                    Json(json!({"ok": true, "ui_device": s, "ui_device_name": dev_name, "chat_device": state["chat_device"]})).into_response()
                 }
                 Err(e) => {
                     error!("[MCP] Failed to save device: {}", e);
@@ -134,7 +161,7 @@ pub async fn mcp_post_handler(
     State(state): State<T3AppState>,
     headers: HeaderMap,
     Json(body): Json<Value>,
-) -> Result<impl IntoResponse, (StatusCode, Json<Value>)> {
+) -> Result<Response, (StatusCode, Json<Value>)> {
     let db = get_db(&state).await?;
     let sessions = get_session_store(&state);
 
@@ -187,14 +214,11 @@ pub async fn mcp_post_handler(
                 session.initialized = true;
             }
         }
-        let mut response_headers = HeaderMap::new();
-        response_headers.insert(
-            "mcp-session-id",
-            axum::http::HeaderValue::from_str(&session_id).unwrap_or(
-                axum::http::HeaderValue::from_static("unknown")
-            ),
-        );
-        return Ok((response_headers, Json(json!({}))));
+        // Transport spec: a notification (no `id`) is acknowledged with
+        // 202 Accepted and an empty body — never with a JSON-RPC response.
+        let mut res = StatusCode::ACCEPTED.into_response();
+        set_session_header(res.headers_mut(), &session_id);
+        return Ok(res);
     }
 
     if req.method == "initialize" {
@@ -206,21 +230,25 @@ pub async fn mcp_post_handler(
 
     let resp = crate::mcp::dispatch::handle_request(&req, &db).await;
 
-    let mut response_headers = HeaderMap::new();
-    response_headers.insert(
-        "mcp-session-id",
-        axum::http::HeaderValue::from_str(&session_id).unwrap_or(
-            axum::http::HeaderValue::from_static("unknown")
-        ),
-    );
-
     let body = Json(serde_json::to_value(&resp).unwrap_or(json!({
         "jsonrpc": "2.0",
         "id": null,
         "error": { "code": -32603, "message": "Internal error" }
     })));
+    let mut res = body.into_response();
+    set_session_header(res.headers_mut(), &session_id);
 
-    Ok((response_headers, body))
+    Ok(res)
+}
+
+/// Attach the `Mcp-Session-Id` every response must carry so the client can
+/// continue (or re-initialize) its session.
+fn set_session_header(headers: &mut HeaderMap, session_id: &str) {
+    headers.insert(
+        "mcp-session-id",
+        axum::http::HeaderValue::from_str(session_id)
+            .unwrap_or(axum::http::HeaderValue::from_static("unknown")),
+    );
 }
 
 // ═══ GET /api/mcp — SSE ═══

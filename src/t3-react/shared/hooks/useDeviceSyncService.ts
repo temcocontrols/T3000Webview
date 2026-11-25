@@ -36,7 +36,7 @@ export function useDeviceSyncService(config: SyncServiceConfig = {}) {
     intervalMs = 60000, // Default: 60 seconds
   } = config;
 
-  const { fetchDevices } = useDeviceTreeStore();
+  const { fetchDevices, scanForDevices } = useDeviceTreeStore();
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -48,6 +48,11 @@ export function useDeviceSyncService(config: SyncServiceConfig = {}) {
     // Note: Initial fetch is done in TreePanel component on mount
     intervalRef.current = window.setInterval(() => {
       fetchDevices();
+      // A DB re-read can never change a device's online state — only a
+      // discovery pass can. The UDP pass takes ~0.7 s and refreshes is_online
+      // for every device (the backend debounces offline marking); a manual scan
+      // already in flight is joined, not duplicated.
+      scanForDevices({ timeout: 8, mode: 'udp', quiet: true }).catch(() => {});
     }, intervalMs);
 
     // Cleanup on unmount
@@ -57,7 +62,7 @@ export function useDeviceSyncService(config: SyncServiceConfig = {}) {
         intervalRef.current = null;
       }
     };
-  }, [enabled, intervalMs, fetchDevices]);
+  }, [enabled, intervalMs, fetchDevices, scanForDevices]);
 }
 
 export default useDeviceSyncService;

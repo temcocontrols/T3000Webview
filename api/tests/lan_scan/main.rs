@@ -279,6 +279,129 @@ async fn test_real_network_scan() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// Real full-scan timing test — UDP + serial COM + TCP sub-port.
+// Run with: cargo test --test lan_scan test_real_full_scan -- --ignored --nocapture
+// ═══════════════════════════════════════════════════════════════════
+
+#[tokio::test]
+#[ignore = "requires T3000 devices on the local network"]
+async fn test_real_full_scan() {
+    use t3_webview_api::lan_scan::scanner;
+
+    println!("\n=== T3000 Full Scan timing ===");
+
+    let t_udp = std::time::Instant::now();
+    let udp = scanner::scan_network(8).await;
+    println!(
+        "UDP pass:      {:>6} ms  ({} device(s) on {:?})",
+        t_udp.elapsed().as_millis(),
+        udp.devices.len(),
+        udp.local_ips
+    );
+
+    let t_serial = std::time::Instant::now();
+    let serial = t3_webview_api::lan_scan::serial::scan_all_serial_ports(None, 1, 254);
+    println!(
+        "Serial pass:   {:>6} ms  ({} device(s), failures: {:?})",
+        t_serial.elapsed().as_millis(),
+        serial.devices.len(),
+        serial.port_open_failures
+    );
+
+    let t_full = std::time::Instant::now();
+    let full = scanner::scan_all(8).await;
+    println!(
+        "scan_all():    {:>6} ms  ({} UDP, {} serial, {} TCP sub → {} device(s))",
+        t_full.elapsed().as_millis(),
+        full.udp_count,
+        full.serial_count,
+        full.tcp_sub_count,
+        full.devices.len()
+    );
+
+    // Per-parent sub-port probing is the remaining cost of a full scan.
+    for dev in udp.devices.iter().filter(|d| t3_webview_api::lan_scan::tcp_sub::supports_sub_ports(d.product_id)) {
+        let t_sub = std::time::Instant::now();
+        let found = t3_webview_api::lan_scan::tcp_sub::scan_parent_sub_ports(dev)
+            .map(|f| f.len())
+            .unwrap_or(0);
+        println!(
+            "tcp-sub {}:    {:>6} ms  ({} sub device(s))",
+            dev.ip_address,
+            t_sub.elapsed().as_millis(),
+            found
+        );
+    }
+    for w in &full.warnings {
+        println!("  ⚠  {}", w);
+    }
+    println!("=== Timing complete ===\n");
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Subnet / unicast-sweep math
+// (kept here — not inline in scanner.rs — so production files carry no tests)
+// ═══════════════════════════════════════════════════════════════════
+
+use std::net::Ipv4Addr;
+use t3_webview_api::lan_scan::scanner::{parse_mask, subnet_broadcast, sweep_targets};
+
+fn ip(s: &str) -> Ipv4Addr {
+    s.parse().unwrap()
+}
+
+#[test]
+fn parses_real_masks_only() {
+    assert_eq!(parse_mask("255.255.255.0"), Some(ip("255.255.255.0")));
+    assert_eq!(parse_mask("255.255.240.0"), Some(ip("255.255.240.0")));
+    assert_eq!(parse_mask(""), None);
+    assert_eq!(parse_mask("-"), None);
+    assert_eq!(parse_mask("0.0.0.0"), None);
+}
+
+#[test]
+fn computes_subnet_directed_broadcast() {
+    assert_eq!(
+        subnet_broadcast(ip("10.10.10.123"), ip("255.255.255.0")),
+        ip("10.10.10.255")
+    );
+    assert_eq!(
+        subnet_broadcast(ip("172.30.176.1"), ip("255.255.240.0")),
+        ip("172.30.191.255")
+    );
+}
+
+#[test]
+fn sweeps_only_the_local_24() {
+    let targets = sweep_targets(ip("10.10.10.123"), ip("255.255.255.0"));
+    assert_eq!(targets.len(), 253);
+    assert_eq!(targets.first(), Some(&ip("10.10.10.1")));
+    assert_eq!(targets.last(), Some(&ip("10.10.10.254")));
+    // The adapter's own address is never probed.
+    assert!(!targets.contains(&ip("10.10.10.123")));
+}
+
+#[test]
+fn clamps_wide_subnets_to_one_24() {
+    let targets = sweep_targets(ip("10.10.10.123"), ip("255.255.0.0"));
+    assert_eq!(targets.len(), 253);
+    assert_eq!(targets.first(), Some(&ip("10.10.10.1")));
+    assert_eq!(targets.last(), Some(&ip("10.10.10.254")));
+}
+
+#[test]
+fn sweeps_narrow_subnets_exactly() {
+    // /30: only two usable hosts, one of which is the adapter itself.
+    let targets = sweep_targets(ip("192.168.5.1"), ip("255.255.255.252"));
+    assert_eq!(targets, vec![ip("192.168.5.2")]);
+}
+
+#[test]
+fn ignores_missing_mask() {
+    assert!(sweep_targets(ip("10.10.10.123"), ip("0.0.0.0")).is_empty());
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // Modbus RTU wire helpers (ported from the C++ scanner)
 // ═══════════════════════════════════════════════════════════════════
 

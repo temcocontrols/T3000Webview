@@ -10,13 +10,18 @@ fn all_tools() -> &'static [t3_webview_api::mcp::ToolDef] {
 
 // ═══ Count ═══
 
+/// Locked tool count — every advertised tool is also asserted to be wired into
+/// the dispatcher by `tests/mcp/dispatch_coverage.rs`.
+const EXPECTED_TOOL_COUNT: usize = 74;
+
 #[test]
-fn test_tool_count_is_70() {
+fn test_tool_count_is_74() {
     let count = all_tools().len();
     assert_eq!(
-        count, 70,
-        "Expected 70 MCP tools, found {}. If you added/removed tools, update this test.",
-        count
+        count, EXPECTED_TOOL_COUNT,
+        "Expected {} MCP tools, found {}. If you added/removed tools, update this test \
+         (and make sure the new tool has a dispatcher arm).",
+        EXPECTED_TOOL_COUNT, count
     );
 }
 
@@ -148,6 +153,50 @@ fn test_required_params_match_properties() {
 /// Helper: find a tool by name.
 fn find_tool(name: &str) -> Option<&t3_webview_api::mcp::ToolDef> {
     all_tools().iter().find(|t| t.name == name)
+}
+
+// ═══ Indexing convention ═══
+
+/// Every tool that documents `point_index` must describe the same **1-based**
+/// convention. A wrong description is worse than none: the model sends 0, the
+/// handler subtracts 1 and reads/writes the wrong point (or none at all).
+#[test]
+fn test_point_index_is_documented_as_one_based() {
+    fn walk(value: &serde_json::Value, owner: &str, checked: &mut usize) {
+        match value {
+            serde_json::Value::Object(map) => {
+                for (key, child) in map {
+                    if key == "point_index" {
+                        if let Some(description) = child.get("description").and_then(|v| v.as_str()) {
+                            assert!(
+                                description.to_lowercase().contains("1-based"),
+                                "{} documents point_index as {:?} — must say 1-based",
+                                owner, description
+                            );
+                            *checked += 1;
+                        }
+                    }
+                    walk(child, owner, checked);
+                }
+            }
+            serde_json::Value::Array(items) => {
+                for item in items {
+                    walk(item, owner, checked);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let mut checked = 0;
+    for tool in all_tools() {
+        walk(&tool.input_schema, tool.name, &mut checked);
+    }
+    assert!(
+        checked >= 4,
+        "expected at least 4 schemas to document point_index, found {}",
+        checked
+    );
 }
 
 /// Helper: assert a tool has a specific required parameter.

@@ -70,10 +70,19 @@ impl LlmProvider for LocalProvider {
         }
         // (tools count already in request log above)
 
-        let client = Client::builder()
+        // A LAN/loopback model server must be reached directly: the machine's
+        // system proxy (corporate proxy, VPN/accelerator) cannot serve a private
+        // address and answers 502 Bad Gateway with an empty body. Public
+        // endpoints keep using the proxy, so proxy setups are unaffected.
+        let mut client_builder = Client::builder()
+            .connect_timeout(super::CONNECT_TIMEOUT)
             .timeout(std::time::Duration::from_secs(300))
             .http1_only()
-            .user_agent("T3000-MCP/1.0")
+            .user_agent("T3000-MCP/1.0");
+        if super::is_local_endpoint(&url) {
+            client_builder = client_builder.no_proxy();
+        }
+        let client = client_builder
             .build()
             .map_err(|e| AiError::Provider(format!("Failed to build HTTP client: {}", e)))?;
 
@@ -88,10 +97,37 @@ impl LlmProvider for LocalProvider {
             }
         }
 
-        let response = req_builder
-            .send()
-            .await
-            .map_err(|e| AiError::Provider(format!("Failed to connect: {}", e)))?;
+        // Report progress so a slow/blocked model server never looks like a hang.
+        let _ = tx.send(StreamEvent::Status {
+            phase: "connecting".to_string(),
+            message: "Contacting the local model server…".to_string(),
+        });
+
+        // A local server only sends headers after prompt processing, which can
+        // be slow on CPU — hence the (much) more generous header cap than the
+        // cloud providers. A dead port still fails instantly.
+        let response = match tokio::time::timeout(super::LOCAL_SEND_TIMEOUT, req_builder.send()).await {
+            Ok(result) => result.map_err(|e| AiError::Provider(format!("Failed to connect: {}", e)))?,
+            Err(_) => {
+                let _ = tx.send(StreamEvent::Status {
+                    phase: "timeout".to_string(),
+                    message: format!(
+                        "No response from the local model server after {}s — it may be overloaded or unreachable",
+                        super::LOCAL_SEND_TIMEOUT.as_secs()
+                    ),
+                });
+                return Err(AiError::Provider(format!(
+                    "Timed out waiting {}s for the local model server at {}",
+                    super::LOCAL_SEND_TIMEOUT.as_secs(),
+                    endpoint
+                )));
+            }
+        };
+
+        let _ = tx.send(StreamEvent::Status {
+            phase: "waiting".to_string(),
+            message: "Connected — waiting for the model to answer…".to_string(),
+        });
 
         let status = response.status();
         tracing::info!("[Local] Response: {}", status);
@@ -304,4 +340,41 @@ fn flush_pre_tool_content(
 /// Check that tool call arguments are valid JSON (or empty).
 fn is_valid_tool_args(args: &str) -> bool {
     args.trim().is_empty() || serde_json::from_str::<Value>(args).is_ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A dead local model server must also report progress before failing.
+    #[tokio::test]
+    async fn unreachable_local_endpoint_emits_status_before_failing() {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
+        let started = std::time::Instant::now();
+
+        let result = LocalProvider
+            .stream_chat("http://127.0.0.1:1/v1", None, "local-x", &[], &[], &tx)
+            .await;
+
+        drop(tx);
+
+        let mut phases = Vec::new();
+        while let Some(event) = rx.recv().await {
+            if let StreamEvent::Status { phase, .. } = event {
+                phases.push(phase);
+            }
+        }
+
+        assert!(result.is_err(), "connection refused must surface as an error");
+        assert!(
+            phases.iter().any(|p| p == "connecting"),
+            "expected a connecting status, got {:?}",
+            phases
+        );
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(15),
+            "took {:?} — connect timeout is not applied",
+            started.elapsed()
+        );
+    }
 }

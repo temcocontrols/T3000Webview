@@ -20,7 +20,7 @@
 - **Haystack** — Flat tag-based semantic model for building data (`point`, `sensor`, `outside`, `air`, `temp`)
 - **Brick** — Formal ontology with class hierarchy and relationships (`Outside_Air_Temperature_Sensor isPartOf AHU`)
 - **Auto-Tagging** — Regex rules automatically assign tags + Brick classes to device points
-- **MCP (Model Context Protocol)** — JSON-RPC protocol for exposing 44 tools to LLM agents across 11 categories: Haystack tagging, Core, Data & Metadata, Operational, Analytics, Rules Management, Alarms & Trends, Device Operations, Settings, Control Logic, Documentation
+- **MCP (Model Context Protocol)** — JSON-RPC protocol for exposing 74 tools to LLM agents across 18 categories: Haystack tagging, Core, Data & Metadata, Operational, Analytics, Rules Management, Alarms & Trends, Device Operations, Settings, Control Logic, Documentation
 
 ## Database Tables
 
@@ -37,7 +37,7 @@
 
 | Method | Route | Description |
 |---|---|---|
-| `POST` | `/api/mcp` | MCP JSON-RPC 2.0 requests (44 tools) |
+| `POST` | `/api/mcp` | MCP JSON-RPC 2.0 requests (74 tools) |
 | `GET` | `/api/mcp` | SSE endpoint (server → client notifications) |
 | `DELETE` | `/api/mcp` | Session termination |
 

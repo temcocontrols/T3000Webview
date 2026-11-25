@@ -1,4 +1,8 @@
 # System Overview
+> **Different subsystem.** The screen JSON on these pages belongs to the TSTAT LCD, not to
+> Design Studio / EEZ. The Design Studio document is
+> [../bacnet-api/screen-json.md](../bacnet-api/screen-json.md).
+
 
 ## End-to-End Architecture
 

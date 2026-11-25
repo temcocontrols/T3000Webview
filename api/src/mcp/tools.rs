@@ -16,7 +16,7 @@ lazy_static::lazy_static! {
             "properties": {
                 "filter": {
                     "type": "string",
-                    "description": "Optional category filter (haystack, brick, custom)"
+                    "description": "Optional case-insensitive substring match on the tag name or its category (e.g. \"temp\" matches the `temp` tag, \"custom\" matches the custom category)"
                 }
             }
         }),
@@ -24,7 +24,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_haystack_get_point_tags",
         title: "Get Point Tags",
-        description: "Get all Haystack tags assigned to specific points by serial number and point type.",
+        description: "Get all Haystack tags assigned to specific points by serial number and point type. Each entry carries point_index (0-based, as stored in the tag tables) and point_index_1based — pass point_index_1based to t3000_point_read / t3000_point_write, which count from 1 (IN1 = 1).",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -44,7 +44,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_haystack_search_points",
         title: "Search Points by Tags",
-        description: "Search for points that have specific tags. Returns matching point metadata with full tag sets.",
+        description: "Search for points that have specific tags. Returns matching point metadata with full tag sets. Each entry carries point_index (0-based, as stored in the tag tables) and point_index_1based — pass point_index_1based to t3000_point_read / t3000_point_write, which count from 1 (IN1 = 1).",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -128,10 +128,12 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_ping",
         title: "Ping Server",
-        description: "Health check. Returns server status and timestamp.",
+        description: "Health check. Returns server status and timestamp. Use deep=true to also probe the database and report the device count and uptime.",
         input_schema: json!({
             "type": "object",
-            "properties": {}
+            "properties": {
+                "deep": { "type": "boolean", "description": "Optional: probe the database and report device_count and uptime_secs" }
+            }
         }),
     },
     ToolDef {
@@ -176,13 +178,13 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_scan_all",
         title: "Full Device Scan (UDP + Serial COM + Modbus TCP)",
-        description: "Run a full T3000 device discovery pass mirroring the C++ ScanAll(): 1) UDP broadcast scan (0x64/0x65) for LAN devices, 2) serial COM/USB Modbus RTU scan of all COM ports (including USB virtual COM ports) for RS485/serial devices, 3) Modbus TCP sub-port scan for devices behind Minipanel/CM5 down-expansion gateways. Returns merged devices with counts per scan method and the COM ports where serial devices were found. Takes 10–30 seconds.",
+        description: "Run a full T3000 device discovery pass mirroring the C++ ScanAll(): 1) UDP broadcast scan (0x64/0x65) for LAN devices, 2) serial COM/USB Modbus RTU scan of all COM ports (including USB virtual COM ports) for RS485/serial devices, 3) Modbus TCP sub-port scan for devices behind Minipanel/CM5 down-expansion gateways. Returns merged devices with counts per scan method and the COM ports where serial devices were found. timeout_seconds bounds only the UDP wait; the serial and TCP sub-port phases then run to completion, so a call can take up to ~30 s when a device is found. It may also update the device table with newly discovered panels.",
         input_schema: json!({
             "type": "object",
             "properties": {
                 "timeout_seconds": {
                     "type": "integer",
-                    "description": "Seconds to wait for UDP responses (default: 8, range: 3–30)"
+                    "description": "Seconds to wait for UDP responses (default: 8, range: 3–30); the serial and TCP phases are not bounded by it"
                 }
             }
         }),
@@ -276,7 +278,7 @@ lazy_static::lazy_static! {
                 },
                 "point_index": {
                     "type": "integer",
-                    "description": "Zero-based point index"
+                    "description": "1-based point index (matches UI display, e.g. in1=1)"
                 }
             },
             "required": ["serial_number", "point_type", "point_index"]
@@ -340,7 +342,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_point_read",
         title: "Read Point Value",
-        description: "Read the current value of a single point from the database (last synced value).",
+        description: "Read the current value of a single point from the database (last synced value; use t3000_device_refresh to pull fresh values from the device first). Returns the full label, short label, scaled value plus raw value, units/range text and codes, and whether the point is digital.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -354,7 +356,7 @@ lazy_static::lazy_static! {
                 },
                 "point_index": {
                     "type": "integer",
-                    "description": "1-based point index (matches UI display, e.g. out1=1)"
+                    "description": "1-based point index, 1..64 (matches UI display, e.g. IN1 = 1, out1 = 1)"
                 }
             },
             "required": ["serial_number", "point_type", "point_index"]
@@ -377,7 +379,7 @@ lazy_static::lazy_static! {
                 },
                 "point_index": {
                     "type": "integer",
-                    "description": "Zero-based point index"
+                    "description": "1-based point index (matches UI display, e.g. out1=1)"
                 },
                 "value": {
                     "description": "Value to write (number, boolean, or string)"
@@ -495,7 +497,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_haystack_export",
         title: "Export Semantic Model",
-        description: "Export the full semantic model for devices. Supports haystack-json (Project Haystack), brick-ttl (Turtle RDF), brick-jsonld (JSON-LD), and csv-flat (flat table of all points with values, units, tags, brick class).",
+        description: "Export the full semantic model for devices. Supports haystack-json (Project Haystack), brick-ttl (Turtle RDF), brick-jsonld (JSON-LD), and csv-flat (flat table of all points with values, units text, tags, brick class). serial_numbers is required and every serial must be a known device.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -515,8 +517,8 @@ lazy_static::lazy_static! {
     // ═══ v4: Rules Management ═══ 
     ToolDef {
         name: "t3000_rule_toggle",
-        title: "Toggle Rule",
-        description: "Enable or disable an auto-tagging rule by ID.",
+        title: "Enable/Disable Rule",
+        description: "Set an auto-tagging rule's enabled state. This sets the state you pass in (it does not flip): calling it twice with enabled:false leaves the rule disabled.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -535,7 +537,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_rule_create",
         title: "Create Rule",
-        description: "Create a new auto-tagging rule with a regex pattern and target tags.",
+        description: "Create a new auto-tagging rule from a regex pattern plus the tags or Brick class it assigns. Requires haystack_tags for category 'haystack' and brick_class for category 'brick'; rule_name must be unique; pattern must be a valid regex.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -617,7 +619,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_trendlog_query",
         title: "Query Trend Log",
-        description: "Query historical trend data for a point over a time range.",
+        description: "Query historical trend data for one point over a time range. point_index is 1-based (1..64) and only that point's samples are returned. Fails when the point is not logged or has no recorded history.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -703,7 +705,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_device_refresh",
         title: "Refresh Device Data",
-        description: "Force-refresh point data from the physical device via FFI Action 17 (GET_WEBVIEW_LIST). Updates the database with current values from the hardware. Optionally filter by point type.",
+        description: "Read the live point values of a device with FFI Action 17 (GET_WEBVIEW_LIST) — the same blocking device read T3000 performs when you open a device's inputs/outputs. The panel is resolved from T3000's live device list, so a stale panel id in the local database does not block it. Saves what it reads into the device database (so t3000_point_read and open pages see it immediately) and returns the values: 1-based index, scaled value, raw value and label, plus per-type counts. Optionally filter by point type.",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -757,7 +759,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_settings_write",
         title: "Update Device Settings",
-        description: "Update device settings. Supports network (ip_address, subnet, gateway, tcp_type), communication (com0/1/2_config, com_baudrate0/1/2), time (time_zone, enable_sntp, sntp_server, flag_time_sync_pc), and email (smtp_server, smtp_port, email_address, etc.). Writes to database and syncs to device via FFI.",
+        description: "Update device settings in the webview database. Supports network (ip_address, subnet, gateway, tcp_type), communication (com0/1/2_config, com_baudrate0/1/2), time (time_zone, enable_sntp, sntp_server, flag_time_sync_pc), and email (smtp_server, smtp_port, email_address, etc.). The device must already exist; values are validated against the category's allowed fields. This writes the database row only — it does not push to the controller.",
         input_schema: json!({
             "type": "object",
             "properties": {

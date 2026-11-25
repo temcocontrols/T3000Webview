@@ -4,23 +4,25 @@ items:
   href: README.md
 - name: "T3 Firmware — LVGL Display Architecture"
   href: device-firmware-lvgl-architecture.md
-- name: "Firmware Developer Onboarding"
-  href: firmware-developer-onboarding.md
-- name: "Phase 2 — Device-Side Dynamic UI Renderer (Design)"
-  href: phase2-device-renderer-design.md
-- name: "Phase 2 — Firmware Implementation Guide"
-  href: phase2-firmware-implementation-guide.md
-- name: "Phase 2 — Host Implementation Guide"
-  href: phase2-host-implementation-guide.md
 - name: "Deploy to Device — as built (REST)"
   href: device-interface-deployment-via-bacnet-design.md
+- name: "Firmware Developer Onboarding — T3-programmable-controller-on-ESP32"
+  href: firmware-developer-onboarding.md
 - name: "Import from Device — as built"
   href: import-from-device-design.md
 - name: ".EEZ-Project JSON Format — Design Document"
   href: lvgl-eez-project-json-format.md
 - name: "Static Resource Copy — Build-Time Asset Pipeline"
   href: static-resource-copy-build.md
+- name: "Phase 2 — Device-Side Dynamic UI Renderer (Design)"
+  href: phase2-device-renderer-design.md
 - name: "LVGL WASM Browser Build Migration"
   href: wasm-browser-build-migration.md
+- name: "Phase 2 — Firmware Implementation Guide (T3-programmable-controller-on-ESP32)"
+  href: phase2-firmware-implementation-guide.md
+- name: "Phase 2 — Host Implementation Guide (T3000 WebView / Design Studio)"
+  href: phase2-host-implementation-guide.md
+- name: "Screen deploy lifecycle — transactions, versions, recovery (design)"
+  href: screen-deploy-lifecycle-design.md
 - name: "Manual"
   href: manual/toc.yml

@@ -1,4 +1,4 @@
-﻿// Schedule Refresh API Routes
+// Schedule Refresh API Routes
 // Provides RESTful endpoints for refreshing schedule data using GET_WEBVIEW_LIST action
 
 use axum::{
@@ -13,7 +13,7 @@ use tracing::{error, info};
 
 use crate::app_state::T3AppState;
 use crate::entity::t3_device::schedules;
-use crate::t3_device::action17_refresh_helper::lookup_action17_target;
+use crate::t3_device::action17_refresh_helper::{lookup_action17_target, normalise_action17_response};
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
@@ -115,7 +115,7 @@ pub async fn refresh_schedules(
         Ok(response) => {
             // Parse C++ response
             let response_json: Value = match serde_json::from_str(&response) {
-                Ok(json) => json,
+                Ok(json) => normalise_action17_response(json),
                 Err(e) => {
                     error!("❌ Failed to parse C++ response: {}", e);
                     return Err((

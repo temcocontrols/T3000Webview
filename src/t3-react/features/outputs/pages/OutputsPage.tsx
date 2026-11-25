@@ -214,6 +214,8 @@ const OutputsPageDesktop: React.FC = () => {
         const result = await PanelDataRefreshService.refreshFromDevice({
           serialNumber: selectedDevice.serialNumber,
           type: 'output',
+          panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+          objectInstance: selectedDevice.objectInstance,
           onLoadingChange: (loading) => {
             if (loading) {
               setMessage(`Loading outputs from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
@@ -254,6 +256,8 @@ const OutputsPageDesktop: React.FC = () => {
       const result = await PanelDataRefreshService.refreshFromDevice({
         serialNumber: selectedDevice.serialNumber,
         type: 'output',
+        panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+        objectInstance: selectedDevice.objectInstance,
         onLoadingChange: (loading) => {
           if (loading) {
             setMessage('Loading data from device (Action 17)...', 'info');
@@ -314,6 +318,9 @@ const OutputsPageDesktop: React.FC = () => {
       { header: 'Value', accessor: o => o.fValue },
       { header: 'Units', accessor: o => o.units },
       { header: 'Range', accessor: o => o.range },
+      // Travel with the file: without it an analog range is read from the digital
+      // table after a round trip (0-10V showing as Close/Open, …).
+      { header: 'Digital/Analog', accessor: o => o.digitalAnalog },
       { header: 'Low Voltage', accessor: o => o.lowVoltage },
       { header: 'High Voltage', accessor: o => o.highVoltage },
       { header: 'Status', accessor: o => o.status },
@@ -335,13 +342,32 @@ const OutputsPageDesktop: React.FC = () => {
       { header: 'Value', accessor: o => o.fValue, setter: (o, v) => { o.fValue = v; } },
       { header: 'Units', accessor: o => o.units, setter: (o, v) => { o.units = v; } },
       { header: 'Range', accessor: o => o.range, setter: (o, v) => { o.range = v; } },
+      { header: 'Digital/Analog', accessor: o => o.digitalAnalog, setter: (o, v) => { o.digitalAnalog = v; } },
       { header: 'Low Voltage', accessor: o => o.lowVoltage, setter: (o, v) => { o.lowVoltage = v; } },
       { header: 'High Voltage', accessor: o => o.highVoltage, setter: (o, v) => { o.highVoltage = v; } },
       { header: 'Status', accessor: o => o.status, setter: (o, v) => { o.status = v; } },
       { header: 'Signal Type', accessor: o => o.signalType, setter: (o, v) => { o.signalType = v; } },
     ];
     const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as OutputPoint));
-    setOutputs(imported);
+    // Files exported before the Digital/Analog column existed carry no mode. Output
+    // range codes (1–8, e.g. 1 = 0–10 V) overlap the digital states (1–30), so the
+    // code alone is ambiguous: keep the point's current mode when the code could come
+    // from either table, and only infer analog for codes that only that table holds.
+    const existingMode = new Map<string, string>();
+    for (const o of outputs) {
+      existingMode.set(`${o.panel}|${o.outputId}`, String(o.digitalAnalog ?? '').trim());
+    }
+    const normalised = imported.map(output => {
+      const mode = String(output.digitalAnalog ?? '').trim();
+      if (mode === '0' || mode === '1') return output;
+      const code = parseInt(String(output.range ?? '0'), 10) || 0;
+      const previous = existingMode.get(`${output.panel}|${output.outputId}`);
+      if (code >= 1 && code <= 30 && (previous === '0' || previous === '1')) {
+        return { ...output, digitalAnalog: previous };
+      }
+      return { ...output, digitalAnalog: code >= 1 && code <= 8 ? '1' : '0' };
+    });
+    setOutputs(normalised);
   };
 
   // Register CSV export/import handlers with global context (Tools menu)

@@ -6,7 +6,7 @@
  * (Claude Desktop, VS Code Copilot, Cursor, Cline, etc.) to the T3000
  * MCP server, plus a library of natural-language prompt examples.
  */
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Tab, TabList, Badge, Button,
 } from '@fluentui/react-components';
@@ -15,6 +15,7 @@ import {
   CheckmarkCircleRegular, LightbulbRegular, BookOpenRegular,
 } from '@fluentui/react-icons';
 import { useLocation } from 'react-router-dom';
+import { API_BASE_URL } from '../../../config/constants';
 import styles from '../../haystack/pages/AutoTaggingMcpPage.module.css';
 
 // ═══ Page Component ═══
@@ -67,8 +68,118 @@ const MCP_CONFIG_VSCODE = `{
   }
 }`;
 
+// ═══ Tool catalog (live from GET /api/ai/tools) ═══
+
+interface McpTool {
+  name: string;
+  description: string;
+  input_schema: {
+    type?: string;
+    required?: string[];
+    properties?: Record<string, { type?: string; items?: { type?: string }; enum?: string[] }>;
+  };
+}
+
+interface ToolSection {
+  title: string;
+  tools: McpTool[];
+}
+
+/**
+ * Presentational grouping only. Every tool the server advertises is rendered:
+ * names not listed here fall through to the "Other" section, so this list can
+ * never make the page incomplete.
+ */
+const TOOL_SECTIONS: Array<{ title: string; tools: string[] }> = [
+  { title: 'Haystack Tagging', tools: ['t3000_haystack_list_tags', 't3000_haystack_get_point_tags', 't3000_haystack_search_points', 't3000_haystack_auto_tag', 't3000_haystack_preview_tags', 't3000_haystack_list_rules', 't3000_haystack_get_brick_class'] },
+  { title: 'Core', tools: ['t3000_ping', 't3000_get_version', 't3000_describe_tool'] },
+  { title: 'Data & Metadata', tools: ['t3000_device_list', 't3000_device_get', 't3000_device_get_points', 't3000_point_get_metadata', 't3000_metadata_search', 't3000_point_search'] },
+  { title: 'Discovery & Scan', tools: ['t3000_scan_network', 't3000_scan_all', 't3000_device_refresh'] },
+  { title: 'Operational', tools: ['t3000_point_read', 't3000_point_write', 't3000_point_read_batch', 't3000_point_write_batch', 't3000_point_batch_metadata'] },
+  { title: 'Analytics', tools: ['t3000_haystack_validate', 't3000_haystack_export'] },
+  { title: 'Rules Management', tools: ['t3000_rule_toggle', 't3000_rule_create'] },
+  { title: 'Alarms & Trends', tools: ['t3000_alarm_list', 't3000_alarm_acknowledge', 't3000_trendlog_query'] },
+  { title: 'Device Operations', tools: ['t3000_trendlog_list', 't3000_trendlog_export', 't3000_device_delete', 't3000_schedule_list'] },
+  { title: 'Settings', tools: ['t3000_settings_read', 't3000_settings_write', 't3000_device_control'] },
+  { title: 'Control Logic', tools: ['t3000_program_list', 't3000_program_read', 't3000_alarm_settings_read', 't3000_users_list', 't3000_graphics_list'] },
+  { title: 'Documentation', tools: ['t3000_doc_list', 't3000_doc_read', 't3000_pid_list', 't3000_holiday_list', 't3000_building_summary'] },
+  { title: 'Task Management', tools: ['t3000_task_create', 't3000_task_list', 't3000_task_update', 't3000_task_delete'] },
+  { title: 'Site Memory', tools: ['t3000_memory_save', 't3000_memory_list', 't3000_memory_delete'] },
+  { title: 'Diagnostics', tools: ['t3000_device_diagnostics', 't3000_device_diagnostics_batch'] },
+  { title: 'Fault Detection & Diagnostics (FDD)', tools: ['t3000_fdd_rules_list', 't3000_fdd_analyze', 't3000_fdd_rule_create', 't3000_fdd_rule_update', 't3000_fdd_rule_toggle', 't3000_fdd_rule_export', 't3000_fdd_rule_import', 't3000_fdd_faults'] },
+  { title: 'Navigation', tools: ['t3000_nav_list', 't3000_nav_search', 't3000_nav_redirect', 't3000_page_info', 't3000_device_current', 't3000_set_chat_device'] },
+  { title: 'Reports & Help', tools: ['t3000_report_self_check', 't3000_report_docs_search', 't3000_report_docs_page'] },
+];
+
+const formatToolType = (prop?: { type?: string; items?: { type?: string }; enum?: string[] }): string => {
+  if (!prop) return 'any';
+  if (prop.type === 'array') return `${prop.items?.type ?? 'any'}[]`;
+  const base = prop.type ?? 'any';
+  return prop.enum?.length ? `${base} (${prop.enum.join('|')})` : base;
+};
+
+const formatToolParams = (schema?: McpTool['input_schema']): string => {
+  const props = schema?.properties;
+  const names = props ? Object.keys(props) : [];
+  if (!names.length) return '—';
+  const required = new Set(schema?.required ?? []);
+  return names
+    .map((name) => `${name}${required.has(name) ? '' : '?'}: ${formatToolType(props?.[name])}`)
+    .join(', ');
+};
+
+const groupTools = (tools: McpTool[]): ToolSection[] => {
+  const byName = new Map(tools.map((tool) => [tool.name, tool]));
+  const grouped: ToolSection[] = [];
+  const used = new Set<string>();
+
+  for (const section of TOOL_SECTIONS) {
+    const items = section.tools
+      .map((name) => byName.get(name))
+      .filter((tool): tool is McpTool => Boolean(tool));
+    items.forEach((tool) => used.add(tool.name));
+    if (items.length) grouped.push({ title: section.title, tools: items });
+  }
+
+  const remaining = tools.filter((tool) => !used.has(tool.name));
+  if (remaining.length) grouped.push({ title: 'Other', tools: remaining });
+
+  return grouped;
+};
+
+function useMcpToolCatalog() {
+  const [tools, setTools] = useState<McpTool[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/ai/tools`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      setTools(Array.isArray(body?.tools) ? body.tools : []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'request failed');
+      setTools([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { tools, error, loading, reload };
+}
+
 const McpTab: React.FC = () => {
   const [copied, setCopied] = useState<string | null>(null);
+  const { tools, error: toolError, loading: toolsLoading, reload: reloadTools } = useMcpToolCatalog();
+  const toolSections = React.useMemo(() => groupTools(tools), [tools]);
+  const toolCount = toolsLoading || toolError ? null : tools.length;
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -159,7 +270,7 @@ const McpTab: React.FC = () => {
               <li>Paste the <strong>Claude Desktop</strong> config (left) into <code>claude_desktop_config.json</code></li>
               <li>Make sure <code>npx</code> is installed (<code>npm install -g npx</code> if needed)</li>
               <li>Restart Claude Desktop — first run will download <code>mcp-remote</code> automatically</li>
-              <li>Look for the 🔌 icon — you should see 50+ T3000 tools available</li>
+              <li>Look for the 🔌 icon — you should see all {toolCount ?? '…'} T3000 tools available</li>
             </ol>
           </div>
 
@@ -196,114 +307,37 @@ const McpTab: React.FC = () => {
       {/* ── Available Tools ── */}
       <div className={styles.mcpSection} style={{ marginTop: 20 }}>
         <div className={styles.sectionTitle}>
-          <TagRegular style={{ fontSize: 14 }} /> Available Tools (50+ across 16 categories)
+          <TagRegular style={{ fontSize: 14 }} /> Available Tools ({toolCount ?? '…'})
+          <span style={{ fontWeight: 400, fontSize: 11, marginLeft: 8, color: 'var(--colorNeutralForeground3)' }}>
+            live from GET /api/ai/tools
+          </span>
         </div>
-        <table className={styles.mcpToolTable}>
-          <thead>
-            <tr><th style={{width:'22%'}}>Tool</th><th style={{width:'36%'}}>Description</th><th style={{width:'42%'}}>Parameters</th></tr>
-          </thead>
-          <tbody>
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Haystack Tagging</td></tr>
-            <tr><td><code>t3000_haystack_list_tags</code></td><td>List all Haystack tags with categories, documentation, and usage counts</td><td>filter?: string</td></tr>
-            <tr><td><code>t3000_haystack_get_point_tags</code></td><td>Get tags assigned to specific points by serial number</td><td>serial_numbers: int[]<br/>point_type?: INPUT|OUTPUT|VARIABLE</td></tr>
-            <tr><td><code>t3000_haystack_search_points</code></td><td>Search for points matching specific tag filters</td><td>tags: string[]<br/>serial_numbers?: int[]<br/>point_types?: string[]</td></tr>
-            <tr><td><code>t3000_haystack_auto_tag</code></td><td>Run auto-tagging on devices (range+regex rules)</td><td>serial_numbers: int[]</td></tr>
-            <tr><td><code>t3000_haystack_preview_tags</code></td><td>Preview auto-tagging results without writing to DB</td><td>serial_numbers: int[]</td></tr>
-            <tr><td><code>t3000_haystack_list_rules</code></td><td>List all auto-tagging rules with patterns and priorities</td><td>—</td></tr>
-            <tr><td><code>t3000_haystack_get_brick_class</code></td><td>Get Brick ontology class for specified points</td><td>serial_numbers: int[]</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Core</td></tr>
-            <tr><td><code>t3000_ping</code></td><td>Health check — returns server status and timestamp</td><td>—</td></tr>
-            <tr><td><code>t3000_get_version</code></td><td>Server name, version, protocol version, tool count</td><td>—</td></tr>
-            <tr><td><code>t3000_describe_tool</code></td><td>Get full schema and description for any tool</td><td>tool_name: string</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Data &amp; Metadata</td></tr>
-            <tr><td><code>t3000_device_list</code></td><td>Enumerate all devices with serial, name, type, point counts, building/floor/room, and online/offline status</td><td>filter_name?: string<br/>refresh?: boolean</td></tr>
-            <tr><td><code>t3000_device_get</code></td><td>Query a single device's full record by serial number</td><td>serial_number: int</td></tr>
-            <tr><td><code>t3000_device_get_points</code></td><td>Get all points for a device with labels, engineering units, range, digital/analog, tags, and Brick class</td><td>serial_number: int<br/>point_type?: INPUT|OUTPUT|VARIABLE</td></tr>
-            <tr><td><code>t3000_point_get_metadata</code></td><td>Full metadata: label, units, range, digital/analog, description, current value, tags, Brick class</td><td>serial_number, point_type, point_index</td></tr>
-            <tr><td><code>t3000_metadata_search</code></td><td>Search points across devices by label text</td><td>query: string<br/>serial_numbers?, point_types?, limit?</td></tr>
-            <tr><td><code>t3000_point_search</code></td><td>Semantic search across points by tag, label, or Brick class</td><td>query: string<br/>serial_numbers?, limit?</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Operational</td></tr>
-            <tr><td><code>t3000_point_read</code></td><td>Read current value of a single point</td><td>serial_number, point_type, point_index</td></tr>
-            <tr><td><code>t3000_point_write</code></td><td>Write a value to a point (confirm:true required)</td><td>serial_number, point_type, point_index, value, confirm</td></tr>
-            <tr><td><code>t3000_point_read_batch</code></td><td>Read multiple points in a single call</td><td>points: [&#123;serial_number, point_type, point_index&#125;]</td></tr>
-            <tr><td><code>t3000_point_write_batch</code></td><td>Write values to multiple points (confirm:true required)</td><td>points: [&#123;...value&#125;], confirm</td></tr>
-            <tr><td><code>t3000_point_batch_metadata</code></td><td>Get metadata for multiple points at once</td><td>points: [&#123;serial_number, point_type, point_index&#125;]</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Analytics</td></tr>
-            <tr><td><code>t3000_haystack_validate</code></td><td>Validate tagging against ontology rules</td><td>serial_numbers?: int[]</td></tr>
-            <tr><td><code>t3000_haystack_export</code></td><td>Export semantic model as haystack-json, brick-ttl, or brick-jsonld</td><td>serial_numbers: int[]<br/>format: string</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Rules Management</td></tr>
-            <tr><td><code>t3000_rule_toggle</code></td><td>Enable or disable an auto-tagging rule by ID</td><td>rule_id: int, enabled: boolean</td></tr>
-            <tr><td><code>t3000_rule_create</code></td><td>Create a new auto-tagging rule with regex pattern</td><td>rule_name, pattern, category<br/>haystack_tags?, brick_class?, etc.</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Alarms &amp; Trends</td></tr>
-            <tr><td><code>t3000_alarm_list</code></td><td>List alarms, optionally filtered to active-only</td><td>serial_numbers?: int[]<br/>active_only?: boolean</td></tr>
-            <tr><td><code>t3000_alarm_acknowledge</code></td><td>Acknowledge an alarm by device serial and alarm ID</td><td>serial_number: int<br/>alarm_id: string</td></tr>
-            <tr><td><code>t3000_trendlog_query</code></td><td>Query historical trend data for a point over a time range</td><td>serial_number, point_type, point_index, start<br/>end?, limit?</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Device Operations</td></tr>
-            <tr><td><code>t3000_trendlog_list</code></td><td>List available trend logs for a device</td><td>serial_number: int</td></tr>
-            <tr><td><code>t3000_trendlog_export</code></td><td>Export trend log data as CSV/JSON file</td><td>serial_number: int<br/>format?: string</td></tr>
-            <tr><td><code>t3000_device_refresh</code></td><td>Refresh device data from the controller</td><td>serial_number: int</td></tr>
-            <tr><td><code>t3000_device_delete</code></td><td>Delete a device record (confirm:true required)</td><td>serial_number: int<br/>confirm: boolean</td></tr>
-            <tr><td><code>t3000_schedule_list</code></td><td>List all schedules for a device</td><td>serial_number: int</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Settings</td></tr>
-            <tr><td><code>t3000_settings_read</code></td><td>Read device settings and configuration</td><td>serial_number: int</td></tr>
-            <tr><td><code>t3000_settings_write</code></td><td>Write device settings (confirm:true required)</td><td>serial_number: int<br/>settings: object<br/>confirm: boolean</td></tr>
-            <tr><td><code>t3000_device_control</code></td><td>Send control commands to a device</td><td>serial_number: int<br/>command: string<br/>params?: object</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Control Logic</td></tr>
-            <tr><td><code>t3000_program_list</code></td><td>List PLC programs on a device</td><td>serial_number: int</td></tr>
-            <tr><td><code>t3000_program_read</code></td><td>Read a PLC program source code</td><td>serial_number: int<br/>program_id: string</td></tr>
-            <tr><td><code>t3000_alarm_settings_read</code></td><td>Read alarm configuration settings for a device</td><td>serial_number: int</td></tr>
-            <tr><td><code>t3000_users_list</code></td><td>List users configured on a device</td><td>serial_number: int</td></tr>
-            <tr><td><code>t3000_graphics_list</code></td><td>List graphics/visualization screens on a device</td><td>serial_number: int</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Documentation</td></tr>
-            <tr><td><code>t3000_doc_list</code></td><td>List available documentation articles</td><td>section?: string</td></tr>
-            <tr><td><code>t3000_doc_read</code></td><td>Read a specific documentation article</td><td>path: string</td></tr>
-            <tr><td><code>t3000_pid_list</code></td><td>List PID loops on a device</td><td>serial_number: int</td></tr>
-            <tr><td><code>t3000_holiday_list</code></td><td>List holiday schedules on a device</td><td>serial_number: int</td></tr>
-            <tr><td><code>t3000_building_summary</code></td><td>Get a summary overview of the building system</td><td>serial_numbers?: int[]</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Task Management</td></tr>
-            <tr><td><code>t3000_task_create</code></td><td>Create a workflow task for commissioning or maintenance</td><td>title: string<br/>description?, serial_number?, priority?</td></tr>
-            <tr><td><code>t3000_task_list</code></td><td>List all tasks, filter by status or device</td><td>status?: pending|in_progress|completed<br/>serial_number?: int</td></tr>
-            <tr><td><code>t3000_task_update</code></td><td>Update task status, title, or priority</td><td>task_id: string<br/>status?, title?, description?, priority?</td></tr>
-            <tr><td><code>t3000_task_delete</code></td><td>Delete a task by ID</td><td>task_id: string</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Site Memory</td></tr>
-            <tr><td><code>t3000_memory_save</code></td><td>Save site-specific knowledge that persists across sessions</td><td>key: string, content: string<br/>category?: string</td></tr>
-            <tr><td><code>t3000_memory_list</code></td><td>List all saved site memories, filter by category or search</td><td>category?, search?: string</td></tr>
-            <tr><td><code>t3000_memory_delete</code></td><td>Delete a memory entry by key</td><td>key: string</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Diagnostics</td></tr>
-            <tr><td><code>t3000_device_diagnostics</code></td><td>Comprehensive device health check: firmware, alarms, points, programs, PIDs</td><td>serial_number: int</td></tr>
-            <tr><td><code>t3000_device_diagnostics_batch</code></td><td>Diagnose multiple devices or all devices at once</td><td>serial_numbers?: int[]</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Fault Detection &amp; Diagnostics (FDD)</td></tr>
-            <tr><td><code>t3000_fdd_rules_list</code></td><td>List all FDD rules with roles, params, severity, enabled state</td><td>category?: string</td></tr>
-            <tr><td><code>t3000_fdd_analyze</code></td><td>Run FDD rules over trendlog history to detect equipment faults</td><td>serial_number: int<br/>equipment?, range_hours?, rules?: string[]</td></tr>
-            <tr><td><code>t3000_fdd_rule_create</code></td><td>Create a new FDD rule (rule_id, rule_name, rule_kind, roles, params)</td><td>rule_id, rule_name, rule_kind: string<br/>category?, required_roles?, params?, severity?<br/>confirm: true</td></tr>
-            <tr><td><code>t3000_fdd_rule_update</code></td><td>Update an FDD rule (params merged with existing)</td><td>rule_id: string<br/>name?, category?, severity?, enabled?, params?<br/>confirm: true</td></tr>
-            <tr><td><code>t3000_fdd_rule_toggle</code></td><td>Enable or disable an FDD rule</td><td>rule_id: string, enabled: boolean<br/>confirm: true</td></tr>
-            <tr><td><code>t3000_fdd_rule_export</code></td><td>Export FDD rules as JSON (importable catalog)</td><td>category?: string</td></tr>
-            <tr><td><code>t3000_fdd_rule_import</code></td><td>Import FDD rules (upsert by rule_id)</td><td>rules: object[]<br/>confirm: true</td></tr>
-            <tr><td><code>t3000_fdd_faults</code></td><td>List persisted fault findings (from fdd_analyze)</td><td>serial_number?, rule_id?, limit?: int</td></tr>
-
-            <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 Navigation</td></tr>
-            <tr><td><code>t3000_nav_list</code></td><td>List all T3000 web UI pages with paths and shortcuts</td><td>section?: points|control|monitoring|config|system|develop</td></tr>
-            <tr><td><code>t3000_nav_search</code></td><td>Search T3000 pages by keyword (e.g., 'PID', 'alarm')</td><td>query: string</td></tr>
-            <tr><td><code>t3000_nav_redirect</code></td><td>Get navigation URL for a page, optionally with device</td><td>page: string<br/>serial_number?: int</td></tr>
-            <tr><td><code>t3000_page_info</code></td><td>Get detailed info about a page: features, related tools</td><td>page: string</td></tr>
-            <tr><td><code>t3000_device_current</code></td><td>Get the currently selected device in the web UI</td><td>—</td></tr>
-          </tbody>
-        </table>
+        {toolError ? (
+          <div style={{ padding: '10px 12px', borderRadius: 4, background: 'var(--colorNeutralBackground2)', color: 'var(--colorPaletteRedForeground1)', fontSize: 12 }}>
+            Could not load the tool list from the API: {toolError}
+            <Button appearance="subtle" size="small" onClick={reloadTools} style={{ marginLeft: 8 }}>Retry</Button>
+          </div>
+        ) : (
+          <table className={styles.mcpToolTable}>
+            <thead>
+              <tr><th style={{width:'24%'}}>Tool</th><th style={{width:'40%'}}>Description</th><th style={{width:'36%'}}>Parameters</th></tr>
+            </thead>
+            <tbody>
+              {toolSections.map((section) => (
+                <React.Fragment key={section.title}>
+                  <tr><td colSpan={3} style={{background:'var(--colorNeutralBackground2)',fontWeight:600,fontSize:11}}>🔵 {section.title} ({section.tools.length})</td></tr>
+                  {section.tools.map((tool) => (
+                    <tr key={tool.name}>
+                      <td><code>{tool.name}</code></td>
+                      <td>{tool.description || '—'}</td>
+                      <td>{formatToolParams(tool.input_schema)}</td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
@@ -564,7 +598,7 @@ const ExamplesTab: React.FC = () => {
         color: 'var(--colorNeutralForeground3)',
       }}>
         <BookOpenRegular style={{ fontSize: 14 }} />
-        <span>See the full <a href="#/t3000/documentation/t3000/haystack/mcp-api-examples" style={{ color: 'var(--colorBrandForeground1)' }}>MCP API Examples</a> doc for all 50+ tools with detailed descriptions.</span>
+        <span>See the full <a href="#/t3000/documentation/t3000/haystack/mcp-api-examples" style={{ color: 'var(--colorBrandForeground1)' }}>MCP API Examples</a> doc for prompt examples across the tool categories.</span>
       </div>
     </div>
   );

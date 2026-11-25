@@ -17,6 +17,7 @@ import type {
 } from '../types';
 import type { DrawingTemplate } from '../templates';
 import { designHubService } from '../services/designHubService';
+import { useDeviceTreeStore } from '@t3-react/features/devices/store/deviceTreeStore';
 import {
   deleteEezProjectOnDisk,
   deleteHvacDrawingOnDisk,
@@ -328,9 +329,16 @@ export const useDesignHubStore = create<DesignHubState>()(
           return { success: false, message: 'Bind this drawing to a device first.' };
         }
         try {
+          // Resolve panel/objectInstance from the device tree so the action-17
+          // call does not depend on the UDP panel list (empty on RS485 installs).
+          const boundDevice = useDeviceTreeStore
+            .getState()
+            .devices.find((d) => d.serialNumber === project.serialNumber);
           const result = await PanelDataRefreshService.refreshFromDevice({
             serialNumber: project.serialNumber,
             type: 'graphic',
+            panelId: boundDevice?.panelNumber ?? boundDevice?.panelId,
+            objectInstance: boundDevice?.objectInstance,
           });
           designHubService.recordActivity('deployed', `Deployed "${project.name}" to device`, {
             detail: `SN ${project.serialNumber} — ${result.savedCount} items`,

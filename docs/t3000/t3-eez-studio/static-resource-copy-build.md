@@ -1,4 +1,6 @@
-# Static Resource Copy — Build-Time Asset Pipeline
+# Static resource build reference
+
+**Applies to:** shipped code — `api/build.rs`, the Vite dev proxy and the release packaging step.
 
 **Project:** T3000 Webview — EEZ Studio Migration (Electron → Browser)  
 **Topic:** Automatic resource copy from origin repos into Rust build output for release packaging

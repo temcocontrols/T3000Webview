@@ -217,6 +217,8 @@ const InputsPageDesktop: React.FC = () => {
         const result = await PanelDataRefreshService.refreshFromDevice({
           serialNumber: selectedDevice.serialNumber,
           type: 'input',
+          panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+          objectInstance: selectedDevice.objectInstance,
           onLoadingChange: (loading) => {
             if (loading) {
               setMessage(`Loading inputs from ${selectedDevice.nameShowOnTree} (Action 17)...`, 'info');
@@ -267,6 +269,8 @@ const InputsPageDesktop: React.FC = () => {
       const result = await PanelDataRefreshService.refreshFromDevice({
         serialNumber: selectedDevice.serialNumber,
         type: 'input',
+        panelId: selectedDevice.panelNumber ?? selectedDevice.panelId,
+        objectInstance: selectedDevice.objectInstance,
         onLoadingChange: (loading) => {
           if (loading) {
             setMessage('Loading data from device (Action 17)...', 'info');
@@ -326,6 +330,9 @@ const InputsPageDesktop: React.FC = () => {
       { header: 'Value', accessor: i => i.fValue },
       { header: 'Units', accessor: i => i.units },
       { header: 'Range', accessor: i => i.range },
+      // Travel with the file: without it an analog sensor code is read from the
+      // digital table after a round trip (10K Type2 showing as Stop/Start, …).
+      { header: 'Digital/Analog', accessor: i => i.digitalAnalog },
       { header: 'Calibration', accessor: i => i.calibration },
       { header: 'Sign', accessor: i => i.sign },
       { header: 'Filter', accessor: i => i.filterField },
@@ -347,6 +354,7 @@ const InputsPageDesktop: React.FC = () => {
       { header: 'Value', accessor: i => i.fValue, setter: (i, v) => { i.fValue = v; } },
       { header: 'Units', accessor: i => i.units, setter: (i, v) => { i.units = v; } },
       { header: 'Range', accessor: i => i.range, setter: (i, v) => { i.range = v; } },
+      { header: 'Digital/Analog', accessor: i => i.digitalAnalog, setter: (i, v) => { i.digitalAnalog = v; } },
       { header: 'Calibration', accessor: i => i.calibration, setter: (i, v) => { i.calibration = v; } },
       { header: 'Sign', accessor: i => i.sign, setter: (i, v) => { i.sign = v; } },
       { header: 'Filter', accessor: i => i.filterField, setter: (i, v) => { i.filterField = v; } },
@@ -354,7 +362,14 @@ const InputsPageDesktop: React.FC = () => {
       { header: 'Signal Type', accessor: i => i.signalType, setter: (i, v) => { i.signalType = v; } },
     ];
     const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as InputPoint));
-    setInputs(imported);
+    // Files exported before the Digital/Analog column existed: an input is far more
+    // likely to be an analog sensor than a binary state, so default to analog
+    // instead of letting the display pick a digital state name.
+    const normalised = imported.map(input => {
+      const mode = String(input.digitalAnalog ?? '').trim();
+      return mode === '0' || mode === '1' ? input : { ...input, digitalAnalog: '1' };
+    });
+    setInputs(normalised);
   };
 
   // Register CSV export/import handlers with global context (Tools menu)

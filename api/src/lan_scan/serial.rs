@@ -323,15 +323,73 @@ pub fn scan_all_serial_ports(
     dev_lo: u8,
     dev_hi: u8,
 ) -> SerialScanResult {
+    scan_all_serial_ports_skipping(baudrates, dev_lo, dev_hi, &[])
+}
+
+/// True when this code runs inside T3000.exe (the release deployment loads the
+/// API as a DLL inside it).
+///
+/// T3000 owns the serial ports there: it holds the COM handle for its polling
+/// loop, so any second `CreateFile` on that port fails with
+/// `Access is denied` (os error 5). T3000's own Scan All closes the handle
+/// (`CTStatScanner::ScanComDevice` → `close_com()`) before probing, which is
+/// only possible from inside T3000.
+pub fn hosted_by_t3000() -> bool {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .map(|name| name.eq_ignore_ascii_case("T3000.exe"))
+        .unwrap_or(false)
+}
+
+/// Scan every COM port except `skip_ports`.
+///
+/// `skip_ports` are the ports T3000 is configured to use (`Building.Com_Port`).
+/// Probing them from the WebView can only fail, and T3000's own scan already
+/// covers them — their devices arrive through its device database instead.
+pub fn scan_all_serial_ports_skipping(
+    baudrates: Option<&[u32]>,
+    dev_lo: u8,
+    dev_hi: u8,
+    skip_ports: &[String],
+) -> SerialScanResult {
     let baudrates: &[u32] = baudrates.unwrap_or(&PROBE_BAUDRATES);
-    let ports = list_com_ports();
+    let all_ports = list_com_ports();
+    let (ports, skipped): (Vec<String>, Vec<String>) = all_ports
+        .into_iter()
+        .partition(|p| !skip_ports.iter().any(|s| s.eq_ignore_ascii_case(p)));
+    if !skipped.is_empty() {
+        tracing::info!(
+            "[lan_scan] serial: skipping {} (owned by T3000 — its own Scan All covers them, and their devices are imported from its database)",
+            skipped.join(", ")
+        );
+    }
     let mut devices = Vec::new();
     let mut port_open_failures = Vec::new();
-    let warnings = Vec::new();
+    let mut warnings = Vec::new();
 
-    for port in &ports {
-        match scan_com_port(port, baudrates, dev_lo, dev_hi) {
-            Ok(mut found) => {
+    // One thread per port. Ports are independent (a device is on exactly one
+    // of them), and each probe is dominated by serial latency — running them
+    // concurrently turns `sum(ports)` into `max(ports)`, mirroring the C++
+    // `ScanComThreadNoCritical` thread-per-port model.
+    let handles: Vec<(String, std::thread::JoinHandle<(String, Result<Vec<SerialDeviceResult>, String>)>)> =
+        ports
+            .iter()
+            .map(|port| {
+                let port = port.clone();
+                let bauds = baudrates.to_vec();
+                let label = port.clone();
+                let handle = std::thread::spawn(move || {
+                    let result = scan_com_port(&port, &bauds, dev_lo, dev_hi);
+                    (port, result)
+                });
+                (label, handle)
+            })
+            .collect();
+    // Join in the original port order so the log/output stays deterministic.
+    for (port, handle) in handles {
+        match handle.join() {
+            Ok((_, Ok(mut found))) => {
                 let n = found.len();
                 for d in &found {
                     tracing::info!(
@@ -347,9 +405,27 @@ pub fn scan_all_serial_ports(
                 tracing::info!("[lan_scan] serial {} scan done: {} devices found", port, n);
                 devices.append(&mut found);
             }
-            Err(e) => {
-                tracing::info!("[lan_scan] serial {} scan failed: {}", port, e);
+            Ok((_, Err(e))) => {
+                // "Access is denied" on a serial port means another program
+                // (T3000) holds it. That is expected, not a fault: its devices
+                // come from T3000's device database.
+                if e.contains("Access is denied") || e.contains("os error 5") {
+                    tracing::info!(
+                        "[lan_scan] serial {} is held by another program (T3000) — skipped; its devices are imported from T3000's database",
+                        port
+                    );
+                    warnings.push(format!(
+                        "{} is owned by T3000 (Access is denied) — serial devices come from its database",
+                        port
+                    ));
+                } else {
+                    tracing::info!("[lan_scan] serial {} scan failed: {}", port, e);
+                }
                 port_open_failures.push(format!("{}: {}", port, e));
+            }
+            Err(_) => {
+                tracing::warn!("[lan_scan] serial {} scan panicked", port);
+                port_open_failures.push(format!("{}: scan thread panicked", port));
             }
         }
     }
@@ -397,6 +473,7 @@ pub fn scan_com_port(
 
         // Scan the Modbus ID range (binary-search style like the C++).
         let found_ids = scan_modbus_ids(&mut port_handle, dev_lo, dev_hi, baud);
+        let before = results.len();
         for id in found_ids {
             if let Some(dev) = read_device_info(&mut port_handle, id, port, baud) {
                 results.push(SerialDeviceResult {
@@ -406,6 +483,13 @@ pub fn scan_com_port(
                     mstp_detected,
                 });
             }
+        }
+
+        // A COM port is one RS-485 bus, and a bus runs at exactly one baud
+        // rate. Once devices answered here the remaining rates cannot hold
+        // anything new — probing them was ~5/6 of the per-port time.
+        if results.len() > before {
+            break;
         }
     }
     Ok(results)

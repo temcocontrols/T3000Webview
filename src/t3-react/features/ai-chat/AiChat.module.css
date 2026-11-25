@@ -1033,6 +1033,26 @@
   animation: spin 1.2s linear infinite;
 }
 
+/* ── Progress line under "Thinking…" (backend `status` events) ── */
+.thinkingStatus {
+  font-size: 12px;
+  color: var(--colorNeutralForeground3, #666);
+  padding: 0 16px 4px 24px;
+  opacity: 0.9;
+}
+
+/* ── Shown when nothing has arrived for a while ── */
+.thinkingSlowHint {
+  /* Full content width, with the same gutter as the message bubbles. */
+  margin: 4px 16px 8px 24px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--colorPaletteDarkOrangeForeground2, #8a5d00);
+  background-color: var(--colorPaletteDarkYellowBackground2, #fff4ce);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
 /* ── Thinking section (collapsible reasoning) ── */
 .thinkingSection {
   margin: 6px 0 10px 0;
@@ -1415,7 +1435,8 @@
 /* ── System message ── */
 .systemMessage {
   text-align: left;
-  padding: 6px 16px;
+  /* Same gutter as .messageWrapper so system notices line up with content. */
+  padding: 6px 16px 6px 24px;
   color: var(--colorNeutralForeground4, #b0b0b0);
   font-size: 11px;
   font-style: italic;
@@ -1431,6 +1452,8 @@
   padding: 8px 14px 8px 40px;
   margin: 4px 24px 8px 24px;
   position: relative;
+  /* Long URLs in "Details:" must not overflow the box. */
+  word-break: break-word;
 }
 .systemError::before {
   content: '\2716';

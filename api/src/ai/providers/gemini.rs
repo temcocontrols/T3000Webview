@@ -128,7 +128,7 @@ impl LlmProvider for GeminiProvider {
             body["tools"] = json!([{ "functionDeclarations": function_declarations }]);
         }
 
-        let client = Self::http_client()?;
+        let client = Self::http_client(base)?;
 
         let mut final_text = String::new();
         let mut had_tool_calls = false;
@@ -200,9 +200,22 @@ impl LlmProvider for GeminiProvider {
 }
 
 impl GeminiProvider {
-    fn http_client() -> Result<Client, AiError> {
-        Client::builder()
-            .timeout(std::time::Duration::from_secs(300))
+    /// Cap on the connection phase (DNS + TCP + TLS) — see
+    /// [`super::CONNECT_TIMEOUT`] for why this matters.
+    const CONNECT_TIMEOUT: std::time::Duration = super::CONNECT_TIMEOUT;
+    /// Hard cap on obtaining the response headers (body streaming not covered).
+    const SEND_TIMEOUT: std::time::Duration = super::SEND_TIMEOUT;
+
+    fn http_client(endpoint: &str) -> Result<Client, AiError> {
+        let mut builder = Client::builder()
+            .connect_timeout(Self::CONNECT_TIMEOUT)
+            .timeout(std::time::Duration::from_secs(300));
+        // A LAN/loopback gateway must be reached directly — the machine's proxy
+        // answers 502 for private addresses. Public endpoints keep the proxy.
+        if super::is_local_endpoint(endpoint) {
+            builder = builder.no_proxy();
+        }
+        builder
             .build()
             .map_err(|e| AiError::Provider(format!("Failed to build HTTP client: {}", e)))
     }
@@ -218,6 +231,7 @@ impl GeminiProvider {
         url: &str,
         body: &Value,
         api_key: Option<&str>,
+        tx: &UnboundedSender<StreamEvent>,
     ) -> Result<reqwest::Response, AiError> {
         let key = api_key.unwrap_or("");
         // Initial call + one retry on transient connection failure (2 total).
@@ -225,16 +239,27 @@ impl GeminiProvider {
         let mut last_err: Option<AiError> = None;
 
         for attempt in 0..attempts {
-            let response = match client
+            // Report progress to the UI — a blocked endpoint must not look like
+            // an endless "Thinking…".
+            let _ = tx.send(StreamEvent::Status {
+                phase: "connecting".to_string(),
+                message: if attempt == 0 {
+                    "Contacting the AI provider…".to_string()
+                } else {
+                    format!("Retrying connection (attempt {}/{})…", attempt + 1, attempts)
+                },
+            });
+
+            let send = client
                 .post(url)
                 .header("Content-Type", "application/json")
                 .header("x-goog-api-key", key)
                 .json(body)
-                .send()
-                .await
-            {
-                Ok(r) => r,
-                Err(e) => {
+                .send();
+
+            let response = match tokio::time::timeout(Self::SEND_TIMEOUT, send).await {
+                Ok(Ok(r)) => r,
+                Ok(Err(e)) => {
                     tracing::warn!(
                         "[Gemini] connect attempt {}/{} failed for {}: {}",
                         attempt + 1,
@@ -242,12 +267,45 @@ impl GeminiProvider {
                         url,
                         e
                     );
+                    let _ = tx.send(StreamEvent::Status {
+                        phase: "retrying".to_string(),
+                        message: format!(
+                            "Connection failed: {}{}",
+                            e,
+                            if attempt + 1 < attempts { " — retrying…" } else { "" }
+                        ),
+                    });
                     last_err = Some(AiError::Provider(format!(
                         "Failed to connect to Gemini: {}",
                         e
                     )));
                     if attempt + 1 < attempts {
                         // Single retry — wait 500ms before it.
+                        tokio::time::sleep(std::time::Duration::from_millis(500 * (1 << attempt))).await;
+                    }
+                    continue;
+                }
+                Err(_) => {
+                    tracing::warn!(
+                        "[Gemini] connect attempt {}/{} timed out after {:?} for {}",
+                        attempt + 1,
+                        attempts,
+                        Self::SEND_TIMEOUT,
+                        url
+                    );
+                    let _ = tx.send(StreamEvent::Status {
+                        phase: "timeout".to_string(),
+                        message: format!(
+                            "No response from the AI endpoint after {}s — it may be unreachable{}",
+                            Self::SEND_TIMEOUT.as_secs(),
+                            if attempt + 1 < attempts { " — retrying…" } else { "" }
+                        ),
+                    });
+                    last_err = Some(AiError::Provider(format!(
+                        "Timed out connecting to Gemini after {}s — the endpoint is unreachable (check internet / proxy / VPN).",
+                        Self::SEND_TIMEOUT.as_secs()
+                    )));
+                    if attempt + 1 < attempts {
                         tokio::time::sleep(std::time::Duration::from_millis(500 * (1 << attempt))).await;
                     }
                     continue;
@@ -344,7 +402,11 @@ impl GeminiProvider {
         had_tool_calls: &mut bool,
         tx: &UnboundedSender<StreamEvent>,
     ) -> Result<(), AiError> {
-        let response = Self::send_request(client, url, body, api_key).await?;
+        let response = Self::send_request(client, url, body, api_key, tx).await?;
+        let _ = tx.send(StreamEvent::Status {
+            phase: "waiting".to_string(),
+            message: "Connected — waiting for the model to answer…".to_string(),
+        });
 
         let mut stream = response.bytes_stream();
         let mut buffer = String::new();
@@ -397,7 +459,7 @@ impl GeminiProvider {
         had_tool_calls: &mut bool,
         tx: &UnboundedSender<StreamEvent>,
     ) -> Result<(), AiError> {
-        let response = Self::send_request(client, url, body, api_key).await?;
+        let response = Self::send_request(client, url, body, api_key, tx).await?;
         let text = response
             .text()
             .await
@@ -413,3 +475,46 @@ impl GeminiProvider {
     }
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A dead endpoint must fail fast and, crucially, report progress over the
+    /// stream — otherwise the UI sits on "Thinking…" for minutes.
+    #[tokio::test]
+    async fn unreachable_endpoint_emits_status_and_error_events_without_hanging() {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<StreamEvent>();
+        let started = std::time::Instant::now();
+
+        // Port 1 on loopback refuses the connection immediately.
+        let result = GeminiProvider
+            .stream_chat("http://127.0.0.1:1/v1beta", Some("key"), "gemini-x", &[], &[], &tx)
+            .await;
+
+        drop(tx);
+
+        let mut phases = Vec::new();
+        let mut saw_error = false;
+        while let Some(event) = rx.recv().await {
+            match event {
+                StreamEvent::Status { phase, .. } => phases.push(phase),
+                StreamEvent::Error { .. } => saw_error = true,
+                _ => {}
+            }
+        }
+
+        assert!(result.is_ok(), "provider reports failures through events");
+        assert!(
+            phases.iter().any(|p| p == "connecting"),
+            "expected a connecting status, got {:?}",
+            phases
+        );
+        assert!(saw_error, "an error event must be emitted");
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(15),
+            "took {:?} — connect timeout is not applied",
+            started.elapsed()
+        );
+    }
+}

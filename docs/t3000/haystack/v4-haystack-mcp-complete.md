@@ -1,12 +1,12 @@
 # T3000 MCP Server — Design
 
-> **Current state**: 50+ tools across 16 categories (v5 expanded from v4). This doc describes the v4 baseline (44 tools, 11 categories).
+> **Current state**: 74 tools across 18 categories. This doc describes the v4 baseline (44 tools, 11 categories); the tool list is authoritative in `api/src/mcp/tools.rs`.
 
 ---
 
 ## 1. Scope
 
-v4 extends the MCP server from 7 Haystack-only tools to 44 tools across 11 categories (since expanded to 50+ across 16 categories in v5). One file changes: `api/src/haystack/mcp.rs`. New handlers call existing public service functions — no other files touched.
+v4 extends the MCP server from 7 Haystack-only tools to 44 tools across 11 categories (since expanded to 74 tools across 18 categories). One file changes: `api/src/haystack/mcp.rs`. New handlers call existing public service functions — no other files touched.
 
 | | v3 | v4 |
 |---|---|---|
@@ -44,7 +44,7 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
                       │   Streamable HTTP     │
                       │   POST/GET/DELETE     │
                       │   /api/mcp            │
-                      │   50+ tools          │
+                      │    74 tools          │
                       └──────────────────────┘
 ```
 
@@ -120,7 +120,7 @@ BACnet/Modbus ──→ C++ FFI ──→ SQLite DB
 |---|---|---|---|
 | 28 | `t3000_trendlog_list` | `serial_number: int` | `[{ log_id, point_type, point_index, label, interval }]` |
 | 29 | `t3000_trendlog_export` | `serial_number: int`, `format?: string` | `{ filename, data, format }` |
-| 30 | `t3000_device_refresh` | `serial_number: int` | `{ success, message }` |
+| 30 | `t3000_device_refresh` | `serial_number: int`, `point_type?: INPUT\|OUTPUT\|VARIABLE` | `{ refreshed, points_updated, points_saved, points_by_type, points, panel_id, object_instance, errors, notes }` |
 | 31 | `t3000_schedule_list` | `serial_number: int` | `[{ schedule_id, name, days, periods }]` |
 
 ### 3.9 Settings — 3 tools (new)

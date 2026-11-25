@@ -229,3 +229,39 @@ async fn test_fdd_analyze_returns_findings_shape() {
     })
     .await;
 }
+
+/// Regression: a duplicate rule_id surfaced the raw SQLite UNIQUE error.
+#[tokio::test]
+async fn test_fdd_rule_create_duplicate_id_is_explained() {
+    common::with_db_or_skip("fdd_rule_create_duplicate", |db| async move {
+        let rid = "MCP-SUITE-DUP";
+        let cleanup = format!("DELETE FROM FDD_RULES WHERE rule_id = '{}'", rid);
+        let _ = db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite, &cleanup)).await;
+
+        common::execute_tool_json(
+            "t3000_fdd_rule_create",
+            &json!({"rule_id": rid, "rule_name": "MCP suite dup", "rule_kind": "RangeBand",
+                    "severity": "low", "category": "mcp", "confirm": true}),
+            &db,
+        )
+        .await
+        .expect("the first create should succeed");
+
+        let err = common::execute_tool_json(
+            "t3000_fdd_rule_create",
+            &json!({"rule_id": rid, "rule_name": "MCP suite dup again", "rule_kind": "RangeBand",
+                    "severity": "low", "category": "mcp", "confirm": true}),
+            &db,
+        )
+        .await
+        .expect_err("a duplicate rule_id must fail");
+        assert!(err.to_lowercase().contains("duplicate"), "got: {}", err);
+        assert!(!err.contains("UNIQUE constraint failed"),
+            "the raw SQLite error must not leak: {}", err);
+
+        let _ = db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite, &cleanup)).await;
+    })
+    .await;
+}

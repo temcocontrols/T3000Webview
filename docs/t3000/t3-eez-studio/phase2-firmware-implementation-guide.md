@@ -1,4 +1,6 @@
-# Phase 2 — Firmware Implementation Guide (T3-programmable-controller-on-ESP32)
+# Device renderer — implementation guide
+
+**Applies to:** specification — the code described here does not exist in the firmware yet.
 
 > **What this is.** The step-by-step change list for
 > `temcocontrols/T3-programmable-controller-on-ESP32` that makes the panel **draw the JSON it
@@ -1339,7 +1341,7 @@ void ui_init(void) {
 }
 ```
 
-Two side effects: it **sets the default theme**, and it creates 12 screens. If you skip it, the
+Two side effects: it **sets the default theme**, and it creates 13 screens. If you skip it, the
 theme is unset and widgets look unstyled. `dynui_theme_init()` (§6) performs the same two theme
 calls — that is why it exists.
 
@@ -1377,7 +1379,7 @@ void Lcd_Task(void *pvParameters)
 
     if (!dynamic_ok) {
         ESP_LOGW("LcdTask", "falling back to compiled UI");
-        ui_init();                     /* sets theme + creates the 12 screens */
+        ui_init();                     /* sets theme + creates the 13 screens */
     }
 
     while (1) {

@@ -4,6 +4,7 @@
 //! These 7 tools require a live database connection with Haystack tag data.
 //! Uses the T3000 runtime database at the configured path.
 
+use sea_orm::{ConnectionTrait, Statement};
 use serde_json::json;
 use crate::mcp::common;
 
@@ -106,6 +107,78 @@ async fn test_list_tags_filter_by_category() {
     }).await;
 }
 
+/// Regression: `filter` was an exact category match, so `filter:"temp"` returned
+/// nothing even though the `temp` tag exists.
+#[tokio::test]
+async fn test_list_tags_filter_matches_tag_names() {
+    common::with_db_or_skip("list_tags_filter_matches_names", |db| async move {
+        let rows = db
+            .query_all(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                "SELECT tag_name FROM HAYSTACK_TAGS WHERE LOWER(tag_name) LIKE '%temp%' LIMIT 1",
+            ))
+            .await
+            .expect("tag query should succeed");
+        let needle: String = match rows.first().and_then(|r| r.try_get::<String>("", "tag_name").ok()) {
+            Some(name) => name,
+            None => {
+                println!("no tag matches 'temp' in this DB — skipping");
+                return;
+            }
+        };
+
+        let result = common::execute_tool_json(
+            "t3000_haystack_list_tags",
+            &json!({"filter": "TEMP"}),
+            &db,
+        )
+        .await
+        .expect("list_tags with a filter should succeed");
+
+        let names: Vec<&str> = result["tags"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|t| common::get_str(t, "tag_name")).collect())
+            .unwrap_or_default();
+        assert!(!names.is_empty(),
+            "filtering by 'TEMP' (case-insensitive) must match the '{}' tag: {}", needle, result);
+        assert!(names.iter().any(|n| n.to_lowercase().contains("temp")),
+            "every match should contain the filter text: {:?}", names);
+    }).await;
+}
+
+/// `serial_numbers` is required — an empty list used to mean "every device".
+#[tokio::test]
+async fn test_get_point_tags_requires_serials() {
+    common::with_db_or_skip("get_point_tags_requires_serials", |db| async move {
+        let err = common::execute_tool_json("t3000_haystack_get_point_tags", &json!({}), &db)
+            .await
+            .expect_err("omitting serial_numbers must be an error, not 'all devices'");
+        assert!(err.contains("serial_numbers"), "got: {}", err);
+    }).await;
+}
+
+/// `tags` is required — an empty filter used to return every tagged point.
+#[tokio::test]
+async fn test_search_points_requires_tags() {
+    common::with_db_or_skip("search_points_requires_tags", |db| async move {
+        let err = common::execute_tool_json("t3000_haystack_search_points", &json!({}), &db)
+            .await
+            .expect_err("omitting tags must be an error, not 'no filter'");
+        assert!(err.contains("tags"), "got: {}", err);
+    }).await;
+}
+
+/// `serial_numbers` is required for the brick-class lookup too.
+#[tokio::test]
+async fn test_get_brick_class_requires_serials() {
+    common::with_db_or_skip("get_brick_class_requires_serials", |db| async move {
+        let err = common::execute_tool_json("t3000_haystack_get_brick_class", &json!({}), &db)
+            .await
+            .expect_err("omitting serial_numbers must be an error");
+        assert!(err.contains("serial_numbers"), "got: {}", err);
+    }).await;
+}
+
 #[tokio::test]
 async fn test_get_point_tags_returns_data() {
     common::with_db_or_skip("get_point_tags_returns_data", |db| async move {
@@ -124,6 +197,52 @@ async fn test_get_point_tags_returns_data() {
             assert!(common::get_i64(first, "serial_number").is_some());
             assert!(common::get_str(first, "point_type").is_some());
         }
+    }).await;
+}
+
+/// Tag rows keep the DB's 0-based index, but every point tool counts from 1. A
+/// client that reads a tag and then writes `point_index` would hit the wrong point,
+/// so each entry must also carry the 1-based index — exactly one higher.
+#[tokio::test]
+async fn test_get_point_tags_exposes_one_based_index() {
+    common::with_db_or_skip("get_point_tags_exposes_one_based_index", |db| async move {
+        let serial: Option<i32> = db
+            .query_all(Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                "SELECT serial_number FROM haystack_point_tags LIMIT 1",
+            ))
+            .await
+            .ok()
+            .and_then(|rows| rows.first().and_then(|r| r.try_get("", "serial_number").ok()));
+        let Some(serial) = serial else {
+            println!("SKIP get_point_tags_exposes_one_based_index — no tagged points in the DB");
+            return;
+        };
+
+        let result = common::execute_tool_json(
+            "t3000_haystack_get_point_tags",
+            &json!({"serial_numbers": [serial]}),
+            &db,
+        ).await.expect("get_point_tags should succeed");
+        let entries = result.get("entries").and_then(|v| v.as_array()).expect("entries array");
+
+        let mut checked = 0;
+        for entry in entries {
+            let stored: i32 = common::get_str(entry, "point_index")
+                .expect("point_index must be present")
+                .trim()
+                .parse()
+                .expect("point_index must be numeric");
+            let one_based = common::get_i64(entry, "point_index_1based")
+                .unwrap_or_else(|| panic!("point_index_1based missing from entry: {}", entry));
+            assert_eq!(
+                one_based, stored as i64 + 1,
+                "point_index_1based must be the 1-based twin of point_index: {}", entry
+            );
+            checked += 1;
+        }
+        assert!(checked > 0, "device {} has tags but returned no entries", serial);
+        println!("point_index_1based verified on {} entries of device {}", checked, serial);
     }).await;
 }
 
