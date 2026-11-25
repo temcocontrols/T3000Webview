@@ -52,6 +52,17 @@ pub enum RustError {
     Error = 1,
 }
 
+/// T3000.exe is a 32-bit process with ~2 GB of address space and every thread
+/// reserves 2 MB of stack. Tokio's default blocking pool grows to 512 threads, so a
+/// burst of device calls could reserve ~1 GB — after which thread creation and large
+/// allocations fail and the host aborts. Keep the pool small; extra work queues.
+fn build_runtime() -> std::io::Result<tokio::runtime::Runtime> {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .max_blocking_threads(24)
+        .build()
+}
+
 /// Append a diagnostic line straight to the API log — unconditionally, because a
 /// crash must never be gated on the debug flag.
 fn log_crash_line(message: &str) {
@@ -120,7 +131,7 @@ pub extern "C" fn run_server() -> RustError {
     // Use panic::catch_unwind to catch any panic and prevent it from unwinding across FFI boundaries.
     let result = panic::catch_unwind(|| {
         // Create a new Tokio runtime for asynchronous operations.
-        let runtime = match tokio::runtime::Runtime::new() {
+        let runtime = match build_runtime() {
             Ok(rt) => rt,                      // Successfully created the runtime.
             Err(_) => return RustError::Error, // Failed to create the runtime.
         };
@@ -590,7 +601,7 @@ pub async fn start_all_services_t3_migrations_only() -> Result<(), Box<dyn std::
 pub extern "C" fn run_t3_server() -> RustError {
     install_panic_hook();
     let result = panic::catch_unwind(|| {
-        let runtime = match tokio::runtime::Runtime::new() {
+        let runtime = match build_runtime() {
             Ok(rt) => rt,
             Err(_) => return RustError::Error,
         };

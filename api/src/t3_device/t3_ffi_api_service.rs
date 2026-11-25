@@ -217,6 +217,14 @@ fn ffi_buffer() -> &'static Mutex<Vec<u8>> {
     FFI_BUFFER.get_or_init(|| Mutex::new(Vec::new()))
 }
 
+/// Caps how many FFI calls may hold a blocking thread at once. Each one keeps its
+/// thread while it waits for the global FFI lock; uncapped, that queue grew to
+/// hundreds of threads (2 MB of reserved stack each) inside the 32-bit T3000 host.
+fn ffi_inflight() -> &'static tokio::sync::Semaphore {
+    static FFI_INFLIGHT: OnceLock<tokio::sync::Semaphore> = OnceLock::new();
+    FFI_INFLIGHT.get_or_init(|| tokio::sync::Semaphore::new(4))
+}
+
 /// Private bytes of the host process, in MB. T3000.exe is 32-bit: once the ~2 GB
 /// address space is used up (or too fragmented for a 10 MB block) an allocation
 /// failure aborts the whole application, so the number matters when diagnosing.
@@ -364,8 +372,33 @@ impl T3000FfiApiService {
         let max_buffer_size = self.max_buffer_size;
         let message_owned = message.to_string();
 
+        // Waiting for the FFI lock inside `spawn_blocking` parks a whole thread per
+        // caller. Under normal UI load that piled up hundreds of threads, and in a
+        // 32-bit host the reserved stacks alone exhausted the address space (thread
+        // creation then failed with "Not enough memory resources"). Queue here
+        // instead — an async semaphore wait costs no thread.
+        let permit = match tokio::time::timeout(
+            Duration::from_secs(120),
+            ffi_inflight().acquire(),
+        )
+        .await
+        {
+            Ok(Ok(permit)) => permit,
+            Ok(Err(_)) => {
+                return Err(Error::ServerError("FFI queue is closed".to_string()));
+            }
+            Err(_) => {
+                return Err(Error::ServerError(
+                    "Timed out after 120s waiting for a free FFI slot — a device call is stuck"
+                        .to_string(),
+                ));
+            }
+        };
+
         // Run heavy FFI work on blocking pool so request handling threads stay responsive.
-        let ffi_result = tokio::task::spawn_blocking(move || {
+        let spawned = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            tokio::task::spawn_blocking(move || {
+            let _permit = permit;
             let _guard = ffi_call_lock_timeout(60)
                 .ok_or_else(|| Error::ServerError("FFI lock timed out — prior C++ call may be stuck".to_string()))?;
 
@@ -460,9 +493,23 @@ impl T3000FfiApiService {
                     Err(Error::ServerError("FFI function not loaded".to_string()))
                 }
             }
-        })
-        .await
-        .map_err(|e| Error::ServerError(format!("FFI blocking task join error: {}", e)))?;
+            })
+        }));
+
+        // A failed thread spawn (32-bit address space exhausted) used to panic the
+        // request task and close the connection with no answer at all.
+        let handle = match spawned {
+            Ok(handle) => handle,
+            Err(_) => {
+                return Err(Error::ServerError(
+                    "Could not start a worker thread — T3000 is low on memory. Restart T3000 and retry"
+                        .to_string(),
+                ));
+            }
+        };
+        let ffi_result = handle
+            .await
+            .map_err(|e| Error::ServerError(format!("FFI blocking task join error: {}", e)))?;
 
         let (code, null_pos, response) = ffi_result?;
         if code == 0 {
