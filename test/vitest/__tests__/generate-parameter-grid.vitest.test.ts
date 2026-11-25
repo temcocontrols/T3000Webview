@@ -45,6 +45,20 @@ function cellText(c: any): string {
     return "";
 }
 
+/**
+ * The generation cases below drive a real project through the dev server on :3003
+ * (they read and write project/T3-XX-ESP11113/*.eez-project). In CI - and in any
+ * run without the dev server - they are skipped instead of failing on "fetch failed".
+ */
+const devServerUp = await (async () => {
+    try {
+        const r = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(1500) });
+        return r.ok;
+    } catch {
+        return false;
+    }
+})();
+
 describe("parameter grid generation", () => {
     it("maps raw point codes to display text", () => {
         expect(gridCellText({ label: "", fullLabel: "AHU-1 Supply Temp1s" }, "label")).toBe("AHU-1 Supply Temp1s");
@@ -59,7 +73,7 @@ describe("parameter grid generation", () => {
         expect(gridCellText({ digitalAnalog: "0", rangeField: "0" }, "range")).toBe("Unused");
     });
 
-    it("generates a grid into the current project from the DB and verifies", async () => {
+    it.skipIf(!devServerUp)("generates a grid into the current project from the DB and verifies", async () => {
         const proj = await loadProject();
         const sn = proj.importedFrom?.serialNumber;
         const pointsResp = await fetch(`http://localhost:3003/api/t3_device/devices/${sn}/input-points`);
@@ -150,7 +164,7 @@ describe("parameter grid generation", () => {
         ).toBe(true);
     }, 30000);
 
-    it("generates an OUTPUT grid into its own panel (firmware fields: +SW col), hidden by default", async () => {
+    it.skipIf(!devServerUp)("generates an OUTPUT grid into its own panel (firmware fields: +SW col), hidden by default", async () => {
         const proj = await loadProject();
         const sn = proj.importedFrom?.serialNumber;
         const resp = await fetch(`http://localhost:3003/api/t3_device/devices/${sn}/output-points`);
@@ -182,7 +196,7 @@ describe("parameter grid generation", () => {
         await saveProject(proj);
     }, 30000);
 
-    it("generates a VARIABLE grid into its own panel (same cols as input, variable range table), hidden by default", async () => {
+    it.skipIf(!devServerUp)("generates a VARIABLE grid into its own panel (same cols as input, variable range table), hidden by default", async () => {
         const proj = await loadProject();
         const sn = proj.importedFrom?.serialNumber;
         const resp = await fetch(`http://localhost:3003/api/t3_device/devices/${sn}/variable-points`);
@@ -214,7 +228,7 @@ describe("parameter grid generation", () => {
         await saveProject(proj);
     }, 30000);
 
-    it("generates ALL THREE grids (different fields + data) and wires the main-menu switch", async () => {
+    it.skipIf(!devServerUp)("generates ALL THREE grids (different fields + data) and wires the main-menu switch", async () => {
         const proj = await loadProject();
         const sn = proj.importedFrom?.serialNumber;
 

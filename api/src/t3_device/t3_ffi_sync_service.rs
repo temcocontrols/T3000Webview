@@ -1996,7 +1996,8 @@ impl T3000MainService {
                     "objectinstance": object_instance,
                     "entryType": *entry_type,
                     "entryIndexStart": 0,
-                    "entryIndexEnd": 63,
+                    // Inputs go up to 128 (0-127); outputs/variables stop at 64.
+                    "entryIndexEnd": if *entry_type == 1 { 127 } else { 63 },
                 })
                 .to_string();
                 sync_flow.step_ffi(&local_db, &step_action17_request, "info", "ffi_sync", "ok", 0,
@@ -2016,7 +2017,9 @@ impl T3000MainService {
                     object_instance,
                     *entry_type,
                     0,
-                    63,
+                    // Same type-dependent bound as the recorded request: inputs are
+                    // BAC_INPUT_ITEM_COUNT (0-127), outputs/variables 0-63.
+                    if *entry_type == 1 { 127 } else { 63 },
                 ).await {
                     Ok(data) => data,
                     Err(e) => {

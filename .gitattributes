@@ -1,0 +1,17 @@
+# The docs registry generator writes LF. Without this a Windows checkout
+# (core.autocrlf=true, as on the windows-latest CI runner) converts docs/** to CRLF
+# and `docs:registry:check` reports DRIFT on every toc, while a Linux checkout
+# passes. Only text file types are listed - never a bare `docs/**`, which would
+# renormalise PNGs and corrupt them.
+docs/**/*.yml   text eol=lf
+docs/**/*.yaml  text eol=lf
+docs/**/*.json  text eol=lf
+docs/**/*.md    text eol=lf
+docs/**/*.html  text eol=lf
+docs/**/*.css   text eol=lf
+docs/**/*.js    text eol=lf
+docs/**/*.xml   text eol=lf
+
+.github/workflows/*.yml text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf

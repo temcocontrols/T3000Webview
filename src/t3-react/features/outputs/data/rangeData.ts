@@ -85,6 +85,19 @@ export function getRangeOptions(digitalAnalog: number): RangeOption[] {
 }
 
 /**
+ * Codes 0–8 exist in both tables, so the number alone cannot decide the mode.
+ * A code that only one table defines (9–30 digital, 101–104 MSV) does decide it —
+ * without this, typing 20 or 101 for an analog output saved an invalid mode.
+ */
+export function inferDigitalAnalog(value: number): number | undefined {
+  const inAnalog = OUTPUT_ANALOG_RANGES.some(r => r.value === value);
+  const inDigital = OUTPUT_DIGITAL_RANGES.some(r => r.value === value);
+  if (inAnalog && !inDigital) return BAC_UNITS_ANALOG;
+  if (inDigital && !inAnalog) return BAC_UNITS_DIGITAL;
+  return undefined;
+}
+
+/**
  * Get range label by value and type.
  * Uses digitalAnalog to pick the correct table (digital vs analog),
  * then looks up the value in that table.

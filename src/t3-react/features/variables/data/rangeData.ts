@@ -100,6 +100,19 @@ export function getRangeOptions(digitalAnalog: number): RangeOption[] {
   return digitalAnalog === BAC_UNITS_DIGITAL ? DIGITAL_RANGES : VARIABLE_ANALOG_RANGES;
 }
 
+/**
+ * Codes 0–30 exist in both tables, so the number alone cannot decide the mode.
+ * 31–33 are analog-only and 101–104 (MSV) are digital-only: typing one of those
+ * must switch the mode instead of saving it as the other kind.
+ */
+export function inferDigitalAnalog(value: number): number | undefined {
+  const inAnalog = VARIABLE_ANALOG_RANGES.some(r => r.value === value);
+  const inDigital = DIGITAL_RANGES.some(r => r.value === value);
+  if (inAnalog && !inDigital) return BAC_UNITS_ANALOG;
+  if (inDigital && !inAnalog) return BAC_UNITS_DIGITAL;
+  return undefined;
+}
+
 export function getRangeLabel(value: number, digitalAnalog: number): string {
   const ranges = getRangeOptions(digitalAnalog);
   const range = ranges.find(r => r.value === value);

@@ -108,12 +108,13 @@ pub async fn refresh_inputs(
 
     // A single entry uses `entryIndex`; a full refresh needs the range, because
     // the C++ reads `entryIndexStart..=entryIndexEnd` (both default to 0, which
-    // would read only the first point). 63 is clamped to the real item count.
+    // would read only the first point). 127 is BAC_INPUT_ITEM_COUNT - 1 (128
+    // inputs, 0-127) and is clamped to the real item count by the C++.
     match payload.index {
         Some(idx) => refresh_json["entryIndex"] = json!(idx),
         None => {
             refresh_json["entryIndexStart"] = json!(0);
-            refresh_json["entryIndexEnd"] = json!(63);
+            refresh_json["entryIndexEnd"] = json!(127);
         }
     }
 

@@ -1100,10 +1100,16 @@ pub fn split_screen_blocks(content: &str) -> Vec<(String, String)> {
             if i == 0 {
                 return 0; // keep includes + shared static helpers with the first screen
             }
+            // Look for this screen's declaration only after the previous screen's
+            // init. A multi-screen file may declare all globals at the top, and a
+            // file-wide search would then attribute the second screen's declaration
+            // (and its body) to the first one.
+            let lower_bound = inits[i - 1].0 + 1;
             let decl = format!("lv_obj_t *ui_{};", name);
-            lines[..*init_line]
+            lines[lower_bound..*init_line]
                 .iter()
                 .rposition(|l| l.trim() == decl)
+                .map(|offset| lower_bound + offset)
                 .unwrap_or(*init_line)
         })
         .collect();

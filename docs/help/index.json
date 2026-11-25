@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-21",
+  "generated": "2026-11-25",
   "pages": [
     {
       "id": "legacy/development/analysis/LEFT_PANEL_ANALYSIS",
@@ -10718,8 +10718,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "b27dfab8",
-        "date": "2026-09-11"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -11304,8 +11304,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "fe3719cf",
-        "date": "2026-11-19"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -12214,6 +12214,34 @@
       "code": []
     },
     {
+      "id": "t3000/device-management/ffi-get-tree-devices",
+      "url": "/docs/t3000/device-management/ffi-get-tree-devices.html",
+      "title": "FFI: BacnetWebViewGetTreeDevices — T3000's device tree from memory",
+      "area": "t3000",
+      "chapter": "device-management",
+      "order": 50,
+      "audience": "user",
+      "ship": true,
+      "owner": "docs",
+      "tags": [],
+      "keywords": [],
+      "git": {
+        "author": "Double",
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
+      },
+      "reviewed": null,
+      "stale": false,
+      "headings": [
+        "1. Header — BacnetWebViewExports.h",
+        "2. Implementation — BacnetWebViewExports.cpp",
+        "Notes for the implementer",
+        "3. Rust side (already implemented)",
+        "4. Safety summary"
+      ],
+      "code": []
+    },
+    {
       "id": "t3000/device-management/lan-scanner",
       "url": "/docs/t3000/device-management/lan-scanner.html",
       "title": "LAN Scanner — UDP Device Discovery",
@@ -12227,8 +12255,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "fe3719cf",
-        "date": "2026-11-19"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -12244,6 +12272,12 @@
         "Serial pass",
         "TCP sub-port pass",
         "Troubleshooting an empty device tree",
+        "T3000 device sources — preferred order",
+        "T3000 device database (ALLNODE) — default source",
+        "Locking: is reading T3000's database safe?",
+        "How T3000 itself discovers devices",
+        "Not yet covered by the Rust scan",
+        "Proposed FFI contract (when T3000-Source can change)",
         "Key Differences from C++",
         "Bugs Caught During Porting",
         "Real Hardware Test Results",
@@ -12400,8 +12434,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "9a82f3ed",
-        "date": "2026-10-08"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -12824,8 +12858,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "b27dfab8",
-        "date": "2026-09-11"
+        "sha": "c37726f3",
+        "date": "2026-11-23"
       },
       "reviewed": null,
       "stale": false,
@@ -12855,8 +12889,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "15a6ffc3",
-        "date": "2026-08-03"
+        "sha": "c37726f3",
+        "date": "2026-11-23"
       },
       "reviewed": null,
       "stale": false,
@@ -12916,8 +12950,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "9a82f3ed",
-        "date": "2026-10-08"
+        "sha": "c37726f3",
+        "date": "2026-11-23"
       },
       "reviewed": null,
       "stale": false,
@@ -12959,8 +12993,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "9a82f3ed",
-        "date": "2026-10-08"
+        "sha": "c37726f3",
+        "date": "2026-11-23"
       },
       "reviewed": null,
       "stale": false,
@@ -13055,8 +13089,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "9a82f3ed",
-        "date": "2026-10-08"
+        "sha": "799780ad",
+        "date": "2026-11-24"
       },
       "reviewed": null,
       "stale": false,
@@ -13156,8 +13190,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "9a82f3ed",
-        "date": "2026-10-08"
+        "sha": "9fae90b6",
+        "date": "2026-11-23"
       },
       "reviewed": null,
       "stale": false,
@@ -13170,7 +13204,7 @@
         "Step 5: Try a Query",
         "Other Clients",
         "Troubleshooting",
-        "Available Tools (44)"
+        "Available Tools (74)"
       ],
       "code": []
     },
@@ -13188,8 +13222,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "9a82f3ed",
-        "date": "2026-10-08"
+        "sha": "9fae90b6",
+        "date": "2026-11-23"
       },
       "reviewed": null,
       "stale": false,
@@ -13200,7 +13234,7 @@
         "Step 3: Verify Connection",
         "Step 4: Try a Query",
         "Troubleshooting",
-        "Available Tools (44)"
+        "Available Tools (74)"
       ],
       "code": []
     },
@@ -13358,8 +13392,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "9a82f3ed",
-        "date": "2026-10-08"
+        "sha": "0f28cfca",
+        "date": "2026-11-24"
       },
       "reviewed": null,
       "stale": false,
@@ -13861,8 +13895,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "daf3faec",
-        "date": "2026-11-19"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -13890,8 +13924,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "22c48954",
-        "date": "2026-11-20"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -13932,8 +13966,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "df9accd4",
-        "date": "2026-11-19"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -13972,8 +14006,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "49f0e1d1",
-        "date": "2026-11-19"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -14019,8 +14053,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "daf3faec",
-        "date": "2026-11-19"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -14046,8 +14080,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "daf3faec",
-        "date": "2026-11-19"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -14237,8 +14271,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "24a42da2",
-        "date": "2026-10-08"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -14299,8 +14333,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "22c48954",
-        "date": "2026-11-20"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -14338,8 +14372,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "22c48954",
-        "date": "2026-11-20"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -14392,8 +14426,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "15b6f78c",
-        "date": "2026-11-19"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -14431,7 +14465,11 @@
       "owner": "docs",
       "tags": [],
       "keywords": [],
-      "git": null,
+      "git": {
+        "author": "Double",
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
+      },
       "reviewed": null,
       "stale": false,
       "headings": [
@@ -14477,7 +14515,11 @@
         "17.1 Firmware — T3-programmable-controller-on-ESP32",
         "17.2 Front end — T3000Webview",
         "18. Open decisions",
-        "19. Risks"
+        "19. Risks",
+        "20. Implementation status",
+        "20.1 Landed",
+        "20.2 Deliberate deviations",
+        "20.3 Not started"
       ],
       "code": []
     },
@@ -14495,8 +14537,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "24a42da2",
-        "date": "2026-10-08"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -14534,8 +14576,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "24a42da2",
-        "date": "2026-10-08"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -14726,8 +14768,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "24a42da2",
-        "date": "2026-10-08"
+        "sha": "2a46a6fd",
+        "date": "2026-11-22"
       },
       "reviewed": null,
       "stale": false,
@@ -14786,7 +14828,7 @@
     }
   ],
   "counts": {
-    "total": 323,
-    "ship": 147
+    "total": 324,
+    "ship": 148
   }
 }

@@ -226,7 +226,12 @@ for (const abs of files) {
   const attribution = [];
   const todoLines = [];
   const metaSections = [];
-  for (const h of hs) if (META_SECTION.test(h.text)) metaSections.push(`H${h.level} ${h.text.slice(0, 60)}`);
+  // The page's own title is not a "meta section": a page legitimately titled
+  // "Changelog - 2026-10-11" must not be flagged for that word.
+  hs.filter((h, index) => !(index === 0 && h.level === 1))
+    .forEach((h) => {
+      if (META_SECTION.test(h.text)) metaSections.push(`H${h.level} ${h.text.slice(0, 60)}`);
+    });
   prose.split(/\r?\n/).forEach((l, i) => {
     const t = l.trim();
     if (!t) return;

@@ -214,7 +214,7 @@ const routes = [
     children: [
       {
         path: "",
-        component: createOptimizedComponent(() => import("../pages/Dashboard/T3DeviceDb.vue"), "T3DeviceDBPage"),
+        component: createOptimizedComponent(() => import("../pages/Dashboard/T3Devicedb.vue"), "T3DeviceDBPage"),
       },
     ],
   },

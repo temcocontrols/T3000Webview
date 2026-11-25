@@ -16,6 +16,7 @@ import {
   OUTPUT_ANALOG_RANGES,
   OUTPUT_DIGITAL_RANGES,
   getRangeLabel,
+  inferDigitalAnalog,
 } from '../data/rangeData';
 import styles from './RangeSelectionDrawer.module.css';
 
@@ -43,7 +44,9 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   const [mode, setMode] = useState<number>(digitalAnalog);
 
   const handleSave = () => {
-    onSave(selectedRange, mode);
+    // A manually typed code that only one table defines overrides the radio choice
+    // (e.g. 101 = MSV is digital-only, 32 = BTU is analog-only).
+    onSave(selectedRange, inferDigitalAnalog(selectedRange) ?? mode);
     onClose();
   };
 
@@ -58,6 +61,9 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
     const numValue = parseInt(value, 10);
     if (!isNaN(numValue) && numValue >= 0 && numValue <= 104) {
       setSelectedRange(numValue);
+      // Keep the visible mode in step with a code only one table defines.
+      const inferred = inferDigitalAnalog(numValue);
+      if (inferred !== undefined) setMode(inferred);
     }
   };
 

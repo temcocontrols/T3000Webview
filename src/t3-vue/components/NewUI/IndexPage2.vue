@@ -317,12 +317,12 @@ import { useQuasar, useMeta, QVueGlobals } from "quasar";
 import { VueMoveable, getElementInfo } from "vue3-moveable";
 import KeyController from "keycon";
 // Import lodash functions as needed
-import ObjectType from "../hvac/ObjectType.vue";
-import GaugeSettingsDialog from "../hvac/GaugeSettingsDialog.vue";
-import FileUpload from "../hvac/FileUpload.vue";
-import TopToolbar from "../hvac/TopToolbar.vue";
+import ObjectType from "../Hvac/ObjectType.vue";
+import GaugeSettingsDialog from "../Hvac/GaugeSettingsDialog.vue";
+import FileUpload from "../Hvac/FileUpload.vue";
+import TopToolbar from "../Hvac/TopToolbar.vue";
 import ToolsSidebar2 from "./ToolsSidebar2.vue";
-import ObjectConfig from "../hvac/ObjectConfig.vue";
+import ObjectConfig from "../Hvac/ObjectConfig.vue";
 import ObjectConfig2 from "../../components/NewUI/ObjectConfig2.vue";
 import { tools, demoDeviceData } from "@/lib/vue/common.js";
 import { liveApi } from "@/lib/vue/api.js";

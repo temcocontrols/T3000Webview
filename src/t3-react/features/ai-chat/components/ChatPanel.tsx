@@ -140,6 +140,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
   // The provider only reports `waiting` once the server has accepted the request
   // and the socket is open — from then on silence means "model is thinking".
   const awaitingModel = streamingStatus?.phase === 'waiting';
+  // Deltas clear `streamingStatus`, so it cannot be used alone: any content at all
+  // proves the endpoint is reachable and silence afterwards is the model working.
+  const receivedAnything =
+    streamingText.length > 0 || streamingBlocks.length > 0 || streamingSteps.length > 0;
+  const endpointAnswered = awaitingModel || receivedAnything;
 
   // Elapsed-time counter while a turn is in flight. The backend reports status
   // events, but if the endpoint is blackholed even those can take seconds — the
@@ -411,9 +416,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ variant = 'full' }) => {
               normal for a CPU-hosted model with a large prompt. Only while we are
               still dialing does 20 s of silence point at an unreachable endpoint.
             */}
-            {isStreaming && elapsedSec >= (awaitingModel ? 60 : 20) && (
+            {isStreaming && elapsedSec >= (endpointAnswered ? 60 : 20) && (
               <div className={styles.thinkingSlowHint}>
-                {awaitingModel ? (
+                {endpointAnswered ? (
                   <>
                     The model is still working on your request &mdash; a large prompt can
                     take a few minutes on a CPU-hosted model. Press Stop to cancel.

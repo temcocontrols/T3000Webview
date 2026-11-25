@@ -12,7 +12,7 @@ import {
   Label,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
-import { VARIABLE_ANALOG_RANGES, DIGITAL_RANGES, getRangeLabel } from '../data/rangeData';
+import { VARIABLE_ANALOG_RANGES, DIGITAL_RANGES, getRangeLabel, inferDigitalAnalog } from '../data/rangeData';
 import styles from '../../inputs/components/RangeSelectionDrawer.module.css';
 
 interface RangeSelectionDrawerProps {
@@ -38,7 +38,12 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
   // from the number — it comes from the section the user picked.
   const [mode, setMode] = useState<number>(digitalAnalog);
 
-  const handleSave = () => { onSave(selectedRange, mode); onClose(); };
+  const handleSave = () => {
+    // A manually typed code that only one table defines overrides the radio choice
+    // (e.g. 101 = MSV is digital-only, 32 = BTU is analog-only).
+    onSave(selectedRange, inferDigitalAnalog(selectedRange) ?? mode);
+    onClose();
+  };
 
   const handleCancel = () => {
     setSelectedRange(currentRange);
@@ -51,6 +56,9 @@ export const RangeSelectionDrawer: React.FC<RangeSelectionDrawerProps> = ({
     const numValue = parseInt(value, 10);
     if (!isNaN(numValue) && numValue >= 0 && numValue <= 104) {
       setSelectedRange(numValue);
+      // Keep the visible mode in step with a code only one table defines.
+      const inferred = inferDigitalAnalog(numValue);
+      if (inferred !== undefined) setMode(inferred);
     }
   };
 
