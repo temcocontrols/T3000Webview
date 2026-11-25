@@ -1701,8 +1701,8 @@
     "t": "Message: GETPanelData"
   },
   "t3000/building-platform/control-messages/message-get-panels-list": {
-    "updated": "2026-11-22",
-    "sha": "2a46a6fd",
+    "updated": "2026-11-25",
+    "sha": "feaacaad",
     "owner": "docs",
     "stale": false,
     "t": "Message: GETPanelsList"
