@@ -2017,7 +2017,9 @@ impl T3000MainService {
                     object_instance,
                     *entry_type,
                     0,
-                    63,
+                    // Same type-dependent bound as the recorded request: inputs are
+                    // BAC_INPUT_ITEM_COUNT (0-127), outputs/variables 0-63.
+                    if *entry_type == 1 { 127 } else { 63 },
                 ).await {
                     Ok(data) => data,
                     Err(e) => {

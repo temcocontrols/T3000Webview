@@ -55,6 +55,8 @@ let scanInFlight: Promise<void> | null = null;
 let queuedScanOptions: ScanOptions | null = null;
 /** Options of the scan currently running (null when idle). */
 let runningScanOptions: ScanOptions | null = null;
+/** A detached backend deep scan (serial COM + sub-ports) is still probing. */
+let detachedDeepScanRunning = false;
 
 /** Merge two scan requests, keeping the most demanding option of each. */
 function mergeScanOptions(a?: ScanOptions | null, b?: ScanOptions | null): ScanOptions {
@@ -377,25 +379,46 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
               .setMessage('A device scan is already running — waiting for it to finish...', 'info');
           }
           await scanInFlight;
+          // A request that arrived while the drain loop was finishing may not have
+          // been picked up ? run it instead of dropping it.
+          if (queuedScanOptions && !scanInFlight) {
+            const next = queuedScanOptions;
+            queuedScanOptions = null;
+            return get().scanForDevices(next);
+          }
           return;
         }
 
         runningScanOptions = options ?? null;
-        scanInFlight = (async () => {
+        // The scan body is a plain function so the queued (stronger) request can
+        // run inside the same shared promise ? every caller then waits for the
+        // discovery it asked for, not just for the first pass.
+        const runScanOnce = async (opts?: ScanOptions) => {
           const { setMessage } = useStatusBarStore.getState();
-          try {
-            if (!options?.quiet) {
+          if ((opts?.mode ?? 'full') === 'full' && detachedDeepScanRunning) {
+            if (!opts?.quiet) {
               setMessage(
-                options?.mode === 'udp'
+                'Waiting for the background deep scan to finish before the full scan...',
+                'info'
+              );
+            }
+            await get().awaitDeepScan();
+            detachedDeepScanRunning = false;
+          }
+
+          try {
+            if (!opts?.quiet) {
+              setMessage(
+                opts?.mode === 'udp'
                   ? 'Scanning the network (UDP) for T3000 devices...'
                   : 'Scanning network + serial (COM) ports for T3000 devices...',
                 'info'
               );
             }
             const response = await DeviceApiService.scanAndRefreshDevices(
-              options?.timeout ?? 8,
-              options?.mode ?? 'full',
-              options?.deep ?? false
+              opts?.timeout ?? 8,
+              opts?.mode ?? 'full',
+              opts?.deep ?? false
             );
 
             const cleanedDevices = response.devices
@@ -435,22 +458,39 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
             if (response.serial_count) parts.push(`${response.serial_count} serial`);
             if (response.udp_count) parts.push(`${response.udp_count} UDP`);
             if (response.tcp_sub_count) parts.push(`${response.tcp_sub_count} TCP sub-port`);
-            if (!options?.quiet) {
+            if (!opts?.quiet) {
               setMessage(`Scan complete — ${parts.join(', ')}`, 'success');
             }
 
             // Serial + TCP sub-port probing runs detached in the backend; poll
             // once it started so the tree picks up those devices when they land.
             if (response.deep_scan === 'running') {
-              if (!options?.quiet) {
+              if (!opts?.quiet) {
                 setMessage('Deep scan (serial + sub-ports) running in the background...', 'info');
               }
-              void get().awaitDeepScan();
+              detachedDeepScanRunning = true;
+              void get().awaitDeepScan().finally(() => {
+                detachedDeepScanRunning = false;
+              });
             }
           } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);
             LogUtil.Error('[scanForDevices] Scan failed:', error);
             setMessage(`Network scan failed — ${reason}`, 'warning');
+          }
+        };
+
+        scanInFlight = (async () => {
+          try {
+            await runScanOnce(options);
+            while (queuedScanOptions) {
+              const next = queuedScanOptions;
+              queuedScanOptions = null;
+              runningScanOptions = mergeScanOptions(runningScanOptions, next);
+              await runScanOnce(next);
+            }
+          } finally {
+            runningScanOptions = null;
           }
         })();
 
@@ -458,15 +498,6 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           await scanInFlight;
         } finally {
           scanInFlight = null;
-          runningScanOptions = null;
-        }
-
-        // A scan that asked for deeper discovery while this one ran gets its pass
-        // now, so a refresh never silently degrades to the running scan's options.
-        if (queuedScanOptions) {
-          const next = queuedScanOptions;
-          queuedScanOptions = null;
-          await get().scanForDevices(next);
         }
       },
 

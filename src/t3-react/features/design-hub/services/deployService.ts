@@ -193,6 +193,21 @@ async function readImportStagingImageSignature(baseFolder: string, name: string)
     }
 }
 
+/** Names present in a staging folder ([] when it does not exist), suffix stripped. */
+async function listStagingNames(folder: string, suffix: string): Promise<string[]> {
+    try {
+        const r = await fetch(`/api/eez-studio/list-files?path=${encodeURIComponent(folder)}`);
+        if (!r.ok) return [];
+        const names: unknown = await r.json();
+        if (!Array.isArray(names)) return [];
+        return names
+            .filter((n): n is string => typeof n === "string" && n.toLowerCase().endsWith(suffix))
+            .map((n) => n.slice(0, -suffix.length));
+    } catch {
+        return [];
+    }
+}
+
 type EmitStep = (
     id: string,
     label: string,
@@ -445,7 +460,22 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     // serializes fully AFTER the editor has re-saved it into the nested layout.)
     if (!manifestUsable) {
         let foundStaging = false;
+        // Build the baseline from the COMPLETE imported inventory, not only the
+        // names still in the project: a screen deleted after "Load from device"
+        // would otherwise never enter the baseline, so its removal could not be
+        // detected and would never be deployed.
+        const stagingScreenNames = await listStagingNames(`${baseFolder}\\device-import`, ".json");
+        for (const name of stagingScreenNames) {
+            if (name === "deploy-manifest" || name.startsWith(".")) continue;
+            const staging = await readImportStagingScreen(baseFolder, name);
+            if (staging) {
+                prevScreenHashes[name] = canonicalSignature(staging);
+                foundStaging = true;
+            }
+        }
+        // Fall back to the project's own names for layouts the listing missed.
         for (const [name] of screenEntries) {
+            if (name in prevScreenHashes) continue;
             const staging = await readImportStagingScreen(baseFolder, name);
             if (staging) {
                 prevScreenHashes[name] = canonicalSignature(staging);
@@ -456,9 +486,13 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
             baselineSource = "device-import";
             // Compare the project bitmaps against the PNGs pulled at import
             // (bitmap data URLs survive the editor round trip byte-for-byte).
-            for (const img of images) {
-                const sig = await readImportStagingImageSignature(baseFolder, img.name);
-                if (sig) prevImageHashes[img.name] = sig;
+            const stagingImageNames = await listStagingNames(`${baseFolder}\\device-import\\imgs`, ".png");
+            const imageNames = stagingImageNames.length > 0
+                ? stagingImageNames
+                : images.map((img) => img.name);
+            for (const name of imageNames) {
+                const sig = await readImportStagingImageSignature(baseFolder, name);
+                if (sig) prevImageHashes[name] = sig;
             }
         }
     }
@@ -593,6 +627,18 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
                     pushOk ? undefined : `device returned ${status}`
                 );
             } else {
+                // Legacy firmware (no transaction API) with a partial change: it can
+                // upload additions and updates but cannot delete. A deletion-only
+                // deploy would report success while the device keeps the removed
+                // assets — and the manifest would forget them, so the removal could
+                // never be retried. Refuse, and let the error path keep the baseline.
+                if (removedScreens.length > 0 || removedImages.length > 0) {
+                    throw new Error(
+                        `This device cannot delete assets: ${removedScreens.length} screen(s) and ` +
+                            `${removedImages.length} image(s) were removed. Update T3000/firmware ` +
+                            `so the transactional deploy is available, then deploy again.`
+                    );
+                }
                 // Incremental: push the changed images first (screens may
                 // reference them), then only the changed screens.
                 if (changedImages.length > 0) {
