@@ -24,7 +24,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_haystack_get_point_tags",
         title: "Get Point Tags",
-        description: "Get all Haystack tags assigned to specific points by serial number and point type.",
+        description: "Get all Haystack tags assigned to specific points by serial number and point type. Each entry carries point_index (0-based, as stored in the tag tables) and point_index_1based — pass point_index_1based to t3000_point_read / t3000_point_write, which count from 1 (IN1 = 1).",
         input_schema: json!({
             "type": "object",
             "properties": {
@@ -44,7 +44,7 @@ lazy_static::lazy_static! {
     ToolDef {
         name: "t3000_haystack_search_points",
         title: "Search Points by Tags",
-        description: "Search for points that have specific tags. Returns matching point metadata with full tag sets.",
+        description: "Search for points that have specific tags. Returns matching point metadata with full tag sets. Each entry carries point_index (0-based, as stored in the tag tables) and point_index_1based — pass point_index_1based to t3000_point_read / t3000_point_write, which count from 1 (IN1 = 1).",
         input_schema: json!({
             "type": "object",
             "properties": {

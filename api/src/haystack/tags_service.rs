@@ -30,9 +30,18 @@ pub struct TagTreeNode {
 pub struct PointTagEntry {
     pub serial_number: i32,
     pub point_type: String,
+    /// Point index as stored in the tag tables (0-based).
     pub point_index: String,
+    /// Same point as `t3000_point_read` / `t3000_point_write` expect (1-based).
+    /// Without it an AI reading a tag gets index 0 for IN1 and writes one point off.
+    pub point_index_1based: i32,
     pub point_id: String,
     pub tag_name: String,
+}
+
+/// Tag rows store 0-based indexes; every MCP point tool counts from 1.
+fn one_based_index(stored: &str) -> i32 {
+    stored.trim().parse::<i32>().map(|i| i + 1).unwrap_or(0)
 }
 
 #[derive(Debug, Deserialize)]
@@ -427,10 +436,12 @@ pub async fn get_point_tags(
     Ok(rows
         .iter()
         .filter_map(|r| {
+            let stored_index: String = r.try_get("", "point_index").ok()?;
             Some(PointTagEntry {
                 serial_number: r.try_get("", "serial_number").ok()?,
                 point_type: r.try_get("", "point_type").ok()?,
-                point_index: r.try_get("", "point_index").ok()?,
+                point_index: stored_index.clone(),
+                point_index_1based: one_based_index(&stored_index),
                 point_id: r.try_get("", "point_id").ok()?,
                 tag_name: r.try_get("", "tag_name").ok()?,
             })
@@ -592,10 +603,12 @@ pub async fn search_points(
     Ok(rows
         .iter()
         .filter_map(|r| {
+            let stored_index: String = r.try_get("", "point_index").ok()?;
             Some(PointTagEntry {
                 serial_number: r.try_get("", "serial_number").ok()?,
                 point_type: r.try_get("", "point_type").ok()?,
-                point_index: r.try_get("", "point_index").ok()?,
+                point_index: stored_index.clone(),
+                point_index_1based: one_based_index(&stored_index),
                 point_id: r.try_get("", "point_id").ok()?,
                 tag_name: r.try_get("", "tag_name").ok()?,
             })

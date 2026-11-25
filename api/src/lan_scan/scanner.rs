@@ -556,13 +556,32 @@ pub async fn scan_all(timeout_secs: u64) -> FullScanResult {
 
 /// `scan_all`, skipping the serial ports T3000 owns.
 pub async fn scan_all_skipping(timeout_secs: u64, skip_ports: &[String]) -> FullScanResult {
+    // Probing COM ports from inside T3000.exe can take the host down: the probe
+    // calls SetupComm/SetCommState on the very ports T3000's polling thread is
+    // using (the "owned" list can be empty, e.g. before its building DB loads),
+    // and the C++ serial layer then runs on a line state that changed underneath
+    // it. T3000's own Scan All already covers serial and its devices arrive from
+    // the device database, so serial probing is skipped when hosted.
+    let serial_disabled: Option<&str> = if super::serial::hosted_by_t3000() {
+        Some("serial probing is disabled inside T3000.exe: the host owns the COM ports and its own Scan All covers them")
+    } else if std::env::var("T3000_DISABLE_SERIAL_PROBE").is_ok() {
+        Some("serial probing disabled by T3000_DISABLE_SERIAL_PROBE")
+    } else {
+        None
+    };
+
     // Serial does not depend on LAN discovery and is the slowest part of a full
-    // scan (every port × every baud rate), so it starts before the UDP pass
+    // scan (every port x every baud rate), so it starts before the UDP pass
     // instead of after it. Serial and UDP time then overlap instead of adding up.
-    let skip = skip_ports.to_vec();
-    let serial_task = tokio::task::spawn_blocking(move || {
-        super::serial::scan_all_serial_ports_skipping(None, 1, 254, &skip)
-    });
+    let serial_task = match serial_disabled {
+        Some(_) => None,
+        None => {
+            let skip = skip_ports.to_vec();
+            Some(tokio::task::spawn_blocking(move || {
+                super::serial::scan_all_serial_ports_skipping(None, 1, 254, &skip)
+            }))
+        }
+    };
 
     let udp = scan_network(timeout_secs).await;
 
@@ -581,12 +600,19 @@ pub async fn scan_all_skipping(timeout_secs: u64, skip_ports: &[String]) -> Full
         all.push(d.device.clone());
     }
 
-    let serial_result = match serial_task.await {
-        Ok(s) => s,
-        Err(_) => super::serial::SerialScanResult {
+    let serial_result = match serial_task {
+        None => super::serial::SerialScanResult {
             devices: vec![],
-            port_open_failures: vec!["serial scan task panicked".into()],
+            port_open_failures: vec![],
             warnings: vec![],
+        },
+        Some(task) => match task.await {
+            Ok(s) => s,
+            Err(_) => super::serial::SerialScanResult {
+                devices: vec![],
+                port_open_failures: vec!["serial scan task panicked".into()],
+                warnings: vec![],
+            },
         },
     };
 
@@ -604,6 +630,9 @@ pub async fn scan_all_skipping(timeout_secs: u64, skip_ports: &[String]) -> Full
         .collect();
 
     let mut warnings = udp.warnings.clone();
+    if let Some(reason) = serial_disabled {
+        warnings.push(reason.to_string());
+    }
     for f in &serial_result.port_open_failures {
         warnings.push(format!("serial: {}", f));
     }

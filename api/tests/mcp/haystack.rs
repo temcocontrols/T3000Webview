@@ -200,6 +200,52 @@ async fn test_get_point_tags_returns_data() {
     }).await;
 }
 
+/// Tag rows keep the DB's 0-based index, but every point tool counts from 1. A
+/// client that reads a tag and then writes `point_index` would hit the wrong point,
+/// so each entry must also carry the 1-based index — exactly one higher.
+#[tokio::test]
+async fn test_get_point_tags_exposes_one_based_index() {
+    common::with_db_or_skip("get_point_tags_exposes_one_based_index", |db| async move {
+        let serial: Option<i32> = db
+            .query_all(Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                "SELECT serial_number FROM haystack_point_tags LIMIT 1",
+            ))
+            .await
+            .ok()
+            .and_then(|rows| rows.first().and_then(|r| r.try_get("", "serial_number").ok()));
+        let Some(serial) = serial else {
+            println!("SKIP get_point_tags_exposes_one_based_index — no tagged points in the DB");
+            return;
+        };
+
+        let result = common::execute_tool_json(
+            "t3000_haystack_get_point_tags",
+            &json!({"serial_numbers": [serial]}),
+            &db,
+        ).await.expect("get_point_tags should succeed");
+        let entries = result.get("entries").and_then(|v| v.as_array()).expect("entries array");
+
+        let mut checked = 0;
+        for entry in entries {
+            let stored: i32 = common::get_str(entry, "point_index")
+                .expect("point_index must be present")
+                .trim()
+                .parse()
+                .expect("point_index must be numeric");
+            let one_based = common::get_i64(entry, "point_index_1based")
+                .unwrap_or_else(|| panic!("point_index_1based missing from entry: {}", entry));
+            assert_eq!(
+                one_based, stored as i64 + 1,
+                "point_index_1based must be the 1-based twin of point_index: {}", entry
+            );
+            checked += 1;
+        }
+        assert!(checked > 0, "device {} has tags but returned no entries", serial);
+        println!("point_index_1based verified on {} entries of device {}", checked, serial);
+    }).await;
+}
+
 #[tokio::test]
 async fn test_search_points_by_tag() {
     common::with_db_or_skip("search_points_by_tag", |db| async move {

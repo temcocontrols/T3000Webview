@@ -242,6 +242,17 @@ async fn handle_tools_call(req: &JsonRpcRequest, db: &sea_orm::DatabaseConnectio
 
 // ═══ Point Write via FFI (Action 16) ═══ 
 
+/// Every point tool names its types the same way, but clients type "variable",
+/// "vars" or "INPUTS". Normalise once so a spelling variant is never a hard error.
+fn normalize_point_type(value: &str) -> Option<&'static str> {
+    match value.trim().to_ascii_uppercase().as_str() {
+        "INPUT" | "INPUTS" | "IN" => Some("INPUT"),
+        "OUTPUT" | "OUTPUTS" | "OUT" => Some("OUTPUT"),
+        "VARIABLE" | "VARIABLES" | "VAR" | "VARS" => Some("VARIABLE"),
+        _ => None,
+    }
+}
+
 async fn point_write_ffi(
     db: &sea_orm::DatabaseConnection,
     serial: i32,
@@ -251,6 +262,10 @@ async fn point_write_ffi(
     new_value_str: &str,
 ) -> Result<String, String> {
     use crate::t3_device::t3_ffi_api_service::T3000FfiApiService;
+
+    let point_type = normalize_point_type(point_type).ok_or_else(|| {
+        format!("Invalid point_type: {}. Use INPUT, OUTPUT or VARIABLE", point_type)
+    })?;
 
     let (table, idx_col) = match point_type {
         "INPUT" => ("INPUTS", "Input_Index"),
@@ -991,7 +1006,7 @@ pub async fn execute_tool(
             if serial_numbers.is_empty() {
                 return Err("serial_numbers is required — pass at least one device serial".to_string());
             }
-            let point_type = args.get("point_type").and_then(|v| v.as_str());
+            let point_type = args.get("point_type").and_then(|v| v.as_str()).and_then(normalize_point_type);
 
             let entries = ts::get_point_tags(db, &serial_numbers, point_type)
                 .await
@@ -1334,7 +1349,7 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64())
                 .map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
-            let point_type_filter = args.get("point_type").and_then(|v| v.as_str());
+            let point_type_filter = args.get("point_type").and_then(|v| v.as_str()).and_then(normalize_point_type);
 
             let mut results: Vec<Value> = Vec::new();
 
@@ -1483,7 +1498,8 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type = args.get("point_type").and_then(|v| v.as_str())
-                .ok_or_else(|| "point_type required".to_string())?;
+                .and_then(normalize_point_type)
+                .ok_or_else(|| "point_type required (INPUT, OUTPUT or VARIABLE)".to_string())?;
             let point_index: i32 = args.get("point_index")
                 .and_then(|v| v.as_i64()).map(|n| n as i32 - 1)
                 .ok_or_else(|| "point_index required".to_string())?;
@@ -1758,7 +1774,8 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type = args.get("point_type").and_then(|v| v.as_str())
-                .ok_or_else(|| "point_type required".to_string())?;
+                .and_then(normalize_point_type)
+                .ok_or_else(|| "point_type required (INPUT, OUTPUT or VARIABLE)".to_string())?;
             let one_based_index: i32 = args.get("point_index")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;
@@ -1833,7 +1850,8 @@ pub async fn execute_tool(
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
             let point_type = args.get("point_type").and_then(|v| v.as_str())
-                .ok_or_else(|| "point_type required".to_string())?;
+                .and_then(normalize_point_type)
+                .ok_or_else(|| "point_type required (INPUT, OUTPUT or VARIABLE)".to_string())?;
             let one_based_index: i32 = args.get("point_index")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;
@@ -1919,13 +1937,23 @@ pub async fn execute_tool(
             let mut errors: Vec<Value> = Vec::new();
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
-                let pt = point.get("point_type").and_then(|v| v.as_str());
+                let pt_raw = point.get("point_type").and_then(|v| v.as_str());
+                let pt = pt_raw.and_then(normalize_point_type);
                 let one_based_index = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
 
                 // One bad entry must not sink the batch, but it must be reported
                 // instead of silently shrinking `results`.
-                let (Some(sn), Some(pt), Some(one_based_index)) = (sn, pt, one_based_index) else {
-                    errors.push(json!({ "point": point, "error": "serial_number, point_type and point_index are required" }));
+                let (Some(sn), Some(one_based_index)) = (sn, one_based_index) else {
+                    errors.push(json!({ "point": point, "error": "serial_number and point_index are required" }));
+                    continue;
+                };
+                let Some(pt) = pt else {
+                    // A misspelt type must say so instead of claiming it is missing.
+                    let error = match pt_raw {
+                        Some(raw) => format!("Invalid point_type: {} (use INPUT, OUTPUT or VARIABLE)", raw),
+                        None => "point_type is required".to_string(),
+                    };
+                    errors.push(json!({ "serial_number": sn, "point_index": one_based_index, "error": error }));
                     continue;
                 };
                 if !matches!(pt, "INPUT" | "OUTPUT" | "VARIABLE") {
@@ -2021,14 +2049,23 @@ pub async fn execute_tool(
             let mut errors: Vec<Value> = Vec::new();
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
-                let pt = point.get("point_type").and_then(|v| v.as_str());
+                let pt_raw = point.get("point_type").and_then(|v| v.as_str());
+                let pt = pt_raw.and_then(normalize_point_type);
                 let one_based_index = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
                 let val = point.get("value");
                 let field = point.get("field").and_then(|v| v.as_str()).unwrap_or("value");
 
                 // A bad entry must be explained, not silently skipped.
-                let (Some(sn), Some(pt), Some(one_based_index), Some(val)) = (sn, pt, one_based_index, val) else {
-                    errors.push(json!({ "point": point, "error": "serial_number, point_type, point_index and value are required" }));
+                let (Some(sn), Some(one_based_index), Some(val)) = (sn, one_based_index, val) else {
+                    errors.push(json!({ "point": point, "error": "serial_number, point_index and value are required" }));
+                    continue;
+                };
+                let Some(pt) = pt else {
+                    let error = match pt_raw {
+                        Some(raw) => format!("Invalid point_type: {} (use INPUT, OUTPUT or VARIABLE)", raw),
+                        None => "point_type is required".to_string(),
+                    };
+                    errors.push(json!({ "serial_number": sn, "point_index": one_based_index, "error": error }));
                     continue;
                 };
                 if !matches!(pt, "INPUT" | "OUTPUT" | "VARIABLE") {
@@ -2077,10 +2114,19 @@ pub async fn execute_tool(
             let mut errors: Vec<Value> = Vec::new();
             for point in &points {
                 let sn = point.get("serial_number").and_then(|v| v.as_i64()).map(|n| n as i32);
-                let pt = point.get("point_type").and_then(|v| v.as_str());
+                let pt_raw = point.get("point_type").and_then(|v| v.as_str());
+                let pt = pt_raw.and_then(normalize_point_type);
                 let one_based_index = point.get("point_index").and_then(|v| v.as_i64()).map(|n| n as i32);
-                let (Some(sn), Some(pt_str), Some(one_based_index)) = (sn, pt, one_based_index) else {
-                    errors.push(json!({ "point": point, "error": "serial_number, point_type and point_index are required" }));
+                let (Some(sn), Some(one_based_index)) = (sn, one_based_index) else {
+                    errors.push(json!({ "point": point, "error": "serial_number and point_index are required" }));
+                    continue;
+                };
+                let Some(pt_str) = pt else {
+                    let error = match pt_raw {
+                        Some(raw) => format!("Invalid point_type: {} (use INPUT, OUTPUT or VARIABLE)", raw),
+                        None => "point_type is required".to_string(),
+                    };
+                    errors.push(json!({ "serial_number": sn, "point_index": one_based_index, "error": error }));
                     continue;
                 };
                 if !matches!(pt_str, "INPUT" | "OUTPUT" | "VARIABLE") {
@@ -2737,8 +2783,11 @@ pub async fn execute_tool(
             let serial: i32 = args.get("serial_number")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "serial_number required".to_string())?;
+            // Trendlogs can cover types outside the three point tables, so an
+            // unknown value is passed through (and simply finds no data).
             let point_type = args.get("point_type").and_then(|v| v.as_str())
-                .ok_or_else(|| "point_type required".to_string())?;
+                .map(|raw| normalize_point_type(raw).unwrap_or(raw))
+                .ok_or_else(|| "point_type required (INPUT, OUTPUT or VARIABLE)".to_string())?;
             let point_index_1based: i32 = args.get("point_index")
                 .and_then(|v| v.as_i64()).map(|n| n as i32)
                 .ok_or_else(|| "point_index required".to_string())?;

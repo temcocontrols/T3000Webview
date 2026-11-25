@@ -139,7 +139,46 @@ async fn test_point_read_requires_point_type() {
             &json!({"serial_number": 1028, "point_index": 1}),
             &db,
         ).await.expect_err("point_type must be required");
-        assert_eq!(error, "point_type required");
+        assert!(
+            error.starts_with("point_type required"),
+            "expected a point_type hint, got: {}", error
+        );
+    }).await;
+}
+
+/// Clients type "variable", "VAR" or "INPUTS"; every one of those must reach the
+/// same point instead of failing with "Invalid point_type".
+#[tokio::test]
+async fn test_point_read_accepts_point_type_spellings() {
+    common::with_db_or_skip("point_read_accepts_point_type_spellings", |db| async move {
+        let Some((serial, _)) = common::pick_device_with_inputs(&db).await else {
+            println!("SKIP point_read_accepts_point_type_spellings — no device with inputs");
+            return;
+        };
+
+        let canonical = common::execute_tool_json(
+            "t3000_point_read",
+            &json!({"serial_number": serial, "point_type": "INPUT", "point_index": 1}),
+            &db,
+        ).await.expect("canonical INPUT must read");
+
+        for spelling in ["input", "Input", "INPUTS", "in"] {
+            let result = common::execute_tool_json(
+                "t3000_point_read",
+                &json!({"serial_number": serial, "point_type": spelling, "point_index": 1}),
+                &db,
+            ).await.unwrap_or_else(|e| panic!("point_type '{}' must be accepted, got: {}", spelling, e));
+            assert_eq!(
+                result.get("point_type").and_then(|v| v.as_str()),
+                Some("INPUT"),
+                "point_type '{}' must normalise to INPUT: {}", spelling, result
+            );
+            assert_eq!(
+                result.get("label").and_then(|v| v.as_str()),
+                canonical.get("label").and_then(|v| v.as_str()),
+                "'{}' must read the same point as INPUT", spelling
+            );
+        }
     }).await;
 }
 
