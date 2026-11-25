@@ -20,8 +20,7 @@ const T3WEB_REL_DIR: &str = "ResourceFile/webview/t3web";
 ///   2. The source must live somewhere reachable from this build script
 ///      (e.g. a sibling repo checked out next to this one; use `../../`).
 ///
-fn copy_resource_dir(manifest_dir: &str, profile_root: &Path, relative_src: &str) {
-    let src = Path::new(manifest_dir).join(relative_src);
+fn copy_resource_dir(manifest_dir: &str, profile_root: &Path, relative_src: &str) {    let src = Path::new(manifest_dir).join(relative_src);
     // Strip the last path component as the dir name (e.g. "eez-framework-amalgamation")
     let dir_name = src.file_name().expect("source must be a directory path");
     let dst = profile_root
@@ -135,6 +134,60 @@ fn copy_wasm_and_fonts(manifest_dir: &str, root: &Path) {
     );
 }
 
+/// Recursive directory copy (used for the vendored `T3Web/` tree).
+fn copy_tree(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let from = entry.path();
+        let to = dst.join(entry.file_name());
+        if from.is_dir() {
+            copy_tree(&from, &to)?;
+        } else {
+            std::fs::copy(&from, &to)?;
+        }
+    }
+    Ok(())
+}
+
+/// Copy the runtime assets vendored in the repo: `api/T3Web/t3-eez` →
+/// `target/<profile>/ResourceFile/webview/t3web/t3-eez`.
+///
+/// These are the eez-studio runtime files (wasm runtimes, fonts, framework
+/// amalgamation) that `api/src/eez_studio` serves under `/api/eez-studio/*`.
+/// Keeping them in the repo means a clean checkout — and CI — can build a
+/// complete package without the sibling `studio-wasm-libs` / `eez-studio` repos.
+fn copy_vendored_t3web(manifest_dir: &str, profile_root: &Path) -> bool {
+    let src = Path::new(manifest_dir).join("T3Web").join("t3-eez");
+    let dst = profile_root.join(T3WEB_REL_DIR).join("t3-eez");
+
+    if !src.is_dir() {
+        println!(
+            "cargo:warning=T3Web/t3-eez not found in the repo, falling back to the sibling resource repos: {}",
+            src.display()
+        );
+        return false;
+    }
+
+    match copy_tree(&src, &dst) {
+        Ok(_) => {
+            let files = std::fs::read_dir(&src)
+                .map(|d| d.count())
+                .unwrap_or(0);
+            println!(
+                "cargo:warning=Copied T3Web assets ({} top-level entries) → {}",
+                files,
+                dst.display()
+            );
+            true
+        }
+        Err(e) => {
+            println!("cargo:warning=Failed to copy T3Web assets ({}), falling back to siblings", e);
+            false
+        }
+    }
+}
+
 fn main() {
     // FFI — HandleWebViewMsg is loaded from T3000.exe at runtime; nothing to compile.
     println!("cargo:warning=HandleWebViewMsg will be loaded from T3000.exe at runtime");
@@ -152,24 +205,29 @@ fn main() {
         .expect("Failed to resolve profile root from OUT_DIR");
 
     // ── Static resources copied into the release output tree ──────────────
-    // Source paths are relative to api/ (CARGO_MANIFEST_DIR).
     // Destination: target/<profile>/ResourceFile/webview/t3web/t3-eez/resources/<dir>/
     // These are packaged alongside the DLL for distribution.
 
-    copy_resource_dir(
-        &manifest_dir,
-        profile_root,
-        "../../studio-wasm-libs/release/eez-framework-amalgamation",
-    );
+    // Preferred: the assets vendored in this repo (api/T3Web), so a clean checkout
+    // and CI can build a complete package.
+    println!("cargo:rerun-if-changed=T3Web");
+    if !copy_vendored_t3web(&manifest_dir, profile_root) {
+        // Fallback: sibling repos, used before the assets were vendored.
+        copy_resource_dir(
+            &manifest_dir,
+            profile_root,
+            "../../studio-wasm-libs/release/eez-framework-amalgamation",
+        );
 
-    copy_resource_dir(
-        &manifest_dir,
-        profile_root,
-        "../../eez-studio/resources/docker-build",
-    );
+        copy_resource_dir(
+            &manifest_dir,
+            profile_root,
+            "../../eez-studio/resources/docker-build",
+        );
 
-    // WASM runtimes + font assets → release (target/)
-    copy_wasm_and_fonts(&manifest_dir, profile_root);
+        // WASM runtimes + font assets → release (target/)
+        copy_wasm_and_fonts(&manifest_dir, profile_root);
+    }
 
     println!("cargo:warning=Build complete");
 }
