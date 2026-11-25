@@ -169,27 +169,27 @@ the same time, then merges by serial number:
 
 ```
 TreePanel mount
-  ├─ fetchDevices()                 → GET /api/t3_device/devices   (DB cache, instant paint)
-  ├─ loadDevicesWithSync()          → POST /api/t3000/ffi/call {action:4}   ┐
-  │      └─ upsert each panel       → POST/PUT /api/t3_device/devices        │  concurrent
-  ├─ scanForDevices({mode:'udp'})   → POST /api/t3_device/devices/scan-refresh ┘
-  └─ fetchDevices()                 → authoritative read + tree rebuild after both
+  鈹溾攢 fetchDevices()                 鈫?GET /api/t3_device/devices   (DB cache, instant paint)
+  鈹溾攢 loadDevicesWithSync()          鈫?POST /api/t3000/ffi/call {action:4}   鈹?
+  鈹?     鈹斺攢 upsert each panel       鈫?POST/PUT /api/t3_device/devices        鈹? concurrent
+  鈹溾攢 scanForDevices({mode:'udp'})   鈫?POST /api/t3_device/devices/scan-refresh 鈹?
+  鈹斺攢 fetchDevices()                 鈫?authoritative read + tree rebuild after both
 ```
 
-Toolbar ⟳ uses the same pair but adds `deep: true`:
+Toolbar 鉄?uses the same pair but adds `deep: true`:
 
 ```
 handleRefresh
-  ├─ loadDevicesWithSync()                       ┐ concurrent
-  └─ scanForDevices({mode:'udp', deep:true})     ┘
-        └─ backend: UDP pass merged → response (≈0.7 s) + detached serial/sub-port pass
-              └─ GET /api/t3_device/devices/deep-scan polled every 2 s
-                    └─ fetchDevices() + "Deep scan finished — N device(s) added"
+  鈹溾攢 loadDevicesWithSync()                       鈹?concurrent
+  鈹斺攢 scanForDevices({mode:'udp', deep:true})     鈹?
+        鈹斺攢 backend: UDP pass merged 鈫?response (鈮?.7 s) + detached serial/sub-port pass
+              鈹斺攢 GET /api/t3_device/devices/deep-scan polled every 2 s
+                    鈹斺攢 fetchDevices() + "Deep scan finished 鈥?N device(s) added"
 ```
 
-* Page-load cost is `max(panel list, UDP scan)` (~0.7–1.3 s), not their sum; the
+* Page-load cost is `max(panel list, UDP scan)` (~0.7鈥?.3 s), not their sum; the
   first paint from the DB cache happens in milliseconds.
-* The button stops spinning as soon as the LAN devices are in — the ~8 s deep
+* The button stops spinning as soon as the LAN devices are in 鈥?the ~8 s deep
   pass no longer blocks the UI, it just appends later.
 * A cold start (empty DB) shows the spinner, not "No Devices Found", until the
   first passes settle.
@@ -197,12 +197,12 @@ handleRefresh
   `0x64/0x65` scan, so an empty panel list and an empty scan share one root cause.
   An empty panel list is therefore **normal** on an RS485 install (Tstat10/TSTAT7
   on a COM port): those devices are imported from T3000's building database
-  (`ALL_NODE`) instead — see
-  [LAN Scanner → T3000 device database](../device-management/lan-scanner.md#t3000-device-database-all_node).
+  (`ALL_NODE`) instead 鈥?see
+  [LAN Scanner 鈫?T3000 device database](../../device-management/lan-scanner.md#t3000-device-database-all_node).
 * The panel list may **confirm** a device is online, but it never writes
   `is_online = 0`: only the discovery scan may mark a device offline, because
   the backend debounces that after `OFFLINE_GRACE_SECS` (300 s).
-* The 5-minute background timer runs `fetchDevices()` **and** a quiet UDP scan —
+* The 5-minute background timer runs `fetchDevices()` **and** a quiet UDP scan 鈥?
   a DB re-read alone cannot change an online status.
 
 ## See Also

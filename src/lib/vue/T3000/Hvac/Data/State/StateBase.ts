@@ -52,7 +52,13 @@ class StateBase {
     this.ID = stateId != null ? stateId : -1;
     this.CreatedBy = creatorName || null;
     this.StateType = stateTypeId || null;
-    this.IsOpen = false;// isStateOpen != null ? isStateOpen : true;
+    /*
+     * This used to hard-code `IsOpen = false`, making every state permanently closed.
+     * `StateOpt.AddToCurrentState` only merges while `IsOpen === true`, so every stored-object
+     * write pushed a fresh state: one user edit touching N objects cost N undo steps. (The React
+     * engine copy was fixed the same way - see t3-hvac/Data/State/StateBase.ts.)
+     */
+    this.IsOpen = isStateOpen != null ? isStateOpen : true;
     this.currentObjSeqId = T3Gv.currentObjSeqId;
   }
 }

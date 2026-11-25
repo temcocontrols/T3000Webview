@@ -8,5 +8,7 @@ items:
   href: device-monitoring.md
 - name: "Device Troubleshooting"
   href: device-troubleshooting.md
+- name: "FFI: BacnetWebViewGetTreeDevices — T3000's device tree from memory"
+  href: ffi-get-tree-devices.md
 - name: "LAN Scanner — UDP Device Discovery"
   href: lan-scanner.md

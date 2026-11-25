@@ -81,6 +81,31 @@ class StateOpt extends BaseStateOpt {
   }
 
   /**
+   * Settles the undo history once a document has been loaded, so the user's first
+   * edit is one clean, undoable step.
+   *
+   * Both cases end with a closed state at the current index: nothing restored (the
+   * init ran with recording off) installs a closed baseline at index 0; a history
+   * restored from localStorage is kept, only its current state is closed. Closing
+   * matters because `AddToCurrentState` merges only into an open state, and Undo
+   * refuses to go below index 0 - so an open index 0 swallows the first edit.
+   */
+  FinalizeLoadedHistory() {
+    const currentState = this.states[this.currentStateId];
+
+    if (currentState == null) {
+      const baseline = new State(0, 'T3');
+      baseline.IsOpen = false;
+      this.states = [baseline];
+      this.currentStateId = 0;
+      this.droppedStates = 0;
+      return;
+    }
+
+    currentState.IsOpen = false;
+  }
+
+  /**
    * Synchronizes objects with created states to ensure proper state tracking
    * Special handling for objects with CREATE operation type
    * // Operation Types: CREATE: 1, UPDATE: 2, DELETE: 3
@@ -218,6 +243,13 @@ class StateOpt extends BaseStateOpt {
    * @param newObject - The object to add to the current state
    */
   AddToCurrentState(newObject) {
+    // Undo recording is switched off while the engine builds or loads a document
+    // (`T3Opt.InitializeDocument`) and while restoring after an undo. The object is
+    // already in the store; only its undo record is skipped here.
+    if (T3Gv.opt?.noUndo) {
+      return;
+    }
+
     const StateClass = State;
     const operationTypes = StateConstant.StateOperationType;
     let createNewState = true;

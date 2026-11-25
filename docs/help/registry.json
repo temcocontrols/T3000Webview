@@ -1218,6 +1218,20 @@
       "code": [],
       "reviewed": null
     },
+    "t3000/device-management/ffi-get-tree-devices": {
+      "title": "FFI: BacnetWebViewGetTreeDevices — T3000's device tree from memory",
+      "area": "t3000",
+      "chapter": "device-management",
+      "order": 50,
+      "audience": "user",
+      "ship": true,
+      "owner": "docs",
+      "tags": [],
+      "keywords": [],
+      "help_ids": [],
+      "code": [],
+      "reviewed": null
+    },
     "t3000/device-management/lan-scanner": {
       "title": "LAN Scanner — UDP Device Discovery",
       "area": "t3000",

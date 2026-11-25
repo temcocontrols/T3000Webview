@@ -1596,8 +1596,8 @@
     "t": "Design Studio (Tstat11) API — Endpoints"
   },
   "t3000/bacnet-api/screen-json": {
-    "updated": "2026-09-11",
-    "sha": "b27dfab8",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Screen JSON — Format Reference"
@@ -1701,8 +1701,8 @@
     "t": "Message: GETPanelData"
   },
   "t3000/building-platform/control-messages/message-get-panels-list": {
-    "updated": "2026-11-19",
-    "sha": "fe3719cf",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Message: GETPanelsList"
@@ -1833,9 +1833,16 @@
     "stale": false,
     "t": "Device Troubleshooting"
   },
+  "t3000/device-management/ffi-get-tree-devices": {
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
+    "owner": "docs",
+    "stale": false,
+    "t": "FFI: BacnetWebViewGetTreeDevices — T3000's device tree from memory"
+  },
   "t3000/device-management/lan-scanner": {
-    "updated": "2026-11-19",
-    "sha": "fe3719cf",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "LAN Scanner — UDP Device Discovery"
@@ -1862,8 +1869,8 @@
     "t": "Alarms"
   },
   "t3000/features/graphics": {
-    "updated": "2026-10-08",
-    "sha": "9a82f3ed",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Graphics"
@@ -1939,29 +1946,29 @@
     "t": "Troubleshooting Guide"
   },
   "t3000/haystack/README": {
-    "updated": "2026-09-11",
-    "sha": "b27dfab8",
+    "updated": "2026-11-23",
+    "sha": "c37726f3",
     "owner": "docs",
     "stale": false,
     "t": "T3000 Haystack & Semantic Layer Documentation"
   },
   "t3000/haystack/ai-chat-page-design": {
-    "updated": "2026-08-03",
-    "sha": "15a6ffc3",
+    "updated": "2026-11-23",
+    "sha": "c37726f3",
     "owner": "docs",
     "stale": false,
     "t": "AI Chat Page — Integration Design"
   },
   "t3000/haystack/ai-llm-api-integration": {
-    "updated": "2026-10-08",
-    "sha": "9a82f3ed",
+    "updated": "2026-11-23",
+    "sha": "c37726f3",
     "owner": "docs",
     "stale": false,
     "t": "AI Integration — Cloud LLM APIs"
   },
   "t3000/haystack/ai-local-llm-server": {
-    "updated": "2026-10-08",
-    "sha": "9a82f3ed",
+    "updated": "2026-11-23",
+    "sha": "c37726f3",
     "owner": "docs",
     "stale": false,
     "t": "AI Integration — Local LLM Server"
@@ -1974,22 +1981,22 @@
     "t": "FDD — Native Fault Detection & Diagnostics for T3000"
   },
   "t3000/haystack/mcp-api-examples": {
-    "updated": "2026-10-08",
-    "sha": "9a82f3ed",
+    "updated": "2026-11-24",
+    "sha": "799780ad",
     "owner": "docs",
     "stale": false,
     "t": "MCP API Examples"
   },
   "t3000/haystack/mcp-claude-desktop": {
-    "updated": "2026-10-08",
-    "sha": "9a82f3ed",
+    "updated": "2026-11-23",
+    "sha": "9fae90b6",
     "owner": "docs",
     "stale": false,
     "t": "Claude Desktop MCP Setup"
   },
   "t3000/haystack/mcp-vscode-copilot": {
-    "updated": "2026-10-08",
-    "sha": "9a82f3ed",
+    "updated": "2026-11-23",
+    "sha": "9fae90b6",
     "owner": "docs",
     "stale": false,
     "t": "VS Code Copilot MCP Setup"
@@ -2016,8 +2023,8 @@
     "t": "T3000 Haystack & Brick Auto-Tagging + MCP — Design Document"
   },
   "t3000/haystack/v4-haystack-mcp-complete": {
-    "updated": "2026-10-08",
-    "sha": "9a82f3ed",
+    "updated": "2026-11-24",
+    "sha": "0f28cfca",
     "owner": "docs",
     "stale": false,
     "t": "T3000 MCP Server — Design"
@@ -2093,43 +2100,43 @@
     "t": "T3000 Center DB Configuration"
   },
   "t3000/t3-eez-studio/README": {
-    "updated": "2026-11-19",
-    "sha": "daf3faec",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Design Studio (Tstat11)"
   },
   "t3000/t3-eez-studio/device-firmware-lvgl-architecture": {
-    "updated": "2026-11-20",
-    "sha": "22c48954",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "T3 Firmware — LVGL Display Architecture"
   },
   "t3000/t3-eez-studio/device-interface-deployment-via-bacnet-design": {
-    "updated": "2026-11-19",
-    "sha": "df9accd4",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Deploy to Device — as built (REST)"
   },
   "t3000/t3-eez-studio/firmware-developer-onboarding": {
-    "updated": "2026-11-19",
-    "sha": "49f0e1d1",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Firmware Developer Onboarding — T3-programmable-controller-on-ESP32"
   },
   "t3000/t3-eez-studio/import-from-device-design": {
-    "updated": "2026-11-19",
-    "sha": "daf3faec",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Import from Device — as built"
   },
   "t3000/t3-eez-studio/lvgl-eez-project-json-format": {
-    "updated": "2026-11-19",
-    "sha": "daf3faec",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": ".EEZ-Project JSON Format — Design Document"
@@ -2163,8 +2170,8 @@
     "t": "04 — Adding Logic with EEZ Flow"
   },
   "t3000/t3-eez-studio/manual/05-preview-and-deploy": {
-    "updated": "2026-10-08",
-    "sha": "24a42da2",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "05 — Preview, Bind & Deploy"
@@ -2177,43 +2184,43 @@
     "t": "06 — Reference & FAQ"
   },
   "t3000/t3-eez-studio/phase2-device-renderer-design": {
-    "updated": "2026-11-20",
-    "sha": "22c48954",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Phase 2 — Device-Side Dynamic UI Renderer (Design)"
   },
   "t3000/t3-eez-studio/phase2-firmware-implementation-guide": {
-    "updated": "2026-11-20",
-    "sha": "22c48954",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Phase 2 — Firmware Implementation Guide (T3-programmable-controller-on-ESP32)"
   },
   "t3000/t3-eez-studio/phase2-host-implementation-guide": {
-    "updated": "2026-11-19",
-    "sha": "15b6f78c",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Phase 2 — Host Implementation Guide (T3000 WebView / Design Studio)"
   },
   "t3000/t3-eez-studio/screen-deploy-lifecycle-design": {
-    "updated": null,
-    "sha": null,
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Screen deploy lifecycle — transactions, versions, recovery (design)"
   },
   "t3000/t3-eez-studio/static-resource-copy-build": {
-    "updated": "2026-10-08",
-    "sha": "24a42da2",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "Static Resource Copy — Build-Time Asset Pipeline"
   },
   "t3000/t3-eez-studio/wasm-browser-build-migration": {
-    "updated": "2026-10-08",
-    "sha": "24a42da2",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "LVGL WASM Browser Build Migration"
@@ -2247,8 +2254,8 @@
     "t": "JSON Schema — screenDefinition.json"
   },
   "t3000/tstat-lcd/system-overview": {
-    "updated": "2026-10-08",
-    "sha": "24a42da2",
+    "updated": "2026-11-22",
+    "sha": "2a46a6fd",
     "owner": "docs",
     "stale": false,
     "t": "System Overview"
