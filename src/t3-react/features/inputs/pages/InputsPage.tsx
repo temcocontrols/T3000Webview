@@ -46,7 +46,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDeviceTreeStore } from '../../devices/store/deviceTreeStore';
 import { RangeSelectionDrawer } from '../components/RangeSelectionDrawer';
-import { getRangeLabel, getUnitSymbol } from '../data/rangeData';
+import { getRangeLabel, getUnitSymbol, inferDigitalAnalog } from '../data/rangeData';
 import { API_BASE_URL } from '../../../config/constants';
 import { T3Database } from '../../../../lib/t3-database';
 import { PanelDataRefreshService } from '../../../shared/services/panelDataRefreshService';
@@ -362,13 +362,34 @@ const InputsPageDesktop: React.FC = () => {
       { header: 'Signal Type', accessor: i => i.signalType, setter: (i, v) => { i.signalType = v; } },
     ];
     const imported = mapCsvToObjects(headers, rows, csvColumns, () => ({ serialNumber: selectedDevice?.serialNumber || 0 } as InputPoint));
-    // Files exported before the Digital/Analog column existed: an input is far more
-    // likely to be an analog sensor than a binary state, so default to analog
-    // instead of letting the display pick a digital state name.
+    // Files exported before the Digital/Analog column existed carry no mode. Use the
+    // mode the device already reports for that input, then the range code when only
+    // one table defines it; 0-30 exist in both, so those need an explicit mode
+    // instead of being forced to analog.
+    const existingModes = new Map(inputs.map(i => [String(i.inputId), String(i.digitalAnalog ?? '').trim()]));
+    const unresolved: string[] = [];
     const normalised = imported.map(input => {
       const mode = String(input.digitalAnalog ?? '').trim();
-      return mode === '0' || mode === '1' ? input : { ...input, digitalAnalog: '1' };
+      if (mode === '0' || mode === '1') return input;
+
+      const current = existingModes.get(String(input.inputId));
+      if (current === '0' || current === '1') return { ...input, digitalAnalog: current };
+
+      const code = Number(String(input.range ?? '').trim());
+      const inferred = Number.isFinite(code) ? inferDigitalAnalog(code) : undefined;
+      if (inferred === undefined) {
+        unresolved.push(String(input.inputId));
+        return input;
+      }
+      return { ...input, digitalAnalog: String(inferred) };
     });
+    if (unresolved.length > 0) {
+      const sample = unresolved.slice(0, 5).join(', ');
+      setError(
+        `${unresolved.length} imported row(s) have no Digital/Analog mode and an ambiguous range code ` +
+        `(${sample}${unresolved.length > 5 ? '…' : ''}). Export with the Digital/Analog column, or set the mode for those inputs.`,
+      );
+    }
     setInputs(normalised);
   };
 

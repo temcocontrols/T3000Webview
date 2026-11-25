@@ -1996,7 +1996,8 @@ impl T3000MainService {
                     "objectinstance": object_instance,
                     "entryType": *entry_type,
                     "entryIndexStart": 0,
-                    "entryIndexEnd": 63,
+                    // Inputs go up to 128 (0-127); outputs/variables stop at 64.
+                    "entryIndexEnd": if *entry_type == 1 { 127 } else { 63 },
                 })
                 .to_string();
                 sync_flow.step_ffi(&local_db, &step_action17_request, "info", "ffi_sync", "ok", 0,

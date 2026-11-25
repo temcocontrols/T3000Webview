@@ -51,6 +51,27 @@ const isSubDevice = (d: DeviceInfo): boolean =>
 // Prevent duplicate bursts when multiple components trigger fetches at the same time.
 let fetchDevicesInFlight: Promise<void> | null = null;
 let scanInFlight: Promise<void> | null = null;
+/** Options of a scan request that arrived while a scan was already running. */
+let queuedScanOptions: ScanOptions | null = null;
+/** Options of the scan currently running (null when idle). */
+let runningScanOptions: ScanOptions | null = null;
+
+/** Merge two scan requests, keeping the most demanding option of each. */
+function mergeScanOptions(a?: ScanOptions | null, b?: ScanOptions | null): ScanOptions {
+  const merged: ScanOptions = { ...(a ?? {}), ...(b ?? {}) };
+  const timeout = Math.max(a?.timeout ?? 0, b?.timeout ?? 0);
+  if (timeout > 0) merged.timeout = timeout;
+  merged.mode = a?.mode === 'full' || b?.mode === 'full' ? 'full' : (a?.mode ?? b?.mode);
+  merged.deep = Boolean(a?.deep || b?.deep);
+  return merged;
+}
+
+/** True when `wanted` asks for more discovery than the scan that is running. */
+function wantsDeeperScan(wanted: ScanOptions, running: ScanOptions | null): boolean {
+  if (wanted.deep && !running?.deep) return true;
+  if (wanted.mode === 'full' && running?.mode !== 'full') return true;
+  return false;
+}
 
 /**
  * Device Tree State Interface
@@ -335,12 +356,31 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
         // concurrently. A second request joins the running scan instead of being
         // dropped, so the refresh button always ends up with fresh data.
         if (scanInFlight) {
-          useStatusBarStore
-            .getState()
-            .setMessage('A device scan is already running — waiting for it to finish...', 'info');
-          return scanInFlight;
+          // A second request joins the running scan instead of being dropped, but it
+          // may ask for more than the running one does (deep serial/sub-port
+          // probing). Remember the strongest request and let the running scan start
+          // one more pass when it finishes.
+          const merged = mergeScanOptions(queuedScanOptions, options);
+          if (wantsDeeperScan(merged, runningScanOptions)) {
+            queuedScanOptions = merged;
+            if (!options?.quiet) {
+              useStatusBarStore
+                .getState()
+                .setMessage(
+                  'A device scan is already running — the deeper scan will start when it finishes...',
+                  'info'
+                );
+            }
+          } else {
+            useStatusBarStore
+              .getState()
+              .setMessage('A device scan is already running — waiting for it to finish...', 'info');
+          }
+          await scanInFlight;
+          return;
         }
 
+        runningScanOptions = options ?? null;
         scanInFlight = (async () => {
           const { setMessage } = useStatusBarStore.getState();
           try {
@@ -418,6 +458,15 @@ export const useDeviceTreeStore = create<DeviceTreeState>()(
           await scanInFlight;
         } finally {
           scanInFlight = null;
+          runningScanOptions = null;
+        }
+
+        // A scan that asked for deeper discovery while this one ran gets its pass
+        // now, so a refresh never silently degrades to the running scan's options.
+        if (queuedScanOptions) {
+          const next = queuedScanOptions;
+          queuedScanOptions = null;
+          await get().scanForDevices(next);
         }
       },
 

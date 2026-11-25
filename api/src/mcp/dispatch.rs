@@ -894,6 +894,11 @@ async fn call_action17(
 
     const ACTION17_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
+    // Inputs are BAC_INPUT_ITEM_COUNT = 128 (indices 0-127); outputs and variables
+    // are 64 (0-63). The C++ clamps to the real item count, so asking for the
+    // larger bound is safe and keeps IN65+ from staying stale.
+    let entry_index_end = if entry_type == 1 { 127 } else { 63 };
+
     let request = json!({
         "action": 17,
         "panelId": panel_id,
@@ -901,7 +906,7 @@ async fn call_action17(
         "objectinstance": object_instance,
         "entryType": entry_type,
         "entryIndexStart": 0,
-        "entryIndexEnd": 63,
+        "entryIndexEnd": entry_index_end,
     })
     .to_string();
 

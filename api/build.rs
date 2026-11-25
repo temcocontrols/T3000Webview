@@ -134,7 +134,7 @@ fn copy_wasm_and_fonts(manifest_dir: &str, root: &Path) {
     );
 }
 
-/// Recursive directory copy (used for the vendored `T3Web/` tree).
+/// Recursive directory copy (used for the vendored `t3web/` tree).
 fn copy_tree(src: &Path, dst: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src)? {
@@ -150,7 +150,7 @@ fn copy_tree(src: &Path, dst: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Copy the runtime assets vendored in the repo: `api/T3Web/t3-eez` →
+/// Copy the runtime assets vendored in the repo: `api/t3web/t3-eez` →
 /// `target/<profile>/ResourceFile/webview/t3web/t3-eez`.
 ///
 /// These are the eez-studio runtime files (wasm runtimes, fonts, framework
@@ -158,12 +158,12 @@ fn copy_tree(src: &Path, dst: &Path) -> std::io::Result<()> {
 /// Keeping them in the repo means a clean checkout — and CI — can build a
 /// complete package without the sibling `studio-wasm-libs` / `eez-studio` repos.
 fn copy_vendored_t3web(manifest_dir: &str, profile_root: &Path) -> bool {
-    let src = Path::new(manifest_dir).join("T3Web").join("t3-eez");
+    let src = Path::new(manifest_dir).join("t3web").join("t3-eez");
     let dst = profile_root.join(T3WEB_REL_DIR).join("t3-eez");
 
     if !src.is_dir() {
         println!(
-            "cargo:warning=T3Web/t3-eez not found in the repo, falling back to the sibling resource repos: {}",
+            "cargo:warning=t3web/t3-eez not found in the repo, falling back to the sibling resource repos: {}",
             src.display()
         );
         return false;
@@ -175,14 +175,14 @@ fn copy_vendored_t3web(manifest_dir: &str, profile_root: &Path) -> bool {
                 .map(|d| d.count())
                 .unwrap_or(0);
             println!(
-                "cargo:warning=Copied T3Web assets ({} top-level entries) → {}",
+                "cargo:warning=Copied t3web assets ({} top-level entries) → {}",
                 files,
                 dst.display()
             );
             true
         }
         Err(e) => {
-            println!("cargo:warning=Failed to copy T3Web assets ({}), falling back to siblings", e);
+            println!("cargo:warning=Failed to copy t3web assets ({}), falling back to siblings", e);
             false
         }
     }
@@ -208,9 +208,9 @@ fn main() {
     // Destination: target/<profile>/ResourceFile/webview/t3web/t3-eez/resources/<dir>/
     // These are packaged alongside the DLL for distribution.
 
-    // Preferred: the assets vendored in this repo (api/T3Web), so a clean checkout
+    // Preferred: the assets vendored in this repo (api/t3web), so a clean checkout
     // and CI can build a complete package.
-    println!("cargo:rerun-if-changed=T3Web");
+    println!("cargo:rerun-if-changed=t3web");
     if !copy_vendored_t3web(&manifest_dir, profile_root) {
         // Fallback: sibling repos, used before the assets were vendored.
         copy_resource_dir(

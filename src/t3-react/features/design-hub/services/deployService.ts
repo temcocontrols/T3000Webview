@@ -469,17 +469,31 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     const changedImages = images.filter(
         (img) => prevImageHashes[img.name] !== imageSignatures[img.name]
     );
-    const hasChanges = changedScreens.length > 0 || changedImages.length > 0;
+    // Deleted screens/images leave no trace in the loops above: comparing only the
+    // names still present reports "No changes to deploy" and leaves them on the
+    // device. Anything the baseline knows about but the project no longer has counts
+    // as a change, so the remaining set gets staged and activated.
+    const removedScreens = Object.keys(prevScreenHashes).filter(name => !(name in screenSignatures));
+    const removedImages = Object.keys(prevImageHashes).filter(name => !(name in imageSignatures));
+    const hasChanges =
+        changedScreens.length > 0 ||
+        changedImages.length > 0 ||
+        removedScreens.length > 0 ||
+        removedImages.length > 0;
     // No baseline at all (brand-new project, nothing on the device) or every
     // screen changed → push everything.
     const needsFullDeploy =
         !baselineSource || changedScreens.length === screenEntries.length;
+    const removedSummary =
+        removedScreens.length || removedImages.length
+            ? `, ${removedScreens.length} screen(s)/${removedImages.length} image(s) removed`
+            : "";
     emitStep(
         "diff",
         "Compared with last deploy baseline",
         !baselineSource
             ? "no baseline → full deploy"
-            : `${changedScreens.length} screen(s), ${changedImages.length} image(s) changed vs ${baselineSource}`
+            : `${changedScreens.length} screen(s), ${changedImages.length} image(s) changed${removedSummary} vs ${baselineSource}`
     );
 
     // 3. Bind the project to the chosen device (disk binding + hub binding).
