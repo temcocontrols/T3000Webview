@@ -364,11 +364,13 @@ impl T3000FfiApiService {
             }
         };
 
-        api_logger.info(&format!(
-            "📡 FFI Call - Final Action: {}, Calling C++ now... (host private bytes: {} MB)",
+        // tracing (not ServiceLogger: its info()/warn()/error() drop the future and
+        // never write) so the number is actually in the log when a call fails.
+        tracing::info!(
+            "[FFI] action {} -> calling C++ (host private bytes: {} MB)",
             action,
             process_memory_mb().map(|m| m.to_string()).unwrap_or_else(|| "?".to_string())
-        ));
+        );
         let max_buffer_size = self.max_buffer_size;
         let message_owned = message.to_string();
 

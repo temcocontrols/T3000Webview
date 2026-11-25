@@ -21,8 +21,23 @@ pub async fn establish_connection() -> Result<DatabaseConnection, Box<dyn std::e
     Database::connect(opt).await.map_err(|error| error.into())
 }
 
-/// Establish connection to the webview T3000 database
+/// One shared pool for the local T3 device database.
+///
+/// Every call used to open a brand-new pool (`min_connections(2)`, 64 MB SQLite page
+/// cache per connection). It is called from dozens of places ? often once per device
+/// inside a loop ? so a sync cycle created hundreds of OS threads and reserved
+/// gigabytes of address space inside the 32-bit T3000 process, until thread creation
+/// and large allocations began to fail.
+static T3_DEVICE_DB: tokio::sync::OnceCell<DatabaseConnection> = tokio::sync::OnceCell::const_new();
+
+/// Establish (or reuse) the connection pool to the webview T3000 database.
 pub async fn establish_t3_device_connection() -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
+    let db = T3_DEVICE_DB.get_or_try_init(create_t3_device_connection).await?;
+    Ok(db.clone())
+}
+
+/// Open a new pool. Called once per process by `establish_t3_device_connection`.
+async fn create_t3_device_connection() -> Result<DatabaseConnection, Box<dyn std::error::Error>> {
     let mut opt = ConnectOptions::new(T3_DEVICE_DATABASE_URL.as_str());
     // SQLite only supports 1 writer at a time. Large pools cause WAL lock contention.
     // Keep this small: multiple readers are fine in WAL mode, but 200 connections all
