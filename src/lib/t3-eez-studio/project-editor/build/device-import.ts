@@ -95,9 +95,17 @@ export async function importProjectFromDevice(
     // map (the device is the authority on screen sequence: screen1 = 1, ...).
     log(`=> Step 3 — Loading ${info.screen_count} screens...`);
     const stagingScreens: { name: string; json: any }[] = [];
+    const missing: string[] = [];
     for (let i = 0; i < info.screens.length; i++) {
         const screenName = info.screens[i];
-        const screen = await client.loadScreen(screenName);
+        // device/info lists every canonical slot, so an unreachable-but-listed
+        // screen (404) must not abort the whole import
+        const screen = await client.loadScreenOrNull(screenName);
+        if (!screen) {
+            missing.push(screenName);
+            log(`  → screen${i + 1}: ${screenName} — missing on device (skipped)`);
+            continue;
+        }
         const screenPath = `${stagingDir}/${screenName}.json`;
         await fetch(`/api/eez-studio/write-file?path=${encodeURIComponent(screenPath)}`, {
             method: "POST",
@@ -108,7 +116,13 @@ export async function importProjectFromDevice(
         const kb = Math.round(JSON.stringify(screen.json).length / 1024);
         log(`  → screen${i + 1}: ${screen.name} — ${kb}KB`);
     }
-    log(`✔ Step 3 — Loaded ${stagingScreens.length} screens`);
+    if (stagingScreens.length === 0) {
+        throw new Error("No screens could be read from the device.");
+    }
+    log(
+        `✔ Step 3 — Loaded ${stagingScreens.length} screens` +
+            (missing.length ? ` (${missing.length} missing: ${missing.join(", ")})` : "")
+    );
 
     // Step 4 — build the .eez-project
     log("=> Step 4 — Building project...");
