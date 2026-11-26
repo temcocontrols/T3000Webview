@@ -64,15 +64,12 @@ fn make_t3000_db(suffix: &str, nodes: &[Node]) -> std::path::PathBuf {
 }
 
 fn run_sql(path: &std::path::Path, sql: &str) {
-    let output = std::process::Command::new("sqlite3")
-        .arg(path)
-        .arg(sql)
-        .output();
-    match output {
-        Ok(out) if out.status.success() => {}
-        Ok(out) => panic!("sqlite3 failed: {}", String::from_utf8_lossy(&out.stderr)),
-        Err(e) => panic!("sqlite3 not available ({}); cannot build the fixture", e),
-    }
+    // rusqlite (bundled) is already a dependency, and unlike the `sqlite3` CLI it
+    // is present on every machine - the CI runner has no sqlite3 on PATH.
+    let conn = rusqlite::Connection::open(path)
+        .unwrap_or_else(|e| panic!("cannot open fixture database {}: {}", path.display(), e));
+    conn.execute_batch(sql)
+        .unwrap_or_else(|e| panic!("cannot build fixture database {}: {}", path.display(), e));
 }
 
 #[tokio::test]
