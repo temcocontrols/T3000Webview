@@ -168,7 +168,7 @@ Brick is a formal ontology for buildings (brickschema.org). After auto-tagging, 
 
 ---
 
-## Data & Discovery <span style="font-weight:400;font-size:12px;color:#888">7 tools</span>
+## Data & Discovery <span style="font-weight:400;font-size:12px;color:#888">8 tools</span>
 
 ### `t3000_device_list` — Enumerate all devices
 
@@ -249,6 +249,32 @@ Scan the local network for T3000 devices via UDP broadcast (0x64/0x65 protocol).
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Find all T3000 devices on my LAN**
+
+</div>
+
+</div>
+
+### `t3000_scan_all` — Full device scan (UDP + serial COM + Modbus TCP)
+
+Run the same full discovery pass as T3000's ScanAll: a UDP broadcast scan (0x64/0x65) for LAN panels, a Modbus RTU scan of every COM port including USB virtual ports for RS485 devices, and a Modbus TCP sub-port scan for devices behind a Minipanel/CM5 down-expansion gateway. Returns the merged device list with a count per scan method and the COM ports where serial devices answered. `timeout_seconds` (default 8, range 3–30) caps only the UDP wait; the serial and TCP phases then run to completion, so a call can take ~30 s when a device answers. Newly discovered panels may be added to the device table.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Scan everything — LAN, serial ports and Modbus TCP**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Find the RS485 devices on my COM ports**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Do a full device scan like T3000 does**
 
 </div>
 
@@ -932,6 +958,76 @@ Read the full markdown content of a T3000 documentation page. Pass the path from
 
 ---
 
+## Troubleshooting & Reports <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
+
+### `t3000_report_self_check` — Check a problem before filing a report
+
+Run the report rule table against the user's own description of a problem. Returns concrete remedies (fixed text from the rule table, never generated prose) plus the local documentation pages that cover the area, so the user can fix it themselves before a report is drafted.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Inputs won't load and it says the serial number does not match the panel**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**My trend log stopped saving new samples**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**The database page shows no records**
+
+</div>
+
+</div>
+
+### `t3000_report_docs_search` — Search the shipped documentation
+
+Search the documentation installed with this copy of T3000, offline and with no network access. Returns ranked page ids with a short excerpt; open one with `t3000_report_docs_page`. `limit` defaults to 5 and is capped at 25.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Search the docs for trend log not saving**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**What do the local docs say about device discovery failing?**
+
+</div>
+
+</div>
+
+### `t3000_report_docs_page` — Read a shipped documentation page
+
+Read one page by the id returned from `t3000_report_docs_search` and return its title and raw markdown.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Open the local troubleshooting page about trend logs**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Read the page haystack/mcp-api-examples**
+
+</div>
+
+</div>
+
+---
+
 ## Core <span style="font-weight:400;font-size:12px;color:#888">3 tools</span>
 
 ### `t3000_ping` — Health check
@@ -1089,6 +1185,176 @@ Add a custom auto-tagging rule. Specify a regex pattern to match point labels, t
 <div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
 
 **Add a Brick rule to classify ZoneTemp labels as Zone_Air_Temperature_Sensor**
+
+</div>
+
+</div>
+
+---
+
+## Fault Detection (FDD) <span style="font-weight:400;font-size:12px;color:#888">8 tools</span>
+
+### `t3000_fdd_rules_list` — List FDD rules
+
+List every fault-detection rule with its category, rule kind, required semantic roles, tunable parameters, severity and enabled state. Optionally filter by category (economizer, sensor, fan, zone, chw, control). Rules live in the database and are managed the same way as auto-tagging rules.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List all fault detection rules**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show the economizer FDD rules and their limits**
+
+</div>
+
+</div>
+
+### `t3000_fdd_analyze` — Run fault detection on a device
+
+Run the enabled FDD rules against one device's trendlog history and its Haystack-tagged points over a time window, and return fault findings with severity, fault hours and the evidence behind each one. Pass `rules` to evaluate only specific rule IDs (e.g. `["ECON-4","SAT-HIGH"]`), `range_hours` (default 24) to widen or narrow the window, and `equipment` to label the finding with an equipment name.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Check device 240488 for economizer faults in the last 24 hours**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Run fault detection on AHU-1 for the past week**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Analyze device 237219 using only rule ECON-4**
+
+</div>
+
+</div>
+
+### `t3000_fdd_rule_create` — Create an FDD rule
+
+Create a new fault-detection rule in the FDD_RULES table. Pick a unique `rule_id`, a `rule_kind` (ThresholdAbove, ThresholdBelow, RangeBand, StuckValue, FanMismatch, EconomizerOaFraction, EconomizerStuckClosed, SupplyTempDeviation or ChwLowDeltaT), the semantic `required_roles` the rule needs (e.g. `["mat","rat","oa_t","fan_cmd"]`), its tuning `params`, and a `severity` of info, warning or critical. Requires `confirm:true`.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Create an FDD rule that flags mixed air 2 degrees below outdoor air**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Add a stuck-value rule for the supply air temperature sensor**
+
+</div>
+
+</div>
+
+### `t3000_fdd_rule_update` — Update an FDD rule
+
+Change an existing rule's name, category, description, rule kind, severity, enabled state, required roles or params. Params are merged into the stored values, so a single field can be retuned without resending the whole rule. Requires `confirm:true`.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Change the severity of rule SAT-HIGH to warning**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Retune rule ECON-4 so the limit is 3 degrees**
+
+</div>
+
+</div>
+
+### `t3000_fdd_rule_toggle` — Enable or disable an FDD rule
+
+Turn a rule on or off by ID without touching its configuration. Disabled rules stay in the database but are skipped by `t3000_fdd_analyze`. Requires `confirm:true`.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Disable FDD rule ECON-4**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Turn rule SAT-HIGH back on**
+
+</div>
+
+</div>
+
+### `t3000_fdd_rule_export` — Export FDD rules
+
+Export the rule catalog as a JSON array, optionally limited to one category. Save the output and load it on another site with `t3000_fdd_rule_import`.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Export all FDD rules as JSON**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Export only the economizer FDD rules**
+
+</div>
+
+</div>
+
+### `t3000_fdd_rule_import` — Import FDD rules
+
+Load a JSON array of rules and upsert them by `rule_id`: existing rules are replaced, new ones inserted. Requires `confirm:true`. Use it to copy a rule catalog between devices or sites.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Import these FDD rules into the database**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Load the standard fault detection rule catalog**
+
+</div>
+
+</div>
+
+### `t3000_fdd_faults` — List FDD findings
+
+List the fault findings persisted by `t3000_fdd_analyze`, newest first. Filter by device serial number or rule ID, and cap the list with `limit` (default 50).
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:10px 0">
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**Show the recent faults found on device 240488**
+
+</div>
+
+<div style="border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;background:#fafafa">
+
+**List the latest fault findings for rule ECON-4**
 
 </div>
 

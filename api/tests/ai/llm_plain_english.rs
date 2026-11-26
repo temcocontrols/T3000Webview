@@ -115,7 +115,7 @@ async fn run_suite(label: &str, base_url: &str, model: &str) {
 
     let examples = parse_doc();
 
-    // Optional limit (e.g. 5) so the user can smoke-test without running all 60 tools.
+    // Optional limit (e.g. 5) so the user can smoke-test without running all 74 tools.
     let limit: usize = env_or("T3000_TEST_TOOL_LIMIT", "0")
         .parse()
         .unwrap_or(0);
