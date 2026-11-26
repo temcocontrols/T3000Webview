@@ -61,13 +61,16 @@ export interface DeviceCapacity {
 
 /** `GET /api/eez-device/device/status` — what the panel is actually running. */
 export interface DeviceStatus {
-    ui_mode: "compiled" | "dynamic";
+    /** `json` = the renderer draws the deployed screens, `compiled` = built-in UI. */
+    ui_mode: "json" | "compiled";
     tier: number;
     slot: "A" | "B";
     revision: number;
     current_screen: string;
     build_ok: boolean;
     last_error: string;
+    /** set when the compiled UI was forced (ui-mode switch), older firmware only */
+    forced_compiled?: boolean;
     storage?: { total: number; used: number; free: number; reserved: number };
 }
 
@@ -885,9 +888,21 @@ export class DeviceRestClient {
         return response.json();
     }
 
+    /**
+     * Load a screen, returning null when the device has no JSON for it (404).
+     * Lets the importer tell "this screen is absent" from "the device is broken".
+     */
+    async loadScreenOrNull(name: string): Promise<FirmwareScreen | null> {
+        try {
+            return await this.loadScreen(name);
+        } catch (e: any) {
+            if (/\b404\b/.test(String(e?.message ?? ""))) return null;
+            throw e;
+        }
+    }
+
     /** Deploy a single screen by name. */
-    async deployScreen(name: string, json: DeviceScreen): Promise<DeployScreenResponse> {
-        // Direct REST only — BACnet fallback removed.
+    async deployScreen(name: string, json: DeviceScreen): Promise<DeployScreenResponse> {        // Direct REST only — BACnet fallback removed.
         if (this.mode !== "rest") {
             throw new Error("Device not connected via REST API");
         }

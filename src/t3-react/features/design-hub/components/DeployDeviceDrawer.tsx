@@ -39,6 +39,7 @@ import {
     ArrowResetRegular,
 } from "@fluentui/react-icons";
 import type { DeployLogEntry, DeployStepInfo } from "../types";
+import type { CompatReport } from "project-editor/build/device-compat";
 import { designHubService } from "../services/designHubService";
 import {
     DeployDevice as DeployDeviceType,
@@ -219,7 +220,11 @@ export const DeployDeviceDrawer: React.FC<Props> = ({
     const [loadingDevices, setLoadingDevices] = useState(false);
     const [deviceSerial, setDeviceSerial] = useState<number | "">("");
     const [deploying, setDeploying] = useState(false);
-    const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+    const [result, setResult] = useState<{
+        success: boolean;
+        message: string;
+        compatibility?: CompatReport;
+    } | null>(null);
     const [logs, setLogs] = useState<DeployLogEntry[]>([]);
     const [expandedLog, setExpandedLog] = useState<number | null>(0);
     const [showOffline, setShowOffline] = useState(false);
@@ -283,7 +288,7 @@ export const DeployDeviceDrawer: React.FC<Props> = ({
         setDeploying(true);
         setResult(null);
         try {
-            let res: { success: boolean; message: string };
+            let res: { success: boolean; message: string; compatibility?: CompatReport };
             if (project.engine === "eez") {
                 const path =
                     filePath ??
@@ -514,6 +519,35 @@ export const DeployDeviceDrawer: React.FC<Props> = ({
                                             {s.detail && <span style={{ color: "#7a8699", flexShrink: 0 }}>{s.detail}</span>}
                                         </div>
                                     ))
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* What the device cannot draw — errors block the deploy, warnings do not */}
+                    {result?.compatibility && result.compatibility.findings.length > 0 && (
+                        <div style={{ border: "1px solid #eef1f6", borderRadius: 8, padding: "8px 10px", background: "#fff" }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, color: "#1c2b3a" }}>
+                                {result.compatibility.errors > 0
+                                    ? `${result.compatibility.errors} item(s) cannot render on this device`
+                                    : `${result.compatibility.warnings} warning(s)`}
+                            </div>
+                            <div className={styles.thinScrollbar} style={{ maxHeight: 150, overflowY: "auto" }}>
+                                {result.compatibility.findings.slice(0, 20).map((f, i) => (
+                                    <div key={`${f.code}-${i}`} style={{ fontSize: 12, display: "flex", gap: 6, padding: "2px 0" }}>
+                                        <span style={{ color: f.level === "error" ? "#c50f1f" : "#9a6700", flexShrink: 0, width: 12 }}>
+                                            {f.level === "error" ? "✖" : "▲"}
+                                        </span>
+                                        <span style={{ minWidth: 0 }}>
+                                            <strong>{f.screen}</strong>
+                                            {f.widget ? ` · ${f.widget}` : ""} — {f.message}
+                                        </span>
+                                    </div>
+                                ))}
+                                {result.compatibility.findings.length > 20 && (
+                                    <div style={{ fontSize: 12, color: "#7a8699" }}>
+                                        … and {result.compatibility.findings.length - 20} more
+                                    </div>
                                 )}
                             </div>
                         </div>
