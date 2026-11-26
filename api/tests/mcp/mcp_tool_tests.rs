@@ -18,26 +18,6 @@ use serde_json::{json, Value};
 
 use crate::mcp::common;
 
-// ═══ Helpers ═══
-
-/// Load the t3_webview_api library (Windows only)
-#[cfg(target_os = "windows")]
-fn get_test_state() -> Option<t3_webview_api::app_state::T3AppState> {
-    // In test mode, the app state may not have a DB connection.
-    // These tests focus on DB-independent tools.
-    None
-}
-
-/// Execute a tool and parse the result as JSON
-fn call_tool(name: &str, args: Value) -> Result<Value, String> {
-    // This function would normally call execute_tool directly.
-    // For now, we document the expected behavior for each tool.
-    // When running in a full integration environment, replace with:
-    // let result_str = t3_webview_api::mcp::execute_tool(name, &args, &db).await?;
-    // serde_json::from_str(&result_str).map_err(|e| format!("Parse: {}", e))
-    Err("Requires DB connection — run in integration test".into())
-}
-
 // ═══ Core Tools ═══
 
 /// t3000_ping — no params, returns `{ status: "ok", timestamp, server }`.

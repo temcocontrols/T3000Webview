@@ -49,6 +49,12 @@ jobs:
           cargo build --release --target i686-pc-windows-msvc
 
       - name: Run webview api tests
+        env:
+          # Fail the build on any compiler warning. The ServiceLogger bug (async
+          # `log()` called without `.await`, so every record was silently
+          # dropped) sat behind an ignored `unused_must_use` warning; this makes
+          # that class of defect fail CI instead of accumulating.
+          RUSTFLAGS: "-D warnings"
         run: |
           cd api
           cargo test -- --test-threads 1

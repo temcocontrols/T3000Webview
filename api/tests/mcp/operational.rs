@@ -4,7 +4,7 @@
 //! These 4 tools read and write point values. Write tools require confirm:true
 //! for safety. All require a live database connection.
 
-use serde_json::{json, Value};
+use serde_json::json;
 use crate::mcp::common;
 
 // ═══ Tool existence ═══

@@ -188,7 +188,6 @@ async fn test_get_point_tags_returns_data() {
             &json!({"serial_numbers": [444]}),
             &db,
         ).await.expect("should succeed");
-        let total = common::get_i64(&result, "total").unwrap_or(0);
         // May have point tags or not; at minimum verify shape
         assert!(result.get("entries").is_some());
         let entries = result.get("entries").and_then(|v| v.as_array()).expect("should have entries");

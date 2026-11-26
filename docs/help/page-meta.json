@@ -1701,8 +1701,8 @@
     "t": "Message: GETPanelData"
   },
   "t3000/building-platform/control-messages/message-get-panels-list": {
-    "updated": "2026-11-22",
-    "sha": "2a46a6fd",
+    "updated": "2026-11-25",
+    "sha": "feaacaad",
     "owner": "docs",
     "stale": false,
     "t": "Message: GETPanelsList"
@@ -1981,8 +1981,8 @@
     "t": "FDD — Native Fault Detection & Diagnostics for T3000"
   },
   "t3000/haystack/mcp-api-examples": {
-    "updated": "2026-11-24",
-    "sha": "799780ad",
+    "updated": "2026-11-26",
+    "sha": "08cc8d97",
     "owner": "docs",
     "stale": false,
     "t": "MCP API Examples"

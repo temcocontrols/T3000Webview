@@ -124,43 +124,45 @@ impl ServiceLogger {
         Self::new("T3_Webview_Database_Variables")
     }
 
+    /// Write one record and wait for it. Use this when the caller can `.await`.
     pub async fn log(&mut self, level: LogLevel, message: &str) {
         if self.base_filename.is_empty() {
             return;
         }
+        write_record(self.base_filename.clone(), level, message.to_string()).await;
+    }
 
-        let base_filename = self.base_filename.clone();
-        let level_text = level.as_str().to_string();
-        let message_text = message.to_string();
-
-        let db = match crate::db_connection::establish_t3_device_connection().await {
-            Ok(db) => db,
-            Err(_) => return,
+    /// Hand one record to the runtime without blocking the caller.
+    ///
+    /// `write_record` is async (it opens a database connection) while `info`,
+    /// `error` and `warn` are sync and used from several hundred call sites, so
+    /// they spawn the work rather than block. They used to call `log()` and drop
+    /// the returned future, which meant the body never ran and no record was
+    /// written.
+    fn emit(&mut self, level: LogLevel, message: &str) {
+        if self.base_filename.is_empty() {
+            return;
+        }
+        let Ok(handle) = tokio::runtime::Handle::try_current() else {
+            return;
         };
-
-        let category = legacy_category_for_base_filename(&base_filename);
-        crate::logging::service::emit_app_log(
-            &db,
-            &level_text,
-            category,
-            Some(&base_filename),
-            None,
-            &message_text,
-            None,
-        )
-        .await;
+        handle.spawn(write_record(
+            self.base_filename.clone(),
+            level,
+            message.to_string(),
+        ));
     }
 
     pub fn info(&mut self, message: &str) {
-        self.log(LogLevel::Info, message);
+        self.emit(LogLevel::Info, message);
     }
 
     pub fn error(&mut self, message: &str) {
-        self.log(LogLevel::Error, message);
+        self.emit(LogLevel::Error, message);
     }
 
     pub fn warn(&mut self, message: &str) {
-        self.log(LogLevel::Warn, message);
+        self.emit(LogLevel::Warn, message);
     }
 
     /// Add an empty line without timestamp for visual grouping
@@ -173,6 +175,28 @@ impl ServiceLogger {
         // Just add empty line for visual grouping
         self.add_empty_line();
     }
+}
+
+/// Write a single record into the database-backed application log.
+async fn write_record(base_filename: String, level: LogLevel, message_text: String) {
+    let level_text = level.as_str().to_string();
+
+    let db = match crate::db_connection::establish_t3_device_connection().await {
+        Ok(db) => db,
+        Err(_) => return,
+    };
+
+    let category = legacy_category_for_base_filename(&base_filename);
+    crate::logging::service::emit_app_log(
+        &db,
+        &level_text,
+        category,
+        Some(&base_filename),
+        None,
+        &message_text,
+        None,
+    )
+    .await;
 }
 
 fn legacy_category_for_base_filename(base_filename: &str) -> &'static str {

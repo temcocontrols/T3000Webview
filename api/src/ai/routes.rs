@@ -13,7 +13,7 @@ use axum::{
         sse::{Event, Sse},
         IntoResponse, Json,
     },
-    routing::{delete, get, patch, post, put},
+    routing::{get, patch, post},
     Router,
 };
 use serde::Deserialize;
@@ -32,7 +32,6 @@ use super::session::SessionManager;
 use super::types::{AiError, ChatRequest, Message, StreamEvent};
 use super::mcp_client::{McpClient, McpClientManager, McpServerConfig};
 use chrono::Utc;
-use uuid::Uuid;
 
 // ═══ Lazy-initialized singletons ═══
 
@@ -152,7 +151,7 @@ pub async fn handle_ai_chat(
 /// Events are forwarded to the SSE stream in real-time (no buffering).
 async fn process_chat(
     session_manager: Arc<SessionManager>,
-    mut session: super::session::Session,
+    session: super::session::Session,
     state: &T3AppState,
     tx: &tokio::sync::mpsc::UnboundedSender<Result<Event, Infallible>>,
 ) -> Result<(), AiError> {
@@ -647,7 +646,7 @@ pub async fn handle_get_session(
 // ═══ POST /api/ai/get-session (fallback) ═══
 
 #[derive(Deserialize)]
-struct GetSessionRequest {
+pub struct GetSessionRequest {
     id: String,
 }
 
@@ -962,7 +961,7 @@ pub async fn handle_activate_server_post(
 
 /// Save a session with updated messages (used for partial save on stop/new-chat).
 #[derive(Deserialize)]
-struct SaveSessionRequest {
+pub struct SaveSessionRequest {
     id: String,
     messages: Vec<Message>,
 }

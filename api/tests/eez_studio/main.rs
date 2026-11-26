@@ -19,6 +19,19 @@ use t3_webview_api::eez_studio::parse_squareline::{
 };
 use t3_webview_api::eez_studio::proxy_device_rest;
 
+/// A client for talking to the loopback test servers.
+///
+/// `no_proxy()` is required: `reqwest::Client::new()` picks up the host's system
+/// proxy, so on a developer machine running a local proxy client every request to
+/// the mock device was sent to that proxy instead. It answers `502 Bad Gateway`,
+/// which made these tests fail locally while passing in CI (no proxy there).
+fn loopback_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .no_proxy()
+        .build()
+        .expect("build loopback http client")
+}
+
 /// Starts a mock "device" REST server on an ephemeral port and a proxy router
 /// on another ephemeral port, then verifies the proxy forwards the request
 /// (method + path) to the device and returns its status/body.
@@ -61,7 +74,7 @@ async fn device_proxy_forwards_get_and_preserves_body() {
     // Let both servers bind before issuing requests.
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-    let client = reqwest::Client::new();
+    let client = loopback_client();
 
     // GET through the proxy → should reach the mock device and return its body.
     let url = format!(
@@ -134,7 +147,7 @@ async fn device_proxy_honors_port_in_ip_segment() {
         proxy_addr,
         device_addr.port()
     );
-    let resp = reqwest::Client::new()
+    let resp = loopback_client()
         .get(&url)
         .send()
         .await

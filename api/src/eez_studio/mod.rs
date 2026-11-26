@@ -552,7 +552,7 @@ pub async fn proxy_device_rest(
     let port = header_port.or(ip_port).unwrap_or(DEVICE_REST_PORT);
     let url = format!("http://{}:{}/{}", host, port, path);
 
-    let client = reqwest::Client::builder()
+    let client = match reqwest::Client::builder()
         // `no_proxy()` is REQUIRED here: reqwest uses the host's system proxy by
         // default (Windows: the WinINET/registry setting), so on a PC running a
         // local proxy client (e.g. 127.0.0.1:7892) every device call was sent to
@@ -568,7 +568,19 @@ pub async fn proxy_device_rest(
         // frontend "socket hang up" even though the device was fine).
         .timeout(std::time::Duration::from_secs(120))
         .build()
-        .unwrap_or_else(|_| reqwest::Client::new());
+    {
+        Ok(client) => client,
+        // Do NOT fall back to `Client::new()`: that client keeps the system proxy
+        // and drops the timeout, which recreates exactly the 502 above.
+        Err(e) => {
+            error!("[device-proxy] could not build the device http client: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": format!("device proxy client unavailable: {}", e) })),
+            )
+                .into_response();
+        }
+    };
 
     let mut req = client.request(method.clone(), &url);
     if let Some(ct) = headers.get(header::CONTENT_TYPE) {

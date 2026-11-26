@@ -24,7 +24,11 @@ jobs:
   lint:
     runs-on: windows-latest
     steps:
+      # The registry records the last commit that touched each page, so the gate
+      # needs the real history; a shallow clone makes every page look untouched.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:

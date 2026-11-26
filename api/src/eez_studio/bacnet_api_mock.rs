@@ -53,13 +53,13 @@ struct DeviceStore {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct StoredScreen {
+pub struct StoredScreen {
     name: String,
     json: Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct DeviceMeta {
+pub struct DeviceMeta {
     panel_name: String,
     serial_number: i32,
 }
@@ -519,7 +519,7 @@ fn scan_firmware_metadata(dir: &std::path::Path) -> (usize, usize, u32, u32, Str
     let mut width: u32 = 480;  // SquareLine Studio canvas (see project settings)
     let mut height: u32 = 320;
     let mut lvgl_version = String::from("9.5.0");
-    let mut dark_theme = true;
+    let dark_theme = true;
     let mut color_format = String::from("RGB565");
 
     if let Ok(entries) = std::fs::read_dir(dir) {

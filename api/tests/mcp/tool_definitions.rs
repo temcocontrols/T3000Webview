@@ -215,21 +215,6 @@ fn assert_has_required(tool_name: &str, param: &str) {
     );
 }
 
-/// Helper: assert a tool has a specific optional parameter in properties.
-fn assert_has_property(tool_name: &str, param: &str) {
-    let tool = find_tool(tool_name).unwrap_or_else(|| panic!("Tool not found: {}", tool_name));
-    let has = tool.input_schema
-        .get("properties")
-        .and_then(|v| v.as_object())
-        .map_or(false, |p| p.contains_key(param));
-    assert!(
-        has,
-        "Tool '{}' should have property '{}'",
-        tool_name,
-        param
-    );
-}
-
 // ── Core tools ──
 
 #[test]
