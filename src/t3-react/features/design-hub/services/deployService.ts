@@ -20,6 +20,11 @@
  * which hosts pass in via `onDeploy` (see DeployDeviceDrawer).
  */
 import { transformToDeviceJson } from "project-editor/build/firmware-export";
+import {
+    checkDeviceCompatibility,
+    formatCompatFindings,
+    type CompatReport,
+} from "project-editor/build/device-compat";
 import { canonicalSignature, contentSignature } from "project-editor/build/deploy-manifest";
 import { base64ToBytes, deviceClient } from "project-editor/build/device-rest-client";
 import { getDeviceBinding, setDeviceBinding } from "project-editor/build/device-binding";
@@ -85,6 +90,8 @@ export interface DeployEezResult {
     revision?: number;
     /** Ordered steps executed during this deploy (for the live UI + log history). */
     steps?: DeployStepInfo[];
+    /** What the device cannot render — warnings only when the deploy proceeded. */
+    compatibility?: CompatReport;
 }
 
 /** Fetch the deployable device list (same source as the Design Hub dialog). */
@@ -385,6 +392,34 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     emitStep("export", "Exported project to device JSON", `${screenNames.length} screens`);
     if (images.length > 0) {
         emitStep("images", "Extracted device images", `${images.length} images`);
+    }
+
+    // 1b. Renderer compatibility check — errors block, warnings do not. An
+    //     unsupported widget is not cosmetic: the device draws nothing for it,
+    //     so the panel would show a gap that exists nowhere in the editor.
+    const compat = checkDeviceCompatibility(screens);
+    if (compat.findings.length > 0) {
+        const errors = compat.findings.filter((f) => f.level === "error");
+        emitStep(
+            "compat",
+            compat.ok
+                ? "Compatibility check passed with warnings"
+                : "Compatibility check failed",
+            `${compat.errors} error(s), ${compat.warnings} warning(s)`,
+            compat.ok ? "done" : "error",
+            compat.ok ? undefined : formatCompatFindings(errors)
+        );
+    }
+    if (!compat.ok) {
+        return {
+            success: false,
+            message: `${compat.errors} item(s) cannot be rendered by the device. Fix them or remove them before deploying.`,
+            screens: screenNames,
+            screenCount: screenNames.length,
+            imageCount: images.length,
+            steps,
+            compatibility: compat,
+        };
     }
 
     // Content signatures used to detect what actually changed since the last
@@ -701,6 +736,35 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         }
     }
 
+    // 4b. Ask the panel what it is actually running. A deploy response means
+    //     "persisted", not "painted": this turns "the panel doesn't show my
+    //     design" into a concrete ui_mode / last_error string.
+    if (pushOk) {
+        try {
+            const st = await deviceClient.getStatus();
+            const detail =
+                `${st.ui_mode} · ${st.current_screen} · rev ${st.revision} (slot ${st.slot})` +
+                (st.last_error ? ` · ${st.last_error}` : "");
+            emitStep(
+                "verify",
+                st.build_ok
+                    ? "Device reports the design is live"
+                    : "Device reports a render error",
+                detail,
+                st.build_ok ? "done" : "error",
+                st.build_ok ? undefined : st.last_error
+            );
+        } catch {
+            // Older firmware has no /device/status — not a deploy failure.
+            emitStep(
+                "verify",
+                "Device status not available",
+                "firmware without /device/status",
+                "skipped"
+            );
+        }
+    }
+
     // The deploy manifest doubles as the change-detection baseline, so it is
     // only refreshed once the push fully succeeded — otherwise the next deploy
     // retries the same changes. It is also written after a first deploy that
@@ -819,5 +883,6 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
         deployed,
         revision: deployedRevision,
         steps,
+        compatibility: compat,
     };
 }
