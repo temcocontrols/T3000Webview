@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-25",
+  "generated": "2026-11-26",
   "pages": [
     {
       "id": "legacy/development/analysis/LEFT_PANEL_ANALYSIS",
@@ -13089,8 +13089,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "799780ad",
-        "date": "2026-11-24"
+        "sha": "08cc8d97",
+        "date": "2026-11-26"
       },
       "reviewed": null,
       "stale": false,
@@ -13103,10 +13103,11 @@
         "t3000haystackpreviewtags — Preview tags without saving",
         "t3000haystacklistrules — Show all tagging rules",
         "t3000haystackgetbrickclass — Get Brick ontology classes",
-        "Data & Discovery <span style=\"font-weight:400;font-size:12px;color:#888\">7 tools</span>",
+        "Data & Discovery <span style=\"font-weight:400;font-size:12px;color:#888\">8 tools</span>",
         "t3000devicelist — Enumerate all devices",
         "t3000deviceget — Get a single device record",
         "t3000scannetwork — Scan network for T3000 devices",
+        "t3000scanall — Full device scan (UDP + serial COM + Modbus TCP)",
         "t3000devicegetpoints — Get all points for a device",
         "t3000pointgetmetadata — Full metadata for one point",
         "t3000metadatasearch — Cross-device label search",
@@ -13142,6 +13143,10 @@
         "Documentation <span style=\"font-weight:400;font-size:12px;color:#888\">2 tools</span>",
         "t3000doclist — List documentation topics",
         "t3000docread — Read a documentation page",
+        "Troubleshooting & Reports <span style=\"font-weight:400;font-size:12px;color:#888\">3 tools</span>",
+        "t3000reportselfcheck — Check a problem before filing a report",
+        "t3000reportdocssearch — Search the shipped documentation",
+        "t3000reportdocspage — Read a shipped documentation page",
         "Core <span style=\"font-weight:400;font-size:12px;color:#888\">3 tools</span>",
         "t3000ping — Health check",
         "t3000getversion — Server metadata",
@@ -13152,6 +13157,15 @@
         "Rules Management <span style=\"font-weight:400;font-size:12px;color:#888\">2 tools</span>",
         "t3000ruletoggle — Enable or disable rules",
         "t3000rulecreate — Create a new tagging rule",
+        "Fault Detection (FDD) <span style=\"font-weight:400;font-size:12px;color:#888\">8 tools</span>",
+        "t3000fddruleslist — List FDD rules",
+        "t3000fddanalyze — Run fault detection on a device",
+        "t3000fddrulecreate — Create an FDD rule",
+        "t3000fddruleupdate — Update an FDD rule",
+        "t3000fddruletoggle — Enable or disable an FDD rule",
+        "t3000fddruleexport — Export FDD rules",
+        "t3000fddruleimport — Import FDD rules",
+        "t3000fddfaults — List FDD findings",
         "Alarms & Trends <span style=\"font-weight:400;font-size:12px;color:#888\">3 tools</span>",
         "t3000alarmlist — List alarms",
         "t3000alarmacknowledge — Acknowledge an alarm",
