@@ -8,7 +8,6 @@
 // Later: can be upgraded to direct function calls after mcp.rs refactor.
 
 use serde_json::Value;
-use tracing::{info, error};
 
 use crate::app_state::T3AppState;
 use crate::mcp;

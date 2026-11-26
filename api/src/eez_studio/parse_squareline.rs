@@ -458,7 +458,6 @@ fn parse_screen_content(content: &str, screen_name: String) -> Result<ParsedScre
     let mut screen_bg_color: Option<String> = None;
     let mut current_idx: Option<usize> = None;
     let mut skip_root_screen = false;
-    let mut root_screen_id: Option<String> = None; // e.g. "HomeScreen"
 
     for line in &lines {
         let line = line.trim();
@@ -466,9 +465,10 @@ fn parse_screen_content(content: &str, screen_name: String) -> Result<ParsedScre
         // Capture root screen as widget (needed for events), capture bg_color
         if line.contains("lv_obj_create(NULL)") || line.contains("lv_obj_create( NULL )") {
             skip_root_screen = true;
-            root_screen_id = extract_var_name(line)
+            // e.g. "HomeScreen"
+            let root_screen_id = extract_var_name(line)
                 .map(|n| n.replace("ui_", "").replace("uic_", ""));
-            let id = root_screen_id.clone().unwrap_or_else(|| format!("root_{}", widgets.len()));
+            let id = root_screen_id.unwrap_or_else(|| format!("root_{}", widgets.len()));
             widgets.push(FirmwareWidget {
                 id, sub_type: "screen".to_string(), parent: None,
                 x_pos: 0, y_pos: 0, width: 0, height: 0,

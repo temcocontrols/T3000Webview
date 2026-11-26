@@ -384,7 +384,7 @@ pub async fn get_rule_affected_points(
                      LIMIT 51",
                     placeholders
                 );
-                let mut params: Vec<sea_orm::Value> = tag_list.iter().map(|t| (*t).into()).collect();
+                let params: Vec<sea_orm::Value> = tag_list.iter().map(|t| (*t).into()).collect();
                 if let Ok(rows) = db.query_all(Statement::from_sql_and_values(
                     sea_orm::DatabaseBackend::Sqlite, &sql, params,
                 )).await {
@@ -1143,9 +1143,7 @@ async fn load_range_rules(
 }
 
 struct CompiledRule {
-    id: i64,
     rule_name: String,
-    category: String,
     regex: Regex,
     units_filter: Vec<String>,
     object_types_filter: Vec<String>,
@@ -1169,9 +1167,7 @@ fn compile_rule(rule: &AutoTaggingRule) -> Option<CompiledRule> {
         .unwrap_or_default();
 
     Some(CompiledRule {
-        id: rule.id,
         rule_name: rule.rule_name.clone(),
-        category: rule.category.clone(),
         regex,
         units_filter,
         object_types_filter,
@@ -1398,84 +1394,6 @@ async fn process_points(
     }
 
     Ok((tagged, matches))
-}
-
-async fn preview_points(
-    db: &impl ConnectionTrait,
-    sn_list: &str,
-    table: &str,
-    point_type: &str,
-    haystack_rules: &[CompiledRule],
-    brick_rules: &[CompiledRule],
-) -> Result<Vec<TagMatch>, String> {
-    let col_index = match table {
-        "INPUTS" => "Input_Index",
-        "OUTPUTS" => "Output_Index",
-        _ => "Variable_Index",
-    };
-
-    let sql = format!(
-        "SELECT SerialNumber as sn, {} as idx, Full_Label, Label, Units, Digital_Analog
-         FROM {} WHERE SerialNumber IN ({})",
-        col_index, table, sn_list
-    );
-
-    let rows = db
-        .query_all(Statement::from_string(sea_orm::DatabaseBackend::Sqlite, &sql))
-        .await
-        .map_err(|e| format!("Failed to read {}: {}", table, e))?;
-
-    let mut matches = Vec::new();
-
-    for row in &rows {
-        let sn: i32 = row.try_get("", "sn").unwrap_or(0);
-        let idx_str_raw: Option<String> = row.try_get("", "idx").ok();
-        let idx: i32 = idx_str_raw.as_deref().and_then(|s| s.parse().ok()).unwrap_or(0);
-        let full_label: Option<String> = row.try_get("", "Full_Label").ok();
-        let label: Option<String> = row.try_get("", "Label").ok();
-        let units: Option<String> = row.try_get("", "Units").ok();
-        let da: Option<i32> = row.try_get("", "Digital_Analog").ok();
-
-        let display_label = full_label.as_deref().or(label.as_deref()).unwrap_or("");
-
-        let point_info = PointInfo {
-            serial_number: sn,
-            point_type: point_type.to_string(),
-            point_index: idx,
-            label: label.clone(),
-            full_label: full_label.clone(),
-            units: units.clone(),
-            digital_analog: da,
-            object_type: None,
-        };
-
-        // Find first matching haystack rule
-        let hs_match = eval_rules(display_label, units.as_deref(), None, haystack_rules);
-        // Find first matching brick rule
-        let br_match = eval_rules(display_label, units.as_deref(), None, brick_rules);
-
-        let combined_tags: Vec<String> = hs_match
-            .map(|r| r.haystack_tags.clone())
-            .unwrap_or_default();
-
-        let brick_class = br_match.and_then(|r| r.brick_class.clone());
-        let matched_rule = hs_match.map(|r| r.rule_name.clone())
-            .or_else(|| br_match.map(|r| r.rule_name.clone()))
-            .unwrap_or_default();
-
-        if !combined_tags.is_empty() || brick_class.is_some() {
-            matches.push(TagMatch {
-                point: point_info,
-                matched_rule,
-                haystack_tags: combined_tags,
-                brick_class,
-                haystack_kind: hs_match.and_then(|r| r.haystack_kind.clone()),
-                haystack_unit: hs_match.and_then(|r| r.haystack_unit.clone()),
-            });
-        }
-    }
-
-    Ok(matches)
 }
 
 fn opt_str(val: &Option<String>) -> String {

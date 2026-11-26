@@ -3050,20 +3050,24 @@ impl DatabaseConfigService {
             }
         }
 
-        // Update cache
+        // Update cache. The guard is dropped before the log call: holding a
+        // std::sync::RwLock write guard across an `.await` blocks every other
+        // task that reads the cache on this worker thread.
+        let entries = cache_map.len();
         if let Ok(mut cache_guard) = cache.write() {
             *cache_guard = cache_map;
-            crate::logging::service::emit_app_log(
-                db,
-                "debug",
-                "MAINTENANCE",
-                Some("db_partitioning"),
-                None,
-                "Partition cache refreshed",
-                Some(&format!("entries={}", cache_guard.len())),
-            )
-            .await;
         }
+
+        crate::logging::service::emit_app_log(
+            db,
+            "debug",
+            "MAINTENANCE",
+            Some("db_partitioning"),
+            None,
+            "Partition cache refreshed",
+            Some(&format!("entries={}", entries)),
+        )
+        .await;
 
         Ok(())
     }
