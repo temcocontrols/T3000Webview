@@ -13909,8 +13909,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "2a46a6fd",
-        "date": "2026-11-22"
+        "sha": "e915ec15",
+        "date": "2026-11-26"
       },
       "reviewed": null,
       "stale": false,
@@ -14347,8 +14347,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "2a46a6fd",
-        "date": "2026-11-22"
+        "sha": "e915ec15",
+        "date": "2026-11-26"
       },
       "reviewed": null,
       "stale": false,
@@ -14440,8 +14440,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "2a46a6fd",
-        "date": "2026-11-22"
+        "sha": "e915ec15",
+        "date": "2026-11-26"
       },
       "reviewed": null,
       "stale": false,
@@ -14456,7 +14456,7 @@
         "3.1 Findings panel",
         "3.2 \"Verify on device\" step",
         "4. F4 — REST client additions",
-        "4.1 getDeviceStatus()",
+        "4.1 getStatus()",
         "4.2 Tolerant single-screen load",
         "4.3 Import: tolerate missing screens",
         "5. F5 — export contract snapshot test",
@@ -14481,8 +14481,8 @@
       "keywords": [],
       "git": {
         "author": "Double",
-        "sha": "2a46a6fd",
-        "date": "2026-11-22"
+        "sha": "e915ec15",
+        "date": "2026-11-26"
       },
       "reviewed": null,
       "stale": false,
