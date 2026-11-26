@@ -15,6 +15,22 @@ export default defineConfig({
       "test/vitest/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
     ],
   },
+  // Watch mode (`npm run test:unit`) walks the project root. Visual Studio keeps
+  // open handles in .vs/, which makes the watcher throw EBUSY: resource busy or
+  // locked. The Rust build output and the vendored C++ tree are equally pointless
+  // to crawl, so skip them too.
+  server: {
+    watch: {
+      ignored: [
+        "**/.vs/**",
+        "**/.git/**",
+        "**/node_modules/**",
+        "**/target/**",
+        "**/T3000-Source/**",
+        "**/dist/**",
+      ],
+    },
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

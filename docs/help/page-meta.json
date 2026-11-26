@@ -2100,8 +2100,8 @@
     "t": "T3000 Center DB Configuration"
   },
   "t3000/t3-eez-studio/README": {
-    "updated": "2026-11-22",
-    "sha": "2a46a6fd",
+    "updated": "2026-11-26",
+    "sha": "e915ec15",
     "owner": "docs",
     "stale": false,
     "t": "Design Studio (Tstat11)"
@@ -2184,8 +2184,8 @@
     "t": "06 — Reference & FAQ"
   },
   "t3000/t3-eez-studio/phase2-device-renderer-design": {
-    "updated": "2026-11-22",
-    "sha": "2a46a6fd",
+    "updated": "2026-11-26",
+    "sha": "e915ec15",
     "owner": "docs",
     "stale": false,
     "t": "Phase 2 — Device-Side Dynamic UI Renderer (Design)"
@@ -2198,15 +2198,15 @@
     "t": "Phase 2 — Firmware Implementation Guide (T3-programmable-controller-on-ESP32)"
   },
   "t3000/t3-eez-studio/phase2-host-implementation-guide": {
-    "updated": "2026-11-22",
-    "sha": "2a46a6fd",
+    "updated": "2026-11-26",
+    "sha": "e915ec15",
     "owner": "docs",
     "stale": false,
     "t": "Phase 2 — Host Implementation Guide (T3000 WebView / Design Studio)"
   },
   "t3000/t3-eez-studio/screen-deploy-lifecycle-design": {
-    "updated": "2026-11-22",
-    "sha": "2a46a6fd",
+    "updated": "2026-11-26",
+    "sha": "e915ec15",
     "owner": "docs",
     "stale": false,
     "t": "Screen deploy lifecycle — transactions, versions, recovery (design)"
