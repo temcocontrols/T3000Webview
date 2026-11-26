@@ -1,7 +1,10 @@
 # Screen deploy lifecycle
 
-**Applies to:** specification — the transaction endpoints, the three-tier storage model and the
-revision model below are not implemented. Shipped behaviour is in
+**Applies to:** shipped. The transaction endpoints (`begin` / `PUT file` / `commit` / `abort`), the
+A/B slot storage model, the revision counter and `GET /device/status` are implemented in the
+firmware (`components/temco_dynamic_display/src/screen_transaction.c`, `screen_deploy_api.c`) and
+consumed by `device-rest-client.ts` (`beginDeploy` / `stageFile` / `commitDeploy` /
+`deployTransactional`). Shipped storage and transport details are in
 [device-interface-deployment-via-bacnet-design.md](device-interface-deployment-via-bacnet-design.md).
 
 This document covers the part of the screen feature that sits *between* the exporter and the

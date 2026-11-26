@@ -1,10 +1,13 @@
 # Device renderer — specification
 
-**Applies to:** specification — not implemented. The panel currently draws the compiled UI
-(`ui_init()`); no code reads screen JSON for display yet. Storage and transport are shipped
-and described in [device-interface-deployment-via-bacnet-design.md](device-interface-deployment-via-bacnet-design.md).
+**Applies to:** shipped firmware. The TSTAT11 build draws the deployed screen JSON
+(`main/TemcoScreen/ui_json_render.c`) and re-attaches the compiled handlers to those objects for
+live values; `ui_init()` still builds the compiled screens first, and `ui_mode: "compiled"` falls
+back to them. Storage and transport are described in
+[device-interface-deployment-via-bacnet-design.md](device-interface-deployment-via-bacnet-design.md).
 
-> **Status:** design, approved for review. No firmware or front-end code has been written yet.
+> **Status:** implemented and verified on hardware — all 13 default screens render from JSON with a
+> 0-mismatch geometry audit (`tools/audit_render.py` in the firmware repo).
 >
 > **Goal of Phase 2:** close the loop.
 >

@@ -62,11 +62,13 @@ checked against it. Specified means the page defines behaviour that is not imple
 | device storage and REST endpoints | shipped | firmware `components/temco_dynamic_display` |
 | import from device | shipped | `device-import.ts` |
 | default/factory screens | shipped | firmware `DefaultScreens/`, `POST /reset-defaults` |
-| **device renders device JSON** | **not implemented** | [phase2-device-renderer-design.md](phase2-device-renderer-design.md) |
-| **transactional deploy, capacity, revisions, `/device/status`** | **not implemented** | [screen-deploy-lifecycle-design.md](screen-deploy-lifecycle-design.md) |
+| device renders device JSON | **shipped** (TSTAT11 firmware, verified on hardware) | [phase2-device-renderer-design.md](phase2-device-renderer-design.md) |
+| transactional deploy, capacity, revisions, `/device/status` | **shipped** (host + firmware) | [screen-deploy-lifecycle-design.md](screen-deploy-lifecycle-design.md) |
+| renderer compatibility check + post-deploy verify step | shipped | `project-editor/build/device-compat.ts`, `deployService.ts` |
 
-Until the renderer exists, a deploy writes files that nothing draws: the panel shows the compiled UI.
-`GET /device/status` is the planned way to tell the two apart.
+A deploy writes screens the device renders itself: `POST /deploy/begin` stages the set into the
+inactive slot, `commit` swaps it, and `GET /device/status` reports which slot/revision is live and
+whether the last build succeeded (`ui_mode: "json"` vs `"compiled"`).
 
 ## 4. Canonical screens
 

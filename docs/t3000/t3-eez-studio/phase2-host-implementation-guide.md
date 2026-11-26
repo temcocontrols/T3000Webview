@@ -1,6 +1,7 @@
 # Host implementation — reference
 
-**Applies to:** shipped code for the exporter, REST client and Design Hub surfaces; the transaction client (`begin` / `stage` / `commit`) is specified, not implemented.
+**Applies to:** shipped code for the exporter, REST client, the transactional deploy client
+(`begin` / `stage` / `commit`) and the Design Hub surfaces.
 
 > **What this is.** The front-end half of the renderer: the changes that make the browser side
 > *correct and honest* about a device that renders JSON. It does **not** contain a renderer — the
@@ -21,11 +22,11 @@
 | Device JSON → `.eez-project` import (`firmware-loader.ts`) | **No** |
 | Browser preview (LVGL WASM) | **No** |
 | REST transport / proxy | **No** |
-| Deploy pipeline (`deployService.ts`) | **Yes** — add the compatibility check + a verify step |
-| Import pipeline (`device-import.ts`) | **Yes** — tolerate a 404 per screen |
-| REST client (`device-rest-client.ts`) | **Yes** — add `getDeviceStatus()` |
-| Deploy drawer UI | **Yes** — show findings, show device status |
-| Tests | **Yes** — export contract snapshot + compat checker unit tests |
+| Deploy pipeline (`deployService.ts`) | **Done** — compatibility gate + post-push verify step |
+| Import pipeline (`device-import.ts`) | **Done** — tolerates a 404 per screen |
+| REST client (`device-rest-client.ts`) | **Done** — `getStatus()` + `loadScreenOrNull()` |
+| Deploy drawer UI | **Done** — findings panel, device status in the verify step |
+| Tests | **Done** — `device-compat.test.ts`, `firmware-export.contract.test.ts` |
 
 Everything below is additive. Nothing removes an existing code path, so a device without the
 the renderer firmware behaves exactly as today.
@@ -68,17 +69,21 @@ export interface CompatReport {
     ok: boolean;
 }
 
-/** sub_types the renderer device renderer implements. */
+/** sub_types the renderer maps to a real LVGL widget (create_widget()). */
 const RENDERABLE = new Set([
     "screen", "panel", "label", "textarea", "button", "imagebutton",
     "image", "switch", "checkbox", "dropdown", "roller",
-    "arc", "bar", "slider", "calendar", "keyboard",
+    "arc", "calendar", "keyboard",
 ]);
 
-/** sub_types the exporter can emit but cannot draw yet. */
-const KNOWN_UNSUPPORTED = new Set(["user_widget"]);
+/**
+ * sub_types the exporter can emit but the renderer has no branch for: they fall
+ * through to a bare `lv_obj`, so the panel shows an empty container.
+ */
+const KNOWN_UNSUPPORTED = new Set(["bar", "slider", "user_widget"]);
 
-const ACTIONS = new Set(["screen_change", "flag_modify"]);
+/** Actions the renderer executes; `call` additionally needs a firmware handler. */
+const ACTIONS = new Set(["screen_change", "flag_modify", "call"]);
 
 /** 512 KB is the device's hard request limit (400 for anything larger). */
 const SCREEN_SIZE_WARN_BYTES = 400 * 1024;
@@ -399,12 +404,12 @@ After a successful push, ask the panel what it actually did. Add to
 
 ```ts
 try {
-    const st = await deviceClient.getDeviceStatus();
+    const st = await deviceClient.getStatus();
     emitStep(
         "verify",
         st.build_ok ? "Device reports the design is live" : "Device reports a render error",
-        `mode=${st.ui_mode} screen=${st.current_screen} ${st.last_build_ms}ms` +
-            (st.last_error ? ` error=${st.last_error}` : ""),
+        `${st.ui_mode} · ${st.current_screen} · rev ${st.revision} (slot ${st.slot})` +
+            (st.last_error ? ` · ${st.last_error}` : ""),
         st.build_ok ? "done" : "error",
         st.build_ok ? undefined : st.last_error
     );
@@ -423,28 +428,24 @@ design" into a concrete `ui_mode` / `last_error` string.
 
 `src/lib/t3-eez-studio/project-editor/build/device-rest-client.ts`
 
-### 4.1 `getDeviceStatus()`
+### 4.1 `getStatus()`
+
+Already implemented as `getStatus()` in `device-rest-client.ts`; the interface matches the shipped
+firmware (verified on hardware — there is no `last_build_ms`, `images_loaded` or `heap_free`):
 
 ```ts
-/** Renderer / UI state reported by the device (the renderer firmware). */
+/** `GET /api/eez-device/device/status` — what the panel is actually running. */
 export interface DeviceStatus {
-    ui_mode: "dynamic" | "compiled" | string;
+    /** `json` = the renderer draws the deployed screens, `compiled` = built-in UI. */
+    ui_mode: "json" | "compiled";
+    tier: number;
+    slot: "A" | "B";
+    revision: number;
     current_screen: string;
-    last_build_ms: number;
     build_ok: boolean;
-    last_error?: string;
-    images_loaded?: number;
-    heap_free?: number;
-}
-
-/** GET /api/eez-device/device/status (additive — 404 on older firmware). */
-async getDeviceStatus(): Promise<DeviceStatus> {
-    const response = await fetch(
-        restUrl("device/status", this.deviceIp),
-        { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
-    );
-    if (!response.ok) throw new Error(`Device returned ${response.status}`);
-    return response.json();
+    last_error: string;
+    forced_compiled?: boolean;
+    storage?: { total: number; used: number; free: number; reserved: number };
 }
 ```
 
@@ -612,24 +613,30 @@ firmware changes:
 | A deploy response means *persisted*, not *painted* | [device-interface-deployment-via-bacnet-design.md](device-interface-deployment-via-bacnet-design.md) |
 | There is no `DELETE /screens/:name` yet | same doc, "Limits and gaps" |
 
-The firmware repo's `DEVICE_REST_API_DISPLAY.md` still shows the wrong "canonical" JSON; the
-replacement text is Appendix C of the design document.
+The firmware repo's `DEVICE_REST_API_DISPLAY.md` documents the shipped endpoint set (including the
+renderer/deploy routes and the verification loop). Keep it and Appendix C of the design document in
+step with the code.
 
 ---
 
 ## 7. Order of work
 
-| Step | Deliverable | Verify with |
-|---|---|---|
-| H1 | `device-compat.ts` | `npx vitest run …/device-compat.test.ts` |
-| H2 | export contract test | `npx vitest run …/firmware-export.contract.test.ts` |
-| H3 | `getDeviceStatus()` + `loadScreenOrNull()` | type-check + manual `curl` on a the renderer board |
-| H4 | import 404 tolerance | import from a board with one screen file deleted |
-| H5 | compat check inside `deployEezProject()` | deploy a project with an expression → see the warning |
-| H6 | drawer findings panel + verify step | deploy to a the renderer board → "Device reports the design is live" |
+| Step | Deliverable | Verify with | Status |
+|---|---|---|---|
+| H1 | `device-compat.ts` | `npx vitest run …/device-compat.test.ts` | **done** (14 tests) |
+| H2 | export contract test | `npx vitest run …/firmware-export.contract.test.ts` | **done** (5 tests) |
+| H3 | `getStatus()` + `loadScreenOrNull()` | type-check + manual `curl` on a renderer board | **done** |
+| H4 | import 404 tolerance | import from a board with one screen file deleted | **done** |
+| H5 | compat check inside `deployEezProject()` | deploy a project with an expression → see the warning | **done** |
+| H6 | drawer findings panel + verify step | deploy to a renderer board → "Device reports the design is live" | **done** |
 
-H1/H2 are pure and can land before any firmware exists. H3–H6 degrade gracefully on today's
+H1/H2 are pure and can land before any firmware exists. H3–H6 degrade gracefully on older
 firmware (no `/device/status` → `skipped` step; no 404s → tolerance never fires).
+
+> Verified against the TSTAT11 renderer firmware (480×320 LVGL 9.1): the board reports
+> `ui_mode:"json"`, the transaction endpoints (`begin` / `PUT file` / `commit`) apply a slot swap,
+> and `GET /api/eez-device/ui-debug` reports the layout-dump state used by the geometry audit in the
+> firmware repo (`tools/dump_screens.py` + `tools/audit_render.py`).
 
 ### Commands
 
