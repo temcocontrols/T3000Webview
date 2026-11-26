@@ -9,6 +9,7 @@ name: Webview release
 #   T3000-Webview-<version>.zip
 #   └── <version>/
 #         www/                  the web app (dist/ of the Quasar build)
+#         t3web/                eez-studio runtime assets (ResourceFile\webview\t3web)
 #         t3_webview_api.dll    the 32-bit Rust API
 #         t3_webview_api.dll.lib
 #         t3_webview_api.dll.exp
@@ -164,21 +165,21 @@ jobs:
         working-directory: api
         run: cargo build --target i686-pc-windows-msvc --release
 
-      - name: Check the staged T3Web resources
+      - name: Check the staged t3web resources
         id: t3web
         shell: pwsh
         run: |
           $p = "api/target/i686-pc-windows-msvc/release/ResourceFile/webview/t3web"
           if (Test-Path "$p/t3-eez") {
             $n = (Get-ChildItem $p -Recurse -File | Measure-Object).Count
-            Write-Host "T3Web staged: $n files"
+            Write-Host "t3web staged: $n files"
             "found=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           } else {
-            Write-Warning "T3Web resources were not staged (sibling repos missing) - the package will not include T3Web/"
+            Write-Warning "t3web resources were not staged (sibling repos missing) - the package will not include t3web/"
             "found=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           }
 
-      - name: Upload T3Web
+      - name: Upload t3web
         if: steps.t3web.outputs.found == 'true'
         uses: actions/upload-artifact@v4
         with:
@@ -211,7 +212,7 @@ jobs:
           name: webview-api
           path: .pkg/api
 
-      - name: Download T3Web (optional)
+      - name: Download t3web (optional)
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
@@ -231,12 +232,12 @@ jobs:
           cp .pkg/api/t3_webview_api.dll.lib "$OUT/"
           cp .pkg/api/t3_webview_api.dll.exp "$OUT/"
 
-          # eez-studio runtime assets -> ResourceFile\webview\t3web
+          # eez-studio runtime assets -> ResourceFile\webview\t3web (lower case, as staged)
           if [ -d .pkg/t3web/t3-eez ]; then
-            cp -r .pkg/t3web "$OUT/T3Web"
-            echo "T3Web: $(find "$OUT/T3Web" -type f | wc -l) files"
+            cp -r .pkg/t3web "$OUT/t3web"
+            echo "t3web: $(find "$OUT/t3web" -type f | wc -l) files"
           else
-            echo "::warning::T3Web resources are not in this build — the zip will not contain T3Web/"
+            echo "::warning::t3web resources are not in this build — the zip will not contain t3web/"
           fi
 
           node -e '
