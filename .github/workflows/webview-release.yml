@@ -255,6 +255,53 @@ jobs:
             fs.writeFileSync(`${out}/www/version.json`, json);
           ' "$OUT" "$VERSION" "$GIT_SHA" "$([ -d .pkg/t3web/t3-eez ] && echo '["ui","api","t3web"]' || echo '["ui","api"]')"
 
+          # Manual-deploy instructions ride inside the package, so someone who
+          # downloads the zip does not have to hunt through the release page.
+          cat > "$OUT/DEPLOY.md" <<'DEPLOY_EOF'
+          # T3000 Webview __VERSION__ — manual deployment
+
+          This folder is **not** an installer. Copy three parts into an existing T3000
+          installation. The default install root is `C:\Program Files (x86)\T3000`.
+
+          ## Before you start
+
+          - T3000 must already be installed.
+          - **Close T3000 completely.** Windows keeps `t3_webview_api.dll` locked while
+            it runs, so the copy fails with "file in use" otherwise.
+          - Write with an **Administrator** shell or Explorer window — `Program Files`
+            is protected.
+          - Back up `ResourceFile\webview` and `T3000.exe` first.
+
+          ## Copy
+
+          | From this folder | To |
+          | --- | --- |
+          | `www\` | `C:\Program Files (x86)\T3000\ResourceFile\webview\www\` |
+          | `t3web\` | `C:\Program Files (x86)\T3000\ResourceFile\webview\t3web\` |
+          | `t3_webview_api.dll` | `C:\Program Files (x86)\T3000\` (next to `T3000.exe`) |
+
+          Replace the existing `www` folder rather than merging into it, so removed
+          files do not linger.
+
+          ## Notes
+
+          - `t3_webview_api.dll.lib` and `.exp` are link-time files for developers.
+            They are **not** needed to run T3000 and can be ignored.
+          - If this package has no `t3web\` folder, those runtime assets were not part
+            of this build — leave any existing `ResourceFile\webview\t3web` untouched.
+          - `www\version.json` is how the running app reports which build is deployed.
+          - If you installed T3000 somewhere other than `Program Files (x86)\T3000`,
+            map the paths above onto your install root.
+
+          ## After copying
+
+          Start T3000 and open WebView. Folders already present keep working; only the
+          files above were replaced.
+
+          `sha256sums.txt` lists the checksum of every file in this package.
+          DEPLOY_EOF
+          sed -i "s/__VERSION__/$VERSION/g" "$OUT/DEPLOY.md"
+
           ( cd "$OUT" && find . -type f -exec sha256sum {} + | sort -k2 > sha256sums.txt )
           ( cd out && zip -qr "../T3000-Webview-$VERSION.zip" "$VERSION" )
 
@@ -313,8 +360,32 @@ jobs:
             Front-end release `${{ needs.guard.outputs.version }}`
 
             Download **T3000-Webview-${{ needs.guard.outputs.version }}.zip** below.
-
             `latest.json` describes this build (version, sha256, download URL).
+
+            ## Updating a machine by hand
+
+            The zip is **not** an installer. Copy three parts into an existing T3000
+            installation — default root `C:\Program Files (x86)\T3000`. T3000 must
+            already be installed, T3000 must be **closed** (Windows locks the DLL
+            while it runs), and you need an **Administrator** shell. Back up
+            `ResourceFile\webview` first.
+
+            | From the zip | Copy to |
+            | --- | --- |
+            | `www\` | `C:\Program Files (x86)\T3000\ResourceFile\webview\www\` |
+            | `t3web\` | `C:\Program Files (x86)\T3000\ResourceFile\webview\t3web\` |
+            | `t3_webview_api.dll` | `C:\Program Files (x86)\T3000\` (next to `T3000.exe`) |
+
+            Replace the existing `www` folder rather than merging into it. Then start
+            T3000 and open WebView.
+
+            `t3_webview_api.dll.lib` and `.exp` are link-time files — not needed to run.
+            If the zip has no `t3web\`, leave your existing `ResourceFile\webview\t3web`
+            alone.
+
+            Full instructions are in **`DEPLOY.md`** inside the zip. To verify the
+            download, `sha256sums.txt` covers every file and the zip's own sha256 is in
+            `latest.json`.
 
             ${{ github.event.inputs.notes }}
           files: |
