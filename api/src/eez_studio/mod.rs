@@ -1680,6 +1680,18 @@ pub fn bridge_routes(router: Router<T3AppState>) -> Router<T3AppState> {
         .route("/api/eez-device/deploy/:id/commit", post(bacnet_api_mock::commit_deploy))
         .route("/api/eez-device/deploy/:id/abort", post(bacnet_api_mock::abort_deploy))
         .route("/api/eez-device/deploy/:id", get(bacnet_api_mock::get_deploy))
+        // Renderer controls: tri-state UI mode + the two debug endpoints the
+        // firmware exposes. Both methods live on one path here so a GET and a
+        // POST cannot be registered twice.
+        .route(
+            "/api/eez-device/ui-mode",
+            get(bacnet_api_mock::get_ui_mode).post(bacnet_api_mock::set_ui_mode),
+        )
+        .route("/api/eez-device/ui-screen", post(bacnet_api_mock::goto_screen))
+        .route(
+            "/api/eez-device/ui-debug",
+            get(bacnet_api_mock::get_ui_debug).post(bacnet_api_mock::set_ui_debug),
+        )
         // Specific routes (push/pull) must register before wildcard (:name)
         .route("/api/eez-device/screens/push/:panelId", post(bacnet_api_mock::push_screens_bacnet))
         .route("/api/eez-device/screens/pull/:panelId", post(bacnet_api_mock::pull_screens_bacnet))

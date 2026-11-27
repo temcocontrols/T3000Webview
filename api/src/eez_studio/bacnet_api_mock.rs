@@ -954,6 +954,13 @@ lazy_static::lazy_static! {
     static ref ACTIVE: Mutex<(char, i32)> = Mutex::new(('A', 0));
     static ref COMMITTED: Mutex<BTreeMap<String, Value>> = Mutex::new(BTreeMap::new());
     static ref TXN: Mutex<Option<MockTxn>> = Mutex::new(None);
+    /// Tri-state UI switch (`/ui-mode`): `auto` | `json` | `compiled`.
+    /// A fresh device boots in `auto`.
+    static ref UI_MODE: Mutex<String> = Mutex::new("auto".to_string());
+    /// Per-widget layout dump switch (`/ui-debug`).
+    static ref LAYOUT_DUMP: Mutex<bool> = Mutex::new(false);
+    /// Screen the renderer was last asked to show (`/ui-screen`).
+    static ref CURRENT_SCREEN: Mutex<String> = Mutex::new(String::new());
 }
 
 type MockErr = (StatusCode, Json<Value>);
@@ -1038,6 +1045,10 @@ pub struct MockStorageSummary {
 #[derive(Debug, Serialize)]
 pub struct DeviceStatusResponse {
     ui_mode: &'static str,
+    /// The switch as configured, so a client can tell "auto resolved to compiled"
+    /// from "compiled was forced".
+    mode: String,
+    mode_failed: bool,
     tier: i32,
     slot: String,
     revision: i32,
@@ -1047,18 +1058,34 @@ pub struct DeviceStatusResponse {
     storage: MockStorageSummary,
 }
 
+/// Resolve the tri-state switch to what the panel would actually draw.
+/// Mirrors the firmware: `auto` is the compiled UI until a screen set has been
+/// deployed, then the deployed screens.
+fn resolve_ui_mode(mode: &str, revision: i32) -> &'static str {
+    match mode {
+        "json" => "json",
+        "compiled" => "compiled",
+        _ if revision > 0 => "json",
+        _ => "compiled",
+    }
+}
+
 /// `GET /api/eez-device/device/status`
 pub async fn get_deploy_status() -> Json<DeviceStatusResponse> {
     let (active, revision) = *ACTIVE.lock().unwrap();
     let used = used_bytes();
+    let mode = UI_MODE.lock().unwrap().clone();
+    let current_screen = CURRENT_SCREEN.lock().unwrap().clone();
     Json(DeviceStatusResponse {
-        // the mock has no renderer, so it reports the same state a firmware
-        // without one does
-        ui_mode: "compiled",
+        // The mock has no renderer, so `auto` resolves the way the firmware does
+        // rather than reporting a state it cannot reach.
+        ui_mode: resolve_ui_mode(&mode, revision),
+        mode,
+        mode_failed: false,
         tier: 0,
         slot: active.to_string(),
         revision,
-        current_screen: String::new(),
+        current_screen,
         build_ok: true,
         last_error: String::new(),
         storage: MockStorageSummary {
@@ -1068,6 +1095,109 @@ pub async fn get_deploy_status() -> Json<DeviceStatusResponse> {
             reserved: MOCK_RESERVED_BYTES,
         },
     })
+}
+
+#[derive(Debug, Serialize)]
+pub struct UiModeStateResponse {
+    ui_mode: &'static str,
+    mode: String,
+    mode_failed: bool,
+    forced_compiled: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UiModeSetResponse {
+    ok: bool,
+    ui_mode: &'static str,
+    mode: String,
+}
+
+/// `GET /api/eez-device/ui-mode`
+pub async fn get_ui_mode() -> Json<UiModeStateResponse> {
+    let mode = UI_MODE.lock().unwrap().clone();
+    let (_, revision) = *ACTIVE.lock().unwrap();
+    Json(UiModeStateResponse {
+        ui_mode: resolve_ui_mode(&mode, revision),
+        mode_failed: false,
+        forced_compiled: mode == "compiled",
+        mode,
+    })
+}
+
+/// `POST /api/eez-device/ui-mode` — `{"mode":"auto"|"json"|"compiled"}`.
+/// Also accepts the firmware's legacy `{"mode":true}` (= json).
+pub async fn set_ui_mode(Json(body): Json<Value>) -> Result<Json<UiModeSetResponse>, MockErr> {
+    let requested = match body.get("mode") {
+        Some(Value::String(s)) => s.clone(),
+        Some(Value::Bool(b)) => {
+            if *b {
+                "json".to_string()
+            } else {
+                "compiled".to_string()
+            }
+        }
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "bad_mode",
+                    "expect": ["auto", "json", "compiled"],
+                })),
+            ))
+        }
+    };
+    if !matches!(requested.as_str(), "auto" | "json" | "compiled") {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "bad_mode",
+                "expect": ["auto", "json", "compiled"],
+            })),
+        ));
+    }
+    *UI_MODE.lock().unwrap() = requested.clone();
+    let (_, revision) = *ACTIVE.lock().unwrap();
+    Ok(Json(UiModeSetResponse {
+        ok: true,
+        ui_mode: resolve_ui_mode(&requested, revision),
+        mode: requested,
+    }))
+}
+
+/// `POST /api/eez-device/ui-screen` — `{"name":"parameters"}`.
+/// The mock has no renderer, so it records the request instead of validating the
+/// name against the deployed screens.
+pub async fn goto_screen(Json(body): Json<Value>) -> Result<Json<Value>, MockErr> {
+    let name = body
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if name.is_empty() || name.len() >= 40 {
+        return Err(mock_err(StatusCode::BAD_REQUEST, "bad_screen"));
+    }
+    *CURRENT_SCREEN.lock().unwrap() = name.clone();
+    Ok(Json(serde_json::json!({ "ok": true, "navigating": name })))
+}
+
+/// `GET /api/eez-device/ui-debug`
+pub async fn get_ui_debug() -> Json<Value> {
+    let on = *LAYOUT_DUMP.lock().unwrap();
+    Json(serde_json::json!({ "ok": true, "layout_dump": on }))
+}
+
+/// `POST /api/eez-device/ui-debug` — `{"layout":true}`; omitting the field
+/// reports the current state, like the firmware's GET.
+pub async fn set_ui_debug(Json(body): Json<Value>) -> Result<Json<Value>, MockErr> {
+    let layout = match body.get("layout") {
+        Some(Value::Bool(b)) => *b,
+        Some(Value::Number(n)) => n.as_i64().unwrap_or(0) != 0,
+        Some(_) => return Err(mock_err(StatusCode::BAD_REQUEST, "bad_layout")),
+        None => *LAYOUT_DUMP.lock().unwrap(),
+    };
+    *LAYOUT_DUMP.lock().unwrap() = layout;
+    Ok(Json(serde_json::json!({ "ok": true, "layout_dump": layout })))
 }
 
 #[derive(Debug, Deserialize)]
