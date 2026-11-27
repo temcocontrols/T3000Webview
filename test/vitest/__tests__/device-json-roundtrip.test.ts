@@ -23,6 +23,13 @@
  *     the exporter restores them, which is lossy for a few labels
  *     (main_menu `label6` → `Label62`); names stay consistent within the screen,
  *     which the dangling-reference check proves.
+ *   - child order. This one matters, because on the device child order is LVGL
+ *     z-order (see tools/gen_json_from_c.py: keys are emitted in C creation
+ *     order). The loader deliberately pulls `hidden` widgets out and pushes them
+ *     last — firmware-loader.ts, "hidden widgets ... must render ON TOP" — so 2
+ *     of the 13 screens (home_screen, time) come back in a different order than
+ *     the device file. That is intended normalisation for popups, not drift, so
+ *     asserting order here would lock in the wrong behaviour.
  */
 import fs from "node:fs";
 import path from "node:path";
