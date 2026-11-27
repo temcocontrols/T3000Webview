@@ -1,0 +1,586 @@
+{
+  "bg_color": "#000000",
+  "bitmaps": [
+    "backsmallarrow"
+  ],
+  "fonts": [
+    [
+      "lv_font_montserrat_16",
+      16
+    ],
+    [
+      "lv_font_montserrat_18",
+      18
+    ]
+  ],
+  "widgets": {
+    "Protocols": {
+      "sub_type": "screen",
+      "type": "Widget",
+      "text_type": "literal",
+      "width": 0,
+      "height": 0,
+      "x_pos": 0,
+      "y_pos": 0,
+      "obj_text": "",
+      "events": {
+        "CLICKED": {
+          "actions": [
+            {
+              "action": "flag_modify",
+              "flag": "hidden",
+              "mode": "add",
+              "target": "NumKeyboardProtocol"
+            },
+            {
+              "action": "flag_modify",
+              "flag": "hidden",
+              "mode": "add",
+              "target": "KeyboardProtocol"
+            }
+          ]
+        }
+      },
+      "children": {
+        "ChangeConfigTitle7": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 450,
+          "height": 40,
+          "x_pos": 0,
+          "y_pos": 0,
+          "align": "top_mid",
+          "obj_text": "",
+          "scrollable": false,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "bg_color": "#2D70A0",
+                "bg_opa": 0,
+                "border_side": "bottom"
+              }
+            }
+          },
+          "children": {
+            "NetworkSetupConfig3": {
+              "sub_type": "label",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 0,
+              "height": 0,
+              "x_pos": -80,
+              "y_pos": 0,
+              "align": "center",
+              "obj_text": "Protocol Setup",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_font": "lv_font_montserrat_18"
+                  }
+                }
+              }
+            },
+            "GotoMenuButton7": {
+              "sub_type": "imagebutton",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 35,
+              "height": 35,
+              "x_pos": 0,
+              "y_pos": 0,
+              "align": "left_mid",
+              "obj_text": "",
+              "img_released": "backsmallarrow",
+              "img_pressed": "backsmallarrow",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 100,
+                    "bg_color": "#3C3C3C",
+                    "bg_opa": 255
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "screen_change",
+                      "anim": "MOVE_RIGHT",
+                      "delay": 100,
+                      "screen": "main_menu",
+                      "speed": 500
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "ProtocolContainer": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 480,
+          "height": 290,
+          "x_pos": 0,
+          "y_pos": 0,
+          "align": "bottom_mid",
+          "obj_text": "",
+          "scrollable": false,
+          "no_default_style": true,
+          "children": {
+            "WifiPassPanel2": {
+              "sub_type": "panel",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 445,
+              "height": 45,
+              "x_pos": 0,
+              "y_pos": -20,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "bg_color": "#FFFFFF",
+                    "bg_opa": 0,
+                    "border_side": "none"
+                  }
+                }
+              },
+              "children": {
+                "PasswordStr3": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": -10,
+                  "y_pos": 0,
+                  "align": "left_mid",
+                  "obj_text": "Panel Name               :",
+                  "scrollable": false,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "PanelNameText": {
+                  "sub_type": "textarea",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 200,
+                  "height": 0,
+                  "x_pos": 85,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "",
+                  "placeholder": "Panel Name",
+                  "one_line": true,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "radius": 10,
+                        "border_side": "left"
+                      }
+                    }
+                  },
+                  "events": {
+                    "CLICKED": {
+                      "actions": [
+                        {
+                          "action": "flag_modify",
+                          "flag": "hidden",
+                          "mode": "add",
+                          "target": "NumKeyboardProtocol"
+                        },
+                        {
+                          "action": "flag_modify",
+                          "flag": "hidden",
+                          "mode": "remove",
+                          "target": "KeyboardProtocol"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "CommPanel": {
+              "sub_type": "panel",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 445,
+              "height": 45,
+              "x_pos": 0,
+              "y_pos": 60,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "bg_color": "#FFFFFF",
+                    "bg_opa": 0,
+                    "border_side": "none"
+                  }
+                }
+              },
+              "children": {
+                "DropdownNetdata2": {
+                  "sub_type": "dropdown",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 160,
+                  "height": 0,
+                  "x_pos": 60,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "",
+                  "options": [
+                    "BACnet Slave",
+                    "Modbus Slave"
+                  ],
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_16",
+                        "radius": 10,
+                        "border_side": "none"
+                      }
+                    }
+                  }
+                },
+                "Label10": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": -130,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "Communication Type  :",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_16"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "BacNetPortPanel2": {
+              "sub_type": "panel",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 445,
+              "height": 45,
+              "x_pos": 0,
+              "y_pos": -110,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "bg_color": "#FFFFFF",
+                    "bg_opa": 0,
+                    "border_side": "none"
+                  }
+                }
+              },
+              "children": {
+                "BacNetPortStr2": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": -10,
+                  "y_pos": 0,
+                  "align": "left_mid",
+                  "obj_text": "Modbus/Bacnet Id    :",
+                  "scrollable": false,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "ModbusIdText": {
+                  "sub_type": "textarea",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 150,
+                  "height": 0,
+                  "x_pos": 60,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "",
+                  "placeholder": "ID",
+                  "one_line": true,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "radius": 10,
+                        "border_side": "left"
+                      }
+                    }
+                  },
+                  "events": {
+                    "CLICKED": {
+                      "actions": [
+                        {
+                          "action": "flag_modify",
+                          "flag": "hidden",
+                          "mode": "remove",
+                          "target": "NumKeyboardProtocol"
+                        },
+                        {
+                          "action": "flag_modify",
+                          "flag": "hidden",
+                          "mode": "add",
+                          "target": "KeyboardProtocol"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "ModbusPortPanel2": {
+              "sub_type": "panel",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 445,
+              "height": 45,
+              "x_pos": 0,
+              "y_pos": -65,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "bg_color": "#101418",
+                    "bg_opa": 0,
+                    "border_side": "none"
+                  }
+                }
+              },
+              "children": {
+                "ModbusPortStr2": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": -10,
+                  "y_pos": 0,
+                  "align": "left_mid",
+                  "obj_text": "Baud Rate                  :",
+                  "scrollable": false,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "BaudRateText": {
+                  "sub_type": "textarea",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 150,
+                  "height": 0,
+                  "x_pos": 60,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "",
+                  "placeholder": "Baud Rate",
+                  "one_line": true,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "radius": 10,
+                        "border_side": "left"
+                      }
+                    }
+                  },
+                  "events": {
+                    "CLICKED": {
+                      "actions": [
+                        {
+                          "action": "flag_modify",
+                          "flag": "hidden",
+                          "mode": "remove",
+                          "target": "NumKeyboardProtocol"
+                        },
+                        {
+                          "action": "flag_modify",
+                          "flag": "hidden",
+                          "mode": "add",
+                          "target": "KeyboardProtocol"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "WifiUpdateButton3": {
+              "sub_type": "button",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 100,
+              "height": 30,
+              "x_pos": 181,
+              "y_pos": 120,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "bg_color": "#2971A4",
+                    "bg_opa": 255
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "screen_change",
+                      "anim": "MOVE_RIGHT",
+                      "delay": 100,
+                      "screen": "main_menu",
+                      "speed": 1000
+                    }
+                  ]
+                }
+              },
+              "children": {
+                "Label14": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "Update",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "KeyboardProtocol": {
+              "sub_type": "keyboard",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 480,
+              "height": 120,
+              "x_pos": 0,
+              "y_pos": 1,
+              "align": "bottom_mid",
+              "obj_text": "",
+              "textarea": "PanelNameText",
+              "hidden": true,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "border_side": "none"
+                  },
+                  "DISABLED": {
+                    "opa": 0
+                  }
+                },
+                "ITEMS": {
+                  "DEFAULT": {
+                    "radius": 30
+                  }
+                }
+              },
+              "events": {
+                "READY": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "KeyboardProtocol"
+                    }
+                  ]
+                },
+                "CANCEL": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "KeyboardProtocol"
+                    }
+                  ]
+                }
+              }
+            },
+            "NumKeyboardProtocol": {
+              "sub_type": "keyboard",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 300,
+              "height": 120,
+              "x_pos": 0,
+              "y_pos": 0,
+              "align": "bottom_mid",
+              "obj_text": "",
+              "textarea": "PanelNameText",
+              "keyboard_mode": "number",
+              "hidden": true,
+              "events": {
+                "READY": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "NumKeyboardProtocol"
+                    }
+                  ]
+                },
+                "CANCEL": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "NumKeyboardProtocol"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

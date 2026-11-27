@@ -1,0 +1,1612 @@
+{
+  "bg_color": "#000000",
+  "bitmaps": [
+    "backsmallarrow",
+    "wifisym_Disable",
+    "rightarrow",
+    "displayhomescreendot",
+    "fan_auto_new",
+    "fan_small",
+    "fan_withtime",
+    "day_30",
+    "power_symbol_30",
+    "snowflake_30"
+  ],
+  "fonts": [
+    [
+      "Arial80",
+      80
+    ],
+    [
+      "lv_font_montserrat_10",
+      10
+    ],
+    [
+      "lv_font_montserrat_12",
+      12
+    ],
+    [
+      "lv_font_montserrat_16",
+      16
+    ],
+    [
+      "lv_font_montserrat_18",
+      18
+    ],
+    [
+      "lv_font_montserrat_30",
+      30
+    ],
+    [
+      "lv_font_montserrat_36",
+      36
+    ]
+  ],
+  "widgets": {
+    "HomeScreen": {
+      "sub_type": "screen",
+      "type": "Widget",
+      "text_type": "literal",
+      "width": 0,
+      "height": 0,
+      "x_pos": 0,
+      "y_pos": 0,
+      "obj_text": "",
+      "events": {
+        "CLICKED": {
+          "actions": [
+            {
+              "action": "flag_modify",
+              "flag": "hidden",
+              "mode": "add",
+              "target": "FanModePanel"
+            },
+            {
+              "action": "flag_modify",
+              "flag": "hidden",
+              "mode": "add",
+              "target": "FanOnTimePanel"
+            },
+            {
+              "action": "flag_modify",
+              "flag": "hidden",
+              "mode": "add",
+              "target": "SysModePanel"
+            }
+          ]
+        }
+      },
+      "children": {
+        "RunTime": {
+          "sub_type": "textarea",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 100,
+          "height": 0,
+          "x_pos": -190,
+          "y_pos": -135,
+          "align": "center",
+          "obj_text": "10:20 AM",
+          "placeholder": "Time",
+          "one_line": true,
+          "scrollable": false,
+          "scrollbar_mode": "off",
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "text_color": "#FFFFFF",
+                "text_opa": 255,
+                "text_font": "lv_font_montserrat_18",
+                "bg_color": "#FFFFFF",
+                "bg_opa": 0,
+                "border_side": "none"
+              }
+            },
+            "SELECTED": {
+              "DEFAULT": {
+                "bg_color": "#FFFFFF",
+                "bg_opa": 0
+              }
+            }
+          }
+        },
+        "RunningModeLabel": {
+          "sub_type": "label",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 0,
+          "height": 0,
+          "x_pos": 0,
+          "y_pos": 8,
+          "align": "top_mid",
+          "obj_text": "Mode: --",
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "text_color": "#62B7FF",
+                "text_font": "lv_font_montserrat_16"
+              }
+            }
+          }
+        },
+        "RS485ArrowUpImg": {
+          "sub_type": "image",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 35,
+          "height": 35,
+          "x_pos": -27,
+          "y_pos": 0,
+          "align": "top_right",
+          "obj_text": "",
+          "src": "backsmallarrow",
+          "hidden": true,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "transform_angle": 900
+              }
+            }
+          }
+        },
+        "RS485ArrowDnImg": {
+          "sub_type": "image",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 35,
+          "height": 35,
+          "x_pos": -60,
+          "y_pos": 40,
+          "align": "top_right",
+          "obj_text": "",
+          "src": "backsmallarrow",
+          "hidden": true,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "transform_angle": 2700
+              }
+            }
+          }
+        },
+        "TemperatureContainer": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 230,
+          "height": 230,
+          "x_pos": 0,
+          "y_pos": 0,
+          "align": "center",
+          "obj_text": "",
+          "scrollable": false,
+          "no_default_style": true,
+          "children": {
+            "TempSetPoint1": {
+              "sub_type": "arc",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 230,
+              "height": 230,
+              "x_pos": 0,
+              "y_pos": 0,
+              "align": "center",
+              "obj_text": "",
+              "min": 0,
+              "max": 50,
+              "value": 20,
+              "bg_start_angle": 0,
+              "bg_end_angle": 360,
+              "rotation": 90,
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "arc_color": "#62B7FF",
+                    "arc_opa": 120,
+                    "arc_width": 7
+                  }
+                },
+                "INDICATOR": {
+                  "DEFAULT": {
+                    "arc_color": "#62B7FF",
+                    "arc_opa": 255,
+                    "arc_width": 7
+                  }
+                },
+                "KNOB": {
+                  "DEFAULT": {
+                    "bg_color": "#C6DFD9",
+                    "bg_opa": 255,
+                    "pad_left": 0,
+                    "pad_right": 0,
+                    "pad_top": 0,
+                    "pad_bottom": 0
+                  }
+                }
+              },
+              "children": {
+                "TempSetPoint2": {
+                  "sub_type": "arc",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 210,
+                  "height": 210,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "",
+                  "min": 0,
+                  "max": 50,
+                  "value": 20,
+                  "bg_start_angle": 0,
+                  "bg_end_angle": 360,
+                  "rotation": 90,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "arc_color": "#62B7FF",
+                        "arc_opa": 120,
+                        "arc_width": 2
+                      }
+                    },
+                    "INDICATOR": {
+                      "DEFAULT": {
+                        "arc_color": "#62B7FF",
+                        "arc_opa": 255,
+                        "arc_width": 2
+                      }
+                    },
+                    "KNOB": {
+                      "DEFAULT": {
+                        "pad_left": 0,
+                        "pad_right": 0,
+                        "pad_top": 0,
+                        "pad_bottom": 0
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "TemperatureVal": {
+              "sub_type": "textarea",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 241,
+              "height": 0,
+              "x_pos": 11,
+              "y_pos": -10,
+              "align": "center",
+              "obj_text": "",
+              "placeholder": "88.8",
+              "one_line": true,
+              "scrollable": false,
+              "scrollbar_mode": "off",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_color": "#FFFFFF",
+                    "text_opa": 255,
+                    "text_font": "Arial80",
+                    "bg_color": "#FFFFFF",
+                    "bg_opa": 0,
+                    "border_side": "none"
+                  }
+                }
+              },
+              "children": {
+                "TempratureSymbol": {
+                  "sub_type": "textarea",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 50,
+                  "height": 0,
+                  "x_pos": -22,
+                  "y_pos": -9,
+                  "align": "top_right",
+                  "obj_text": "",
+                  "placeholder": "\u00b0C",
+                  "one_line": true,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_color": "#FFFFFF",
+                        "text_opa": 255,
+                        "text_font": "lv_font_montserrat_36",
+                        "bg_color": "#000000",
+                        "bg_opa": 0,
+                        "border_side": "none",
+                        "pad_left": 0,
+                        "pad_right": 0,
+                        "pad_top": 0,
+                        "pad_bottom": 0
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "SPLable": {
+              "sub_type": "label",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 0,
+              "height": 0,
+              "x_pos": -30,
+              "y_pos": 60,
+              "align": "center",
+              "obj_text": "Target : "
+            },
+            "TemperatureSetPoint": {
+              "sub_type": "textarea",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 150,
+              "height": 0,
+              "x_pos": 64,
+              "y_pos": 60,
+              "align": "center",
+              "obj_text": "",
+              "placeholder": "SetPoint",
+              "one_line": true,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "bg_color": "#000000",
+                    "bg_opa": 0,
+                    "border_color": "#000000",
+                    "border_opa": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "WifiSymb": {
+          "sub_type": "image",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 34,
+          "height": 29,
+          "x_pos": 210,
+          "y_pos": -142,
+          "align": "center",
+          "obj_text": "",
+          "src": "wifisym_Disable",
+          "scrollable": false,
+          "scrollbar_mode": "off",
+          "events": {
+            "CLICKED": {
+              "actions": [
+                {
+                  "action": "screen_change",
+                  "anim": "MOVE_LEFT",
+                  "delay": 100,
+                  "screen": "wifi_config",
+                  "speed": 500
+                }
+              ]
+            }
+          }
+        },
+        "HumidityContainer": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 100,
+          "height": 70,
+          "x_pos": 160,
+          "y_pos": 110,
+          "align": "center",
+          "obj_text": "",
+          "scrollable": false,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "border_color": "#349EF9",
+                "border_opa": 255,
+                "border_width": 3,
+                "border_side": "bottom"
+              }
+            }
+          },
+          "no_default_style": true,
+          "children": {
+            "Label3": {
+              "sub_type": "label",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 0,
+              "height": 0,
+              "x_pos": 0,
+              "y_pos": -15,
+              "align": "center",
+              "obj_text": "HUMIDITY",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_letter_space": 1,
+                    "text_line_space": 0,
+                    "text_font": "lv_font_montserrat_16"
+                  }
+                }
+              }
+            },
+            "TextArea4": {
+              "sub_type": "textarea",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 100,
+              "height": 0,
+              "x_pos": 0,
+              "y_pos": 15,
+              "align": "center",
+              "obj_text": "",
+              "placeholder": "00%",
+              "one_line": true,
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_font": "lv_font_montserrat_36",
+                    "bg_color": "#FFFFFF",
+                    "bg_opa": 0,
+                    "border_side": "none"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "RightBtn": {
+          "sub_type": "imagebutton",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 35,
+          "height": 60,
+          "x_pos": 214,
+          "y_pos": 0,
+          "align": "center",
+          "obj_text": "",
+          "img_released": "rightarrow",
+          "img_pressed": "rightarrow",
+          "scrollable": false,
+          "scrollbar_mode": "off",
+          "events": {
+            "CLICKED": {
+              "actions": [
+                {
+                  "action": "screen_change",
+                  "anim": "MOVE_LEFT",
+                  "delay": 100,
+                  "screen": "main_menu",
+                  "speed": 500
+                }
+              ]
+            }
+          }
+        },
+        "HomeDot": {
+          "sub_type": "image",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 26,
+          "height": 19,
+          "x_pos": 0,
+          "y_pos": -5,
+          "align": "bottom_mid",
+          "obj_text": "",
+          "src": "displayhomescreendot",
+          "scrollable": false,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "opa": 150
+              }
+            }
+          }
+        },
+        "FanModePanel": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 190,
+          "height": 180,
+          "x_pos": -8,
+          "y_pos": -19,
+          "align": "center",
+          "obj_text": "",
+          "hidden": true,
+          "scrollable": false,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "radius": 15,
+                "border_color": "#54AEFF",
+                "border_opa": 255,
+                "border_width": 1,
+                "shadow_color": "#5AB1FF",
+                "shadow_opa": 255,
+                "shadow_width": 50,
+                "shadow_spread": 2
+              }
+            }
+          },
+          "children": {
+            "AutoBtn": {
+              "sub_type": "button",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 170,
+              "height": 40,
+              "x_pos": 0,
+              "y_pos": 20,
+              "align": "top_mid",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 50,
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "border_color": "#456CD4",
+                    "border_opa": 255,
+                    "border_width": 2,
+                    "border_side": "full"
+                  },
+                  "FOCUSED": {
+                    "radius": 50,
+                    "bg_color": "#3B62CA",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "shadow_color": "#3D67C1",
+                    "shadow_opa": 255,
+                    "shadow_width": 20,
+                    "shadow_spread": 5
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "FanOnTimePanel"
+                    },
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "FanModePanel"
+                    }
+                  ]
+                }
+              },
+              "children": {
+                "Label22": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "Auto",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "Image1": {
+                  "sub_type": "image",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 35,
+                  "height": 35,
+                  "x_pos": 0,
+                  "y_pos": -1,
+                  "align": "left_mid",
+                  "obj_text": "",
+                  "src": "fan_auto_new",
+                  "scrollable": false
+                }
+              }
+            },
+            "Label16": {
+              "sub_type": "label",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 0,
+              "height": 25,
+              "x_pos": 0,
+              "y_pos": -17,
+              "align": "top_mid",
+              "obj_text": "Fan Mode",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_font": "lv_font_montserrat_18",
+                    "border_color": "#3E6AE3",
+                    "border_opa": 255,
+                    "border_width": 2,
+                    "border_side": "bottom",
+                    "shadow_color": "#333E5B",
+                    "shadow_opa": 255,
+                    "shadow_width": 5,
+                    "shadow_spread": 2,
+                    "shadow_offset_x": 0,
+                    "shadow_offset_y": 2,
+                    "pad_left": 2,
+                    "pad_right": 0,
+                    "pad_top": 0,
+                    "pad_bottom": 0
+                  }
+                }
+              }
+            },
+            "FanONBtn": {
+              "sub_type": "button",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 170,
+              "height": 40,
+              "x_pos": 0,
+              "y_pos": 15,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 50,
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "border_color": "#456CD4",
+                    "border_opa": 255,
+                    "border_width": 2,
+                    "border_side": "full"
+                  },
+                  "FOCUSED": {
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "shadow_color": "#3D67C1",
+                    "shadow_opa": 255,
+                    "shadow_width": 20,
+                    "shadow_spread": 5
+                  }
+                }
+              },
+              "events": {
+                "FOCUSED": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "remove",
+                      "target": "FanOnTimePanel"
+                    }
+                  ]
+                }
+              },
+              "children": {
+                "Label26": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "On",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "Image3": {
+                  "sub_type": "image",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 35,
+                  "height": 35,
+                  "x_pos": 0,
+                  "y_pos": -1,
+                  "align": "left_mid",
+                  "obj_text": "",
+                  "src": "fan_small",
+                  "scrollable": false
+                }
+              }
+            },
+            "CurculateBtn": {
+              "sub_type": "button",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 170,
+              "height": 40,
+              "x_pos": 0,
+              "y_pos": 10,
+              "align": "bottom_mid",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 50,
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "border_color": "#456CD4",
+                    "border_opa": 255,
+                    "border_width": 2,
+                    "border_side": "full"
+                  },
+                  "FOCUSED": {
+                    "radius": 50,
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "shadow_color": "#3D67C1",
+                    "shadow_opa": 255,
+                    "shadow_width": 20,
+                    "shadow_spread": 5
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "FanOnTimePanel"
+                    },
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "FanModePanel"
+                    }
+                  ]
+                }
+              },
+              "children": {
+                "Label27": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 20,
+                  "y_pos": -5,
+                  "align": "center",
+                  "obj_text": "Circulate",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "Image4": {
+                  "sub_type": "image",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 35,
+                  "height": 35,
+                  "x_pos": 0,
+                  "y_pos": -1,
+                  "align": "left_mid",
+                  "obj_text": "",
+                  "src": "fan_withtime",
+                  "scrollable": false
+                },
+                "Label25": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 20,
+                  "y_pos": 10,
+                  "align": "center",
+                  "obj_text": "Runs 20 min/hr",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_10"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "FanButton": {
+          "sub_type": "imagebutton",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 35,
+          "height": 35,
+          "x_pos": -200,
+          "y_pos": 130,
+          "align": "center",
+          "obj_text": "",
+          "img_released": "fan_small",
+          "img_pressed": "fan_small",
+          "events": {
+            "CLICKED": {
+              "actions": [
+                {
+                  "action": "flag_modify",
+                  "flag": "hidden",
+                  "mode": "toggle",
+                  "target": "FanModePanel"
+                },
+                {
+                  "action": "flag_modify",
+                  "flag": "hidden",
+                  "mode": "add",
+                  "target": "SysModePanel"
+                }
+              ]
+            }
+          }
+        },
+        "FanOnTimePanel": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 140,
+          "height": 180,
+          "x_pos": 150,
+          "y_pos": -19,
+          "align": "center",
+          "obj_text": "",
+          "hidden": true,
+          "scrollable": false,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "radius": 8,
+                "border_color": "#3969E6",
+                "border_opa": 100,
+                "border_width": 2,
+                "border_side": "full"
+              }
+            }
+          },
+          "children": {
+            "Roller1": {
+              "sub_type": "roller",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 130,
+              "height": 100,
+              "x_pos": 1,
+              "y_pos": -20,
+              "align": "center",
+              "obj_text": "",
+              "selected": 2,
+              "options": [
+                "1 Hour",
+                "2 Hours",
+                "4 Hours",
+                "8 Hours",
+                "Until I turn it off",
+                ""
+              ],
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_letter_space": 0,
+                    "text_line_space": 3
+                  }
+                },
+                "SELECTED": {
+                  "DEFAULT": {
+                    "radius": 10,
+                    "bg_grad_color": "#403E4F",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 255,
+                    "bg_grad_dir": "ver",
+                    "shadow_color": "#208FEA",
+                    "shadow_opa": 120,
+                    "shadow_width": 40,
+                    "shadow_spread": 1
+                  }
+                }
+              }
+            },
+            "StartFanBtn": {
+              "sub_type": "button",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 120,
+              "height": 30,
+              "x_pos": 0,
+              "y_pos": 10,
+              "align": "bottom_mid",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 50,
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "border_color": "#456CD4",
+                    "border_opa": 255,
+                    "border_width": 2,
+                    "border_side": "full"
+                  },
+                  "FOCUSED": {
+                    "radius": 50,
+                    "bg_color": "#3B62CA",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "shadow_color": "#3D67C1",
+                    "shadow_opa": 255,
+                    "shadow_width": 20,
+                    "shadow_spread": 5
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "FanOnTimePanel"
+                    },
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "FanModePanel"
+                    }
+                  ]
+                }
+              },
+              "children": {
+                "Label29": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "Start",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ModeBtn": {
+          "sub_type": "button",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 80,
+          "height": 30,
+          "x_pos": 5,
+          "y_pos": 90,
+          "align": "left_mid",
+          "obj_text": "",
+          "scrollable": false,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "radius": 50,
+                "bg_color": "#3B62C1",
+                "bg_opa": 150,
+                "bg_grad_color": "#100086",
+                "bg_main_stop": 0,
+                "bg_grad_stop": 255,
+                "bg_grad_dir": "ver",
+                "border_color": "#456CD4",
+                "border_opa": 255,
+                "border_width": 2,
+                "border_side": "full"
+              },
+              "FOCUSED": {
+                "radius": 50,
+                "bg_color": "#3B62CA",
+                "bg_opa": 120,
+                "bg_grad_color": "#494758",
+                "bg_main_stop": 0,
+                "bg_grad_stop": 130,
+                "bg_grad_dir": "ver",
+                "shadow_color": "#3D67C1",
+                "shadow_opa": 255,
+                "shadow_width": 20,
+                "shadow_spread": 5
+              }
+            }
+          },
+          "events": {
+            "CLICKED": {
+              "actions": [
+                {
+                  "action": "flag_modify",
+                  "flag": "hidden",
+                  "mode": "toggle",
+                  "target": "SysModePanel"
+                },
+                {
+                  "action": "flag_modify",
+                  "flag": "hidden",
+                  "mode": "add",
+                  "target": "FanModePanel"
+                }
+              ]
+            }
+          },
+          "children": {
+            "Label30": {
+              "sub_type": "label",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 0,
+              "height": 0,
+              "x_pos": 0,
+              "y_pos": 0,
+              "align": "center",
+              "obj_text": "Mode",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_font": "lv_font_montserrat_18"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "OccTimerLabel": {
+          "sub_type": "label",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 90,
+          "height": 0,
+          "x_pos": 0,
+          "y_pos": 0,
+          "align": "top_left",
+          "align_to": {
+            "target": "ModeBtn",
+            "align": "out_top_left",
+            "x_pos": 2,
+            "y_pos": -4
+          },
+          "obj_text": "Occ   --",
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "text_color": "#B8D4E8",
+                "text_font": "lv_font_montserrat_12",
+                "text_align": "left"
+              }
+            }
+          }
+        },
+        "Co2Label": {
+          "sub_type": "label",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 90,
+          "height": 0,
+          "x_pos": 0,
+          "y_pos": 0,
+          "align": "top_left",
+          "align_to": {
+            "target": "OccTimerLabel",
+            "align": "out_top_left",
+            "x_pos": 0,
+            "y_pos": -2
+          },
+          "obj_text": "",
+          "hidden": true,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "text_color": "#B8D4E8",
+                "text_font": "lv_font_montserrat_12",
+                "text_align": "left"
+              }
+            }
+          }
+        },
+        "TvocLabel": {
+          "sub_type": "label",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 90,
+          "height": 0,
+          "x_pos": 0,
+          "y_pos": 0,
+          "align": "top_left",
+          "align_to": {
+            "target": "OccTimerLabel",
+            "align": "out_top_left",
+            "x_pos": 0,
+            "y_pos": -2
+          },
+          "obj_text": "",
+          "hidden": true,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "text_color": "#B8D4E8",
+                "text_font": "lv_font_montserrat_12",
+                "text_align": "left"
+              }
+            }
+          }
+        },
+        "SysModePanel": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 240,
+          "height": 250,
+          "x_pos": 0,
+          "y_pos": 0,
+          "align": "center",
+          "obj_text": "",
+          "hidden": true,
+          "scrollable": false,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "radius": 15,
+                "bg_grad_color": "#24435E",
+                "bg_main_stop": 0,
+                "bg_grad_stop": 255,
+                "bg_grad_dir": "ver",
+                "border_color": "#62B7FF",
+                "border_opa": 255,
+                "shadow_color": "#62B7FF",
+                "shadow_opa": 255,
+                "shadow_width": 100,
+                "shadow_spread": 2
+              }
+            }
+          },
+          "children": {
+            "HeatModeBtn": {
+              "sub_type": "button",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 200,
+              "height": 40,
+              "x_pos": 0,
+              "y_pos": 25,
+              "align": "top_mid",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 10,
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "border_color": "#456CD4",
+                    "border_opa": 255,
+                    "border_width": 2,
+                    "border_side": "full"
+                  },
+                  "FOCUSED": {
+                    "radius": 50,
+                    "bg_color": "#3B62CA",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "shadow_color": "#3D67C1",
+                    "shadow_opa": 255,
+                    "shadow_width": 20,
+                    "shadow_spread": 5
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "SysModePanel"
+                    }
+                  ]
+                }
+              },
+              "children": {
+                "Label35": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "Heat",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "Image7": {
+                  "sub_type": "image",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 30,
+                  "height": 30,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "left_mid",
+                  "obj_text": "",
+                  "src": "day_30",
+                  "scrollable": false
+                }
+              }
+            },
+            "Label28": {
+              "sub_type": "label",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 0,
+              "height": 25,
+              "x_pos": 0,
+              "y_pos": -12,
+              "align": "top_mid",
+              "obj_text": "            System Mode           ",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_font": "lv_font_montserrat_18",
+                    "border_color": "#3E6AE3",
+                    "border_opa": 255,
+                    "border_width": 2,
+                    "border_side": "bottom",
+                    "pad_left": 2,
+                    "pad_right": 0,
+                    "pad_top": 0,
+                    "pad_bottom": 0
+                  }
+                }
+              }
+            },
+            "AutoModeBtn": {
+              "sub_type": "button",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 200,
+              "height": 40,
+              "x_pos": 0,
+              "y_pos": 40,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 10,
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "border_color": "#456CD4",
+                    "border_opa": 255,
+                    "border_width": 2,
+                    "border_side": "full"
+                  },
+                  "FOCUSED": {
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "shadow_color": "#3D67C1",
+                    "shadow_opa": 255,
+                    "shadow_width": 20,
+                    "shadow_spread": 5
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "SysModePanel"
+                    }
+                  ]
+                }
+              },
+              "children": {
+                "Label31": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "Auto",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "Label33": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 2,
+                  "y_pos": 0,
+                  "align": "left_mid",
+                  "obj_text": "A",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_30"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "OffModeBtn": {
+              "sub_type": "button",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 200,
+              "height": 40,
+              "x_pos": 0,
+              "y_pos": 5,
+              "align": "bottom_mid",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 10,
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "border_color": "#456CD4",
+                    "border_opa": 255,
+                    "border_width": 2,
+                    "border_side": "full"
+                  },
+                  "FOCUSED": {
+                    "radius": 50,
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "shadow_color": "#3D67C1",
+                    "shadow_opa": 255,
+                    "shadow_width": 20,
+                    "shadow_spread": 5
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "SysModePanel"
+                    }
+                  ]
+                }
+              },
+              "children": {
+                "Label32": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "OFF",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "Image5": {
+                  "sub_type": "image",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 30,
+                  "height": 30,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "left_mid",
+                  "obj_text": "",
+                  "src": "power_symbol_30",
+                  "scrollable": false
+                }
+              }
+            },
+            "CoolModeBtn": {
+              "sub_type": "button",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 200,
+              "height": 40,
+              "x_pos": 0,
+              "y_pos": 75,
+              "align": "top_mid",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 10,
+                    "bg_color": "#3B62C1",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "border_color": "#456CD4",
+                    "border_opa": 255,
+                    "border_width": 2,
+                    "border_side": "full"
+                  },
+                  "FOCUSED": {
+                    "radius": 50,
+                    "bg_color": "#3B62CA",
+                    "bg_opa": 120,
+                    "bg_grad_color": "#494758",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 130,
+                    "bg_grad_dir": "ver",
+                    "shadow_color": "#3D67C1",
+                    "shadow_opa": 255,
+                    "shadow_width": 20,
+                    "shadow_spread": 5
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "SysModePanel"
+                    }
+                  ]
+                }
+              },
+              "children": {
+                "Label36": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "Cool",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "Image8": {
+                  "sub_type": "image",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 30,
+                  "height": 30,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "left_mid",
+                  "obj_text": "",
+                  "src": "snowflake_30",
+                  "scrollable": false
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

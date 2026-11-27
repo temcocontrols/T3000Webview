@@ -829,9 +829,23 @@ export function transformToDeviceJson(project: any): Record<string, DeviceScreen
             else if (c.type === "StartActionComponent") startByObjId.add(c.objID);
         }
 
+        /* A page built by the EEZ editor wraps its widgets in an
+         * LVGLScreenWidget; a page loaded from a device does not (firmware-loader
+         * puts the screen's widgets directly on the page, and restoreDeviceWidgetName
+         * below exists to undo that import). Reading only the wrapper therefore
+         * exported an empty screen for any imported project. */
+        const screenChildren: any[] = screenWidget
+            ? screenWidget.children || []
+            : comps.filter(
+                  (c: any) =>
+                      c.type !== "LVGLActionComponent" &&
+                      c.type !== "StartActionComponent" &&
+                      !SKIP_TYPES.has(c.type)
+              );
+
         // Raw identifier universe (for _N-suffix resolution on this screen).
         const allRaw = new Set<string>();
-        collectIdentifiers(screenWidget?.children || [], allRaw);
+        collectIdentifiers(screenChildren, allRaw);
 
         // ── Root screen widget ──
         const rootKey = ROOT_KEY_OVERRIDES[screenName] || nativeKey(screenName);
@@ -849,7 +863,7 @@ export function transformToDeviceJson(project: any): Record<string, DeviceScreen
         let bgObjId: string | undefined;
         let bgColor: string | undefined;
 
-        for (const child of screenWidget?.children || []) {
+        for (const child of screenChildren) {
             if (isBackgroundPanel(child, ctx)) {
                 bgObjId = child.objID;
                 bgColor = extractBgColor(child);

@@ -1,0 +1,460 @@
+{
+  "bg_color": "#000000",
+  "bitmaps": [
+    "backsmallarrow"
+  ],
+  "fonts": [
+    [
+      "lv_font_montserrat_18",
+      18
+    ]
+  ],
+  "widgets": {
+    "WifiConfig": {
+      "sub_type": "screen",
+      "type": "Widget",
+      "text_type": "literal",
+      "width": 0,
+      "height": 0,
+      "x_pos": 0,
+      "y_pos": 0,
+      "obj_text": "",
+      "events": {
+        "CLICKED": {
+          "actions": [
+            {
+              "action": "flag_modify",
+              "flag": "hidden",
+              "mode": "add",
+              "target": "Keyboard"
+            }
+          ]
+        }
+      },
+      "children": {
+        "ChangeConfigTitle6": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 450,
+          "height": 40,
+          "x_pos": 0,
+          "y_pos": 0,
+          "align": "top_mid",
+          "obj_text": "",
+          "scrollable": false,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "bg_color": "#2D70A0",
+                "bg_opa": 0,
+                "border_side": "bottom"
+              }
+            }
+          },
+          "children": {
+            "NetworkSetupConfig2": {
+              "sub_type": "label",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 0,
+              "height": 0,
+              "x_pos": -80,
+              "y_pos": 0,
+              "align": "center",
+              "obj_text": "Wifi Setup",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_font": "lv_font_montserrat_18"
+                  }
+                }
+              }
+            },
+            "GotoMenuButton6": {
+              "sub_type": "imagebutton",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 35,
+              "height": 35,
+              "x_pos": 0,
+              "y_pos": 0,
+              "align": "left_mid",
+              "obj_text": "",
+              "img_released": "backsmallarrow",
+              "img_pressed": "backsmallarrow",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 100,
+                    "bg_color": "#3C3C3C",
+                    "bg_opa": 255
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "screen_change",
+                      "anim": "MOVE_RIGHT",
+                      "delay": 100,
+                      "screen": "main_menu",
+                      "speed": 500
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "WifiContainer": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 480,
+          "height": 290,
+          "x_pos": 0,
+          "y_pos": 0,
+          "align": "bottom_mid",
+          "obj_text": "",
+          "scrollable": false,
+          "no_default_style": true,
+          "children": {
+            "WifiEnPanel": {
+              "sub_type": "panel",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 226,
+              "height": 30,
+              "x_pos": 0,
+              "y_pos": 0,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "bg_color": "#FFFFFF",
+                    "bg_opa": 0,
+                    "border_side": "none"
+                  }
+                }
+              },
+              "children": {
+                "WifiEnableStr": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "left_mid",
+                  "obj_text": "Wifi Enable",
+                  "scrollable": false,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "WifiEnSw": {
+                  "sub_type": "switch",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 50,
+                  "height": 25,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "right_mid",
+                  "obj_text": "",
+                  "scrollable": false,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "bg_color": "#868383",
+                        "bg_opa": 255
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "WifiSsidPanel": {
+              "sub_type": "panel",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 445,
+              "height": 45,
+              "x_pos": 0,
+              "y_pos": -100,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "bg_color": "#FFFFFF",
+                    "bg_opa": 0,
+                    "border_side": "none"
+                  }
+                }
+              },
+              "children": {
+                "SSIDStr": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": -10,
+                  "y_pos": 0,
+                  "align": "left_mid",
+                  "obj_text": "SSID           :",
+                  "scrollable": false,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "SSIDText": {
+                  "sub_type": "textarea",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 315,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "right_mid",
+                  "obj_text": "",
+                  "placeholder": "Wifi SSID",
+                  "one_line": true,
+                  "hidden": true,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "radius": 40,
+                        "border_side": "left"
+                      }
+                    }
+                  }
+                },
+                "Dropdown2": {
+                  "sub_type": "dropdown",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 315,
+                  "height": 35,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "right_mid",
+                  "obj_text": "",
+                  "options": [
+                    "SSID 1",
+                    "SSID 2",
+                    "SSID 3",
+                    "SSID 4",
+                    "SSID 5",
+                    "SSID 6",
+                    "SSID 7"
+                  ],
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "radius": 10
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "WifiPassPanel": {
+              "sub_type": "panel",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 445,
+              "height": 45,
+              "x_pos": 0,
+              "y_pos": -55,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "bg_color": "#FFFFFF",
+                    "bg_opa": 0,
+                    "border_side": "none"
+                  }
+                }
+              },
+              "children": {
+                "PasswordStr1": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": -10,
+                  "y_pos": 0,
+                  "align": "left_mid",
+                  "obj_text": "Password  :",
+                  "scrollable": false,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                },
+                "PasswordText": {
+                  "sub_type": "textarea",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 315,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "right_mid",
+                  "obj_text": "",
+                  "placeholder": "Wifi Password",
+                  "one_line": true,
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "radius": 10,
+                        "border_side": "left"
+                      }
+                    }
+                  },
+                  "events": {
+                    "CLICKED": {
+                      "actions": [
+                        {
+                          "action": "flag_modify",
+                          "flag": "hidden",
+                          "mode": "remove",
+                          "target": "Keyboard"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "WifiUpdateButton": {
+              "sub_type": "button",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 100,
+              "height": 30,
+              "x_pos": 180,
+              "y_pos": 120,
+              "align": "center",
+              "obj_text": "",
+              "scrollable": false,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "bg_color": "#2971A4",
+                    "bg_opa": 255
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "screen_change",
+                      "anim": "MOVE_RIGHT",
+                      "delay": 100,
+                      "screen": "main_menu",
+                      "speed": 1000
+                    }
+                  ]
+                }
+              },
+              "children": {
+                "Label9": {
+                  "sub_type": "label",
+                  "type": "Widget",
+                  "text_type": "literal",
+                  "width": 0,
+                  "height": 0,
+                  "x_pos": 0,
+                  "y_pos": 0,
+                  "align": "center",
+                  "obj_text": "Update",
+                  "style": {
+                    "MAIN": {
+                      "DEFAULT": {
+                        "text_font": "lv_font_montserrat_18"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "Keyboard": {
+              "sub_type": "keyboard",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 480,
+              "height": 120,
+              "x_pos": 0,
+              "y_pos": 1,
+              "align": "bottom_mid",
+              "obj_text": "",
+              "textarea": "SSIDText",
+              "hidden": true,
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "border_side": "none"
+                  },
+                  "DISABLED": {
+                    "opa": 0
+                  }
+                },
+                "ITEMS": {
+                  "DEFAULT": {
+                    "radius": 30
+                  }
+                }
+              },
+              "events": {
+                "READY": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "Keyboard"
+                    }
+                  ]
+                },
+                "CANCEL": {
+                  "actions": [
+                    {
+                      "action": "flag_modify",
+                      "flag": "hidden",
+                      "mode": "add",
+                      "target": "Keyboard"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

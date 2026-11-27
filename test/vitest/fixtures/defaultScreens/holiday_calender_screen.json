@@ -1,0 +1,173 @@
+{
+  "bg_color": "#000000",
+  "bitmaps": [
+    "backsmallarrow"
+  ],
+  "fonts": [
+    [
+      "lv_font_montserrat_14",
+      14
+    ],
+    [
+      "lv_font_montserrat_18",
+      18
+    ]
+  ],
+  "widgets": {
+    "HolidayCalenderScreen": {
+      "sub_type": "screen",
+      "type": "Widget",
+      "text_type": "literal",
+      "width": 0,
+      "height": 0,
+      "x_pos": 0,
+      "y_pos": 0,
+      "obj_text": "",
+      "children": {
+        "ChangeConfigTitle9": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 450,
+          "height": 40,
+          "x_pos": 0,
+          "y_pos": 0,
+          "align": "top_mid",
+          "obj_text": "",
+          "scrollable": false,
+          "style": {
+            "MAIN": {
+              "DEFAULT": {
+                "bg_color": "#2D70A0",
+                "bg_opa": 0,
+                "border_side": "bottom"
+              }
+            }
+          },
+          "children": {
+            "CalanderStr": {
+              "sub_type": "label",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 0,
+              "height": 0,
+              "x_pos": -80,
+              "y_pos": 0,
+              "align": "center",
+              "obj_text": "   Holiday Calender",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_font": "lv_font_montserrat_18"
+                  }
+                }
+              }
+            },
+            "GotoMenuButton4": {
+              "sub_type": "imagebutton",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 35,
+              "height": 35,
+              "x_pos": 0,
+              "y_pos": 0,
+              "align": "left_mid",
+              "obj_text": "",
+              "img_released": "backsmallarrow",
+              "img_pressed": "backsmallarrow",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 100,
+                    "bg_color": "#3C3C3C",
+                    "bg_opa": 255
+                  }
+                }
+              },
+              "events": {
+                "CLICKED": {
+                  "actions": [
+                    {
+                      "action": "screen_change",
+                      "anim": "MOVE_RIGHT",
+                      "delay": 100,
+                      "screen": "main_menu",
+                      "speed": 500
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "Container4": {
+          "sub_type": "panel",
+          "type": "Widget",
+          "text_type": "literal",
+          "width": 480,
+          "height": 280,
+          "x_pos": 0,
+          "y_pos": 20,
+          "align": "center",
+          "obj_text": "",
+          "scrollable": false,
+          "no_default_style": true,
+          "children": {
+            "Calendar1": {
+              "sub_type": "calendar",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 400,
+              "height": 220,
+              "x_pos": 0,
+              "y_pos": -10,
+              "align": "center",
+              "obj_text": "",
+              "header": "Arrow",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "radius": 10,
+                    "bg_color": "#2095F6",
+                    "bg_opa": 100,
+                    "bg_grad_color": "#7FC0F7",
+                    "bg_main_stop": 0,
+                    "bg_grad_stop": 255,
+                    "bg_grad_dir": "ver",
+                    "border_color": "#7FC0F7",
+                    "border_opa": 100,
+                    "border_width": 2,
+                    "shadow_color": "#2095F6",
+                    "shadow_opa": 100,
+                    "shadow_width": 100,
+                    "shadow_spread": 5
+                  }
+                }
+              }
+            },
+            "HolidayDateLabel": {
+              "sub_type": "label",
+              "type": "Widget",
+              "text_type": "literal",
+              "width": 400,
+              "height": 0,
+              "x_pos": 0,
+              "y_pos": 8,
+              "align": "bottom_mid",
+              "obj_text": "Tap a date to toggle holiday",
+              "long_mode": "WRAP",
+              "style": {
+                "MAIN": {
+                  "DEFAULT": {
+                    "text_align": "center",
+                    "text_font": "lv_font_montserrat_14"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
