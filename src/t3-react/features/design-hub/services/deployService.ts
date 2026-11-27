@@ -27,6 +27,7 @@ import {
 } from "project-editor/build/device-compat";
 import { canonicalSignature, contentSignature } from "project-editor/build/deploy-manifest";
 import { base64ToBytes, deviceClient } from "project-editor/build/device-rest-client";
+import type { UiMode, UiModeState } from "project-editor/build/device-rest-client";
 import { getDeviceBinding, setDeviceBinding } from "project-editor/build/device-binding";
 import { writeTextFile } from "project-editor/build/build";
 import { makeFolder } from "eez-studio-shared/util-electron";
@@ -35,6 +36,7 @@ import type { DeployStepInfo, HubProject } from "../types";
 
 /** Re-export so the drawer / callers don't need to import the model file. */
 export type { DeployStepInfo } from "../types";
+export type { UiMode, UiModeState } from "project-editor/build/device-rest-client";
 
 /** A deployable device (from the device tree API + connectivity fields). */
 export interface DeployDevice {
@@ -133,6 +135,42 @@ export async function fetchDeployDevices(): Promise<DeployDevice[]> {
     } catch {
         return [];
     }
+}
+
+/**
+ * Read the panel's tri-state UI mode. `auto` means "compiled until a screen set
+ * is deployed", which is why a device can report `ui_mode: "compiled"` with a
+ * perfectly good deployment sitting in flash.
+ */
+export async function readPanelUiMode(device: DeployTarget): Promise<UiModeState> {
+    if (!device.ip) {
+        throw new Error("This device reports no IP address, so the REST API is unreachable.");
+    }
+    const conn = await deviceClient.connect(
+        device.ip,
+        device.panelId ?? device.serialNumber,
+        device.serialNumber
+    );
+    if (conn.error) throw new Error(conn.error);
+    return deviceClient.getUiMode();
+}
+
+/**
+ * Switch the panel between `auto`, `json` and `compiled`, then re-read the state
+ * (the POST only echoes what was accepted; `mode_failed` needs the GET).
+ */
+export async function setPanelUiMode(device: DeployTarget, mode: UiMode): Promise<UiModeState> {
+    if (!device.ip) {
+        throw new Error("This device reports no IP address, so the REST API is unreachable.");
+    }
+    const conn = await deviceClient.connect(
+        device.ip,
+        device.panelId ?? device.serialNumber,
+        device.serialNumber
+    );
+    if (conn.error) throw new Error(conn.error);
+    await deviceClient.setUiMode(mode);
+    return deviceClient.getUiMode();
 }
 
 async function loadProjectFromDisk(filePath: string): Promise<any> {

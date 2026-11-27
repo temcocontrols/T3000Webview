@@ -46,7 +46,10 @@ import {
     DeployTarget,
     deployEezProject,
     fetchDeployDevices,
+    readPanelUiMode,
+    setPanelUiMode,
 } from "../services/deployService";
+import type { UiMode, UiModeState } from "../services/deployService";
 import styles from "../pages/DesignHubPage.module.css";
 
 /** Minimal project shape the drawer needs (HubProject is compatible). */
@@ -106,6 +109,34 @@ const statusBadge = (status?: string) => {
         </span>
     );
 };
+
+/** The panel's tri-state UI switch, in the order the drawer shows it. */
+const UI_MODES = ["auto", "json", "compiled"] as const;
+
+const UI_MODE_HINT: Record<(typeof UI_MODES)[number], string> = {
+    auto: "Compiled UI until a screen set is deployed, then draw the deployed screens.",
+    json: "Always draw the deployed screens.",
+    compiled: "Ignore the deployed screens and keep the built-in design.",
+};
+
+/** Plain-language version of what the panel is doing with the deployed screens. */
+function uiModeNote(state: UiModeState | null, hasDevice: boolean, online: boolean): string {
+    if (!hasDevice) return "Pick a device to read its UI mode.";
+    if (!online) return "This device is offline — connect it to read or change its UI mode.";
+    if (!state) return "";
+    if (state.mode_failed) {
+        return "auto wanted the deployed screens but could not serve them — the panel fell back to the compiled UI.";
+    }
+    if (state.mode === "auto") {
+        return state.ui_mode === "json"
+            ? "auto · a screen set is deployed, so the panel is drawing it."
+            : "auto · no usable screen set yet, so the panel is on the compiled UI.";
+    }
+    if (state.mode === "compiled") {
+        return "Compiled · the deployed screens are ignored.";
+    }
+    return "JSON · the panel draws the deployed screens only.";
+}
 
 function timeAgo(iso: string): string {
     try {
@@ -229,6 +260,10 @@ export const DeployDeviceDrawer: React.FC<Props> = ({
     const [expandedLog, setExpandedLog] = useState<number | null>(0);
     const [showOffline, setShowOffline] = useState(false);
     const [steps, setSteps] = useState<DeployStepInfo[]>([]);
+    /** Tri-state UI mode of the picked device (auto | json | compiled). */
+    const [uiMode, setUiMode] = useState<UiModeState | null>(null);
+    const [uiModeBusy, setUiModeBusy] = useState(false);
+    const [uiModeError, setUiModeError] = useState<string | null>(null);
 
     const reloadLogs = () => {
         setLogs(designHubService.listDeployLogs(project.id));
@@ -269,6 +304,59 @@ export const DeployDeviceDrawer: React.FC<Props> = ({
         offline.sort((a, b) => a.name.localeCompare(b.name));
         return { onlineGroups: groups, offlineList: offline };
     }, [devices]);
+
+    const selectedDevice = useMemo(
+        () => devices.find((d) => d.serialNumber === deviceSerial) ?? null,
+        [devices, deviceSerial]
+    );
+
+    // Read the panel's UI mode when the picked device changes. A failure here is
+    // not a deploy failure — older firmware has no /ui-mode at all.
+    useEffect(() => {
+        setUiMode(null);
+        setUiModeError(null);
+        if (!open || !selectedDevice?.ip || !selectedDevice.online) return;
+        let cancelled = false;
+        setUiModeBusy(true);
+        readPanelUiMode({
+            serialNumber: selectedDevice.serialNumber,
+            ip: selectedDevice.ip,
+            panelId: selectedDevice.panelId,
+        })
+            .then((state) => {
+                if (!cancelled) setUiMode(state);
+            })
+            .catch((e: any) => {
+                if (!cancelled) setUiModeError(e?.message || String(e));
+            })
+            .finally(() => {
+                if (!cancelled) setUiModeBusy(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [open, selectedDevice]);
+
+    const handleUiMode = async (mode: UiMode) => {
+        if (!selectedDevice?.ip || !selectedDevice.online || uiModeBusy) return;
+        setUiModeBusy(true);
+        setUiModeError(null);
+        try {
+            const next = await setPanelUiMode(
+                {
+                    serialNumber: selectedDevice.serialNumber,
+                    ip: selectedDevice.ip,
+                    panelId: selectedDevice.panelId,
+                },
+                mode
+            );
+            setUiMode(next);
+        } catch (e: any) {
+            setUiModeError(e?.message || String(e));
+        } finally {
+            setUiModeBusy(false);
+        }
+    };
 
     const handleDeploy = async () => {
         if (!deviceSerial) {
@@ -313,6 +401,13 @@ export const DeployDeviceDrawer: React.FC<Props> = ({
             setResult(res);
             reloadLogs();
             onDeployed?.(res);
+            // A successful deploy can flip `auto` from the compiled UI to the
+            // deployed screens, so re-read the mode instead of showing stale state.
+            if (res.success && dev.ip && dev.online) {
+                readPanelUiMode({ serialNumber: dev.serialNumber, ip: dev.ip, panelId: dev.panelId })
+                    .then(setUiMode)
+                    .catch(() => undefined);
+            }
         } catch (e: any) {
             setResult({ success: false, message: e?.message || String(e) });
         } finally {
@@ -523,6 +618,56 @@ export const DeployDeviceDrawer: React.FC<Props> = ({
                             </div>
                         </div>
                     )}
+
+                    {/* Panel UI mode — decides whether the deployed screens are
+                        painted at all. `auto` stays on the compiled UI until a
+                        screen set is deployed, which is the usual reason a
+                        successful deploy looks like it did nothing. */}
+                    <div style={{ border: "1px solid #eef1f6", borderRadius: 8, padding: "8px 10px", background: "#fff" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#1c2b3a" }}>Panel UI mode</span>
+                            {uiModeBusy && <Spinner size="tiny" />}
+                            <span style={{ fontSize: 10, color: "#7a8699", flex: 1, textAlign: "right" }}>
+                                {uiMode ? `running ${uiMode.ui_mode}` : uiModeError ? "unavailable" : "—"}
+                            </span>
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                            {UI_MODES.map((m) => {
+                                const active = uiMode?.mode === m;
+                                const disabled = !selectedDevice?.ip || !selectedDevice.online || uiModeBusy;
+                                return (
+                                    <button
+                                        key={m}
+                                        type="button"
+                                        disabled={disabled}
+                                        onClick={() => handleUiMode(m)}
+                                        title={UI_MODE_HINT[m]}
+                                        style={{
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            padding: "4px 12px",
+                                            borderRadius: 999,
+                                            cursor: disabled ? "default" : "pointer",
+                                            border: `1px solid ${active ? "#0078d4" : "#d7dde6"}`,
+                                            background: active ? "#e8f2fb" : "#fff",
+                                            color: active ? "#0f5fa8" : "#4a5a6c",
+                                            opacity: disabled ? 0.6 : 1,
+                                        }}
+                                    >
+                                        {m}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#7a8699", marginTop: 6, lineHeight: 1.45 }}>
+                            {uiModeNote(uiMode, !!selectedDevice, !!selectedDevice?.online)}
+                        </div>
+                        {uiModeError && (
+                            <div style={{ fontSize: 11, color: "#c50f1f", marginTop: 4, lineHeight: 1.45 }}>
+                                {uiModeError}
+                            </div>
+                        )}
+                    </div>
 
                     {/* What the device cannot draw — errors block the deploy, warnings do not */}
                     {result?.compatibility && result.compatibility.findings.length > 0 && (
