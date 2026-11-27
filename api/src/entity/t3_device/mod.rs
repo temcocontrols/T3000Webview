@@ -21,7 +21,7 @@ pub mod trendlogs;
 pub mod variable_points;
 pub mod haystack_entity;
 
-// 🆕 Extended T3000 Tables (Arrays, Tables, Users, Settings)
+// Extended T3000 Tables (Arrays, Tables, Users, Settings)
 pub mod array_points;
 pub mod conversion_tables;  // Renamed from tables to avoid SQL keyword conflict
 pub mod custom_units;

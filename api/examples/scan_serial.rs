@@ -24,7 +24,7 @@ fn main() {
 
     let ports = list_com_ports();
     if ports.is_empty() {
-        println!("⚠  No COM ports detected.");
+        println!("No COM ports detected.");
         println!("    If your USB Modbus adapter is plugged in, its driver is NOT installed");
         println!("    or Windows has not assigned a COM port. Device Manager will show it");
         println!("    with a problem (e.g. CM_PROB_FAILED_INSTALL).\n");
@@ -51,7 +51,7 @@ fn main() {
                         total_found += 1;
                         let dev = &d.device;
                         println!(
-                            "   ✔ SN={:<12}  product={:<16} ModbusID={:<3} @{} baud  label={}",
+                            "   SN={:<12}  product={:<16} ModbusID={:<3} @{} baud  label={}",
                             dev.serial_number,
                             dev.product_name,
                             dev.modbus_id,
@@ -64,7 +64,7 @@ fn main() {
                     }
                 }
             }
-            Err(e) => println!("   ✘ cannot open: {}", e),
+            Err(e) => println!("   cannot open: {}", e),
         }
         println!();
     }

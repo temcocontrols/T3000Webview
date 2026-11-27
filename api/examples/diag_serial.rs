@@ -56,7 +56,7 @@ fn main() {
         let mut port = match Win32Serial::open(&port_name, baud) {
             Ok(p) => p,
             Err(e) => {
-                println!("   ✘ cannot open: {}", e);
+                println!("   cannot open: {}", e);
                 continue;
             }
         };

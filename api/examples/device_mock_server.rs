@@ -107,18 +107,18 @@ async fn main() {
         })
         .unwrap_or_else(|| {
             eprintln!(
-                "✗ could not find screens JSON '{}' (looked in cwd, api/, repo root)",
+                "could not find screens JSON '{}' (looked in cwd, api/, repo root)",
                 file
             );
             std::process::exit(1);
         });
     let raw = std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("✗ failed to read {}: {}", path.display(), e));
+        .unwrap_or_else(|e| panic!("failed to read {}: {}", path.display(), e));
     let value: Value = serde_json::from_str(&raw)
-        .unwrap_or_else(|e| panic!("✗ '{}' is not valid JSON: {}", path.display(), e));
+        .unwrap_or_else(|e| panic!("'{}' is not valid JSON: {}", path.display(), e));
     let (screens, meta) = normalize_screens(&value);
     if screens.is_empty() {
-        eprintln!("⚠ no screens found in {} (expected {{screens:[...]}} / [...] / {{name,json}})", path.display());
+        eprintln!("no screens found in {} (expected {{screens:[...]}} / [...] / {{name,json}})", path.display());
     }
 
     // Load real device image JSON files. They live in the `imgs/` subfolder of
@@ -179,7 +179,7 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
         .await
-        .unwrap_or_else(|e| panic!("✗ failed to bind :{} — {}", port, e));
+        .unwrap_or_else(|e| panic!("failed to bind :{} — {}", port, e));
 
     // ── Startup banner ──────────────────────────────────────────────────────
     println!("════════════════════════════════════════════════════════════════");
