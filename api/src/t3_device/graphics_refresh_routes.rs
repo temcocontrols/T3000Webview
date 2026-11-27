@@ -80,7 +80,7 @@ pub async fn get_graphics(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -93,7 +93,7 @@ pub async fn get_graphics(
         .await
     {
         Ok(graphics_list) => {
-            info!("✅ Retrieved {} graphics for serial: {}", graphics_list.len(), serial);
+            info!("Retrieved {} graphics for serial: {}", graphics_list.len(), serial);
             Ok(Json(json!({
                 "success": true,
                 "count": graphics_list.len(),
@@ -133,7 +133,7 @@ pub async fn refresh_graphics(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -162,7 +162,7 @@ pub async fn refresh_graphics(
             let response_json: Value = match serde_json::from_str(&response) {
                 Ok(json) => normalise_action17_response(json),
                 Err(e) => {
-                    error!("❌ Failed to parse C++ response: {}", e);
+                    error!("Failed to parse C++ response: {}", e);
                     return Err((
                         StatusCode::INTERNAL_SERVER_ERROR,
                         format!("Invalid response from device: {}", e),
@@ -183,14 +183,14 @@ pub async fn refresh_graphics(
                     .unwrap_or("");
 
                 if debug_msg.contains("empty response") || error_msg.contains("not implemented") {
-                    error!("❌ Action 17 not implemented in C++: {}", debug_msg);
+                    error!("Action 17 not implemented in C++: {}", debug_msg);
                     return Err((
                         StatusCode::NOT_IMPLEMENTED,
                         format!("Graphics refresh not implemented in device firmware: {}", error_msg),
                     ));
                 }
 
-                error!("❌ Device returned error: {}", error_msg);
+                error!("Device returned error: {}", error_msg);
                 return Err((
                     StatusCode::BAD_REQUEST,
                     format!("Device error: {}", error_msg),
@@ -210,7 +210,7 @@ pub async fn refresh_graphics(
                 format!("Successfully refreshed {} graphics from device", count)
             };
 
-            info!("✅ {}", message);
+            info!("{}", message);
 
             Ok(Json(RefreshResponse {
                 success: true,
@@ -221,7 +221,7 @@ pub async fn refresh_graphics(
             }))
         }
         Err(e) => {
-            error!("❌ FFI call failed: {}", e);
+            error!("FFI call failed: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to communicate with device: {}", e),
@@ -247,7 +247,7 @@ pub async fn save_refreshed_graphics(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -288,7 +288,7 @@ pub async fn save_refreshed_graphics(
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update graphic: {}", e)))?;
 
             saved_count += 1;
-            info!("✅ Updated graphic: {:?}", graphic_id);
+            info!("Updated graphic: {:?}", graphic_id);
         } else {
             // Insert new graphic
             let new_graphic = graphics::ActiveModel {
@@ -305,12 +305,12 @@ pub async fn save_refreshed_graphics(
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to insert graphic: {}", e)))?;
 
             saved_count += 1;
-            info!("✅ Inserted new graphic: {:?}", graphic_id);
+            info!("Inserted new graphic: {:?}", graphic_id);
         }
     }
 
     let message = format!("Successfully saved {} graphics to database", saved_count);
-    info!("✅ {}", message);
+    info!("{}", message);
 
     Ok(Json(SaveResponse {
         success: true,
@@ -325,7 +325,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = refresh_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     // Ensure T3000 functions are loaded
     tokio::task::spawn_blocking(|| {
@@ -368,7 +368,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
                         // Success - read response from buffer
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
                         Ok(response)
                     }
                     -2 => Err("MFC application not initialized".to_string()),
@@ -401,7 +401,7 @@ pub async fn load_and_save_graphics(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -413,7 +413,7 @@ pub async fn load_and_save_graphics(
         "T3_Webview_API",
         Some("graphics_refresh_routes"),
         None,
-        &format!("📥 POST /graphics/{}/load-and-save - Action 1 (GET_INITIAL_DATA)", serial),
+        &format!("POST /graphics/{}/load-and-save - Action 1 (GET_INITIAL_DATA)", serial),
         None,
     )
     .await;
@@ -447,14 +447,14 @@ pub async fn load_and_save_graphics(
         "msg_source": 1, // From browser
     });
 
-    info!("📤 Calling GET_PANEL_DATA (Action 0) for graphic screens - Panel: {}, Serial: {}", panel_id, serial);
+    info!("Calling GET_PANEL_DATA (Action 0) for graphic screens - Panel: {}, Serial: {}", panel_id, serial);
     crate::logging::service::emit_app_log(
         &db_connection,
         "info",
         "T3_Webview_API",
         Some("graphics_refresh_routes"),
         None,
-        &format!("📤 Calling FFI Action 0 (GET_PANEL_DATA for screens) - Panel: {}, Serial: {}", panel_id, serial),
+        &format!("Calling FFI Action 0 (GET_PANEL_DATA for screens) - Panel: {}, Serial: {}", panel_id, serial),
         None,
     )
     .await;
@@ -468,21 +468,21 @@ pub async fn load_and_save_graphics(
                 "T3_Webview_API",
                 Some("graphics_refresh_routes"),
                 None,
-                &format!("📥 FFI Response received - Length: {} bytes", resp.len()),
+                &format!("FFI Response received - Length: {} bytes", resp.len()),
                 None,
             )
             .await;
             resp
         }
         Err(e) => {
-            error!("❌ FFI call failed: {}", e);
+            error!("FFI call failed: {}", e);
             crate::logging::service::emit_app_log(
                 &db_connection,
                 "error",
                 "T3_Webview_API",
                 Some("graphics_refresh_routes"),
                 None,
-                &format!("❌ FFI call failed: {}", e),
+                &format!("FFI call failed: {}", e),
                 None,
             )
             .await;
@@ -494,14 +494,14 @@ pub async fn load_and_save_graphics(
     let response_value: Value = match serde_json::from_str(&response_str) {
         Ok(val) => val,
         Err(e) => {
-            error!("❌ Failed to parse FFI response: {}", e);
+            error!("Failed to parse FFI response: {}", e);
             crate::logging::service::emit_app_log(
                 &db_connection,
                 "error",
                 "T3_Webview_API",
                 Some("graphics_refresh_routes"),
                 None,
-                &format!("❌ Failed to parse FFI response: {} | Raw: {}", e, &response_str.chars().take(200).collect::<String>()),
+                &format!("Failed to parse FFI response: {} | Raw: {}", e, &response_str.chars().take(200).collect::<String>()),
                 None,
             )
             .await;
@@ -511,14 +511,14 @@ pub async fn load_and_save_graphics(
 
     // Check for error in response
     if let Some(error) = response_value.get("error") {
-        error!("❌ C++ returned error: {}", error);
+        error!("C++ returned error: {}", error);
         crate::logging::service::emit_app_log(
             &db_connection,
             "error",
             "T3_Webview_API",
             Some("graphics_refresh_routes"),
             None,
-            &format!("❌ C++ returned error: {}", error),
+            &format!("C++ returned error: {}", error),
             None,
         )
         .await;
@@ -531,7 +531,7 @@ pub async fn load_and_save_graphics(
             // Try as string first
             if let Some(s) = data_value.as_str() {
                 if s.is_empty() {
-                    warn!("⚠️ Graphics data field is empty string");
+                    warn!("Graphics data field is empty string");
                     "{}"
                 } else {
                     s
@@ -539,24 +539,24 @@ pub async fn load_and_save_graphics(
             }
             // Try as null
             else if data_value.is_null() {
-                warn!("⚠️ Graphics data field is null, using empty object");
+                warn!("Graphics data field is null, using empty object");
                 "{}"
             }
             // Try as object (already parsed)
             else if data_value.is_object() || data_value.is_array() {
-                warn!("⚠️ Graphics data field is already parsed JSON, converting to string");
+                warn!("Graphics data field is already parsed JSON, converting to string");
                 &serde_json::to_string(data_value).unwrap_or_else(|_| "{}".to_string())
             }
             else {
-                error!("❌ Graphics data field has unexpected type: {:?}", data_value);
-                error!("❌ Full response: {}", serde_json::to_string_pretty(&response_value).unwrap_or_default());
+                error!("Graphics data field has unexpected type: {:?}", data_value);
+                error!("Full response: {}", serde_json::to_string_pretty(&response_value).unwrap_or_default());
                 crate::logging::service::emit_app_log(
                     &db_connection,
                     "error",
                     "T3_Webview_API",
                     Some("graphics_refresh_routes"),
                     None,
-                    &format!("❌ Invalid 'data' field type | Response keys: {:?}", response_value.as_object().map(|o| o.keys().collect::<Vec<_>>())),
+                    &format!("Invalid 'data' field type | Response keys: {:?}", response_value.as_object().map(|o| o.keys().collect::<Vec<_>>())),
                     None,
                 )
                 .await;
@@ -564,15 +564,15 @@ pub async fn load_and_save_graphics(
             }
         }
         None => {
-            error!("❌ No 'data' field in response");
-            error!("❌ Full response: {}", serde_json::to_string_pretty(&response_value).unwrap_or_default());
+            error!("No 'data' field in response");
+            error!("Full response: {}", serde_json::to_string_pretty(&response_value).unwrap_or_default());
             crate::logging::service::emit_app_log(
                 &db_connection,
                 "error",
                 "T3_Webview_API",
                 Some("graphics_refresh_routes"),
                 None,
-                &format!("❌ Missing 'data' field | Response keys: {:?}", response_value.as_object().map(|o| o.keys().collect::<Vec<_>>())),
+                &format!("Missing 'data' field | Response keys: {:?}", response_value.as_object().map(|o| o.keys().collect::<Vec<_>>())),
                 None,
             )
             .await;
@@ -580,14 +580,14 @@ pub async fn load_and_save_graphics(
         }
     };
 
-    info!("📄 Graphic data string (first 500 chars): {}", &data_str.chars().take(500).collect::<String>());
+    info!("Graphic data string (first 500 chars): {}", &data_str.chars().take(500).collect::<String>());
     crate::logging::service::emit_app_log(
         &db_connection,
         "info",
         "T3_Webview_API",
         Some("graphics_refresh_routes"),
         None,
-        &format!("📄 Graphic data preview: {}", &data_str.chars().take(200).collect::<String>()),
+        &format!("Graphic data preview: {}", &data_str.chars().take(200).collect::<String>()),
         None,
     )
     .await;
@@ -595,15 +595,15 @@ pub async fn load_and_save_graphics(
     let graphic_data: Value = match serde_json::from_str(data_str) {
         Ok(val) => val,
         Err(e) => {
-            error!("❌ Failed to parse graphic data JSON: {}", e);
-            error!("❌ Data string: {}", data_str);
+            error!("Failed to parse graphic data JSON: {}", e);
+            error!("Data string: {}", data_str);
             crate::logging::service::emit_app_log(
                 &db_connection,
                 "error",
                 "T3_Webview_API",
                 Some("graphics_refresh_routes"),
                 None,
-                &format!("❌ Failed to parse graphic data JSON: {} | Data: {}", e, &data_str.chars().take(200).collect::<String>()),
+                &format!("Failed to parse graphic data JSON: {} | Data: {}", e, &data_str.chars().take(200).collect::<String>()),
                 None,
             )
             .await;
@@ -619,52 +619,52 @@ pub async fn load_and_save_graphics(
 
     let items = if graphic_data.is_array() {
         // Direct array format from C++
-        info!("📊 Graphic data is a direct array with {} items", graphic_data.as_array().unwrap().len());
+        info!("Graphic data is a direct array with {} items", graphic_data.as_array().unwrap().len());
         crate::logging::service::emit_app_log(
             &db_connection,
             "info",
             "T3_Webview_API",
             Some("graphics_refresh_routes"),
             None,
-            &format!("📊 Graphic data is direct array - {} items", graphic_data.as_array().unwrap().len()),
+            &format!("Graphic data is direct array - {} items", graphic_data.as_array().unwrap().len()),
             None,
         )
         .await;
         graphic_data.as_array().unwrap()
     } else if let Some(items_array) = graphic_data.get("items").and_then(|v| v.as_array()) {
         // Object with "items" field
-        info!("📊 Graphic data has 'items' field with {} items", items_array.len());
+        info!("Graphic data has 'items' field with {} items", items_array.len());
         crate::logging::service::emit_app_log(
             &db_connection,
             "info",
             "T3_Webview_API",
             Some("graphics_refresh_routes"),
             None,
-            &format!("📊 Graphic data has 'items' field - {} items", items_array.len()),
+            &format!("Graphic data has 'items' field - {} items", items_array.len()),
             None,
         )
         .await;
         items_array
     } else if let Some(myitems_array) = graphic_data.get("myitems").and_then(|v| v.as_array()) {
         // Object with "myitems" field (legacy format)
-        info!("📊 Graphic data has 'myitems' field with {} items", myitems_array.len());
+        info!("Graphic data has 'myitems' field with {} items", myitems_array.len());
         crate::logging::service::emit_app_log(
             &db_connection,
             "info",
             "T3_Webview_API",
             Some("graphics_refresh_routes"),
             None,
-            &format!("📊 Graphic data has 'myitems' field - {} items", myitems_array.len()),
+            &format!("Graphic data has 'myitems' field - {} items", myitems_array.len()),
             None,
         )
         .await;
         myitems_array
     } else {
         // Unknown format
-        error!("❌ Graphic data is not an array and has no 'items' or 'myitems' field");
-        error!("❌ Data type: {}", if graphic_data.is_object() { "object" } else if graphic_data.is_null() { "null" } else { "unknown" });
+        error!("Graphic data is not an array and has no 'items' or 'myitems' field");
+        error!("Data type: {}", if graphic_data.is_object() { "object" } else if graphic_data.is_null() { "null" } else { "unknown" });
         if graphic_data.is_object() {
-            error!("❌ Available keys: {:?}", graphic_data.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+            error!("Available keys: {:?}", graphic_data.as_object().map(|o| o.keys().collect::<Vec<_>>()));
         }
         crate::logging::service::emit_app_log(
             &db_connection,
@@ -672,7 +672,7 @@ pub async fn load_and_save_graphics(
             "T3_Webview_API",
             Some("graphics_refresh_routes"),
             None,
-            &format!("❌ Invalid graphic data format | Type: {} | Preview: {}",
+            &format!("Invalid graphic data format | Type: {} | Preview: {}",
                 if graphic_data.is_object() { "object" } else if graphic_data.is_null() { "null" } else { "unknown" },
                 serde_json::to_string_pretty(&graphic_data).unwrap_or_default().chars().take(500).collect::<String>()
             ),
@@ -682,14 +682,14 @@ pub async fn load_and_save_graphics(
         return Err((StatusCode::INTERNAL_SERVER_ERROR, "Graphic data is not in expected format".to_string()));
     };
 
-    info!("📊 Found {} items in response, filtering for type='GRP'", items.len());
+    info!("Found {} items in response, filtering for type='GRP'", items.len());
     crate::logging::service::emit_app_log(
         &db_connection,
         "info",
         "T3_Webview_API",
         Some("graphics_refresh_routes"),
         None,
-        &format!("📊 Found {} items total, filtering for GRP type only", items.len()),
+        &format!("Found {} items total, filtering for GRP type only", items.len()),
         None,
     )
     .await;
@@ -704,14 +704,14 @@ pub async fn load_and_save_graphics(
         })
         .collect();
 
-    info!("📊 Filtered to {} GRP items (graphics only)", grp_items.len());
+    info!("Filtered to {} GRP items (graphics only)", grp_items.len());
     crate::logging::service::emit_app_log(
         &db_connection,
         "info",
         "T3_Webview_API",
         Some("graphics_refresh_routes"),
         None,
-        &format!("📊 Filtered {} GRP items from {} total items", grp_items.len(), items.len()),
+        &format!("Filtered {} GRP items from {} total items", grp_items.len(), items.len()),
         None,
     )
     .await;
@@ -758,11 +758,11 @@ pub async fn load_and_save_graphics(
 
                 match active_model.update(&db_connection).await {
                     Ok(_) => {
-                        info!("✅ Updated graphic {} for serial {}", graphic_id_str, serial);
+                        info!("Updated graphic {} for serial {}", graphic_id_str, serial);
                         saved_count += 1;
                     }
                     Err(e) => {
-                        error!("❌ Failed to update graphic {}: {:?}", graphic_id_str, e);
+                        error!("Failed to update graphic {}: {:?}", graphic_id_str, e);
                     }
                 }
             }
@@ -781,21 +781,21 @@ pub async fn load_and_save_graphics(
 
                 match new_graphic.insert(&db_connection).await {
                     Ok(_) => {
-                        info!("✅ Inserted graphic {} for serial {}", graphic_id_str, serial);
+                        info!("Inserted graphic {} for serial {}", graphic_id_str, serial);
                         saved_count += 1;
                     }
                     Err(e) => {
-                        error!("❌ Failed to insert graphic {}: {:?}", graphic_id_str, e);
+                        error!("Failed to insert graphic {}: {:?}", graphic_id_str, e);
                     }
                 }
             }
             Err(e) => {
-                error!("❌ Database error checking existing graphic: {:?}", e);
+                error!("Database error checking existing graphic: {:?}", e);
             }
         }
     }
 
-    info!("✅ Saved {} graphics to database", saved_count);
+    info!("Saved {} graphics to database", saved_count);
 
     Ok(Json(SaveResponse {
         success: true,
@@ -812,7 +812,7 @@ async fn call_get_initial_data_ffi(request_json: Value) -> Result<String, String
     const ACTION_GET_INITIAL_DATA: i32 = 1;
 
     let input_str = request_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", ACTION_GET_INITIAL_DATA, input_str);
+    info!("Sending to C++ (Action {}): {}", ACTION_GET_INITIAL_DATA, input_str);
 
     // Ensure T3000 functions are loaded
     tokio::task::spawn_blocking(|| {
@@ -853,7 +853,7 @@ async fn call_get_initial_data_ffi(request_json: Value) -> Result<String, String
                         // Success - read response from buffer
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", ACTION_GET_INITIAL_DATA, response);
+                        info!("C++ Response (Action {}): {}", ACTION_GET_INITIAL_DATA, response);
                         Ok(response)
                     }
                     -2 => Err("MFC application not initialized".to_string()),

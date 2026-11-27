@@ -157,7 +157,7 @@ async fn update_network_settings(
 
         match active_model.update(&db).await {
             Ok(updated) => {
-                info!("✅ Network settings updated for device {}", serial);
+                info!("Network settings updated for device {}", serial);
                 Ok(Json(SettingsResponse {
                     success: true,
                     message: "Network settings updated successfully".to_string(),
@@ -487,7 +487,7 @@ async fn reboot_device(
 
     match call_ffi_function(action, input_str).await {
         Ok(response_str) => {
-            info!("✅ Reboot command sent successfully: {}", response_str);
+            info!("Reboot command sent successfully: {}", response_str);
             Ok(Json(SettingsResponse {
                 success: true,
                 message: "Reboot command sent successfully. Device will restart in 30 seconds.".to_string(),
@@ -502,7 +502,7 @@ async fn reboot_device(
             }))
         }
         Err(e) => {
-            error!("❌ Failed to send reboot command: {}", e);
+            error!("Failed to send reboot command: {}", e);
             Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to reboot device: {}", e)))
         }
     }
@@ -536,7 +536,7 @@ async fn reset_to_defaults(
 
     match call_ffi_function(action, input_str).await {
         Ok(response_str) => {
-            info!("✅ Reset to defaults command sent successfully: {}", response_str);
+            info!("Reset to defaults command sent successfully: {}", response_str);
             Ok(Json(SettingsResponse {
                 success: true,
                 message: "Device reset to factory defaults successfully. All settings have been reset.".to_string(),
@@ -551,7 +551,7 @@ async fn reset_to_defaults(
             }))
         }
         Err(e) => {
-            error!("❌ Failed to send reset command: {}", e);
+            error!("Failed to send reset command: {}", e);
             Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to reset device: {}", e)))
         }
     }
@@ -601,7 +601,7 @@ async fn call_ffi_function(action: i32, input_str: String) -> Result<String, Str
                         // Success - read response from buffer
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
 
                         // For special commands, even empty response is OK
                         if response.is_empty() {

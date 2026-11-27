@@ -472,7 +472,7 @@ pub async fn search_points(
         })
         .collect())
 }
-// ���� Auto-tagging from point data (called during FFI sync) ����
+// Auto-tagging from point data (called during FFI sync)
 //
 /// Derive basic Haystack tags from point properties.
 /// Compatible replacement for the old haystack_service::upsert_from_point_data.

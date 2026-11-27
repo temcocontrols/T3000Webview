@@ -77,7 +77,7 @@ pub async fn batch_save_outputs(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -91,7 +91,7 @@ pub async fn batch_save_outputs(
         match execute_output_batch_save(&db_connection, serial, &payload).await {
             Ok(response) => {
                 if attempt > 1 {
-                    info!("✅ Batch save succeeded on attempt {}/{}", attempt, max_retries);
+                    info!("Batch save succeeded on attempt {}/{}", attempt, max_retries);
                 }
                 return Ok(Json(response));
             }
@@ -103,14 +103,14 @@ pub async fn batch_save_outputs(
                     if attempt < max_retries {
                         // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms, 3200ms, 6400ms, 12800ms, 25600ms
                         let delay_ms = 100 * (2_u64.pow(attempt - 1));
-                        info!("⏳ Database locked (attempt {}/{}), retrying in {}ms", attempt, max_retries, delay_ms);
+                        info!("Database locked (attempt {}/{}), retrying in {}ms", attempt, max_retries, delay_ms);
                         tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
                         continue;
                     }
                 }
 
                 // Non-retryable error or max retries reached
-                error!("❌ Batch save failed on attempt {}/{}: {}", attempt, max_retries, e);
+                error!("Batch save failed on attempt {}/{}: {}", attempt, max_retries, e);
                 if attempt < max_retries {
                     break;
                 } else {
@@ -196,7 +196,7 @@ async fn execute_output_batch_save(
                         let error_msg = format!("{}", e);
                         // If database is locked, abort immediately to trigger retry
                         if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
-                            error!("🔒 Database locked during output {} update, aborting transaction", index);
+                            error!("Database locked during output {} update, aborting transaction", index);
                             return Err(error_msg);
                         }
                         failed_count += 1;
@@ -238,7 +238,7 @@ async fn execute_output_batch_save(
                         let error_msg = format!("{}", e);
                         // If database is locked, abort immediately to trigger retry
                         if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
-                            error!("🔒 Database locked during output {} insert, aborting transaction", index);
+                            error!("Database locked during output {} insert, aborting transaction", index);
                             return Err(error_msg);
                         }
                         failed_count += 1;
@@ -251,7 +251,7 @@ async fn execute_output_batch_save(
                 let error_msg = format!("{}", e);
                 // If database is locked, abort immediately to trigger retry
                 if error_msg.contains("database is locked") || error_msg.contains("code: 5") {
-                    error!("🔒 Database locked during output {} find, aborting transaction", index);
+                    error!("Database locked during output {} find, aborting transaction", index);
                     return Err(error_msg);
                 }
                 failed_count += 1;
@@ -265,7 +265,7 @@ async fn execute_output_batch_save(
     txn.commit().await
         .map_err(|e| format!("{}", e))?;
 
-    info!("✅ Batch save complete: {} updated, {} failed", updated_count, failed_count);
+    info!("Batch save complete: {} updated, {} failed", updated_count, failed_count);
 
     Ok(BatchSaveResponse {
         success: failed_count == 0,

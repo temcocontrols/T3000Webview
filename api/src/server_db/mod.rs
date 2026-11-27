@@ -591,7 +591,7 @@ impl DatabaseConfigService {
         // Validate configuration
         config.validate().map_err(|e| crate::error::Error::ValidationError(e))?;
 
-        // 🆕 FIX: Use explicit transaction to prevent "database is locked" errors
+        // FIX: Use explicit transaction to prevent "database is locked" errors
         // This ensures both UPDATE and INSERT happen atomically without intermediate locks
         let txn = db.begin().await?;
 

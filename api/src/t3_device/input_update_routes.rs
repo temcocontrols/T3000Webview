@@ -68,7 +68,7 @@ pub async fn update_input_full(
     let index = index_str.parse::<i32>().unwrap_or(0);
 
     if let Ok(mut logger) = ServiceLogger::api_inputs() {
-        logger.info(&format!("📥 UPDATE_WEBVIEW_LIST: Updating full input record - Serial: {}, Index: {}", serial, index));
+        logger.info(&format!("UPDATE_WEBVIEW_LIST: Updating full input record - Serial: {}, Index: {}", serial, index));
     }
     info!("UPDATE_WEBVIEW_LIST: Updating full input record - Serial: {}, Index: {}", serial, index);
 
@@ -79,7 +79,7 @@ pub async fn update_input_full(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -184,23 +184,23 @@ pub async fn update_input_full(
     match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_response) => {
             if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                logger.info(&format!("✅ Full input record updated in device - serial: {}, index: {}", serial, index));
+                logger.info(&format!("Full input record updated in device - serial: {}, index: {}", serial, index));
             }
-            info!("✅ Full input record updated in device - serial: {}, index: {}", serial, index);
+            info!("Full input record updated in device - serial: {}, index: {}", serial, index);
 
             // Now save to database
             match save_input_to_db(&db_connection, serial, index, payload).await {
                 Ok(_) => {
                     if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                        logger.info(&format!("✅ Input record saved to database - serial: {}, index: {}", serial, index));
+                        logger.info(&format!("Input record saved to database - serial: {}, index: {}", serial, index));
                     }
-                    info!("✅ Input record saved to database - serial: {}, index: {}", serial, index);
+                    info!("Input record saved to database - serial: {}, index: {}", serial, index);
                 }
                 Err(e) => {
                     if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                        logger.error(&format!("⚠️ Failed to save to database (device updated successfully): {} - serial: {}, index: {}", e, serial, index));
+                        logger.error(&format!("Failed to save to database (device updated successfully): {} - serial: {}, index: {}", e, serial, index));
                     }
-                    error!("⚠️ Failed to save to database (device updated successfully): {} - serial: {}, index: {}", e, serial, index);
+                    error!("Failed to save to database (device updated successfully): {} - serial: {}, index: {}", e, serial, index);
                 }
             }
 
@@ -217,9 +217,9 @@ pub async fn update_input_full(
         }
         Err(e) => {
             if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                logger.error(&format!("❌ Failed to update full input record: {}", e));
+                logger.error(&format!("Failed to update full input record: {}", e));
             }
-            error!("❌ Failed to update full input record: {}", e);
+            error!("Failed to update full input record: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to update input record: {}", e),
@@ -239,7 +239,7 @@ pub async fn update_input_device_only(
     let index = index_str.parse::<i32>().unwrap_or(0);
 
     if let Ok(mut logger) = ServiceLogger::api_inputs() {
-        logger.info(&format!("🔧 DEVICE_ONLY: Updating input in device - Serial: {}, Index: {}", serial, index));
+        logger.info(&format!("DEVICE_ONLY: Updating input in device - Serial: {}, Index: {}", serial, index));
     }
     info!("DEVICE_ONLY: Updating input in device - Serial: {}, Index: {}", serial, index);
 
@@ -250,7 +250,7 @@ pub async fn update_input_device_only(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -333,9 +333,9 @@ pub async fn update_input_device_only(
     match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_response) => {
             if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                logger.info(&format!("✅ Input updated in device only (database NOT modified) - serial: {}, index: {}", serial, index));
+                logger.info(&format!("Input updated in device only (database NOT modified) - serial: {}, index: {}", serial, index));
             }
-            info!("✅ Input updated in device only (database NOT modified) - serial: {}, index: {}", serial, index);
+            info!("Input updated in device only (database NOT modified) - serial: {}, index: {}", serial, index);
 
             Ok(Json(json!({
                 "success": true,
@@ -349,9 +349,9 @@ pub async fn update_input_device_only(
         }
         Err(e) => {
             if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                logger.error(&format!("❌ Failed to update input in device: {}", e));
+                logger.error(&format!("Failed to update input in device: {}", e));
             }
-            error!("❌ Failed to update input in device: {}", e);
+            error!("Failed to update input in device: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to update input in device: {}", e),
@@ -372,7 +372,7 @@ pub async fn update_input_database_only(
     info!("DATABASE_ONLY: Updating input in database - Serial: {}, Index: {}", serial, index);
 
     if let Ok(mut logger) = ServiceLogger::database_inputs() {
-        logger.info(&format!("📊 Database-only update requested - serial: {}, index: {}", serial, index));
+        logger.info(&format!("Database-only update requested - serial: {}, index: {}", serial, index));
     }
 
     // Get database connection from state
@@ -382,7 +382,7 @@ pub async fn update_input_database_only(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -392,9 +392,9 @@ pub async fn update_input_database_only(
     match save_input_to_db(&db_connection, serial, index, payload).await {
         Ok(_) => {
             if let Ok(mut logger) = ServiceLogger::database_inputs() {
-                logger.info(&format!("✅ Database-only update completed - serial: {}, index: {}", serial, index));
+                logger.info(&format!("Database-only update completed - serial: {}, index: {}", serial, index));
             }
-            info!("✅ Database-only update completed - serial: {}, index: {}", serial, index);
+            info!("Database-only update completed - serial: {}, index: {}", serial, index);
 
             Ok(Json(json!({
                 "success": true,
@@ -408,9 +408,9 @@ pub async fn update_input_database_only(
         }
         Err(e) => {
             if let Ok(mut logger) = ServiceLogger::database_inputs() {
-                logger.error(&format!("❌ Database-only update failed: {} - serial: {}, index: {}", e, serial, index));
+                logger.error(&format!("Database-only update failed: {} - serial: {}, index: {}", e, serial, index));
             }
-            error!("❌ Database-only update failed: {}", e);
+            error!("Database-only update failed: {}", e);
             Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update database: {}", e)))
         }
     }
@@ -424,7 +424,7 @@ async fn save_input_to_db(
     payload: UpdateInputFullRequest,
 ) -> Result<(), String> {
     if let Ok(mut logger) = ServiceLogger::database_inputs() {
-        logger.info(&format!("🔍 Querying database for serial: {}, index: {}", serial, index));
+        logger.info(&format!("Querying database for serial: {}, index: {}", serial, index));
     }
 
     let existing_input = input_points::Entity::find()
@@ -441,7 +441,7 @@ async fn save_input_to_db(
 
     if let Some(input_model) = existing_input {
         if let Ok(mut logger) = ServiceLogger::database_inputs() {
-            logger.info(&format!("📝 Found existing record, updating fields for serial: {}, index: {}", serial, index));
+            logger.info(&format!("Found existing record, updating fields for serial: {}, index: {}", serial, index));
         }
         let mut active_model: input_points::ActiveModel = input_model.into();
 
@@ -492,7 +492,7 @@ async fn save_input_to_db(
         }
 
         if let Ok(mut logger) = ServiceLogger::database_inputs() {
-            logger.info(&format!("💾 Executing database update for serial: {}, index: {}", serial, index));
+            logger.info(&format!("Executing database update for serial: {}, index: {}", serial, index));
         }
 
         // Use update_many with explicit filters to update only the specific record
@@ -512,7 +512,7 @@ async fn save_input_to_db(
             })?;
 
         if let Ok(mut logger) = ServiceLogger::database_inputs() {
-            logger.info(&format!("✅ Database update completed successfully for serial: {}, index: {}", serial, index));
+            logger.info(&format!("Database update completed successfully for serial: {}, index: {}", serial, index));
         }
 
         Ok(())
@@ -531,9 +531,9 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
     let input_str = input_json.to_string();
 
     if let Ok(mut logger) = ServiceLogger::api_inputs() {
-        logger.info(&format!("📤 Sending to C++ (Action {}): {}", action, input_str));
+        logger.info(&format!("Sending to C++ (Action {}): {}", action, input_str));
     }
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     // Ensure T3000 functions are loaded
     tokio::task::spawn_blocking(|| {
@@ -578,22 +578,22 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
 
                         if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                            logger.info(&format!("📥 C++ Response (Action {}): {}", action, response));
+                            logger.info(&format!("C++ Response (Action {}): {}", action, response));
                         }
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
                         Ok(response)
                     }
                     -2 => {
                         let err_msg = "MFC application not initialized".to_string();
                         if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                            logger.error(&format!("❌ FFI Error: {}", err_msg));
+                            logger.error(&format!("FFI Error: {}", err_msg));
                         }
                         Err(err_msg)
                     }
                     code => {
                         let err_msg = format!("FFI call failed with code: {}", code);
                         if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                            logger.error(&format!("❌ {}", err_msg));
+                            logger.error(&format!("{}", err_msg));
                         }
                         Err(err_msg)
                     }
@@ -601,7 +601,7 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
             } else {
                 let err_msg = "BacnetWebView_HandleWebViewMsg function not loaded".to_string();
                 if let Ok(mut logger) = ServiceLogger::api_inputs() {
-                    logger.error(&format!("❌ {}", err_msg));
+                    logger.error(&format!("{}", err_msg));
                 }
                 Err(err_msg)
             }
@@ -626,7 +626,7 @@ pub async fn get_input_by_serial_index(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }

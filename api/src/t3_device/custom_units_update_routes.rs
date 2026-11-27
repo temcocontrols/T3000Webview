@@ -62,7 +62,7 @@ pub async fn update_custom_unit_full(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -106,7 +106,7 @@ pub async fn update_custom_unit_full(
 
     match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_response) => {
-            info!("✅ Full custom unit record updated successfully");
+            info!("Full custom unit record updated successfully");
             Ok(Json(json!({
                 "success": true,
                 "message": "Custom unit updated successfully",
@@ -118,7 +118,7 @@ pub async fn update_custom_unit_full(
             })))
         }
         Err(e) => {
-            error!("❌ Failed to update custom unit: {}", e);
+            error!("Failed to update custom unit: {}", e);
             if e.contains("not implemented") || e.contains("empty response") {
                 return Err((StatusCode::NOT_IMPLEMENTED, "UPDATE_WEBVIEW_LIST (Action 16) for custom units is not yet implemented in C++.".to_string()));
             }
@@ -131,7 +131,7 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = input_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     tokio::task::spawn_blocking(|| {
         unsafe {
@@ -164,7 +164,7 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
                     0 => {
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
 
                         if response.is_empty() || response == "{}" {
                             return Err("Action not implemented in C++ - empty response".to_string());

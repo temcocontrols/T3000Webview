@@ -39,7 +39,7 @@ use crate::t3_device::schedule_refresh_routes::create_schedule_refresh_routes;
 use crate::t3_device::holiday_refresh_routes::create_holiday_refresh_routes;
 use crate::t3_device::alarm_refresh_routes::create_alarm_refresh_routes;
 use crate::t3_device::trendlog_refresh_routes::create_trendlog_refresh_routes;
-// 🆕 New feature routes - Arrays, Conversion Tables, Users, Custom Units
+// New feature routes - Arrays, Conversion Tables, Users, Custom Units
 use crate::t3_device::arrays_refresh_routes::create_arrays_refresh_routes;
 use crate::t3_device::arrays_update_routes::create_arrays_update_routes;
 use crate::t3_device::conversion_tables_refresh_routes::create_conversion_tables_refresh_routes;
@@ -64,7 +64,7 @@ use crate::t3_device::expansion_io_routes::create_expansion_io_routes;
 #[allow(dead_code)]
 async fn ensure_t3_device_db_available(state: &T3AppState) -> Result<(), StatusCode> {
     if state.t3_device_conn.is_none() {
-        eprintln!("⚠️  T3000 device database unavailable - feature disabled");
+        eprintln!("T3000 device database unavailable - feature disabled");
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     }
     Ok(())
@@ -91,7 +91,7 @@ macro_rules! get_t3_device_conn {
                 match crate::db_connection::establish_t3_device_connection().await {
                     Ok(c) => c,
                     Err(_) => {
-                        eprintln!("⚠️  T3000 local device database unavailable");
+                        eprintln!("T3000 local device database unavailable");
                         return Err(StatusCode::SERVICE_UNAVAILABLE);
                     }
                 }
@@ -828,7 +828,7 @@ async fn create_device(
     let local_db = get_t3_device_conn!(state);
     let sqlite_result = T3DeviceService::create_device(&*local_db, payload.clone()).await;
     if let Err(ref e) = sqlite_result {
-        eprintln!("⚠️ [create_device] SQLite write error (non-fatal if MSSQL follows): {:?}", e);
+        eprintln!("[create_device] SQLite write error (non-fatal if MSSQL follows): {:?}", e);
     }
 
     // ── MSSQL replication (if center DB is MSSQL) ──
@@ -880,7 +880,7 @@ async fn create_device(
             "message": "Device created successfully"
         }))),
         Err(err) => {
-            eprintln!("❌ [create_device] Error: {:?}", err);
+            eprintln!("[create_device] Error: {:?}", err);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -916,7 +916,7 @@ async fn update_device(
     let db = get_t3_device_conn!(state);
     let sqlite_result = T3DeviceService::update_device(&*db, device_id, payload).await;
     if let Err(ref e) = sqlite_result {
-        eprintln!("⚠️ [update_device] SQLite write error: {:?}", e);
+        eprintln!("[update_device] SQLite write error: {:?}", e);
     }
 
     // ── MSSQL write (if center DB active) ──
@@ -1963,30 +1963,30 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .route("/devices/:serial_number/capacity", get(get_device_capacity))
         .route("/tree/project-view", get(get_project_point_tree))
 
-        // 🆕 Enhanced TrendLog FFI Routes
+        // Enhanced TrendLog FFI Routes
         .merge(create_trendlog_enhanced_routes())
 
-        // 🟢 TrendLog WebMsg Routes (WORKING HandleWebViewMsg approach)
+        // TrendLog WebMsg Routes (WORKING HandleWebViewMsg approach)
         .merge(create_trendlog_webmsg_routes())
 
-        // 🆕 Point Update Routes (UPDATE_WEBVIEW_LIST Action 16)
+        // Point Update Routes (UPDATE_WEBVIEW_LIST Action 16)
         .merge(create_input_update_routes())
         .merge(create_output_update_routes())
         .merge(create_variable_update_routes())
 
-        // 🆕 Point Batch Save Routes (batch update multiple points)
+        // Point Batch Save Routes (batch update multiple points)
         .merge(create_input_batch_routes())
         .merge(create_output_batch_routes())
         .merge(create_variable_batch_routes())
-        .merge(create_programs_batch_routes())  // ✅ NEW
-        .merge(create_schedules_batch_routes())  // ✅ NEW
-        .merge(create_holidays_batch_routes())  // ✅ NEW
-        .merge(create_pid_batch_routes())  // ✅ NEW
-        .merge(create_graphics_batch_routes())  // ✅ NEW
-        .merge(create_arrays_update_routes())  // ✅ PASSED
-        .merge(create_conversion_tables_update_routes())  // ✅ ENABLED (renamed from tables)
-        .merge(create_users_update_routes())  // ✅ PASSED
-        .merge(create_custom_units_update_routes())  // ✅ ENABLED
+        .merge(create_programs_batch_routes())  // NEW
+        .merge(create_schedules_batch_routes())  // NEW
+        .merge(create_holidays_batch_routes())  // NEW
+        .merge(create_pid_batch_routes())  // NEW
+        .merge(create_graphics_batch_routes())  // NEW
+        .merge(create_arrays_update_routes())  // PASSED
+        .merge(create_conversion_tables_update_routes())  // ENABLED (renamed from tables)
+        .merge(create_users_update_routes())  // PASSED
+        .merge(create_custom_units_update_routes())  // ENABLED
         .merge(create_programs_update_routes())
         .merge(create_schedules_update_routes())
         .merge(create_holidays_update_routes())
@@ -1994,19 +1994,19 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_graphics_update_routes())
         .merge(create_alarms_update_routes())
 
-        // 🆕 Settings Routes (device-level configuration)
-        .merge(create_settings_routes())  // ✅ ENABLED
+        // Settings Routes (device-level configuration)
+        .merge(create_settings_routes())  // ENABLED
 
-        // 🆕 Email Settings Routes (Str_Email_point — DB-backed, FFI refresh stub)
-        .merge(create_email_settings_routes())  // ✅ ENABLED
+        // Email Settings Routes (Str_Email_point — DB-backed, FFI refresh stub)
+        .merge(create_email_settings_routes())  // ENABLED
 
-        // 🆕 Expansion IO Routes (Str_Extio_point — DB-backed, FFI refresh stub)
-        .merge(create_expansion_io_routes())  // ✅ ENABLED
+        // Expansion IO Routes (Str_Extio_point — DB-backed, FFI refresh stub)
+        .merge(create_expansion_io_routes())  // ENABLED
 
-        // 🆕 Specialized Features Routes (supplementary data tables)
-        .merge(create_specialized_routes())  // ✅ ENABLED
+        // Specialized Features Routes (supplementary data tables)
+        .merge(create_specialized_routes())  // ENABLED
 
-        // 🆕 Point Refresh Routes (GET_WEBVIEW_LIST Action 17)
+        // Point Refresh Routes (GET_WEBVIEW_LIST Action 17)
         .merge(create_input_refresh_routes())
         .merge(create_output_refresh_routes())
         .merge(create_variable_refresh_routes())
@@ -2016,11 +2016,11 @@ pub fn t3_device_routes() -> Router<T3AppState> {
         .merge(create_holiday_refresh_routes())
         .merge(create_alarm_refresh_routes())
         .merge(create_trendlog_refresh_routes())
-        .merge(create_graphics_refresh_routes())  // ✅ ENABLED
-        .merge(create_arrays_refresh_routes())  // ✅ ENABLED
-        .merge(create_conversion_tables_refresh_routes())  // ✅ ENABLED (renamed from tables)
-        .merge(create_users_refresh_routes())  // ✅ ENABLED
-        .merge(create_custom_units_refresh_routes())  // ✅ ENABLED
+        .merge(create_graphics_refresh_routes())  // ENABLED
+        .merge(create_arrays_refresh_routes())  // ENABLED
+        .merge(create_conversion_tables_refresh_routes())  // ENABLED (renamed from tables)
+        .merge(create_users_refresh_routes())  // ENABLED
+        .merge(create_custom_units_refresh_routes())  // ENABLED
 }
 
 // ============================================================================
@@ -2278,7 +2278,7 @@ async fn get_trendlog_history(
 
     // Log the history request
     let request_info = format!(
-        "🔄 [Routes] Get trendlog history - Device: {}, TrendLog: {}, Panel: {}, Time: {} to {}, Limit: {:?}, SpecificPoints: {}",
+        "[Routes] Get trendlog history - Device: {}, TrendLog: {}, Panel: {}, Time: {} to {}, Limit: {:?}, SpecificPoints: {}",
         device_id,
         payload.trendlog_id,
         payload.panel_id,
@@ -2331,7 +2331,7 @@ async fn get_trendlog_history(
     match T3TrendlogDataService::get_trendlog_history(&*db, payload).await {
         Ok(history_data) => {
             let success_info = format!(
-                "✅ [Routes] Trendlog history retrieved successfully - Device: {}",
+                "[Routes] Trendlog history retrieved successfully - Device: {}",
                 device_id
             );
             crate::logging::service::emit_app_log(
@@ -2348,7 +2348,7 @@ async fn get_trendlog_history(
         },
         Err(error) => {
             let error_info = format!(
-                "❌ [Routes] Get trendlog history FAILED - Device: {}, TrendLog: {}, Error: {:?}",
+                "[Routes] Get trendlog history FAILED - Device: {}, TrendLog: {}, Error: {:?}",
                 device_id,
                 trendlog_id, // Use the path parameter instead of moved payload
                 error
@@ -2364,7 +2364,7 @@ async fn get_trendlog_history(
             )
             .await;
 
-            eprintln!("❌ [Routes] Trendlog history error details: {:?}", error);
+            eprintln!("[Routes] Trendlog history error details: {:?}", error);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -2571,7 +2571,7 @@ async fn save_realtime_trendlog_data(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     if state.server_db_enabled && !state.server_db_connected {
         if crate::server_db_writer::get_server_mssql_pool().is_none() {
-            eprintln!("❌ Realtime trendlog save blocked: center DB enabled but not connected");
+            eprintln!("Realtime trendlog save blocked: center DB enabled but not connected");
             return Err((
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(json!({
@@ -2581,7 +2581,7 @@ async fn save_realtime_trendlog_data(
                 })),
             ));
         }
-        eprintln!("✅ Realtime trendlog save: using runtime-reconnected MSSQL pool");
+        eprintln!("Realtime trendlog save: using runtime-reconnected MSSQL pool");
     }
 
     // ── MSSQL branch — uses startup pool or runtime-reconnected pool ──
@@ -2589,7 +2589,7 @@ async fn save_realtime_trendlog_data(
         .or_else(|| crate::server_db_writer::get_server_mssql_pool());
     if let Some(pool) = effective_mssql_pool {
         use crate::server_db::mssql_trendlog_service;
-        eprintln!("📤 Realtime trendlog save target: CENTER DB (MSSQL)");
+        eprintln!("Realtime trendlog save target: CENTER DB (MSSQL)");
         let parent_id = mssql_trendlog_service::save_realtime_data(
             pool,
             payload.serial_number,
@@ -2622,9 +2622,9 @@ async fn save_realtime_trendlog_data(
 
     // ── SeaORM branch ──
     if state.server_db_enabled {
-        eprintln!("📤 Realtime trendlog save target: CENTER DB (SeaORM backend)");
+        eprintln!("Realtime trendlog save target: CENTER DB (SeaORM backend)");
     } else {
-        eprintln!("📤 Realtime trendlog save target: LOCAL SQLite");
+        eprintln!("Realtime trendlog save target: LOCAL SQLite");
     }
     let db_connection = match state.t3_device_conn.as_ref() {
         Some(conn) => conn.lock().await.clone(),
@@ -2642,7 +2642,7 @@ async fn save_realtime_trendlog_data(
             match crate::db_connection::establish_t3_device_connection().await {
                 Ok(conn) => conn,
                 Err(_) => {
-                    eprintln!("⚠️  T3000 local device database unavailable");
+                    eprintln!("T3000 local device database unavailable");
                     return Err((
                         StatusCode::SERVICE_UNAVAILABLE,
                         Json(json!({
@@ -2678,7 +2678,7 @@ async fn save_realtime_trendlog_batch(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     // Log the batch save request
     let request_info = format!(
-        "🔄 [Routes] Realtime batch save request - {} data points",
+        "[Routes] Realtime batch save request - {} data points",
         payload.len()
     );
     // Use a fresh direct connection to local SQLite (same pattern as TRENDLOG_CHART)
@@ -2775,7 +2775,7 @@ async fn save_realtime_trendlog_batch(
     if state.server_db_enabled && !state.server_db_connected {
         if crate::server_db_writer::get_server_mssql_pool().is_none() {
             let blocked_info =
-                "❌ [Routes] Realtime batch save blocked - center DB enabled but not connected";
+                "[Routes] Realtime batch save blocked - center DB enabled but not connected";
             if let Some(db) = log_db.as_ref() {
                 crate::logging::service::emit_app_log(
                     db,
@@ -2803,7 +2803,7 @@ async fn save_realtime_trendlog_batch(
                 })),
             ));
         }
-        eprintln!("✅ [Routes] Batch save: using runtime-reconnected MSSQL pool");
+        eprintln!("[Routes] Batch save: using runtime-reconnected MSSQL pool");
     }
 
     // ── MSSQL branch — uses startup pool or runtime-reconnected pool ──
@@ -2818,7 +2818,7 @@ async fn save_realtime_trendlog_batch(
                 "T3_Webview_API",
                 Some("trendlog_routes"),
                 None,
-                "📤 [Routes] Realtime batch save target: CENTER DB (MSSQL)",
+                "[Routes] Realtime batch save target: CENTER DB (MSSQL)",
                 None,
             )
             .await;
@@ -2872,7 +2872,7 @@ async fn save_realtime_trendlog_batch(
                 "T3_Webview_API",
                 Some("trendlog_routes"),
                 None,
-                "📤 [Routes] Realtime batch save target: CENTER DB (SeaORM backend)",
+                "[Routes] Realtime batch save target: CENTER DB (SeaORM backend)",
                 None,
             )
             .await;
@@ -2885,7 +2885,7 @@ async fn save_realtime_trendlog_batch(
                 "T3_Webview_API",
                 Some("trendlog_routes"),
                 None,
-                "📤 [Routes] Realtime batch save target: LOCAL SQLite",
+                "[Routes] Realtime batch save target: LOCAL SQLite",
                 None,
             )
             .await;
@@ -2912,7 +2912,7 @@ async fn save_realtime_trendlog_batch(
             match crate::db_connection::establish_t3_device_connection().await {
                 Ok(conn) => conn,
                 Err(_) => {
-                    eprintln!("⚠️  T3000 local device database unavailable");
+                    eprintln!("T3000 local device database unavailable");
                     return Err((
                         StatusCode::SERVICE_UNAVAILABLE,
                         Json(json!({
@@ -2940,7 +2940,7 @@ async fn save_realtime_trendlog_batch(
     match T3TrendlogDataService::save_realtime_batch(&db_connection, payload).await {
         Ok(rows_affected) => {
             let success_info = format!(
-                "✅ [Routes] Realtime batch save successful - {} rows affected",
+                "[Routes] Realtime batch save successful - {} rows affected",
                 rows_affected
             );
             crate::logging::service::emit_app_log(
@@ -2978,7 +2978,7 @@ async fn save_realtime_trendlog_batch(
         },
         Err(error) => {
             let error_info = format!(
-                "❌ [Routes] Realtime batch save FAILED - Error: {:?}",
+                "[Routes] Realtime batch save FAILED - Error: {:?}",
                 error
             );
             crate::logging::service::emit_app_log(
@@ -2992,7 +2992,7 @@ async fn save_realtime_trendlog_batch(
             )
             .await;
 
-            eprintln!("❌ [Routes] Realtime batch save error details: {:?}", error);
+            eprintln!("[Routes] Realtime batch save error details: {:?}", error);
             if let (Some(ref db), Some(ref fh)) = (&log_db, &flow_opt) {
                 fh.step(db, "batch_save", "error", "db", "error",
                     t0.elapsed().as_millis() as i64,

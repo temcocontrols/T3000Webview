@@ -196,13 +196,13 @@ pub fn ffi_call_lock_timeout(timeout_secs: u64) -> Option<std::sync::MutexGuard<
             Ok(guard) => return Some(guard),
             Err(std::sync::TryLockError::WouldBlock) => {
                 if Instant::now() > deadline {
-                    eprintln!("❌ FFI lock acquisition timed out after {}s — prior C++ call may be stuck", timeout_secs);
+                    eprintln!("FFI lock acquisition timed out after {}s — prior C++ call may be stuck", timeout_secs);
                     return None;
                 }
                 std::thread::sleep(Duration::from_millis(100));
             }
             Err(std::sync::TryLockError::Poisoned(p)) => {
-                eprintln!("⚠️ FFI lock was poisoned — recovering");
+                eprintln!("FFI lock was poisoned — recovering");
                 return Some(p.into_inner());
             }
         }
@@ -299,14 +299,14 @@ impl T3000FfiApiService {
             ];
 
             for path in &t3000_paths {
-                api_logger.info(&format!("🔍 API Service - Looking for T3000.exe at: {}", path));
+                api_logger.info(&format!("API Service - Looking for T3000.exe at: {}", path));
 
                 if std::path::Path::new(path).exists() {
                     let path_cstring = CString::new(*path).unwrap();
                     let t3000_module = LoadLibraryA(path_cstring.as_ptr());
 
                     if !t3000_module.is_null() {
-                        api_logger.info("✅ API Service - Successfully loaded T3000.exe");
+                        api_logger.info("API Service - Successfully loaded T3000.exe");
                         let func_name = CString::new("BacnetWebView_HandleWebViewMsg").unwrap();
                         let func_ptr = GetProcAddress(t3000_module, func_name.as_ptr());
 
@@ -316,7 +316,7 @@ impl T3000FfiApiService {
                             let _ = T3000_LOADED_AT.set(Instant::now());
                             return true;
                         } else {
-                            api_logger.error("❌ API Service - BacnetWebView_HandleWebViewMsg not found in T3000.exe");
+                            api_logger.error("API Service - BacnetWebView_HandleWebViewMsg not found in T3000.exe");
                         }
                     }
                 }
@@ -332,14 +332,14 @@ impl T3000FfiApiService {
         let mut api_logger = ServiceLogger::api().unwrap_or_else(|_| ServiceLogger::new("fallback_api").unwrap());
 
         // Parse the JSON to extract the action number
-        api_logger.info(&format!("🔍 Parsing message JSON: {}", message));
+        api_logger.info(&format!("Parsing message JSON: {}", message));
 
         let action = match serde_json::from_str::<serde_json::Value>(message) {
             Ok(json) => {
-                api_logger.info(&format!("✅ JSON parsed successfully"));
+                api_logger.info(&format!("JSON parsed successfully"));
 
                 // Log the full JSON structure
-                api_logger.info(&format!("📦 Full JSON: {}", serde_json::to_string_pretty(&json).unwrap_or_default()));
+                api_logger.info(&format!("Full JSON: {}", serde_json::to_string_pretty(&json).unwrap_or_default()));
 
                 // Support BOTH patterns:
                 // 1. Top-level action: {"action": 0, "panelId": 123} (trendlog_webmsg_service)
@@ -350,16 +350,16 @@ impl T3000FfiApiService {
                         json.get("message").and_then(|m| m.get("action"))
                     });
 
-                api_logger.info(&format!("🔍 action field found: {:?}", action_field));
+                api_logger.info(&format!("action field found: {:?}", action_field));
 
                 // Try to convert to i64
                 let action_value = action_field.and_then(|a| a.as_i64()).unwrap_or(0) as i32;
-                api_logger.info(&format!("🔍 action value extracted: {}", action_value));
+                api_logger.info(&format!("action value extracted: {}", action_value));
 
                 action_value
             }
             Err(e) => {
-                api_logger.error(&format!("❌ Failed to parse JSON: {}", e));
+                api_logger.error(&format!("Failed to parse JSON: {}", e));
                 0
             }
         };
@@ -515,21 +515,21 @@ impl T3000FfiApiService {
 
         let (code, null_pos, response) = ffi_result?;
         if code == 0 {
-            api_logger.info(&format!("✅ FFI Success - {} bytes", null_pos));
+            api_logger.info(&format!("FFI Success - {} bytes", null_pos));
         } else if code > 0 {
-            api_logger.info(&format!("ℹ️  FFI returned code {} (no new data/empty result) - {} bytes", code, null_pos));
+            api_logger.info(&format!("FFI returned code {} (no new data/empty result) - {} bytes", code, null_pos));
         } else {
-            api_logger.info(&format!("⚠️  FFI returned -1 with JSON response: {}", response));
+            api_logger.info(&format!("FFI returned -1 with JSON response: {}", response));
         }
 
         if let Ok(response_json) = serde_json::from_str::<serde_json::Value>(&response) {
             let response_action = response_json.get("action")
                 .and_then(|a| a.as_str())
                 .unwrap_or("UNKNOWN");
-            api_logger.info(&format!("🔍 C++ Response Action: {}", response_action));
+            api_logger.info(&format!("C++ Response Action: {}", response_action));
 
             if code == 0 {
-                api_logger.info(&format!("📦 C++ Response: {}", serde_json::to_string_pretty(&response_json).unwrap_or_default()));
+                api_logger.info(&format!("C++ Response: {}", serde_json::to_string_pretty(&response_json).unwrap_or_default()));
             }
         }
 

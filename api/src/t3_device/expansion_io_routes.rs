@@ -18,7 +18,7 @@ use crate::entity::t3_device::extio_devices;
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
-// ⚠️  C++ has not yet implemented this entry type in GET_WEBVIEW_LIST.
+// C++ has not yet implemented this entry type in GET_WEBVIEW_LIST.
 // When BacnetWebView.cpp adds `case BAC_EXTIO_DEVICES:` the refresh
 // endpoint will start returning live data automatically.
 const BAC_EXTIO_DEVICES: i32 = 51;
@@ -115,7 +115,7 @@ async fn list_expansion_io(
     let count = records.len();
     let data: Vec<Value> = records.into_iter().map(|r| json!(r)).collect();
 
-    info!("✅ Found {} expansion IO device(s) for serial {}", count, serial);
+    info!("Found {} expansion IO device(s) for serial {}", count, serial);
     Ok(Json(ExtioListResponse {
         success: true,
         count,
@@ -164,7 +164,7 @@ async fn upsert_expansion_io(
 
         match m.update(&db).await {
             Ok(updated) => {
-                info!("✅ Expansion IO device updated for serial {}", serial);
+                info!("Expansion IO device updated for serial {}", serial);
                 Ok(Json(ExtioResponse {
                     success: true,
                     message: "Expansion IO device updated successfully".to_string(),
@@ -197,7 +197,7 @@ async fn upsert_expansion_io(
 
         match new_record.insert(&db).await {
             Ok(inserted) => {
-                info!("✅ Expansion IO device created for serial {}", serial);
+                info!("Expansion IO device created for serial {}", serial);
                 Ok(Json(ExtioResponse {
                     success: true,
                     message: "Expansion IO device created successfully".to_string(),
@@ -236,7 +236,7 @@ async fn delete_expansion_io(
                 .await
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to delete: {}", e)))?;
 
-            info!("✅ Expansion IO device {} deleted for serial {}", extio_id, serial);
+            info!("Expansion IO device {} deleted for serial {}", extio_id, serial);
             Ok(Json(ExtioResponse {
                 success: true,
                 message: format!("Expansion IO device {} deleted", extio_id),
@@ -249,7 +249,7 @@ async fn delete_expansion_io(
 /// POST /api/t3-device/devices/:serial/settings/expansion-io/refresh
 ///
 /// Fires GET_WEBVIEW_LIST (Action 17) with entryType=51.
-/// ⚠️  Returns 503 until C++ BacnetWebView.cpp adds `case BAC_EXTIO_DEVICES (51)`
+/// Returns 503 until C++ BacnetWebView.cpp adds `case BAC_EXTIO_DEVICES (51)`
 /// to the GET_WEBVIEW_LIST switch that reads g_extio_config_data / Str_Extio_point.
 async fn refresh_expansion_io(
     State(state): State<T3AppState>,
@@ -325,7 +325,7 @@ async fn refresh_expansion_io(
                 .unwrap_or_default();
 
             let count = items.len() as i32;
-            info!("✅ Refreshed {} expansion IO device(s) from device", count);
+            info!("Refreshed {} expansion IO device(s) from device", count);
             Ok(Json(RefreshResponse {
                 success: true,
                 message: format!("Refreshed expansion IO from device ({} item(s))", count),
@@ -355,7 +355,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = refresh_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     tokio::task::spawn_blocking(|| {
         unsafe {
@@ -393,7 +393,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
                     0 => {
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
                         if response.is_empty() || response == "{}" {
                             return Err("Action not implemented in C++ - empty response".to_string());
                         }

@@ -111,7 +111,7 @@ pub async fn refresh_alarms(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -136,7 +136,7 @@ pub async fn refresh_alarms(
             let response_json: Value = match serde_json::from_str(&response) {
                 Ok(json) => normalise_action17_response(json),
                 Err(e) => {
-                    error!("❌ Failed to parse C++ response: {}", e);
+                    error!("Failed to parse C++ response: {}", e);
                     return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Invalid response from device: {}", e)));
                 }
             };
@@ -147,18 +147,18 @@ pub async fn refresh_alarms(
                 let debug_msg = response_json.get("debug").and_then(|v| v.as_str()).unwrap_or("");
 
                 if debug_msg.contains("empty response") || error_msg.contains("not implemented") {
-                    error!("❌ Action 17 not implemented in C++: {}", debug_msg);
+                    error!("Action 17 not implemented in C++: {}", debug_msg);
                     return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
                 }
 
-                error!("❌ Device refresh failed: {}", error_msg);
+                error!("Device refresh failed: {}", error_msg);
                 return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("{}", error_msg)));
             }
 
             let items = response_json.get("items").and_then(|v| v.as_array()).map(|arr| arr.clone()).unwrap_or_default();
             let count = items.len() as i32;
 
-            info!("✅ Refreshed {} alarm(s) from device", count);
+            info!("Refreshed {} alarm(s) from device", count);
             Ok(Json(RefreshResponse {
                 success: true,
                 message: format!("Refreshed {} alarm(s) from device", count),
@@ -168,7 +168,7 @@ pub async fn refresh_alarms(
             }))
         }
         Err(e) => {
-            error!("❌ Failed to refresh alarms: {}", e);
+            error!("Failed to refresh alarms: {}", e);
             if e.contains("not implemented") || e.contains("empty response") {
                 return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
             }
@@ -191,7 +191,7 @@ pub async fn save_refreshed_alarms(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -200,12 +200,12 @@ pub async fn save_refreshed_alarms(
     let saved_count = match save_alarms_to_db(&db_connection, serial, &payload.items).await {
         Ok(count) => count,
         Err(e) => {
-            error!("❌ Failed to save alarms to database: {}", e);
+            error!("Failed to save alarms to database: {}", e);
             return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save to database: {}", e)));
         }
     };
 
-    info!("✅ Saved {} alarm(s) to database", saved_count);
+    info!("Saved {} alarm(s) to database", saved_count);
     Ok(Json(SaveResponse {
         success: true,
         message: format!("Saved {} alarm(s) to database", saved_count),
@@ -224,7 +224,7 @@ async fn save_alarms_to_db(db: &DatabaseConnection, serial: i32, items: &[Value]
             .map(|v| v as i32);
 
         if alarm_index.is_none() {
-            error!("⚠️ Skipping item without alarmId: {:?}", item);
+            error!("Skipping item without alarmId: {:?}", item);
             continue;
         }
         let alarm_index = alarm_index.unwrap();
@@ -261,7 +261,7 @@ async fn save_alarms_to_db(db: &DatabaseConnection, serial: i32, items: &[Value]
             active_model.update(db).await.map_err(|e| format!("Failed to update alarm: {}", e))?;
             saved_count += 1;
         } else {
-            error!("⚠️ Alarm record not found: serial={}, alarm_id={}", serial, alarm_index);
+            error!("Alarm record not found: serial={}, alarm_id={}", serial, alarm_index);
         }
     }
 
@@ -272,7 +272,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = refresh_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     tokio::task::spawn_blocking(|| {
         unsafe {
@@ -307,7 +307,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
                     0 => {
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
 
                         if response.is_empty() || response == "{}" {
                             return Err("Action not implemented in C++ - empty response".to_string());

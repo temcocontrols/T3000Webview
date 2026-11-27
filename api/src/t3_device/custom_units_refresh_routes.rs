@@ -88,7 +88,7 @@ pub async fn refresh_custom_units(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -113,7 +113,7 @@ pub async fn refresh_custom_units(
             let response_json: Value = match serde_json::from_str(&response) {
                 Ok(json) => normalise_action17_response(json),
                 Err(e) => {
-                    error!("❌ Failed to parse C++ response: {}", e);
+                    error!("Failed to parse C++ response: {}", e);
                     return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Invalid response from device: {}", e)));
                 }
             };
@@ -124,18 +124,18 @@ pub async fn refresh_custom_units(
                 let debug_msg = response_json.get("debug").and_then(|v| v.as_str()).unwrap_or("");
 
                 if debug_msg.contains("empty response") || error_msg.contains("not implemented") {
-                    error!("❌ Action 17 not implemented in C++ for custom units: {}", debug_msg);
+                    error!("Action 17 not implemented in C++ for custom units: {}", debug_msg);
                     return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) for custom units is not yet implemented in C++.".to_string()));
                 }
 
-                error!("❌ Device refresh failed: {}", error_msg);
+                error!("Device refresh failed: {}", error_msg);
                 return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("{}", error_msg)));
             }
 
             let items = response_json.get("items").and_then(|v| v.as_array()).map(|arr| arr.clone()).unwrap_or_default();
             let count = items.len() as i32;
 
-            info!("✅ Refreshed {} custom unit(s) from device", count);
+            info!("Refreshed {} custom unit(s) from device", count);
             Ok(Json(RefreshResponse {
                 success: true,
                 message: format!("Refreshed {} custom unit(s) from device", count),
@@ -145,7 +145,7 @@ pub async fn refresh_custom_units(
             }))
         }
         Err(e) => {
-            error!("❌ Failed to refresh custom units: {}", e);
+            error!("Failed to refresh custom units: {}", e);
             if e.contains("not implemented") || e.contains("empty response") {
                 return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) for custom units is not yet implemented in C++.".to_string()));
             }
@@ -168,7 +168,7 @@ pub async fn save_refreshed_custom_units(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -177,12 +177,12 @@ pub async fn save_refreshed_custom_units(
     let saved_count = match save_custom_units_to_db(&db_connection, serial, &payload.items).await {
         Ok(count) => count,
         Err(e) => {
-            error!("❌ Failed to save custom units to database: {}", e);
+            error!("Failed to save custom units to database: {}", e);
             return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save to database: {}", e)));
         }
     };
 
-    info!("✅ Saved {} custom unit(s) to database", saved_count);
+    info!("Saved {} custom unit(s) to database", saved_count);
     Ok(Json(SaveResponse {
         success: true,
         message: format!("Saved {} custom unit(s) to database", saved_count),
@@ -197,7 +197,7 @@ async fn save_custom_units_to_db(db: &DatabaseConnection, serial: i32, items: &[
     for item in items {
         let unit_index = item.get("unitIndex").or_else(|| item.get("unit_index")).and_then(|v| v.as_i64()).map(|v| v as i32);
         if unit_index.is_none() {
-            error!("⚠️ Skipping item without unitIndex: {:?}", item);
+            error!("Skipping item without unitIndex: {:?}", item);
             continue;
         }
         let unit_index = unit_index.unwrap();
@@ -256,7 +256,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = refresh_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     tokio::task::spawn_blocking(|| {
         unsafe {
@@ -289,7 +289,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
                     0 => {
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
 
                         if response.is_empty() || response == "{}" {
                             return Err("Action not implemented in C++ - empty response".to_string());

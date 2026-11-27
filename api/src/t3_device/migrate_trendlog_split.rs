@@ -63,7 +63,7 @@ pub async fn migrate_trendlog_data(db: &DatabaseConnection) -> Result<(), Box<dy
     println!("  Found {} records in TRENDLOG_DATA_OLD\n", total_old_records);
 
     if total_old_records == 0 {
-        println!("⚠️  No records to migrate. Exiting.");
+        println!("No records to migrate. Exiting.");
         return Ok(());
     }
 
@@ -272,9 +272,9 @@ pub async fn migrate_trendlog_data(db: &DatabaseConnection) -> Result<(), Box<dy
     println!("  TRENDLOG_DATA_OLD (original): {} records\n", total_old_records);
 
     if detail_total == total_old_records {
-        println!("✅ Data integrity verified! All records migrated successfully.");
+        println!("Data integrity verified! All records migrated successfully.");
     } else {
-        println!("⚠️  WARNING: Record count mismatch!");
+        println!("WARNING: Record count mismatch!");
         println!("  Expected: {}, Got: {}", total_old_records, detail_total);
     }
 

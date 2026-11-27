@@ -92,7 +92,7 @@ pub async fn get_users_by_serial(
         }
     }
 
-    info!("✅ Returning {} user slots for serial {}", slots.len(), serial);
+    info!("Returning {} user slots for serial {}", slots.len(), serial);
     Ok(Json(json!(slots)))
 }
 
@@ -113,7 +113,7 @@ pub async fn update_user_full(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -167,11 +167,11 @@ pub async fn update_user_full(
     // Call FFI — best-effort: C++ UPDATE_WEBVIEW_LIST case 14 not yet implemented
     let ffi_status = match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_) => {
-            info!("✅ FFI user update succeeded for serial {} index {}", serial, index);
+            info!("FFI user update succeeded for serial {} index {}", serial, index);
             "ffi_ok"
         }
         Err(e) => {
-            error!("⚠️ FFI user update not yet implemented in C++: {}", e);
+            error!("FFI user update not yet implemented in C++: {}", e);
             "ffi_unimplemented"
         }
     };
@@ -182,7 +182,7 @@ pub async fn update_user_full(
         default_panel, default_group, screen_right, program_right).await
     {
         Ok(()) => {
-            info!("✅ User saved to local DB - serial {} index {}", serial, index);
+            info!("User saved to local DB - serial {} index {}", serial, index);
             Ok(Json(json!({
                 "success": true,
                 "message": if ffi_status == "ffi_ok" {
@@ -198,7 +198,7 @@ pub async fn update_user_full(
             })))
         }
         Err(e) => {
-            error!("❌ Failed to save user to DB: {}", e);
+            error!("Failed to save user to DB: {}", e);
             Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save user: {}", e)))
         }
     }
@@ -265,7 +265,7 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = input_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     // Ensure T3000 functions are loaded
     tokio::task::spawn_blocking(|| {
@@ -308,7 +308,7 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
                         // Success - read response from buffer
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
 
                         // Check if response is empty or minimal (C++ not implemented)
                         if response.is_empty() || response == "{}" {

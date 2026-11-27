@@ -94,7 +94,7 @@ pub async fn refresh_trendlogs(
     let db_connection = match &state.t3_device_conn {
         Some(conn) => conn.lock().await.clone(),
         None => {
-            error!("❌ T3000 device database unavailable");
+            error!("T3000 device database unavailable");
             if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
                 fh.step(fdb, "db_connect", "error", "api", "error",
                     t0.elapsed().as_millis() as i64, "T3000 device database unavailable", None).await;
@@ -140,7 +140,7 @@ pub async fn refresh_trendlogs(
             let response_json: Value = match serde_json::from_str(&response) {
                 Ok(json) => normalise_action17_response(json),
                 Err(e) => {
-                    error!("❌ Failed to parse C++ response: {}", e);
+                    error!("Failed to parse C++ response: {}", e);
                     if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
                         fh.step(fdb, "ffi_refresh", "error", "ffi", "error",
                             t1.elapsed().as_millis() as i64,
@@ -157,7 +157,7 @@ pub async fn refresh_trendlogs(
                 let debug_msg = response_json.get("debug").and_then(|v| v.as_str()).unwrap_or("");
 
                 if debug_msg.contains("empty response") || error_msg.contains("not implemented") {
-                    error!("❌ Action 17 not implemented in C++: {}", debug_msg);
+                    error!("Action 17 not implemented in C++: {}", debug_msg);
                     if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
                         fh.step(fdb, "ffi_refresh", "error", "ffi", "error",
                             t1.elapsed().as_millis() as i64,
@@ -167,7 +167,7 @@ pub async fn refresh_trendlogs(
                     return Err((StatusCode::NOT_IMPLEMENTED, "GET_WEBVIEW_LIST (Action 17) not yet implemented in C++".to_string()));
                 }
 
-                error!("❌ Device refresh failed: {}", error_msg);
+                error!("Device refresh failed: {}", error_msg);
                 if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
                     fh.step(fdb, "ffi_refresh", "error", "ffi", "error",
                         t1.elapsed().as_millis() as i64, error_msg, None).await;
@@ -186,7 +186,7 @@ pub async fn refresh_trendlogs(
                 fh.done(fdb, "ok").await;
             }
 
-            info!("✅ Refreshed {} trendlog(s) from device", count);
+            info!("Refreshed {} trendlog(s) from device", count);
             Ok(Json(RefreshResponse {
                 success: true,
                 message: format!("Refreshed {} trendlog(s) from device", count),
@@ -196,7 +196,7 @@ pub async fn refresh_trendlogs(
             }))
         }
         Err(e) => {
-            error!("❌ Failed to refresh trendlogs: {}", e);
+            error!("Failed to refresh trendlogs: {}", e);
             if let (Some(ref fdb), Some(ref fh)) = (&flow_db_opt, &flow_opt) {
                 fh.step(fdb, "ffi_refresh", "error", "ffi", "error",
                     t1.elapsed().as_millis() as i64, &e, None).await;
@@ -224,7 +224,7 @@ pub async fn save_refreshed_trendlogs(
             match crate::db_connection::establish_t3_device_connection().await {
                 Ok(conn) => conn,
                 Err(_) => {
-                    error!("❌ T3000 local device database unavailable");
+                    error!("T3000 local device database unavailable");
                     return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
                 }
             }
@@ -234,7 +234,7 @@ pub async fn save_refreshed_trendlogs(
     let saved_count = match save_trendlogs_to_db(&db_connection, serial, &payload.items).await {
         Ok(count) => count,
         Err(e) => {
-            error!("❌ Failed to save trendlogs to database: {}", e);
+            error!("Failed to save trendlogs to database: {}", e);
             return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save to database: {}", e)));
         }
     };
@@ -251,7 +251,7 @@ pub async fn save_refreshed_trendlogs(
                     );
                 }
                 Err(e) => {
-                    warn!("⚠️ Center DB mirror for TRENDLOGS/TRENDLOG_INPUTS failed: {}", e);
+                    warn!("Center DB mirror for TRENDLOGS/TRENDLOG_INPUTS failed: {}", e);
                     message = format!(
                         "Saved {} trendlog(s) to local SQLite; Center DB mirror failed: {}",
                         saved_count, e
@@ -259,7 +259,7 @@ pub async fn save_refreshed_trendlogs(
                 }
             }
         } else {
-            warn!("⚠️ Center DB enabled but MSSQL pool unavailable; kept local SQLite save only");
+            warn!("Center DB enabled but MSSQL pool unavailable; kept local SQLite save only");
             message = format!(
                 "Saved {} trendlog(s) to local SQLite; Center DB currently unavailable",
                 saved_count
@@ -267,7 +267,7 @@ pub async fn save_refreshed_trendlogs(
         }
     }
 
-    info!("✅ {}", message);
+    info!("{}", message);
     Ok(Json(SaveResponse {
         success: true,
         message,
@@ -495,7 +495,7 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
             .map(|s| s.to_string());
 
         if trendlog_index.is_none() {
-            error!("⚠️ Skipping item without trendlogId: {:?}", item);
+            error!("Skipping item without trendlogId: {:?}", item);
             continue;
         }
         let trendlog_index = trendlog_index.unwrap();
@@ -509,7 +509,7 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
 
         // Deduplicate: delete extras, keep the first record
         if existing_trendlogs.len() > 1 {
-            info!("🧹 Deduplicating {} records for trendlog_id={}", existing_trendlogs.len(), trendlog_index);
+            info!("Deduplicating {} records for trendlog_id={}", existing_trendlogs.len(), trendlog_index);
             for dup in &existing_trendlogs[1..] {
                 trendlogs::Entity::delete_by_id(dup.id)
                     .exec(db)
@@ -566,14 +566,14 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
                 updated_at: Set(Some(now)),
             };
             new_trendlog.insert(db).await.map_err(|e| format!("Failed to insert trendlog: {}", e))?;
-            info!("✅ Created new trendlog record: serial={}, trendlog_id={}", serial, trendlog_index);
+            info!("Created new trendlog record: serial={}, trendlog_id={}", serial, trendlog_index);
             saved_count += 1;
         }
 
         // Save monitor input points to TRENDLOG_INPUTS
         let item_panel_id = panel_id;
         let raw_inputs = item.get("inputs");
-        info!("🔍 Trendlog {} inputs field type: is_array={}, is_object={}, numInputs={}, raw={:?}",
+        info!("Trendlog {} inputs field type: is_array={}, is_object={}, numInputs={}, raw={:?}",
             trendlog_index,
             raw_inputs.map_or(false, |v| v.is_array()),
             raw_inputs.map_or(false, |v| v.is_object()),
@@ -614,7 +614,7 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
                 let pn = input_val.get("point_number").and_then(|v| v.as_i64()).unwrap_or(0);
                 let panel = input_val.get("panel").and_then(|v| v.as_i64()).unwrap_or(0);
 
-                info!("🔍 Trendlog input[{}]: raw point_type={}, point_number={}, panel={}, full_json={}", idx, pt, pn, panel, input_val);
+                info!("Trendlog input[{}]: raw point_type={}, point_number={}, panel={}, full_json={}", idx, pt, pn, panel, input_val);
 
                 // Only save valid points (point_type > 0)
                 if pt > 0 {
@@ -667,7 +667,7 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
                         _ => fallback_label.clone(),
                     };
 
-                    info!("📝 Trendlog input[{}]: pt={} → type_str={}, pn={}, resolved_label={}, fallback={}", idx, pt, point_type_str, pn, point_label, fallback_label);
+                    info!("Trendlog input[{}]: pt={} → type_str={}, pn={}, resolved_label={}, fallback={}", idx, pt, point_type_str, pn, point_label, fallback_label);
 
                     let input_record = trendlog_inputs::ActiveModel {
                         id: NotSet,
@@ -694,7 +694,7 @@ async fn save_trendlogs_to_db(db: &DatabaseConnection, serial: i32, items: &[Val
                 }
             }
             if input_count > 0 {
-                info!("✅ Saved {} input point(s) for {}", input_count, trendlog_index);
+                info!("Saved {} input point(s) for {}", input_count, trendlog_index);
             }
         }
     }
@@ -706,7 +706,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = refresh_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     tokio::task::spawn_blocking(move || {
         use crate::t3_device::t3_ffi_sync_service::BACNETWEBVIEW_HANDLE_WEBVIEW_MSG_FN;
@@ -741,7 +741,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
                     0 => {
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
 
                         if response.is_empty() || response == "{}" {
                             return Err("Action not implemented in C++ - empty response".to_string());

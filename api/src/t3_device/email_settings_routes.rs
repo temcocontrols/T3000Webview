@@ -18,7 +18,7 @@ use crate::entity::t3_device::email_alarms;
 use crate::t3_device::t3_ffi_sync_service::WebViewMessageType;
 use sea_orm::*;
 
-// ⚠️  C++ has not yet implemented this entry type in GET_WEBVIEW_LIST.
+// C++ has not yet implemented this entry type in GET_WEBVIEW_LIST.
 // When BacnetWebView.cpp adds `case BAC_EMAIL_SETTINGS:` the refresh
 // endpoint will start returning live data automatically.
 const BAC_EMAIL_SETTINGS: i32 = 50;
@@ -99,7 +99,7 @@ async fn get_email_settings(
         .await
     {
         Ok(Some(record)) => {
-            info!("✅ Email settings found for device {}", serial);
+            info!("Email settings found for device {}", serial);
             Ok(Json(json!({ "success": true, "data": record })))
         }
         Ok(None) => Err((
@@ -145,7 +145,7 @@ async fn update_email_settings(
 
         match m.update(&db).await {
             Ok(updated) => {
-                info!("✅ Email settings updated for device {}", serial);
+                info!("Email settings updated for device {}", serial);
                 Ok(Json(EmailSettingsResponse {
                     success: true,
                     message: "Email settings updated successfully".to_string(),
@@ -192,7 +192,7 @@ async fn update_email_settings(
 /// POST /api/t3-device/devices/:serial/settings/email/refresh
 ///
 /// Fires GET_WEBVIEW_LIST (Action 17) with entryType=50.
-/// ⚠️  Returns 503 until C++ BacnetWebView.cpp adds `case BAC_EMAIL_SETTINGS (50)`
+/// Returns 503 until C++ BacnetWebView.cpp adds `case BAC_EMAIL_SETTINGS (50)`
 /// to the GET_WEBVIEW_LIST switch that reads g_email_data / Str_Email_point.
 async fn refresh_email_settings(
     State(state): State<T3AppState>,
@@ -267,7 +267,7 @@ async fn refresh_email_settings(
                 .unwrap_or_default();
 
             let count = items.len() as i32;
-            info!("✅ Refreshed email settings from device ({})", count);
+            info!("Refreshed email settings from device ({})", count);
             Ok(Json(RefreshResponse {
                 success: true,
                 message: format!("Refreshed email settings from device ({} item(s))", count),
@@ -297,7 +297,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = refresh_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     tokio::task::spawn_blocking(|| {
         unsafe {
@@ -335,7 +335,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
                     0 => {
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
                         if response.is_empty() || response == "{}" {
                             return Err("Action not implemented in C++ - empty response".to_string());
                         }

@@ -89,7 +89,7 @@ pub async fn refresh_outputs(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -124,7 +124,7 @@ pub async fn refresh_outputs(
             let response_json: Value = match serde_json::from_str(&response) {
                 Ok(json) => normalise_action17_response(json),
                 Err(e) => {
-                    error!("❌ Failed to parse C++ response: {}", e);
+                    error!("Failed to parse C++ response: {}", e);
                     return Err((
                         StatusCode::INTERNAL_SERVER_ERROR,
                         format!("Invalid response from device: {}", e),
@@ -145,14 +145,14 @@ pub async fn refresh_outputs(
                     .unwrap_or("");
 
                 if debug_msg.contains("empty response") || error_msg.contains("not implemented") {
-                    error!("❌ Action 17 not implemented in C++: {}", debug_msg);
+                    error!("Action 17 not implemented in C++: {}", debug_msg);
                     return Err((
                         StatusCode::NOT_IMPLEMENTED,
                         "GET_WEBVIEW_LIST (Action 17) is not yet implemented in C++. Please add case 17 to BacnetWebView_HandleWebViewMsg in T3000.exe".to_string(),
                     ));
                 }
 
-                error!("❌ Device refresh failed: {}", error_msg);
+                error!("Device refresh failed: {}", error_msg);
                 return Err((StatusCode::INTERNAL_SERVER_ERROR, error_msg.to_string()));
             }
 
@@ -164,7 +164,7 @@ pub async fn refresh_outputs(
 
             let count = items.len() as i32;
 
-            info!("✅ Refreshed {} output(s) from device", count);
+            info!("Refreshed {} output(s) from device", count);
             Ok(Json(RefreshResponse {
                 success: true,
                 message: format!("Refreshed {} output(s) from device", count),
@@ -174,7 +174,7 @@ pub async fn refresh_outputs(
             }))
         }
         Err(e) => {
-            error!("❌ Failed to refresh outputs: {}", e);
+            error!("Failed to refresh outputs: {}", e);
 
             // Provide helpful message if C++ hasn't implemented this action yet
             if e.contains("not implemented") || e.contains("empty response") {
@@ -209,7 +209,7 @@ pub async fn save_refreshed_outputs(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -225,7 +225,7 @@ pub async fn save_refreshed_outputs(
     let saved_count = match save_outputs_to_db(&db_connection, serial, &legacy_rows).await {
         Ok(count) => count,
         Err(e) => {
-            error!("❌ Failed to save outputs to database: {}", e);
+            error!("Failed to save outputs to database: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to save to database: {}", e),
@@ -238,7 +238,7 @@ pub async fn save_refreshed_outputs(
         match save_action17_rows(&db_connection, serial, "OUTPUT", &action_rows).await {
             Ok(count) => saved_count + count as i32,
             Err(e) => {
-                error!("❌ Failed to save refreshed outputs: {}", e);
+                error!("Failed to save refreshed outputs: {}", e);
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Failed to save to database: {}", e),
@@ -247,7 +247,7 @@ pub async fn save_refreshed_outputs(
         }
     };
 
-    info!("✅ Saved {} output(s) to database", saved_count);
+    info!("Saved {} output(s) to database", saved_count);
 
     // Insert DATA_SYNC_METADATA for UI refresh
     let insert_request = InsertSyncMetadataRequest {
@@ -261,7 +261,7 @@ pub async fn save_refreshed_outputs(
     };
 
     if let Err(e) = DataSyncMetadataService::insert_sync_metadata(&db_connection, insert_request).await {
-        error!("❌ Failed to insert OUTPUTS sync metadata: {}", e);
+        error!("Failed to insert OUTPUTS sync metadata: {}", e);
     }
 
     Ok(Json(SaveResponse {
@@ -288,7 +288,7 @@ async fn save_outputs_to_db(
             .map(|v| v as i32);
 
         if output_index.is_none() {
-            error!("⚠️ Skipping item without outputIndex: {:?}", item);
+            error!("Skipping item without outputIndex: {:?}", item);
             continue;
         }
         let output_index = output_index.unwrap();
@@ -343,7 +343,7 @@ async fn save_outputs_to_db(
 
             saved_count += 1;
         } else {
-            error!("⚠️ Output record not found: serial={}, index={}", serial, output_index);
+            error!("Output record not found: serial={}, index={}", serial, output_index);
         }
     }
 
@@ -355,7 +355,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = refresh_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     // Ensure T3000 functions are loaded
     tokio::task::spawn_blocking(|| {
@@ -398,7 +398,7 @@ async fn call_refresh_ffi(action: i32, refresh_json: Value) -> Result<String, St
                         // Success - read response from buffer
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
 
                         // Check if response is empty or minimal (C++ not implemented)
                         if response.is_empty() || response == "{}" {

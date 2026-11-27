@@ -148,7 +148,7 @@ impl T3TrendlogDataService {
     ) -> Result<serde_json::Value, AppError> {
         // Log the start of the request
         let request_info = format!(
-            "🔍 [TrendlogDataService] Starting history query - Device: {}, Panel: {}, Trendlog: {}, Time: {} to {}, Limit: {:?}",
+            "[TrendlogDataService] Starting history query - Device: {}, Panel: {}, Trendlog: {}, Time: {} to {}, Limit: {:?}",
             request.serial_number,
             request.panel_id,
             request.trendlog_id,
@@ -165,7 +165,7 @@ impl T3TrendlogDataService {
                 emit_api_log(
                     db,
                     "info",
-                    "🎉 [TrendlogDataService] History query completed successfully",
+                    "[TrendlogDataService] History query completed successfully",
                 )
                 .await;
                 Ok(result)
@@ -173,7 +173,7 @@ impl T3TrendlogDataService {
             Err(error) => {
                 // Log the error with full context
                 let error_info = format!(
-                    "❌ [TrendlogDataService] History query failed - Device: {}, Panel: {}, Error: {}",
+                    "[TrendlogDataService] History query failed - Device: {}, Panel: {}, Error: {}",
                     request.serial_number,
                     request.panel_id,
                     error
@@ -244,7 +244,7 @@ impl T3TrendlogDataService {
             }
 
             let filter_info = format!(
-                "� [TrendlogDataService] Applied point types filter: {:?}",
+                "[TrendlogDataService] Applied point types filter: {:?}",
                 point_types
             );
             emit_api_log(db, "info", &filter_info).await;
@@ -254,7 +254,7 @@ impl T3TrendlogDataService {
         if let Some(specific_points) = &request.specific_points {
             if !specific_points.is_empty() {
                 let filter_info = format!(
-                    "🎯 [TrendlogDataService] Applying specific points filter: {} points",
+                    "[TrendlogDataService] Applying specific points filter: {} points",
                     specific_points.len()
                 );
                 emit_api_log(db, "info", &filter_info).await;
@@ -271,12 +271,12 @@ impl T3TrendlogDataService {
 
                 sql.push_str(&format!(" AND ({})", point_conditions.join(" OR ")));
 
-                // 🆕 DEBUG: Log the actual specific points being filtered
+                // DEBUG: Log the actual specific points being filtered
                 let debug_points: Vec<String> = specific_points.iter()
                     .map(|p| format!("{}:{}/{}[panel:{}]", p.point_type, p.point_id, p.point_index, p.panel_id))
                     .collect();
                 let debug_info = format!(
-                    "🔍 [TrendlogDataService] Specific points detail: {:?}",
+                    "[TrendlogDataService] Specific points detail: {:?}",
                     debug_points
                 );
                 emit_api_log(db, "info", &debug_info).await;
@@ -293,7 +293,7 @@ impl T3TrendlogDataService {
             applied_time_filter = true;
 
             let time_filter_info = format!(
-                "⏰ [TrendlogDataService] Applied start time filter: {}",
+                "[TrendlogDataService] Applied start time filter: {}",
                 start_time
             );
             emit_api_log(db, "info", &time_filter_info).await;
@@ -305,7 +305,7 @@ impl T3TrendlogDataService {
             applied_time_filter = true;
 
             let time_filter_info = format!(
-                "⏰ [TrendlogDataService] Applied end time filter: {}",
+                "[TrendlogDataService] Applied end time filter: {}",
                 end_time
             );
             emit_api_log(db, "info", &time_filter_info).await;
@@ -319,7 +319,7 @@ impl T3TrendlogDataService {
             params.push(default_start_str.clone().into());
 
             let safety_info = format!(
-                "🛡️ [TrendlogDataService] No time filter provided - applying 24-hour safety limit from: {}",
+                "[TrendlogDataService] No time filter provided - applying 24-hour safety limit from: {}",
                 default_start_str
             );
             emit_api_log(db, "warn", &safety_info).await;
@@ -333,21 +333,21 @@ impl T3TrendlogDataService {
         if let Some(limit) = request.limit {
             sql.push_str(&format!(" LIMIT {}", limit));
             let limit_info = format!(
-                "📊 [TrendlogDataService] Applied result limit: {}",
+                "[TrendlogDataService] Applied result limit: {}",
                 limit
             );
             emit_api_log(db, "info", &limit_info).await;
         } else {
             sql.push_str(&format!(" LIMIT {}", default_limit));
             let safety_info = format!(
-                "🛡️ [TrendlogDataService] No limit provided - applying safety limit: {}",
+                "[TrendlogDataService] No limit provided - applying safety limit: {}",
                 default_limit
             );
             emit_api_log(db, "warn", &safety_info).await;
         }
 
         // Log query execution start
-        emit_api_log(db, "info", "🔄 [TrendlogDataService] Executing JOIN query...").await;
+        emit_api_log(db, "info", "[TrendlogDataService] Executing JOIN query...").await;
 
         let query_start_time = std::time::Instant::now();
 
@@ -361,7 +361,7 @@ impl T3TrendlogDataService {
 
         // Log query completion with performance metrics
         let query_result_info = format!(
-            "📈 [TrendlogDataService] JOIN query completed in {:.3}ms - Retrieved {} records",
+            "[TrendlogDataService] JOIN query completed in {:.3}ms - Retrieved {} records",
             query_duration.as_millis(),
             trendlog_data_list.len()
         );
@@ -378,7 +378,7 @@ impl T3TrendlogDataService {
             }
 
             let distribution_info = format!(
-                "📊 [TrendlogDataService] Data distribution - Total: {}, Unique points: {}, Records per point: {:?}",
+                "[TrendlogDataService] Data distribution - Total: {}, Unique points: {}, Records per point: {:?}",
                 trendlog_data_list.len(),
                 point_counts.len(),
                 point_counts
@@ -413,7 +413,7 @@ impl T3TrendlogDataService {
 
         // Log data formatting completion
         let format_info = format!(
-            "🔄 [TrendlogDataService] Data formatting completed in {:.3}ms - {} data points processed",
+            "[TrendlogDataService] Data formatting completed in {:.3}ms - {} data points processed",
             format_duration.as_millis(),
             formatted_data.len()
         );
@@ -429,7 +429,7 @@ impl T3TrendlogDataService {
 
         // Final success log with comprehensive summary
         let success_summary = format!(
-            "✅ [TrendlogDataService] Request completed successfully - Device: {}, Panel: {}, Records: {}, Specific Points: {}, Time Range: {} to {}",
+            "[TrendlogDataService] Request completed successfully - Device: {}, Panel: {}, Records: {}, Specific Points: {}, Time Range: {} to {}",
             request.serial_number,
             request.panel_id,
             formatted_data.len(),
@@ -443,7 +443,7 @@ impl T3TrendlogDataService {
         if !formatted_data.is_empty() {
             let sample_count = std::cmp::min(3, formatted_data.len());
             let sample_info = format!(
-                "🔍 [TrendlogDataService] Sample data (first {} of {} records):",
+                "[TrendlogDataService] Sample data (first {} of {} records):",
                 sample_count, formatted_data.len()
             );
             emit_api_log(db, "info", &sample_info).await;
@@ -487,7 +487,7 @@ impl T3TrendlogDataService {
     ) -> Result<i32, AppError> {
         // Log the start of save operation
         let save_info = format!(
-            "💾 [TrendlogDataService] Saving realtime data - Device: {}, Panel: {}, Point: {} ({}), Value: {}",
+            "[TrendlogDataService] Saving realtime data - Device: {}, Panel: {}, Point: {} ({}), Value: {}",
             data_point.serial_number,
             data_point.panel_id,
             data_point.point_id,
@@ -529,7 +529,7 @@ impl T3TrendlogDataService {
             Ok(_saved_detail) => {
                 // Log successful save
                 let success_info = format!(
-                    "✅ [TrendlogDataService] Realtime data saved - Parent ID: {}, Point: {}, Time: {}",
+                    "[TrendlogDataService] Realtime data saved - Parent ID: {}, Point: {}, Time: {}",
                     parent_id,
                     data_point.point_id,
                     logging_time_fmt
@@ -540,7 +540,7 @@ impl T3TrendlogDataService {
             Err(error) => {
                 // Log save error
                 let error_info = format!(
-                    "❌ [TrendlogDataService] Failed to save realtime data - Point: {}, Error: {}",
+                    "[TrendlogDataService] Failed to save realtime data - Point: {}, Error: {}",
                     data_point.point_id,
                     error
                 );
@@ -561,7 +561,7 @@ impl T3TrendlogDataService {
             emit_api_log(
                 db,
                 "warn",
-                "⚠️ [TrendlogDataService] Batch save called with empty data_points array",
+                "[TrendlogDataService] Batch save called with empty data_points array",
             )
             .await;
             return Ok(0);
@@ -569,7 +569,7 @@ impl T3TrendlogDataService {
 
         // Log batch save start
         let batch_info = format!(
-            "📦 [TrendlogDataService] Starting batch save - {} data points",
+            "[TrendlogDataService] Starting batch save - {} data points",
             data_points.len()
         );
         emit_api_log(db, "info", &batch_info).await;
@@ -596,14 +596,14 @@ impl T3TrendlogDataService {
         let parent_ids = Self::cache().batch_get_or_create_parents(db, parent_keys).await?;
 
         // Step 2: Create detail records for batch insert
-        // ⚠️ VALIDATION: Skip points with missing/invalid values (fallback zeros not written)
+        // VALIDATION: Skip points with missing/invalid values (fallback zeros not written)
         let detail_records: Vec<trendlog_data_detail::ActiveModel> = data_points.iter()
             .zip(parent_ids.iter())
             .filter_map(|(dp, &parent_id)| {
                 // Skip only if value is completely empty (frontend already filtered fallback zeros via toFiniteNumber)
                 if dp.value.is_empty() {
                     eprintln!(
-                        "⏭️ SKIPPING data point with fallback/empty value - Point: {}, Type: {}",
+                        "SKIPPING data point with fallback/empty value - Point: {}, Type: {}",
                         dp.point_id, dp.point_type
                     );
                     return None; // Skip this point
@@ -636,7 +636,7 @@ impl T3TrendlogDataService {
                     // Log retry info if applicable
                     if retry_count > 0 {
                         let retry_info = format!(
-                            "✅ [TrendlogDataService] Batch save succeeded after {} retries",
+                            "[TrendlogDataService] Batch save succeeded after {} retries",
                             retry_count
                         );
                         emit_api_log(db, "info", &retry_info).await;
@@ -644,14 +644,14 @@ impl T3TrendlogDataService {
 
                     // Log successful batch save
                     let success_info = format!(
-                        "✅ [TrendlogDataService] Batch save completed in {:.3}ms - {} detail records inserted (split-table optimized), Time: {}",
+                        "[TrendlogDataService] Batch save completed in {:.3}ms - {} detail records inserted (split-table optimized), Time: {}",
                         batch_duration.as_millis(),
                         count,
                         logging_time_fmt
                     );
                     emit_api_log(db, "info", &success_info).await;
 
-                    // 🆕 FIX: Removed partitioning check from hot path to prevent database locks
+                    // FIX: Removed partitioning check from hot path to prevent database locks
                     // Partitioning should be handled by a separate background task, not after every batch insert
                     // This was causing "database is locked" errors especially with 308K+ records
 
@@ -670,7 +670,7 @@ impl T3TrendlogDataService {
                         let delay_ms = 100 * (1 << retry_count);
 
                         let retry_info = format!(
-                            "⏳ [TrendlogDataService] Database locked, retrying in {}ms (attempt {}/{})",
+                            "[TrendlogDataService] Database locked, retrying in {}ms (attempt {}/{})",
                             delay_ms,
                             retry_count + 1,
                             max_retries
@@ -685,7 +685,7 @@ impl T3TrendlogDataService {
                         // Non-lock error or max retries reached
                         if is_lock_error {
                             let max_retry_info = format!(
-                                "❌ [TrendlogDataService] Batch save failed after {} retries - database still locked",
+                                "[TrendlogDataService] Batch save failed after {} retries - database still locked",
                                 max_retries
                             );
                             emit_api_log(db, "error", &max_retry_info).await;
@@ -693,7 +693,7 @@ impl T3TrendlogDataService {
 
                         // Log batch save error
                         let error_info = format!(
-                            "❌ [TrendlogDataService] Batch save failed - {} points, Error: {}",
+                            "[TrendlogDataService] Batch save failed - {} points, Error: {}",
                             count,
                             error
                         );
@@ -707,7 +707,7 @@ impl T3TrendlogDataService {
         // If we get here, all retries failed
         if let Some(error) = last_error {
             let final_error = format!(
-                "❌ [TrendlogDataService] Batch save failed permanently after {} retries - {} points",
+                "[TrendlogDataService] Batch save failed permanently after {} retries - {} points",
                 max_retries,
                 count
             );
@@ -728,7 +728,7 @@ impl T3TrendlogDataService {
     ) -> Result<Vec<TrendlogDataPoint>, AppError> {
         // Log recent data request
         let recent_info = format!(
-            "📊 [TrendlogDataService] Getting recent data - Device: {}, Panel: {}, Types: {:?}, Limit: {:?}",
+            "[TrendlogDataService] Getting recent data - Device: {}, Panel: {}, Types: {:?}, Limit: {:?}",
             serial_number,
             panel_id,
             point_types,
@@ -777,7 +777,7 @@ impl T3TrendlogDataService {
             Ok(recent_data) => {
                 // Log successful retrieval
                 let success_info = format!(
-                    "✅ [TrendlogDataService] Recent data retrieved - {} records found",
+                    "[TrendlogDataService] Recent data retrieved - {} records found",
                     recent_data.len()
                 );
                 emit_api_log(db, "info", &success_info).await;
@@ -786,7 +786,7 @@ impl T3TrendlogDataService {
             Err(error) => {
                 // Log error
                 let error_info = format!(
-                    "❌ [TrendlogDataService] Failed to get recent data - Device: {}, Error: {}",
+                    "[TrendlogDataService] Failed to get recent data - Device: {}, Error: {}",
                     serial_number,
                     error
                 );
@@ -837,7 +837,7 @@ impl T3TrendlogDataService {
     ) -> Result<serde_json::Value, AppError> {
         // Log statistics request
         let stats_info = format!(
-            "📈 [TrendlogDataService] Getting data statistics - Device: {}, Panel: {}",
+            "[TrendlogDataService] Getting data statistics - Device: {}, Panel: {}",
             serial_number,
             panel_id
         );
@@ -965,7 +965,7 @@ impl T3TrendlogDataService {
 
         // Log statistics completion
         let completion_info = format!(
-            "✅ [TrendlogDataService] Statistics completed in {:.3}ms - Points: {}, Detail Records: {}, Input: {}, Output: {}, Variable: {}, Latest: {}, LatestSyncInserted: {}",
+            "[TrendlogDataService] Statistics completed in {:.3}ms - Points: {}, Detail Records: {}, Input: {}, Output: {}, Variable: {}, Latest: {}, LatestSyncInserted: {}",
             stats_duration.as_millis(),
             total_points,
             counts.total_count,
@@ -1003,7 +1003,7 @@ impl T3TrendlogDataService {
         panel_id: i32
     ) -> Result<serde_json::Value, AppError> {
         let usage_info = format!(
-            "📊 [TrendlogDataService] Getting data usage - Device: {}, Panel: {}",
+            "[TrendlogDataService] Getting data usage - Device: {}, Panel: {}",
             serial_number, panel_id
         );
         emit_api_log(db, "info", &usage_info).await;
@@ -1082,7 +1082,7 @@ impl T3TrendlogDataService {
         let cutoff_time = Utc::now() - Duration::minutes(request.lookback_minutes as i64);
 
         let smart_info = format!(
-            "🧠 [TrendlogDataService] Smart trendlog query - Device: {}, Panel: {}, Lookback: {}m, Sources: {:?}",
+            "[TrendlogDataService] Smart trendlog query - Device: {}, Panel: {}, Lookback: {}m, Sources: {:?}",
             request.serial_number,
             request.panel_id,
             request.lookback_minutes,
@@ -1177,7 +1177,7 @@ impl T3TrendlogDataService {
         };
 
         let completion_info = format!(
-            "✅ [TrendlogDataService] Smart query completed - Points: {}, HasHistorical: {}, Sources: {:?}",
+            "[TrendlogDataService] Smart query completed - Points: {}, HasHistorical: {}, Sources: {:?}",
             smart_result.total_points,
             smart_result.has_historical_data,
             smart_result.sources_used

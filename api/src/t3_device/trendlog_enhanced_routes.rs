@@ -495,7 +495,7 @@ pub async fn get_view_selections_frontend(
     // ── SeaORM branch ──
     let db = get_t3_device_conn!(app_state);
 
-    println!("🔧 API: Loading view selections with device context: serial_number={}, panel_id={}, trendlog_id={}, view_number={}",
+    println!("API: Loading view selections with device context: serial_number={}, panel_id={}, trendlog_id={}, view_number={}",
              serial_number, panel_id, trendlog_id, view_number);
 
     let selections = TrendLogFFIService::get_view_selections_with_panel(
@@ -544,9 +544,9 @@ pub async fn save_view_selections_frontend(
     // ── SeaORM branch ──
     let db = get_t3_device_conn!(app_state);
 
-    println!("🔧 API: Saving view selections with device context: serial_number={}, panel_id={}, trendlog_id={}, view_number={}",
+    println!("API: Saving view selections with device context: serial_number={}, panel_id={}, trendlog_id={}, view_number={}",
              serial_number, panel_id, trendlog_id, view_number);
-    println!("🔧 API: Request body received: selections count = {}", request.selections.len());
+    println!("API: Request body received: selections count = {}", request.selections.len());
 
     use std::io::{self, Write};
     io::stdout().flush().unwrap(); // Force flush stdout

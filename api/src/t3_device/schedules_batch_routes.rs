@@ -65,7 +65,7 @@ pub async fn batch_save_schedules(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -78,7 +78,7 @@ pub async fn batch_save_schedules(
         match execute_batch_save(&db_connection, serial, &payload).await {
             Ok(response) => {
                 if attempt > 1 {
-                    info!("✅ Batch save succeeded on attempt {}/{}", attempt, max_retries);
+                    info!("Batch save succeeded on attempt {}/{}", attempt, max_retries);
                 }
                 return Ok(Json(response));
             }
@@ -87,12 +87,12 @@ pub async fn batch_save_schedules(
                 if e.contains("database is locked") {
                     if attempt < max_retries {
                         let delay_ms = 100 * (2_u64.pow(attempt - 1));
-                        info!("⏳ Database locked (attempt {}/{}), retrying in {}ms", attempt, max_retries, delay_ms);
+                        info!("Database locked (attempt {}/{}), retrying in {}ms", attempt, max_retries, delay_ms);
                         tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
                         continue;
                     }
                 }
-                error!("❌ Batch save failed on attempt {}/{}: {}", attempt, max_retries, e);
+                error!("Batch save failed on attempt {}/{}: {}", attempt, max_retries, e);
                 if attempt < max_retries {
                     break;
                 } else {

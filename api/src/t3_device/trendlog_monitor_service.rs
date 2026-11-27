@@ -168,11 +168,11 @@ impl TrendlogMonitorService {
 
     /// Get trendlog list for a device using new C++ export function
     pub async fn get_trendlog_list(&self, panel_id: i32) -> Result<TrendlogListResponse, AppError> {
-        self.emit_log("info", &format!("🔍 Getting trendlog list for panel_id: {}", panel_id)).await;
+        self.emit_log("info", &format!("Getting trendlog list for panel_id: {}", panel_id)).await;
 
         // Check if FFI function is available
         if let Some(ffi_fn) = self.get_trendlog_list_fn {
-            self.emit_log("info", "✅ Using NEW C++ export function: BacnetWebView_GetTrendlogList").await;
+            self.emit_log("info", "Using NEW C++ export function: BacnetWebView_GetTrendlogList").await;
             // Prepare buffer for C++ response
             let mut buffer = vec![0u8; self.buffer_size];
 
@@ -186,19 +186,19 @@ impl TrendlogMonitorService {
             };
 
             if result > 0 {
-                self.emit_log("info", &format!("✅ C++ export function returned {} bytes", result)).await;
+                self.emit_log("info", &format!("C++ export function returned {} bytes", result)).await;
 
                 // Convert buffer to string (result contains actual length)
                 let json_str = unsafe {
                     std::str::from_utf8_unchecked(&buffer[..result as usize])
                 };
 
-                self.emit_log("info", &format!("📋 C++ Response: {}", json_str)).await;
+                self.emit_log("info", &format!("C++ Response: {}", json_str)).await;
 
                 // Parse JSON response from C++
                 match serde_json::from_str::<TrendlogListResponse>(json_str) {
                     Ok(response) => {
-                        self.emit_log("info", &format!("🎉 Successfully retrieved {} trendlogs for panel_id {} via NEW C++ exports", response.trendlogs.len(), panel_id)).await;
+                        self.emit_log("info", &format!("Successfully retrieved {} trendlogs for panel_id {} via NEW C++ exports", response.trendlogs.len(), panel_id)).await;
                         return Ok(response);
                     },
                     Err(e) => {
@@ -209,7 +209,7 @@ impl TrendlogMonitorService {
         }
 
         // Fallback: return mock/empty response when FFI is not available
-        self.emit_log("warn", &format!("⚠️ NEW C++ export functions NOT available for panel_id {}, returning empty fallback data", panel_id)).await;
+        self.emit_log("warn", &format!("NEW C++ export functions NOT available for panel_id {}, returning empty fallback data", panel_id)).await;
 
         Ok(TrendlogListResponse {
             success: true,
@@ -287,14 +287,14 @@ impl TrendlogMonitorService {
             let result = unsafe { sync_fn(panel_id) };
 
             if result >= 0 {
-                self.emit_log("info", &format!("✅ Synced {} monitors to g_monitor_data[{}]", result, panel_id)).await;
+                self.emit_log("info", &format!("Synced {} monitors to g_monitor_data[{}]", result, panel_id)).await;
                 Ok(result)
             } else {
-                self.emit_log("warn", &format!("⚠️ Failed to sync monitor data for panel_id {}: returned {}", panel_id, result)).await;
+                self.emit_log("warn", &format!("Failed to sync monitor data for panel_id {}: returned {}", panel_id, result)).await;
                 Err(AppError::NotFound(format!("Failed to sync monitor data for panel_id {}", panel_id)))
             }
         } else {
-            self.emit_log("warn", "⚠️ BacnetWebView_SyncMonitorData function not available").await;
+            self.emit_log("warn", "BacnetWebView_SyncMonitorData function not available").await;
             // Not a fatal error, just means the function isn't available
             Ok(0)
         }
@@ -386,7 +386,7 @@ impl TrendlogMonitorService {
             let (first, duplicates) = existing_records.split_first().unwrap();
             if !duplicates.is_empty() {
                 let duplicate_ids: Vec<i32> = duplicates.iter().map(|d| d.id).collect();
-                emit_monitor_log(db, "warn", &format!("🧹 Cleaning up {} duplicate trendlog records for {}: ids={:?}",
+                emit_monitor_log(db, "warn", &format!("Cleaning up {} duplicate trendlog records for {}: ids={:?}",
                     duplicates.len(), trendlog_id, duplicate_ids)).await;
                 trendlogs::Entity::delete_many()
                     .filter(trendlogs::Column::Id.is_in(duplicate_ids))
@@ -544,18 +544,18 @@ impl TrendlogMonitorService {
             match self.sync_trendlogs_to_database(panel_id, serial_number).await {
                 Ok(count) => {
                     total_synced += count;
-                    self.emit_log("info", &format!("✅ Synced {} trendlogs for device SerialNumber={}, PanelId={}",
+                    self.emit_log("info", &format!("Synced {} trendlogs for device SerialNumber={}, PanelId={}",
                         count, serial_number, panel_id)).await;
                 },
                 Err(e) => {
                     // Log error but continue with other devices
-                    self.emit_log("warn", &format!("⚠️ Failed to sync trendlogs for device SerialNumber={}, PanelId={}: {}",
+                    self.emit_log("warn", &format!("Failed to sync trendlogs for device SerialNumber={}, PanelId={}: {}",
                         serial_number, panel_id, e)).await;
                 }
             }
         }
 
-        self.emit_log("info", &format!("✅ Total trendlogs synced: {} across {} devices", total_synced, all_devices.len())).await;
+        self.emit_log("info", &format!("Total trendlogs synced: {} across {} devices", total_synced, all_devices.len())).await;
 
         Ok(total_synced)
     }

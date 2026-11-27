@@ -59,7 +59,7 @@ pub async fn update_graphic_full(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -114,15 +114,15 @@ pub async fn update_graphic_full(
     let updated_fields_clone = updated_fields.clone();
     match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_response) => {
-            info!("✅ Full graphics record updated in device");
+            info!("Full graphics record updated in device");
 
             // Now save to database
             match save_graphic_to_db(&db_connection, serial, index, &payload).await {
                 Ok(_) => {
-                    info!("✅ Graphics record saved to database");
+                    info!("Graphics record saved to database");
                 }
                 Err(e) => {
-                    error!("⚠️ Failed to save to database (device updated successfully): {}", e);
+                    error!("Failed to save to database (device updated successfully): {}", e);
                 }
             }
 
@@ -138,7 +138,7 @@ pub async fn update_graphic_full(
             })))
         }
         Err(e) => {
-            error!("❌ Failed to update graphic: {}", e);
+            error!("Failed to update graphic: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to update graphics record: {}", e),
@@ -195,7 +195,7 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = input_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     // Ensure T3000 functions are loaded
     tokio::task::spawn_blocking(|| {
@@ -238,7 +238,7 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
                         // Success - read response from buffer
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
 
                         if response.is_empty() || response == "{}" {
                             return Err("Action not implemented in C++ - empty response".to_string());

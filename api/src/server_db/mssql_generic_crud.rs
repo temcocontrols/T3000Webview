@@ -604,7 +604,7 @@ fn result_sets_to_json(
 
 /// Extract a tiberius column value as serde_json::Value.
 ///
-/// ⚠️  tiberius `Row::get::<f64,_>()` panics internally when a column is
+/// tiberius `Row::get::<f64,_>()` panics internally when a column is
 /// typed as INT (I32) with a NULL value — see `I32(None) → f64` panic.
 /// We wrap float conversions in `catch_unwind` so one bad cell never
 /// crashes the server.

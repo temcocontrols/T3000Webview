@@ -60,7 +60,7 @@ pub async fn update_array_full(
         match crate::db_connection::establish_t3_device_connection().await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("❌ T3000 local device database unavailable: {}", e);
+                error!("T3000 local device database unavailable: {}", e);
                 return Err((StatusCode::SERVICE_UNAVAILABLE, "T3000 device database unavailable".to_string()));
             }
         }
@@ -107,7 +107,7 @@ pub async fn update_array_full(
     // Call FFI function
     match call_update_ffi(WebViewMessageType::UPDATE_WEBVIEW_LIST as i32, input_json).await {
         Ok(_response) => {
-            info!("✅ Full array record updated successfully");
+            info!("Full array record updated successfully");
             Ok(Json(json!({
                 "success": true,
                 "message": "Array point updated successfully",
@@ -119,7 +119,7 @@ pub async fn update_array_full(
             })))
         }
         Err(e) => {
-            error!("❌ Failed to update array: {}", e);
+            error!("Failed to update array: {}", e);
 
             // Provide helpful message if C++ hasn't implemented this action yet
             if e.contains("not implemented") || e.contains("empty response") {
@@ -142,7 +142,7 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
     use crate::t3_device::t3_ffi_sync_service::load_t3000_function;
 
     let input_str = input_json.to_string();
-    info!("📤 Sending to C++ (Action {}): {}", action, input_str);
+    info!("Sending to C++ (Action {}): {}", action, input_str);
 
     // Ensure T3000 functions are loaded
     tokio::task::spawn_blocking(|| {
@@ -185,7 +185,7 @@ async fn call_update_ffi(action: i32, input_json: Value) -> Result<String, Strin
                         // Success - read response from buffer
                         let null_pos = buffer.iter().position(|&b| b == 0).unwrap_or(buffer.len());
                         let response = String::from_utf8_lossy(&buffer[..null_pos]).to_string();
-                        info!("📥 C++ Response (Action {}): {}", action, response);
+                        info!("C++ Response (Action {}): {}", action, response);
 
                         // Check if response is empty or minimal (C++ not implemented)
                         if response.is_empty() || response == "{}" {
