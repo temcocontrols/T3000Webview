@@ -35,7 +35,7 @@ struct MockDataPoint {
 fn test_ffi_functions_exist() {
     // This test verifies that the FFI concepts can be modeled
     // When C++ functions are available, these mock types would be replaced
-    println!("✅ FFI function concepts verified");
+    println!("FFI function concepts verified");
     assert!(true);
 }
 
@@ -56,7 +56,7 @@ fn test_data_point_creation() {
     assert_eq!(point.value, 72.5);
     assert_eq!(point.status, "OK");
 
-    println!("✅ Mock data point creation test passed");
+    println!("Mock data point creation test passed");
 }
 
 #[test]
@@ -68,17 +68,17 @@ fn test_point_type_variants() {
 
     // This test ensures all enum variants are available
     match input_point {
-        MockPointType::Input => println!("✅ Input point type available"),
+        MockPointType::Input => println!("Input point type available"),
         _ => panic!("Input point type not available"),
     }
 
     match output_point {
-        MockPointType::Output => println!("✅ Output point type available"),
+        MockPointType::Output => println!("Output point type available"),
         _ => panic!("Output point type not available"),
     }
 
     match variable_point {
-        MockPointType::Variable => println!("✅ Variable point type available"),
+        MockPointType::Variable => println!("Variable point type available"),
         _ => panic!("Variable point type not available"),
     }
 }
@@ -90,12 +90,12 @@ fn test_data_source_variants() {
     let modbus_tcp = MockDataSource::ModbusTcp;
 
     match cpp_direct {
-        MockDataSource::CppDirect => println!("✅ CppDirect data source available"),
+        MockDataSource::CppDirect => println!("CppDirect data source available"),
         _ => panic!("CppDirect data source not available"),
     }
 
     match modbus_tcp {
-        MockDataSource::ModbusTcp => println!("✅ ModbusTcp data source available"),
+        MockDataSource::ModbusTcp => println!("ModbusTcp data source available"),
         _ => panic!("ModbusTcp data source not available"),
     }
 }
@@ -140,5 +140,5 @@ fn test_data_point_with_units() {
     assert_eq!(pressure_point.units, Some("Pascals".to_string()));
     assert_eq!(flow_point.units, Some("p/min".to_string()));
 
-    println!("✅ Data points with corrected units created successfully");
+    println!("Data points with corrected units created successfully");
 }

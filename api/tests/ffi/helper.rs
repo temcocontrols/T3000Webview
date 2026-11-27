@@ -17,18 +17,18 @@ type T3000IsDeviceOnlineFn = unsafe extern "C" fn(c_int) -> c_int;
 
 /// Simple FFI availability test
 pub fn test_ffi_availability() -> Result<String, AppError> {
-    let _ = write_structured_log_with_level("T3_FFI_TEST", "🔍 Starting FFI availability test...", LogLevel::Info);
+    let _ = write_structured_log_with_level("T3_FFI_TEST", "Starting FFI availability test...", LogLevel::Info);
 
     #[cfg(target_os = "windows")]
     unsafe {
         // Test 1: Check if T3000.exe is in memory
         let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
         if handle.is_null() {
-            let error_msg = "❌ T3000.exe is not running in memory. Please start T3000 Building Automation software.";
+            let error_msg = "T3000.exe is not running in memory. Please start T3000 Building Automation software.";
             let _ = write_structured_log_with_level("T3_FFI_TEST", error_msg, LogLevel::Error);
             return Err(AppError::InternalError(error_msg.to_string()));
         }
-        let _ = write_structured_log_with_level("T3_FFI_TEST", "✅ T3000.exe found in memory", LogLevel::Info);
+        let _ = write_structured_log_with_level("T3_FFI_TEST", "T3000.exe found in memory", LogLevel::Info);
 
         // Test 2: Check if key FFI functions are available
         let test_functions = [
@@ -47,15 +47,15 @@ pub fn test_ffi_availability() -> Result<String, AppError> {
             let func_ptr = GetProcAddress(handle, func_name_cstr.as_ptr());
             if func_ptr.is_null() {
                 missing_functions.push(func_name.to_string());
-                let _ = write_structured_log_with_level("T3_FFI_TEST", &format!("❌ Function '{}' not found", func_name), LogLevel::Warn);
+                let _ = write_structured_log_with_level("T3_FFI_TEST", &format!("Function '{}' not found", func_name), LogLevel::Warn);
             } else {
                 available_functions.push(func_name.to_string());
-                let _ = write_structured_log_with_level("T3_FFI_TEST", &format!("✅ Function '{}' available", func_name), LogLevel::Info);
+                let _ = write_structured_log_with_level("T3_FFI_TEST", &format!("Function '{}' available", func_name), LogLevel::Info);
             }
         }
 
         let result_msg = format!(
-            "FFI Test Results:\n✅ Available functions ({}): {}\n❌ Missing functions ({}): {}",
+            "FFI Test Results:\nAvailable functions ({}): {}\nMissing functions ({}): {}",
             available_functions.len(), available_functions.join(", "),
             missing_functions.len(), if missing_functions.is_empty() { "None".to_string() } else { missing_functions.join(", ") }
         );
@@ -63,7 +63,7 @@ pub fn test_ffi_availability() -> Result<String, AppError> {
         let _ = write_structured_log_with_level("T3_FFI_TEST", &result_msg, LogLevel::Info);
 
         if missing_functions.is_empty() {
-            let _ = write_structured_log_with_level("T3_FFI_TEST", "🎉 All FFI functions are available!", LogLevel::Info);
+            let _ = write_structured_log_with_level("T3_FFI_TEST", "All FFI functions are available!", LogLevel::Info);
         }
 
         Ok(result_msg)
@@ -77,7 +77,7 @@ pub fn test_ffi_availability() -> Result<String, AppError> {
 
 /// Test device connectivity via FFI
 pub fn test_device_connection(device_id: u32) -> Result<String, AppError> {
-    let _ = write_structured_log_with_level("T3_FFI_TEST", &format!("🔍 Testing device {} connection...", device_id), LogLevel::Info);
+    let _ = write_structured_log_with_level("T3_FFI_TEST", &format!("Testing device {} connection...", device_id), LogLevel::Info);
 
     #[cfg(target_os = "windows")]
     unsafe {
@@ -95,9 +95,9 @@ pub fn test_device_connection(device_id: u32) -> Result<String, AppError> {
         let result = func(device_id as c_int);
 
         let status_msg = if result == 1 {
-            format!("✅ Device {} is ONLINE", device_id)
+            format!("Device {} is ONLINE", device_id)
         } else {
-            format!("❌ Device {} is OFFLINE", device_id)
+            format!("Device {} is OFFLINE", device_id)
         };
 
         let _ = write_structured_log_with_level("T3_FFI_TEST", &status_msg, LogLevel::Info);
@@ -112,7 +112,7 @@ pub fn test_device_connection(device_id: u32) -> Result<String, AppError> {
 
 /// Get available devices via FFI (if such function exists)
 pub fn test_device_enumeration() -> Result<String, AppError> {
-    let _ = write_structured_log_with_level("T3_FFI_TEST", "🔍 Testing device enumeration...", LogLevel::Info);
+    let _ = write_structured_log_with_level("T3_FFI_TEST", "Testing device enumeration...", LogLevel::Info);
 
     // Test common device IDs (1-10)
     let mut online_devices = Vec::new();
@@ -130,7 +130,7 @@ pub fn test_device_enumeration() -> Result<String, AppError> {
     }
 
     let result_msg = format!(
-        "Device Enumeration Results:\n✅ Online devices: {:?}\n❌ Offline devices: {:?}",
+        "Device Enumeration Results:\nOnline devices: {:?}\nOffline devices: {:?}",
         if online_devices.is_empty() { vec!["None".to_string()] } else { online_devices.iter().map(|d| d.to_string()).collect() },
         if offline_devices.is_empty() { vec!["None".to_string()] } else { offline_devices.iter().map(|d| d.to_string()).collect() }
     );

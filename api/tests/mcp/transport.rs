@@ -36,7 +36,7 @@ async fn mcp_router() -> Option<Router> {
     let db = match sea_orm::Database::connect(opt).await {
         Ok(db) => db,
         Err(e) => {
-            println!("⚠️  SKIP mcp transport tests — in-memory DB unavailable: {}", e);
+            println!("SKIP mcp transport tests — in-memory DB unavailable: {}", e);
             return None;
         }
     };

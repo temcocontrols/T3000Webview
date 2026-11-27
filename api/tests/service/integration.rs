@@ -16,7 +16,7 @@ fn test_service_configuration() {
     assert_eq!(config.timeout_seconds, 10);
     assert_eq!(config.retry_attempts, 3);
 
-    println!("✅ Service configuration test passed");
+    println!("Service configuration test passed");
 }
 
 #[tokio::test]
@@ -33,10 +33,10 @@ async fn test_service_creation() {
     match T3000MainService::new(config).await {
         Ok(service) => {
             assert!(!service.is_running());
-            println!("✅ Service creation test passed");
+            println!("Service creation test passed");
         }
         Err(e) => {
-            println!("⚠️ Service creation failed (expected in test environment): {}", e);
+            println!("Service creation failed (expected in test environment): {}", e);
             // This is expected in test environment without proper database setup
         }
     }
@@ -50,10 +50,10 @@ fn test_json_parsing_empty_response() {
         Ok(response) => {
             assert_eq!(response.action, "LOGGING_DATA_RES");
             assert_eq!(response.devices.len(), 0);
-            println!("✅ Empty JSON parsing test passed");
+            println!("Empty JSON parsing test passed");
         }
         Err(e) => {
-            panic!("❌ Failed to parse empty JSON: {:?}", e);
+            panic!("Failed to parse empty JSON: {:?}", e);
         }
     }
 }
@@ -64,10 +64,10 @@ fn test_json_parsing_malformed() {
 
     match T3000MainService::parse_logging_response(malformed_json) {
         Ok(_) => {
-            panic!("❌ Should have failed to parse malformed JSON");
+            panic!("Should have failed to parse malformed JSON");
         }
         Err(_) => {
-            println!("✅ Malformed JSON correctly rejected");
+            println!("Malformed JSON correctly rejected");
         }
     }
 }
@@ -114,10 +114,10 @@ fn test_multiple_devices_parsing() {
             assert_eq!(device2.device_info.panel_name, "Device2");
             assert_eq!(device2.device_info.panel_serial_number, 67890);
 
-            println!("✅ Multiple devices parsing test passed");
+            println!("Multiple devices parsing test passed");
         }
         Err(e) => {
-            panic!("❌ Failed to parse multiple devices JSON: {:?}", e);
+            panic!("Failed to parse multiple devices JSON: {:?}", e);
         }
     }
 }
@@ -193,10 +193,10 @@ fn test_device_with_mixed_point_types() {
             assert_eq!(variable_point.range, 4); // Should map to "Pascals"
             assert_eq!(variable_point.value, 1013.25);
 
-            println!("✅ Mixed point types parsing test passed");
+            println!("Mixed point types parsing test passed");
         }
         Err(e) => {
-            panic!("❌ Failed to parse mixed points JSON: {:?}", e);
+            panic!("Failed to parse mixed points JSON: {:?}", e);
         }
     }
 }

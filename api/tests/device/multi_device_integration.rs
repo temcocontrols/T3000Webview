@@ -5,7 +5,7 @@ use t3_webview_api::t3_device::t3_ffi_sync_service::T3000MainService;
 
 #[test]
 fn test_basic_functionality() {
-    println!("✅ Basic test working - multi-device implementation verified");
+    println!("Basic test working - multi-device implementation verified");
     assert_eq!(2 + 2, 4);
 }
 
@@ -31,9 +31,9 @@ fn test_multi_device_json_parsing() {
     // Test the parsing function
     match T3000MainService::parse_logging_response(test_json) {
         Ok(response) => {
-            println!("✅ JSON parsing successful!");
-            println!("📱 Action: {}", response.action);
-            println!("🏠 Total devices: {}", response.devices.len());
+            println!("JSON parsing successful!");
+            println!("Action: {}", response.action);
+            println!("Total devices: {}", response.devices.len());
 
             assert_eq!(response.action, "LOGGING_DATA_RES");
             assert_eq!(response.devices.len(), 1);
@@ -43,10 +43,10 @@ fn test_multi_device_json_parsing() {
             assert_eq!(device.device_info.panel_name, "TestDevice");
             assert_eq!(device.device_info.panel_serial_number, 12345);
 
-            println!("🎉 MULTI-DEVICE TEST PASSED!");
+            println!("MULTI-DEVICE TEST PASSED!");
         }
         Err(e) => {
-            panic!("❌ Failed to parse JSON: {:?}", e);
+            panic!("Failed to parse JSON: {:?}", e);
         }
     }
 }
@@ -54,9 +54,9 @@ fn test_multi_device_json_parsing() {
 #[test]
 fn test_cpp_variable_collision_fix_simulation() {
     // This test simulates that the C++ variable collision issue is fixed
-    println!("🔧 C++ Variable Collision Fix Verification:");
-    println!("✅ OLD CODE (BROKEN): for(int i=0; i<panels; i++) {{ for(int i=0; i<inputs; i++) }}");
-    println!("✅ NEW CODE (FIXED):  for(int panel_idx=0; panel_idx<panels; panel_idx++) {{ for(int input_idx=0; input_idx<inputs; input_idx++) }}");
+    println!("C++ Variable Collision Fix Verification:");
+    println!("OLD CODE (BROKEN): for(int i=0; i<panels; i++) {{ for(int i=0; i<inputs; i++) }}");
+    println!("NEW CODE (FIXED):  for(int panel_idx=0; panel_idx<panels; panel_idx++) {{ for(int input_idx=0; input_idx<inputs; input_idx++) }}");
 
     // Simulate the fix working correctly
     let simulated_devices = vec![
@@ -64,13 +64,13 @@ fn test_cpp_variable_collision_fix_simulation() {
         ("Device2", 67890, "192.168.1.101")
     ];
 
-    println!("🏠 Simulated multi-device results:");
+    println!("Simulated multi-device results:");
     for (i, (name, serial, ip)) in simulated_devices.iter().enumerate() {
         println!("  Device {}: {} (Serial: {}, IP: {})", i + 1, name, serial, ip);
     }
 
     assert_eq!(simulated_devices.len(), 2, "Should return both devices, not just the last one");
-    println!("✅ Variable collision fix confirmed - both devices returned!");
+    println!("Variable collision fix confirmed - both devices returned!");
 }
 
 #[test]
@@ -134,10 +134,10 @@ fn test_device_data_parsing_with_points() {
             assert_eq!(variable_point.value, 123.0);
             assert_eq!(variable_point.range, 24); // Should map to "p/min"
 
-            println!("✅ Multi-device point parsing test passed!");
+            println!("Multi-device point parsing test passed!");
         }
         Err(e) => {
-            panic!("❌ Failed to parse JSON with points: {:?}", e);
+            panic!("Failed to parse JSON with points: {:?}", e);
         }
     }
 }

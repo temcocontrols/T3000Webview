@@ -1,17 +1,17 @@
-﻿//! Documentation Tool Tests 鈥?doc_list, doc_read
+﻿//! Documentation Tool Tests — doc_list, doc_read
 //!
 //! These tools serve T3000 product documentation. They require no database.
 
 use crate::mcp::common;
 
-// 鈺愨晲鈺?Tool existence 鈺愨晲鈺?
+// ═══ Tool existence ═══
 #[test]
 fn test_doc_tools_exist() {
     assert!(common::all_tools().iter().any(|t| t.name == "t3000_doc_list"));
     assert!(common::all_tools().iter().any(|t| t.name == "t3000_doc_read"));
 }
 
-// 鈺愨晲鈺?t3000_doc_list 鈺愨晲鈺?
+// ═══ t3000_doc_list ═══
 #[test]
 fn test_doc_list_no_required_params() {
     let tool = common::all_tools()
@@ -35,7 +35,7 @@ fn test_doc_list_empty_properties() {
     assert!(props.unwrap().is_empty(), "doc_list should have empty properties");
 }
 
-// 鈺愨晲鈺?t3000_doc_read 鈺愨晲鈺?
+// ═══ t3000_doc_read ═══
 #[test]
 fn test_doc_read_requires_path() {
     let tool = common::all_tools()
@@ -65,14 +65,14 @@ fn test_doc_read_path_is_string() {
     assert_eq!(path_type, Some("string"), "path must be string type");
 }
 
-// 鈺愨晲鈺?Live calls (the doc server must be running) 鈺愨晲鈺?
+// ═══ Live calls (the doc server must be running) ═══
 #[tokio::test]
 async fn test_doc_list_returns_sections() {
     common::with_db_or_skip("doc_list_returns_sections", |db| async move {
         let result = match common::execute_tool_json("t3000_doc_list", &serde_json::json!({}), &db).await {
             Ok(result) => result,
             Err(e) => {
-                println!("doc server unavailable 鈥?skipping: {}", e);
+                println!("doc server unavailable — skipping: {}", e);
                 return;
             }
         };
@@ -108,12 +108,12 @@ async fn test_doc_read_returns_the_page_named_by_doc_list() {
         let index = match common::execute_tool_json("t3000_doc_list", &serde_json::json!({}), &db).await {
             Ok(result) => result,
             Err(e) => {
-                println!("doc server unavailable 鈥?skipping: {}", e);
+                println!("doc server unavailable — skipping: {}", e);
                 return;
             }
         };
 
-        // Read the first page the index advertises 鈥?that is the contract.
+        // Read the first page the index advertises — that is the contract.
         let path = index["sections"]
             .as_array()
             .and_then(|s| s.first())

@@ -152,7 +152,7 @@ pub async fn create_t3_app_state() -> Result<T3AppState, Box<dyn std::error::Err
             // Log to structured log for headless service with specific database info
             let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
             let error_message = format!(
-                "[{}] ❌ Failed to connect to PRIMARY database\n\
+                "[{}] Failed to connect to PRIMARY database\n\
                 [{}] Database URL: {}\n\
                 [{}] Error details: {:?}",
                 timestamp, timestamp, DATABASE_URL.as_str(), timestamp, e

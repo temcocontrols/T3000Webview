@@ -252,7 +252,7 @@ async fn test_real_network_scan() {
     println!("Adapters scanned:  {}", result.adapters_scanned);
     println!("Local IPs: {:?}", result.local_ips);
     for w in &result.warnings {
-        println!("  ⚠  {}", w);
+        println!("  {}", w);
     }
     println!("Devices found: {}", result.devices.len());
     if result.devices.is_empty() {
@@ -333,7 +333,7 @@ async fn test_real_full_scan() {
         );
     }
     for w in &full.warnings {
-        println!("  ⚠  {}", w);
+        println!("  {}", w);
     }
     println!("=== Timing complete ===\n");
 }

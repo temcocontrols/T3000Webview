@@ -16,7 +16,7 @@ type T3000IsDeviceOnlineFn = unsafe extern "C" fn(c_int) -> c_int;
 type T3000ConnectToDeviceFn = unsafe extern "C" fn(c_int) -> c_int;
 
 fn main() {
-    println!("🔧 T3000 FFI Direct Test");
+    println!("T3000 FFI Direct Test");
     println!("========================");
     println!("Expected T3000 path: D:\\1025\\github\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug");
     println!("");
@@ -32,7 +32,7 @@ fn main() {
 
     #[cfg(not(target_os = "windows"))]
     {
-        println!("❌ FFI testing is only supported on Windows");
+        println!("FFI testing is only supported on Windows");
     }
 
     println!("");
@@ -43,7 +43,7 @@ fn main() {
 
 #[cfg(target_os = "windows")]
 fn check_t3000_processes() {
-    println!("🔍 Checking for T3000 processes...");
+    println!("Checking for T3000 processes...");
 
     // Use tasklist to find T3000 processes
     match Command::new("tasklist")
@@ -53,7 +53,7 @@ fn check_t3000_processes() {
         Ok(output) => {
             let stdout = String::from_utf8_lossy(&output.stdout);
             if stdout.contains("T3000.exe") {
-                println!("✅ T3000.exe process found in task list");
+                println!("T3000.exe process found in task list");
                 // Try to extract more details
                 for line in stdout.lines() {
                     if line.contains("T3000.exe") && !line.contains("Image Name") {
@@ -61,40 +61,40 @@ fn check_t3000_processes() {
                     }
                 }
             } else {
-                println!("❌ T3000.exe process not found in task list");
+                println!("T3000.exe process not found in task list");
                 println!("   Make sure T3000.exe is running from:");
                 println!("   D:\\1025\\github\\temcocontrols\\T3000_Building_Automation_System\\T3000 Output\\Debug");
             }
         }
         Err(e) => {
-            println!("⚠️  Could not check process list: {}", e);
+            println!("Could not check process list: {}", e);
         }
     }
 }
 
 #[cfg(target_os = "windows")]
 fn test_ffi_availability() {
-    println!("🔍 Testing FFI Availability...");
+    println!("Testing FFI Availability...");
 
     unsafe {
         // Test 1: Check if T3000.exe is in memory using GetModuleHandleA
         let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
         if handle.is_null() {
-            println!("❌ T3000.exe module not found via GetModuleHandleA");
+            println!("T3000.exe module not found via GetModuleHandleA");
 
             // Test 2: Try loading T3000.exe directly
-            println!("🔄 Trying to load T3000.exe directly...");
+            println!("Trying to load T3000.exe directly...");
             let direct_handle = LoadLibraryA(b"T3000.exe\0".as_ptr());
             if direct_handle.is_null() {
-                println!("❌ Could not load T3000.exe directly");
+                println!("Could not load T3000.exe directly");
                 println!("   This might be normal - T3000.exe may be running as a separate process");
                 println!("   FFI typically requires T3000.exe to be running in the same process space");
                 return;
             } else {
-                println!("✅ T3000.exe loaded directly");
+                println!("T3000.exe loaded directly");
             }
         } else {
-            println!("✅ T3000.exe found in memory via GetModuleHandleA");
+            println!("T3000.exe found in memory via GetModuleHandleA");
         }
 
         // Test 2: Check FFI functions
@@ -111,35 +111,35 @@ fn test_ffi_availability() {
             let func_name_cstr = format!("{}\0", func_name);
             let func_ptr = GetProcAddress(handle, func_name_cstr.as_ptr());
             if func_ptr.is_null() {
-                println!("❌ Function '{}' not found", func_name);
+                println!("Function '{}' not found", func_name);
             } else {
-                println!("✅ Function '{}' available", func_name);
+                println!("Function '{}' available", func_name);
                 available_count += 1;
             }
         }
 
         if available_count == test_functions.len() {
-            println!("🎉 All {} FFI functions are available!", available_count);
+            println!("All {} FFI functions are available!", available_count);
         } else {
-            println!("⚠️  Only {}/{} FFI functions available", available_count, test_functions.len());
+            println!("Only {}/{} FFI functions available", available_count, test_functions.len());
         }
     }
 }
 
 #[cfg(target_os = "windows")]
 fn test_device_connections() {
-    println!("🌐 Testing Device Connections...");
+    println!("Testing Device Connections...");
 
     unsafe {
         let handle = GetModuleHandleA(b"T3000.exe\0".as_ptr());
         if handle.is_null() {
-            println!("❌ T3000.exe not available for device testing");
+            println!("T3000.exe not available for device testing");
             return;
         }
 
         let func_ptr = GetProcAddress(handle, b"T3000_IsDeviceOnline\0".as_ptr());
         if func_ptr.is_null() {
-            println!("❌ T3000_IsDeviceOnline function not available");
+            println!("T3000_IsDeviceOnline function not available");
             return;
         }
 
@@ -151,16 +151,16 @@ fn test_device_connections() {
         for device_id in 1..=10 {
             let result = func(device_id);
             if result == 1 {
-                println!("✅ Device {} is ONLINE", device_id);
+                println!("Device {} is ONLINE", device_id);
                 online_devices.push(device_id);
             } else {
-                println!("❌ Device {} is OFFLINE", device_id);
+                println!("Device {} is OFFLINE", device_id);
                 offline_devices.push(device_id);
             }
         }
 
         println!("");
-        println!("📊 Device Connection Summary:");
+        println!("Device Connection Summary:");
         if !online_devices.is_empty() {
             println!("   Online devices: {:?}", online_devices);
         }
@@ -170,9 +170,9 @@ fn test_device_connections() {
         println!("   Total scanned: {} devices", online_devices.len() + offline_devices.len());
 
         if !online_devices.is_empty() {
-            println!("🎉 FFI is working! Found {} online device(s)", online_devices.len());
+            println!("FFI is working! Found {} online device(s)", online_devices.len());
         } else {
-            println!("⚠️  FFI is working but no devices are online");
+            println!("FFI is working but no devices are online");
             println!("   Make sure devices are connected in T3000 software");
         }
     }

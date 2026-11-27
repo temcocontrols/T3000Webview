@@ -73,7 +73,7 @@ async fn create_t3_device_connection() -> Result<DatabaseConnection, Box<dyn std
         "PRAGMA synchronous = NORMAL;".to_owned()
     )).await?;
 
-    // 🆕 PERFORMANCE: Increase cache size for better query performance
+    // PERFORMANCE: Increase cache size for better query performance
     // Default is -2000 (2MB), increase to -64000 (64MB)
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Sqlite,
@@ -88,21 +88,21 @@ async fn create_t3_device_connection() -> Result<DatabaseConnection, Box<dyn std
         "PRAGMA wal_autocheckpoint = 1000;".to_owned()
     )).await?;
 
-    // 🆕 FIX: Set locking mode to NORMAL for better concurrency
+    // FIX: Set locking mode to NORMAL for better concurrency
     // This allows multiple readers while a writer is active
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Sqlite,
         "PRAGMA locking_mode = NORMAL;".to_owned()
     )).await?;
 
-    // 🆕 FIX: Increase page size for better performance with large datasets (308K+ records)
+    // FIX: Increase page size for better performance with large datasets (308K+ records)
     // Note: This only affects new databases, existing ones keep their page size
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Sqlite,
         "PRAGMA page_size = 4096;".to_owned()
     )).await?;
 
-    // 🆕 FIX: Enable memory-mapped I/O for faster reads (helps with large datasets)
+    // FIX: Enable memory-mapped I/O for faster reads (helps with large datasets)
     // Map up to 256MB of database into memory
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Sqlite,

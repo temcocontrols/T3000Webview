@@ -138,17 +138,17 @@ async fn run_suite(label: &str, base_url: &str, model: &str) {
                 Ok((got, _raw)) => {
                     if got == e.tool {
                         pass += 1;
-                        println!("\n  ✅ selected: {}", got);
+                        println!("\n  selected: {}", got);
                     } else {
                         fail += 1;
-                        let msg = format!("  ❌ expected '{}' but model selected '{}'", e.tool, got);
+                        let msg = format!("  expected '{}' but model selected '{}'", e.tool, got);
                         println!("\n{}", msg);
                         failures.push(format!("[{}] prompt=\"{}\" expected={} got={}", total, prompt, e.tool, got));
                     }
                 }
                 Err(err) => {
                     fail += 1;
-                    println!("\n  ❌ ERROR: {}", err);
+                    println!("\n  ERROR: {}", err);
                     failures.push(format!("[{}] prompt=\"{}\" expected={} ERROR={}", total, prompt, e.tool, err));
                 }
             }

@@ -178,6 +178,6 @@ where
 {
     match get_test_db().await {
         Some(db) => f(db).await,
-        None => println!("⚠️  SKIP {} — runtime DB not available", test_name),
+        None => println!("SKIP {} — runtime DB not available", test_name),
     }
 }

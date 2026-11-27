@@ -450,8 +450,8 @@ pub async fn server_start(
     logger.info(&format!("T3000 WebView Service listening on {:?}", listener.local_addr()));
 
     // Print visible confirmation so user knows server is ready
-    println!("✅ Server is READY — listening on {:?}", listener.local_addr());
-    debug_log(&format!("✅ Server is READY — listening on {:?}", listener.local_addr()));
+    println!("Server is READY — listening on {:?}", listener.local_addr());
+    debug_log(&format!("Server is READY — listening on {:?}", listener.local_addr()));
     println!("   Open http://localhost:{} in your browser", server_port);
     debug_log(&format!("   Open http://localhost:{} in your browser", server_port));
 

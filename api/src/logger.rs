@@ -4,7 +4,7 @@ use chrono::{Utc, Timelike};
 use crate::constants::get_t3000_log_path;
 
 /// Global flag to enable/disable T3WebLog functionality
-pub static ENABLE_T3_WEB_LOG: bool = false; // ❌ DISABLED - Set to true to enable logging
+pub static ENABLE_T3_WEB_LOG: bool = false; // DISABLED - Set to true to enable logging
 
 /// Creates structured log file path with 4-hour bucket system:
 /// T3000_Runtime/ResourceFile/webview/t3web/logs/YYYY-MM/MMDD/filename_HHHH.txt

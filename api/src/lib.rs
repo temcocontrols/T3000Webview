@@ -287,7 +287,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(e) = crate::utils::initialize_t3_device_database().await {
         let error_msg = format!("T3000 webview database (webview_t3_device.db) initialization failed: {} - Core services will continue", e);
         emit_service_log("error", "T3_Webview_Initialize", &error_msg).await;
-        println!("⚠️  Warning: T3000 webview database unavailable - Core services starting anyway");
+        println!("Warning: T3000 webview database unavailable - Core services starting anyway");
         if let Some((ref fh, ref db)) = flow_opt {
             fh.step(db, "db_init", "error", "lib", "error", t_db.elapsed().as_millis() as i64,
                     &format!("DB init failed: {}", e), None).await;
@@ -366,7 +366,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(e) = initialize_logging_service(main_service_config).await {
         let error_msg = format!("T3000 FFI Sync Service initialization failed: {} - Core services will continue", e);
         emit_service_log("warn", "T3_Webview_Initialize", &error_msg).await;
-        println!("⚠️  Warning: T3000 FFI Sync Service unavailable - Core services starting anyway");
+        println!("Warning: T3000 FFI Sync Service unavailable - Core services starting anyway");
         if let Some((ref fh, ref db)) = flow_opt {
             fh.step(db, "init_ffi_service", "warn", "lib", "error",
                     t_ffi.elapsed().as_millis() as i64,
@@ -416,7 +416,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
             emit_service_log(
                 "info",
                 "T3_Webview_Initialize",
-                "✅ T3000 FFI Sync Service started (center DB active, role=server)",
+                "T3000 FFI Sync Service started (center DB active, role=server)",
             )
             .await;
             Some(handle)
@@ -455,7 +455,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
             emit_service_log(
                 "info",
                 "T3_Webview_Initialize",
-                "✅ Partition monitor service started (hourly checks)",
+                "Partition monitor service started (hourly checks)",
             )
             .await;
             if let Some((ref fh, ref db)) = flow_opt {
@@ -511,7 +511,7 @@ pub async fn start_all_services() -> Result<(), Box<dyn std::error::Error>> {
             emit_service_log(
                 "info",
                 "T3_Webview_Initialize",
-                "✅ Startup partition migration check completed",
+                "Startup partition migration check completed",
             )
             .await;
         }

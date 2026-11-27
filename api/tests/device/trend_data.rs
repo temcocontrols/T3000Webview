@@ -13,7 +13,7 @@
 // Placeholder test to prevent empty test file
 #[tokio::test]
 async fn test_placeholder() {
-    println!("📝 Trend data tests reference removed modules");
+    println!("Trend data tests reference removed modules");
     println!("   Active modules for trend data:");
     println!("   - trendlog_data_service: TRENDLOG_DATA table operations");
     println!("   - t3_ffi_sync_service: FFI sync and data collection");
@@ -24,6 +24,6 @@ async fn test_placeholder() {
 // Basic test to verify the test framework works
 #[test]
 fn test_basic_functionality() {
-    println!("✅ Basic test framework is working");
+    println!("Basic test framework is working");
     assert_eq!(2 + 2, 4);
 }
