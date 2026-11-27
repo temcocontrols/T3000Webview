@@ -14,6 +14,10 @@
  *            GET/PUT /api/eez-device/screens/:name  (single screen)
  *            PATCH /api/eez-device/screens/:name    (delta update)
  *            GET/PUT /api/eez-device/images/*       (bitmaps)
+ *            GET     /api/eez-device/device/status  (what the panel runs)
+ *            GET|POST /api/eez-device/ui-mode       (auto | json | compiled)
+ *            POST    /api/eez-device/ui-screen      (navigate the renderer)
+ *            GET|POST /api/eez-device/ui-debug      (layout dump)
  */
 
 import { transformToDeviceJson, type DeviceScreen } from "./firmware-export";
@@ -59,10 +63,21 @@ export interface DeviceCapacity {
     revision: number;
 }
 
+/**
+ * The tri-state UI switch. `auto` runs the compiled UI until a screen set is
+ * deployed, so on a fresh device every deploy lands in flash but the panel keeps
+ * painting the built-in design — `ui_mode` alone cannot express that.
+ */
+export type UiMode = "auto" | "json" | "compiled";
+
 /** `GET /api/eez-device/device/status` — what the panel is actually running. */
 export interface DeviceStatus {
     /** `json` = the renderer draws the deployed screens, `compiled` = built-in UI. */
     ui_mode: "json" | "compiled";
+    /** The switch as configured (absent on firmware older than the tri-state mode). */
+    mode?: UiMode;
+    /** `auto` wanted JSON but the deployed set could not be served. */
+    mode_failed?: boolean;
     tier: number;
     slot: "A" | "B";
     revision: number;
@@ -71,7 +86,38 @@ export interface DeviceStatus {
     last_error: string;
     /** set when the compiled UI was forced (ui-mode switch), older firmware only */
     forced_compiled?: boolean;
-    storage?: { total: number; used: number; free: number; reserved: number };
+    /** Internal-DRAM pressure; `internal_min` is the low-water mark since boot. */
+    heap?: { free: number; internal_free: number; internal_min: number };
+    /** No `reserved` here — that is only reported by /storage/capacity. */
+    storage?: { total: number; used: number; free: number };
+}
+
+/** `GET|POST /api/eez-device/ui-mode` — the switch, not what it resolved to. */
+export interface UiModeState {
+    ui_mode: "json" | "compiled";
+    mode: UiMode;
+    mode_failed: boolean;
+    forced_compiled: boolean;
+}
+
+/** `POST /api/eez-device/ui-mode` — echoes the mode the device accepted. */
+export interface UiModeSetResponse {
+    ok: boolean;
+    ui_mode: "json" | "compiled";
+    mode: UiMode;
+}
+
+/** `POST /api/eez-device/ui-screen` — queued navigation request. */
+export interface UiScreenGotoResponse {
+    ok: boolean;
+    /** Design name the renderer was asked to show. */
+    navigating: string;
+}
+
+/** `GET|POST /api/eez-device/ui-debug` — per-screen layout dump state. */
+export interface UiLayoutDumpResponse {
+    ok: boolean;
+    layout_dump: boolean;
 }
 
 /** `POST /api/eez-device/deploy/begin` */
@@ -541,6 +587,111 @@ export class DeviceRestClient {
             throw new Error(`Device returned ${response.status} for status`);
         }
         return response.json();
+    }
+
+    // ── UI mode and renderer debug controls ───────────────────────────
+    //
+    // `/ui-mode` is the tri-state switch (auto | json | compiled) and is the only
+    // way to tell "the deploy did nothing" from "the panel is deliberately on the
+    // compiled UI". `/ui-screen` and `/ui-debug` are diagnostics: they act on the
+    // live panel, so nothing here is called from the deploy path.
+
+    /** Read the tri-state switch and what it resolved to. */
+    async getUiMode(): Promise<UiModeState> {
+        const response = await fetch(restUrl("ui-mode", this.deviceIp), {
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+        if (!response.ok) {
+            throw new Error(`Device returned ${response.status} for ui-mode`);
+        }
+        return response.json();
+    }
+
+    /**
+     * Set the tri-state switch. In `auto` the device keeps the compiled UI until
+     * a screen set is deployed; `json` forces the renderer, `compiled` forces the
+     * built-in design.
+     */
+    async setUiMode(mode: UiMode): Promise<UiModeSetResponse> {
+        if (this.mode !== "rest") {
+            throw new Error("Device not connected via REST API");
+        }
+        const response = await fetch(restUrl("ui-mode", this.deviceIp), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode }),
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+        return this.readUiResponse<UiModeSetResponse>(response, `ui-mode ${mode}`);
+    }
+
+    /** Ask the renderer to show a design screen by name. */
+    async gotoScreen(name: string): Promise<UiScreenGotoResponse> {
+        if (this.mode !== "rest") {
+            throw new Error("Device not connected via REST API");
+        }
+        const response = await fetch(restUrl("ui-screen", this.deviceIp), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name }),
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+        return this.readUiResponse<UiScreenGotoResponse>(response, `goto ${name}`);
+    }
+
+    /** Is the per-screen layout dump writing to the device log? */
+    async getLayoutDump(): Promise<UiLayoutDumpResponse> {
+        const response = await fetch(restUrl("ui-debug", this.deviceIp), {
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+        if (!response.ok) {
+            throw new Error(`Device returned ${response.status} for ui-debug`);
+        }
+        return response.json();
+    }
+
+    /** Toggle the per-screen layout dump (one log line per built widget). */
+    async setLayoutDump(enabled: boolean): Promise<UiLayoutDumpResponse> {
+        if (this.mode !== "rest") {
+            throw new Error("Device not connected via REST API");
+        }
+        const response = await fetch(restUrl("ui-debug", this.deviceIp), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ layout: enabled }),
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+        return this.readUiResponse<UiLayoutDumpResponse>(
+            response,
+            `layout dump ${enabled ? "on" : "off"}`
+        );
+    }
+
+    /**
+     * Reads a UI-control response. The device answers JSON errors such as
+     * `{"error":"bad_mode","expect":["auto","json","compiled"]}` and the local
+     * proxy answers its own 502 body, so the text is read first to keep
+     * whichever message actually arrived.
+     */
+    private async readUiResponse<T>(response: Response, what: string): Promise<T> {
+        const text = await response.text();
+        let parsed: any = null;
+        try {
+            parsed = text ? JSON.parse(text) : null;
+        } catch {
+            parsed = null;
+        }
+        if (!response.ok) {
+            const detail = parsed?.error
+                ? `${parsed.error}${
+                      Array.isArray(parsed.expect) ? ` (expect ${parsed.expect.join("|")})` : ""
+                  }`
+                : text.slice(0, 200);
+            throw new Error(
+                `${what} failed: ${response.status}${detail ? ` ${detail}` : ""}`.trim()
+            );
+        }
+        return (parsed ?? {}) as T;
     }
 
     /** Opens a deploy transaction and reserves the inactive slot. */

@@ -309,6 +309,17 @@ async function tryTransactionalDeploy(
         "Activated the new revision",
         `revision ${commit.revision} · slot ${commit.active_slot}`
     );
+    // `applied` false means the revision is live in flash but the panel has not
+    // reloaded it (the device queues the reload). Not a failed deploy — the next
+    // boot picks it up — so surface it as amber rather than red.
+    if (commit.applied === false) {
+        emitStep(
+            "txn-applied",
+            "Panel reload pending",
+            `revision ${commit.revision} is active in flash but the display did not reload it yet`,
+            "skipped"
+        );
+    }
     return {
         deployed: counts.screens,
         imagesDeployed: counts.images,
@@ -316,7 +327,8 @@ async function tryTransactionalDeploy(
         message:
             `Deployed ${counts.screens} screen${counts.screens === 1 ? "" : "s"} ` +
             `+ ${counts.images} image${counts.images === 1 ? "" : "s"} as revision ${commit.revision} ` +
-            `(slot ${commit.active_slot})`,
+            `(slot ${commit.active_slot})` +
+            (commit.applied === false ? " — panel reload pending" : ""),
         revision: commit.revision,
         slot: commit.active_slot,
     };
@@ -742,8 +754,29 @@ export async function deployEezProject(opts: DeployEezOptions): Promise<DeployEe
     if (pushOk) {
         try {
             const st = await deviceClient.getStatus();
+            // Under `auto` the device reports whatever the switch resolved to,
+            // so show the switch first: a bare "compiled" after a successful
+            // deploy reads like nothing happened.
+            const modeLabel = st.mode
+                ? st.mode === "auto"
+                    ? `auto→${st.ui_mode}`
+                    : st.mode
+                : st.ui_mode;
+            const heap = st.heap
+                ? ` · heap ${Math.round(st.heap.internal_free / 1024)} KB` +
+                  ` (min ${Math.round(st.heap.internal_min / 1024)} KB)`
+                : "";
+            const tier = st.tier !== undefined ? ` · tier ${st.tier}` : "";
+            const notLive =
+                st.mode === "auto" && st.ui_mode === "compiled" && st.revision > 0
+                    ? " · deployed set not live"
+                    : "";
             const detail =
-                `${st.ui_mode} · ${st.current_screen} · rev ${st.revision} (slot ${st.slot})` +
+                `${modeLabel} · ${st.current_screen} · rev ${st.revision} (slot ${st.slot})` +
+                tier +
+                heap +
+                notLive +
+                (st.mode_failed ? " · auto fell back to compiled" : "") +
                 (st.last_error ? ` · ${st.last_error}` : "");
             emitStep(
                 "verify",
